@@ -2,6 +2,7 @@ export interface Env {
   OPENAI_API_KEY: string;
   TELEGRAM_BOT_TOKEN: string;
   PUBLIC_WEBHOOK_URL: string;
+  CHAT_MEMORY?: KVNamespace;
   OPENAI_MODEL?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
   ADMIN_DEBUG_TOKEN?: string;
@@ -14,6 +15,7 @@ export interface AppConfig {
   openAiApiKey: string;
   telegramBotToken: string;
   publicWebhookUrl: string;
+  chatMemory?: KVNamespace;
   openAiModel: string;
   telegramWebhookSecret?: string;
   adminDebugToken?: string;

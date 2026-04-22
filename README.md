@@ -6,6 +6,7 @@ This first phase supports:
 - Telegram webhook updates (no polling)
 - Safe update validation and routing
 - OpenAI Responses API integration
+- Optional per-chat memory with Cloudflare KV
 - Private chat replies
 - Group replies only when mentioned or replied-to
 - Health and protected debug endpoints for operational control
@@ -51,6 +52,7 @@ Fill in all required values:
   - `PUBLIC_WEBHOOK_URL`
 - Recommended:
   - `OPENAI_MODEL` (fallback in code: `gpt-5.4`)
+  - `CHAT_MEMORY` (KV binding for conversation memory)
   - `TELEGRAM_WEBHOOK_SECRET`
   - `ADMIN_DEBUG_TOKEN`
   - `BOT_USERNAME`
@@ -69,6 +71,23 @@ npx wrangler deploy
 ```
 
 And set non-secret vars in `wrangler.jsonc` (or Wrangler environments).
+
+If you want memory between messages, create and bind KV:
+
+```bash
+npx wrangler kv namespace create CHAT_MEMORY
+```
+
+Then add the binding to `wrangler.jsonc`:
+
+```jsonc
+"kv_namespaces": [
+  {
+    "binding": "CHAT_MEMORY",
+    "id": "<namespace-id>"
+  }
+]
+```
 
 ---
 
