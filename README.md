@@ -50,7 +50,7 @@ Fill in all required values:
   - `TELEGRAM_BOT_TOKEN`
   - `PUBLIC_WEBHOOK_URL`
 - Recommended:
-  - `OPENAI_MODEL` (fallback in code: `gpt-4.1-mini`)
+  - `OPENAI_MODEL` (fallback in code: `gpt-5.4`)
   - `TELEGRAM_WEBHOOK_SECRET`
   - `ADMIN_DEBUG_TOKEN`
   - `BOT_USERNAME`
@@ -211,4 +211,3 @@ curl -X POST "https://<your-worker>/debug/set-webhook" \
 4. Prompt templates + scoped prompt overrides (global/group/user).
 5. Scheduled automations via Cron Triggers + queued jobs.
 6. Admin audit logs and observability dashboards.
-
