@@ -24,7 +24,7 @@ export interface AppConfig {
   systemPrompt: string;
 }
 
-const FALLBACK_OPENAI_MODEL = "gpt-4.1-mini";
+const FALLBACK_OPENAI_MODEL = "gpt-5.4";
 
 export function getConfig(env: Env): AppConfig {
   if (!env.OPENAI_API_KEY || !env.TELEGRAM_BOT_TOKEN || !env.PUBLIC_WEBHOOK_URL) {
