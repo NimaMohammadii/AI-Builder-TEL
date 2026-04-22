@@ -17,6 +17,8 @@ export async function generateOpenAIReply(config: AppConfig, userText: string): 
           { role: "system", content: [{ type: "input_text", text: config.systemPrompt }] },
           { role: "user", content: [{ type: "input_text", text: userText }] }
         ],
+        tools: [{ type: "web_search" }],
+        tool_choice: "auto",
         max_output_tokens: 300
       },
       {
