@@ -14,8 +14,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "vexa-prod",
-      "database_id": "504f42e2-9098-429f-b296-942ea435ba4e"
+      "database_name": "vexa-builder",
+      "database_id": "0528d473-3f29-48b2-a659-8226ea7356dc"
     }
   ]
 }
