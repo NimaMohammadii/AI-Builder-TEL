@@ -1,0 +1,20 @@
+{
+  "name": "vexa-telegram-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "check": "npm run build"
+  },
+  "dependencies": {
+    "openai": "^6.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260410.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.12.0"
+  }
+}
