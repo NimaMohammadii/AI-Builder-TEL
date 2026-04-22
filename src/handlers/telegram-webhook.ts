@@ -1,8 +1,10 @@
-import type { AppConfig } from "../config";
+import type { AppConfig } from "../types/env";
+import type { TelegramMessage } from "../types/telegram";
 import { logger } from "../lib/logger";
 import { generateOpenAIReply } from "../lib/openai";
 import { parseUpdate, sendMessage, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
-import type { TelegramMessage } from "../types/telegram";
+import { jsonError, jsonOk } from "../utils/http";
+import { isPrivateChat } from "../utils/telegram-helpers";
 
 const NON_TEXT_PRIVATE_REPLY = "فعلاً فقط پیام متنی رو می‌تونم پردازش کنم.";
 
@@ -11,13 +13,13 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig)
 
   if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) {
     logger.warn("Rejected webhook due to invalid secret token", { route, event: "invalid_secret" });
-    return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return jsonError("unauthorized", 401);
   }
 
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     logger.warn("Invalid content-type for webhook", { route, event: "invalid_content_type" });
-    return Response.json({ ok: false, error: "invalid_content_type" }, { status: 415 });
+    return jsonError("invalid_content_type", 415);
   }
 
   let body: unknown;
@@ -25,13 +27,13 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig)
     body = await request.json();
   } catch {
     logger.warn("Invalid JSON payload received", { route, event: "invalid_json" });
-    return Response.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    return jsonError("invalid_json", 400);
   }
 
   const update = parseUpdate(body);
   if (!update) {
     logger.warn("Invalid update payload", { route, event: "invalid_update_payload" });
-    return Response.json({ ok: true, ignored: true }, { status: 200 });
+    return jsonOk({ ok: true, ignored: true });
   }
 
   const message = update.message ?? update.edited_message;
@@ -41,7 +43,7 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig)
       event: "unsupported_update",
       updateId: update.update_id
     });
-    return Response.json({ ok: true, ignored: true }, { status: 200 });
+    return jsonOk({ ok: true, ignored: true });
   }
 
   return processMessage(message, config, update.update_id);
@@ -58,21 +60,21 @@ async function processMessage(message: TelegramMessage, config: AppConfig, updat
       chatType,
       updateId
     });
-    return Response.json({ ok: true, ignored: true }, { status: 200 });
+    return jsonOk({ ok: true, ignored: true });
   }
 
-  if (!message.text && message.chat.type === "private") {
+  if (!message.text && isPrivateChat(message)) {
     await sendMessage(config, {
       chat_id: message.chat.id,
       text: NON_TEXT_PRIVATE_REPLY,
       reply_to_message_id: message.message_id
     });
 
-    return Response.json({ ok: true }, { status: 200 });
+    return jsonOk();
   }
 
   if (!message.text) {
-    return Response.json({ ok: true, ignored: true }, { status: 200 });
+    return jsonOk({ ok: true, ignored: true });
   }
 
   const reply = await generateOpenAIReply(config, message.text);
@@ -101,5 +103,5 @@ async function processMessage(message: TelegramMessage, config: AppConfig, updat
     status: sendResult.ok ? 200 : 502
   });
 
-  return Response.json({ ok: true }, { status: 200 });
+  return jsonOk();
 }

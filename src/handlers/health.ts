@@ -1,5 +1,7 @@
+import { jsonOk } from "../utils/http";
+
 export function handleRoot(): Response {
-  return Response.json({
+  return jsonOk({
     ok: true,
     service: "vexa",
     runtime: "cloudflare-workers"
@@ -7,7 +9,7 @@ export function handleRoot(): Response {
 }
 
 export function handleHealth(): Response {
-  return Response.json({
+  return jsonOk({
     ok: true,
     status: "healthy",
     uptime: "worker-active"

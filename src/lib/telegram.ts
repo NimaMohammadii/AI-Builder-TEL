@@ -1,5 +1,6 @@
-import type { AppConfig } from "../config";
+import type { AppConfig } from "../types/env";
 import type { TelegramApiResponse, TelegramMessage, TelegramUpdate, TelegramUser } from "../types/telegram";
+import { isBotMentioned, isGroupChat, isPrivateChat, isReplyToBot } from "../utils/telegram-helpers";
 
 interface TelegramSendMessagePayload {
   chat_id: number;
@@ -74,38 +75,15 @@ export function parseUpdate(payload: unknown): TelegramUpdate | null {
   return maybeUpdate as TelegramUpdate;
 }
 
-export function isReplyToBot(message: TelegramMessage): boolean {
-  return Boolean(message.reply_to_message?.from?.is_bot);
-}
-
-export function messageMentionsBot(message: TelegramMessage, botUsername?: string): boolean {
-  if (!botUsername || !message.text) return false;
-
-  const normalizedText = message.text.toLowerCase();
-  if (normalizedText.includes(`@${botUsername}`)) {
-    return true;
-  }
-
-  if (!message.entities) {
-    return false;
-  }
-
-  return message.entities.some((entity) => {
-    if (entity.type !== "mention") return false;
-    const mention = normalizedText.slice(entity.offset, entity.offset + entity.length);
-    return mention === `@${botUsername}`;
-  });
-}
-
 export function shouldRespondInChat(message: TelegramMessage, botUsername?: string): boolean {
   if (!message.text) return false;
 
-  if (message.chat.type === "private") {
+  if (isPrivateChat(message)) {
     return true;
   }
 
-  if (message.chat.type === "group" || message.chat.type === "supergroup") {
-    return messageMentionsBot(message, botUsername) || isReplyToBot(message);
+  if (isGroupChat(message)) {
+    return isBotMentioned(message, botUsername) || isReplyToBot(message);
   }
 
   return false;
