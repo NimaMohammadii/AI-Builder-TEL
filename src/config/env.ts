@@ -12,6 +12,7 @@ export function loadConfig(env: Env): AppConfig {
     openAiApiKey: env.OPENAI_API_KEY,
     telegramBotToken: env.TELEGRAM_BOT_TOKEN,
     publicWebhookUrl: env.PUBLIC_WEBHOOK_URL,
+    chatMemory: env.CHAT_MEMORY,
     openAiModel: env.OPENAI_MODEL ?? FALLBACK_OPENAI_MODEL,
     telegramWebhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
     adminDebugToken: env.ADMIN_DEBUG_TOKEN,

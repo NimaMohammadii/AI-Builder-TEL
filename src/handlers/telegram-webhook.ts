@@ -1,6 +1,7 @@
 import type { AppConfig } from "../types/env";
 import type { TelegramMessage } from "../types/telegram";
 import { logger } from "../lib/logger";
+import { readConversationHistory, writeConversationHistory } from "../lib/chat-memory";
 import { generateOpenAIReply } from "../lib/openai";
 import { parseUpdate, sendMessage, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { jsonError, jsonOk } from "../utils/http";
@@ -77,13 +78,18 @@ async function processMessage(message: TelegramMessage, config: AppConfig, updat
     return jsonOk({ ok: true, ignored: true });
   }
 
-  const reply = await generateOpenAIReply(config, message.text);
+  const history = await readConversationHistory(config, message.chat.id);
+  const reply = await generateOpenAIReply(config, message.text, history);
 
   const sendResult = await sendMessage(config, {
     chat_id: message.chat.id,
     text: reply,
     reply_to_message_id: message.message_id
   });
+
+  if (sendResult.ok) {
+    await writeConversationHistory(config, message.chat.id, history, message.text, reply);
+  }
 
   if (!sendResult.ok) {
     logger.error("Failed to send Telegram response", {
