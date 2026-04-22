@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { AppConfig } from "../config";
+import type { AppConfig } from "../types/env";
 
 const OPENAI_TIMEOUT_MS = 12000;
 const FRIENDLY_ERROR_MESSAGE = "الان نمی‌تونم جواب بدم، چند لحظه دیگه دوباره امتحان کن.";
