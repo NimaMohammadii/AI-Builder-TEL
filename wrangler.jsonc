@@ -10,5 +10,12 @@
   "vars": {
     "ENVIRONMENT": "development",
     "OPENAI_MODEL": "gpt-5.4"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vexa-prod",
+      "database_id": "504f42e2-9098-429f-b296-942ea435ba4e"
+    }
+  ]
 }
