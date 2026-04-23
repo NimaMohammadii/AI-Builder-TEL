@@ -56,6 +56,17 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig,
 
   const managedBotUsername = getManagedBotUsernameFromRequest(request);
   const managedBot = managedBotUsername ? await findWorkspaceBotByUsername(env, managedBotUsername) : null;
+
+  if (managedBotUsername && !managedBot) {
+    logger.error("Managed bot webhook route received but no matching bot was found", {
+      route,
+      event: "managed_bot_not_found",
+      managedBotUsername,
+      updateId: update.update_id
+    });
+    return jsonOk({ ok: true, ignored: true, reason: "managed_bot_not_found" });
+  }
+
   const runtimeConfig = await buildRuntimeConfig(config, env, managedBot?.id ?? null, managedBot?.encrypted_token, managedBot?.bot_username);
 
   return processMessage(message, runtimeConfig, env, update.update_id, managedBot?.id ?? null, managedBot?.workspace_id ?? null, !managedBotUsername);
@@ -223,10 +234,11 @@ async function handleConnectCommand(message: TelegramMessage, config: AppConfig,
     return jsonOk();
   }
 
+  const normalizedUsername = me.result.username.toLowerCase();
   const bot = await upsertManagedTelegramBot(env, {
     workspaceId,
     telegramBotId: String(me.result.id),
-    botUsername: me.result.username.toLowerCase(),
+    botUsername: normalizedUsername,
     botName: me.result.first_name,
     encryptedToken: token
   });
@@ -238,7 +250,7 @@ async function handleConnectCommand(message: TelegramMessage, config: AppConfig,
     model: config.openAiModel
   });
 
-  const webhookResult = await setWebhookForToken(token, config.publicWebhookUrl, me.result.username.toLowerCase(), config.telegramWebhookSecret);
+  const webhookResult = await setWebhookForToken(token, config.publicWebhookUrl, normalizedUsername, config.telegramWebhookSecret);
   const replyText = webhookResult.ok
     ? `ربات @${me.result.username} وصل شد.\nبرای تغییر پرامپت:\n/prompt @${me.result.username} تو یک دستیار حرفه‌ای فروش هستی`
     : `ربات ذخیره شد ولی ست‌کردن webhook خطا داد: ${webhookResult.description ?? "unknown_error"}`;
@@ -330,7 +342,8 @@ async function buildRuntimeConfig(config: AppConfig, env: any, managedBotId: str
 }
 
 function getManagedBotUsernameFromRequest(request: Request): string | undefined {
-  const pathname = new URL(request.url).pathname;
-  const parts = pathname.split('/').filter(Boolean);
-  return parts.length >= 3 ? parts[2].toLowerCase() : undefined;
+  const pathname = new URL(request.url).pathname.replace(/\/+$/, "");
+  const prefix = "/telegram/webhook/";
+  if (!pathname.startsWith(prefix)) return undefined;
+  return pathname.slice(prefix.length).trim().toLowerCase() || undefined;
 }
