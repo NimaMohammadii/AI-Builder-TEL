@@ -12,6 +12,10 @@ export async function upsertChat(env: Env, input: {
   const db = getDb(env);
   const id = `chat_${input.telegramChatId}`;
 
+  if (!db || !input.botId) {
+    return { id };
+  }
+
   await db.prepare(`
     INSERT INTO telegram_chats (id, workspace_id, bot_id, telegram_chat_id, chat_type, title, username)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -23,7 +27,7 @@ export async function upsertChat(env: Env, input: {
   .bind(
     id,
     input.workspaceId,
-    input.botId ?? null,
+    input.botId,
     input.telegramChatId,
     input.chatType,
     input.title ?? null,
