@@ -5,6 +5,7 @@ export interface Env {
   CHAT_MEMORY?: KVNamespace;
   DB?: D1Database;
   OPENAI_MODEL?: string;
+  IMAGE_MODEL?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
   ADMIN_DEBUG_TOKEN?: string;
   BOT_USERNAME?: string;
@@ -18,6 +19,7 @@ export interface AppConfig {
   publicWebhookUrl: string;
   chatMemory?: KVNamespace;
   openAiModel: string;
+  imageModel: string;
   telegramWebhookSecret?: string;
   adminDebugToken?: string;
   botUsername?: string;
