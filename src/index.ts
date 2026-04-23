@@ -7,7 +7,7 @@ import type { Env } from "./types/env";
 import { jsonError } from "./utils/http";
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const route = new URL(request.url).pathname;
 
     try {
@@ -22,7 +22,7 @@ export default {
       }
 
       if (request.method === "POST" && route.startsWith("/telegram/webhook")) {
-        return handleTelegramWebhook(request, config, env);
+        return handleTelegramWebhook(request, config, env, ctx);
       }
 
       if (request.method === "POST" && route === "/debug/set-webhook") {
