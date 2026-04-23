@@ -1,6 +1,6 @@
 import type { AppConfig } from "../types/env";
 import type { TelegramApiResponse, TelegramMessage, TelegramUpdate, TelegramUser } from "../types/telegram";
-import { isBotMentioned, isGroupChat, isPrivateChat, isReplyToBot } from "../utils/telegram-helpers";
+import { isGroupChat, isPrivateChat, isReplyToBot } from "../utils/telegram-helpers";
 
 interface TelegramSendMessagePayload {
   chat_id: number;
@@ -116,10 +116,34 @@ export function parseUpdate(payload: unknown): TelegramUpdate | null {
 }
 
 export function shouldRespondInChat(message: TelegramMessage, botUsername?: string): boolean {
-  if (!message.text) return false;
-  if (isPrivateChat(message)) return true;
-  if (isGroupChat(message)) return isBotMentioned(message, botUsername) || isReplyToBot(message);
+  const hasTextualContent = Boolean(message.text || message.caption);
+  const hasPhoto = Array.isArray(message.photo) && message.photo.length > 0;
+
+  if (isPrivateChat(message)) {
+    return hasTextualContent || hasPhoto;
+  }
+
+  if (isGroupChat(message)) {
+    return isBotMentionedInMessage(message, botUsername) || isReplyToBot(message);
+  }
+
   return false;
+}
+
+function isBotMentionedInMessage(message: TelegramMessage, botUsername?: string): boolean {
+  if (!botUsername) return false;
+
+  const text = (message.text ?? message.caption ?? "").toLowerCase();
+  if (text.includes(`@${botUsername}`)) {
+    return true;
+  }
+
+  const entities = [...(message.entities ?? []), ...(message.caption_entities ?? [])];
+  return entities.some((entity) => {
+    if (entity.type !== "mention") return false;
+    const mention = text.slice(entity.offset, entity.offset + entity.length);
+    return mention === `@${botUsername}`;
+  });
 }
 
 function sanitizeText(text: string): string {
