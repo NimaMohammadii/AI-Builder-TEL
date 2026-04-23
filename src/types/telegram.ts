@@ -41,12 +41,16 @@ export interface TelegramMessage {
   message_id: number;
   date: number;
   text?: string;
+  caption?: string;
   from?: TelegramUser;
   chat: TelegramChat;
   entities?: TelegramEntity[];
+  caption_entities?: TelegramEntity[];
+  photo?: Array<{ file_id?: string }>;
   reply_to_message?: {
     message_id: number;
     from?: TelegramUser;
+    photo?: Array<{ file_id?: string }>;
   };
 }
 

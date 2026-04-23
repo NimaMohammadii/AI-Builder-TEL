@@ -7,6 +7,7 @@ export interface LogContext {
   updateId?: number;
   status?: number;
   error?: string;
+  [key: string]: unknown;
 }
 
 function write(level: LogLevel, message: string, context?: LogContext): void {
