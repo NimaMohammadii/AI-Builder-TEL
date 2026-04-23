@@ -21,7 +21,7 @@ export default {
         return handleHealth();
       }
 
-      if (request.method === "POST" && route === "/telegram/webhook") {
+      if (request.method === "POST" && route.startsWith("/telegram/webhook")) {
         return handleTelegramWebhook(request, config, env);
       }
 
