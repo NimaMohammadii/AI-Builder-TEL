@@ -5,7 +5,7 @@ import type { AiProvider, AppConfig, Env } from "../types/env";
 const FALLBACK_OPENAI_MODEL = "gpt-5.4";
 const FALLBACK_IMAGE_MODEL = "gpt-image-1";
 const FALLBACK_XAI_MODEL = "grok-4-1-fast-non-reasoning";
-const FALLBACK_XAI_IMAGE_MODEL = "grok-imagine-image";
+const FALLBACK_XAI_IMAGE_MODEL = "grok-imagine-image-pro";
 
 export function loadConfig(env: Env): AppConfig {
   if (!env.TELEGRAM_BOT_TOKEN || !env.PUBLIC_WEBHOOK_URL) {
