@@ -1,3 +1,4 @@
+import { ACTIVE_AI_PROVIDER } from "./ai-provider";
 import { DEFAULT_SYSTEM_PROMPT } from "../prompts/system";
 import type { AiProvider, AppConfig, Env } from "../types/env";
 
@@ -11,7 +12,7 @@ export function loadConfig(env: Env): AppConfig {
     throw new Error("Missing required environment variables.");
   }
 
-  const provider = normalizeProvider(env.AI_PROVIDER);
+  const provider = normalizeProvider(ACTIVE_AI_PROVIDER);
   if (provider === "gpt" && !env.OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY for GPT provider.");
   if (provider === "grok" && !env.XAI_API_KEY) throw new Error("Missing XAI_API_KEY for Grok provider.");
 
@@ -19,7 +20,7 @@ export function loadConfig(env: Env): AppConfig {
     provider,
     openAiApiKey: env.OPENAI_API_KEY,
     xAiApiKey: env.XAI_API_KEY,
-    xAiBaseUrl: env.XAI_BASE_URL ?? "",
+    xAiBaseUrl: env.XAI_BASE_URL ?? "https://api.x.ai/v1",
     telegramBotToken: env.TELEGRAM_BOT_TOKEN,
     publicWebhookUrl: env.PUBLIC_WEBHOOK_URL,
     chatMemory: env.CHAT_MEMORY,
