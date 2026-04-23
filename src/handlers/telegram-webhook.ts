@@ -6,7 +6,7 @@ import { readConversationHistory, writeConversationHistory } from "../lib/chat-m
 import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
 import { analyzeImageWithGrok, generateVideoWithGrok, isImageAnalysisRequest, isVideoGenerationRequest } from "../lib/grok-media";
 import { getTelegramFileUrl, sendVideo } from "../lib/telegram-media";
-import { getMeByToken, parseUpdate, sendMessage, sendPhoto, setWebhookForToken, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
+import { getMe, getMeByToken, parseUpdate, sendMessage, sendPhoto, setWebhookForToken, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { jsonError, jsonOk } from "../utils/http";
 import { isPrivateChat } from "../utils/telegram-helpers";
 import { upsertTelegramUser } from "../repositories/users";
@@ -21,6 +21,7 @@ const IMAGE_FAILURE_TEXT = "فعلاً نتونستم تصویر را بسازم
 const VIDEO_FAILURE_TEXT = "فعلاً نتونستم ویدیو را بسازم. دوباره با توضیح دقیق‌تر امتحان کن.";
 const VIDEO_CAPTION_PREFIX = "ویدیو آماده شد.";
 const VIDEO_PROCESSING_TEXT = "در حال ساخت ویدیو هستم. چند لحظه صبر کن...";
+let cachedCoreBotUsername: string | undefined;
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
@@ -105,7 +106,19 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   if (isCoreBot && isPrivateChat(message) && message.text?.startsWith("/prompt ")) return handlePromptCommand(message, config, env, workspaceId);
   if (isCoreBot && isPrivateChat(message) && message.text?.startsWith("/mybots")) return handleMyBotsCommand(message, config, env, workspaceId);
 
-  if (!shouldRespondInChat(message, config.botUsername)) return jsonOk({ ok: true, ignored: true });
+  if (!shouldRespondInChat(message, config.botUsername)) {
+    logger.info("Message ignored by chat policy", {
+      route,
+      event: "chat_policy_ignored",
+      updateId,
+      chatType,
+      hasText: Boolean(message.text),
+      hasCaption: Boolean((message as any).caption),
+      hasPhoto: Array.isArray((message as any).photo) && (message as any).photo.length > 0,
+      botUsernameConfigured: Boolean(config.botUsername)
+    });
+    return jsonOk({ ok: true, ignored: true });
+  }
 
   if (config.provider === "grok" && isImageAnalysisRequest(message as any)) {
     const imageUrl = await resolveMessageImageUrl(config, message as any);
@@ -260,7 +273,14 @@ async function handleMyBotsCommand(message: TelegramMessage, config: AppConfig, 
 }
 
 async function buildRuntimeConfig(config: AppConfig, env: any, managedBotId: string | null, managedToken?: string, managedUsername?: string) {
-  if (!managedBotId || !managedToken) return config;
+  if (!managedBotId || !managedToken) {
+    if (config.botUsername) return config;
+    if (cachedCoreBotUsername) return { ...config, botUsername: cachedCoreBotUsername };
+    const me = await getMe(config);
+    const detectedUsername = me.ok && me.result?.username ? me.result.username.toLowerCase() : undefined;
+    if (detectedUsername) cachedCoreBotUsername = detectedUsername;
+    return { ...config, botUsername: detectedUsername };
+  }
   const aiProfile = await getDefaultAiProfileByBotId(env, managedBotId);
   return { ...config, telegramBotToken: managedToken, botUsername: managedUsername ?? config.botUsername, systemPrompt: aiProfile?.system_prompt ?? config.systemPrompt, openAiModel: aiProfile?.model ?? config.openAiModel };
 }
