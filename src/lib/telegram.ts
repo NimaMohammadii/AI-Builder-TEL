@@ -12,6 +12,7 @@ interface TelegramSendPhotoPayload {
   chat_id: number;
   photoUrl?: string;
   photoBase64?: string;
+  photoMimeType?: string;
   caption?: string;
   reply_to_message_id?: number;
 }
@@ -73,8 +74,10 @@ export async function sendPhoto(config: AppConfig, payload: TelegramSendPhotoPay
     if (payload.caption) formData.set("caption", sanitizeCaption(payload.caption));
     if (payload.reply_to_message_id) formData.set("reply_to_message_id", String(payload.reply_to_message_id));
     const bytes = Uint8Array.from(atob(payload.photoBase64), (c) => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: "image/png" });
-    formData.set("photo", blob, "vexa-image.png");
+    const mimeType = normalizeImageMimeType(payload.photoMimeType);
+    const extension = mimeType === "image/jpeg" ? "jpg" : "png";
+    const blob = new Blob([bytes], { type: mimeType });
+    formData.set("photo", blob, `vexa-image.${extension}`);
     return callTelegramApiFormData<TelegramMessage>({ token: config.telegramBotToken }, "sendPhoto", formData);
   }
 
@@ -156,6 +159,11 @@ function sanitizeCaption(text: string): string {
 
 function normalizeWebhookBaseUrl(value: string): string {
   return value.replace(/\/$/, "").replace(/\/telegram\/webhook(?:\/.*)?$/, "");
+}
+
+function normalizeImageMimeType(value?: string): "image/png" | "image/jpeg" {
+  if (value === "image/jpeg" || value === "image/jpg") return "image/jpeg";
+  return "image/png";
 }
 
 export function verifyTelegramWebhookSecret(request: Request, expectedSecret?: string): boolean {

@@ -140,15 +140,38 @@ async function generateGptImage(config: AppConfig, prompt: string, signal: Abort
 
 async function generateGrokImage(config: AppConfig, prompt: string, signal: AbortSignal): Promise<GeneratedImageResult | null> {
   const client = new OpenAI({ apiKey: config.xAiApiKey, baseURL: config.xAiBaseUrl || DEFAULT_XAI_BASE_URL });
-  const result = await client.images.generate({ model: config.xAiImageModel, prompt, response_format: "b64_json" }, { signal });
-  return normalizeImageResult(result.data?.[0], prompt);
+  try {
+    const base64Result = await client.images.generate({ model: config.xAiImageModel, prompt, response_format: "b64_json" }, { signal });
+    const normalized = normalizeImageResult(base64Result.data?.[0], prompt);
+    if (normalized) return normalized;
+  } catch {
+    // Some Grok image models ignore/deny response_format. Fallback below requests default URL payload.
+  }
+
+  const urlResult = await client.images.generate({ model: config.xAiImageModel, prompt }, { signal });
+  return normalizeImageResult(urlResult.data?.[0], prompt);
 }
 
 function normalizeImageResult(item: { b64_json?: string; url?: string; revised_prompt?: string } | undefined, fallbackPrompt: string): GeneratedImageResult | null {
   if (!item) return null;
-  if (item.b64_json) return { base64Data: item.b64_json, mimeType: "image/png", prompt: item.revised_prompt || fallbackPrompt };
+  if (item.b64_json) {
+    const parsed = parseBase64Image(item.b64_json);
+    return {
+      base64Data: parsed.base64Data,
+      mimeType: parsed.mimeType,
+      prompt: item.revised_prompt || fallbackPrompt
+    };
+  }
   if (item.url) return { remoteUrl: item.url, prompt: item.revised_prompt || fallbackPrompt };
   return null;
+}
+
+function parseBase64Image(value: string): { base64Data: string; mimeType: string } {
+  const dataUri = value.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (dataUri) {
+    return { mimeType: dataUri[1].toLowerCase(), base64Data: dataUri[2] };
+  }
+  return { mimeType: "image/png", base64Data: value };
 }
 
 function normalizeReply(text: string): string {

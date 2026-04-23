@@ -1,7 +1,11 @@
 OPENAI_API_KEY=sk-REPLACE_ME
+XAI_API_KEY=xai-REPLACE_ME
+XAI_MODEL=grok-4-1-fast-non-reasoning
+XAI_IMAGE_MODEL=grok-imagine-image-pro
+XAI_BASE_URL=https://api.x.ai/v1
 TELEGRAM_BOT_TOKEN=123456789:REPLACE_ME
 PUBLIC_WEBHOOK_URL=https://your-worker.your-subdomain.workers.dev
-# Optional: bind a KV namespace named CHAT_MEMORY for per-chat memory
+# Required for persistent user/chat memory: bind a KV namespace named CHAT_MEMORY in wrangler.jsonc
 OPENAI_MODEL=gpt-4.1-mini
 TELEGRAM_WEBHOOK_SECRET=replace-with-long-random-secret
 ADMIN_DEBUG_TOKEN=replace-with-debug-token

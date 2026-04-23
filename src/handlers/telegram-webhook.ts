@@ -145,6 +145,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
       chat_id: message.chat.id,
       photoUrl: image.remoteUrl,
       photoBase64: image.base64Data,
+      photoMimeType: image.mimeType,
       caption: `${IMAGE_CAPTION_PREFIX}\n${image.prompt}`,
       reply_to_message_id: message.message_id
     });
