@@ -49,6 +49,7 @@ export async function analyzeImageWithGrok(config: AppConfig, imageUrl: string, 
 
   const response = await client.responses.create({
     model: config.xAiModel,
+    store: false,
     input: [
       {
         role: "system",
@@ -95,12 +96,12 @@ export async function generateVideoWithGrok(config: AppConfig, prompt: string, i
     return null;
   }
 
-  const created = await createResponse.json() as { id?: string; request_id?: string; status?: string; url?: string };
-  if (created.url) {
-    return { videoUrl: created.url, prompt, aspectRatio };
+  const created = await createResponse.json() as { request_id?: string; status?: string; video?: { url?: string } };
+  if (created.video?.url) {
+    return { videoUrl: created.video.url, prompt, aspectRatio };
   }
 
-  const requestId = created.id || created.request_id;
+  const requestId = created.request_id;
   if (!requestId) {
     return null;
   }
@@ -121,9 +122,9 @@ export async function generateVideoWithGrok(config: AppConfig, prompt: string, i
       continue;
     }
 
-    const status = await pollResponse.json() as { status?: string; url?: string; video_url?: string };
-    if (status.url || status.video_url) {
-      return { videoUrl: status.url || status.video_url, prompt, aspectRatio };
+    const status = await pollResponse.json() as { status?: string; video?: { url?: string } };
+    if (status.status === "done" && status.video?.url) {
+      return { videoUrl: status.video.url, prompt, aspectRatio };
     }
 
     if (status.status === "failed" || status.status === "expired") {
