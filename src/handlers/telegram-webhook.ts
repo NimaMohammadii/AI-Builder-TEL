@@ -57,26 +57,35 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   const route = "/telegram/webhook";
   const chatType = message.chat.type;
 
-  const user = await upsertTelegramUser(env, {
-    telegramUserId: message.from.id,
-    username: message.from.username,
-    firstName: message.from.first_name,
-    lastName: message.from.last_name
-  });
+  try {
+    const user = await upsertTelegramUser(env, {
+      telegramUserId: message.from.id,
+      username: message.from.username,
+      firstName: message.from.first_name,
+      lastName: message.from.last_name
+    });
 
-  const workspace = await ensureWorkspaceForUser(env, {
-    userId: user.id,
-    username: message.from.username,
-    firstName: message.from.first_name
-  });
+    const workspace = await ensureWorkspaceForUser(env, {
+      userId: user.id,
+      username: message.from.username,
+      firstName: message.from.first_name
+    });
 
-  await upsertChat(env, {
-    workspaceId: workspace.id,
-    telegramChatId: message.chat.id,
-    chatType: message.chat.type,
-    title: message.chat.title,
-    username: message.chat.username
-  });
+    await upsertChat(env, {
+      workspaceId: workspace.id,
+      telegramChatId: message.chat.id,
+      chatType: message.chat.type,
+      title: message.chat.title,
+      username: message.chat.username
+    });
+  } catch (error) {
+    logger.warn("Database sync skipped during webhook processing", {
+      route,
+      event: "db_sync_skipped",
+      updateId,
+      error: error instanceof Error ? error.message : "unknown"
+    });
+  }
 
   if (!shouldRespondInChat(message, config.botUsername)) {
     return jsonOk({ ok: true, ignored: true });
@@ -107,6 +116,16 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
 
   if (sendResult.ok) {
     await writeConversationHistory(config, message.chat.id, history, message.text, reply);
+  }
+
+  if (!sendResult.ok) {
+    logger.error("Failed to send Telegram response", {
+      route,
+      event: "telegram_send_error",
+      chatType,
+      updateId,
+      error: `${sendResult.error_code}:${sendResult.description}`
+    });
   }
 
   return jsonOk();
