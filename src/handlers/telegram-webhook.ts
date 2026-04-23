@@ -19,8 +19,9 @@ const IMAGE_CAPTION_PREFIX = "تصویر آماده شد.";
 const IMAGE_FAILURE_TEXT = "فعلاً نتونستم تصویر را بسازم. دوباره با توضیح دقیق‌تر امتحان کن.";
 const VIDEO_FAILURE_TEXT = "فعلاً نتونستم ویدیو را بسازم. دوباره با توضیح دقیق‌تر امتحان کن.";
 const VIDEO_CAPTION_PREFIX = "ویدیو آماده شد.";
+const VIDEO_PROCESSING_TEXT = "در حال ساخت ویدیو هستم. چند لحظه صبر کن...";
 
-export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any): Promise<Response> {
+export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
 
   if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) {
@@ -63,10 +64,10 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig,
   }
 
   const runtimeConfig = await buildRuntimeConfig(config, env, managedBot?.id ?? null, managedBot?.encrypted_token, managedBot?.bot_username);
-  return processMessage(message, runtimeConfig, env, update.update_id, managedBot?.id ?? null, managedBot?.workspace_id ?? null, !managedBotUsername);
+  return processMessage(message, runtimeConfig, env, update.update_id, managedBot?.id ?? null, managedBot?.workspace_id ?? null, !managedBotUsername, ctx);
 }
 
-async function processMessage(message: TelegramMessage, config: AppConfig, env: any, updateId: number, managedBotId: string | null, managedWorkspaceId: string | null, isCoreBot: boolean): Promise<Response> {
+async function processMessage(message: TelegramMessage, config: AppConfig, env: any, updateId: number, managedBotId: string | null, managedWorkspaceId: string | null, isCoreBot: boolean, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
   const chatType = message.chat.type;
   let workspaceId = managedWorkspaceId;
@@ -118,25 +119,9 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   }
 
   if (config.provider === "grok" && isVideoGenerationRequest(message.text || (message as any).caption || "")) {
-    const imageUrl = await resolveMessageImageUrl(config, message as any);
-    const prompt = (message.text || (message as any).caption || "").trim() || "یک ویدیوی کوتاه بساز";
-    const video = await generateVideoWithGrok(config, prompt, imageUrl || undefined);
-    if (!video?.videoUrl) {
-      await sendMessage(config, { chat_id: message.chat.id, text: VIDEO_FAILURE_TEXT, reply_to_message_id: message.message_id });
-      return jsonOk();
-    }
-
-    const videoSendResult = await sendVideo(config, {
-      chatId: message.chat.id,
-      videoUrl: video.videoUrl,
-      caption: `${VIDEO_CAPTION_PREFIX}\n${video.aspectRatio}`,
-      replyToMessageId: message.message_id
-    });
-
-    if (!videoSendResult.ok) {
-      logger.error("Failed to send Telegram video response", { route, event: "telegram_send_video_error", chatType, updateId, error: `${videoSendResult.error_code}:${videoSendResult.description}` });
-      await sendMessage(config, { chat_id: message.chat.id, text: "ویدیو ساخته شد ولی ارسالش به تلگرام خطا داد.", reply_to_message_id: message.message_id });
-    }
+    await sendMessage(config, { chat_id: message.chat.id, text: VIDEO_PROCESSING_TEXT, reply_to_message_id: message.message_id });
+    const job = processVideoRequest(message, config, updateId, chatType);
+    if (ctx) ctx.waitUntil(job); else void job;
     return jsonOk();
   }
 
@@ -183,6 +168,34 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   }
 
   return jsonOk();
+}
+
+async function processVideoRequest(message: TelegramMessage, config: AppConfig, updateId: number, chatType: string): Promise<void> {
+  const route = "/telegram/webhook";
+  try {
+    const imageUrl = await resolveMessageImageUrl(config, message as any);
+    const prompt = (message.text || (message as any).caption || "").trim() || "یک ویدیوی کوتاه بساز";
+    const video = await generateVideoWithGrok(config, prompt, imageUrl || undefined);
+    if (!video?.videoUrl) {
+      await sendMessage(config, { chat_id: message.chat.id, text: VIDEO_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      return;
+    }
+
+    const videoSendResult = await sendVideo(config, {
+      chatId: message.chat.id,
+      videoUrl: video.videoUrl,
+      caption: `${VIDEO_CAPTION_PREFIX}\n${video.aspectRatio}`,
+      replyToMessageId: message.message_id
+    });
+
+    if (!videoSendResult.ok) {
+      logger.error("Failed to send Telegram video response", { route, event: "telegram_send_video_error", chatType, updateId, error: `${videoSendResult.error_code}:${videoSendResult.description}` });
+      await sendMessage(config, { chat_id: message.chat.id, text: "ویدیو ساخته شد ولی ارسالش به تلگرام خطا داد.", reply_to_message_id: message.message_id });
+    }
+  } catch (error) {
+    logger.error("Unhandled grok video error", { route, event: "grok_video_error", chatType, updateId, error: error instanceof Error ? error.message : "unknown" });
+    await sendMessage(config, { chat_id: message.chat.id, text: VIDEO_FAILURE_TEXT, reply_to_message_id: message.message_id });
+  }
 }
 
 async function handleConnectCommand(message: TelegramMessage, config: AppConfig, env: any, workspaceId: string | null) {
