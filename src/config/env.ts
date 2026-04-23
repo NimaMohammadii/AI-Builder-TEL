@@ -1,4 +1,3 @@
-import { ACTIVE_AI_PROVIDER } from "./ai-provider";
 import { DEFAULT_SYSTEM_PROMPT } from "../prompts/system";
 import type { AiProvider, AppConfig, Env } from "../types/env";
 
@@ -12,7 +11,7 @@ export function loadConfig(env: Env): AppConfig {
     throw new Error("Missing required environment variables.");
   }
 
-  const provider = normalizeProvider(ACTIVE_AI_PROVIDER);
+  const provider = resolveProvider(env);
   if (provider === "gpt" && !env.OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY for GPT provider.");
   if (provider === "grok" && !env.XAI_API_KEY) throw new Error("Missing XAI_API_KEY for Grok provider.");
 
@@ -36,8 +35,16 @@ export function loadConfig(env: Env): AppConfig {
   };
 }
 
-function normalizeProvider(value?: AiProvider): AiProvider {
+function normalizeProvider(value?: string): AiProvider {
   return value === "grok" ? "grok" : "gpt";
+}
+
+function resolveProvider(env: Env): AiProvider {
+  const configured = normalizeProvider(env.AI_PROVIDER);
+  if (env.AI_PROVIDER) return configured;
+  if (env.OPENAI_API_KEY) return "gpt";
+  if (env.XAI_API_KEY) return "grok";
+  return configured;
 }
 
 function normalizeBotUsername(value?: string): string | undefined {
