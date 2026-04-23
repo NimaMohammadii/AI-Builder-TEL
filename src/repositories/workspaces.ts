@@ -7,6 +7,12 @@ export async function ensureWorkspaceForUser(env: Env, input: {
   firstName?: string;
 }) {
   const db = getDb(env);
+  const fallbackId = `ws_user_${input.userId}`;
+
+  if (!db) {
+    return { id: fallbackId };
+  }
+
   const existing = await db
     .prepare(`SELECT id FROM workspaces WHERE owner_id = ? LIMIT 1`)
     .bind(input.userId)
