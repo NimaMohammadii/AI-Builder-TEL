@@ -1,8 +1,8 @@
 import type { Env } from '../types/env';
 
-export function getDb(env: Env): D1Database {
-  if (!env.DB) {
-    throw new Error('D1 database binding "DB" is not configured');
+export function getDb(env?: Env) {
+  if (!env || !env.DB) {
+    return null;
   }
 
   return env.DB;
