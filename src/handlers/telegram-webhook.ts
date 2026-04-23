@@ -3,6 +3,7 @@ import type { TelegramMessage } from "../types/telegram";
 import { ENABLE_GROK_VIDEO } from "../config/grok-features";
 import { logger } from "../lib/logger";
 import { readConversationHistory, writeConversationHistory } from "../lib/chat-memory";
+import { extractInstagramUrl, fetchInstagramMedia } from "../lib/instagram-downloader";
 import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
 import { analyzeImageWithGrok, generateVideoWithGrok, isImageAnalysisRequest, isVideoGenerationRequest } from "../lib/grok-media";
 import { getTelegramFileUrl, sendVideo } from "../lib/telegram-media";
@@ -21,6 +22,7 @@ const IMAGE_FAILURE_TEXT = "فعلاً نتونستم تصویر را بسازم
 const VIDEO_FAILURE_TEXT = "فعلاً نتونستم ویدیو را بسازم. دوباره با توضیح دقیق‌تر امتحان کن.";
 const VIDEO_CAPTION_PREFIX = "ویدیو آماده شد.";
 const VIDEO_PROCESSING_TEXT = "در حال ساخت ویدیو هستم. چند لحظه صبر کن...";
+const INSTAGRAM_FAILURE_TEXT = "نتونستم این لینک اینستاگرام را دانلود کنم. فقط پست‌ها و ریلزهای عمومی پشتیبانی می‌شوند.";
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
@@ -106,6 +108,40 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   if (isCoreBot && isPrivateChat(message) && message.text?.startsWith("/mybots")) return handleMyBotsCommand(message, config, env, workspaceId);
 
   if (!shouldRespondInChat(message, config.botUsername)) return jsonOk({ ok: true, ignored: true });
+
+  const textualContent = message.text || (message as any).caption || "";
+  const instagramUrl = textualContent ? extractInstagramUrl(textualContent) : null;
+  if (instagramUrl) {
+    const media = await fetchInstagramMedia(instagramUrl);
+    if (!media) {
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      return jsonOk();
+    }
+
+    if (media.mediaType === "video") {
+      const sent = await sendVideo(config, {
+        chatId: message.chat.id,
+        videoUrl: media.mediaUrl,
+        caption: media.caption,
+        replyToMessageId: message.message_id
+      });
+      if (!sent.ok) {
+        await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      }
+      return jsonOk();
+    }
+
+    const sent = await sendPhoto(config, {
+      chat_id: message.chat.id,
+      photoUrl: media.mediaUrl,
+      caption: media.caption,
+      reply_to_message_id: message.message_id
+    });
+    if (!sent.ok) {
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+    }
+    return jsonOk();
+  }
 
   if (config.provider === "grok" && isImageAnalysisRequest(message as any)) {
     const imageUrl = await resolveMessageImageUrl(config, message as any);
