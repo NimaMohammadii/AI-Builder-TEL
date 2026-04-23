@@ -86,9 +86,10 @@ export async function setWebhook(config: AppConfig): Promise<TelegramApiResponse
 }
 
 export async function setWebhookForToken(token: string, publicWebhookUrl: string, botUsername?: string, secretToken?: string): Promise<TelegramApiResponse<true>> {
+  const baseUrl = normalizeWebhookBaseUrl(publicWebhookUrl);
   const webhookPath = botUsername ? `/telegram/webhook/${botUsername.replace(/^@/, "").toLowerCase()}` : "/telegram/webhook";
   const payload: TelegramWebhookPayload = {
-    url: `${publicWebhookUrl.replace(/\/$/, "")}${webhookPath}`,
+    url: `${baseUrl}${webhookPath}`,
     allowed_updates: ["message", "edited_message"]
   };
   if (secretToken) payload.secret_token = secretToken;
@@ -127,6 +128,10 @@ function sanitizeText(text: string): string {
 
 function sanitizeCaption(text: string): string {
   return text.replace(/\u0000/g, "").trim().slice(0, 1024);
+}
+
+function normalizeWebhookBaseUrl(value: string): string {
+  return value.replace(/\/$/, "").replace(/\/telegram\/webhook(?:\/.*)?$/, "");
 }
 
 export function verifyTelegramWebhookSecret(request: Request, expectedSecret?: string): boolean {
