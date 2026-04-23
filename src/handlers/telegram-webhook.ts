@@ -1,5 +1,6 @@
 import type { AppConfig } from "../types/env";
 import type { TelegramMessage } from "../types/telegram";
+import { ENABLE_GROK_VIDEO } from "../config/grok-features";
 import { logger } from "../lib/logger";
 import { readConversationHistory, writeConversationHistory } from "../lib/chat-memory";
 import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
@@ -118,7 +119,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
     return jsonOk();
   }
 
-  if (config.provider === "grok" && isVideoGenerationRequest(message.text || (message as any).caption || "")) {
+  if (config.provider === "grok" && ENABLE_GROK_VIDEO && isVideoGenerationRequest(message.text || (message as any).caption || "")) {
     await sendMessage(config, { chat_id: message.chat.id, text: VIDEO_PROCESSING_TEXT, reply_to_message_id: message.message_id });
     const job = processVideoRequest(message, config, updateId, chatType);
     if (ctx) ctx.waitUntil(job); else void job;
