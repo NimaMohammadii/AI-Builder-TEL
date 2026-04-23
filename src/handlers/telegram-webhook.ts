@@ -105,7 +105,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
 
   if (!shouldRespondInChat(message, config.botUsername)) return jsonOk({ ok: true, ignored: true });
 
-  if (isImageAnalysisRequest(message as any)) {
+  if (config.provider === "grok" && isImageAnalysisRequest(message as any)) {
     const imageUrl = await resolveMessageImageUrl(config, message as any);
     if (!imageUrl) {
       await sendMessage(config, { chat_id: message.chat.id, text: "نتونستم تصویر را از تلگرام بخونم.", reply_to_message_id: message.message_id });
@@ -117,7 +117,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
     return jsonOk();
   }
 
-  if (isVideoGenerationRequest(message.text || (message as any).caption || "")) {
+  if (config.provider === "grok" && isVideoGenerationRequest(message.text || (message as any).caption || "")) {
     const imageUrl = await resolveMessageImageUrl(config, message as any);
     const prompt = (message.text || (message as any).caption || "").trim() || "یک ویدیوی کوتاه بساز";
     const video = await generateVideoWithGrok(config, prompt, imageUrl || undefined);
