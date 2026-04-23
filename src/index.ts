@@ -22,7 +22,7 @@ export default {
       }
 
       if (request.method === "POST" && route === "/telegram/webhook") {
-        return handleTelegramWebhook(request, config);
+        return handleTelegramWebhook(request, config, env);
       }
 
       if (request.method === "POST" && route === "/debug/set-webhook") {
