@@ -35,25 +35,17 @@ interface TelegramApiContext {
 
 async function callTelegramApi<T>(context: TelegramApiContext, method: string, body?: object): Promise<TelegramApiResponse<T>> {
   const endpoint = `https://api.telegram.org/bot${context.token}/${method}`;
-
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "content-type": "application/json"
-    },
+    headers: { "content-type": "application/json" },
     body: body ? JSON.stringify(body) : undefined
   });
-
   return (await response.json()) as TelegramApiResponse<T>;
 }
 
 async function callTelegramApiFormData<T>(context: TelegramApiContext, method: string, formData: FormData): Promise<TelegramApiResponse<T>> {
   const endpoint = `https://api.telegram.org/bot${context.token}/${method}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    body: formData
-  });
-
+  const response = await fetch(endpoint, { method: "POST", body: formData });
   return (await response.json()) as TelegramApiResponse<T>;
 }
 
@@ -78,38 +70,29 @@ export async function sendPhoto(config: AppConfig, payload: TelegramSendPhotoPay
   if (payload.photoBase64) {
     const formData = new FormData();
     formData.set("chat_id", String(payload.chat_id));
-    if (payload.caption) {
-      formData.set("caption", sanitizeCaption(payload.caption));
-    }
-    if (payload.reply_to_message_id) {
-      formData.set("reply_to_message_id", String(payload.reply_to_message_id));
-    }
-
+    if (payload.caption) formData.set("caption", sanitizeCaption(payload.caption));
+    if (payload.reply_to_message_id) formData.set("reply_to_message_id", String(payload.reply_to_message_id));
     const bytes = Uint8Array.from(atob(payload.photoBase64), (c) => c.charCodeAt(0));
     const blob = new Blob([bytes], { type: "image/png" });
     formData.set("photo", blob, "vexa-image.png");
-
     return callTelegramApiFormData<TelegramMessage>({ token: config.telegramBotToken }, "sendPhoto", formData);
   }
 
-  return {
-    ok: false,
-    error_code: 400,
-    description: "missing_photo_payload"
-  } as TelegramApiResponse<TelegramMessage>;
+  return { ok: false, error_code: 400, description: "missing_photo_payload" } as TelegramApiResponse<TelegramMessage>;
 }
 
 export async function setWebhook(config: AppConfig): Promise<TelegramApiResponse<true>> {
+  return setWebhookForToken(config.telegramBotToken, config.publicWebhookUrl, undefined, config.telegramWebhookSecret);
+}
+
+export async function setWebhookForToken(token: string, publicWebhookUrl: string, botUsername?: string, secretToken?: string): Promise<TelegramApiResponse<true>> {
+  const webhookPath = botUsername ? `/telegram/webhook/${botUsername.replace(/^@/, "").toLowerCase()}` : "/telegram/webhook";
   const payload: TelegramWebhookPayload = {
-    url: `${config.publicWebhookUrl.replace(/\/$/, "")}/telegram/webhook`,
+    url: `${publicWebhookUrl.replace(/\/$/, "")}${webhookPath}`,
     allowed_updates: ["message", "edited_message"]
   };
-
-  if (config.telegramWebhookSecret) {
-    payload.secret_token = config.telegramWebhookSecret;
-  }
-
-  return callTelegramApi<true>({ token: config.telegramBotToken }, "setWebhook", payload);
+  if (secretToken) payload.secret_token = secretToken;
+  return callTelegramApi<true>({ token }, "setWebhook", payload);
 }
 
 export async function deleteWebhook(config: AppConfig): Promise<TelegramApiResponse<true>> {
@@ -118,6 +101,10 @@ export async function deleteWebhook(config: AppConfig): Promise<TelegramApiRespo
 
 export async function getMe(config: AppConfig): Promise<TelegramApiResponse<TelegramBotInfo>> {
   return callTelegramApi<TelegramBotInfo>({ token: config.telegramBotToken }, "getMe");
+}
+
+export async function getMeByToken(token: string): Promise<TelegramApiResponse<TelegramBotInfo>> {
+  return callTelegramApi<TelegramBotInfo>({ token }, "getMe");
 }
 
 export function parseUpdate(payload: unknown): TelegramUpdate | null {
@@ -129,15 +116,8 @@ export function parseUpdate(payload: unknown): TelegramUpdate | null {
 
 export function shouldRespondInChat(message: TelegramMessage, botUsername?: string): boolean {
   if (!message.text) return false;
-
-  if (isPrivateChat(message)) {
-    return true;
-  }
-
-  if (isGroupChat(message)) {
-    return isBotMentioned(message, botUsername) || isReplyToBot(message);
-  }
-
+  if (isPrivateChat(message)) return true;
+  if (isGroupChat(message)) return isBotMentioned(message, botUsername) || isReplyToBot(message);
   return false;
 }
 
@@ -156,8 +136,6 @@ export function verifyTelegramWebhookSecret(request: Request, expectedSecret?: s
 }
 
 export function getBotUsernameFromMe(result: TelegramApiResponse<TelegramUser>): string | undefined {
-  if (result.ok && result.result.username) {
-    return result.result.username.toLowerCase();
-  }
+  if (result.ok && result.result.username) return result.result.username.toLowerCase();
   return undefined;
 }
