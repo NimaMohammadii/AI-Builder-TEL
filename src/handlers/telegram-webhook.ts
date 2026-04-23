@@ -6,10 +6,13 @@ import { generateOpenAIReply } from "../lib/openai";
 import { parseUpdate, sendMessage, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { jsonError, jsonOk } from "../utils/http";
 import { isPrivateChat } from "../utils/telegram-helpers";
+import { upsertTelegramUser } from "../repositories/users";
+import { ensureWorkspaceForUser } from "../repositories/workspaces";
+import { upsertChat } from "../repositories/chats";
 
 const NON_TEXT_PRIVATE_REPLY = "فعلاً فقط پیام متنی رو می‌تونم پردازش کنم.";
 
-export async function handleTelegramWebhook(request: Request, config: AppConfig): Promise<Response> {
+export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any): Promise<Response> {
   const route = "/telegram/webhook";
 
   if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) {
@@ -47,20 +50,35 @@ export async function handleTelegramWebhook(request: Request, config: AppConfig)
     return jsonOk({ ok: true, ignored: true });
   }
 
-  return processMessage(message, config, update.update_id);
+  return processMessage(message, config, env, update.update_id);
 }
 
-async function processMessage(message: TelegramMessage, config: AppConfig, updateId: number): Promise<Response> {
+async function processMessage(message: TelegramMessage, config: AppConfig, env: any, updateId: number): Promise<Response> {
   const route = "/telegram/webhook";
   const chatType = message.chat.type;
 
+  const user = await upsertTelegramUser(env, {
+    telegramUserId: message.from.id,
+    username: message.from.username,
+    firstName: message.from.first_name,
+    lastName: message.from.last_name
+  });
+
+  const workspace = await ensureWorkspaceForUser(env, {
+    userId: user.id,
+    username: message.from.username,
+    firstName: message.from.first_name
+  });
+
+  await upsertChat(env, {
+    workspaceId: workspace.id,
+    telegramChatId: message.chat.id,
+    chatType: message.chat.type,
+    title: message.chat.title,
+    username: message.chat.username
+  });
+
   if (!shouldRespondInChat(message, config.botUsername)) {
-    logger.info("Ignoring message due to chat policy", {
-      route,
-      event: "ignored_by_policy",
-      chatType,
-      updateId
-    });
     return jsonOk({ ok: true, ignored: true });
   }
 
@@ -90,24 +108,6 @@ async function processMessage(message: TelegramMessage, config: AppConfig, updat
   if (sendResult.ok) {
     await writeConversationHistory(config, message.chat.id, history, message.text, reply);
   }
-
-  if (!sendResult.ok) {
-    logger.error("Failed to send Telegram response", {
-      route,
-      event: "telegram_send_error",
-      chatType,
-      updateId,
-      error: `${sendResult.error_code}:${sendResult.description}`
-    });
-  }
-
-  logger.info("Processed Telegram message", {
-    route,
-    event: "message_processed",
-    chatType,
-    updateId,
-    status: sendResult.ok ? 200 : 502
-  });
 
   return jsonOk();
 }
