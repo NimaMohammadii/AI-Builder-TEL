@@ -10,6 +10,10 @@ export async function upsertTelegramUser(env: Env, input: {
   const db = getDb(env);
   const id = `tgusr_${input.telegramUserId}`;
 
+  if (!db) {
+    return { id };
+  }
+
   await db
     .prepare(`
       INSERT INTO users (id, telegram_user_id, username, first_name, last_name)
