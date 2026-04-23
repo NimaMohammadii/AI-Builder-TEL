@@ -6,7 +6,7 @@ import { readConversationHistory, writeConversationHistory } from "../lib/chat-m
 import { extractInstagramUrl, fetchInstagramMedia } from "../lib/instagram-downloader";
 import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
 import { analyzeImageWithGrok, generateVideoWithGrok, isImageAnalysisRequest, isVideoGenerationRequest } from "../lib/grok-media";
-import { getTelegramFileUrl, sendVideo } from "../lib/telegram-media";
+import { fetchRemoteBinaryAsBase64, getTelegramFileUrl, sendVideo } from "../lib/telegram-media";
 import { getMeByToken, parseUpdate, sendMessage, sendPhoto, setWebhookForToken, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { jsonError, jsonOk } from "../utils/http";
 import { isPrivateChat } from "../utils/telegram-helpers";
@@ -118,10 +118,18 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
       return jsonOk();
     }
 
+    const binary = await fetchRemoteBinaryAsBase64(media.mediaUrl);
+    if (!binary) {
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      return jsonOk();
+    }
+
     if (media.mediaType === "video") {
       const sent = await sendVideo(config, {
         chatId: message.chat.id,
-        videoUrl: media.mediaUrl,
+        videoBase64: binary.base64,
+        mimeType: binary.mimeType,
+        fileName: binary.fileName,
         caption: media.caption,
         replyToMessageId: message.message_id
       });
@@ -133,7 +141,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
 
     const sent = await sendPhoto(config, {
       chat_id: message.chat.id,
-      photoUrl: media.mediaUrl,
+      photoBase64: binary.base64,
       caption: media.caption,
       reply_to_message_id: message.message_id
     });
