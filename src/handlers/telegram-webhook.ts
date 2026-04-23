@@ -3,6 +3,7 @@ import type { TelegramMessage } from "../types/telegram";
 import { ENABLE_GROK_VIDEO } from "../config/grok-features";
 import { logger } from "../lib/logger";
 import { readConversationHistory, writeConversationHistory } from "../lib/chat-memory";
+import { generateGrokReplyWithSearch } from "../lib/grok-search";
 import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
 import { analyzeImageWithGrok, generateVideoWithGrok, isImageAnalysisRequest, isVideoGenerationRequest } from "../lib/grok-media";
 import { getTelegramFileUrl, sendVideo } from "../lib/telegram-media";
@@ -157,7 +158,9 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   }
 
   const history = await readConversationHistory(config, message.chat.id);
-  const reply = await generateOpenAIReply(config, message.text, history);
+  const reply = config.provider === "grok"
+    ? await generateGrokReplyWithSearch(config, buildReplyInput(message.text, history))
+    : await generateOpenAIReply(config, message.text, history);
   const sendResult = await sendMessage(config, { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id });
 
   if (sendResult.ok) {
@@ -279,4 +282,16 @@ async function resolveMessageImageUrl(config: AppConfig, message: any): Promise<
   const fileId = allPhotos[allPhotos.length - 1]?.file_id;
   if (!fileId) return null;
   return getTelegramFileUrl(config, fileId);
+}
+
+function buildReplyInput(userText: string, history: Array<{ role: "user" | "assistant"; text: string }>): string {
+  const trimmedHistory = history.slice(-10);
+  if (trimmedHistory.length === 0) return userText;
+  return [
+    "تاریخچه اخیر گفتگو:",
+    ...trimmedHistory.map((turn, index) => `${index + 1}. ${turn.role === "user" ? "کاربر" : "دستیار"}: ${turn.text}`),
+    "",
+    "پیام جدید کاربر:",
+    userText
+  ].join("\n");
 }
