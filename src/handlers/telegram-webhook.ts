@@ -2,8 +2,8 @@ import type { AppConfig } from "../types/env";
 import type { TelegramMessage } from "../types/telegram";
 import { logger } from "../lib/logger";
 import { readConversationHistory, writeConversationHistory } from "../lib/chat-memory";
-import { generateOpenAIReply } from "../lib/openai";
-import { parseUpdate, sendMessage, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
+import { extractImagePrompt, generateOpenAIImage, generateOpenAIReply, isImageGenerationRequest } from "../lib/openai";
+import { parseUpdate, sendMessage, sendPhoto, shouldRespondInChat, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { jsonError, jsonOk } from "../utils/http";
 import { isPrivateChat } from "../utils/telegram-helpers";
 import { upsertTelegramUser } from "../repositories/users";
@@ -11,6 +11,8 @@ import { ensureWorkspaceForUser } from "../repositories/workspaces";
 import { upsertChat } from "../repositories/chats";
 
 const NON_TEXT_PRIVATE_REPLY = "فعلاً فقط پیام متنی رو می‌تونم پردازش کنم.";
+const IMAGE_CAPTION_PREFIX = "تصویر آماده شد.";
+const IMAGE_FAILURE_TEXT = "فعلاً نتونستم تصویر را بسازم. دوباره با توضیح دقیق‌تر امتحان کن.";
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any): Promise<Response> {
   const route = "/telegram/webhook";
@@ -103,6 +105,46 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
 
   if (!message.text) {
     return jsonOk({ ok: true, ignored: true });
+  }
+
+  if (isImageGenerationRequest(message.text)) {
+    const imagePrompt = extractImagePrompt(message.text) || message.text;
+    const image = await generateOpenAIImage(config, imagePrompt);
+
+    if (!image || (!image.remoteUrl && !image.base64Data)) {
+      await sendMessage(config, {
+        chat_id: message.chat.id,
+        text: IMAGE_FAILURE_TEXT,
+        reply_to_message_id: message.message_id
+      });
+      return jsonOk();
+    }
+
+    const imageSendResult = await sendPhoto(config, {
+      chat_id: message.chat.id,
+      photoUrl: image.remoteUrl,
+      photoBase64: image.base64Data,
+      caption: `${IMAGE_CAPTION_PREFIX}\n${image.prompt}`,
+      reply_to_message_id: message.message_id
+    });
+
+    if (!imageSendResult.ok) {
+      logger.error("Failed to send Telegram image response", {
+        route,
+        event: "telegram_send_image_error",
+        chatType,
+        updateId,
+        error: `${imageSendResult.error_code}:${imageSendResult.description}`
+      });
+
+      await sendMessage(config, {
+        chat_id: message.chat.id,
+        text: "تصویر ساخته شد ولی ارسالش به تلگرام خطا داد.",
+        reply_to_message_id: message.message_id
+      });
+    }
+
+    return jsonOk();
   }
 
   const history = await readConversationHistory(config, message.chat.id);
