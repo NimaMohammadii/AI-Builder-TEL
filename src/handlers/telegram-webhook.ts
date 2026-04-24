@@ -23,6 +23,7 @@ const VIDEO_FAILURE_TEXT = "فعلاً نتونستم ویدیو را بسازم
 const VIDEO_CAPTION_PREFIX = "ویدیو آماده شد.";
 const VIDEO_PROCESSING_TEXT = "در حال ساخت ویدیو هستم. چند لحظه صبر کن...";
 const INSTAGRAM_FAILURE_TEXT = "نتونستم این لینک اینستاگرام را دانلود کنم. فقط پست‌ها و ریلزهای عمومی پشتیبانی می‌شوند.";
+const INSTAGRAM_PROCESSING_TEXT = "دارم لینک اینستاگرام را دانلود می‌کنم. می‌تونی همزمان پیام‌های دیگه هم بفرستی.";
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
@@ -112,42 +113,13 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   const textualContent = message.text || (message as any).caption || "";
   const instagramUrl = textualContent ? extractInstagramUrl(textualContent) : null;
   if (instagramUrl) {
-    const media = await fetchInstagramMedia(instagramUrl);
-    if (!media) {
-      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
-      return jsonOk();
-    }
-
-    const binary = await fetchRemoteBinaryAsBase64(media.mediaUrl);
-    if (!binary) {
-      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
-      return jsonOk();
-    }
-
-    if (media.mediaType === "video") {
-      const sent = await sendVideo(config, {
-        chatId: message.chat.id,
-        videoBase64: binary.base64,
-        mimeType: binary.mimeType,
-        fileName: binary.fileName,
-        caption: media.caption,
-        replyToMessageId: message.message_id
-      });
-      if (!sent.ok) {
-        await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
-      }
-      return jsonOk();
-    }
-
-    const sent = await sendPhoto(config, {
+    await sendMessage(config, {
       chat_id: message.chat.id,
-      photoBase64: binary.base64,
-      caption: media.caption,
+      text: INSTAGRAM_PROCESSING_TEXT,
       reply_to_message_id: message.message_id
     });
-    if (!sent.ok) {
-      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
-    }
+    const job = processInstagramRequest(message, config, instagramUrl, updateId, chatType);
+    if (ctx) ctx.waitUntil(job); else void job;
     return jsonOk();
   }
 
@@ -213,6 +185,53 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   }
 
   return jsonOk();
+}
+
+async function processInstagramRequest(message: TelegramMessage, config: AppConfig, instagramUrl: string, updateId: number, chatType: string): Promise<void> {
+  const route = "/telegram/webhook";
+  try {
+    const media = await fetchInstagramMedia(instagramUrl);
+    if (!media) {
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      return;
+    }
+
+    const binary = await fetchRemoteBinaryAsBase64(media.mediaUrl);
+    if (!binary) {
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      return;
+    }
+
+    if (media.mediaType === "video") {
+      const sent = await sendVideo(config, {
+        chatId: message.chat.id,
+        videoBase64: binary.base64,
+        mimeType: binary.mimeType,
+        fileName: binary.fileName,
+        caption: media.caption,
+        replyToMessageId: message.message_id
+      });
+      if (!sent.ok) {
+        logger.error("Failed to send Instagram video response", { route, event: "instagram_send_video_error", chatType, updateId, error: `${sent.error_code}:${sent.description}` });
+        await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      }
+      return;
+    }
+
+    const sent = await sendPhoto(config, {
+      chat_id: message.chat.id,
+      photoBase64: binary.base64,
+      caption: media.caption,
+      reply_to_message_id: message.message_id
+    });
+    if (!sent.ok) {
+      logger.error("Failed to send Instagram image response", { route, event: "instagram_send_image_error", chatType, updateId, error: `${sent.error_code}:${sent.description}` });
+      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+    }
+  } catch (error) {
+    logger.error("Unhandled instagram download error", { route, event: "instagram_download_error", chatType, updateId, error: error instanceof Error ? error.message : "unknown" });
+    await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
+  }
 }
 
 async function processVideoRequest(message: TelegramMessage, config: AppConfig, updateId: number, chatType: string): Promise<void> {
