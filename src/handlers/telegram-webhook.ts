@@ -27,6 +27,11 @@ const INSTAGRAM_BINARY_FAILURE_TEXT = "مدیا پیدا شد، ولی دانل�
 const INSTAGRAM_SEND_FAILURE_TEXT = "مدیا دانلود شد، ولی ارسالش به تلگرام خطا داد.";
 const INSTAGRAM_PROCESSING_TEXT = "دارم لینک اینستاگرام را دانلود می‌کنم. می‌تونی همزمان پیام‌های دیگه هم بفرستی.";
 const INSTAGRAM_FALLBACK_URL_REGEX = /https?:\/\/(?:www\.)?instagram\.com\/[^\s<>"']+/i;
+const INSTAGRAM_RESOLVE_HEADERS = {
+  "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "accept-language": "en-US,en;q=0.9"
+};
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
@@ -193,9 +198,14 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
 async function processInstagramRequest(message: TelegramMessage, config: AppConfig, instagramUrl: string, updateId: number, chatType: string): Promise<void> {
   const route = "/telegram/webhook";
   try {
-    const media = await fetchInstagramMedia(instagramUrl);
+    const resolvedInstagramUrl = await resolveInstagramCanonicalUrl(instagramUrl);
+    if (resolvedInstagramUrl !== instagramUrl) {
+      logger.info("Resolved Instagram share URL", { route, event: "instagram_url_resolved", chatType, updateId, instagramUrl, resolvedInstagramUrl });
+    }
+
+    const media = await fetchInstagramMedia(resolvedInstagramUrl);
     if (!media) {
-      logger.warn("Instagram media extraction failed", { route, event: "instagram_media_extract_failed", chatType, updateId, instagramUrl });
+      logger.warn("Instagram media extraction failed", { route, event: "instagram_media_extract_failed", chatType, updateId, instagramUrl: resolvedInstagramUrl, originalInstagramUrl: instagramUrl });
       await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
       return;
     }
@@ -346,12 +356,41 @@ function extractFallbackInstagramUrl(text: string): string | null {
 
   try {
     const parsed = new URL(match[0]);
-    if (!/^\/(p|reel|reels|tv|share)\//i.test(parsed.pathname)) return null;
+    if (!isSupportedInstagramPath(parsed.pathname)) return null;
     parsed.hash = "";
     return parsed.toString();
   } catch {
     return null;
   }
+}
+
+async function resolveInstagramCanonicalUrl(url: string): Promise<string> {
+  try {
+    const parsed = new URL(url);
+    if (!/^\/share\//i.test(parsed.pathname)) return url;
+
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: INSTAGRAM_RESOLVE_HEADERS
+    });
+
+    const resolvedUrl = response.url;
+    if (!resolvedUrl || resolvedUrl === url) return url;
+
+    const resolved = new URL(resolvedUrl);
+    if (!/instagram\.com$/i.test(resolved.hostname.replace(/^www\./i, ""))) return url;
+    if (!isSupportedInstagramPath(resolved.pathname)) return url;
+
+    resolved.hash = "";
+    return resolved.toString();
+  } catch {
+    return url;
+  }
+}
+
+function isSupportedInstagramPath(pathname: string): boolean {
+  return /^\/(p|reel|reels|tv|share)\//i.test(pathname);
 }
 
 async function resolveMessageImageUrl(config: AppConfig, message: any): Promise<string | null> {
