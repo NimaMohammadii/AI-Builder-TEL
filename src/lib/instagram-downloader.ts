@@ -12,6 +12,11 @@ const REQUEST_HEADERS = {
   "accept-language": "en-US,en;q=0.9"
 };
 
+const COBALT_ENDPOINTS = [
+  "https://api.cobalt.tools/api/json",
+  "https://co.wuk.sh/api/json"
+];
+
 export function extractInstagramUrl(text: string): string | null {
   const match = text.match(INSTAGRAM_URL_REGEX);
   return match?.[0] ?? null;
@@ -19,14 +24,74 @@ export function extractInstagramUrl(text: string): string | null {
 
 export async function fetchInstagramMedia(postUrl: string): Promise<InstagramMediaResult | null> {
   const normalizedUrl = normalizeInstagramUrl(postUrl);
-  const urls = buildCandidateUrls(normalizedUrl);
 
+  const apiMedia = await fetchViaCobalt(normalizedUrl);
+  if (apiMedia) return apiMedia;
+
+  const urls = buildCandidateUrls(normalizedUrl);
   for (const url of urls) {
     const html = await fetchPageHtml(url);
     if (!html) continue;
 
     const media = parseMediaFromHtml(html, normalizedUrl);
     if (media) return media;
+  }
+
+  return null;
+}
+
+async function fetchViaCobalt(sourceUrl: string): Promise<InstagramMediaResult | null> {
+  for (const endpoint of COBALT_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          "user-agent": REQUEST_HEADERS["user-agent"]
+        },
+        body: JSON.stringify({
+          url: sourceUrl,
+          downloadMode: "auto",
+          filenameStyle: "basic",
+          disableMetadata: false
+        })
+      });
+
+      if (!response.ok) continue;
+      const payload = await response.json() as CobaltResponse;
+      const parsed = parseCobaltResponse(payload, sourceUrl);
+      if (parsed) return parsed;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function parseCobaltResponse(payload: CobaltResponse, sourceUrl: string): InstagramMediaResult | null {
+  const directUrl = normalizeMediaUrl(payload.url ?? null);
+  if ((payload.status === "redirect" || payload.status === "stream" || payload.status === "tunnel") && directUrl) {
+    return {
+      sourceUrl,
+      mediaType: guessMediaType(directUrl, payload.filename),
+      mediaUrl: directUrl,
+      caption: payload.text
+    };
+  }
+
+  if (payload.status === "picker" && Array.isArray(payload.picker)) {
+    const picked = payload.picker.find((item) => item.url && (item.type === "video" || item.type === "photo" || item.type === "image")) ?? payload.picker.find((item) => item.url);
+    const pickedUrl = normalizeMediaUrl(picked?.url ?? null);
+    if (pickedUrl) {
+      return {
+        sourceUrl,
+        mediaType: picked?.type === "photo" || picked?.type === "image" ? "image" : guessMediaType(pickedUrl, picked?.filename),
+        mediaUrl: pickedUrl,
+        caption: payload.text
+      };
+    }
   }
 
   return null;
@@ -87,6 +152,8 @@ function buildCandidateUrls(normalizedUrl: string): string[] {
   const pathname = parsed.pathname;
   return [
     normalizedUrl,
+    `${normalizedUrl}?__a=1&__d=dis`,
+    `${normalizedUrl}embed/captioned/`,
     `https://www.ddinstagram.com${pathname}`,
     `https://ddinstagram.com${pathname}`,
     `https://www.vxinstagram.com${pathname}`,
@@ -151,6 +218,11 @@ function normalizeMediaUrl(value: string | null): string | null {
   return decoded;
 }
 
+function guessMediaType(url: string, filename?: string): "video" | "image" {
+  const combined = `${url} ${filename ?? ""}`.toLowerCase();
+  return /\.(mp4|mov|webm)(?:\?|\s|$)/i.test(combined) ? "video" : "image";
+}
+
 function unescapeSlashes(value: string): string {
   return value
     .replace(/\\u0026/g, "&")
@@ -179,4 +251,18 @@ function decodeHtml(value: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&#x2F;/g, "/");
+}
+
+interface CobaltPickerItem {
+  type?: string;
+  url?: string;
+  filename?: string;
+}
+
+interface CobaltResponse {
+  status?: string;
+  url?: string;
+  filename?: string;
+  text?: string;
+  picker?: CobaltPickerItem[];
 }
