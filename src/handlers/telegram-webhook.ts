@@ -26,6 +26,7 @@ const INSTAGRAM_FAILURE_TEXT = "نتونستم این لینک اینستاگر�
 const INSTAGRAM_BINARY_FAILURE_TEXT = "مدیا پیدا شد، ولی دانلود فایل از منبع انجام نشد. لطفاً چند دقیقه بعد دوباره امتحان کن.";
 const INSTAGRAM_SEND_FAILURE_TEXT = "مدیا دانلود شد، ولی ارسالش به تلگرام خطا داد.";
 const INSTAGRAM_PROCESSING_TEXT = "دارم لینک اینستاگرام را دانلود می‌کنم. می‌تونی همزمان پیام‌های دیگه هم بفرستی.";
+const INSTAGRAM_FALLBACK_URL_REGEX = /https?:\/\/(?:www\.)?instagram\.com\/[^\s<>"']+/i;
 
 export async function handleTelegramWebhook(request: Request, config: AppConfig, env: any, ctx?: ExecutionContext): Promise<Response> {
   const route = "/telegram/webhook";
@@ -113,7 +114,7 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   if (!shouldRespondInChat(message, config.botUsername)) return jsonOk({ ok: true, ignored: true });
 
   const textualContent = message.text || (message as any).caption || "";
-  const instagramUrl = textualContent ? extractInstagramUrl(textualContent) : null;
+  const instagramUrl = textualContent ? extractInstagramUrl(textualContent) ?? extractFallbackInstagramUrl(textualContent) : null;
   if (instagramUrl) {
     await sendMessage(config, {
       chat_id: message.chat.id,
@@ -337,6 +338,20 @@ function getManagedBotUsernameFromRequest(request: Request): string | undefined 
   const prefix = "/telegram/webhook/";
   if (!pathname.startsWith(prefix)) return undefined;
   return pathname.slice(prefix.length).trim().toLowerCase() || undefined;
+}
+
+function extractFallbackInstagramUrl(text: string): string | null {
+  const match = text.match(INSTAGRAM_FALLBACK_URL_REGEX);
+  if (!match?.[0]) return null;
+
+  try {
+    const parsed = new URL(match[0]);
+    if (!/^\/(p|reel|reels|tv|share)\//i.test(parsed.pathname)) return null;
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 async function resolveMessageImageUrl(config: AppConfig, message: any): Promise<string | null> {
