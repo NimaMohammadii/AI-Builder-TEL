@@ -60,8 +60,12 @@ export async function getTelegramFileUrl(config: AppConfig, fileId: string): Pro
 
 export async function fetchRemoteBinaryAsBase64(url: string): Promise<{ base64: string; mimeType?: string; fileName?: string } | null> {
   const response = await fetch(url, {
+    redirect: "follow",
     headers: {
-      "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+      "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+      accept: "video/mp4,video/*;q=0.9,image/avif,image/webp,image/*;q=0.8,*/*;q=0.5",
+      "accept-language": "en-US,en;q=0.9",
+      referer: "https://www.instagram.com/"
     }
   });
 
