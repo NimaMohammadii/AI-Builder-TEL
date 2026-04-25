@@ -14,6 +14,24 @@ export async function handleDeleteWebhook(config: AppConfig): Promise<Response> 
   return jsonOk({ ok: result.ok, result }, result.ok ? 200 : 502);
 }
 
+export async function runProjectLookup(env: Env, workspaceId: string, text: string): Promise<{ ok: boolean; intent: string; payload?: unknown; error?: string }> {
+  const intent = detectProjectIntent(text);
+  const bot = await findWorkspaceBotByWorkspaceId(env, workspaceId);
+
+  if (intent === "bot_id") {
+    if (!bot) return { ok: false, intent, error: "bot_not_found" };
+    return { ok: true, intent, payload: { botUsername: bot.bot_username, botId: bot.telegram_bot_id } };
+  }
+
+  if (intent === "bot_stats") {
+    if (!bot) return { ok: false, intent, error: "bot_not_found" };
+    const stats = await getBotStats(env, bot.id);
+    return { ok: true, intent, payload: { botUsername: bot.bot_username, stats } };
+  }
+
+  return { ok: false, intent };
+}
+
 export async function handleProjectAdminAction(request: Request, env: Env): Promise<Response> {
   const body = await request.json().catch(() => ({})) as { workspaceId?: string; text?: string };
   const workspaceId = body.workspaceId;
