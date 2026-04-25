@@ -1,10 +1,12 @@
+import { SITE_HTML } from "../site-html";
 import { jsonOk } from "../utils/http";
 
 export function handleRoot(): Response {
-  return jsonOk({
-    ok: true,
-    service: "vexa",
-    runtime: "cloudflare-workers"
+  return new Response(SITE_HTML, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=60"
+    }
   });
 }
 
