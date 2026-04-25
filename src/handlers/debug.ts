@@ -2,7 +2,7 @@ import type { AppConfig, Env } from "../types/env";
 import { deleteWebhook, setWebhook } from "../lib/telegram";
 import { jsonOk } from "../utils/http";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
-import { detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
+import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
 
 export async function handleSetWebhook(config: AppConfig): Promise<Response> {
   const result = await setWebhook(config);
@@ -32,6 +32,12 @@ export async function handleProjectAdminAction(request: Request, env: Env): Prom
     if (!bot) return jsonOk({ ok: false, error: "bot_not_found" }, 404);
     const stats = await getBotStats(env, bot.id);
     return jsonOk({ ok: true, intent, botUsername: bot.bot_username, stats });
+  }
+
+  if (intent === "bot_menu") {
+    if (!bot) return jsonOk({ ok: false, error: "bot_not_found" }, 404);
+    const menu = await createBotCommandMenu(env, { workspaceId, botId: bot.id, requestText: text });
+    return jsonOk({ ok: true, intent, menu });
   }
 
   if (intent === "project_memory") {
