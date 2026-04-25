@@ -1,5 +1,5 @@
 import { loadConfig } from "./config/env";
-import { handleSetWebhook, handleDeleteWebhook, isAuthorizedDebugRequest } from "./handlers/debug";
+import { handleSetWebhook, handleDeleteWebhook, handleProjectAdminAction, isAuthorizedDebugRequest } from "./handlers/debug";
 import { handleHealth, handleRoot } from "./handlers/health";
 import { handleTelegramWebhook } from "./handlers/telegram-webhook";
 import { logger } from "./lib/logger";
@@ -23,6 +23,14 @@ export default {
 
       if (request.method === "POST" && route.startsWith("/telegram/webhook")) {
         return handleTelegramWebhook(request, config, env, ctx);
+      }
+
+      if (request.method === "POST" && route === "/debug/project-action") {
+        if (!isAuthorizedDebugRequest(request, config.adminDebugToken)) {
+          return jsonError("unauthorized", 401);
+        }
+
+        return handleProjectAdminAction(request, env);
       }
 
       if (request.method === "POST" && route === "/debug/set-webhook") {
