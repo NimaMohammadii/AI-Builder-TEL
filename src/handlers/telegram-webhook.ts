@@ -15,6 +15,7 @@ import { ensureWorkspaceForUser } from "../repositories/workspaces";
 import { upsertChat } from "../repositories/chats";
 import { ensureDefaultAiProfile, getDefaultAiProfileByBotId } from "../repositories/ai-profiles";
 import { findWorkspaceBotByUsername, findWorkspaceBotByWorkspaceId, upsertManagedTelegramBot } from "../repositories/telegram-bots";
+import { getProjectTelegramActionText } from "./project-telegram-action";
 
 const NON_TEXT_PRIVATE_REPLY = "فعلاً فقط پیام متنی رو می‌تونم پردازش کنم.";
 const IMAGE_CAPTION_PREFIX = "تصویر آماده شد.";
@@ -119,6 +120,12 @@ async function processMessage(message: TelegramMessage, config: AppConfig, env: 
   if (!shouldRespondInChat(message, config.botUsername)) return jsonOk({ ok: true, ignored: true });
 
   const textualContent = message.text || (message as any).caption || "";
+  const projectActionText = await getProjectTelegramActionText(env, workspaceId, textualContent);
+  if (projectActionText) {
+    await sendMessage(config, { chat_id: message.chat.id, text: projectActionText, reply_to_message_id: message.message_id });
+    return jsonOk();
+  }
+
   const instagramUrl = textualContent ? extractInstagramUrl(textualContent) ?? extractFallbackInstagramUrl(textualContent) : null;
   if (instagramUrl) {
     await sendMessage(config, {
