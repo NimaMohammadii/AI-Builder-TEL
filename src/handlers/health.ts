@@ -17,10 +17,10 @@ export async function handleRoot(): Promise<Response> {
     }, 502);
   }
 
-  return new Response(await html.text(), {
+  return new Response(normalizeHtmlForBrowser(await html.text()), {
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=60"
+      "cache-control": "no-store"
     }
   });
 }
@@ -31,4 +31,11 @@ export function handleHealth(): Response {
     status: "healthy",
     uptime: "worker-active"
   });
+}
+
+function normalizeHtmlForBrowser(html: string): string {
+  return html
+    .replace(/\u2013/g, "--")
+    .replace(/\u2018|\u2019/g, "'")
+    .replace(/\u201c|\u201d/g, '"');
 }
