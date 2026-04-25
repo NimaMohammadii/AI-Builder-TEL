@@ -3,9 +3,9 @@ import type { TelegramUiMarkup } from "./telegram-ui";
 export const MAIN_MENU_TEXT = [
   "✨ به Vexa خوش اومدی",
   "",
-  "من دستیار هوشمند ربات تلگرام تو هستم؛ هم جواب کاربرها رو می‌دم، هم بهت کمک می‌کنم رباتت رو مدیریت و بهتر کنی.",
+  "من دستیار هوشمند ربات تلگرام تو هستم؛ برای پاسخ‌گویی، مدیریت ربات، ساخت منو، مموری پروژه، آمار، تولید تصویر و دانلود لینک‌های پشتیبانی‌شده کنارت هستم.",
   "",
-  "از دکمه‌های زیر شروع کن:"
+  "از دکمه‌های زیر شروع کن یا مستقیم خواسته‌ات رو بنویس 👇"
 ].join("\n");
 
 export const HELP_MENU_TEXT = [
@@ -64,7 +64,8 @@ export function buildMainMenuKeyboard(): TelegramUiMarkup {
       [{ text: "🚀 قابلیت‌ها" }, { text: "📊 آمار ربات" }],
       [{ text: "🆔 آیدی ربات" }, { text: "🧠 مموری" }],
       [{ text: "🧩 ساخت منو" }, { text: "🎨 ساخت تصویر" }],
-      [{ text: "📥 دانلود اینستاگرام" }, { text: "⚙️ راهنما" }]
+      [{ text: "📥 دانلود اینستاگرام" }, { text: "⚙️ راهنما" }],
+      [{ text: "🏠 منوی اصلی" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -74,7 +75,7 @@ export function buildMainMenuKeyboard(): TelegramUiMarkup {
 
 export function mapMenuButtonToText(text: string): string | null {
   const value = text.trim();
-  if (["/start", "start", "menu", "منو", "🏠 منوی اصلی"].includes(value)) return MAIN_MENU_TEXT;
+  if (["/start", "/menu", "start", "menu", "منو", "🏠 منوی اصلی"].includes(value)) return MAIN_MENU_TEXT;
   if (value === "🚀 قابلیت‌ها" || value === "⚙️ راهنما" || value === "/help") return HELP_MENU_TEXT;
   if (value === "🆔 آیدی ربات") return BOT_INFO_TEXT;
   if (value === "📊 آمار ربات") return BOT_STATS_TEXT;
