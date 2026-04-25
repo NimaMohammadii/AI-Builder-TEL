@@ -29,6 +29,11 @@ interface TelegramBotInfo {
   first_name?: string;
 }
 
+export interface TelegramBotCommand {
+  command: string;
+  description: string;
+}
+
 interface TelegramApiContext {
   token: string;
 }
@@ -94,6 +99,15 @@ export async function setWebhookForToken(token: string, publicWebhookUrl: string
   };
   if (secretToken) payload.secret_token = secretToken;
   return callTelegramApi<true>({ token }, "setWebhook", payload);
+}
+
+export async function setBotCommands(config: AppConfig, commands: TelegramBotCommand[]): Promise<TelegramApiResponse<true>> {
+  return callTelegramApi<true>({ token: config.telegramBotToken }, "setMyCommands", {
+    commands: commands.map((item) => ({
+      command: item.command.replace(/^\//, '').slice(0, 32),
+      description: item.description.slice(0, 256)
+    }))
+  });
 }
 
 export async function deleteWebhook(config: AppConfig): Promise<TelegramApiResponse<true>> {
