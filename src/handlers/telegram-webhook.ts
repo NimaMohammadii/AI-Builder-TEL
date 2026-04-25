@@ -212,7 +212,10 @@ async function processInstagramRequest(message: TelegramMessage, config: AppConf
 
     const binary = await fetchRemoteBinaryAsBase64(media.mediaUrl);
     if (!binary) {
-      logger.warn("Instagram media binary fetch failed", { route, event: "instagram_binary_fetch_failed", chatType, updateId, mediaType: media.mediaType, mediaUrl: media.mediaUrl });
+      logger.warn("Instagram media binary fetch failed; trying Telegram URL fallback", { route, event: "instagram_binary_fetch_failed_trying_url_fallback", chatType, updateId, mediaType: media.mediaType, mediaUrl: media.mediaUrl });
+      const sentByUrl = await sendInstagramMediaByUrl(message, config, media, updateId, chatType);
+      if (sentByUrl) return;
+
       await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_BINARY_FAILURE_TEXT, reply_to_message_id: message.message_id });
       return;
     }
@@ -227,8 +230,9 @@ async function processInstagramRequest(message: TelegramMessage, config: AppConf
         replyToMessageId: message.message_id
       });
       if (!sent.ok) {
-        logger.error("Failed to send Instagram video response", { route, event: "instagram_send_video_error", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
-        await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_SEND_FAILURE_TEXT, reply_to_message_id: message.message_id });
+        logger.error("Failed to send Instagram video response; trying Telegram URL fallback", { route, event: "instagram_send_video_error_trying_url_fallback", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
+        const sentByUrl = await sendInstagramMediaByUrl(message, config, media, updateId, chatType);
+        if (!sentByUrl) await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_SEND_FAILURE_TEXT, reply_to_message_id: message.message_id });
       }
       return;
     }
@@ -240,13 +244,50 @@ async function processInstagramRequest(message: TelegramMessage, config: AppConf
       reply_to_message_id: message.message_id
     });
     if (!sent.ok) {
-      logger.error("Failed to send Instagram image response", { route, event: "instagram_send_image_error", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
-      await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_SEND_FAILURE_TEXT, reply_to_message_id: message.message_id });
+      logger.error("Failed to send Instagram image response; trying Telegram URL fallback", { route, event: "instagram_send_image_error_trying_url_fallback", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
+      const sentByUrl = await sendInstagramMediaByUrl(message, config, media, updateId, chatType);
+      if (!sentByUrl) await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_SEND_FAILURE_TEXT, reply_to_message_id: message.message_id });
     }
   } catch (error) {
     logger.error("Unhandled instagram download error", { route, event: "instagram_download_error", chatType, updateId, error: error instanceof Error ? error.message : "unknown" });
     await sendMessage(config, { chat_id: message.chat.id, text: INSTAGRAM_FAILURE_TEXT, reply_to_message_id: message.message_id });
   }
+}
+
+async function sendInstagramMediaByUrl(message: TelegramMessage, config: AppConfig, media: { mediaType: "video" | "image"; mediaUrl: string; caption?: string }, updateId: number, chatType: string): Promise<boolean> {
+  const route = "/telegram/webhook";
+
+  if (media.mediaType === "video") {
+    const sent = await sendVideo(config, {
+      chatId: message.chat.id,
+      videoUrl: media.mediaUrl,
+      caption: media.caption,
+      replyToMessageId: message.message_id
+    });
+
+    if (sent.ok) {
+      logger.info("Sent Instagram video by URL fallback", { route, event: "instagram_send_video_url_fallback_ok", chatType, updateId });
+      return true;
+    }
+
+    logger.error("Telegram URL fallback failed for Instagram video", { route, event: "instagram_send_video_url_fallback_error", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
+    return false;
+  }
+
+  const sent = await sendPhoto(config, {
+    chat_id: message.chat.id,
+    photoUrl: media.mediaUrl,
+    caption: media.caption,
+    reply_to_message_id: message.message_id
+  });
+
+  if (sent.ok) {
+    logger.info("Sent Instagram image by URL fallback", { route, event: "instagram_send_image_url_fallback_ok", chatType, updateId });
+    return true;
+  }
+
+  logger.error("Telegram URL fallback failed for Instagram image", { route, event: "instagram_send_image_url_fallback_error", chatType, updateId, mediaUrl: media.mediaUrl, error: `${sent.error_code}:${sent.description}` });
+  return false;
 }
 
 async function processVideoRequest(message: TelegramMessage, config: AppConfig, updateId: number, chatType: string): Promise<void> {
