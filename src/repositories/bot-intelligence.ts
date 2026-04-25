@@ -7,6 +7,8 @@ export interface BotStats {
   totalChats: number;
 }
 
+export type ProjectIntent = 'none' | 'bot_id' | 'bot_stats' | 'bot_menu' | 'project_memory';
+
 export interface BotMemoryInput {
   workspaceId: string;
   botId?: string | null;
@@ -184,6 +186,38 @@ export function extractGeneratedCode(reply: string): string | null {
   const blocks = [...reply.matchAll(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g)].map((match) => match[1]?.trim()).filter(Boolean);
   if (blocks.length === 0) return null;
   return blocks.join('\n\n---\n\n').slice(0, 8000);
+}
+
+export function detectProjectIntent(text: string): ProjectIntent {
+  const normalized = text.toLowerCase();
+  if (/^\/id\b/i.test(normalized) || /(آیدی|ایدی|id).*(عددی|number|ربات|bot)/i.test(normalized)) return 'bot_id';
+  if (/^\/stats\b/i.test(normalized) || /(چند|تعداد|آمار|کاربر|یوزر|users|stats).*(ربات|چت|chat|استفاده|کار)/i.test(normalized)) return 'bot_stats';
+  if (/(منو|دکمه|کامند|command|menu|button).*(بساز|درست|اضافه|ثبت|ایجاد|create|make|add)/i.test(normalized)) return 'bot_menu';
+  if (/(یادت\s*باشه|به\s*خاطر\s*بسپار|ذخیره\s*کن|سیو\s*کن|مموری|memory|remember)/i.test(normalized)) return 'project_memory';
+  return 'none';
+}
+
+export function extractMemoryContent(text: string): string {
+  return text
+    .replace(/^(لطفا|لطفاً)\s*/i, '')
+    .replace(/(یادت\s*باشه|به\s*خاطر\s*بسپار|ذخیره\s*کن|سیو\s*کن|مموری|memory|remember)[:：،\s]*/i, '')
+    .trim() || text.trim();
+}
+
+export function formatBotStatsReply(botUsername: string, stats: BotStats): string {
+  return [
+    `آمار ربات @${botUsername}:`,
+    `چت‌های خصوصی: ${stats.privateChats}`,
+    `گروه‌ها/کانال‌ها: ${stats.groupChats}`,
+    `مجموع چت‌های ثبت‌شده: ${stats.totalChats}`
+  ].join('\n');
+}
+
+export function formatCommandMenuReply(commands: BotMenuCommand[], telegramOk: boolean, error?: string): string {
+  const lines = commands.map((item) => `/${item.command} - ${item.description}`).join('\n');
+  return telegramOk
+    ? `منوی دستورات ساخته و روی تلگرام ثبت شد:\n${lines}`
+    : `منو ذخیره شد ولی ثبت روی تلگرام خطا داد: ${error ?? 'unknown_error'}\n${lines}`;
 }
 
 function extractRequestedCommands(text: string): BotMenuCommand[] {
