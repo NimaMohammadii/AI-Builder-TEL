@@ -1,7 +1,7 @@
 import { loadConfig } from "./config/env";
 import { handleSetWebhook, handleDeleteWebhook, handleProjectAdminAction, isAuthorizedDebugRequest } from "./handlers/debug";
 import { handleHealth, handleRoot } from "./handlers/health";
-import { handleTelegramWebhook } from "./handlers/telegram-webhook";
+import { handleMenuAwareTelegramWebhook } from "./handlers/menu-webhook";
 import { logger } from "./lib/logger";
 import type { Env } from "./types/env";
 import { jsonError } from "./utils/http";
@@ -22,7 +22,7 @@ export default {
       }
 
       if (request.method === "POST" && route.startsWith("/telegram/webhook")) {
-        return handleTelegramWebhook(request, config, env, ctx);
+        return handleMenuAwareTelegramWebhook(request, config, env, ctx);
       }
 
       if (request.method === "POST" && route === "/debug/project-action") {
