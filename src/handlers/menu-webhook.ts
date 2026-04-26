@@ -76,6 +76,7 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
         config,
         workspaceId,
         botId: bot.id,
+        botUsername: bot.bot_username,
         botToken: bot.encrypted_token,
         text
       });
