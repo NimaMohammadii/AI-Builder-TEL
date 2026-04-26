@@ -6,10 +6,21 @@ import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse 
 export async function handleBuiltBotRuntime(message: TelegramMessage, config: AppConfig, env: Env, botId: string | null, text: string): Promise<boolean> {
   if (!botId || !text.trim()) return false;
 
-  const runtime = await loadRuntimeBotConfig(env, botId);
-  if (!runtime) return false;
-
   const value = text.trim();
+  const runtime = await loadRuntimeBotConfig(env, botId);
+
+  if (!runtime) {
+    if (isStart(value)) {
+      await sendUiMessage(config, {
+        chatId: message.chat.id,
+        text: '⚠️ هنوز منوی اجرایی برای این ربات پیدا نشد.\n\nدر ربات اصلی وارد «ساخت ربات بدون کدنویسی» شو و دوباره دستور ساخت را بفرست. اگر قبلاً ساختی، یعنی ذخیره runtime در D1 انجام نشده یا webhook این ربات به نسخه جدید وصل نیست.',
+        replyToMessageId: message.message_id
+      });
+      return true;
+    }
+    return false;
+  }
+
   if (isStart(value)) {
     await sendUiMessage(config, {
       chatId: message.chat.id,
