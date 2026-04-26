@@ -37,13 +37,6 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   const text = message?.text || (message as any)?.caption || "";
   if (!message || !text) return false;
 
-  const managedBot = await resolveManagedBotFromRequest(request, env);
-  if (managedBot) {
-    const runtimeConfig = { ...config, telegramBotToken: managedBot.encrypted_token, botUsername: managedBot.bot_username };
-    const handledRuntime = await handleBuiltBotRuntime(message, runtimeConfig, env, managedBot.id, text);
-    if (handledRuntime) return true;
-  }
-
   if (isMainMenuRequest(text)) {
     await sendUiMessage(config, { chatId: message.chat.id, text: MAIN_MENU_TEXT, replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
     return true;
@@ -98,6 +91,13 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
       await sendUiMessage(config, { chatId: message.chat.id, text: "برای ساخت و اعمال تغییرات، اول از بخش کانکت یک ربات وصل کن.\n\nاگر توکن داری اینطوری بفرست:\n/connect <telegram_bot_token>", replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
     }
     return true;
+  }
+
+  const managedBot = await resolveManagedBotFromRequest(request, env);
+  if (managedBot) {
+    const runtimeConfig = { ...config, telegramBotToken: managedBot.encrypted_token, botUsername: managedBot.bot_username };
+    const handledRuntime = await handleBuiltBotRuntime(message, runtimeConfig, env, managedBot.id, text);
+    if (handledRuntime) return true;
   }
 
   return false;
