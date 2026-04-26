@@ -1,11 +1,11 @@
 import type { AppConfig, Env } from "../types/env";
-import { deleteWebhook, setWebhook } from "../lib/telegram";
+import { deleteWebhook } from "../lib/telegram";
 import { jsonOk } from "../utils/http";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
 
 export async function handleSetWebhook(config: AppConfig): Promise<Response> {
-  const result = await setWebhook(config);
+  const result = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, undefined, config.telegramWebhookSecret);
   return jsonOk({ ok: result.ok, result }, result.ok ? 200 : 502);
 }
 
@@ -77,4 +77,21 @@ export function isAuthorizedDebugRequest(request: Request, adminDebugToken?: str
   if (!adminDebugToken) return false;
   const token = request.headers.get("x-admin-token");
   return token === adminDebugToken;
+}
+
+async function setWebhookWithCallbacks(token: string, publicWebhookUrl: string, botUsername?: string, secretToken?: string) {
+  const baseUrl = publicWebhookUrl.replace(/\/$/, "").replace(/\/telegram\/webhook(?:\/.*)?$/, "");
+  const path = botUsername ? `/telegram/webhook/${botUsername.replace(/^@/, "").toLowerCase()}` : "/telegram/webhook";
+  const body: Record<string, unknown> = {
+    url: `${baseUrl}${path}`,
+    allowed_updates: ["message", "edited_message", "callback_query"]
+  };
+  if (secretToken) body.secret_token = secretToken;
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  return await response.json() as { ok: boolean; description?: string };
 }
