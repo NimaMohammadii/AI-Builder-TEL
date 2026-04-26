@@ -2,13 +2,14 @@ import type { AppConfig, Env } from "../types/env";
 import { handleTelegramWebhook } from "./telegram-webhook";
 import { parseUpdate, verifyTelegramWebhookSecret } from "../lib/telegram";
 import { answerCallback, editUiMessage, sendUiMessage } from "../lib/telegram-ui";
-import { buildBuilderKeyboard, buildConnectInlineKeyboard, buildMainMenuKeyboard, BUILDER_DONE_TEXT, BUILDER_START_TEXT, isBuilderDoneRequest, isBuilderStartRequest, isConnectRequest, isMainMenuRequest, MAIN_MENU_TEXT } from "../lib/bot-main-menu";
+import { buildBuilderKeyboard, buildConnectInlineKeyboard, buildMainMenuKeyboard, BUILDER_DONE_TEXT, BUILDER_START_TEXT, isBuilderDoneRequest, isBuilderResetRequest, isBuilderStartRequest, isConnectRequest, isMainMenuRequest, MAIN_MENU_TEXT } from "../lib/bot-main-menu";
 import { endBuilderSession, isBuilderSessionActive, startBuilderSession } from "../lib/builder-session";
 import { deactivateWorkspaceBot, formatConnectPanel, getConnectPanelStatus, setAiEnabled } from "../repositories/connect-panel";
 import { findWorkspaceBotByUsername, findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { upsertTelegramUser } from "../repositories/users";
 import { ensureWorkspaceForUser } from "../repositories/workspaces";
 import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builder";
+import { formatResetBuiltBotResult, resetBuiltBot } from "../lib/reset-built-bot";
 import { handleBuiltBotRuntime } from "./built-bot-runtime";
 
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
@@ -64,6 +65,18 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   if (isBuilderDoneRequest(text)) {
     await endBuilderSession(config, message.chat.id, env);
     await sendUiMessage(config, { chatId: message.chat.id, text: `${BUILDER_DONE_TEXT}\n\n${MAIN_MENU_TEXT}`, replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
+    return true;
+  }
+
+  if (isBuilderResetRequest(text)) {
+    const workspaceId = await resolveWorkspaceId(env, message);
+    const bot = workspaceId ? await findWorkspaceBotByWorkspaceId(env, workspaceId) : null;
+    if (workspaceId && bot) {
+      const result = await resetBuiltBot({ env, config, workspaceId, botId: bot.id, botToken: bot.encrypted_token });
+      await sendUiMessage(config, { chatId: message.chat.id, text: formatResetBuiltBotResult(result), replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
+    } else {
+      await sendUiMessage(config, { chatId: message.chat.id, text: "برای ریست، اول باید یک ربات وصل داشته باشی.\n/connect <telegram_bot_token>", replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
+    }
     return true;
   }
 
