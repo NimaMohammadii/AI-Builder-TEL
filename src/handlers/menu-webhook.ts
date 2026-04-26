@@ -5,10 +5,11 @@ import { answerCallback, editUiMessage, sendUiMessage } from "../lib/telegram-ui
 import { buildBuilderKeyboard, buildConnectInlineKeyboard, buildMainMenuKeyboard, BUILDER_DONE_TEXT, BUILDER_START_TEXT, isBuilderDoneRequest, isBuilderStartRequest, isConnectRequest, isMainMenuRequest, MAIN_MENU_TEXT } from "../lib/bot-main-menu";
 import { endBuilderSession, isBuilderSessionActive, startBuilderSession } from "../lib/builder-session";
 import { deactivateWorkspaceBot, formatConnectPanel, getConnectPanelStatus, setAiEnabled } from "../repositories/connect-panel";
-import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
+import { findWorkspaceBotByUsername, findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { upsertTelegramUser } from "../repositories/users";
 import { ensureWorkspaceForUser } from "../repositories/workspaces";
 import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builder";
+import { handleBuiltBotRuntime } from "./built-bot-runtime";
 
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const handled = await tryHandleMenu(request.clone(), config, env);
@@ -34,6 +35,13 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   const message = update?.message ?? update?.edited_message;
   const text = message?.text || (message as any)?.caption || "";
   if (!message || !text) return false;
+
+  const managedBot = await resolveManagedBotFromRequest(request, env);
+  if (managedBot) {
+    const runtimeConfig = { ...config, telegramBotToken: managedBot.encrypted_token, botUsername: managedBot.bot_username };
+    const handledRuntime = await handleBuiltBotRuntime(message, runtimeConfig, env, managedBot.id, text);
+    if (handledRuntime) return true;
+  }
 
   if (isMainMenuRequest(text)) {
     await sendUiMessage(config, { chatId: message.chat.id, text: MAIN_MENU_TEXT, replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
@@ -133,4 +141,13 @@ async function resolveWorkspaceIdFromChat(env: Env, telegramChatId: number): Pro
   if (!db) return null;
   const row = await db.prepare(`SELECT workspace_id FROM telegram_chats WHERE telegram_chat_id = ? ORDER BY updated_at DESC LIMIT 1`).bind(telegramChatId).first<{ workspace_id: string }>();
   return row?.workspace_id ?? null;
+}
+
+async function resolveManagedBotFromRequest(request: Request, env: Env) {
+  const pathname = new URL(request.url).pathname.replace(/\/+$/, "");
+  const prefix = "/telegram/webhook/";
+  if (!pathname.startsWith(prefix)) return null;
+  const username = pathname.slice(prefix.length).trim().toLowerCase();
+  if (!username) return null;
+  return findWorkspaceBotByUsername(env, username);
 }
