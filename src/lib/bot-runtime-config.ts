@@ -1,4 +1,4 @@
-import type { Env } from '../types/env';
+import type { AppConfig, Env } from '../types/env';
 import { getDb } from '../db/client';
 
 export interface RuntimeButton {
@@ -149,6 +149,102 @@ export function planRuntimeConfigFromInstruction(instruction: string): RuntimeBo
   return {
     welcomeText: buildWelcomeText(instruction, buttons),
     buttons
+  };
+}
+
+export async function planRuntimeConfigWithAI(config: AppConfig, instruction: string): Promise<RuntimeBotConfig> {
+  const fallback = planRuntimeConfigFromInstruction(instruction);
+  const prompt = [
+    'You are a Telegram bot builder agent. Convert the owner instruction into an executable Telegram bot runtime config.',
+    'Return ONLY valid JSON. No markdown. No code fences.',
+    'JSON schema: {"welcomeText":"string","buttons":[{"label":"string","command":"english_slug","response":"string"}]}',
+    'Rules:',
+    '- Build exactly what the owner asks for, not generic placeholders.',
+    '- Use Persian text unless the owner asks otherwise.',
+    '- Button labels can include emoji and Persian text.',
+    '- command must be lowercase English letters, numbers, or underscore, max 32 chars.',
+    '- response must be the real useful response that the final user sees when pressing that button.',
+    '- Create 2 to 10 buttons depending on the request.',
+    '- Do not mention implementation, code, database, or limitations.',
+    '',
+    'Owner instruction:',
+    instruction
+  ].join('\n');
+
+  try {
+    const text = config.provider === 'grok'
+      ? await callGrokPlanner(config, prompt)
+      : await callOpenAiPlanner(config, prompt);
+    const parsed = parseRuntimePlannerJson(text);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function callOpenAiPlanner(config: AppConfig, prompt: string): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${config.openAiApiKey}`
+    },
+    body: JSON.stringify({
+      model: config.openAiModel,
+      input: [
+        { role: 'system', content: [{ type: 'input_text', text: 'Return compact JSON only.' }] },
+        { role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      ],
+      max_output_tokens: 900
+    })
+  });
+  if (!response.ok) throw new Error('planner_openai_failed');
+  const payload = await response.json() as { output_text?: string };
+  return payload.output_text ?? '';
+}
+
+async function callGrokPlanner(config: AppConfig, prompt: string): Promise<string> {
+  const baseUrl = (config.xAiBaseUrl || 'https://api.x.ai/v1').replace(/\/$/, '');
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${config.xAiApiKey}`
+    },
+    body: JSON.stringify({
+      model: config.xAiModel,
+      messages: [
+        { role: 'system', content: 'Return compact JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 900
+    })
+  });
+  if (!response.ok) throw new Error('planner_grok_failed');
+  const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  return payload.choices?.[0]?.message?.content ?? '';
+}
+
+function parseRuntimePlannerJson(text: string): RuntimeBotConfig | null {
+  const clean = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  const parsed = JSON.parse(clean.slice(start, end + 1)) as Partial<RuntimeBotConfig>;
+  const buttons = Array.isArray(parsed.buttons) ? parsed.buttons : [];
+  const normalizedButtons = buttons
+    .map((button) => ({
+      label: String((button as RuntimeButton).label ?? '').trim().slice(0, 80),
+      command: sanitizeCommand(String((button as RuntimeButton).command ?? 'menu')),
+      response: String((button as RuntimeButton).response ?? '').trim().slice(0, 1200)
+    }))
+    .filter((button) => button.label && button.command && button.response)
+    .slice(0, 10);
+
+  if (!normalizedButtons.length) return null;
+  return {
+    welcomeText: String(parsed.welcomeText ?? '').trim().slice(0, 1200) || buildWelcomeText('', normalizedButtons),
+    buttons: normalizedButtons
   };
 }
 
