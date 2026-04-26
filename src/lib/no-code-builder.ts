@@ -2,13 +2,14 @@ import type { AppConfig, Env } from '../types/env';
 import { ensureDefaultAiProfile } from '../repositories/ai-profiles';
 import { createBotCommandMenu, saveBotMemory } from '../repositories/bot-intelligence';
 import { planRuntimeConfigFromInstruction, saveRuntimeBotConfig } from './bot-runtime-config';
-import { setBotCommands } from './telegram';
+import { setBotCommands, setWebhookForToken } from './telegram';
 
 export interface NoCodeBuildInput {
   env: Env;
   config: AppConfig;
   workspaceId: string;
   botId: string;
+  botUsername?: string;
   botToken?: string;
   text: string;
 }
@@ -47,6 +48,11 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
   details.push(`کامندهای ربات ساخته شد: ${menu.commands.map((item) => '/' + item.command).join(', ')}`);
   details.push(telegram.ok ? 'کامندها روی ربات متصل هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
 
+  if (input.botToken && input.botUsername) {
+    const webhook = await setWebhookForToken(input.botToken, input.config.publicWebhookUrl, input.botUsername, input.config.telegramWebhookSecret);
+    details.push(webhook.ok ? 'Webhook ربات متصل دوباره sync شد.' : `Webhook ربات sync نشد: ${webhook.description ?? 'unknown'}`);
+  }
+
   const prompt = buildBehaviorPrompt(text, runtimeConfig.buttons.map((item) => item.label));
   await ensureDefaultAiProfile(input.env, {
     workspaceId: input.workspaceId,
@@ -80,7 +86,7 @@ export function formatNoCodeBuildResult(result: NoCodeBuildResult): string {
     '',
     ...result.details.map((item) => `• ${item}`),
     '',
-    'دستور بعدی رو بنویس یا برای خروج «اتمام ساخت» رو بزن.'
+    'برای دیدن نتیجه، داخل همان ربات متصل /start بزن.\nدستور بعدی رو بنویس یا برای خروج «اتمام ساخت» رو بزن.'
   ].join('\n');
 }
 
