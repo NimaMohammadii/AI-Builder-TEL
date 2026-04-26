@@ -48,18 +48,18 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   }
 
   if (isBuilderStartRequest(text)) {
-    await startBuilderSession(config, message.chat.id);
+    await startBuilderSession(config, message.chat.id, env);
     await sendUiMessage(config, { chatId: message.chat.id, text: BUILDER_START_TEXT, replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
     return true;
   }
 
   if (isBuilderDoneRequest(text)) {
-    await endBuilderSession(config, message.chat.id);
+    await endBuilderSession(config, message.chat.id, env);
     await sendUiMessage(config, { chatId: message.chat.id, text: `${BUILDER_DONE_TEXT}\n\n${MAIN_MENU_TEXT}`, replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
     return true;
   }
 
-  if (await isBuilderSessionActive(config, message.chat.id)) {
+  if (await isBuilderSessionActive(config, message.chat.id, env)) {
     const workspaceId = await resolveWorkspaceId(env, message);
     const bot = workspaceId ? await findWorkspaceBotByWorkspaceId(env, workspaceId) : null;
     if (workspaceId && bot) {
