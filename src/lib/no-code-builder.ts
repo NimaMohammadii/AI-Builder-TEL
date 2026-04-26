@@ -1,6 +1,7 @@
 import type { AppConfig, Env } from '../types/env';
 import { ensureDefaultAiProfile } from '../repositories/ai-profiles';
 import { createBotCommandMenu, saveBotMemory } from '../repositories/bot-intelligence';
+import { planRuntimeConfigFromInstruction, saveRuntimeBotConfig } from './bot-runtime-config';
 import { setBotCommands } from './telegram';
 
 export interface NoCodeBuildInput {
@@ -26,31 +27,34 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     return { ok: false, title: 'دستور خالی بود', details: ['یک دستور واضح برای ساخت یا ویرایش ربات بنویس.'] };
   }
 
-  const shouldCreateBotStructure = wantsBotBuild(text) || wantsMenu(text);
+  const runtimeConfig = planRuntimeConfigFromInstruction(text);
+  await saveRuntimeBotConfig(input.env, {
+    workspaceId: input.workspaceId,
+    botId: input.botId,
+    instruction: text,
+    config: runtimeConfig
+  });
+  details.push(`تنظیمات اجرایی ربات ذخیره شد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`);
 
-  if (shouldCreateBotStructure) {
-    const menuRequest = wantsMenu(text) ? text : buildDefaultMenuRequest(text);
-    const menu = await createBotCommandMenu(input.env, {
-      workspaceId: input.workspaceId,
-      botId: input.botId,
-      requestText: menuRequest
-    });
-    const commandConfig = input.botToken ? { ...input.config, telegramBotToken: input.botToken } : input.config;
-    const telegram = await setBotCommands(commandConfig, menu.commands);
-    details.push(`ساختار ربات ساخته شد: ${menu.commands.map((item) => '/' + item.command).join(', ')}`);
-    details.push(telegram.ok ? 'کامندها روی ربات متصل هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
-  }
+  const menuRequest = buildMenuRequestFromRuntime(text, runtimeConfig.buttons.map((item) => item.label));
+  const menu = await createBotCommandMenu(input.env, {
+    workspaceId: input.workspaceId,
+    botId: input.botId,
+    requestText: menuRequest
+  });
+  const commandConfig = input.botToken ? { ...input.config, telegramBotToken: input.botToken } : input.config;
+  const telegram = await setBotCommands(commandConfig, menu.commands);
+  details.push(`کامندهای ربات ساخته شد: ${menu.commands.map((item) => '/' + item.command).join(', ')}`);
+  details.push(telegram.ok ? 'کامندها روی ربات متصل هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
 
-  if (wantsPromptOrBehavior(text) || shouldCreateBotStructure || details.length === 0) {
-    const prompt = buildBehaviorPrompt(text);
-    await ensureDefaultAiProfile(input.env, {
-      workspaceId: input.workspaceId,
-      botId: input.botId,
-      prompt,
-      model: input.config.openAiModel
-    });
-    details.push('رفتار و پرامپت ربات بروزرسانی شد.');
-  }
+  const prompt = buildBehaviorPrompt(text, runtimeConfig.buttons.map((item) => item.label));
+  await ensureDefaultAiProfile(input.env, {
+    workspaceId: input.workspaceId,
+    botId: input.botId,
+    prompt,
+    model: input.config.openAiModel
+  });
+  details.push('رفتار و پرامپت ربات بروزرسانی شد.');
 
   const memoryId = await saveBotMemory(input.env, {
     workspaceId: input.workspaceId,
@@ -58,7 +62,7 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     title: 'No-code builder instruction',
     content: text,
     sourceType: 'no_code_builder',
-    metadata: { appliedAt: new Date().toISOString(), appliedAsStructure: shouldCreateBotStructure }
+    metadata: { appliedAt: new Date().toISOString(), runtimeConfig }
   });
 
   if (memoryId) details.push('دستور در حافظه پروژه هم ذخیره شد.');
@@ -80,31 +84,17 @@ export function formatNoCodeBuildResult(result: NoCodeBuildResult): string {
   ].join('\n');
 }
 
-function wantsBotBuild(text: string): boolean {
-  return /(ربات|bot).*(بساز|ساخت|درست|create|make|build)|(?:بساز|ساخت|درست|create|make|build).*(ربات|bot)/i.test(text);
+function buildMenuRequestFromRuntime(text: string, labels: string[]): string {
+  return `منو بساز با این گزینه‌ها: ${labels.map((item) => `"${item}"`).join('، ')}\nدستور مالک: ${text}`;
 }
 
-function wantsMenu(text: string): boolean {
-  return /(menu|command|button|keyboard|منو|دکمه|کامند|کیبورد|گزینه|فروشگاه|سبد|راهنما|محصول|لیست|shop|cart|help|product)/i.test(text);
-}
-
-function wantsPromptOrBehavior(text: string): boolean {
-  return /(prompt|پرامپت|لحن|رفتار|جواب|پاسخ|شخصیت|سبک|رسمی|خودمونی|کوتاه|طولانی|حرفه‌ای|حرفه ای)/i.test(text);
-}
-
-function buildDefaultMenuRequest(text: string): string {
-  if (/فروشگاه|shop|محصول|product|سبد|cart/i.test(text)) {
-    return 'منو بساز: فروشگاه، سبد خرید، راهنما، پشتیبانی';
-  }
-  return 'منو بساز: شروع، راهنما، قابلیت‌ها، پشتیبانی';
-}
-
-function buildBehaviorPrompt(userInstruction: string): string {
+function buildBehaviorPrompt(userInstruction: string, labels: string[]): string {
   return [
     'تو AI اصلی این ربات تلگرام هستی.',
-    'این ربات باید بر اساس دستور مالک، واقعاً مثل محصول نهایی رفتار کند؛ فقط کد نمونه توضیح نده.',
-    'اگر مالک گفت ربات بساز، فرض کن ساختار ربات در دیتابیس اعمال شده و تو باید مطابق همان ساختار جواب بدهی.',
-    'اگر کاربر نهایی روی کامند یا منو رفت، پاسخ مناسب همان بخش را بده.',
+    'این ربات باید بر اساس دستور مالک، واقعاً مثل محصول نهایی رفتار کند؛ کد نمونه ننویس مگر مالک صریحاً کد بخواهد.',
+    'ساختار اجرایی ربات در دیتابیس ذخیره شده و باید مطابق همان جواب بدهی.',
+    `دکمه‌ها/بخش‌های فعال: ${labels.join('، ')}`,
+    'اگر کاربر نهایی یکی از دکمه‌ها یا commandها را زد، پاسخ همان بخش را بده و مکالمه را جلو ببر.',
     'پاسخ‌ها کوتاه، دقیق، کاربردی و مطابق شخصیت تعریف‌شده باشند.',
     '',
     'دستور مالک ربات:',
