@@ -73,18 +73,18 @@ export function planRuntimeConfigFromInstruction(instruction: string): RuntimeBo
   return { welcomeText: 'Welcome', buttons: [{ label: 'Start', command: 'start', response: instruction }] };
 }
 
-export async function planRuntimeConfigWithAI(config: AppConfig, instruction: string): Promise<RuntimeBotConfig> {
-  const fallback = planRuntimeConfigFromInstruction(instruction);
+export async function planRuntimeConfigWithAI(config: AppConfig, instruction: string, currentConfig?: RuntimeBotConfig | null): Promise<RuntimeBotConfig> {
+  const fallback = currentConfig ?? planRuntimeConfigFromInstruction(instruction);
   try {
-    const raw = config.provider === 'grok' ? await callGrok(config, instruction) : await callOpenAI(config, instruction);
+    const raw = config.provider === 'grok' ? await callGrok(config, instruction, currentConfig) : await callOpenAI(config, instruction, currentConfig);
     return parseRuntimeConfig(raw) ?? fallback;
   } catch {
     return fallback;
   }
 }
 
-async function callOpenAI(config: AppConfig, instruction: string): Promise<string> {
-  const prompt = makePrompt(instruction);
+async function callOpenAI(config: AppConfig, instruction: string, currentConfig?: RuntimeBotConfig | null): Promise<string> {
+  const prompt = makePrompt(instruction, currentConfig);
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${config.openAiApiKey}` },
@@ -97,16 +97,26 @@ async function callOpenAI(config: AppConfig, instruction: string): Promise<strin
   return text;
 }
 
-async function callGrok(config: AppConfig, instruction: string): Promise<string> {
+async function callGrok(config: AppConfig, instruction: string, currentConfig?: RuntimeBotConfig | null): Promise<string> {
   const baseUrl = (config.xAiBaseUrl || 'https://api.x.ai/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.xAiApiKey}` }, body: JSON.stringify({ model: config.xAiModel, messages: [{ role: 'system', content: 'Return only valid JSON.' }, { role: 'user', content: makePrompt(instruction) }], max_tokens: 1400 }) });
+  const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.xAiApiKey}` }, body: JSON.stringify({ model: config.xAiModel, messages: [{ role: 'system', content: 'Return only valid JSON.' }, { role: 'user', content: makePrompt(instruction, currentConfig) }], max_tokens: 1400 }) });
   const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
   if (!response.ok) throw new Error('planner_failed');
   return payload.choices?.[0]?.message?.content ?? '';
 }
 
-function makePrompt(instruction: string): string {
-  return ['Create a runtime config from the owner request.', 'Return JSON only: {"welcomeText":"...","buttons":[{"label":"...","command":"...","response":"..."}]}', 'Use Persian unless requested otherwise. Build exactly what the owner asks for.', instruction].join('\n');
+function makePrompt(instruction: string, currentConfig?: RuntimeBotConfig | null): string {
+  return [
+    'Edit the existing Telegram bot runtime config according to the new owner request.',
+    'Do not start from scratch unless the owner clearly asks for reset or rebuild from zero.',
+    'Keep existing useful buttons, responses, and welcome text. Add, edit, or remove only what the owner requested.',
+    'Return the full final JSON only: {"welcomeText":"...","buttons":[{"label":"...","command":"...","response":"..."}]}',
+    'Use Persian unless requested otherwise.',
+    'Current config:',
+    JSON.stringify(currentConfig ?? { welcomeText: '', buttons: [] }),
+    'New owner request:',
+    instruction
+  ].join('\n');
 }
 
 function readOpenAIText(payload: unknown): string {
@@ -127,7 +137,7 @@ function parseRuntimeConfig(raw: string): RuntimeBotConfig | null {
   const normalized = buttons.map((item) => {
     const button = item as RuntimeButton;
     return { label: String(button.label ?? '').trim().slice(0, 80), command: sanitizeCommand(String(button.command ?? 'menu')), response: String(button.response ?? '').trim().slice(0, 1500) };
-  }).filter((button) => button.label && button.command && button.response).slice(0, 10);
+  }).filter((button) => button.label && button.command && button.response).slice(0, 20);
   if (!normalized.length) return null;
   return { welcomeText: String(parsed.welcomeText ?? '').trim().slice(0, 1500) || 'Welcome', buttons: normalized };
 }
