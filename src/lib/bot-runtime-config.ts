@@ -207,7 +207,7 @@ function labelToCommand(label: string): string {
     [/شروع|start/, 'start']
   ];
   const found = known.find(([pattern]) => pattern.test(label.toLowerCase()))?.[1];
-  return found ?? sanitizeCommand(label) || 'menu';
+  return (found ?? sanitizeCommand(label)) || 'menu';
 }
 
 function sanitizeCommand(value: string): string {
