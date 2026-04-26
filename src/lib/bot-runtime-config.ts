@@ -70,12 +70,47 @@ export async function loadRuntimeBotConfig(env: Env, botId: string): Promise<Run
     LIMIT 1
   `).bind(botId).first<{ menu_config: string }>();
 
-  if (!row?.menu_config) return null;
-  try {
-    return JSON.parse(row.menu_config) as RuntimeBotConfig;
-  } catch {
-    return null;
+  if (row?.menu_config) {
+    try {
+      return JSON.parse(row.menu_config) as RuntimeBotConfig;
+    } catch {
+      // fall through to command fallback
+    }
   }
+
+  return loadRuntimeBotConfigFromCommands(db, botId);
+}
+
+async function loadRuntimeBotConfigFromCommands(db: D1Database, botId: string): Promise<RuntimeBotConfig | null> {
+  const result = await db.prepare(`
+    SELECT command, description, command_config FROM commands
+    WHERE bot_id = ? AND is_enabled = 1
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT 12
+  `).bind(botId).all<{ command: string; description?: string; command_config?: string }>();
+
+  const rows = result.results ?? [];
+  if (!rows.length) return null;
+
+  const buttons = rows.map((row) => {
+    let response = `✅ بخش ${row.description || row.command} آماده است. درخواستت را بنویس.`;
+    try {
+      const parsed = row.command_config ? JSON.parse(row.command_config) as { response?: string; label?: string } : {};
+      response = parsed.response?.trim() || response;
+      return {
+        label: parsed.label?.trim() || row.description || `/${row.command}`,
+        command: row.command,
+        response
+      };
+    } catch {
+      return { label: row.description || `/${row.command}`, command: row.command, response };
+    }
+  });
+
+  return {
+    welcomeText: ['به ربات خوش آمدید ✨', '', 'از دکمه‌های زیر استفاده کن:', ...buttons.map((button) => `• ${button.label}`)].join('\n'),
+    buttons
+  };
 }
 
 export async function loadRuntimeCommandResponse(env: Env, botId: string, text: string): Promise<string | null> {
