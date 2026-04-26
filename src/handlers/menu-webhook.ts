@@ -5,8 +5,10 @@ import { answerCallback, editUiMessage, sendUiMessage } from "../lib/telegram-ui
 import { buildBuilderKeyboard, buildConnectInlineKeyboard, buildMainMenuKeyboard, BUILDER_DONE_TEXT, BUILDER_START_TEXT, isBuilderDoneRequest, isBuilderStartRequest, isConnectRequest, isMainMenuRequest, MAIN_MENU_TEXT } from "../lib/bot-main-menu";
 import { endBuilderSession, isBuilderSessionActive, startBuilderSession } from "../lib/builder-session";
 import { deactivateWorkspaceBot, formatConnectPanel, getConnectPanelStatus, setAiEnabled } from "../repositories/connect-panel";
-import { ensureDefaultAiProfile } from "../repositories/ai-profiles";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
+import { upsertTelegramUser } from "../repositories/users";
+import { ensureWorkspaceForUser } from "../repositories/workspaces";
+import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builder";
 
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const handled = await tryHandleMenu(request.clone(), config, env);
@@ -39,7 +41,7 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   }
 
   if (isConnectRequest(text)) {
-    const workspaceId = await resolveWorkspaceIdFromChat(env, message.chat.id);
+    const workspaceId = await resolveWorkspaceId(env, message);
     const status = workspaceId ? await getConnectPanelStatus(env, workspaceId) : { hasBot: false, aiEnabled: false };
     await sendUiMessage(config, { chatId: message.chat.id, text: formatConnectPanel(status), replyToMessageId: message.message_id, replyMarkup: buildConnectInlineKeyboard() });
     return true;
@@ -58,14 +60,20 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   }
 
   if (await isBuilderSessionActive(config, message.chat.id)) {
-    const workspaceId = await resolveWorkspaceIdFromChat(env, message.chat.id);
+    const workspaceId = await resolveWorkspaceId(env, message);
     const bot = workspaceId ? await findWorkspaceBotByWorkspaceId(env, workspaceId) : null;
     if (workspaceId && bot) {
-      const prompt = buildNoCodePrompt(text);
-      await ensureDefaultAiProfile(env, { workspaceId, botId: bot.id, prompt, model: config.openAiModel });
-      await sendUiMessage(config, { chatId: message.chat.id, text: "✅ تغییر روی ربات اعمال شد.\n\nهر دستور دیگه‌ای داری بنویس، یا برای خروج «اتمام ساخت» رو بزن.", replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
+      const result = await applyNoCodeBuild({
+        env,
+        config,
+        workspaceId,
+        botId: bot.id,
+        botToken: bot.encrypted_token,
+        text
+      });
+      await sendUiMessage(config, { chatId: message.chat.id, text: formatNoCodeBuildResult(result), replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
     } else {
-      await sendUiMessage(config, { chatId: message.chat.id, text: "برای ساخت و اعمال تغییرات، اول از بخش کانکت یک ربات وصل کن.", replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
+      await sendUiMessage(config, { chatId: message.chat.id, text: "برای ساخت و اعمال تغییرات، اول از بخش کانکت یک ربات وصل کن.\n\nاگر توکن داری اینطوری بفرست:\n/connect <telegram_bot_token>", replyToMessageId: message.message_id, replyMarkup: buildBuilderKeyboard() });
     }
     return true;
   }
@@ -101,19 +109,28 @@ async function handleConnectCallback(callback: any, config: AppConfig, env: Env)
   return true;
 }
 
+async function resolveWorkspaceId(env: Env, message: any): Promise<string | null> {
+  const existing = await resolveWorkspaceIdFromChat(env, message.chat.id);
+  if (existing) return existing;
+  if (!message.from?.id) return null;
+
+  const user = await upsertTelegramUser(env, {
+    telegramUserId: message.from.id,
+    username: message.from.username,
+    firstName: message.from.first_name,
+    lastName: message.from.last_name
+  });
+  const workspace = await ensureWorkspaceForUser(env, {
+    userId: user.id,
+    username: message.from.username,
+    firstName: message.from.first_name
+  });
+  return workspace.id;
+}
+
 async function resolveWorkspaceIdFromChat(env: Env, telegramChatId: number): Promise<string | null> {
   const db = env.DB;
   if (!db) return null;
   const row = await db.prepare(`SELECT workspace_id FROM telegram_chats WHERE telegram_chat_id = ? ORDER BY updated_at DESC LIMIT 1`).bind(telegramChatId).first<{ workspace_id: string }>();
   return row?.workspace_id ?? null;
-}
-
-function buildNoCodePrompt(userInstruction: string): string {
-  return [
-    "تو یک AI حرفه‌ای برای ربات تلگرام این کاربر هستی.",
-    "هر چیزی که کاربر در حالت ساخت بدون کدنویسی گفته باید به رفتار واقعی ربات تبدیل شود.",
-    "پاسخ‌ها کوتاه، دقیق، کاربردی و مطابق دستور کاربر باشند.",
-    "دستور فعلی کاربر:",
-    userInstruction
-  ].join("\n");
 }
