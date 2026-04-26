@@ -1,7 +1,7 @@
 import type { AppConfig, Env } from '../types/env';
 import { ensureDefaultAiProfile } from '../repositories/ai-profiles';
 import { createBotCommandMenu, saveBotMemory } from '../repositories/bot-intelligence';
-import { planRuntimeConfigFromInstruction, saveRuntimeBotConfig } from './bot-runtime-config';
+import { planRuntimeConfigWithAI, saveRuntimeBotConfig } from './bot-runtime-config';
 import { setBotCommands, setWebhookForToken } from './telegram';
 
 export interface NoCodeBuildInput {
@@ -28,14 +28,14 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     return { ok: false, title: 'دستور خالی بود', details: ['یک دستور واضح برای ساخت یا ویرایش ربات بنویس.'] };
   }
 
-  const runtimeConfig = planRuntimeConfigFromInstruction(text);
+  const runtimeConfig = await planRuntimeConfigWithAI(input.config, text);
   await saveRuntimeBotConfig(input.env, {
     workspaceId: input.workspaceId,
     botId: input.botId,
     instruction: text,
     config: runtimeConfig
   });
-  details.push(`تنظیمات اجرایی ربات ذخیره شد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`);
+  details.push(`AI نقشه اجرایی ربات را ساخت و ذخیره کرد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`);
 
   const menuRequest = buildMenuRequestFromRuntime(text, runtimeConfig.buttons.map((item) => item.label));
   const menu = await createBotCommandMenu(input.env, {
@@ -75,7 +75,7 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
 
   return {
     ok: true,
-    title: '✅ روی ربات متصل اعمال شد',
+    title: '✅ دقیقاً روی ربات متصل اعمال شد',
     details
   };
 }
@@ -98,7 +98,7 @@ function buildBehaviorPrompt(userInstruction: string, labels: string[]): string 
   return [
     'تو AI اصلی این ربات تلگرام هستی.',
     'این ربات باید بر اساس دستور مالک، واقعاً مثل محصول نهایی رفتار کند؛ کد نمونه ننویس مگر مالک صریحاً کد بخواهد.',
-    'ساختار اجرایی ربات در دیتابیس ذخیره شده و باید مطابق همان جواب بدهی.',
+    'ساختار اجرایی ربات با AI planner در دیتابیس ذخیره شده و باید مطابق همان جواب بدهی.',
     `دکمه‌ها/بخش‌های فعال: ${labels.join('، ')}`,
     'اگر کاربر نهایی یکی از دکمه‌ها یا commandها را زد، پاسخ همان بخش را بده و مکالمه را جلو ببر.',
     'پاسخ‌ها کوتاه، دقیق، کاربردی و مطابق شخصیت تعریف‌شده باشند.',
