@@ -2,18 +2,25 @@ import type { AppConfig, Env } from '../types/env';
 
 const PREFIX = 'builder_session:';
 const TTL_SECONDS = 60 * 60 * 6;
+const memorySessions = new Map<number, number>();
 
 export async function startBuilderSession(config: AppConfig, chatId: number, env?: Env): Promise<void> {
+  memorySessions.set(chatId, Date.now() + TTL_SECONDS * 1000);
   await config.chatMemory?.put(`${PREFIX}${chatId}`, JSON.stringify({ active: true, startedAt: Date.now() }), { expirationTtl: TTL_SECONDS });
   await setD1Session(env, chatId, true);
 }
 
 export async function endBuilderSession(config: AppConfig, chatId: number, env?: Env): Promise<void> {
+  memorySessions.delete(chatId);
   await config.chatMemory?.delete(`${PREFIX}${chatId}`);
   await setD1Session(env, chatId, false);
 }
 
 export async function isBuilderSessionActive(config: AppConfig, chatId: number, env?: Env): Promise<boolean> {
+  const memoryUntil = memorySessions.get(chatId) ?? 0;
+  if (memoryUntil > Date.now()) return true;
+  if (memoryUntil) memorySessions.delete(chatId);
+
   const value = await config.chatMemory?.get(`${PREFIX}${chatId}`);
   if (value) return true;
   return getD1Session(env, chatId);
