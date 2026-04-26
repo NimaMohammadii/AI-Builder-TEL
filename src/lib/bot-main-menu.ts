@@ -1,87 +1,84 @@
 import type { TelegramUiMarkup } from "./telegram-ui";
 
 export const MAIN_MENU_TEXT = [
-  "✨ به Vexa خوش اومدی",
+  "⚡️ Vexa Control Center",
   "",
-  "من دستیار هوشمند ربات تلگرام تو هستم؛ برای پاسخ‌گویی، مدیریت ربات، ساخت منو، مموری پروژه، آمار، تولید تصویر و دانلود لینک‌های پشتیبانی‌شده کنارت هستم.",
+  "اینجا فقط دو مسیر اصلی داری:",
   "",
-  "از دکمه‌های زیر شروع کن یا مستقیم خواسته‌ات رو بنویس 👇"
+  "🔌 کانکت — وضعیت ربات وصل‌شده، پرامپت، اتصال AI و مدیریت ربات",
+  "✨ ساخت ربات بدون کدنویسی — هر چیزی می‌خوای با متن بگو تا برای رباتت ساخته و اعمال بشه",
+  "",
+  "یکی رو انتخاب کن 👇"
 ].join("\n");
 
-export const HELP_MENU_TEXT = [
-  "🚀 قابلیت‌های اصلی Vexa",
+export const BUILDER_START_TEXT = [
+  "✨ وارد حالت ساخت بدون کدنویسی شدی",
   "",
-  "🤖 چت هوشمند: پاسخ سریع و طبیعی به پیام‌ها",
-  "🧠 مموری پروژه: ذخیره نکات مهم درباره ربات و کسب‌وکار",
-  "📊 آمار ربات: نمایش تعداد چت‌های ثبت‌شده",
-  "🆔 اطلاعات ربات: نمایش آیدی عددی و مشخصات ربات",
-  "🧩 منو و کامند: ساخت ساختار منو برای محصولات، قیمت‌ها و پشتیبانی",
-  "🎨 تصویر: ساخت تصویر با توضیح متنی",
-  "🎬 ویدیو: ساخت ویدیو در صورت فعال بودن Grok Video",
-  "🖼 تحلیل تصویر: بررسی تصویر در صورت فعال بودن Grok",
-  "📥 لینک اینستاگرام: دانلود پست‌ها و ریلزهای عمومی پشتیبانی‌شده",
+  "از اینجا به بعد هر چیزی بنویسی، من به چشم دستور ساخت/ویرایش ربات نگاه می‌کنم.",
   "",
-  "نمونه بگو:",
-  "• چند نفر با رباتم کار می‌کنن؟",
-  "• آیدی عددی رباتم چنده؟",
-  "• یه منو برای محصولات، قیمت‌ها و پشتیبانی بساز",
-  "• یادت باشه این ربات برای فروشگاه لباسه"
+  "مثال:",
+  "• برای رباتم منوی شیک بساز",
+  "• پرامپتش رو صمیمی‌تر کن",
+  "• دکمه پشتیبانی اضافه کن",
+  "• جواب‌های ربات رو کوتاه و حرفه‌ای کن",
+  "",
+  "وقتی کارت تموم شد دکمه «اتمام ساخت» رو بزن."
 ].join("\n");
 
-export const BOT_INFO_TEXT = [
-  "🆔 اطلاعات ربات",
+export const BUILDER_DONE_TEXT = [
+  "✅ حالت ساخت بسته شد",
   "",
-  "برای دیدن آیدی عددی همین پیام رو بفرست:",
-  "آیدی عددی رباتم چنده؟"
-].join("\n");
-
-export const BOT_STATS_TEXT = [
-  "📊 آمار ربات",
-  "",
-  "برای دیدن تعداد چت‌های ثبت‌شده بفرست:",
-  "چند نفر با رباتم کار می‌کنن؟"
-].join("\n");
-
-export const BOT_MEMORY_TEXT = [
-  "🧠 مموری پروژه",
-  "",
-  "هر چیزی که باید درباره پروژه یا کسب‌وکارت یادم بمونه، اینجوری بفرست:",
-  "یادت باشه این ربات برای فروشگاه لباسه"
-].join("\n");
-
-export const BOT_MENU_BUILDER_TEXT = [
-  "🧩 ساخت منو و دکمه",
-  "",
-  "برای طراحی منو، واضح بگو چه بخش‌هایی می‌خوای:",
-  "یه منو برای محصولات، قیمت‌ها، ثبت سفارش و پشتیبانی بساز",
-  "",
-  "من ساختار کامندها رو آماده و در دیتابیس پروژه ذخیره می‌کنم."
+  "برگشتی به منوی اصلی."
 ].join("\n");
 
 export function buildMainMenuKeyboard(): TelegramUiMarkup {
   return {
     keyboard: [
-      [{ text: "🚀 قابلیت‌ها" }, { text: "📊 آمار ربات" }],
-      [{ text: "🆔 آیدی ربات" }, { text: "🧠 مموری" }],
-      [{ text: "🧩 ساخت منو" }, { text: "🎨 ساخت تصویر" }],
-      [{ text: "📥 دانلود اینستاگرام" }, { text: "⚙️ راهنما" }],
-      [{ text: "🏠 منوی اصلی" }]
+      [{ text: "🔌 کانکت" }],
+      [{ text: "✨ ساخت ربات بدون کدنویسی" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
-    input_field_placeholder: "یکی از گزینه‌ها رو انتخاب کن یا مستقیم پیام بده..."
+    input_field_placeholder: "یکی از دو گزینه اصلی رو انتخاب کن..."
   };
 }
 
-export function mapMenuButtonToText(text: string): string | null {
+export function buildBuilderKeyboard(): TelegramUiMarkup {
+  return {
+    keyboard: [[{ text: "✅ اتمام ساخت" }]],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+    input_field_placeholder: "دستور ساخت یا ویرایش رباتت رو بنویس..."
+  };
+}
+
+export function buildConnectInlineKeyboard(): TelegramUiMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: "🟢 فعال/غیرفعال AI", callback_data: "connect:toggle_ai" },
+        { text: "🗑 حذف ربات", callback_data: "connect:delete_bot" }
+      ],
+      [
+        { text: "🔄 بروزرسانی وضعیت", callback_data: "connect:refresh" }
+      ]
+    ]
+  };
+}
+
+export function isMainMenuRequest(text: string): boolean {
   const value = text.trim();
-  if (["/start", "/menu", "start", "menu", "منو", "🏠 منوی اصلی"].includes(value)) return MAIN_MENU_TEXT;
-  if (value === "🚀 قابلیت‌ها" || value === "⚙️ راهنما" || value === "/help") return HELP_MENU_TEXT;
-  if (value === "🆔 آیدی ربات") return BOT_INFO_TEXT;
-  if (value === "📊 آمار ربات") return BOT_STATS_TEXT;
-  if (value === "🧠 مموری") return BOT_MEMORY_TEXT;
-  if (value === "🧩 ساخت منو") return BOT_MENU_BUILDER_TEXT;
-  if (value === "🎨 ساخت تصویر") return "🎨 هر تصویری می‌خوای با جزئیات بگو؛ مثلاً: یه پوستر مدرن برای فروش ویژه کفش بساز";
-  if (value === "📥 دانلود اینستاگرام") return "📥 لینک پست یا ریلز عمومی اینستاگرام رو بفرست تا دانلودش کنم.";
-  return null;
+  return ["/start", "/menu", "start", "menu", "منو", "🏠 منوی اصلی"].includes(value);
+}
+
+export function isConnectRequest(text: string): boolean {
+  return text.trim() === "🔌 کانکت";
+}
+
+export function isBuilderStartRequest(text: string): boolean {
+  return text.trim() === "✨ ساخت ربات بدون کدنویسی";
+}
+
+export function isBuilderDoneRequest(text: string): boolean {
+  return text.trim() === "✅ اتمام ساخت";
 }
