@@ -8,6 +8,7 @@ export interface NoCodeBuildInput {
   config: AppConfig;
   workspaceId: string;
   botId: string;
+  botToken?: string;
   text: string;
 }
 
@@ -31,9 +32,10 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
       botId: input.botId,
       requestText: text
     });
-    const telegram = await setBotCommands(input.config, menu.commands);
+    const commandConfig = input.botToken ? { ...input.config, telegramBotToken: input.botToken } : input.config;
+    const telegram = await setBotCommands(commandConfig, menu.commands);
     details.push(`منو ساخته شد: ${menu.commands.map((item) => '/' + item.command).join(', ')}`);
-    details.push(telegram.ok ? 'کامندها روی تلگرام هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
+    details.push(telegram.ok ? 'کامندها روی ربات متصل هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
   }
 
   if (wantsPromptOrBehavior(text) || details.length === 0) {
