@@ -22,6 +22,7 @@ export const BUILDER_START_TEXT = [
   "• دکمه پشتیبانی اضافه کن",
   "• جواب‌های ربات رو کوتاه و حرفه‌ای کن",
   "",
+  "برای پاک‌کردن کامل چیزهایی که برای این ربات ساخته شده، دکمه «ریست ربات» رو بزن.",
   "وقتی کارت تموم شد دکمه «اتمام ساخت» رو بزن."
 ].join("\n");
 
@@ -29,6 +30,13 @@ export const BUILDER_DONE_TEXT = [
   "✅ حالت ساخت بسته شد",
   "",
   "برگشتی به منوی اصلی."
+].join("\n");
+
+export const BUILDER_RESET_TEXT = [
+  "♻️ ربات ریست شد",
+  "",
+  "همه منوها، کامندها، تنظیمات اجرایی، دستورهای ساخت و حافظه‌های مربوط به ساخت این ربات پاک شدند.",
+  "حالا می‌تونی از صفر دوباره بسازیش."
 ].join("\n");
 
 export function buildMainMenuKeyboard(): TelegramUiMarkup {
@@ -45,7 +53,7 @@ export function buildMainMenuKeyboard(): TelegramUiMarkup {
 
 export function buildBuilderKeyboard(): TelegramUiMarkup {
   return {
-    keyboard: [[{ text: "✅ اتمام ساخت" }]],
+    keyboard: [[{ text: "✅ اتمام ساخت" }, { text: "♻️ ریست ربات" }]],
     resize_keyboard: true,
     one_time_keyboard: false,
     input_field_placeholder: "دستور ساخت یا ویرایش رباتت رو بنویس..."
@@ -81,4 +89,8 @@ export function isBuilderStartRequest(text: string): boolean {
 
 export function isBuilderDoneRequest(text: string): boolean {
   return text.trim() === "✅ اتمام ساخت";
+}
+
+export function isBuilderResetRequest(text: string): boolean {
+  return text.trim() === "♻️ ریست ربات";
 }
