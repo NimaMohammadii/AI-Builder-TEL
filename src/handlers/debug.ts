@@ -4,9 +4,11 @@ import { jsonOk } from "../utils/http";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
 
-export async function handleSetWebhook(config: AppConfig): Promise<Response> {
-  const result = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, undefined, config.telegramWebhookSecret);
-  return jsonOk({ ok: result.ok, result }, result.ok ? 200 : 502);
+export async function handleSetWebhook(config: AppConfig, env?: Env): Promise<Response> {
+  const core = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, undefined, config.telegramWebhookSecret);
+  const customers = env ? await syncCustomerBotWebhooks(config, env) : [];
+  const ok = core.ok && customers.every((item) => item.ok);
+  return jsonOk({ ok, core, customers }, ok ? 200 : 502);
 }
 
 export async function handleDeleteWebhook(config: AppConfig): Promise<Response> {
@@ -77,6 +79,19 @@ export function isAuthorizedDebugRequest(request: Request, adminDebugToken?: str
   if (!adminDebugToken) return false;
   const token = request.headers.get("x-admin-token");
   return token === adminDebugToken;
+}
+
+async function syncCustomerBotWebhooks(config: AppConfig, env: Env) {
+  const db = env.DB;
+  if (!db) return [];
+  const result = await db.prepare("SELECT bot_username, encrypted_token FROM telegram_bots WHERE is_active = 1 AND bot_type = 'customer' AND encrypted_token IS NOT NULL AND encrypted_token != ''").all<{ bot_username: string; encrypted_token: string }>();
+  const bots = result.results ?? [];
+  const synced = [] as Array<{ botUsername: string; ok: boolean; description?: string }>;
+  for (const bot of bots) {
+    const item = await setWebhookWithCallbacks(bot.encrypted_token, config.publicWebhookUrl, bot.bot_username, config.telegramWebhookSecret);
+    synced.push({ botUsername: bot.bot_username, ok: item.ok, description: item.description });
+  }
+  return synced;
 }
 
 async function setWebhookWithCallbacks(token: string, publicWebhookUrl: string, botUsername?: string, secretToken?: string) {
