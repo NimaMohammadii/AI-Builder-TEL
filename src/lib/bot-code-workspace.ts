@@ -50,10 +50,30 @@ export async function saveBotRuntimeCode(env: Env, input: {
 }
 
 export async function loadBotRuntimeCode(env: Env, botId: string): Promise<BotRuntimeCodePlan | null> {
+  const dbPlan = await loadBotRuntimeCodeFromD1(env, botId);
+  if (dbPlan) {
+    await env.CHAT_MEMORY?.put(`bot_runtime_code:${botId}`, JSON.stringify(dbPlan), { expirationTtl: 60 * 60 * 24 * 30 });
+    await env.BOT_BUILDER_KV?.put(`bot_runtime_code:${botId}`, JSON.stringify(dbPlan), { expirationTtl: 60 * 60 * 24 * 30 });
+    return dbPlan;
+  }
   const fromKv = await env.CHAT_MEMORY?.get(`bot_runtime_code:${botId}`) ?? await env.BOT_BUILDER_KV?.get(`bot_runtime_code:${botId}`);
   if (fromKv) {
     try { return JSON.parse(fromKv) as BotRuntimeCodePlan; } catch {}
   }
+  return null;
+}
+
+export async function loadBotRuntimeCodeDebug(env: Env, botId: string): Promise<{ source: 'd1' | 'kv' | 'none'; plan: BotRuntimeCodePlan | null }> {
+  const dbPlan = await loadBotRuntimeCodeFromD1(env, botId);
+  if (dbPlan) return { source: 'd1', plan: dbPlan };
+  const fromKv = await env.CHAT_MEMORY?.get(`bot_runtime_code:${botId}`) ?? await env.BOT_BUILDER_KV?.get(`bot_runtime_code:${botId}`);
+  if (fromKv) {
+    try { return { source: 'kv', plan: JSON.parse(fromKv) as BotRuntimeCodePlan }; } catch {}
+  }
+  return { source: 'none', plan: null };
+}
+
+async function loadBotRuntimeCodeFromD1(env: Env, botId: string): Promise<BotRuntimeCodePlan | null> {
   const db = getDb(env);
   if (!db) return null;
   await ensureBotRuntimeCodeTable(db);
