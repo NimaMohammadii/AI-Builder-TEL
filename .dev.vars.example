@@ -1,3 +1,2 @@
-ADMIN_API_KEY=change-me-admin-key
-OPENAI_API_KEY=sk-change-me
-TOKEN_ENCRYPTION_KEY=change-me-32-plus-chars-random
+TELEGRAM_BOT_TOKEN=123456789:replace-with-your-telegram-bot-token
+OPENAI_API_KEY=sk-replace-with-your-openai-api-key
