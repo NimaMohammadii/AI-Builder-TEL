@@ -6,6 +6,7 @@ export interface Env {
   TELEGRAM_BOT_TOKEN: string;
   PUBLIC_WEBHOOK_URL: string;
   CHAT_MEMORY?: KVNamespace;
+  BOT_BUILDER_KV?: KVNamespace;
   DB?: D1Database;
   AI_PROVIDER?: AiProvider;
   OPENAI_MODEL?: string;
