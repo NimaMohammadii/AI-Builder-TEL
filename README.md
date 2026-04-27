@@ -2,7 +2,14 @@
 
 No-code AI Telegram bot builder built for Cloudflare Workers.
 
-This project runs a multi-tenant Telegram bot runtime on Cloudflare. AI generates bot blueprints; the Worker executes those blueprints securely without generating unsafe per-user code.
+The Worker uses only two environment secrets:
+
+```env
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+OPENAI_API_KEY=your-openai-api-key
+```
+
+Everything else is defined in code/config.
 
 ## Stack
 
@@ -12,23 +19,28 @@ This project runs a multi-tenant Telegram bot runtime on Cloudflare. AI generate
 - Cloudflare R2
 - Hono
 - TypeScript
-- OpenAI-compatible chat completions API
+- OpenAI chat completions
 - Telegram Bot API webhooks
+
+## Model
+
+The OpenAI model is hardcoded in `src/utils.ts`:
+
+```ts
+export const OPENAI_MODEL = 'gpt-5-mini';
+```
 
 ## Features
 
-- Create Telegram bots from natural-language prompts
-- Multi-bot runtime from one Worker deployment
-- AI-generated blueprint/config model
+- Create Telegram bot blueprints from natural-language prompts
+- Runtime executes safe JSON config instead of generated user code
 - Telegram webhook publishing
 - D1 persistence
 - KV bot cache
 - KV rate limiting
 - R2-ready asset binding
-- Encrypted bot-token storage when `TOKEN_ENCRYPTION_KEY` is configured
 - Products/delivery flow
 - AI support replies
-- Admin API protection with `ADMIN_API_KEY`
 
 ## Local setup
 
@@ -40,9 +52,8 @@ cp .dev.vars.example .dev.vars
 Edit `.dev.vars`:
 
 ```env
-ADMIN_API_KEY=your-admin-key
-OPENAI_API_KEY=your-openai-key
-TOKEN_ENCRYPTION_KEY=long-random-secret-at-least-32-chars
+TELEGRAM_BOT_TOKEN=123456789:your-telegram-bot-token
+OPENAI_API_KEY=sk-your-openai-key
 ```
 
 Run locally:
@@ -82,18 +93,11 @@ Apply migrations:
 npm run db:migrate:prod
 ```
 
-Set secrets:
+Set only these secrets:
 
 ```bash
-npx wrangler secret put ADMIN_API_KEY
+npx wrangler secret put TELEGRAM_BOT_TOKEN
 npx wrangler secret put OPENAI_API_KEY
-npx wrangler secret put TOKEN_ENCRYPTION_KEY
-```
-
-Set your real Worker URL in `wrangler.jsonc`:
-
-```json
-"PUBLIC_BASE_URL": "https://your-worker.your-subdomain.workers.dev"
 ```
 
 Deploy:
@@ -103,12 +107,6 @@ npm run deploy
 ```
 
 ## API
-
-All admin endpoints require:
-
-```http
-Authorization: Bearer YOUR_ADMIN_API_KEY
-```
 
 ### Health
 
@@ -121,14 +119,12 @@ GET /health
 ```http
 POST /api/bots
 Content-Type: application/json
-Authorization: Bearer YOUR_ADMIN_API_KEY
 ```
 
 ```json
 {
   "title": "Course Sales Bot",
   "ownerTelegramId": "123456789",
-  "telegramToken": "123456:ABC...",
   "username": "my_course_bot",
   "prompt": "یک ربات فروش دوره زبان بساز با محصولات، پشتیبانی هوشمند، لحن حرفه‌ای و فارسی."
 }
@@ -141,7 +137,6 @@ Response includes `botId` and generated `blueprint`.
 ```http
 POST /api/bots/:id/products
 Content-Type: application/json
-Authorization: Bearer YOUR_ADMIN_API_KEY
 ```
 
 ```json
@@ -158,16 +153,14 @@ Authorization: Bearer YOUR_ADMIN_API_KEY
 
 ```http
 POST /api/bots/:id/publish
-Authorization: Bearer YOUR_ADMIN_API_KEY
 ```
 
-This calls Telegram `setWebhook` and activates the bot.
+This calls Telegram `setWebhook` using `TELEGRAM_BOT_TOKEN` and activates the bot.
 
 ### Get bot
 
 ```http
 GET /api/bots/:id
-Authorization: Bearer YOUR_ADMIN_API_KEY
 ```
 
 ### Update blueprint
@@ -175,7 +168,6 @@ Authorization: Bearer YOUR_ADMIN_API_KEY
 ```http
 PUT /api/bots/:id/blueprint
 Content-Type: application/json
-Authorization: Bearer YOUR_ADMIN_API_KEY
 ```
 
 Send a full `BotBlueprint` JSON object.
@@ -192,20 +184,14 @@ Telegram user
   -> Telegram Bot API response
 ```
 
-The key design choice is config generation, not code generation:
+## Important
 
-- AI creates a safe JSON blueprint.
-- The runtime executes known actions.
-- Bots can be updated without redeploying user code.
-- Security and abuse controls stay centralized.
+`PUBLIC_BASE_URL`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and app name are hardcoded in `src/utils.ts`.
 
-## Next build targets
+Current Worker URL:
 
-- Telegram Mini App dashboard
-- BotFather/managed-bot onboarding flow
-- Payments and subscription logic
-- R2 file uploads and protected delivery links
-- Per-bot analytics dashboard
-- Template gallery
-- Clone-this-bot growth loop
-- Agency/white-label tenant controls
+```text
+https://builder-tel.nimamohammadii.workers.dev
+```
+
+If your deployed Worker URL changes, update `PUBLIC_BASE_URL` in `src/utils.ts`.
