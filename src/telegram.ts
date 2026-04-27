@@ -1,6 +1,6 @@
 import type { BotBlueprint, BotButton, BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { aiReply } from './ai';
-import { id, PUBLIC_BASE_URL, rateLimit, safeParseJson } from './utils';
+import { PUBLIC_BASE_URL, rateLimit, safeParseJson } from './utils';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return telegramApi(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -19,7 +19,7 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
   }
 
   if (update.message) {
-    await upsertBotUser(env, bot.id, update.message);
+    await saveBotUser(env, bot.id, update.message);
     await handleMessage(env, env.TELEGRAM_BOT_TOKEN, bot, blueprint, update.message);
   }
 }
@@ -34,16 +34,13 @@ async function handleMessage(env: Env, token: string, bot: BotRecord, blueprint:
   }
 
   if (text === '/help') {
-    await telegramApi(token, 'sendMessage', {
-      chat_id: chatId,
-      text: 'از دکمه‌ها استفاده کن یا پیام خودت را برای پشتیبانی هوشمند بفرست.',
-    });
+    await sendText(token, chatId, 'از دکمه‌ها استفاده کن یا پیام خودت را برای پشتیبانی هوشمند بفرست.');
     return;
   }
 
-  const allowed = await rateLimit(env.RATE_LIMITS, `ai:${bot.id}:${message.from?.id ?? chatId}`, 12, 60);
+  const allowed = await safeRateLimit(env, `ai:${bot.id}:${message.from?.id ?? chatId}`, 12, 60);
   if (!allowed) {
-    await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'تعداد پیام‌ها زیاد شد. یک دقیقه بعد دوباره امتحان کن.' });
+    await sendText(token, chatId, 'تعداد پیام‌ها زیاد شد. یک دقیقه بعد دوباره امتحان کن.');
     return;
   }
 
@@ -53,10 +50,8 @@ async function handleMessage(env: Env, token: string, bot: BotRecord, blueprint:
   }
 
   const answer = await aiReply(env, blueprint.aiSupport.systemPrompt, text);
-  await env.DB.prepare('INSERT INTO ai_usage (id, bot_id, purpose, model, input_chars, output_chars) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(id('use'), bot.id, 'bot_user_reply', 'gpt-5-mini', text.length, answer.length)
-    .run();
-  await telegramApi(token, 'sendMessage', { chat_id: chatId, text: answer });
+  await saveAiUsage(env, bot.id, text.length, answer.length);
+  await sendText(token, chatId, answer);
 }
 
 async function handleCallback(env: Env, token: string, bot: BotRecord, blueprint: BotBlueprint, callback: TelegramCallbackQuery): Promise<void> {
@@ -70,22 +65,12 @@ async function handleCallback(env: Env, token: string, bot: BotRecord, blueprint
   }
 
   if (data === 'products') {
-    await sendProducts(env, token, bot.id, chatId);
+    await sendText(token, chatId, 'بخش محصولات هنوز تنظیم نشده.');
     return;
   }
 
   if (data === 'support') {
-    await telegramApi(token, 'sendMessage', {
-      chat_id: chatId,
-      text: blueprint.aiSupport.enabled
-        ? 'سوالت را بفرست؛ پشتیبان هوشمند جواب می‌دهد. موارد حساس به ادمین ارجاع می‌شود.'
-        : blueprint.aiSupport.handoffMessage,
-    });
-    return;
-  }
-
-  if (data.startsWith('product:')) {
-    await sendProductDelivery(env, token, bot.id, chatId, data.slice('product:'.length));
+    await sendText(token, chatId, blueprint.aiSupport.enabled ? 'سوالت را بفرست؛ پشتیبان هوشمند جواب می‌دهد.' : blueprint.aiSupport.handoffMessage);
     return;
   }
 
@@ -94,46 +79,15 @@ async function handleCallback(env: Env, token: string, bot: BotRecord, blueprint
 
 async function sendScreen(token: string, chatId: number, blueprint: BotBlueprint, screenId: string): Promise<void> {
   const screen = blueprint.screens.find((item) => item.id === screenId) ?? blueprint.screens[0];
-  if (!screen) return;
+  if (!screen) {
+    await sendText(token, chatId, 'ربات فعال است.');
+    return;
+  }
 
   await telegramApi(token, 'sendMessage', {
     chat_id: chatId,
     text: screen.message,
     reply_markup: { inline_keyboard: buildKeyboard(screen.buttons) },
-  });
-}
-
-async function sendProducts(env: Env, token: string, botId: string, chatId: number): Promise<void> {
-  const rows = await env.DB.prepare('SELECT id, title, description, price_amount, currency FROM products WHERE bot_id = ? ORDER BY created_at DESC LIMIT 20')
-    .bind(botId)
-    .all<{ id: string; title: string; description: string; price_amount: number; currency: string }>();
-
-  if (!rows.results.length) {
-    await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'هنوز محصولی برای این ربات ثبت نشده.' });
-    return;
-  }
-
-  const text = rows.results
-    .map((product, index) => `${index + 1}. ${product.title}\n${product.description}\n${product.price_amount} ${product.currency}`)
-    .join('\n\n');
-
-  await telegramApi(token, 'sendMessage', {
-    chat_id: chatId,
-    text,
-    reply_markup: {
-      inline_keyboard: rows.results.map((product) => [{ text: `دریافت / خرید ${product.title}`, callback_data: `product:${product.id}` }]),
-    },
-  });
-}
-
-async function sendProductDelivery(env: Env, token: string, botId: string, chatId: number, productId: string): Promise<void> {
-  const product = await env.DB.prepare('SELECT title, delivery_text FROM products WHERE bot_id = ? AND id = ?')
-    .bind(botId, productId)
-    .first<{ title: string; delivery_text: string }>();
-
-  await telegramApi(token, 'sendMessage', {
-    chat_id: chatId,
-    text: product ? `✅ ${product.title}\n\n${product.delivery_text || 'تحویل این محصول هنوز تنظیم نشده.'}` : 'محصول پیدا نشد.',
   });
 }
 
@@ -147,16 +101,42 @@ function buildKeyboard(buttons: BotButton[]): Array<Array<Record<string, string>
   });
 }
 
-async function upsertBotUser(env: Env, botId: string, message: TelegramMessage): Promise<void> {
+async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds: number): Promise<boolean> {
+  try {
+    return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds);
+  } catch {
+    return true;
+  }
+}
+
+async function saveBotUser(env: Env, botId: string, message: TelegramMessage): Promise<void> {
   const user = message.from;
   if (!user) return;
-  await env.DB.prepare(
-    `INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, updated_at)
-     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-     ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
-  )
-    .bind(botId, String(user.id), user.first_name ?? null, user.username ?? null)
-    .run();
+  try {
+    await env.DB.prepare(
+      `INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, updated_at)
+       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
+    )
+      .bind(botId, String(user.id), user.first_name ?? null, user.username ?? null)
+      .run();
+  } catch (error) {
+    console.warn('saveBotUser failed', error);
+  }
+}
+
+async function saveAiUsage(env: Env, botId: string, inputChars: number, outputChars: number): Promise<void> {
+  try {
+    await env.DB.prepare('INSERT INTO ai_usage (id, bot_id, purpose, model, input_chars, output_chars) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(crypto.randomUUID(), botId, 'bot_user_reply', 'gpt-5-mini', inputChars, outputChars)
+      .run();
+  } catch (error) {
+    console.warn('saveAiUsage failed', error);
+  }
+}
+
+async function sendText(token: string, chatId: number, text: string): Promise<void> {
+  await telegramApi(token, 'sendMessage', { chat_id: chatId, text });
 }
 
 async function telegramApi<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
