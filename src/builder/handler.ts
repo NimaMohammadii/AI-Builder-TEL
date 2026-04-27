@@ -1,14 +1,15 @@
-import { answerCallback, builderKeyboard, editMessage, getMe, mainMenuKeyboard, runtimeKeyboard, sendMessage, setCustomerCommands, setWebhook } from '../telegram';
+import { answerCallback, builderKeyboard, editMessage, getMe, mainMenuKeyboard, sendMessage, setCustomerCommands, setWebhook } from '../telegram';
 import { clearBuilderMode, getActiveBotForOwner, getBuilderMode, saveCustomerBot, setBotAiEnabled, setBotAiPrompt, setBuilderMode, updateBotProgram, upsertUser } from '../db';
 import { defaultProgram, planBotProgram } from '../ai';
 import type { AppConfig, Env, TelegramCallbackQuery, TelegramMessage } from '../types';
 
 export async function handleBuilderMessage(env: Env, config: AppConfig, message: TelegramMessage): Promise<void> {
   const text = (message.text ?? '').trim();
+  const action = detectMainAction(text);
   const userId = await upsertUser(env, message.from ?? { id: message.chat.id });
   const mode = await getBuilderMode(env, message.chat.id);
 
-  if (mode === 'build' && !isBuilderControl(text)) {
+  if (mode === 'build' && action !== 'done' && action !== 'reset') {
     await buildCustomerBot(env, config, message, userId, text);
     return;
   }
@@ -26,12 +27,12 @@ export async function handleBuilderMessage(env: Env, config: AppConfig, message:
     return;
   }
 
-  if (isStart(text)) {
+  if (action === 'start') {
     await sendMessage(config.telegramBotToken, { chatId: message.chat.id, text: mainMenuText(), replyMarkup: mainMenuKeyboard() });
     return;
   }
 
-  if (text === '🔌 کانکت') {
+  if (action === 'connect') {
     await showConnect(env, config, message.chat.id, userId);
     return;
   }
@@ -41,24 +42,24 @@ export async function handleBuilderMessage(env: Env, config: AppConfig, message:
     return;
   }
 
-  if (text === '🤖 AI') {
+  if (action === 'ai') {
     await showAiPanel(env, config, message.chat.id, userId);
     return;
   }
 
-  if (text === '✨ ساخت ربات بدون کدنویسی') {
+  if (action === 'builder') {
     await setBuilderMode(env, message.chat.id, 'build');
     await sendMessage(config.telegramBotToken, { chatId: message.chat.id, text: builderStartText(), replyMarkup: builderKeyboard() });
     return;
   }
 
-  if (text === '✅ اتمام ساخت') {
+  if (action === 'done') {
     await clearBuilderMode(env, message.chat.id);
     await sendMessage(config.telegramBotToken, { chatId: message.chat.id, text: '✅ حالت ساخت بسته شد.\n\n' + mainMenuText(), replyMarkup: mainMenuKeyboard() });
     return;
   }
 
-  if (text === '♻️ ریست ربات') {
+  if (action === 'reset') {
     const bot = await getActiveBotForOwner(env, userId);
     if (!bot) {
       await sendMessage(config.telegramBotToken, { chatId: message.chat.id, text: 'رباتی برای ریست پیدا نشد.', replyMarkup: builderKeyboard() });
@@ -188,10 +189,28 @@ function builderStartText(): string {
   return ['✨ حالت ساخت فعال شد.', '', 'هر چیزی می‌خوای ربات کاربر انجام بده بنویس.', 'مثال: یک ربات رزرو وقت بساز که اسم، شماره، تاریخ و ساعت بگیره و خلاصه بده.'].join('\n');
 }
 
-function isStart(text: string): boolean {
-  return ['/start', '/menu', 'start', 'منو'].includes(text);
+type MainAction = 'start' | 'connect' | 'ai' | 'builder' | 'done' | 'reset' | 'none';
+
+function detectMainAction(text: string): MainAction {
+  const value = normalizeMenuText(text);
+  if (['/start', '/menu', 'start', 'menu', 'منو'].includes(text.trim())) return 'start';
+  if (value.includes('کانکت') || value === 'connect') return 'connect';
+  if (value === 'ai' || value.includes('هوش مصنوعی')) return 'ai';
+  if (value.includes('ساخت ربات بدون کدنویسی') || value.includes('ساخت بدون کدنویسی')) return 'builder';
+  if (value.includes('اتمام ساخت')) return 'done';
+  if (value.includes('ریست ربات')) return 'reset';
+  return 'none';
+}
+
+function normalizeMenuText(text: string): string {
+  return text
+    .replace(/[🔌🤖✨✅♻️]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 function isBuilderControl(text: string): boolean {
-  return ['✅ اتمام ساخت', '♻️ ریست ربات'].includes(text);
+  const action = detectMainAction(text);
+  return action === 'done' || action === 'reset';
 }
