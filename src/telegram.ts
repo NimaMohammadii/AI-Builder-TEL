@@ -2,10 +2,9 @@ import type { BotBlueprint, BotButton, BotRecord, Env, TelegramCallbackQuery, Te
 import { aiReply } from './ai';
 import { id, PUBLIC_BASE_URL, rateLimit, safeParseJson } from './utils';
 
-export async function setTelegramWebhook(env: Env, bot: BotRecord): Promise<{ ok: boolean; description?: string }> {
-  const url = `${PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}`;
+export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return telegramApi(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
-    url,
+    url: `${PUBLIC_BASE_URL}/telegram`,
     allowed_updates: ['message', 'callback_query'],
     drop_pending_updates: true,
   });
