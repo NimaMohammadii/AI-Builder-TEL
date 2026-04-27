@@ -9,7 +9,7 @@
   },
   "vars": {
     "APP_NAME": "AI Builder TEL",
-    "PUBLIC_BASE_URL": "http://localhost:8787",
+    "PUBLIC_BASE_URL": "https://builder-tel.nimamohammadii.workers.dev",
     "OPENAI_BASE_URL": "https://api.openai.com/v1",
     "OPENAI_MODEL": "gpt-4.1-mini"
   },
@@ -22,12 +22,12 @@
   ],
   "kv_namespaces": [
     {
-      "binding": "bot-builder-TEL",
+      "binding": "BOT_CACHE",
       "id": "f2eb4c7696e74cc9ad889b048c87fc95"
     },
     {
       "binding": "RATE_LIMITS",
-      "id": "00000000000000000000000000000000"
+      "id": "f2eb4c7696e74cc9ad889b048c87fc95"
     }
   ],
   "r2_buckets": [
