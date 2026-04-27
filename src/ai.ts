@@ -1,4 +1,5 @@
 import type { BotBlueprint, Env } from './types';
+import { OPENAI_BASE_URL, OPENAI_MODEL } from './utils';
 
 const blueprintSchemaHint = `Return only valid JSON matching this shape:
 {
@@ -71,14 +72,14 @@ export function defaultBlueprint(prompt: string): BotBlueprint {
 export async function buildBlueprint(env: Env, userPrompt: string): Promise<BotBlueprint> {
   if (!env.OPENAI_API_KEY) return defaultBlueprint(userPrompt);
 
-  const response = await fetch(`${env.OPENAI_BASE_URL}/chat/completions`, {
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL,
+      model: OPENAI_MODEL,
       temperature: 0.35,
       response_format: { type: 'json_object' },
       messages: [
@@ -108,14 +109,14 @@ export async function buildBlueprint(env: Env, userPrompt: string): Promise<BotB
 export async function aiReply(env: Env, systemPrompt: string, message: string): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'پاسخ AI هنوز فعال نشده. OPENAI_API_KEY را در Cloudflare Secrets تنظیم کن.';
 
-  const response = await fetch(`${env.OPENAI_BASE_URL}/chat/completions`, {
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL,
+      model: OPENAI_MODEL,
       temperature: 0.45,
       messages: [
         { role: 'system', content: systemPrompt },
