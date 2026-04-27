@@ -3,6 +3,7 @@ import type { TelegramMessage } from '../types/telegram';
 import { sendUiMessage } from '../lib/telegram-ui';
 import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse, type RuntimeBotConfig } from '../lib/bot-runtime-config';
 import { loadBotRuntimeCode } from '../lib/bot-code-workspace';
+import { executeBotProgram, programFromRuntimeConfig } from '../lib/bot-program-runtime';
 import { getDefaultAiProfileByBotId } from '../repositories/ai-profiles';
 
 export async function handleBuiltBotRuntime(message: TelegramMessage, config: AppConfig, env: Env, botId: string | null, text: string): Promise<boolean> {
@@ -21,21 +22,12 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     return true;
   }
 
-  if (isStart(value)) {
+  const program = codePlan?.program ?? programFromRuntimeConfig(runtime);
+  const programResult = await executeBotProgram(env, { botId, chatId: message.chat.id, text: value, program });
+  if (programResult.handled && programResult.text) {
     await sendUiMessage(config, {
       chatId: message.chat.id,
-      text: runtime.welcomeText,
-      replyToMessageId: message.message_id,
-      replyMarkup: buildRuntimeKeyboard(runtime)
-    });
-    return true;
-  }
-
-  const byButton = runtime.buttons.find((button) => button.label === value);
-  if (byButton) {
-    await sendUiMessage(config, {
-      chatId: message.chat.id,
-      text: byButton.response,
+      text: programResult.text,
       replyToMessageId: message.message_id,
       replyMarkup: buildRuntimeKeyboard(runtime)
     });
@@ -55,10 +47,10 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     }
   }
 
-  if (await isRuntimeAiDisabled(env, botId)) {
+  if (await isRuntimeAiDisabled(env, botId) || program.fallback.aiEnabled === false) {
     await sendUiMessage(config, {
       chatId: message.chat.id,
-      text: 'این پیام برای ربات تعریف نشده. از دکمه‌ها یا دستورهای موجود استفاده کن.',
+      text: program.fallback.text,
       replyToMessageId: message.message_id,
       replyMarkup: buildRuntimeKeyboard(runtime)
     });
@@ -84,13 +76,12 @@ async function answerWithRuntimeAI(config: AppConfig, runtime: RuntimeBotConfig,
   const instructions = runtime.aiInstructions?.trim() || 'مثل همین ربات تلگرام پاسخ بده و کاربر را راهنمایی کن.';
   const prompt = [
     'تو AI اجرایی یک ربات تلگرام هستی.',
-    'این ربات یک کد اختصاصی برای خودش دارد و باید دقیقاً مثل همان برنامه رفتار کنی.',
+    'این ربات یک برنامه اختصاصی برای خودش دارد و باید دقیقاً مثل همان برنامه رفتار کنی.',
     'کد، توضیح فنی یا JSON نده؛ فقط پیام نهایی مناسب کاربر همین ربات را بنویس.',
-    'اگر باید اطلاعات جمع‌آوری شود، مرحله‌به‌مرحله از کاربر بپرس.',
-    'اگر درخواست کاربر مربوط به قابلیت ربات است، همان قابلیت را اجرا/راهنمایی کن.',
+    'اگر پیام کاربر خارج از flowهای تعریف‌شده است، با توجه به هدف ربات کوتاه راهنمایی کن.',
     '',
-    'کد اختصاصی ذخیره‌شده برای این ربات:',
-    sourceCode || 'کد اختصاصی متنی موجود نیست؛ از runtimeConfig استفاده کن.',
+    'برنامه اختصاصی ذخیره‌شده برای این ربات:',
+    sourceCode || 'برنامه اختصاصی متنی موجود نیست؛ از runtimeConfig استفاده کن.',
     '',
     'دستورها و رفتار ربات:',
     instructions,
@@ -163,8 +154,4 @@ function readOpenAIText(payload: { output_text?: string; output?: Array<{ conten
     }
   }
   return chunks.join('\n');
-}
-
-function isStart(value: string): boolean {
-  return value === '/start' || value === 'start' || value === 'شروع';
 }
