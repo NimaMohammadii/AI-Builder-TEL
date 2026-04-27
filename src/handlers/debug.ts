@@ -1,5 +1,5 @@
 import type { AppConfig, Env } from "../types/env";
-import { deleteWebhook } from "../lib/telegram";
+import { deleteWebhook, getMeByToken } from "../lib/telegram";
 import { jsonOk } from "../utils/http";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
@@ -7,10 +7,11 @@ import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBot
 const CORE_WEBHOOK_USERNAME = "_core";
 
 export async function handleSetWebhook(config: AppConfig, env?: Env): Promise<Response> {
+  const coreUsername = await resolveCoreUsername(config);
   const core = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, CORE_WEBHOOK_USERNAME, config.telegramWebhookSecret);
-  const customers = env ? await syncCustomerBotWebhooks(config, env) : [];
+  const customers = env ? await syncCustomerBotWebhooks(config, env, coreUsername) : [];
   const ok = core.ok && customers.every((item) => item.ok);
-  return jsonOk({ ok, core, customers, corePath: `/telegram/webhook/${CORE_WEBHOOK_USERNAME}` }, ok ? 200 : 502);
+  return jsonOk({ ok, core, customers, coreUsername, corePath: `/telegram/webhook/${CORE_WEBHOOK_USERNAME}` }, ok ? 200 : 502);
 }
 
 export async function handleDeleteWebhook(config: AppConfig): Promise<Response> {
@@ -83,18 +84,23 @@ export function isAuthorizedDebugRequest(request: Request, adminDebugToken?: str
   return token === adminDebugToken;
 }
 
-async function syncCustomerBotWebhooks(config: AppConfig, env: Env) {
+async function syncCustomerBotWebhooks(config: AppConfig, env: Env, coreUsername: string | null) {
   const db = env.DB;
   if (!db) return [];
-  const coreUsername = config.botUsername?.replace(/^@/, "").toLowerCase();
   const result = await db.prepare("SELECT bot_username, encrypted_token FROM telegram_bots WHERE is_active = 1 AND encrypted_token IS NOT NULL AND encrypted_token != ''").all<{ bot_username: string; encrypted_token: string }>();
-  const bots = (result.results ?? []).filter((bot) => bot.bot_username?.toLowerCase() !== coreUsername);
+  const bots = (result.results ?? []).filter((bot) => !coreUsername || bot.bot_username?.toLowerCase() !== coreUsername);
   const synced = [] as Array<{ botUsername: string; ok: boolean; description?: string }>;
   for (const bot of bots) {
     const item = await setWebhookWithCallbacks(bot.encrypted_token, config.publicWebhookUrl, bot.bot_username, config.telegramWebhookSecret);
     synced.push({ botUsername: bot.bot_username, ok: item.ok, description: item.description });
   }
   return synced;
+}
+
+async function resolveCoreUsername(config: AppConfig): Promise<string | null> {
+  if (config.botUsername) return config.botUsername.replace(/^@/, "").toLowerCase();
+  const me = await getMeByToken(config.telegramBotToken);
+  return me.ok && me.result.username ? me.result.username.toLowerCase() : null;
 }
 
 async function setWebhookWithCallbacks(token: string, publicWebhookUrl: string, botUsername?: string, secretToken?: string) {
