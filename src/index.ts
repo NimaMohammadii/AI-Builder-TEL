@@ -38,7 +38,7 @@ export default {
           return jsonError("unauthorized", 401);
         }
 
-        return handleSetWebhook(config);
+        return handleSetWebhook(config, env);
       }
 
       if (request.method === "POST" && route === "/debug/delete-webhook") {
