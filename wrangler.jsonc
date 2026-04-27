@@ -17,13 +17,13 @@
     {
       "binding": "DB",
       "database_name": "ai-builder-tel",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "0528d473-3f29-48b2-a659-8226ea7356dc"
     }
   ],
   "kv_namespaces": [
     {
-      "binding": "BOT_CACHE",
-      "id": "00000000000000000000000000000000"
+      "binding": "bot-builder-TEL",
+      "id": "f2eb4c7696e74cc9ad889b048c87fc95"
     },
     {
       "binding": "RATE_LIMITS",
