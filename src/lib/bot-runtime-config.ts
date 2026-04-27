@@ -10,6 +10,7 @@ export interface RuntimeButton {
 export interface RuntimeBotConfig {
   welcomeText: string;
   buttons: RuntimeButton[];
+  aiInstructions?: string;
 }
 
 export async function saveRuntimeBotConfig(env: Env, input: { workspaceId: string; botId: string; instruction: string; config: RuntimeBotConfig }): Promise<void> {
@@ -52,7 +53,7 @@ async function loadRuntimeBotConfigFromCommands(db: D1Database, botId: string): 
       return { label: row.description || `/${row.command}`, command: row.command, response: `Section ${row.description || row.command} is ready.` };
     }
   });
-  return { welcomeText: ['Welcome', '', 'Choose an option:'].join('\n'), buttons };
+  return { welcomeText: ['Welcome', '', 'Choose an option:'].join('\n'), buttons, aiInstructions: 'Answer as the configured Telegram bot.' };
 }
 
 export async function loadRuntimeCommandResponse(env: Env, botId: string, text: string): Promise<string | null> {
@@ -66,15 +67,15 @@ export async function loadRuntimeCommandResponse(env: Env, botId: string, text: 
 }
 
 export function buildRuntimeKeyboard(config: RuntimeBotConfig): Record<string, unknown> {
-  return { keyboard: config.buttons.map((button) => [{ text: button.label }]), resize_keyboard: true, one_time_keyboard: false, input_field_placeholder: 'Choose an option...' };
+  return { keyboard: config.buttons.map((button) => [{ text: button.label }]), resize_keyboard: true, one_time_keyboard: false, input_field_placeholder: 'پیامت رو بنویس یا یک گزینه انتخاب کن...' };
 }
 
 export function planRuntimeConfigFromInstruction(instruction: string): RuntimeBotConfig {
-  return { welcomeText: 'Welcome', buttons: [{ label: 'Start', command: 'start', response: instruction }] };
+  return { welcomeText: 'سلام، خوش آمدید.', buttons: [{ label: 'شروع', command: 'start', response: 'در خدمتم. درخواستت را بنویس.' }], aiInstructions: instruction };
 }
 
 export async function planRuntimeConfigWithAI(config: AppConfig, instruction: string, currentConfig?: RuntimeBotConfig | null): Promise<RuntimeBotConfig> {
-  const fallback = currentConfig ?? planRuntimeConfigFromInstruction(instruction);
+  const fallback = mergeFallbackConfig(instruction, currentConfig);
   try {
     const raw = config.provider === 'grok' ? await callGrok(config, instruction, currentConfig) : await callOpenAI(config, instruction, currentConfig);
     return parseRuntimeConfig(raw) ?? fallback;
@@ -88,7 +89,7 @@ async function callOpenAI(config: AppConfig, instruction: string, currentConfig?
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${config.openAiApiKey}` },
-    body: JSON.stringify({ model: config.openAiModel, input: [{ role: 'system', content: [{ type: 'input_text', text: 'Return only valid JSON.' }] }, { role: 'user', content: [{ type: 'input_text', text: prompt }] }], max_output_tokens: 1400 })
+    body: JSON.stringify({ model: config.openAiModel, input: [{ role: 'system', content: [{ type: 'input_text', text: 'Return only valid JSON.' }] }, { role: 'user', content: [{ type: 'input_text', text: prompt }] }], max_output_tokens: 2200 })
   });
   const payload = await response.json() as unknown;
   if (!response.ok) throw new Error('planner_failed');
@@ -99,7 +100,7 @@ async function callOpenAI(config: AppConfig, instruction: string, currentConfig?
 
 async function callGrok(config: AppConfig, instruction: string, currentConfig?: RuntimeBotConfig | null): Promise<string> {
   const baseUrl = (config.xAiBaseUrl || 'https://api.x.ai/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.xAiApiKey}` }, body: JSON.stringify({ model: config.xAiModel, messages: [{ role: 'system', content: 'Return only valid JSON.' }, { role: 'user', content: makePrompt(instruction, currentConfig) }], max_tokens: 1400 }) });
+  const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.xAiApiKey}` }, body: JSON.stringify({ model: config.xAiModel, messages: [{ role: 'system', content: 'Return only valid JSON.' }, { role: 'user', content: makePrompt(instruction, currentConfig) }], max_tokens: 2200 }) });
   const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
   if (!response.ok) throw new Error('planner_failed');
   return payload.choices?.[0]?.message?.content ?? '';
@@ -107,13 +108,15 @@ async function callGrok(config: AppConfig, instruction: string, currentConfig?: 
 
 function makePrompt(instruction: string, currentConfig?: RuntimeBotConfig | null): string {
   return [
-    'Edit the existing Telegram bot runtime config according to the new owner request.',
-    'Do not start from scratch unless the owner clearly asks for reset or rebuild from zero.',
-    'Keep existing useful buttons, responses, and welcome text. Add, edit, or remove only what the owner requested.',
-    'Return the full final JSON only: {"welcomeText":"...","buttons":[{"label":"...","command":"...","response":"..."}]}',
-    'Use Persian unless requested otherwise.',
+    'You are a real no-code Telegram bot builder.',
+    'Convert the owner request into an executable runtime configuration, not an explanation.',
+    'If there is an existing config, edit and extend it. Do not start from scratch unless the owner clearly asks for reset or rebuild from zero.',
+    'The final bot must behave like the requested product. The aiInstructions field is the most important: write exact behavior rules so the runtime AI can answer users, collect data, guide flows, and act like the bot that was requested.',
+    'Return full final JSON only with this schema:',
+    '{"welcomeText":"string","aiInstructions":"string","buttons":[{"label":"string","command":"english_slug","response":"string"}]}',
+    'Use Persian unless requested otherwise. Buttons are shortcuts; aiInstructions must cover everything the owner asked, including behavior for free-text messages.',
     'Current config:',
-    JSON.stringify(currentConfig ?? { welcomeText: '', buttons: [] }),
+    JSON.stringify(currentConfig ?? { welcomeText: '', aiInstructions: '', buttons: [] }),
     'New owner request:',
     instruction
   ].join('\n');
@@ -136,10 +139,16 @@ function parseRuntimeConfig(raw: string): RuntimeBotConfig | null {
   const buttons = Array.isArray(parsed.buttons) ? parsed.buttons : [];
   const normalized = buttons.map((item) => {
     const button = item as RuntimeButton;
-    return { label: String(button.label ?? '').trim().slice(0, 80), command: sanitizeCommand(String(button.command ?? 'menu')), response: String(button.response ?? '').trim().slice(0, 1500) };
-  }).filter((button) => button.label && button.command && button.response).slice(0, 20);
-  if (!normalized.length) return null;
-  return { welcomeText: String(parsed.welcomeText ?? '').trim().slice(0, 1500) || 'Welcome', buttons: normalized };
+    return { label: String(button.label ?? '').trim().slice(0, 80), command: sanitizeCommand(String(button.command ?? 'menu')), response: String(button.response ?? '').trim().slice(0, 1800) };
+  }).filter((button) => button.label && button.command && button.response).slice(0, 24);
+  const aiInstructions = String(parsed.aiInstructions ?? '').trim().slice(0, 6000);
+  if (!normalized.length && !aiInstructions) return null;
+  return { welcomeText: String(parsed.welcomeText ?? '').trim().slice(0, 1800) || 'سلام، خوش آمدید.', buttons: normalized.length ? normalized : [{ label: 'شروع', command: 'start', response: 'در خدمتم. درخواستت را بنویس.' }], aiInstructions };
+}
+
+function mergeFallbackConfig(instruction: string, currentConfig?: RuntimeBotConfig | null): RuntimeBotConfig {
+  if (!currentConfig) return planRuntimeConfigFromInstruction(instruction);
+  return { ...currentConfig, aiInstructions: [currentConfig.aiInstructions ?? '', instruction].filter(Boolean).join('\n\n') };
 }
 
 function sanitizeCommand(value: string): string {
