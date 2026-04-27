@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { buildBlueprint } from './ai';
+import { buildBlueprint, defaultBlueprint } from './ai';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram';
 import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, id, rateLimit, safeParseJson, sha256 } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
+
+const DEFAULT_BOT_ID = 'main';
 
 const createBotSchema = z.object({
   ownerTelegramId: z.string().optional(),
@@ -32,14 +34,20 @@ app.get('/', (c) =>
     env: ['TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY'],
     endpoints: {
       health: '/health',
+      setupWebhook: 'POST /setup-webhook',
       createBot: 'POST /api/bots',
       publishBot: 'POST /api/bots/:id/publish',
-      telegramWebhook: '/telegram/:botId/:secret',
+      telegramWebhook: 'POST /telegram',
     },
   }),
 );
 
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
+
+app.post('/setup-webhook', async (c) => {
+  const result = await setTelegramWebhook(c.env);
+  return c.json({ ...result, webhookUrl: `${PUBLIC_BASE_URL}/telegram` });
+});
 
 app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
   const body = c.req.valid('json');
@@ -114,24 +122,17 @@ app.post('/api/bots/:id/publish', async (c) => {
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
 
-  const result = await setTelegramWebhook(c.env, bot);
+  const result = await setTelegramWebhook(c.env);
   if (!result.ok) return c.json({ error: 'Telegram setWebhook failed', details: result }, 502);
 
   await c.env.DB.prepare("UPDATE bots SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(botId).run();
   await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}` });
+  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram` });
 });
 
-app.post('/telegram/:botId/:secret', async (c) => {
-  const botId = c.req.param('botId');
-  const secret = c.req.param('secret');
-  const bot = await getBot(c.env, botId);
-
-  if (!bot || bot.webhook_secret !== secret || bot.status === 'suspended' || bot.status === 'paused') {
-    return c.json({ ok: false }, 404);
-  }
-
+app.post('/telegram', async (c) => {
   const update = (await c.req.json()) as TelegramUpdate;
+  const bot = await getActiveBotForUpdate(c.env, update);
   c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update));
   return c.json({ ok: true });
 });
@@ -149,6 +150,38 @@ async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
   const bot = await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>();
   if (bot) await env.BOT_CACHE.put(`bot:${botId}`, JSON.stringify(bot), { expirationTtl: 60 });
   return bot ?? null;
+}
+
+async function getActiveBotForUpdate(env: Env, update: TelegramUpdate): Promise<BotRecord> {
+  const userId = String(update.message?.from?.id ?? update.callback_query?.from?.id ?? '');
+
+  if (userId) {
+    const ownedBot = await env.DB.prepare("SELECT * FROM bots WHERE owner_telegram_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1")
+      .bind(userId)
+      .first<BotRecord>();
+    if (ownedBot) return ownedBot;
+  }
+
+  const activeBot = await env.DB.prepare("SELECT * FROM bots WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1").first<BotRecord>();
+  if (activeBot) return activeBot;
+
+  return defaultBotRecord();
+}
+
+function defaultBotRecord(): BotRecord {
+  return {
+    id: DEFAULT_BOT_ID,
+    owner_telegram_id: null,
+    username: null,
+    title: APP_NAME,
+    status: 'active',
+    encrypted_token: 'env:TELEGRAM_BOT_TOKEN',
+    webhook_secret: 'default',
+    blueprint_json: JSON.stringify(defaultBlueprint('یک ربات‌ساز هوشمند تلگرام که با هوش مصنوعی برای کاربران ربات می‌سازد.')),
+    settings_json: '{}',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
 
 function safeBot(bot: BotRecord) {
