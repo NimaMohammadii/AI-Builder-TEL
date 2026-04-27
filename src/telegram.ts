@@ -4,7 +4,7 @@ import { id, PUBLIC_BASE_URL, rateLimit, safeParseJson } from './utils';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return telegramApi(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
-    url: `${PUBLIC_BASE_URL}/telegram`,
+    url: `${PUBLIC_BASE_URL}/telegram/webhook`,
     allowed_updates: ['message', 'callback_query'],
     drop_pending_updates: true,
   });
