@@ -12,8 +12,6 @@ import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builde
 import { formatResetBuiltBotResult, resetBuiltBot } from "../lib/reset-built-bot";
 import { handleBuiltBotRuntime } from "./built-bot-runtime";
 
-const CORE_WEBHOOK_USERNAME = "_core";
-
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const handled = await tryHandleMenu(request.clone(), config, env);
   if (handled) return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
@@ -22,10 +20,6 @@ export async function handleMenuAwareTelegramWebhook(request: Request, config: A
 
 async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Promise<boolean> {
   const routeKind = getWebhookRouteKind(request);
-
-  if (routeKind.kind === "legacy") {
-    return true;
-  }
 
   if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) {
     return true;
@@ -172,12 +166,11 @@ async function resolveWorkspaceIdFromChat(env: Env, telegramChatId: number): Pro
   return row?.workspace_id ?? null;
 }
 
-function getWebhookRouteKind(request: Request): { kind: "core" } | { kind: "customer"; username: string } | { kind: "legacy" } {
+function getWebhookRouteKind(request: Request): { kind: "core" } | { kind: "customer"; username: string } {
   const pathname = new URL(request.url).pathname.replace(/\/+$/, "");
   const prefix = "/telegram/webhook/";
-  if (pathname === "/telegram/webhook") return { kind: "legacy" };
-  if (!pathname.startsWith(prefix)) return { kind: "legacy" };
+  if (pathname === "/telegram/webhook") return { kind: "core" };
+  if (!pathname.startsWith(prefix)) return { kind: "core" };
   const username = pathname.slice(prefix.length).trim().toLowerCase();
-  if (username === CORE_WEBHOOK_USERNAME) return { kind: "core" };
   return { kind: "customer", username };
 }
