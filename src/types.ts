@@ -3,13 +3,8 @@ export type Env = {
   BOT_CACHE: KVNamespace;
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
-  APP_NAME: string;
-  PUBLIC_BASE_URL: string;
-  OPENAI_BASE_URL: string;
-  OPENAI_MODEL: string;
-  OPENAI_API_KEY?: string;
-  ADMIN_API_KEY?: string;
-  TOKEN_ENCRYPTION_KEY?: string;
+  TELEGRAM_BOT_TOKEN: string;
+  OPENAI_API_KEY: string;
 };
 
 export type ButtonAction =
