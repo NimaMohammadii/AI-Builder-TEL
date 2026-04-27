@@ -4,14 +4,13 @@ import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint } from './ai';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram';
 import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
-import { assertAdmin, encryptToken, id, json, rateLimit, safeParseJson, sha256 } from './utils';
+import { APP_NAME, PUBLIC_BASE_URL, id, rateLimit, safeParseJson, sha256 } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
 
 const createBotSchema = z.object({
   ownerTelegramId: z.string().optional(),
   title: z.string().min(2).max(80),
-  telegramToken: z.string().min(30).max(128),
   prompt: z.string().min(10).max(6000),
   username: z.string().optional(),
 });
@@ -27,8 +26,10 @@ const productSchema = z.object({
 
 app.get('/', (c) =>
   c.json({
-    name: c.env.APP_NAME,
+    name: APP_NAME,
     status: 'ok',
+    model: 'gpt-5-mini',
+    env: ['TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY'],
     endpoints: {
       health: '/health',
       createBot: 'POST /api/bots',
@@ -41,17 +42,13 @@ app.get('/', (c) =>
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
 
 app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
-  const unauthorized = assertAdmin(c.env, c.req.raw);
-  if (unauthorized) return unauthorized;
-
   const body = c.req.valid('json');
-  const allowed = await rateLimit(c.env, `create:${body.ownerTelegramId ?? 'admin'}`, 20, 3600);
+  const allowed = await rateLimit(c.env.RATE_LIMITS, `create:${body.ownerTelegramId ?? 'admin'}`, 20, 3600);
   if (!allowed) return c.json({ error: 'Rate limit exceeded' }, 429);
 
   const blueprint = await buildBlueprint(c.env, body.prompt);
   const botId = id('bot');
-  const secret = await sha256(`${botId}:${body.telegramToken}:${crypto.randomUUID()}`);
-  const encryptedToken = await encryptToken(c.env, body.telegramToken);
+  const secret = await sha256(`${botId}:${c.env.TELEGRAM_BOT_TOKEN}:${crypto.randomUUID()}`);
 
   await c.env.DB.prepare(
     `INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json)
@@ -62,7 +59,7 @@ app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
       body.ownerTelegramId ?? null,
       body.username ?? null,
       body.title,
-      encryptedToken,
+      'env:TELEGRAM_BOT_TOKEN',
       secret,
       JSON.stringify(blueprint),
       JSON.stringify({ sourcePrompt: body.prompt }),
@@ -77,18 +74,12 @@ app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
 });
 
 app.get('/api/bots/:id', async (c) => {
-  const unauthorized = assertAdmin(c.env, c.req.raw);
-  if (unauthorized) return unauthorized;
-
   const bot = await getBot(c.env, c.req.param('id'));
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
   return c.json(safeBot(bot));
 });
 
 app.put('/api/bots/:id/blueprint', async (c) => {
-  const unauthorized = assertAdmin(c.env, c.req.raw);
-  if (unauthorized) return unauthorized;
-
   const body = (await c.req.json()) as BotBlueprint;
   const botId = c.req.param('id');
   const bot = await getBot(c.env, botId);
@@ -102,9 +93,6 @@ app.put('/api/bots/:id/blueprint', async (c) => {
 });
 
 app.post('/api/bots/:id/products', zValidator('json', productSchema), async (c) => {
-  const unauthorized = assertAdmin(c.env, c.req.raw);
-  if (unauthorized) return unauthorized;
-
   const botId = c.req.param('id');
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
@@ -122,9 +110,6 @@ app.post('/api/bots/:id/products', zValidator('json', productSchema), async (c) 
 });
 
 app.post('/api/bots/:id/publish', async (c) => {
-  const unauthorized = assertAdmin(c.env, c.req.raw);
-  if (unauthorized) return unauthorized;
-
   const botId = c.req.param('id');
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
@@ -134,7 +119,7 @@ app.post('/api/bots/:id/publish', async (c) => {
 
   await c.env.DB.prepare("UPDATE bots SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(botId).run();
   await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId, webhookUrl: `${c.env.PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}` });
+  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}` });
 });
 
 app.post('/telegram/:botId/:secret', async (c) => {
