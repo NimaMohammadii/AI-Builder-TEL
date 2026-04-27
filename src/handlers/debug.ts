@@ -4,11 +4,13 @@ import { jsonOk } from "../utils/http";
 import { findWorkspaceBotByWorkspaceId } from "../repositories/telegram-bots";
 import { createBotCommandMenu, detectProjectIntent, extractMemoryContent, getBotStats, saveBotMemory } from "../repositories/bot-intelligence";
 
+const CORE_WEBHOOK_USERNAME = "_core";
+
 export async function handleSetWebhook(config: AppConfig, env?: Env): Promise<Response> {
-  const core = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, undefined, config.telegramWebhookSecret);
+  const core = await setWebhookWithCallbacks(config.telegramBotToken, config.publicWebhookUrl, CORE_WEBHOOK_USERNAME, config.telegramWebhookSecret);
   const customers = env ? await syncCustomerBotWebhooks(config, env) : [];
   const ok = core.ok && customers.every((item) => item.ok);
-  return jsonOk({ ok, core, customers }, ok ? 200 : 502);
+  return jsonOk({ ok, core, customers, corePath: `/telegram/webhook/${CORE_WEBHOOK_USERNAME}` }, ok ? 200 : 502);
 }
 
 export async function handleDeleteWebhook(config: AppConfig): Promise<Response> {
