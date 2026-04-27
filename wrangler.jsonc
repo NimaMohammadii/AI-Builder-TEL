@@ -26,5 +26,11 @@
       "database_name": "vexa-builder",
       "database_id": "0528d473-3f29-48b2-a659-8226ea7356dc"
     }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CHAT_MEMORY",
+      "id": "REPLACE_WITH_CHAT_MEMORY_NAMESPACE_ID"
+    }
   ]
 }
