@@ -37,7 +37,7 @@ app.get('/', (c) =>
       setupWebhook: 'POST /setup-webhook',
       createBot: 'POST /api/bots',
       publishBot: 'POST /api/bots/:id/publish',
-      telegramWebhook: 'POST /telegram',
+      telegramWebhook: 'POST /telegram/webhook',
     },
   }),
 );
@@ -46,7 +46,7 @@ app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString()
 
 app.post('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
-  return c.json({ ...result, webhookUrl: `${PUBLIC_BASE_URL}/telegram` });
+  return c.json({ ...result, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook` });
 });
 
 app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
@@ -127,21 +127,24 @@ app.post('/api/bots/:id/publish', async (c) => {
 
   await c.env.DB.prepare("UPDATE bots SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(botId).run();
   await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram` });
+  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook` });
 });
 
-app.post('/telegram', async (c) => {
-  const update = (await c.req.json()) as TelegramUpdate;
-  const bot = await getActiveBotForUpdate(c.env, update);
-  c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update));
-  return c.json({ ok: true });
-});
+app.post('/telegram', async (c) => handleTelegramWebhook(c));
+app.post('/telegram/webhook', async (c) => handleTelegramWebhook(c));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => {
   console.error(error);
   return c.json({ error: 'Internal error' }, 500);
 });
+
+async function handleTelegramWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
+  const update = (await c.req.json()) as TelegramUpdate;
+  const bot = await getActiveBotForUpdate(c.env, update);
+  c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update));
+  return Response.json({ ok: true });
+}
 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
   const cached = await env.BOT_CACHE.get(`bot:${botId}`);
