@@ -1,11 +1,13 @@
 import type { TelegramUiMarkup } from "./telegram-ui";
+import { AI_MENU_BUTTON_TEXT } from "./ai-control-menu";
 
 export const MAIN_MENU_TEXT = [
   "⚡️ Vexa Control Center",
   "",
-  "اینجا فقط دو مسیر اصلی داری:",
+  "مسیرهای اصلی:",
   "",
-  "🔌 کانکت — وضعیت ربات وصل‌شده، پرامپت، اتصال AI و مدیریت ربات",
+  "🔌 کانکت — وضعیت ربات وصل‌شده و مدیریت اتصال",
+  "🤖 AI — وضعیت AI، پرامپت و کنترل هوش مصنوعی ربات کاربر",
   "✨ ساخت ربات بدون کدنویسی — هر چیزی می‌خوای با متن بگو تا برای رباتت ساخته و اعمال بشه",
   "",
   "یکی رو انتخاب کن 👇"
@@ -16,13 +18,17 @@ export const BUILDER_START_TEXT = [
   "",
   "از اینجا به بعد هر چیزی بنویسی، من به چشم دستور ساخت/ویرایش ربات نگاه می‌کنم.",
   "",
+  "نکته مهم:",
+  "• هر دستور جدید روی ساختار قبلی ادیت و اضافه می‌شود.",
+  "• اگر می‌خوای از صفر بسازی، دکمه «ریست ربات» رو بزن.",
+  "• هر ربات فضای کد و رفتار مخصوص خودش را دارد.",
+  "",
   "مثال:",
   "• برای رباتم منوی شیک بساز",
   "• پرامپتش رو صمیمی‌تر کن",
   "• دکمه پشتیبانی اضافه کن",
   "• جواب‌های ربات رو کوتاه و حرفه‌ای کن",
   "",
-  "برای پاک‌کردن کامل چیزهایی که برای این ربات ساخته شده، دکمه «ریست ربات» رو بزن.",
   "وقتی کارت تموم شد دکمه «اتمام ساخت» رو بزن."
 ].join("\n");
 
@@ -42,12 +48,12 @@ export const BUILDER_RESET_TEXT = [
 export function buildMainMenuKeyboard(): TelegramUiMarkup {
   return {
     keyboard: [
-      [{ text: "🔌 کانکت" }],
+      [{ text: "🔌 کانکت" }, { text: AI_MENU_BUTTON_TEXT }],
       [{ text: "✨ ساخت ربات بدون کدنویسی" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
-    input_field_placeholder: "یکی از دو گزینه اصلی رو انتخاب کن..."
+    input_field_placeholder: "یکی از گزینه‌های اصلی رو انتخاب کن..."
   };
 }
 
@@ -64,7 +70,6 @@ export function buildConnectInlineKeyboard(): TelegramUiMarkup {
   return {
     inline_keyboard: [
       [
-        { text: "🟢 فعال/غیرفعال AI", callback_data: "connect:toggle_ai" },
         { text: "🗑 حذف ربات", callback_data: "connect:delete_bot" }
       ],
       [
