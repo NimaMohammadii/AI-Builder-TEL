@@ -84,8 +84,9 @@ export function isAuthorizedDebugRequest(request: Request, adminDebugToken?: str
 async function syncCustomerBotWebhooks(config: AppConfig, env: Env) {
   const db = env.DB;
   if (!db) return [];
-  const result = await db.prepare("SELECT bot_username, encrypted_token FROM telegram_bots WHERE is_active = 1 AND bot_type = 'customer' AND encrypted_token IS NOT NULL AND encrypted_token != ''").all<{ bot_username: string; encrypted_token: string }>();
-  const bots = result.results ?? [];
+  const coreUsername = config.botUsername?.replace(/^@/, "").toLowerCase();
+  const result = await db.prepare("SELECT bot_username, encrypted_token FROM telegram_bots WHERE is_active = 1 AND encrypted_token IS NOT NULL AND encrypted_token != ''").all<{ bot_username: string; encrypted_token: string }>();
+  const bots = (result.results ?? []).filter((bot) => bot.bot_username?.toLowerCase() !== coreUsername);
   const synced = [] as Array<{ botUsername: string; ok: boolean; description?: string }>;
   for (const bot of bots) {
     const item = await setWebhookWithCallbacks(bot.encrypted_token, config.publicWebhookUrl, bot.bot_username, config.telegramWebhookSecret);
