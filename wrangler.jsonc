@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "ai-builder-tel",
+  "name": "builder-tel",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
