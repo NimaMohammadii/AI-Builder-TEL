@@ -21,11 +21,17 @@ export async function handleMenuAwareTelegramWebhook(request: Request, config: A
 }
 
 async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Promise<boolean> {
-  if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) return false;
-  if (!request.headers.get("content-type")?.includes("application/json")) return false;
-
   const routeKind = getWebhookRouteKind(request);
+
   if (routeKind.kind === "legacy") {
+    return true;
+  }
+
+  if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) {
+    return true;
+  }
+
+  if (!request.headers.get("content-type")?.includes("application/json")) {
     return true;
   }
 
@@ -33,7 +39,7 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   try {
     body = await request.json();
   } catch {
-    return false;
+    return true;
   }
 
   const update = parseUpdate(body) as any;
@@ -43,7 +49,7 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
 
   const message = update?.message ?? update?.edited_message;
   const text = message?.text || (message as any)?.caption || "";
-  if (!message || !text) return false;
+  if (!message || !text) return true;
 
   if (routeKind.kind === "customer") {
     const managedBot = await findWorkspaceBotByUsername(env, routeKind.username);
