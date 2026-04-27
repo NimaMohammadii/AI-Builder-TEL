@@ -1,7 +1,8 @@
 import type { AppConfig, Env } from '../types/env';
 import { ensureDefaultAiProfile } from '../repositories/ai-profiles';
 import { createBotCommandMenu, saveBotMemory } from '../repositories/bot-intelligence';
-import { loadRuntimeBotConfig, planRuntimeConfigWithAI, saveRuntimeBotConfig } from './bot-runtime-config';
+import { loadRuntimeBotConfig, saveRuntimeBotConfig } from './bot-runtime-config';
+import { planBotRuntimeCode, saveBotRuntimeCode } from './bot-code-workspace';
 import { setBotCommands, setWebhookForToken } from './telegram';
 
 export interface NoCodeBuildInput {
@@ -29,7 +30,20 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
   }
 
   const previousRuntimeConfig = await loadRuntimeBotConfig(input.env, input.botId);
-  const runtimeConfig = await planRuntimeConfigWithAI(input.config, text, previousRuntimeConfig);
+  const codePlan = await planBotRuntimeCode({
+    config: input.config,
+    instruction: text,
+    currentConfig: previousRuntimeConfig
+  });
+  const runtimeConfig = codePlan.runtimeConfig;
+
+  await saveBotRuntimeCode(input.env, {
+    workspaceId: input.workspaceId,
+    botId: input.botId,
+    instruction: text,
+    plan: codePlan
+  });
+  details.push('فضای کد اختصاصی این ربات ساخته/بروزرسانی شد.');
 
   const menuRequest = buildMenuRequestFromRuntime(text, runtimeConfig.buttons.map((item) => item.label));
   const menu = await createBotCommandMenu(input.env, {
@@ -50,8 +64,8 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     config: runtimeConfig
   });
   details.push(previousRuntimeConfig
-    ? `تغییرات روی ربات قبلی ادیت و ذخیره شد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
-    : `AI نقشه اجرایی ربات را ساخت و ذخیره کرد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
+    ? `تغییرات روی کد و رفتار قبلی ربات ادیت و ذخیره شد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
+    : `AI کد و نقشه اجرایی ربات را ساخت و ذخیره کرد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
   );
 
   if (input.botToken && input.botUsername) {
@@ -59,7 +73,7 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     details.push(webhook.ok ? 'Webhook ربات متصل دوباره sync شد.' : `Webhook ربات sync نشد: ${webhook.description ?? 'unknown'}`);
   }
 
-  const prompt = buildBehaviorPrompt(text, runtimeConfig.buttons.map((item) => item.label));
+  const prompt = buildBehaviorPrompt(text, runtimeConfig.buttons.map((item) => item.label), runtimeConfig.aiInstructions ?? '');
   await ensureDefaultAiProfile(input.env, {
     workspaceId: input.workspaceId,
     botId: input.botId,
@@ -74,14 +88,14 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     title: 'No-code builder instruction',
     content: text,
     sourceType: 'no_code_builder',
-    metadata: { appliedAt: new Date().toISOString(), runtimeConfig, previousRuntimeConfig }
+    metadata: { appliedAt: new Date().toISOString(), runtimeConfig, sourceCode: codePlan.sourceCode, previousRuntimeConfig }
   });
 
-  if (memoryId) details.push('دستور در حافظه پروژه هم ذخیره شد.');
+  if (memoryId) details.push('دستور و کد تولیدشده در حافظه پروژه هم ذخیره شد.');
 
   return {
     ok: true,
-    title: previousRuntimeConfig ? '✅ ربات قبلی ادیت و بروزرسانی شد' : '✅ دقیقاً روی ربات متصل اعمال شد',
+    title: previousRuntimeConfig ? '✅ کد اختصاصی ربات ادیت و بروزرسانی شد' : '✅ کد اختصاصی ربات ساخته و اعمال شد',
     details
   };
 }
@@ -100,14 +114,14 @@ function buildMenuRequestFromRuntime(text: string, labels: string[]): string {
   return `منو بساز با این گزینه‌ها: ${labels.map((item) => `"${item}"`).join('، ')}\nدستور مالک: ${text}`;
 }
 
-function buildBehaviorPrompt(userInstruction: string, labels: string[]): string {
+function buildBehaviorPrompt(userInstruction: string, labels: string[], aiInstructions: string): string {
   return [
     'تو AI اصلی این ربات تلگرام هستی.',
-    'این ربات باید بر اساس دستور مالک، واقعاً مثل محصول نهایی رفتار کند؛ کد نمونه ننویس مگر مالک صریحاً کد بخواهد.',
-    'ساختار اجرایی ربات با AI planner در دیتابیس ذخیره شده و باید مطابق همان جواب بدهی.',
+    'این ربات باید بر اساس کد اختصاصی تولیدشده برای همین ربات رفتار کند؛ کد نمونه ننویس مگر مالک صریحاً کد بخواهد.',
+    'ساختار اجرایی ربات و کد اختصاصی آن در دیتابیس/KV ذخیره شده و باید مطابق همان جواب بدهی.',
     `دکمه‌ها/بخش‌های فعال: ${labels.join('، ')}`,
-    'اگر کاربر نهایی یکی از دکمه‌ها یا commandها را زد، پاسخ همان بخش را بده و مکالمه را جلو ببر.',
-    'پاسخ‌ها کوتاه، دقیق، کاربردی و مطابق شخصیت تعریف‌شده باشند.',
+    'رفتار اختصاصی ربات:',
+    aiInstructions,
     '',
     'دستور مالک ربات:',
     userInstruction
