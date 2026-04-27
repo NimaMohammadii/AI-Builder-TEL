@@ -1,7 +1,7 @@
 import type { AppConfig, Env } from '../types/env';
 import { ensureDefaultAiProfile } from '../repositories/ai-profiles';
 import { createBotCommandMenu, saveBotMemory } from '../repositories/bot-intelligence';
-import { planRuntimeConfigWithAI, saveRuntimeBotConfig } from './bot-runtime-config';
+import { loadRuntimeBotConfig, planRuntimeConfigWithAI, saveRuntimeBotConfig } from './bot-runtime-config';
 import { setBotCommands, setWebhookForToken } from './telegram';
 
 export interface NoCodeBuildInput {
@@ -28,14 +28,8 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     return { ok: false, title: 'دستور خالی بود', details: ['یک دستور واضح برای ساخت یا ویرایش ربات بنویس.'] };
   }
 
-  const runtimeConfig = await planRuntimeConfigWithAI(input.config, text);
-  await saveRuntimeBotConfig(input.env, {
-    workspaceId: input.workspaceId,
-    botId: input.botId,
-    instruction: text,
-    config: runtimeConfig
-  });
-  details.push(`AI نقشه اجرایی ربات را ساخت و ذخیره کرد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`);
+  const previousRuntimeConfig = await loadRuntimeBotConfig(input.env, input.botId);
+  const runtimeConfig = await planRuntimeConfigWithAI(input.config, text, previousRuntimeConfig);
 
   const menuRequest = buildMenuRequestFromRuntime(text, runtimeConfig.buttons.map((item) => item.label));
   const menu = await createBotCommandMenu(input.env, {
@@ -43,10 +37,22 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     botId: input.botId,
     requestText: menuRequest
   });
+
   const commandConfig = input.botToken ? { ...input.config, telegramBotToken: input.botToken } : input.config;
   const telegram = await setBotCommands(commandConfig, menu.commands);
   details.push(`کامندهای ربات ساخته شد: ${menu.commands.map((item) => '/' + item.command).join(', ')}`);
   details.push(telegram.ok ? 'کامندها روی ربات متصل هم ثبت شدند.' : `کامندها در دیتابیس ذخیره شدند، ولی ثبت تلگرام خطا داد: ${telegram.description ?? 'unknown'}`);
+
+  await saveRuntimeBotConfig(input.env, {
+    workspaceId: input.workspaceId,
+    botId: input.botId,
+    instruction: text,
+    config: runtimeConfig
+  });
+  details.push(previousRuntimeConfig
+    ? `تغییرات روی ربات قبلی ادیت و ذخیره شد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
+    : `AI نقشه اجرایی ربات را ساخت و ذخیره کرد: ${runtimeConfig.buttons.map((item) => item.label).join('، ')}`
+  );
 
   if (input.botToken && input.botUsername) {
     const webhook = await setWebhookForToken(input.botToken, input.config.publicWebhookUrl, input.botUsername, input.config.telegramWebhookSecret);
@@ -68,14 +74,14 @@ export async function applyNoCodeBuild(input: NoCodeBuildInput): Promise<NoCodeB
     title: 'No-code builder instruction',
     content: text,
     sourceType: 'no_code_builder',
-    metadata: { appliedAt: new Date().toISOString(), runtimeConfig }
+    metadata: { appliedAt: new Date().toISOString(), runtimeConfig, previousRuntimeConfig }
   });
 
   if (memoryId) details.push('دستور در حافظه پروژه هم ذخیره شد.');
 
   return {
     ok: true,
-    title: '✅ دقیقاً روی ربات متصل اعمال شد',
+    title: previousRuntimeConfig ? '✅ ربات قبلی ادیت و بروزرسانی شد' : '✅ دقیقاً روی ربات متصل اعمال شد',
     details
   };
 }
