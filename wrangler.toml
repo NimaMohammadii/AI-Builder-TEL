@@ -1,0 +1,7 @@
+name = "vexa-telegram-worker"
+main = "src/index.ts"
+compatibility_date = "2026-04-27"
+
+[[kv_namespaces]]
+binding = "CHAT_MEMORY"
+id = "f2eb4c7696e74cc9ad889b048c87fc95"
