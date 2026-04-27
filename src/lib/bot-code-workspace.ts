@@ -1,10 +1,12 @@
 import type { AppConfig, Env } from '../types/env';
 import { getDb } from '../db/client';
 import type { RuntimeBotConfig } from './bot-runtime-config';
+import { normalizeBotProgram, programFromRuntimeConfig, runtimeConfigFromProgram, type BotProgram } from './bot-program-runtime';
 
 export interface BotRuntimeCodePlan {
   sourceCode: string;
   runtimeConfig: RuntimeBotConfig;
+  program?: BotProgram;
 }
 
 export async function planBotRuntimeCode(input: {
@@ -17,7 +19,7 @@ export async function planBotRuntimeCode(input: {
     const raw = input.config.provider === 'grok'
       ? await callGrok(input.config, input.instruction, input.currentConfig)
       : await callOpenAI(input.config, input.instruction, input.currentConfig);
-    return parsePlan(raw) ?? fallback;
+    return parsePlan(raw, fallback.runtimeConfig) ?? fallback;
   } catch {
     return fallback;
   }
@@ -42,7 +44,7 @@ export async function saveBotRuntimeCode(env: Env, input: {
       input.botId,
       input.instruction.slice(0, 4000),
       input.plan.sourceCode.slice(0, 24000),
-      JSON.stringify(input.plan.runtimeConfig)
+      JSON.stringify({ ...input.plan.runtimeConfig, program: input.plan.program })
     )
     .run();
   await env.CHAT_MEMORY?.put(`bot_runtime_code:${input.botId}`, JSON.stringify(input.plan), { expirationTtl: 60 * 60 * 24 * 30 });
@@ -82,7 +84,9 @@ async function loadBotRuntimeCodeFromD1(env: Env, botId: string): Promise<BotRun
     .first<{ source_code: string; runtime_config: string }>();
   if (!row) return null;
   try {
-    return { sourceCode: row.source_code, runtimeConfig: JSON.parse(row.runtime_config) as RuntimeBotConfig };
+    const parsed = JSON.parse(row.runtime_config) as RuntimeBotConfig & { program?: BotProgram };
+    const program = parsed.program ? normalizeBotProgram(parsed.program, parsed) : undefined;
+    return { sourceCode: row.source_code, runtimeConfig: program ? runtimeConfigFromProgram(program) : parsed, program };
   } catch {
     return null;
   }
@@ -98,7 +102,7 @@ async function callOpenAI(config: AppConfig, instruction: string, currentConfig:
         { role: 'system', content: [{ type: 'input_text', text: 'Return only valid JSON. No markdown.' }] },
         { role: 'user', content: [{ type: 'input_text', text: makePrompt(instruction, currentConfig) }] }
       ],
-      max_output_tokens: 3200
+      max_output_tokens: 5200
     })
   });
   const payload = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> };
@@ -119,7 +123,7 @@ async function callGrok(config: AppConfig, instruction: string, currentConfig: R
         { role: 'system', content: 'Return only valid JSON. No markdown.' },
         { role: 'user', content: makePrompt(instruction, currentConfig) }
       ],
-      max_tokens: 3200
+      max_tokens: 5200
     })
   });
   const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
@@ -129,43 +133,41 @@ async function callGrok(config: AppConfig, instruction: string, currentConfig: R
 
 function makePrompt(instruction: string, currentConfig: RuntimeBotConfig | null): string {
   return [
-    'You are an AI software agent that builds a dedicated Telegram bot program for one customer bot.',
-    'Write a per-bot program and an executable runtimeConfig. Return JSON only.',
-    'Schema: {"sourceCode":"TypeScript-like per-bot code string","runtimeConfig":{"welcomeText":"string","aiInstructions":"string","buttons":[{"label":"string","command":"english_slug","response":"string"}]}}',
-    'sourceCode must look like a real dedicated bot module with handlers, flows, state names, and behavior.',
-    'runtimeConfig is what the Worker executes safely. aiInstructions must cover free-text behavior and flows.',
-    'If currentConfig exists, edit it. Do not rebuild from zero unless owner clearly asks reset/rebuild.',
-    'Use Persian unless the owner asks otherwise.',
-    'Current runtimeConfig:',
+    'You are an AI software agent that builds a real executable Telegram bot program for one customer bot.',
+    'Return JSON only. Do not explain.',
+    'Schema:',
+    '{"sourceCode":"string","program":{"version":1,"welcomeText":"string","aiInstructions":"string","buttons":[{"label":"string","command":"english_slug","response":"string","flowId":"optional_flow_id"}],"flows":[{"id":"english_id","title":"string","triggerLabels":["button label"],"triggerCommands":["command"],"steps":[{"id":"english_id","kind":"ask|message|end","text":"string","field":"optional_field","next":"optional_step_id"}],"summaryText":"string with {field} or {summary}"}],"fallback":{"aiEnabled":true,"text":"string"}}}',
+    'Rules:',
+    '- Build flows for any multi-step task such as order, reservation, registration, support ticket, quiz, lead collection, shop checkout, menu creation, or forms.',
+    '- Each button that starts a flow must have flowId matching a flow id.',
+    '- Free-text behavior belongs in aiInstructions, but real deterministic tasks must be flows.',
+    '- If current config exists, edit and extend it. Do not rebuild from zero unless owner clearly asks reset/rebuild.',
+    '- Use Persian for user-facing text unless owner asks otherwise.',
+    '- Do not include builder/admin features unless owner requested them for the customer bot.',
+    'Current config:',
     JSON.stringify(currentConfig ?? { welcomeText: '', aiInstructions: '', buttons: [] }),
     'Owner request:',
     instruction
   ].join('\n');
 }
 
-function parsePlan(raw: string): BotRuntimeCodePlan | null {
+function parsePlan(raw: string, fallbackConfig: RuntimeBotConfig): BotRuntimeCodePlan | null {
   const text = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start < 0 || end <= start) return null;
-  const parsed = JSON.parse(text.slice(start, end + 1)) as Partial<BotRuntimeCodePlan>;
-  const runtime = parsed.runtimeConfig;
-  if (!runtime || !Array.isArray(runtime.buttons)) return null;
-  const buttons = runtime.buttons.map((button) => ({
-    label: String(button.label ?? '').trim().slice(0, 80),
-    command: sanitizeCommand(String(button.command ?? 'menu')),
-    response: String(button.response ?? '').trim().slice(0, 1800)
-  })).filter((button) => button.label && button.command && button.response).slice(0, 24);
-  const aiInstructions = String(runtime.aiInstructions ?? '').trim().slice(0, 7000);
-  if (!buttons.length && !aiInstructions) return null;
-  const runtimeConfig = {
-    welcomeText: String(runtime.welcomeText ?? '').trim().slice(0, 1800) || 'سلام، خوش آمدید.',
-    buttons: buttons.length ? buttons : [{ label: 'شروع', command: 'start', response: 'در خدمتم. درخواستت را بنویس.' }],
-    aiInstructions
-  };
+  const parsed = JSON.parse(text.slice(start, end + 1)) as { sourceCode?: string; program?: unknown; runtimeConfig?: RuntimeBotConfig };
+  const program = parsed.program
+    ? normalizeBotProgram(parsed.program, fallbackConfig)
+    : parsed.runtimeConfig
+      ? programFromRuntimeConfig(parsed.runtimeConfig)
+      : null;
+  if (!program) return null;
+  const runtimeConfig = runtimeConfigFromProgram(program);
   return {
-    sourceCode: String(parsed.sourceCode ?? '').trim().slice(0, 24000) || buildSourceFromRuntime(runtimeConfig),
-    runtimeConfig
+    sourceCode: String(parsed.sourceCode ?? '').trim().slice(0, 24000) || buildSourceFromProgram(program),
+    runtimeConfig,
+    program
   };
 }
 
@@ -173,21 +175,16 @@ function buildFallbackPlan(instruction: string, currentConfig: RuntimeBotConfig 
   const runtimeConfig: RuntimeBotConfig = currentConfig
     ? { ...currentConfig, aiInstructions: [currentConfig.aiInstructions ?? '', instruction].filter(Boolean).join('\n\n') }
     : { welcomeText: 'سلام، خوش آمدید.', buttons: [{ label: 'شروع', command: 'start', response: 'در خدمتم. درخواستت را بنویس.' }], aiInstructions: instruction };
-  return { sourceCode: buildSourceFromRuntime(runtimeConfig), runtimeConfig };
+  const program = programFromRuntimeConfig(runtimeConfig);
+  return { sourceCode: buildSourceFromProgram(program), runtimeConfig, program };
 }
 
-function buildSourceFromRuntime(runtime: RuntimeBotConfig): string {
+function buildSourceFromProgram(program: BotProgram): string {
   return [
-    'export const botProgram = {',
-    `  welcomeText: ${JSON.stringify(runtime.welcomeText)},`,
-    `  aiInstructions: ${JSON.stringify(runtime.aiInstructions ?? '')},`,
-    `  buttons: ${JSON.stringify(runtime.buttons, null, 2)},`,
-    '  async onMessage(ctx) {',
-    '    // Runtime is executed safely by the Worker using runtimeConfig.',
-    '    // Free text is answered by AI using aiInstructions.',
-    '  }',
-    '};'
-  ].join('\n');
+    'export const botProgram = ',
+    JSON.stringify(program, null, 2),
+    ';'
+  ].join('');
 }
 
 function readOpenAIText(payload: { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> }): string {
@@ -195,10 +192,6 @@ function readOpenAIText(payload: { output_text?: string; output?: Array<{ conten
   const chunks: string[] = [];
   for (const item of payload.output ?? []) for (const content of item.content ?? []) if (typeof content.text === 'string') chunks.push(content.text);
   return chunks.join('\n');
-}
-
-function sanitizeCommand(value: string): string {
-  return value.replace(/^\/+/, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32) || 'menu';
 }
 
 async function ensureBotRuntimeCodeTable(db: D1Database): Promise<void> {
