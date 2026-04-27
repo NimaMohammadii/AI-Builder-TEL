@@ -1,7 +1,7 @@
 import type { AppConfig, Env } from '../types/env';
 import type { TelegramMessage } from '../types/telegram';
 import { sendUiMessage } from '../lib/telegram-ui';
-import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse } from '../lib/bot-runtime-config';
+import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse, type RuntimeBotConfig } from '../lib/bot-runtime-config';
 
 export async function handleBuiltBotRuntime(message: TelegramMessage, config: AppConfig, env: Env, botId: string | null, text: string): Promise<boolean> {
   if (!botId || !text.trim()) return true;
@@ -52,13 +52,96 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     }
   }
 
+  const aiResponse = await answerWithRuntimeAI(config, runtime, value);
   await sendUiMessage(config, {
     chatId: message.chat.id,
-    text: 'این گزینه برای این ربات تعریف نشده است. از دکمه‌های همین ربات استفاده کن یا /start را بزن.',
+    text: aiResponse,
     replyToMessageId: message.message_id,
     replyMarkup: buildRuntimeKeyboard(runtime)
   });
   return true;
+}
+
+async function answerWithRuntimeAI(config: AppConfig, runtime: RuntimeBotConfig, userText: string): Promise<string> {
+  const instructions = runtime.aiInstructions?.trim() || 'مثل همین ربات تلگرام پاسخ بده و کاربر را راهنمایی کن.';
+  const prompt = [
+    'تو AI اجرایی یک ربات تلگرام هستی.',
+    'باید دقیقاً طبق تنظیمات و هدفی که مالک ربات ساخته رفتار کنی.',
+    'کد، توضیح فنی یا JSON نده؛ فقط پیام نهایی مناسب کاربر همین ربات را بنویس.',
+    'اگر باید اطلاعات جمع‌آوری شود، مرحله‌به‌مرحله از کاربر بپرس.',
+    'اگر درخواست کاربر مربوط به قابلیت ربات است، همان قابلیت را اجرا/راهنمایی کن.',
+    '',
+    'دستورها و رفتار ربات:',
+    instructions,
+    '',
+    'متن خوشامد ربات:',
+    runtime.welcomeText,
+    '',
+    'دکمه‌های فعال:',
+    runtime.buttons.map((button) => `- ${button.label}: ${button.response}`).join('\n'),
+    '',
+    'پیام کاربر:',
+    userText
+  ].join('\n');
+
+  try {
+    if (config.provider === 'grok') return await callGrok(config, prompt);
+    return await callOpenAI(config, prompt);
+  } catch {
+    return 'متوجه شدم. لطفاً یکم دقیق‌تر بگو تا بهتر راهنمایی‌ات کنم.';
+  }
+}
+
+async function callOpenAI(config: AppConfig, prompt: string): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${config.openAiApiKey}` },
+    body: JSON.stringify({
+      model: config.openAiModel,
+      input: [
+        { role: 'system', content: [{ type: 'input_text', text: 'Answer as the final Telegram bot. No markdown unless useful.' }] },
+        { role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      ],
+      max_output_tokens: 900
+    })
+  });
+  const payload = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> };
+  if (!response.ok) throw new Error('runtime_ai_failed');
+  const text = readOpenAIText(payload).trim();
+  if (!text) throw new Error('runtime_ai_empty');
+  return text.slice(0, 3500);
+}
+
+async function callGrok(config: AppConfig, prompt: string): Promise<string> {
+  const baseUrl = (config.xAiBaseUrl || 'https://api.x.ai/v1').replace(/\/$/, '');
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${config.xAiApiKey}` },
+    body: JSON.stringify({
+      model: config.xAiModel,
+      messages: [
+        { role: 'system', content: 'Answer as the final Telegram bot. No code unless explicitly needed.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 900
+    })
+  });
+  const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  if (!response.ok) throw new Error('runtime_ai_failed');
+  const text = payload.choices?.[0]?.message?.content?.trim() ?? '';
+  if (!text) throw new Error('runtime_ai_empty');
+  return text.slice(0, 3500);
+}
+
+function readOpenAIText(payload: { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> }): string {
+  if (typeof payload.output_text === 'string' && payload.output_text.trim()) return payload.output_text;
+  const chunks: string[] = [];
+  for (const item of payload.output ?? []) {
+    for (const content of item.content ?? []) {
+      if (typeof content.text === 'string') chunks.push(content.text);
+    }
+  }
+  return chunks.join('\n');
 }
 
 function isStart(value: string): boolean {
