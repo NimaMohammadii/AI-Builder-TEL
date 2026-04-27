@@ -2,8 +2,8 @@ import { loadConfig } from './config';
 import { handleBuilderCallback, handleBuilderMessage } from './builder/handler';
 import { handleCustomerMessage } from './customer/handler';
 import { ensureSchema } from './db';
-import { parseUpdate, setWebhook } from './telegram';
-import type { Env } from './types';
+import { getMe, mainMenuKeyboard, parseUpdate, sendMessage, setWebhook, telegramApi } from './telegram';
+import type { Env, TelegramMessage } from './types';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -21,9 +21,15 @@ export default {
       }
 
       if ((request.method === 'POST' || request.method === 'GET') && (url.pathname === '/setup' || url.pathname === '/debug/set-webhook')) {
-        await ensureSchema(env);
+        const schema = await safeEnsureSchema(env);
         const result = await setWebhook(config.telegramBotToken, config.publicWebhookBase);
-        return json({ ok: result.ok, result, webhook: `${config.publicWebhookBase}/telegram/core` }, result.ok ? 200 : 502);
+        return json({ ok: result.ok, result, schema, webhook: `${config.publicWebhookBase}/telegram/core` }, result.ok ? 200 : 502);
+      }
+
+      if (request.method === 'GET' && url.pathname === '/debug/telegram') {
+        const me = await getMe(config.telegramBotToken);
+        const webhook = await telegramApi<{ result?: unknown }>(config.telegramBotToken, 'getWebhookInfo', {});
+        return json({ ok: Boolean(me), me, webhook });
       }
 
       if (request.method === 'POST' && isTelegramPath(url.pathname)) {
@@ -31,8 +37,13 @@ export default {
         const route = getTelegramRoute(url.pathname);
 
         if (route.kind === 'core') {
-          if (update.callback_query) await handleBuilderCallback(env, config, update.callback_query);
           const message = update.message ?? update.edited_message;
+          if (message && isCoreStart(message)) {
+            await safeCoreStart(config.telegramBotToken, message);
+            await safeEnsureSchema(env);
+            return json({ ok: true, route: 'core', safeStart: true });
+          }
+          if (update.callback_query) await handleBuilderCallback(env, config, update.callback_query);
           if (message) await handleBuilderMessage(env, config, message);
           return json({ ok: true, route: 'core' });
         }
@@ -49,6 +60,28 @@ export default {
   }
 };
 
+async function safeEnsureSchema(env: Env): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await ensureSchema(env);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'schema_error' };
+  }
+}
+
+async function safeCoreStart(token: string, message: TelegramMessage): Promise<void> {
+  await sendMessage(token, {
+    chatId: message.chat.id,
+    text: ['⚡️ پنل ساخت ربات', '', '🔌 کانکت: اتصال ربات کاربر', '🤖 AI: تنظیم هوش مصنوعی ربات متصل', '✨ ساخت ربات بدون کدنویسی: هر چیزی می‌خوای بنویس تا ساخته شود'].join('\n'),
+    replyMarkup: mainMenuKeyboard()
+  });
+}
+
+function isCoreStart(message: TelegramMessage): boolean {
+  const text = (message.text ?? '').trim();
+  return ['/start', '/menu', 'start', 'منو'].includes(text);
+}
+
 function isTelegramPath(pathname: string): boolean {
   return pathname === '/telegram/core' || pathname === '/telegram/webhook' || pathname.startsWith('/telegram/');
 }
@@ -56,20 +89,15 @@ function isTelegramPath(pathname: string): boolean {
 function getTelegramRoute(pathname: string): { kind: 'core' } | { kind: 'customer'; username: string } {
   const clean = pathname.replace(/\/+$/, '');
 
-  // New core route.
   if (clean === '/telegram/core') return { kind: 'core' };
-
-  // Legacy core routes from the old project. These must keep working so the bot does not go silent after rebuilds.
   if (clean === '/telegram/webhook' || clean === '/telegram/webhook/_core') return { kind: 'core' };
 
-  // Legacy customer route: /telegram/webhook/<bot_username>
   const legacyPrefix = '/telegram/webhook/';
   if (clean.startsWith(legacyPrefix)) {
     const username = clean.slice(legacyPrefix.length).trim().toLowerCase().replace(/^@/, '');
     return username ? { kind: 'customer', username } : { kind: 'core' };
   }
 
-  // New customer route: /telegram/<bot_username>
   const prefix = '/telegram/';
   const username = clean.startsWith(prefix) ? clean.slice(prefix.length).trim().toLowerCase().replace(/^@/, '') : '';
   if (!username || username === 'core') return { kind: 'core' };
