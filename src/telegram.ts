@@ -1,11 +1,10 @@
 import type { BotBlueprint, BotButton, BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { aiReply } from './ai';
-import { decryptToken, id, rateLimit, safeParseJson } from './utils';
+import { id, PUBLIC_BASE_URL, rateLimit, safeParseJson } from './utils';
 
 export async function setTelegramWebhook(env: Env, bot: BotRecord): Promise<{ ok: boolean; description?: string }> {
-  const token = await decryptToken(env, bot.encrypted_token);
-  const url = `${env.PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}`;
-  return telegramApi(token, 'setWebhook', {
+  const url = `${PUBLIC_BASE_URL}/telegram/${bot.id}/${bot.webhook_secret}`;
+  return telegramApi(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
     url,
     allowed_updates: ['message', 'callback_query'],
     drop_pending_updates: true,
@@ -13,17 +12,16 @@ export async function setTelegramWebhook(env: Env, bot: BotRecord): Promise<{ ok
 }
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
-  const token = await decryptToken(env, bot.encrypted_token);
   const blueprint = safeParseJson<BotBlueprint>(bot.blueprint_json, fallbackBlueprint());
 
   if (update.callback_query) {
-    await handleCallback(env, token, bot, blueprint, update.callback_query);
+    await handleCallback(env, env.TELEGRAM_BOT_TOKEN, bot, blueprint, update.callback_query);
     return;
   }
 
   if (update.message) {
     await upsertBotUser(env, bot.id, update.message);
-    await handleMessage(env, token, bot, blueprint, update.message);
+    await handleMessage(env, env.TELEGRAM_BOT_TOKEN, bot, blueprint, update.message);
   }
 }
 
@@ -44,7 +42,7 @@ async function handleMessage(env: Env, token: string, bot: BotRecord, blueprint:
     return;
   }
 
-  const allowed = await rateLimit(env, `ai:${bot.id}:${message.from?.id ?? chatId}`, 12, 60);
+  const allowed = await rateLimit(env.RATE_LIMITS, `ai:${bot.id}:${message.from?.id ?? chatId}`, 12, 60);
   if (!allowed) {
     await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'تعداد پیام‌ها زیاد شد. یک دقیقه بعد دوباره امتحان کن.' });
     return;
@@ -57,7 +55,7 @@ async function handleMessage(env: Env, token: string, bot: BotRecord, blueprint:
 
   const answer = await aiReply(env, blueprint.aiSupport.systemPrompt, text);
   await env.DB.prepare('INSERT INTO ai_usage (id, bot_id, purpose, model, input_chars, output_chars) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(id('use'), bot.id, 'bot_user_reply', env.OPENAI_MODEL, text.length, answer.length)
+    .bind(id('use'), bot.id, 'bot_user_reply', 'gpt-5-mini', text.length, answer.length)
     .run();
   await telegramApi(token, 'sendMessage', { chat_id: chatId, text: answer });
 }
