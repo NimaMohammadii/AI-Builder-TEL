@@ -58,7 +58,7 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
   if (await isRuntimeAiDisabled(env, botId)) {
     await sendUiMessage(config, {
       chatId: message.chat.id,
-      text: 'AI این ربات فعلاً غیرفعال است. از دکمه‌ها یا دستورهای تعریف‌شده استفاده کن.',
+      text: 'این پیام برای ربات تعریف نشده. از دکمه‌ها یا دستورهای موجود استفاده کن.',
       replyToMessageId: message.message_id,
       replyMarkup: buildRuntimeKeyboard(runtime)
     });
