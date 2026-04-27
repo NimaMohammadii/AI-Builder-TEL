@@ -2,12 +2,14 @@ import type { AppConfig, Env } from '../types/env';
 import type { TelegramMessage } from '../types/telegram';
 import { sendUiMessage } from '../lib/telegram-ui';
 import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse, type RuntimeBotConfig } from '../lib/bot-runtime-config';
+import { loadBotRuntimeCode } from '../lib/bot-code-workspace';
 
 export async function handleBuiltBotRuntime(message: TelegramMessage, config: AppConfig, env: Env, botId: string | null, text: string): Promise<boolean> {
   if (!botId || !text.trim()) return true;
 
   const value = text.trim();
-  const runtime = await loadRuntimeBotConfig(env, botId);
+  const codePlan = await loadBotRuntimeCode(env, botId);
+  const runtime = codePlan?.runtimeConfig ?? await loadRuntimeBotConfig(env, botId);
 
   if (!runtime) {
     await sendUiMessage(config, {
@@ -52,7 +54,7 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     }
   }
 
-  const aiResponse = await answerWithRuntimeAI(config, runtime, value);
+  const aiResponse = await answerWithRuntimeAI(config, runtime, value, codePlan?.sourceCode);
   await sendUiMessage(config, {
     chatId: message.chat.id,
     text: aiResponse,
@@ -62,14 +64,17 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
   return true;
 }
 
-async function answerWithRuntimeAI(config: AppConfig, runtime: RuntimeBotConfig, userText: string): Promise<string> {
+async function answerWithRuntimeAI(config: AppConfig, runtime: RuntimeBotConfig, userText: string, sourceCode?: string): Promise<string> {
   const instructions = runtime.aiInstructions?.trim() || 'مثل همین ربات تلگرام پاسخ بده و کاربر را راهنمایی کن.';
   const prompt = [
     'تو AI اجرایی یک ربات تلگرام هستی.',
-    'باید دقیقاً طبق تنظیمات و هدفی که مالک ربات ساخته رفتار کنی.',
+    'این ربات یک کد اختصاصی برای خودش دارد و باید دقیقاً مثل همان برنامه رفتار کنی.',
     'کد، توضیح فنی یا JSON نده؛ فقط پیام نهایی مناسب کاربر همین ربات را بنویس.',
     'اگر باید اطلاعات جمع‌آوری شود، مرحله‌به‌مرحله از کاربر بپرس.',
     'اگر درخواست کاربر مربوط به قابلیت ربات است، همان قابلیت را اجرا/راهنمایی کن.',
+    '',
+    'کد اختصاصی ذخیره‌شده برای این ربات:',
+    sourceCode || 'کد اختصاصی متنی موجود نیست؛ از runtimeConfig استفاده کن.',
     '',
     'دستورها و رفتار ربات:',
     instructions,
