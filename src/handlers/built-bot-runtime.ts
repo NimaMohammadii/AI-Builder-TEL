@@ -3,6 +3,7 @@ import type { TelegramMessage } from '../types/telegram';
 import { sendUiMessage } from '../lib/telegram-ui';
 import { buildRuntimeKeyboard, loadRuntimeBotConfig, loadRuntimeCommandResponse, type RuntimeBotConfig } from '../lib/bot-runtime-config';
 import { loadBotRuntimeCode } from '../lib/bot-code-workspace';
+import { getDefaultAiProfileByBotId } from '../repositories/ai-profiles';
 
 export async function handleBuiltBotRuntime(message: TelegramMessage, config: AppConfig, env: Env, botId: string | null, text: string): Promise<boolean> {
   if (!botId || !text.trim()) return true;
@@ -54,6 +55,16 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     }
   }
 
+  if (await isRuntimeAiDisabled(env, botId)) {
+    await sendUiMessage(config, {
+      chatId: message.chat.id,
+      text: 'AI این ربات فعلاً غیرفعال است. از دکمه‌ها یا دستورهای تعریف‌شده استفاده کن.',
+      replyToMessageId: message.message_id,
+      replyMarkup: buildRuntimeKeyboard(runtime)
+    });
+    return true;
+  }
+
   const aiResponse = await answerWithRuntimeAI(config, runtime, value, codePlan?.sourceCode);
   await sendUiMessage(config, {
     chatId: message.chat.id,
@@ -62,6 +73,11 @@ export async function handleBuiltBotRuntime(message: TelegramMessage, config: Ap
     replyMarkup: buildRuntimeKeyboard(runtime)
   });
   return true;
+}
+
+async function isRuntimeAiDisabled(env: Env, botId: string): Promise<boolean> {
+  const profile = await getDefaultAiProfileByBotId(env, botId);
+  return profile?.reply_mode === 'disabled';
 }
 
 async function answerWithRuntimeAI(config: AppConfig, runtime: RuntimeBotConfig, userText: string, sourceCode?: string): Promise<string> {
