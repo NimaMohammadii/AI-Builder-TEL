@@ -8,9 +8,18 @@
     "enabled": true
   },
   "vars": {
-    "ENVIRONMENT": "development",
-    "OPENAI_MODEL": "gpt-5.4"
+    "ENVIRONMENT": "development"
   },
+  "kv_namespaces": [
+    {
+      "binding": "CHAT_MEMORY",
+      "id": "f2eb4c7696e74cc9ad889b048c87fc95"
+    },
+    {
+      "binding": "BOT_BUILDER_KV",
+      "id": "f2eb4c7696e74cc9ad889b048c87fc95"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
