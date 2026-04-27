@@ -1,13 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bot-builder-TEL",
+  "name": "bot-builder-tel",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-27",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  "vars": {
-    "PUBLIC_WEBHOOK_BASE": "https://bot-builder-TEL.workers.dev"
-  },
   "kv_namespaces": [
     {
       "binding": "BOT_KV",
