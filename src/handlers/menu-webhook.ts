@@ -11,6 +11,8 @@ import { ensureWorkspaceForUser } from "../repositories/workspaces";
 import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builder";
 import { formatResetBuiltBotResult, resetBuiltBot } from "../lib/reset-built-bot";
 import { handleBuiltBotRuntime } from "./built-bot-runtime";
+import { buildAiPanelKeyboard, buildAiPanelText, getAiPanelStatus, isAiMenuRequest, updateWorkspaceBotPrompt } from "../lib/ai-control-menu";
+import { endAiPromptSession, isAiPromptSessionActive, startAiPromptSession } from "../lib/ai-prompt-session";
 
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const handled = await tryHandleMenu(request.clone(), config, env);
@@ -38,7 +40,7 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
 
   const update = parseUpdate(body) as any;
   const callback = update?.callback_query;
-  if (callback && routeKind.kind === "core") return handleConnectCallback(callback, config, env);
+  if (callback && routeKind.kind === "core") return handleCoreCallback(callback, config, env);
   if (callback) return true;
 
   const message = update?.message ?? update?.edited_message;
@@ -53,6 +55,25 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
     return true;
   }
 
+  if (await isAiPromptSessionActive(config, message.chat.id, env)) {
+    const workspaceId = await resolveWorkspaceId(env, message);
+    if (!workspaceId) {
+      await endAiPromptSession(config, message.chat.id, env);
+      await sendUiMessage(config, { chatId: message.chat.id, text: "Workspace پیدا نشد. دوباره از منوی AI تلاش کن.", replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
+      return true;
+    }
+    const ok = await updateWorkspaceBotPrompt(env, { workspaceId, prompt: text, model: config.openAiModel });
+    await endAiPromptSession(config, message.chat.id, env);
+    const status = await getAiPanelStatus(env, workspaceId);
+    await sendUiMessage(config, {
+      chatId: message.chat.id,
+      text: ok ? `✅ پرامپت AI این ربات بروزرسانی شد.\n\n${buildAiPanelText(status)}` : "برای تغییر پرامپت، اول باید یک ربات وصل داشته باشی.",
+      replyToMessageId: message.message_id,
+      replyMarkup: ok ? buildAiPanelKeyboard(status) : buildMainMenuKeyboard()
+    });
+    return true;
+  }
+
   if (isMainMenuRequest(text)) {
     await sendUiMessage(config, { chatId: message.chat.id, text: MAIN_MENU_TEXT, replyToMessageId: message.message_id, replyMarkup: buildMainMenuKeyboard() });
     return true;
@@ -62,6 +83,13 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
     const workspaceId = await resolveWorkspaceId(env, message);
     const status = workspaceId ? await getConnectPanelStatus(env, workspaceId) : { hasBot: false, aiEnabled: false };
     await sendUiMessage(config, { chatId: message.chat.id, text: formatConnectPanel(status), replyToMessageId: message.message_id, replyMarkup: buildConnectInlineKeyboard() });
+    return true;
+  }
+
+  if (isAiMenuRequest(text)) {
+    const workspaceId = await resolveWorkspaceId(env, message);
+    const status = workspaceId ? await getAiPanelStatus(env, workspaceId) : { hasBot: false, aiEnabled: false };
+    await sendUiMessage(config, { chatId: message.chat.id, text: buildAiPanelText(status), replyToMessageId: message.message_id, replyMarkup: buildAiPanelKeyboard(status) });
     return true;
   }
 
@@ -112,6 +140,51 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   return false;
 }
 
+async function handleCoreCallback(callback: any, config: AppConfig, env: Env): Promise<boolean> {
+  const data = String(callback.data ?? "");
+  if (data.startsWith("ai:")) return handleAiCallback(callback, config, env);
+  if (data.startsWith("connect:")) return handleConnectCallback(callback, config, env);
+  return true;
+}
+
+async function handleAiCallback(callback: any, config: AppConfig, env: Env): Promise<boolean> {
+  const data = String(callback.data ?? "");
+  const chatId = callback.message?.chat?.id;
+  const messageId = callback.message?.message_id;
+  if (!chatId || !messageId) return false;
+
+  const workspaceId = await resolveWorkspaceIdFromChat(env, chatId);
+  if (!workspaceId) {
+    await answerCallback(config, callback.id, "Workspace not found");
+    return true;
+  }
+
+  if (data === "ai:toggle") {
+    const current = await getAiPanelStatus(env, workspaceId);
+    await setAiEnabled(env, workspaceId, !current.aiEnabled);
+    await answerCallback(config, callback.id, current.aiEnabled ? "AI disabled" : "AI enabled");
+    const status = await getAiPanelStatus(env, workspaceId);
+    await editUiMessage(config, { chatId, messageId, text: buildAiPanelText(status), replyMarkup: buildAiPanelKeyboard(status) });
+    return true;
+  }
+
+  if (data === "ai:change_prompt") {
+    await startAiPromptSession(config, chatId, env);
+    await answerCallback(config, callback.id, "Send new prompt");
+    await sendUiMessage(config, {
+      chatId,
+      text: "✍️ پرامپت جدید AI همین ربات رو بفرست.\n\nهر متنی که الان بفرستی، به عنوان پرامپت جدید ربات کاربر ذخیره می‌شه.",
+      replyMarkup: buildMainMenuKeyboard()
+    });
+    return true;
+  }
+
+  const status = await getAiPanelStatus(env, workspaceId);
+  await answerCallback(config, callback.id, "Updated");
+  await editUiMessage(config, { chatId, messageId, text: buildAiPanelText(status), replyMarkup: buildAiPanelKeyboard(status) });
+  return true;
+}
+
 async function handleConnectCallback(callback: any, config: AppConfig, env: Env): Promise<boolean> {
   const data = String(callback.data ?? "");
   const chatId = callback.message?.chat?.id;
@@ -124,11 +197,7 @@ async function handleConnectCallback(callback: any, config: AppConfig, env: Env)
     return true;
   }
 
-  if (data === "connect:toggle_ai") {
-    const current = await getConnectPanelStatus(env, workspaceId);
-    await setAiEnabled(env, workspaceId, !current.aiEnabled);
-    await answerCallback(config, callback.id, current.aiEnabled ? "AI disabled" : "AI enabled");
-  } else if (data === "connect:delete_bot") {
+  if (data === "connect:delete_bot") {
     await deactivateWorkspaceBot(env, workspaceId);
     await answerCallback(config, callback.id, "Bot removed");
   } else {
