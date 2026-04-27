@@ -74,9 +74,13 @@ app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
     )
     .run();
 
-  await c.env.DB.prepare('INSERT INTO audit_log (id, actor, action, target, metadata_json) VALUES (?, ?, ?, ?, ?)')
-    .bind(id('log'), body.ownerTelegramId ?? 'admin', 'bot.create', botId, JSON.stringify({ title: body.title }))
-    .run();
+  try {
+    await c.env.DB.prepare('INSERT INTO audit_log (id, actor, action, target, metadata_json) VALUES (?, ?, ?, ?, ?)')
+      .bind(id('log'), body.ownerTelegramId ?? 'admin', 'bot.create', botId, JSON.stringify({ title: body.title }))
+      .run();
+  } catch (error) {
+    console.warn('audit_log write failed', error);
+  }
 
   return c.json({ botId, status: 'draft', blueprint });
 });
@@ -140,33 +144,49 @@ app.onError((error, c) => {
 });
 
 async function handleTelegramWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
-  const update = (await c.req.json()) as TelegramUpdate;
-  const bot = await getActiveBotForUpdate(c.env, update);
-  c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update));
-  return Response.json({ ok: true });
+  try {
+    const update = (await c.req.json()) as TelegramUpdate;
+    const bot = await getActiveBotForUpdate(c.env, update);
+    c.executionCtx.waitUntil(
+      processTelegramUpdate(c.env, bot, update).catch((error) => console.error('telegram processing failed', error)),
+    );
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error('telegram webhook failed', error);
+    return Response.json({ ok: true, recovered: true });
+  }
 }
 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
-  const cached = await env.BOT_CACHE.get(`bot:${botId}`);
-  if (cached) return safeParseJson<BotRecord | null>(cached, null);
+  try {
+    const cached = await env.BOT_CACHE.get(`bot:${botId}`);
+    if (cached) return safeParseJson<BotRecord | null>(cached, null);
 
-  const bot = await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>();
-  if (bot) await env.BOT_CACHE.put(`bot:${botId}`, JSON.stringify(bot), { expirationTtl: 60 });
-  return bot ?? null;
+    const bot = await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>();
+    if (bot) await env.BOT_CACHE.put(`bot:${botId}`, JSON.stringify(bot), { expirationTtl: 60 });
+    return bot ?? null;
+  } catch (error) {
+    console.warn('getBot failed', error);
+    return null;
+  }
 }
 
 async function getActiveBotForUpdate(env: Env, update: TelegramUpdate): Promise<BotRecord> {
   const userId = String(update.message?.from?.id ?? update.callback_query?.from?.id ?? '');
 
-  if (userId) {
-    const ownedBot = await env.DB.prepare("SELECT * FROM bots WHERE owner_telegram_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1")
-      .bind(userId)
-      .first<BotRecord>();
-    if (ownedBot) return ownedBot;
-  }
+  try {
+    if (userId) {
+      const ownedBot = await env.DB.prepare("SELECT * FROM bots WHERE owner_telegram_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1")
+        .bind(userId)
+        .first<BotRecord>();
+      if (ownedBot) return ownedBot;
+    }
 
-  const activeBot = await env.DB.prepare("SELECT * FROM bots WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1").first<BotRecord>();
-  if (activeBot) return activeBot;
+    const activeBot = await env.DB.prepare("SELECT * FROM bots WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1").first<BotRecord>();
+    if (activeBot) return activeBot;
+  } catch (error) {
+    console.warn('active bot lookup failed, using default bot', error);
+  }
 
   return defaultBotRecord();
 }
