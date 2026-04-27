@@ -12,6 +12,8 @@ import { applyNoCodeBuild, formatNoCodeBuildResult } from "../lib/no-code-builde
 import { formatResetBuiltBotResult, resetBuiltBot } from "../lib/reset-built-bot";
 import { handleBuiltBotRuntime } from "./built-bot-runtime";
 
+const CORE_WEBHOOK_USERNAME = "_core";
+
 export async function handleMenuAwareTelegramWebhook(request: Request, config: AppConfig, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const handled = await tryHandleMenu(request.clone(), config, env);
   if (handled) return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
@@ -22,6 +24,11 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
   if (!verifyTelegramWebhookSecret(request, config.telegramWebhookSecret)) return false;
   if (!request.headers.get("content-type")?.includes("application/json")) return false;
 
+  const routeKind = getWebhookRouteKind(request);
+  if (routeKind.kind === "legacy") {
+    return true;
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -31,17 +38,19 @@ async function tryHandleMenu(request: Request, config: AppConfig, env: Env): Pro
 
   const update = parseUpdate(body) as any;
   const callback = update?.callback_query;
-  if (callback) return handleConnectCallback(callback, config, env);
+  if (callback && routeKind.kind === "core") return handleConnectCallback(callback, config, env);
+  if (callback) return true;
 
   const message = update?.message ?? update?.edited_message;
   const text = message?.text || (message as any)?.caption || "";
   if (!message || !text) return false;
 
-  const managedBot = await resolveManagedBotFromRequest(request, env);
-  if (managedBot) {
+  if (routeKind.kind === "customer") {
+    const managedBot = await findWorkspaceBotByUsername(env, routeKind.username);
+    if (!managedBot) return true;
     const runtimeConfig = { ...config, telegramBotToken: managedBot.encrypted_token, botUsername: managedBot.bot_username };
-    const handledRuntime = await handleBuiltBotRuntime(message, runtimeConfig, env, managedBot.id, text);
-    return handledRuntime;
+    await handleBuiltBotRuntime(message, runtimeConfig, env, managedBot.id, text);
+    return true;
   }
 
   if (isMainMenuRequest(text)) {
@@ -157,11 +166,12 @@ async function resolveWorkspaceIdFromChat(env: Env, telegramChatId: number): Pro
   return row?.workspace_id ?? null;
 }
 
-async function resolveManagedBotFromRequest(request: Request, env: Env) {
+function getWebhookRouteKind(request: Request): { kind: "core" } | { kind: "customer"; username: string } | { kind: "legacy" } {
   const pathname = new URL(request.url).pathname.replace(/\/+$/, "");
   const prefix = "/telegram/webhook/";
-  if (!pathname.startsWith(prefix)) return null;
+  if (pathname === "/telegram/webhook") return { kind: "legacy" };
+  if (!pathname.startsWith(prefix)) return { kind: "legacy" };
   const username = pathname.slice(prefix.length).trim().toLowerCase();
-  if (!username) return null;
-  return findWorkspaceBotByUsername(env, username);
+  if (username === CORE_WEBHOOK_USERNAME) return { kind: "core" };
+  return { kind: "customer", username };
 }
