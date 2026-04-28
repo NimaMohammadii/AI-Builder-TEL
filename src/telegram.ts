@@ -44,32 +44,19 @@ async function handleBuilderMessage(env: Env, token: string, bot: BotRecord, blu
     return;
   }
 
-  if (text === '/newbot' || text === 'ساخت ربات') {
-    await setBuilderState(env, userId, { step: 'waiting_prompt' });
-    await sendText(token, chatId, 'توضیح بده چه رباتی می‌خوای بسازی. مثال:\n\nیه ربات فروش دوره زبان می‌خوام که محصول داشته باشه، پشتیبانی هوشمند بده، بعد از خرید لینک بده و لحنش حرفه‌ای باشه.');
+  if (text === '/newbot' || text === 'Build Bot') {
+    await sendOpenMiniApp(token, chatId);
     return;
   }
 
   if (text === '/cancel') {
     await clearBuilderState(env, userId);
-    await sendText(token, chatId, 'لغو شد. برای ساخت ربات جدید /newbot را بزن.');
-    return;
-  }
-
-  const state = await getBuilderState(env, userId);
-
-  if (state.step === 'waiting_prompt') {
-    await prepareBotAndAskToken(env, token, chatId, userId, text);
-    return;
-  }
-
-  if (state.step === 'waiting_token') {
-    await attachTokenAndCreateBot(env, token, chatId, userId, text, state);
+    await sendText(token, chatId, 'Cancelled. Open the Mini App to build or edit your bots.');
     return;
   }
 
   if (text === '/help') {
-    await sendText(token, chatId, 'برای ساخت ربات جدید /newbot را بزن. برای لغو /cancel را بزن.');
+    await sendText(token, chatId, 'Open the Mini App to connect your BotFather token, chat with AI, and apply changes to your Telegram bot.');
     return;
   }
 
@@ -82,19 +69,13 @@ async function handleBuilderCallback(env: Env, token: string, bot: BotRecord, bl
   const data = callback.data ?? '';
   await telegramApi(token, 'answerCallbackQuery', { callback_query_id: callback.id });
 
-  if (data === 'builder:new') {
-    await setBuilderState(env, userId, { step: 'waiting_prompt' });
-    await sendText(token, chatId, 'چی می‌خوای بسازی؟ کامل توضیح بده تا AI ساختار رباتت رو بسازه.\n\nمثال: ربات فروش فایل با منوی محصولات، پرداخت، تحویل لینک و پشتیبانی هوشمند.');
+  if (data === 'builder:mybots') {
+    await sendMyBots(env, token, chatId, userId);
     return;
   }
 
   if (data === 'builder:help') {
-    await sendText(token, chatId, 'برای ساخت ربات باید اول از BotFather یک ربات بسازی و توکنش رو بگیری. بعد اینجا توضیح ربات و توکن رو می‌فرستی تا webhook رباتت روی Cloudflare ست شود.');
-    return;
-  }
-
-  if (data === 'builder:mybots') {
-    await sendMyBots(env, token, chatId, userId);
+    await sendText(token, chatId, 'Use the Mini App. It lets you connect a BotFather token, describe your bot, chat with AI, and apply changes instantly.');
     return;
   }
 
@@ -111,13 +92,13 @@ async function handleRuntimeMessage(env: Env, token: string, bot: BotRecord, blu
   }
 
   if (text === '/help') {
-    await sendText(token, chatId, 'از دکمه‌ها استفاده کن یا پیام خودت را برای پشتیبانی هوشمند بفرست.');
+    await sendText(token, chatId, 'Use the buttons or send a message to AI support.');
     return;
   }
 
   const allowed = await safeRateLimit(env, `ai:${bot.id}:${message.from?.id ?? chatId}`, 12, 60);
   if (!allowed) {
-    await sendText(token, chatId, 'تعداد پیام‌ها زیاد شد. یک دقیقه بعد دوباره امتحان کن.');
+    await sendText(token, chatId, 'Too many messages. Try again in a minute.');
     return;
   }
 
@@ -140,103 +121,37 @@ async function handleRuntimeCallback(env: Env, token: string, bot: BotRecord, bl
   }
 
   if (data === 'products') {
-    await sendText(token, chatId, 'بخش محصولات هنوز تنظیم نشده.');
+    await sendText(token, chatId, 'Products are not configured yet.');
     return;
   }
 
   if (data === 'support') {
-    await sendText(token, chatId, blueprint.aiSupport.enabled ? 'سوالت را بفرست؛ پشتیبان هوشمند جواب می‌دهد.' : blueprint.aiSupport.handoffMessage);
+    await sendText(token, chatId, blueprint.aiSupport.enabled ? 'Send your question. AI support will answer.' : blueprint.aiSupport.handoffMessage);
     return;
   }
 
   await sendScreen(token, chatId, blueprint, blueprint.startScreen);
 }
 
-async function prepareBotAndAskToken(env: Env, token: string, chatId: number, userId: string, prompt: string): Promise<void> {
-  if (prompt.length < 10) {
-    await sendText(token, chatId, 'توضیحت خیلی کوتاهه. دقیق‌تر بگو ربات چه کاری انجام بده.');
-    return;
-  }
-
-  const allowed = await safeRateLimit(env, `create-bot:${userId}`, 5, 3600);
-  if (!allowed) {
-    await sendText(token, chatId, 'فعلاً سقف ساخت ربات پر شده. یک ساعت بعد دوباره امتحان کن.');
-    return;
-  }
-
-  await sendText(token, chatId, 'در حال طراحی ساختار ربات با AI...');
-
-  const blueprint = await buildBlueprint(env, prompt);
-  const title = inferTitle(prompt);
-  await setBuilderState(env, userId, { step: 'waiting_token', prompt, title, blueprint });
-
-  await sendText(token, chatId, `✅ ساختار ربات آماده شد.\n\nنام پیشنهادی: ${title}\n\nحالا توکن ربات خودت رو از BotFather بفرست.\n\nفرمت توکن شبیه اینه:\n123456789:AA...\n\nبرای لغو /cancel را بزن.`);
-}
-
-async function attachTokenAndCreateBot(env: Env, token: string, chatId: number, userId: string, userBotToken: string, state: Extract<BuilderState, { step: 'waiting_token' }>): Promise<void> {
-  if (!/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(userBotToken)) {
-    await sendText(token, chatId, 'توکن معتبر نیست. توکن BotFather باید شبیه 123456789:AA... باشد. دوباره بفرست یا /cancel را بزن.');
-    return;
-  }
-
-  await sendText(token, chatId, 'در حال تست توکن و اتصال webhook...');
-
-  const me = await telegramApiWithToken<{ ok: boolean; result?: { username?: string; first_name?: string }; description?: string }>(userBotToken, 'getMe', {});
-  if (!me.ok) {
-    await sendText(token, chatId, `توکن توسط تلگرام تایید نشد.\n${me.description ?? ''}`);
-    return;
-  }
-
-  const botId = id('bot');
-  const encryptedToken = await encryptUserToken(env, userBotToken);
-  const webhookUrl = `${PUBLIC_BASE_URL}/bot/${botId}/webhook`;
-  const webhook = await telegramApiWithToken<{ ok: boolean; description?: string }>(userBotToken, 'setWebhook', {
-    url: webhookUrl,
-    allowed_updates: ['message', 'callback_query'],
-    drop_pending_updates: true,
-  });
-
-  if (!webhook.ok) {
-    await sendText(token, chatId, `Webhook ست نشد.\n${webhook.description ?? ''}`);
-    return;
-  }
-
-  try {
-    await env.DB.prepare(
-      `INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json)
-       VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
-    )
-      .bind(
-        botId,
-        userId,
-        me.result?.username ?? null,
-        state.title,
-        encryptedToken,
-        'user-webhook',
-        JSON.stringify(state.blueprint),
-        JSON.stringify({ sourcePrompt: state.prompt, createdFromTelegram: true, botUsername: me.result?.username ?? null }),
-      )
-      .run();
-
-    await clearBuilderState(env, userId);
-    await sendText(token, chatId, `✅ رباتت فعال شد.\n\nنام: ${state.title}\nیوزرنیم: @${me.result?.username ?? 'unknown'}\nشناسه: ${botId}\n\nحالا برو داخل ربات خودت و /start بزن.`);
-  } catch (error) {
-    console.error('create bot with token failed', error);
-    await sendText(token, chatId, 'توکن درست بود و webhook هم ست شد، ولی ذخیره در دیتابیس شکست خورد. migration جدول bots را چک کن.');
-  }
-}
-
 async function sendMainMenu(token: string, chatId: number): Promise<void> {
   await telegramApi(token, 'sendMessage', {
     chat_id: chatId,
-    text: 'به AI Builder TEL خوش اومدی.\n\nاینجا می‌تونی با توضیح فارسی و توکن BotFather، ربات تلگرامی خودت رو بسازی.',
+    text: 'Welcome to AI Builder TEL.\n\nBuild Telegram bots without code. Connect a BotFather token, chat with AI, and apply changes from one Mini App workspace.',
     reply_markup: {
       inline_keyboard: [
-        [{ text: 'ساخت ربات جدید', callback_data: 'builder:new' }],
-        [{ text: 'ربات‌های من', callback_data: 'builder:mybots' }],
-        [{ text: 'راهنما', callback_data: 'builder:help' }],
+        [{ text: 'Build Bot Without Code', web_app: { url: `${PUBLIC_BASE_URL}/app` } }],
+        [{ text: 'Open AI Workspace', web_app: { url: `${PUBLIC_BASE_URL}/app#workspace` } }],
+        [{ text: 'My Bots', callback_data: 'builder:mybots' }, { text: 'Help', callback_data: 'builder:help' }],
       ],
     },
+  });
+}
+
+async function sendOpenMiniApp(token: string, chatId: number): Promise<void> {
+  await telegramApi(token, 'sendMessage', {
+    chat_id: chatId,
+    text: 'Open the Mini App to build, connect, and edit your bot.',
+    reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] },
   });
 }
 
@@ -247,22 +162,22 @@ async function sendMyBots(env: Env, token: string, chatId: number, userId: strin
       .all<{ id: string; title: string; username: string | null; status: string; created_at: string }>();
 
     if (!rows.results.length) {
-      await sendText(token, chatId, 'هنوز رباتی نساختی. برای شروع «ساخت ربات جدید» را بزن.');
+      await sendText(token, chatId, 'No bots yet. Open the Mini App to create your first bot.');
       return;
     }
 
-    const text = rows.results.map((bot, index) => `${index + 1}. ${bot.title}\n${bot.username ? '@' + bot.username : 'بدون یوزرنیم'}\nID: ${bot.id}\nStatus: ${bot.status}`).join('\n\n');
+    const text = rows.results.map((bot, index) => `${index + 1}. ${bot.title}\n${bot.username ? '@' + bot.username : 'No username'}\nID: ${bot.id}\nStatus: ${bot.status}`).join('\n\n');
     await sendText(token, chatId, text);
   } catch (error) {
     console.error('my bots failed', error);
-    await sendText(token, chatId, 'فعلاً نتونستم ربات‌ها رو بخونم. migration دیتابیس را چک کن.');
+    await sendText(token, chatId, 'Could not load bots. Check D1 migrations.');
   }
 }
 
 async function sendScreen(token: string, chatId: number, blueprint: BotBlueprint, screenId: string): Promise<void> {
   const screen = blueprint.screens.find((item) => item.id === screenId) ?? blueprint.screens[0];
   if (!screen) {
-    await sendText(token, chatId, 'ربات فعال است.');
+    await sendText(token, chatId, 'Bot is active.');
     return;
   }
 
@@ -293,27 +208,15 @@ async function getBuilderState(env: Env, userId: string): Promise<BuilderState> 
 }
 
 async function setBuilderState(env: Env, userId: string, state: BuilderState): Promise<void> {
-  try {
-    await env.BOT_CACHE.put(`builder-state:${userId}`, JSON.stringify(state), { expirationTtl: 1800 });
-  } catch (error) {
-    console.warn('setBuilderState failed', error);
-  }
+  try { await env.BOT_CACHE.put(`builder-state:${userId}`, JSON.stringify(state), { expirationTtl: 1800 }); } catch (error) { console.warn('setBuilderState failed', error); }
 }
 
 async function clearBuilderState(env: Env, userId: string): Promise<void> {
-  try {
-    await env.BOT_CACHE.delete(`builder-state:${userId}`);
-  } catch (error) {
-    console.warn('clearBuilderState failed', error);
-  }
+  try { await env.BOT_CACHE.delete(`builder-state:${userId}`); } catch (error) { console.warn('clearBuilderState failed', error); }
 }
 
 async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds: number): Promise<boolean> {
-  try {
-    return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds);
-  } catch {
-    return true;
-  }
+  try { return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds); } catch { return true; }
 }
 
 async function saveBotUser(env: Env, botId: string, message: TelegramMessage): Promise<void> {
@@ -324,12 +227,8 @@ async function saveBotUser(env: Env, botId: string, message: TelegramMessage): P
       `INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, updated_at)
        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
-    )
-      .bind(botId, String(user.id), user.first_name ?? null, user.username ?? null)
-      .run();
-  } catch (error) {
-    console.warn('saveBotUser failed', error);
-  }
+    ).bind(botId, String(user.id), user.first_name ?? null, user.username ?? null).run();
+  } catch (error) { console.warn('saveBotUser failed', error); }
 }
 
 async function runtimeAiReply(env: Env, blueprint: BotBlueprint, text: string): Promise<string> {
@@ -342,10 +241,6 @@ async function sendText(token: string, chatId: number, text: string): Promise<vo
 }
 
 async function telegramApi<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
-  return telegramApiWithToken<T>(token, method, payload);
-}
-
-async function telegramApiWithToken<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -358,24 +253,11 @@ function mainBuilderBlueprint(): BotBlueprint {
   return {
     version: 1,
     botType: 'custom',
-    language: 'fa',
+    language: 'en',
     tone: 'premium',
     startScreen: 'home',
-    screens: [
-      {
-        id: 'home',
-        title: 'AI Builder TEL',
-        message: 'به AI Builder TEL خوش اومدی. برای ساخت ربات جدید دکمه زیر را بزن.',
-        buttons: [{ text: 'ساخت ربات جدید', action: { type: 'support' } }],
-      },
-    ],
-    aiSupport: { enabled: false, systemPrompt: '', handoffMessage: 'پیام شما ثبت شد.' },
+    screens: [{ id: 'home', title: 'AI Builder TEL', message: 'Open the Mini App to build Telegram bots without code.', buttons: [] }],
+    aiSupport: { enabled: false, systemPrompt: '', handoffMessage: 'Message saved.' },
     safety: { blockedTopics: [], requireHumanFor: [] },
   };
-}
-
-function inferTitle(prompt: string): string {
-  const cleaned = prompt.replace(/\s+/g, ' ').trim();
-  if (cleaned.length <= 32) return cleaned;
-  return cleaned.slice(0, 32) + '...';
 }
