@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint } from './ai';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram';
 import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
-import { APP_NAME, PUBLIC_BASE_URL, id, rateLimit, safeParseJson, sha256 } from './utils';
+import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, id, rateLimit, safeParseJson, sha256 } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -37,7 +37,8 @@ app.get('/', (c) =>
       setupWebhook: 'POST /setup-webhook',
       createBot: 'POST /api/bots',
       publishBot: 'POST /api/bots/:id/publish',
-      telegramWebhook: 'POST /telegram/webhook',
+      builderWebhook: 'POST /telegram/webhook',
+      userBotWebhook: 'POST /bot/:botId/webhook',
     },
   }),
 );
@@ -67,20 +68,12 @@ app.post('/api/bots', zValidator('json', createBotSchema), async (c) => {
       body.ownerTelegramId ?? null,
       body.username ?? null,
       body.title,
-      'env:TELEGRAM_BOT_TOKEN',
+      '',
       secret,
       JSON.stringify(blueprint),
       JSON.stringify({ sourcePrompt: body.prompt }),
     )
     .run();
-
-  try {
-    await c.env.DB.prepare('INSERT INTO audit_log (id, actor, action, target, metadata_json) VALUES (?, ?, ?, ?, ?)')
-      .bind(id('log'), body.ownerTelegramId ?? 'admin', 'bot.create', botId, JSON.stringify({ title: body.title }))
-      .run();
-  } catch (error) {
-    console.warn('audit_log write failed', error);
-  }
 
   return c.json({ botId, status: 'draft', blueprint });
 });
@@ -126,16 +119,18 @@ app.post('/api/bots/:id/publish', async (c) => {
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
 
-  const result = await setTelegramWebhook(c.env);
+  const token = await decryptUserToken(c.env, bot.encrypted_token);
+  const result = await setBotWebhook(token, `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`);
   if (!result.ok) return c.json({ error: 'Telegram setWebhook failed', details: result }, 502);
 
   await c.env.DB.prepare("UPDATE bots SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(botId).run();
   await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook` });
+  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook` });
 });
 
-app.post('/telegram', async (c) => handleTelegramWebhook(c));
-app.post('/telegram/webhook', async (c) => handleTelegramWebhook(c));
+app.post('/telegram', async (c) => handleBuilderWebhook(c));
+app.post('/telegram/webhook', async (c) => handleBuilderWebhook(c));
+app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param('botId')));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => {
@@ -143,16 +138,31 @@ app.onError((error, c) => {
   return c.json({ error: 'Internal error' }, 500);
 });
 
-async function handleTelegramWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
+async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
   try {
     const update = (await c.req.json()) as TelegramUpdate;
-    const bot = await getActiveBotForUpdate(c.env, update);
+    const bot = defaultBotRecord();
     c.executionCtx.waitUntil(
-      processTelegramUpdate(c.env, bot, update).catch((error) => console.error('telegram processing failed', error)),
+      processTelegramUpdate(c.env, bot, update).catch((error) => console.error('builder telegram processing failed', error)),
     );
     return Response.json({ ok: true });
   } catch (error) {
-    console.error('telegram webhook failed', error);
+    console.error('builder telegram webhook failed', error);
+    return Response.json({ ok: true, recovered: true });
+  }
+}
+
+async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }, botId: string) {
+  try {
+    const update = (await c.req.json()) as TelegramUpdate;
+    const bot = await getBot(c.env, botId);
+    if (!bot || bot.status === 'suspended' || bot.status === 'paused') return Response.json({ ok: true, ignored: true });
+    c.executionCtx.waitUntil(
+      processTelegramUpdate(c.env, bot, update).catch((error) => console.error('user bot telegram processing failed', error)),
+    );
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error('user bot webhook failed', error);
     return Response.json({ ok: true, recovered: true });
   }
 }
@@ -171,26 +181,6 @@ async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
   }
 }
 
-async function getActiveBotForUpdate(env: Env, update: TelegramUpdate): Promise<BotRecord> {
-  const userId = String(update.message?.from?.id ?? update.callback_query?.from?.id ?? '');
-
-  try {
-    if (userId) {
-      const ownedBot = await env.DB.prepare("SELECT * FROM bots WHERE owner_telegram_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1")
-        .bind(userId)
-        .first<BotRecord>();
-      if (ownedBot) return ownedBot;
-    }
-
-    const activeBot = await env.DB.prepare("SELECT * FROM bots WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1").first<BotRecord>();
-    if (activeBot) return activeBot;
-  } catch (error) {
-    console.warn('active bot lookup failed, using default bot', error);
-  }
-
-  return defaultBotRecord();
-}
-
 function defaultBotRecord(): BotRecord {
   return {
     id: DEFAULT_BOT_ID,
@@ -201,7 +191,7 @@ function defaultBotRecord(): BotRecord {
     encrypted_token: 'env:TELEGRAM_BOT_TOKEN',
     webhook_secret: 'default',
     blueprint_json: JSON.stringify(defaultBlueprint('یک ربات‌ساز هوشمند تلگرام که با هوش مصنوعی برای کاربران ربات می‌سازد.')),
-    settings_json: '{}',
+    settings_json: JSON.stringify({ isBuilderBot: true }),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -214,11 +204,21 @@ function safeBot(bot: BotRecord) {
     username: bot.username,
     title: bot.title,
     status: bot.status,
+    hasToken: Boolean(bot.encrypted_token),
     blueprint: safeParseJson(bot.blueprint_json, null),
     settings: safeParseJson(bot.settings_json, {}),
     createdAt: bot.created_at,
     updatedAt: bot.updated_at,
   };
+}
+
+async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true }),
+  });
+  return response.json() as Promise<{ ok: boolean; description?: string }>;
 }
 
 export default app;
