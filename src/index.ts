@@ -12,29 +12,40 @@ const DEFAULT_BOT_ID = 'main';
 
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
+const statusSchema = z.object({ status: z.enum(['active', 'paused']) });
 const productSchema = z.object({ title: z.string().min(1).max(120), description: z.string().max(1000).default(''), priceAmount: z.number().int().nonnegative().default(0), currency: z.string().min(3).max(8).default('USD'), deliveryText: z.string().max(4000).default(''), metadata: z.record(z.unknown()).default({}) });
 
 app.get('/', (c) => c.redirect('/app'));
-app.get('/app', (c) => c.html(miniAppHtml()));
+app.get('/app', () => html(miniAppHtml()));
+app.get('/app/', () => html(miniAppHtml()));
+app.get('/miniapp', () => html(miniAppHtml()));
+app.get('/app/index.html', () => html(miniAppHtml()));
+app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
 
 app.post('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
-  return c.json({ ...result, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook`, miniApp: `${PUBLIC_BASE_URL}/app` });
+  const menu = await setBuilderMenuButton(c.env.TELEGRAM_BOT_TOKEN, `${PUBLIC_BASE_URL}/app`);
+  return c.json({ ...result, menu, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook`, miniApp: `${PUBLIC_BASE_URL}/app` });
 });
 
 app.get('/app/api/bots', async (c) => {
   const ownerId = c.req.query('ownerId') ?? '';
   if (!ownerId) return c.json({ bots: [] });
-  const rows = await c.env.DB.prepare('SELECT id, title, username, status, created_at, updated_at FROM bots WHERE owner_telegram_id = ? ORDER BY updated_at DESC LIMIT 50')
-    .bind(ownerId)
-    .all<{ id: string; title: string; username: string | null; status: string; created_at: string; updated_at: string }>();
-  return c.json({ bots: rows.results });
+  try {
+    const rows = await c.env.DB.prepare('SELECT id, title, username, status, created_at, updated_at FROM bots WHERE owner_telegram_id = ? ORDER BY updated_at DESC LIMIT 50')
+      .bind(ownerId)
+      .all<{ id: string; title: string; username: string | null; status: string; created_at: string; updated_at: string }>();
+    return c.json({ bots: rows.results });
+  } catch (error) {
+    console.error('load app bots failed', error);
+    return c.json({ bots: [], warning: 'Database is not ready. Run the D1 migration.' });
+  }
 });
 
 app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
   const body = c.req.valid('json');
-  const allowed = await rateLimit(c.env.RATE_LIMITS, `create:${body.ownerTelegramId}`, 12, 3600);
+  const allowed = await safeRateLimit(c.env, `create:${body.ownerTelegramId}`, 12, 3600);
   if (!allowed) return c.json({ error: 'Rate limit exceeded' }, 429);
 
   const me = await telegramApiWithToken<{ ok: boolean; result?: { username?: string; first_name?: string }; description?: string }>(body.telegramToken, 'getMe', {});
@@ -44,17 +55,19 @@ app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
   const botId = id('bot');
   const encryptedToken = await encryptUserToken(c.env, body.telegramToken);
   const webhookUrl = `${PUBLIC_BASE_URL}/bot/${botId}/webhook`;
-  const webhook = await telegramApiWithToken<{ ok: boolean; description?: string }>(body.telegramToken, 'setWebhook', { url: webhookUrl, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true });
+  const webhook = await setBotWebhook(body.telegramToken, webhookUrl);
   if (!webhook.ok) return c.json({ error: webhook.description ?? 'Could not set Telegram webhook' }, 502);
 
   const title = me.result?.first_name ?? flow.name ?? inferTitle(body.prompt);
-  await c.env.DB.prepare(
-    `INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json)
-     VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
-  )
-    .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
-    .run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  try {
+    await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`)
+      .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
+      .run();
+    await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  } catch (error) {
+    console.error('create mini app bot failed', error);
+    return c.json({ error: 'Database is not ready. Run the D1 migration first.' }, 500);
+  }
   return c.json({ botId, username: me.result?.username ?? null, title, status: 'active', webhookUrl, blueprint, flow });
 });
 
@@ -72,16 +85,65 @@ app.post('/app/api/bots/:id/chat', zValidator('json', chatSchema), async (c) => 
   const currentBlueprint = safeParseJson<BotBlueprint>(bot.blueprint_json, defaultBlueprint('Telegram bot'));
   const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
   const currentFlow = ((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot'));
-  const [blueprintResult, flowResult] = await Promise.all([
-    improveBlueprint(c.env, currentBlueprint, body.instruction),
-    improveFlow(c.env, currentFlow, body.instruction),
-  ]);
+  const [blueprintResult, flowResult] = await Promise.all([improveBlueprint(c.env, currentBlueprint, body.instruction), improveFlow(c.env, currentFlow, body.instruction)]);
   settings.flow = flowResult.flow;
-  await c.env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), botId)
-    .run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  try {
+    await c.env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), botId)
+      .run();
+    await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  } catch (error) {
+    console.error('save blueprint change failed', error);
+    return c.json({ error: 'Could not save changes. Check D1 migration.' }, 500);
+  }
   return c.json({ ok: true, summary: `${flowResult.summary}\n${blueprintResult.summary}`, blueprint: blueprintResult.blueprint, flow: flowResult.flow });
+});
+
+app.patch('/app/api/bots/:id/status', zValidator('json', statusSchema), async (c) => {
+  const botId = c.req.param('id');
+  const body = c.req.valid('json');
+  const bot = await getBot(c.env, botId);
+  if (!bot) return c.json({ error: 'Bot not found' }, 404);
+  const token = await decryptUserToken(c.env, bot.encrypted_token);
+  if (body.status === 'active') {
+    const result = await setBotWebhook(token, `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`);
+    if (!result.ok) return c.json({ error: result.description ?? 'Could not activate webhook' }, 502);
+  } else {
+    await deleteBotWebhook(token);
+  }
+  await c.env.DB.prepare('UPDATE bots SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(body.status, botId).run();
+  await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  return c.json({ ok: true, botId, status: body.status });
+});
+
+app.post('/app/api/bots/:id/publish', async (c) => {
+  const botId = c.req.param('id');
+  const bot = await getBot(c.env, botId);
+  if (!bot) return c.json({ error: 'Bot not found' }, 404);
+  const token = await decryptUserToken(c.env, bot.encrypted_token);
+  const webhookUrl = `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`;
+  const result = await setBotWebhook(token, webhookUrl);
+  if (!result.ok) return c.json({ error: result.description ?? 'Could not publish webhook' }, 502);
+  const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
+  settings.webhookUrl = webhookUrl;
+  await c.env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), botId).run();
+  await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  return c.json({ ok: true, botId, status: 'active', webhookUrl });
+});
+
+app.delete('/app/api/bots/:id', async (c) => {
+  const botId = c.req.param('id');
+  const bot = await getBot(c.env, botId);
+  if (!bot) return c.json({ error: 'Bot not found' }, 404);
+  try {
+    const token = await decryptUserToken(c.env, bot.encrypted_token);
+    await deleteBotWebhook(token);
+  } catch (error) {
+    console.warn('delete webhook failed', error);
+  }
+  await c.env.DB.prepare('DELETE FROM bots WHERE id = ?').bind(botId).run();
+  await c.env.BOT_CACHE.delete(`bot:${botId}`);
+  return c.json({ ok: true, botId });
 });
 
 app.put('/app/api/bots/:id/blueprint', async (c) => {
@@ -162,8 +224,22 @@ function safeBot(bot: BotRecord) {
   return { id: bot.id, ownerTelegramId: bot.owner_telegram_id, username: bot.username, title: bot.title, status: bot.status, hasToken: Boolean(bot.encrypted_token), blueprint: safeParseJson(bot.blueprint_json, null), flow: settings.flow ?? null, settings, createdAt: bot.created_at, updatedAt: bot.updated_at };
 }
 
+async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds: number): Promise<boolean> {
+  try { return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds); } catch { return true; }
+}
+
 async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
   const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true }) });
+  return response.json() as Promise<{ ok: boolean; description?: string }>;
+}
+
+async function deleteBotWebhook(token: string): Promise<{ ok: boolean; description?: string }> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ drop_pending_updates: true }) });
+  return response.json() as Promise<{ ok: boolean; description?: string }>;
+}
+
+async function setBuilderMenuButton(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ menu_button: { type: 'web_app', text: 'AI Builder TEL', web_app: { url } } }) });
   return response.json() as Promise<{ ok: boolean; description?: string }>;
 }
 
@@ -173,5 +249,6 @@ async function telegramApiWithToken<T>(token: string, method: string, payload: u
 }
 
 function inferTitle(prompt: string): string { const cleaned = prompt.replace(/\s+/g, ' ').trim(); return cleaned.length <= 34 ? cleaned : cleaned.slice(0, 34) + '...'; }
+function html(content: string): Response { return new Response(content, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store, no-cache, must-revalidate', 'x-frame-options': 'ALLOWALL' } }); }
 
 export default app;
