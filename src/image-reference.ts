@@ -7,6 +7,12 @@ type PhotoMessage = TelegramMessage & { caption?: string; photo?: PhotoSize[] };
 type FileResult = { ok: boolean; result?: { file_path?: string }; description?: string };
 type VisionResult = { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
 
+export type TelegramReferenceImage = {
+  bytes: Uint8Array;
+  mimeType: string;
+  filename: string;
+};
+
 const TG_API = ['https://api.telegram.org'].join('');
 const TG_FILE_API = ['https://api.telegram.org', 'file'].join('/');
 
@@ -20,14 +26,20 @@ export function messageHasPhoto(message: TelegramMessage): boolean {
   return Array.isArray(photoMessage.photo) && photoMessage.photo.length > 0;
 }
 
-export async function buildImageGenerationPrompt(env: Env, token: string, message: TelegramMessage): Promise<string> {
-  const userText = getImageModeText(message);
+export async function getTelegramReferenceImage(token: string, message: TelegramMessage): Promise<TelegramReferenceImage | null> {
   const photoMessage = message as PhotoMessage;
   const photo = [...(photoMessage.photo ?? [])].sort((a, b) => (b.file_size ?? b.width * b.height) - (a.file_size ?? a.width * a.height))[0];
-  if (!photo) return userText;
+  if (!photo) return null;
+  return downloadTelegramPhoto(token, photo.file_id);
+}
+
+export async function buildImageGenerationPrompt(env: Env, token: string, message: TelegramMessage): Promise<string> {
+  const userText = getImageModeText(message);
+  const reference = await getTelegramReferenceImage(token, message);
+  if (!reference) return userText;
   if (!env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing for image analysis.');
 
-  const imageUrl = await telegramPhotoDataUrl(token, photo.file_id);
+  const imageUrl = `data:${reference.mimeType};base64,${toBase64(reference.bytes)}`;
   const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
@@ -60,7 +72,7 @@ export async function buildImageGenerationPrompt(env: Env, token: string, messag
   return prompt.slice(0, 3500);
 }
 
-async function telegramPhotoDataUrl(token: string, fileId: string): Promise<string> {
+async function downloadTelegramPhoto(token: string, fileId: string): Promise<TelegramReferenceImage> {
   const fileResponse = await fetch(`${TG_API}/bot${token}/getFile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file_id: fileId }) });
   const fileJson = (await fileResponse.json()) as FileResult;
   const filePath = fileJson.result?.file_path;
@@ -71,8 +83,9 @@ async function telegramPhotoDataUrl(token: string, fileId: string): Promise<stri
 
   const bytes = new Uint8Array(await photoResponse.arrayBuffer());
   const headerType = photoResponse.headers.get('content-type') || '';
-  const type = normalizeImageMimeType(headerType, filePath, bytes);
-  return `data:${type};base64,${toBase64(bytes)}`;
+  const mimeType = normalizeImageMimeType(headerType, filePath, bytes);
+  const extension = mimeType.split('/')[1] || 'jpg';
+  return { bytes, mimeType, filename: `reference.${extension === 'jpeg' ? 'jpg' : extension}` };
 }
 
 function normalizeImageMimeType(headerType: string, filePath: string, bytes: Uint8Array): string {
