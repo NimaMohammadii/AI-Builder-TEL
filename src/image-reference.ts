@@ -52,11 +52,32 @@ async function telegramPhotoDataUrl(token: string, fileId: string): Promise<stri
   const fileJson = (await fileResponse.json()) as FileResult;
   const filePath = fileJson.result?.file_path;
   if (!fileResponse.ok || !fileJson.ok || !filePath) throw new Error(fileJson.description ?? 'Could not load Telegram image.');
+
   const photoResponse = await fetch(`${TG_FILE_API}/bot${token}/${filePath}`);
   if (!photoResponse.ok) throw new Error('Could not download Telegram image.');
+
   const bytes = new Uint8Array(await photoResponse.arrayBuffer());
-  const type = photoResponse.headers.get('content-type') || 'image/jpeg';
+  const headerType = photoResponse.headers.get('content-type') || '';
+  const type = normalizeImageMimeType(headerType, filePath, bytes);
   return `data:${type};base64,${toBase64(bytes)}`;
+}
+
+function normalizeImageMimeType(headerType: string, filePath: string, bytes: Uint8Array): string {
+  const cleanHeader = headerType.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (cleanHeader.startsWith('image/')) return cleanHeader;
+
+  const path = filePath.toLowerCase();
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.webp')) return 'image/webp';
+  if (path.endsWith('.gif')) return 'image/gif';
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return 'image/webp';
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
+
+  return 'image/jpeg';
 }
 
 function toBase64(bytes: Uint8Array): string {
