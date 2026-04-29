@@ -34,8 +34,22 @@ export async function buildImageGenerationPrompt(env: Env, token: string, messag
     body: JSON.stringify({
       model: OPENAI_MODEL,
       messages: [
-        { role: 'system', content: 'Analyze the reference image and user instruction. Return one polished image generation prompt only.' },
-        { role: 'user', content: [{ type: 'text', text: userText || 'Use the attached image as reference.' }, { type: 'image_url', image_url: { url: imageUrl } }] },
+        {
+          role: 'system',
+          content:
+            'You are a senior image prompt engineer. The user sent a reference image and may have added a caption/instruction. Your job is to create one detailed image-generation prompt that strongly preserves the reference image. Return only the final prompt, no explanation. The prompt must describe the reference image in detail: main subject, identity-neutral appearance, pose, composition, camera angle, framing, background, objects, colors, lighting, mood, texture, style, and any text/layout if visible. Then apply the user instruction. Make it explicit that the generated image should be based on the provided reference image and preserve the important visual structure unless the user asks to change it.',
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text:
+                `User instruction/caption: ${userText || 'Use the attached image as the reference. Recreate it faithfully while improving quality.'}\n\nCreate a final prompt for an image generation model. It must be specific enough that the generated result clearly uses the reference image instead of ignoring it.`,
+            },
+            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
+          ],
+        },
       ],
     }),
   });
