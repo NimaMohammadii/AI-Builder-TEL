@@ -33,7 +33,6 @@ export async function buildImageGenerationPrompt(env: Env, token: string, messag
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      temperature: 0.2,
       messages: [
         { role: 'system', content: 'Analyze the reference image and user instruction. Return one polished image generation prompt only.' },
         { role: 'user', content: [{ type: 'text', text: userText || 'Use the attached image as reference.' }, { type: 'image_url', image_url: { url: imageUrl } }] },
