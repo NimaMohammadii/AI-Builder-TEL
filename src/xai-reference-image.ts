@@ -23,65 +23,38 @@ export async function createXaiImageFromReference(env: Env, prompt: string, imag
   const safePrompt = prompt || 'Use the uploaded image as the visual reference and generate a high quality result.';
   const dataUrl = `data:${image.mimeType};base64,${toBase64(image.bytes)}`;
 
-  const payloads = [
-    {
+  const res = await fetch(`${BASE}/images/edits`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${key}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
       model: MODEL,
       prompt: safePrompt,
       n: 1,
       image: { type: 'image_url', url: dataUrl },
-    },
-    {
-      model: MODEL,
-      prompt: safePrompt,
-      n: 1,
-      images: [{ type: 'image_url', url: dataUrl }],
-    },
-    {
-      model: MODEL,
-      prompt: safePrompt,
-      n: 1,
-      image: dataUrl,
-    },
-  ];
-
-  const errors: string[] = [];
-  for (const payload of payloads) {
-    const result = await callXaiImageEdit(key, payload);
-    if (result.ok) return result.image;
-    errors.push(result.error);
-  }
-
-  throw new Error(`xAI image reference generation failed: ${errors.join(' | ')}`.slice(0, 900));
-}
-
-async function callXaiImageEdit(apiKey: string, payload: unknown): Promise<{ ok: true; image: { url?: string; b64?: string } } | { ok: false; error: string }> {
-  const res = await fetch(`${BASE}/images/edits`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+    }),
   });
 
   const text = await res.text();
   const json = safeJson<XaiImageResponse>(text);
 
   if (!res.ok) {
-    return { ok: false, error: extractXaiError(res.status, text, json) };
+    throw new Error(extractXaiError(res.status, text, json));
   }
 
   const item = json?.data?.[0];
-  if (item?.url) return { ok: true, image: { url: item.url } };
-  if (item?.b64_json) return { ok: true, image: { b64: item.b64_json } };
+  if (item?.url) return { url: item.url };
+  if (item?.b64_json) return { b64: item.b64_json };
 
-  return { ok: false, error: `HTTP ${res.status}: no image returned. Body: ${text.slice(0, 300)}` };
+  throw new Error(`xAI image reference generation failed: HTTP ${res.status}: no image returned. Body: ${text.slice(0, 300)}`);
 }
 
 function extractXaiError(status: number, rawText: string, json: XaiImageResponse | null): string {
   const message = typeof json?.error === 'string' ? json.error : json?.error?.message;
-  if (message) return `HTTP ${status}: ${message}`;
-  return `HTTP ${status}: ${rawText.slice(0, 300) || 'empty response'}`;
+  if (message) return `xAI image reference generation failed: HTTP ${status}: ${message}`;
+  return `xAI image reference generation failed: HTTP ${status}: ${rawText.slice(0, 300) || 'empty response'}`;
 }
 
 function safeJson<T>(text: string): T | null {
