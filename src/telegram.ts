@@ -70,12 +70,6 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
     return true;
   }
 
-  const allowed = await safeRateLimit(env, `image:${botId}:${userId}`, 5, 3600);
-  if (!allowed) {
-    await sendText(token, chatId, 'Image generation limit reached. Try again later.');
-    return true;
-  }
-
   await sendText(token, chatId, hasPhoto ? 'Sending your image directly to Grok and generating...' : 'Generating image...');
   try {
     const image = hasPhoto
