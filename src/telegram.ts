@@ -1,5 +1,6 @@
 import type { BotFlow } from './ai';
 import { createXaiImage } from './xai-image';
+import { buildImageGenerationPrompt, getImageModeText, messageHasPhoto } from './image-reference';
 import type { BotBlueprint, BotButton, BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, rateLimit, safeParseJson } from './utils';
 
@@ -39,11 +40,13 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
+  const imageModeText = getImageModeText(message);
+  const hasPhoto = messageHasPhoto(message);
   const stateKey = `image-mode:${botId}:${userId}`;
 
   if (text === '/image') {
     await env.BOT_CACHE.put(stateKey, '1', { expirationTtl: 3600 }).catch(() => undefined);
-    await sendText(token, chatId, 'Image mode activated. Send the prompt. Use /cancel to exit.');
+    await sendText(token, chatId, 'Image mode activated. Send a text prompt or photo+caption. Use /cancel to exit.');
     return true;
   }
 
@@ -61,8 +64,8 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
     return false;
   }
 
-  if (!text || text.startsWith('/')) {
-    await sendText(token, chatId, 'Send a text prompt, or use /cancel.');
+  if ((!imageModeText && !hasPhoto) || (text.startsWith('/') && !hasPhoto)) {
+    await sendText(token, chatId, 'Send a text prompt or photo with caption/instruction, or use /cancel.');
     return true;
   }
 
@@ -74,10 +77,11 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
 
   await sendText(token, chatId, 'Generating image...');
   try {
-    const image = await createXaiImage(env, text);
+    const prompt = hasPhoto ? await buildImageGenerationPrompt(env, token, message) : imageModeText;
+    const image = await createXaiImage(env, prompt);
     if (!image.url) throw new Error('No image URL returned.');
     await telegramApi(token, 'sendPhoto', { chat_id: chatId, photo: image.url, caption: 'Generated image' });
-    await sendText(token, chatId, 'Send another prompt, or use /cancel to exit.');
+    await sendText(token, chatId, 'Send another prompt or photo+caption, or use /cancel to exit.');
   } catch (error) {
     console.error('image generation failed', error);
     await sendText(token, chatId, error instanceof Error ? error.message : 'Image generation failed.');
