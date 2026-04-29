@@ -15,16 +15,20 @@ export async function createXaiImageFromReference(env: Env, prompt: string, imag
   const key = (env as ExtendedEnv).XAI_API_KEY;
   if (!key) throw new Error('XAI_API_KEY is missing.');
 
-  const form = new FormData();
-  form.append('model', MODEL);
-  form.append('prompt', prompt || 'Use the uploaded image as the visual reference.');
-  form.append('n', '1');
-  form.append('image', new Blob([image.bytes], { type: image.mimeType }), image.filename);
-
   const res = await fetch(`${BASE}/images/edits`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${key}` },
-    body: form,
+    headers: {
+      authorization: `Bearer ${key}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      prompt: prompt || 'Use the uploaded image as the visual reference and generate a high quality result.',
+      image: {
+        type: 'image_url',
+        url: `data:${image.mimeType};base64,${toBase64(image.bytes)}`,
+      },
+    }),
   });
 
   const json = await res.json().catch(() => null) as any;
@@ -34,4 +38,12 @@ export async function createXaiImageFromReference(env: Env, prompt: string, imag
   if (item?.url) return { url: item.url };
   if (item?.b64_json) return { b64: item.b64_json };
   throw new Error('No image returned.');
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
 }
