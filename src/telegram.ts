@@ -1,6 +1,7 @@
 import type { BotFlow } from './ai';
 import { createXaiImage } from './xai-image';
-import { buildImageGenerationPrompt, getImageModeText, messageHasPhoto } from './image-reference';
+import { createXaiImageFromReference } from './xai-reference-image';
+import { getImageModeText, getTelegramReferenceImage, messageHasPhoto } from './image-reference';
 import type { BotBlueprint, BotButton, BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, rateLimit, safeParseJson } from './utils';
 
@@ -53,18 +54,18 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
   const active = await env.BOT_CACHE.get(stateKey).catch(() => null);
   if (!active) return false;
 
-  if (text === '/cancel') {
+  if (imageModeText === '/cancel') {
     await env.BOT_CACHE.delete(stateKey).catch(() => undefined);
     await sendText(token, chatId, 'Image mode closed.');
     return true;
   }
 
-  if (text === '/start' || text === '/reset') {
+  if (imageModeText === '/start' || imageModeText === '/reset') {
     await env.BOT_CACHE.delete(stateKey).catch(() => undefined);
     return false;
   }
 
-  if ((!imageModeText && !hasPhoto) || (text.startsWith('/') && !hasPhoto)) {
+  if ((!imageModeText && !hasPhoto) || (imageModeText.startsWith('/') && !hasPhoto)) {
     await sendText(token, chatId, 'Send a text prompt or photo with caption/instruction, or use /cancel.');
     return true;
   }
@@ -75,10 +76,11 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
     return true;
   }
 
-  await sendText(token, chatId, 'Generating image...');
+  await sendText(token, chatId, hasPhoto ? 'Sending your image directly to Grok and generating...' : 'Generating image...');
   try {
-    const prompt = hasPhoto ? await buildImageGenerationPrompt(env, token, message) : imageModeText;
-    const image = await createXaiImage(env, prompt);
+    const image = hasPhoto
+      ? await createXaiImageFromReference(env, imageModeText || 'Use this image as the visual reference and generate a high quality result.', await requireTelegramReferenceImage(token, message))
+      : await createXaiImage(env, imageModeText);
     if (!image.url) throw new Error('No image URL returned.');
     await telegramApi(token, 'sendPhoto', { chat_id: chatId, photo: image.url, caption: 'Generated image' });
     await sendText(token, chatId, 'Send another prompt or photo+caption, or use /cancel to exit.');
@@ -87,6 +89,12 @@ async function handleImageCommand(env: Env, token: string, botId: string, messag
     await sendText(token, chatId, error instanceof Error ? error.message : 'Image generation failed.');
   }
   return true;
+}
+
+async function requireTelegramReferenceImage(token: string, message: TelegramMessage) {
+  const reference = await getTelegramReferenceImage(token, message);
+  if (!reference) throw new Error('No reference image found.');
+  return reference;
 }
 
 async function handleBuilderMessage(env: Env, token: string, message: TelegramMessage): Promise<void> {
