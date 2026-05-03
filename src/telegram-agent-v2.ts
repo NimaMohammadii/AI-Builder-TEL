@@ -77,12 +77,26 @@ async function edit(env: Env, key: string, chatId: number, text: string, history
   const settings = safeParseJson<Record<string, unknown>>(full.settings_json, {});
   const bpNow = safeParseJson<BotBlueprint>(full.blueprint_json, defaultBlueprint('Telegram bot'));
   const flowNow = (settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot');
-  const instruction = ['Apply the latest request to the selected Telegram bot using dashboard context and recent chat.', `selected=${sum(target)}`, `dashboard=${bots.map(sum).join(' | ') || 'empty'}`, `history=${history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n')}`, `latest=${text}`].join('\n\n');
-  const [bp, flow] = await Promise.all([improveBlueprint(env, bpNow, instruction), improveFlow(env, flowNow, instruction)]);
+  const instruction = [
+    'Apply the latest request to the selected Telegram bot using dashboard context and recent chat.',
+    'The live user bot runs from settings.flow. Menus, buttons, questions, and navigation must be represented inside the returned flow.nodes.',
+    'Never claim success unless the executable flow is actually changed.',
+    `selected=${sum(target)}`,
+    `dashboard=${bots.map(sum).join(' | ') || 'empty'}`,
+    `history=${history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
+    `latest=${text}`,
+  ].join('\n\n');
+
+  const flow = await improveFlow(env, flowNow, instruction);
+  if (!flowChanged(flowNow, flow.flow)) {
+    return fa(text) ? 'نتونستم تغییر اجرایی داخل ربات ذخیره کنم. دقیق‌تر بگو چه منویی می‌خوای.' : 'I could not save a real runtime change. Tell me the exact menu you want.';
+  }
+
+  const bp = await improveBlueprint(env, bpNow, instruction);
   settings.flow = flow.flow;
   await env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(bp.blueprint), JSON.stringify(settings), full.id).run();
   await env.BOT_CACHE.delete(`bot:${full.id}`).catch(() => undefined);
-  return compact(`${flow.summary}\n${bp.summary}`);
+  return compact(flow.summary);
 }
 
 async function state(env: Env, text: string, history: ChatHistoryMessage[], bots: BotView[], target: BotView | null, action: 'publish_bot' | 'activate_bot' | 'pause_bot'): Promise<string> {
@@ -130,6 +144,7 @@ async function mainMenu(key: string, chatId: number): Promise<void> { await tg(k
 async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> { const raw = await env.BOT_CACHE.get(key).catch(() => null); const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : []; return Array.isArray(parsed) ? parsed.filter((x) => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-16) : []; }
 async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> { const next = [...h, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16); await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: 7200 }).catch(() => undefined); }
 function compact(x: string): string { return x.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 2).join('\n') || 'Done.'; }
+function flowChanged(a: BotFlow, b: BotFlow): boolean { return JSON.stringify(a) !== JSON.stringify(b); }
 function fa(x: string): boolean { return /[\u0600-\u06FF]/.test(x); }
 function name(b: Pick<BotRecord, 'title' | 'username'>): string { return b.username ? `@${b.username}` : b.title; }
 async function send(key: string, chatId: number, text: string): Promise<void> { await tg(key, 'sendMessage', { chat_id: chatId, text }); }
