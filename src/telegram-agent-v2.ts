@@ -7,6 +7,8 @@ import { PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 export { setTelegramWebhook };
 
 type BotView = AgentDashboardBot & { flow?: BotFlow | null; blueprint?: BotBlueprint | null };
+type RealAction = 'edit_bot' | 'publish_bot' | 'activate_bot' | 'pause_bot';
+type PendingAction = { action: RealAction; targetBotId: string | null; text: string; createdAt: number };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
   const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
@@ -25,12 +27,14 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
+    await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await mainMenu(key, chatId);
     return;
   }
   if (text === 'End Chat' || text === '/cancel') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(historyKey).catch(() => undefined);
+    await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await tg(key, 'sendMessage', { chat_id: chatId, text: fa(text) ? 'چت بسته شد.' : 'AI chat closed.', reply_markup: { remove_keyboard: true } });
     await mainMenu(key, chatId);
     return;
@@ -44,6 +48,10 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   const chatId = q.message?.chat.id ?? q.from.id;
   const userId = String(q.from.id);
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id });
+
+  if (q.data === 'builder:confirm') return confirmPending(env, key, chatId, userId);
+  if (q.data === 'builder:reject') return rejectPending(env, key, chatId, userId);
+
   if (q.data === 'builder:chat') {
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: 7200 }).catch(() => undefined);
     const bots = await dashboard(env, userId);
@@ -61,12 +69,61 @@ async function agent(env: Env, key: string, chatId: number, userId: string, text
   const bots = await dashboard(env, userId);
   const decision = await decideBuilderAgentAction(env, text, history, bots.map(toPlan));
   const target = decision.targetBotId ? bots.find((b) => b.id === decision.targetBotId) ?? null : null;
-  let reply = '';
-  if (decision.action === 'edit_bot') reply = await edit(env, key, chatId, text, history, bots, target);
-  else if (decision.action === 'publish_bot' || decision.action === 'activate_bot' || decision.action === 'pause_bot') reply = await state(env, text, history, bots, target, decision.action);
-  else reply = await answer(env, text, history, bots, target);
+
+  if (isRealAction(decision.action)) {
+    const proposal = await propose(env, text, history, bots, target, decision.action);
+    const pending: PendingAction = { action: decision.action, targetBotId: target?.id ?? null, text, createdAt: Date.now() };
+    await env.BOT_CACHE.put(pendingKey(userId), JSON.stringify(pending), { expirationTtl: 900 }).catch(() => undefined);
+    await saveHistory(env, historyKey, history, text, proposal);
+    await tg(key, 'sendMessage', {
+      chat_id: chatId,
+      text: proposal,
+      reply_markup: { inline_keyboard: [[{ text: 'Confirm', callback_data: 'builder:confirm' }, { text: 'Reject', callback_data: 'builder:reject' }]] },
+    });
+    return;
+  }
+
+  const reply = await answer(env, text, history, bots, target);
   await saveHistory(env, historyKey, history, text, reply);
   await send(key, chatId, reply);
+}
+
+async function confirmPending(env: Env, key: string, chatId: number, userId: string): Promise<void> {
+  const raw = await env.BOT_CACHE.get(pendingKey(userId)).catch(() => null);
+  const pending = raw ? safeParseJson<PendingAction | null>(raw, null) : null;
+  if (!pending) return send(key, chatId, faFromUserIdFallback() ? 'درخواستی برای تایید پیدا نشد.' : 'No pending change found.');
+
+  await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
+  const historyKey = `builder-ai-history:${userId}`;
+  const history = await loadHistory(env, historyKey);
+  const bots = await dashboard(env, userId);
+  const target = pending.targetBotId ? bots.find((b) => b.id === pending.targetBotId) ?? null : null;
+  let reply: string;
+  if (pending.action === 'edit_bot') reply = await edit(env, key, chatId, pending.text, history, bots, target);
+  else reply = await state(env, pending.text, history, bots, target, pending.action);
+  await saveHistory(env, historyKey, history, `CONFIRMED: ${pending.text}`, reply);
+  await send(key, chatId, reply);
+}
+
+async function rejectPending(env: Env, key: string, chatId: number, userId: string): Promise<void> {
+  const raw = await env.BOT_CACHE.get(pendingKey(userId)).catch(() => null);
+  const pending = raw ? safeParseJson<PendingAction | null>(raw, null) : null;
+  await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
+  const reply = pending && fa(pending.text) ? 'رد شد. تغییری اعمال نشد.' : 'Rejected. No changes were applied.';
+  await send(key, chatId, reply);
+}
+
+async function propose(env: Env, text: string, history: ChatHistoryMessage[], bots: BotView[], target: BotView | null, action: RealAction): Promise<string> {
+  const context = [
+    'You are AI Builder TEL. The user asked for a real bot change.',
+    'Do not apply anything yet. Describe exactly what you are about to do and ask if it is correct.',
+    'Mention that the user must press Confirm to apply or Reject to cancel.',
+    'Reply in the same language as the user. Be short and clear.',
+    `action=${action}`,
+    `target_bot=${target ? sum(target) : 'none'}`,
+    `dashboard_bots=${bots.map(sum).join(' | ') || 'none'}`,
+  ].join('\n');
+  return aiReply(env, context, text, history);
 }
 
 async function edit(env: Env, key: string, chatId: number, text: string, history: ChatHistoryMessage[], bots: BotView[], target: BotView | null): Promise<string> {
@@ -78,13 +135,13 @@ async function edit(env: Env, key: string, chatId: number, text: string, history
   const bpNow = safeParseJson<BotBlueprint>(full.blueprint_json, defaultBlueprint('Telegram bot'));
   const flowNow = (settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot');
   const instruction = [
-    'Apply the latest request to the selected Telegram bot using dashboard context and recent chat.',
+    'Apply the confirmed user request to the selected Telegram bot using dashboard context and recent chat.',
     'The live user bot runs from settings.flow. Menus, buttons, questions, and navigation must be represented inside the returned flow.nodes.',
     'Never claim success unless the executable flow is actually changed.',
     `selected=${sum(target)}`,
     `dashboard=${bots.map(sum).join(' | ') || 'empty'}`,
     `history=${history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
-    `latest=${text}`,
+    `confirmed_latest=${text}`,
   ].join('\n\n');
 
   const flow = await improveFlow(env, flowNow, instruction);
@@ -146,6 +203,9 @@ async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userT
 function compact(x: string): string { return x.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 2).join('\n') || 'Done.'; }
 function flowChanged(a: BotFlow, b: BotFlow): boolean { return JSON.stringify(a) !== JSON.stringify(b); }
 function fa(x: string): boolean { return /[\u0600-\u06FF]/.test(x); }
+function faFromUserIdFallback(): boolean { return false; }
 function name(b: Pick<BotRecord, 'title' | 'username'>): string { return b.username ? `@${b.username}` : b.title; }
+function isRealAction(action: string): action is RealAction { return action === 'edit_bot' || action === 'publish_bot' || action === 'activate_bot' || action === 'pause_bot'; }
+function pendingKey(userId: string): string { return `builder-pending-action:${userId}`; }
 async function send(key: string, chatId: number, text: string): Promise<void> { await tg(key, 'sendMessage', { chat_id: chatId, text }); }
 async function tg<T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown): Promise<T> { const response = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); return response.json() as Promise<T>; }
