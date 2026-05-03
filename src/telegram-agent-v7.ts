@@ -1,7 +1,7 @@
-import { aiReply, type ChatHistoryMessage } from './ai';
+import { aiReply, defaultBlueprint, defaultFlow, improveBlueprint, improveFlow, type BotFlow, type ChatHistoryMessage } from './ai';
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v2';
-import type { BotRecord, Env, TelegramUpdate } from './types';
-import { PUBLIC_BASE_URL, safeParseJson } from './utils';
+import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
+import { PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 
 export { setTelegramWebhook };
 
@@ -17,13 +17,13 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
   const data = update.callback_query?.data;
   const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
   if (settings.isBuilderBot && (data === 'builder:confirm' || data === 'builder:reject')) {
-    await handleDecision(env, bot, update, data === 'builder:confirm');
+    await handleDecision(env, update, data === 'builder:confirm');
     return;
   }
   return baseProcessTelegramUpdate(env, bot, update);
 }
 
-async function handleDecision(env: Env, bot: BotRecord, update: TelegramUpdate, accepted: boolean): Promise<void> {
+async function handleDecision(env: Env, update: TelegramUpdate, accepted: boolean): Promise<void> {
   const q = update.callback_query;
   if (!q?.message) return;
   const chatId = q.message.chat.id;
@@ -38,44 +38,79 @@ async function handleDecision(env: Env, bot: BotRecord, update: TelegramUpdate, 
 
   const historyKey = `builder-ai-history:${userId}`;
   const history = await loadHistory(env, historyKey);
-  const dashboard = await loadDashboard(env, userId);
+  const dashboardBefore = await loadDashboard(env, userId);
 
   let operationResult = '';
   if (accepted && pending?.action && pending.targetBotId) {
-    operationResult = await executePending(pending);
+    operationResult = await executePending(env, pending);
   }
 
-  const reply = await finalAiText(env, accepted, pending, operationResult, dashboard, history);
+  const dashboardAfter = await loadDashboard(env, userId);
+  const reply = await finalAiText(env, accepted, pending, operationResult, { before: dashboardBefore, after: dashboardAfter }, history);
   await env.BOT_CACHE.put(historyKey, JSON.stringify([...history, { role: 'assistant', content: reply }].slice(-16)), { expirationTtl: 7200 }).catch(() => undefined);
   await editMessage(token, chatId, messageId, reply);
 }
 
-async function executePending(pending: PendingAction): Promise<string> {
+async function executePending(env: Env, pending: PendingAction): Promise<string> {
   try {
+    const bot = pending.targetBotId ? await getBot(env, pending.targetBotId) : null;
+    if (!bot) return JSON.stringify({ ok: false, error: 'target_bot_not_found' });
+
     if (pending.action === 'edit_bot') {
-      const res = await fetch(`${PUBLIC_BASE_URL}/app/api/bots/${encodeURIComponent(pending.targetBotId ?? '')}/chat`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ instruction: pending.text ?? '' }),
-      });
-      return await res.text();
+      const currentBlueprint = safeParseJson<BotBlueprint>(bot.blueprint_json, defaultBlueprint('Telegram bot'));
+      const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
+      const currentFlow = (settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot');
+      const instruction = [
+        'Apply the confirmed user request to this Telegram bot.',
+        'The live bot runs from settings.flow. Any menu, button, keyboard, question, or navigation must be represented inside the returned flow.nodes.',
+        'If the user asks for a reply keyboard, use keyboard: "reply" on the relevant flow node.',
+        `bot_id=${bot.id}`,
+        `bot_title=${bot.title}`,
+        `bot_username=${bot.username ?? ''}`,
+        `confirmed_request=${pending.text ?? ''}`,
+      ].join('\n');
+      const [blueprintResult, flowResult] = await Promise.all([
+        improveBlueprint(env, currentBlueprint, instruction),
+        improveFlow(env, currentFlow, instruction),
+      ]);
+      settings.flow = flowResult.flow;
+      await env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), bot.id)
+        .run();
+      await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
+      return JSON.stringify({ ok: true, action: 'edit_bot', botId: bot.id, flowSummary: flowResult.summary, blueprintSummary: blueprintResult.summary });
     }
-    if (pending.action === 'pause_bot' || pending.action === 'activate_bot') {
-      const status = pending.action === 'pause_bot' ? 'paused' : 'active';
-      const res = await fetch(`${PUBLIC_BASE_URL}/app/api/bots/${encodeURIComponent(pending.targetBotId ?? '')}/status`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      return await res.text();
+
+    const userBotToken = await decryptUserToken(env, bot.encrypted_token);
+    if (pending.action === 'pause_bot') {
+      await telegram(userBotToken, 'deleteWebhook', { drop_pending_updates: true }).catch(() => undefined);
+      await env.DB.prepare("UPDATE bots SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(bot.id).run();
+      await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
+      return JSON.stringify({ ok: true, action: 'pause_bot', botId: bot.id });
     }
-    if (pending.action === 'publish_bot') {
-      const res = await fetch(`${PUBLIC_BASE_URL}/app/api/bots/${encodeURIComponent(pending.targetBotId ?? '')}/publish`, { method: 'POST' });
-      return await res.text();
+
+    if (pending.action === 'activate_bot' || pending.action === 'publish_bot') {
+      const webhookUrl = `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`;
+      const result = await telegram<{ ok: boolean; description?: string }>(userBotToken, 'setWebhook', { url: webhookUrl, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true });
+      if (!result.ok) return JSON.stringify({ ok: false, action: pending.action, botId: bot.id, telegram: result });
+      const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
+      settings.webhookUrl = webhookUrl;
+      await env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), bot.id).run();
+      await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
+      return JSON.stringify({ ok: true, action: pending.action, botId: bot.id, webhookUrl });
     }
-    return 'No executable action was found.';
+
+    return JSON.stringify({ ok: false, error: 'unsupported_action', action: pending.action });
   } catch (error) {
-    return error instanceof Error ? error.message : 'Unknown execution error';
+    return JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'unknown_error' });
+  }
+}
+
+async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
+  try {
+    return (await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>()) ?? null;
+  } catch {
+    return null;
   }
 }
 
