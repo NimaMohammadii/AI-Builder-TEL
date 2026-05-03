@@ -208,15 +208,36 @@ function extractResponseText(data: ResponsesApiResult): string | null {
 
 function safeJson<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
-async function chatJson(env: Env, temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
-  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+async function chatJson(env: Env, _temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
+  const system = messages.find((message) => message.role === 'system')?.content ?? '';
+  const user = messages.filter((message) => message.role === 'user').map((message) => message.content).join('\n\n');
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, temperature, response_format: { type: 'json_object' }, messages }),
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      instructions: `${system}\n\nReturn strict JSON only. Do not wrap it in markdown.`,
+      input: user,
+      max_output_tokens: 2200,
+      reasoning: { effort: 'low' },
+    }),
   });
-  if (!response.ok) return null;
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? null;
+  const text = await response.text();
+  const data = safeJson<ResponsesApiResult>(text);
+  if (!response.ok || !data) {
+    console.warn('json generation failed', response.status, data?.error?.message ?? text.slice(0, 240));
+    return null;
+  }
+  const output = extractResponseText(data);
+  return output ? extractJsonObject(output) : null;
+}
+
+function extractJsonObject(value: string): string | null {
+  const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) return cleaned;
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  return start >= 0 && end > start ? cleaned.slice(start, end + 1) : null;
 }
 
 function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBlueprint {
