@@ -21,6 +21,8 @@ export type BotFlow = {
   variables: string[];
 };
 
+export type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string };
+
 type ResponsesApiResult = {
   output_text?: string;
   output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
@@ -61,27 +63,10 @@ export function defaultBlueprint(prompt: string): BotBlueprint {
     tone: 'premium',
     startScreen: 'home',
     screens: [
-      {
-        id: 'home',
-        title: 'Home',
-        message: `Welcome. This bot is powered by AI.\n\nPurpose: ${prompt.slice(0, 600)}`,
-        buttons: [
-          { text: 'Start', action: { type: 'support' } },
-          { text: 'About', action: { type: 'menu', target: 'about' } },
-        ],
-      },
-      {
-        id: 'about',
-        title: 'About',
-        message: 'This bot was built with AI Builder TEL and can be improved from the Mini App workspace.',
-        buttons: [{ text: 'Back', action: { type: 'menu', target: 'home' } }],
-      },
+      { id: 'home', title: 'Home', message: `Welcome. This bot is powered by AI.\n\nPurpose: ${prompt.slice(0, 600)}`, buttons: [{ text: 'Start', action: { type: 'support' } }, { text: 'About', action: { type: 'menu', target: 'about' } }] },
+      { id: 'about', title: 'About', message: 'This bot was built with AI Builder TEL and can be improved from the Mini App workspace.', buttons: [{ text: 'Back', action: { type: 'menu', target: 'home' } }] },
     ],
-    aiSupport: {
-      enabled: true,
-      systemPrompt: 'You are a helpful Telegram business assistant. Be concise, safe, and practical.',
-      handoffMessage: 'This needs a human review. Your message has been saved.',
-    },
+    aiSupport: { enabled: true, systemPrompt: 'You are a helpful Telegram business assistant. Be concise, safe, and practical.', handoffMessage: 'This needs a human review. Your message has been saved.' },
     safety: { blockedTopics: ['unsafe requests'], requireHumanFor: ['legal', 'medical', 'finance'] },
   };
 }
@@ -93,13 +78,7 @@ export function defaultFlow(prompt: string): BotFlow {
     description: prompt.slice(0, 500),
     start: 'start',
     variables: [],
-    nodes: {
-      start: {
-        id: 'start',
-        message: `Welcome. This bot is ready.\n\n${prompt.slice(0, 500)}`,
-        ai: { enabled: true, systemPrompt: `You are a helpful Telegram bot built for this purpose: ${prompt}` },
-      },
-    },
+    nodes: { start: { id: 'start', message: `Welcome. This bot is ready.\n\n${prompt.slice(0, 500)}`, ai: { enabled: true, systemPrompt: `You are a helpful Telegram bot built for this purpose: ${prompt}` } } },
   };
 }
 
@@ -149,22 +128,29 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
   } catch { return { flow: currentFlow, summary: 'I could not parse the flow change safely.' }; }
 }
 
-export async function plainAiReply(env: Env, message: string): Promise<string> {
+export async function plainAiReply(env: Env, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
+  const input = buildResponsesInput(history, message);
   if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, message);
+    const webReply = await responsesWebReply(env, input);
     if (webReply) return webReply;
   }
-  return responsesTextReply(env, message);
+  return responsesTextReply(env, input);
 }
 
-export async function aiReply(env: Env, systemPrompt: string, message: string): Promise<string> {
+export async function aiReply(env: Env, systemPrompt: string, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
+  const input = buildResponsesInput(history, message);
   if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, message, systemPrompt);
+    const webReply = await responsesWebReply(env, input, systemPrompt);
     if (webReply) return webReply;
   }
-  return responsesTextReply(env, message, systemPrompt);
+  return responsesTextReply(env, input, systemPrompt);
+}
+
+function buildResponsesInput(history: ChatHistoryMessage[], message: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+  const recent = history.slice(-16).map((item) => ({ role: item.role, content: item.content.slice(0, 1400) }));
+  return [...recent, { role: 'user', content: message.slice(0, 4000) }];
 }
 
 function shouldUseWebSearch(message: string): boolean {
@@ -173,17 +159,11 @@ function shouldUseWebSearch(message: string): boolean {
   return english.test(message) || persian.test(message);
 }
 
-async function responsesTextReply(env: Env, message: string, instructions?: string): Promise<string> {
+async function responsesTextReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string> {
   const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: message,
-      instructions,
-      max_output_tokens: 1200,
-      reasoning: { effort: 'low' },
-    }),
+    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 1200, reasoning: { effort: 'low' } }),
   });
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
@@ -195,19 +175,11 @@ async function responsesTextReply(env: Env, message: string, instructions?: stri
   return output ? output.slice(0, 3500) : 'No response was generated.';
 }
 
-async function responsesWebReply(env: Env, message: string, instructions?: string): Promise<string | null> {
+async function responsesWebReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string | null> {
   const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: message,
-      instructions,
-      max_output_tokens: 1200,
-      reasoning: { effort: 'low' },
-      tools: [{ type: 'web_search', search_context_size: 'low' }],
-      tool_choice: 'auto',
-    }),
+    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 1200, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
   });
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
@@ -225,9 +197,7 @@ function extractResponseText(data: ResponsesApiResult): string | null {
   return null;
 }
 
-function safeJson<T>(text: string): T | null {
-  try { return JSON.parse(text) as T; } catch { return null; }
-}
+function safeJson<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
 async function chatJson(env: Env, temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
   const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
@@ -244,28 +214,12 @@ function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBl
   const fallback = defaultBlueprint(prompt);
   const screens = Array.isArray(input.screens) && input.screens.length > 0 ? input.screens : fallback.screens;
   const hasStart = screens.some((screen) => screen.id === (input.startScreen ?? 'home'));
-  return {
-    version: 1,
-    botType: input.botType ?? fallback.botType,
-    language: input.language ?? fallback.language,
-    tone: input.tone ?? fallback.tone,
-    startScreen: hasStart ? input.startScreen ?? 'home' : screens[0]?.id ?? 'home',
-    screens,
-    aiSupport: input.aiSupport ?? fallback.aiSupport,
-    safety: input.safety ?? fallback.safety,
-  };
+  return { version: 1, botType: input.botType ?? fallback.botType, language: input.language ?? fallback.language, tone: input.tone ?? fallback.tone, startScreen: hasStart ? input.startScreen ?? 'home' : screens[0]?.id ?? 'home', screens, aiSupport: input.aiSupport ?? fallback.aiSupport, safety: input.safety ?? fallback.safety };
 }
 
 function normalizeFlow(input: Partial<BotFlow>, prompt: string): BotFlow {
   const fallback = defaultFlow(prompt);
   const nodes = input.nodes && typeof input.nodes === 'object' ? input.nodes : fallback.nodes;
   const start = input.start && nodes[input.start] ? input.start : Object.keys(nodes)[0] ?? fallback.start;
-  return {
-    version: 1,
-    name: input.name || fallback.name,
-    description: input.description || fallback.description,
-    start,
-    nodes,
-    variables: Array.isArray(input.variables) ? input.variables : [],
-  };
+  return { version: 1, name: input.name || fallback.name, description: input.description || fallback.description, start, nodes, variables: Array.isArray(input.variables) ? input.variables : [] };
 }
