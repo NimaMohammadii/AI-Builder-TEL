@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveBlueprint, improveFlow, type BotFlow } from './ai';
-import { miniAppHtml } from './miniapp-stable';
+import { miniAppHtml } from './miniapp-chat';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram';
 import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
