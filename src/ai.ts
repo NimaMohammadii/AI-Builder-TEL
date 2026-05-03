@@ -7,6 +7,7 @@ type FlowNode = {
   saveInputAs?: string;
   next?: string;
   buttons?: Array<{ text: string; next: string }>;
+  keyboard?: 'inline' | 'reply';
   ai?: { enabled: boolean; systemPrompt: string };
   notifyOwner?: boolean;
   end?: boolean;
@@ -51,11 +52,12 @@ const flowSchemaHint = `Return only valid JSON matching this shape:
   "start": "start",
   "variables": ["name", "phone"],
   "nodes": {
-    "start": { "id": "start", "message": "Welcome message", "buttons": [{ "text": "Begin", "next": "ask_name" }] },
+    "start": { "id": "start", "message": "Welcome message", "keyboard": "inline", "buttons": [{ "text": "Begin", "next": "ask_name" }] },
     "ask_name": { "id": "ask_name", "message": "What is your name?", "saveInputAs": "name", "next": "finish" },
     "finish": { "id": "finish", "message": "Thanks. We received your request.", "notifyOwner": true, "end": true }
   }
-}`;
+}
+Use "keyboard": "reply" only when the user asks for Telegram reply keyboard / keyboard buttons. Reply keyboard button text is handled as user input and must match a button.text.`;
 
 export function defaultBlueprint(prompt: string): BotBlueprint {
   return {
@@ -135,7 +137,7 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
   if (!first) return { flow: currentFlow, summary: 'I could not apply the flow change.' };
   if (flowChanged(currentFlow, first.flow)) return first;
 
-  const retryInstruction = `${instruction}\n\nThe live bot runs from settings.flow. Your previous output did not change the executable flow. Return a changed executable flow with real nodes, buttons, and valid next targets. Do not claim success unless the flow JSON is actually different.`;
+  const retryInstruction = `${instruction}\n\nThe live bot runs from settings.flow. Your previous output did not change the executable flow. Return a changed executable flow with real nodes, buttons, and valid next targets. If the user asks for keyboard buttons, set keyboard to reply on the node that should show the reply keyboard. Do not claim success unless the flow JSON is actually different.`;
   const second = await generateFlowUpdate(env, currentFlow, retryInstruction);
   if (second && flowChanged(currentFlow, second.flow)) return second;
 
@@ -144,7 +146,7 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
 
 async function generateFlowUpdate(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. The live user bot executes this returned flow, so menus/buttons/questions/navigation must be represented inside flow.nodes. Keep it safe. Summary must be one short sentence and must describe the real flow change. ' + flowSchemaHint },
+    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. The live user bot executes this returned flow, so menus/buttons/questions/navigation must be represented inside flow.nodes. If the user asks for reply keyboard/keyboard buttons, put "keyboard":"reply" on the relevant node. Keep it safe. Summary must be one short sentence and must describe the real flow change. ' + flowSchemaHint },
     { role: 'user', content: JSON.stringify({ currentFlow, instruction }) },
   ]);
   if (!response) return null;
