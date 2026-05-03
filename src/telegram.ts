@@ -1,4 +1,4 @@
-import type { BotFlow } from './ai';
+import type { BotFlow, ChatHistoryMessage } from './ai';
 import { createXaiImage } from './xai-image';
 import { createXaiImageFromReference } from './xai-reference-image';
 import { getImageModeText, getTelegramReferenceImage, messageHasPhoto } from './image-reference';
@@ -96,6 +96,7 @@ async function handleBuilderMessage(env: Env, token: string, message: TelegramMe
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
   const chatStateKey = `builder-ai-chat:${userId}`;
+  const historyKey = `builder-ai-history:${userId}`;
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(`builder-state:${userId}`).catch(() => undefined);
@@ -106,6 +107,7 @@ async function handleBuilderMessage(env: Env, token: string, message: TelegramMe
 
   if (text === 'End Chat' || text === '/cancel') {
     await env.BOT_CACHE.delete(chatStateKey).catch(() => undefined);
+    await env.BOT_CACHE.delete(historyKey).catch(() => undefined);
     await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'AI chat closed.', reply_markup: { remove_keyboard: true } });
     await sendMainMenu(token, chatId);
     return;
@@ -130,6 +132,8 @@ async function handleBuilderMessage(env: Env, token: string, message: TelegramMe
 
 async function handleBuilderAiChat(env: Env, token: string, chatId: number, userId: string, text: string): Promise<void> {
   const bot = await getLatestOwnerBot(env, userId);
+  const historyKey = `builder-ai-history:${userId}`;
+  const history = await loadChatHistory(env, historyKey);
   const isBotRequest = /bot|telegram|build|create|flow|menu|button|ربات|تلگرام|ساخت|بساز|تغییر|ویرایش|دکمه|منو/i.test(text);
 
   if (bot && isBotRequest) {
@@ -139,14 +143,18 @@ async function handleBuilderAiChat(env: Env, token: string, chatId: number, user
     const currentFlow = ((settings.flow as BotFlow | undefined) ?? undefined);
     const [{ improveBlueprint }, { improveFlow, defaultFlow }] = await Promise.all([import('./ai'), import('./ai')]);
     const flow = currentFlow ?? defaultFlow('Telegram bot');
-    const [blueprintResult, flowResult] = await Promise.all([improveBlueprint(env, currentBlueprint, text), improveFlow(env, flow, text)]);
+    const contextText = [...history, { role: 'user' as const, content: text }].slice(-10).map((item) => `${item.role}: ${item.content}`).join('\n');
+    const instruction = `Conversation context:\n${contextText}\n\nLatest user request:\n${text}`;
+    const [blueprintResult, flowResult] = await Promise.all([improveBlueprint(env, currentBlueprint, instruction), improveFlow(env, flow, instruction)]);
     settings.flow = flowResult.flow;
     try {
       await env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
         .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), bot.id)
         .run();
       await env.BOT_CACHE.delete(`bot:${bot.id}`);
-      await sendText(token, chatId, `${flowResult.summary}\n${blueprintResult.summary}`);
+      const reply = `${flowResult.summary}\n${blueprintResult.summary}`;
+      await saveChatHistory(env, historyKey, history, text, reply);
+      await sendText(token, chatId, reply);
     } catch (error) {
       console.error('telegram ai chat save failed', error);
       await sendText(token, chatId, 'Could not save changes. Check D1 migration.');
@@ -155,11 +163,15 @@ async function handleBuilderAiChat(env: Env, token: string, chatId: number, user
   }
 
   if (!bot && isBotRequest) {
-    await sendText(token, chatId, 'First add your BotFather token in the Mini App, then I can build or edit your bot.');
+    const reply = 'First add your BotFather token in the Mini App, then I can build or edit your bot.';
+    await saveChatHistory(env, historyKey, history, text, reply);
+    await sendText(token, chatId, reply);
     return;
   }
 
-  await sendText(token, chatId, await runtimePlainAiReply(env, text));
+  const reply = await runtimePlainAiReply(env, text, history);
+  await saveChatHistory(env, historyKey, history, text, reply);
+  await sendText(token, chatId, reply);
 }
 
 async function handleBuilderCallback(env: Env, token: string, callback: TelegramCallbackQuery): Promise<void> {
@@ -171,7 +183,7 @@ async function handleBuilderCallback(env: Env, token: string, callback: Telegram
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: 7200 }).catch(() => undefined);
     await telegramApi(token, 'sendMessage', {
       chat_id: chatId,
-      text: 'AI chat is open. Ask anything, or tell me what to change in your latest bot.',
+      text: 'AI chat is open. I will remember this chat until you press End Chat.',
       reply_markup: { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false },
     });
     return;
@@ -340,6 +352,17 @@ async function getLatestOwnerBot(env: Env, userId: string): Promise<BotRecord | 
   }
 }
 
+async function loadChatHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> {
+  const raw = await env.BOT_CACHE.get(key).catch(() => null);
+  const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : [];
+  return Array.isArray(parsed) ? parsed.filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string').slice(-16) : [];
+}
+
+async function saveChatHistory(env: Env, key: string, history: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> {
+  const next = [...history, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16);
+  await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: 7200 }).catch(() => undefined);
+}
+
 async function getFlowState(env: Env, botId: string, userId: string, flow: BotFlow): Promise<UserFlowState> {
   const raw = await env.BOT_CACHE.get(`flow-state:${botId}:${userId}`).catch(() => null);
   const parsed = raw ? safeParseJson<UserFlowState>(raw, { nodeId: flow.start, data: {} }) : { nodeId: flow.start, data: {} };
@@ -350,7 +373,7 @@ async function clearFlowState(env: Env, botId: string, userId: string): Promise<
 async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds: number): Promise<boolean> { try { return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds); } catch { return true; } }
 async function saveBotUser(env: Env, botId: string, message: TelegramMessage): Promise<void> { const user = message.from; if (!user) return; try { await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, updated_at = CURRENT_TIMESTAMP`).bind(botId, String(user.id), user.first_name ?? null, user.username ?? null).run(); } catch {} }
 async function runtimeAiReply(env: Env, systemPrompt: string, text: string): Promise<string> { const { aiReply } = await import('./ai'); return aiReply(env, systemPrompt, text); }
-async function runtimePlainAiReply(env: Env, text: string): Promise<string> { const { plainAiReply } = await import('./ai'); return plainAiReply(env, text); }
+async function runtimePlainAiReply(env: Env, text: string, history: ChatHistoryMessage[] = []): Promise<string> { const { plainAiReply } = await import('./ai'); return plainAiReply(env, text, history); }
 async function sendText(token: string, chatId: number, text: string): Promise<void> { await telegramApi(token, 'sendMessage', { chat_id: chatId, text }); }
 async function telegramApi<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> { const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); return response.json() as Promise<T>; }
 function renderTemplate(template: string, data: Record<string, string>): string { return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => data[key] ?? ''); }
