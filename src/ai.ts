@@ -65,10 +65,10 @@ export function defaultBlueprint(prompt: string): BotBlueprint {
     tone: 'premium',
     startScreen: 'home',
     screens: [
-      { id: 'home', title: 'Home', message: `Welcome. This bot is powered by AI.\n\nPurpose: ${prompt.slice(0, 600)}`, buttons: [{ text: 'Start', action: { type: 'support' } }, { text: 'About', action: { type: 'menu', target: 'about' } }] },
-      { id: 'about', title: 'About', message: 'This bot was built with AI Builder TEL and can be improved from the Mini App workspace.', buttons: [{ text: 'Back', action: { type: 'menu', target: 'home' } }] },
+      { id: 'home', title: 'Home', message: `Welcome.\n\nPurpose: ${prompt.slice(0, 600)}`, buttons: [{ text: 'Start', action: { type: 'menu', target: 'about' } }, { text: 'About', action: { type: 'menu', target: 'about' } }] },
+      { id: 'about', title: 'About', message: 'This bot is connected and ready. Use AI Builder TEL to edit its menus and flow.', buttons: [{ text: 'Back', action: { type: 'menu', target: 'home' } }] },
     ],
-    aiSupport: { enabled: true, systemPrompt: 'You are a helpful Telegram business assistant. Be concise, safe, and practical.', handoffMessage: 'This needs a human review. Your message has been saved.' },
+    aiSupport: { enabled: false, systemPrompt: '', handoffMessage: 'Message saved.' },
     safety: { blockedTopics: ['unsafe requests'], requireHumanFor: ['legal', 'medical', 'finance'] },
   };
 }
@@ -76,32 +76,43 @@ export function defaultBlueprint(prompt: string): BotBlueprint {
 export function defaultFlow(prompt: string): BotFlow {
   return {
     version: 1,
-    name: 'Custom AI Bot',
+    name: 'Custom Bot',
     description: prompt.slice(0, 500),
     start: 'start',
     variables: [],
-    nodes: { start: { id: 'start', message: `Welcome. This bot is ready.\n\n${prompt.slice(0, 500)}`, ai: { enabled: true, systemPrompt: `You are a helpful Telegram bot built for this purpose: ${prompt}` } } },
+    nodes: {
+      start: {
+        id: 'start',
+        message: `Welcome.\n\n${prompt.slice(0, 500)}`,
+        buttons: [{ text: 'Start', next: 'finish' }],
+      },
+      finish: {
+        id: 'finish',
+        message: 'Done.',
+        end: true,
+      },
+    },
   };
 }
 
 export async function buildBlueprint(env: Env, userPrompt: string): Promise<BotBlueprint> {
   if (!env.OPENAI_API_KEY) return defaultBlueprint(userPrompt);
   const response = await chatJson(env, 0.35, [
-    { role: 'system', content: 'Design a production-grade Telegram bot blueprint for a no-code builder. Keep it concise and safe. Use English unless the user asks for another language. ' + blueprintSchemaHint },
+    { role: 'system', content: 'Design a production-grade Telegram bot blueprint for a no-code builder. Do not enable AI chat/support inside the user bot unless the user explicitly asks for AI chat or AI support. Keep it concise and safe. Use English unless the user asks for another language. ' + blueprintSchemaHint },
     { role: 'user', content: userPrompt },
   ]);
   if (!response) return defaultBlueprint(userPrompt);
-  try { return normalizeBlueprint(JSON.parse(response) as BotBlueprint, userPrompt); } catch { return defaultBlueprint(userPrompt); }
+  try { return enforceAiOptInOnBlueprint(normalizeBlueprint(JSON.parse(response) as BotBlueprint, userPrompt), userPrompt); } catch { return defaultBlueprint(userPrompt); }
 }
 
 export async function buildFlow(env: Env, userPrompt: string): Promise<BotFlow> {
   if (!env.OPENAI_API_KEY) return defaultFlow(userPrompt);
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Create a dynamic Telegram bot flow using only the controlled JSON flow format. Keep it concise and safe. Use English unless the user asks for another language. ' + flowSchemaHint },
+    { role: 'system', content: 'Create a dynamic Telegram bot flow using only the controlled JSON flow format. Do not add ai.enabled nodes unless the user explicitly asks for AI chat, AI support, or an AI assistant inside the user bot. Keep it concise and safe. Use English unless the user asks for another language. ' + flowSchemaHint },
     { role: 'user', content: userPrompt },
   ]);
   if (!response) return defaultFlow(userPrompt);
-  try { return normalizeFlow(JSON.parse(response) as BotFlow, userPrompt); } catch { return defaultFlow(userPrompt); }
+  try { return enforceAiOptInOnFlow(normalizeFlow(JSON.parse(response) as BotFlow, userPrompt), userPrompt); } catch { return defaultFlow(userPrompt); }
 }
 
 export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint, instruction: string): Promise<{ blueprint: BotBlueprint; summary: string }> {
@@ -238,6 +249,28 @@ function extractJsonObject(value: string): string | null {
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : null;
+}
+
+function wantsAiFeature(prompt: string): boolean {
+  return /\b(ai|artificial intelligence|chatgpt|gpt|assistant|chat bot|chatbot|smart reply|auto reply|support ai|ai support)\b/i.test(prompt) || /(هوش مصنوعی|چت جی پی تی|چت\s*بات|دستیار|پشتیبانی\s*هوشمند|پاسخ\s*هوشمند|جواب\s*هوشمند|ربات\s*هوشمند)/i.test(prompt);
+}
+
+function enforceAiOptInOnBlueprint(blueprint: BotBlueprint, prompt: string): BotBlueprint {
+  if (wantsAiFeature(prompt)) return blueprint;
+  return {
+    ...blueprint,
+    aiSupport: { enabled: false, systemPrompt: '', handoffMessage: blueprint.aiSupport?.handoffMessage ?? 'Message saved.' },
+  };
+}
+
+function enforceAiOptInOnFlow(flow: BotFlow, prompt: string): BotFlow {
+  if (wantsAiFeature(prompt)) return flow;
+  const nodes: Record<string, FlowNode> = {};
+  for (const [id, node] of Object.entries(flow.nodes)) {
+    const { ai, ...rest } = node;
+    nodes[id] = rest;
+  }
+  return { ...flow, nodes };
 }
 
 function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBlueprint {
