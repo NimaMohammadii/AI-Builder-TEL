@@ -1,1 +1,31 @@
-export { miniAppHtml } from './miniapp-stable';
+import { miniAppHtml as stableMiniAppHtml } from './miniapp-stable';
+
+export function miniAppHtml(): string {
+  let html = stableMiniAppHtml();
+
+  html = html.replace(
+    '.view::-webkit-scrollbar,.list::-webkit-scrollbar,.chat::-webkit-scrollbar,.mono::-webkit-scrollbar,.builder-log::-webkit-scrollbar{display:none}',
+    '.view::-webkit-scrollbar,.list::-webkit-scrollbar,.chat::-webkit-scrollbar,.mono::-webkit-scrollbar,.builder-log::-webkit-scrollbar,.work-chat::-webkit-scrollbar{display:none}'
+  );
+
+  html = html.replace(
+    '</style>',
+    `.work-page{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:2px 0}.work-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 0}.work-head h2{margin:0;font-size:25px;letter-spacing:-.06em}.work-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.mini-pill{border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.055);padding:8px 10px;color:var(--soft);font-size:11px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.work-chat{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:8px 2px 6px}.work-chat .msg{max-width:92%;padding:13px 14px;border-radius:23px;font-size:13.5px;line-height:1.43}.work-composer{border:1px solid var(--line);border-radius:28px;background:rgba(12,12,14,.74);backdrop-filter:blur(24px);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:9px;box-shadow:0 20px 55px rgba(0,0,0,.42)}.work-composer input{height:52px;border:0;background:transparent;padding:0 8px}.work-composer input:focus{box-shadow:none}.work-composer .send{width:52px;height:52px;border-radius:20px}.settings-stack{display:grid;gap:13px}</style>`
+  );
+
+  const oldWorkspace = `<section id="workspace" class="view"><div class="stack"><section class="card"><div class="pad"><div class="title"><h3>Selected bot</h3><span id="activeBotLabel">No bot selected</span></div><div class="field"><label>Bot</label><select id="botSelect"></select></div><div id="botInfo" class="notice">Choose a bot.</div><div class="toolbar"><button class="ghost" data-action="publish" type="button">Publish</button><button class="ghost" data-action="toggle-pause" id="pauseBtn" type="button">Pause</button><button class="danger" data-action="delete" type="button">Delete</button></div></div></section><section class="card"><div class="pad"><div class="title"><h3>AI Engineer</h3><span>Applies live</span></div><div id="chat" class="chat"><div class="msg ai">Tell me what to change. I update the executable flow.</div></div><div class="composer"><input id="chatInput" placeholder="Add a step, collect data, change logic..."/><button class="send" data-action="chat-apply" type="button">➤</button></div></div></section><section class="card"><div class="pad"><div class="title"><h3>Live flow</h3><span id="flowMeta">JSON</span></div><div id="flowBox" class="mono">No bot selected.</div></div></section></div></section>`;
+
+  const newWorkspace = `<section id="workspace" class="view"><div class="work-page"><div class="work-head"><div><h2>AI Engineer</h2><p>Chat directly with AI. Changes apply to the selected live bot.</p></div><button class="mini-pill" data-view="settings" id="activeBotLabel" type="button">No bot selected</button></div><div id="chat" class="work-chat"><div class="msg ai">Select a bot in Settings, then tell me what to change. I update the executable flow instantly.</div></div><div class="work-composer"><input id="chatInput" placeholder="Ask AI to change your bot..."/><button class="send" data-action="chat-apply" type="button">➤</button></div></div></section>`;
+
+  const oldSettings = `<section id="settings" class="view"><section class="card"><div class="pad"><div class="title"><h3>Settings</h3><span>Account</span></div><div class="field"><label>Telegram User ID</label><input id="ownerId" placeholder="Auto from Telegram Mini App"/></div><button class="primary" data-action="save-user" type="button">Save User</button></div></section></section>`;
+
+  const newSettings = `<section id="settings" class="view"><div class="settings-stack"><section class="card"><div class="pad"><div class="title"><h3>Settings</h3><span>Account</span></div><div class="field"><label>Telegram User ID</label><input id="ownerId" placeholder="Auto from Telegram Mini App"/></div><button class="primary" data-action="save-user" type="button">Save User</button></div></section><section class="card"><div class="pad"><div class="title"><h3>Bot Control</h3><span>Selected bot</span></div><div class="field"><label>Bot</label><select id="botSelect"></select></div><div id="botInfo" class="notice">Choose a bot.</div><div class="toolbar"><button class="ghost" data-action="publish" type="button">Publish</button><button class="ghost" data-action="toggle-pause" id="pauseBtn" type="button">Pause</button><button class="danger" data-action="delete" type="button">Delete</button></div></div></section><section class="card"><div class="pad"><div class="title"><h3>Live flow</h3><span id="flowMeta">JSON</span></div><div id="flowBox" class="mono">No bot selected.</div></div></section></div></section>`;
+
+  html = html.replace(oldWorkspace, newWorkspace).replace(oldSettings, newSettings);
+  html = html.replace('if(id===\'home\'||id===\'bots\'||id===\'workspace\')loadBots(false);', 'if(id===\'home\'||id===\'bots\'||id===\'workspace\'||id===\'settings\')loadBots(false);');
+  html = html.replace('<span>Work</span>', '<span>Chat</span>');
+  html = html.replace('Open Workspace', 'AI Chat');
+  html = html.replace('Select a bot first', 'Select a bot in Settings first');
+
+  return html;
+}
