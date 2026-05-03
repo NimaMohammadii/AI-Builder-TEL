@@ -14,7 +14,7 @@ export type AgentDashboardBot = {
 };
 
 export type AgentDecision = {
-  action: 'reply' | 'edit_bot' | 'publish_bot' | 'activate_bot' | 'pause_bot';
+  action: 'reply' | 'edit_bot' | 'publish_bot' | 'activate_bot' | 'pause_bot' | 'code_agent';
   targetBotId: string | null;
   confidence: number;
   reason: string;
@@ -44,11 +44,13 @@ export async function decideBuilderAgentAction(env: Env, userText: string, histo
         'Read the dashboard data, connected bots, recent chat history, and the latest user message.',
         'Decide what the agent should do next.',
         'Return only JSON. No markdown. No explanation outside JSON.',
-        'Allowed actions: reply, edit_bot, publish_bot, activate_bot, pause_bot.',
+        'Allowed actions: reply, edit_bot, publish_bot, activate_bot, pause_bot, code_agent.',
+        'Use edit_bot only for changes that can be represented inside the existing JSON flow runtime: messages, menus, buttons, questions, simple navigation, status text.',
+        'Use code_agent when the user asks for a capability that requires real repository code, database changes, new integrations, payment, admin panels, file handling, APIs, auth, scheduled tasks, custom logic, or anything beyond the current flow runtime.',
         'Use targetBotId only when a connected bot should be acted on. If the user refers to their bot without naming it, choose the latest connected bot.',
         'If no connected bot exists and the user wants bot work, choose reply with targetBotId null.',
         'Do not rely on keyword matching; infer intent from meaning and conversation context.',
-        'JSON shape: {"action":"reply|edit_bot|publish_bot|activate_bot|pause_bot","targetBotId":string|null,"confidence":0.0-1.0,"reason":"short"}',
+        'JSON shape: {"action":"reply|edit_bot|publish_bot|activate_bot|pause_bot|code_agent","targetBotId":string|null,"confidence":0.0-1.0,"reason":"short"}',
       ].join('\n'),
       input: JSON.stringify({ dashboard, recent_history: history.slice(-12), latest_user_message: userText }),
       max_output_tokens: 220,
@@ -69,7 +71,7 @@ export async function decideBuilderAgentAction(env: Env, userText: string, histo
 }
 
 function normalizeDecision(input: Partial<AgentDecision>, bots: AgentDashboardBot[]): AgentDecision {
-  const allowed = new Set(['reply', 'edit_bot', 'publish_bot', 'activate_bot', 'pause_bot']);
+  const allowed = new Set(['reply', 'edit_bot', 'publish_bot', 'activate_bot', 'pause_bot', 'code_agent']);
   const action = allowed.has(String(input.action)) ? input.action as AgentDecision['action'] : 'reply';
   const botIds = new Set(bots.map((bot) => bot.id));
   const targetBotId = input.targetBotId && botIds.has(input.targetBotId) ? input.targetBotId : (action === 'reply' ? null : bots[0]?.id ?? null);
