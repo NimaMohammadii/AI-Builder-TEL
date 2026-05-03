@@ -225,6 +225,14 @@ async function handleFlowMessage(env: Env, token: string, bot: BotRecord, flow: 
     return;
   }
 
+  const buttonMatch = (node.buttons ?? []).find((button) => button.text === text && flow.nodes[button.next]);
+  if (buttonMatch) {
+    state.nodeId = buttonMatch.next;
+    await saveFlowState(env, bot.id, userId, state);
+    await sendFlowNode(env, token, bot, flow, chatId, userId, state);
+    return;
+  }
+
   if (node.ai?.enabled && !node.saveInputAs && !node.next) {
     const answer = await runtimeAiReply(env, node.ai.systemPrompt, text);
     await sendText(token, chatId, answer);
@@ -256,10 +264,17 @@ async function sendFlowNode(env: Env, token: string, bot: BotRecord, flow: BotFl
     return;
   }
   const buttons = (node.buttons ?? []).filter((button) => flow.nodes[button.next]);
+  const replyMarkup = buttons.length
+    ? node.keyboard === 'reply'
+      ? { keyboard: buttons.map((button) => [{ text: button.text }]), resize_keyboard: true, one_time_keyboard: false }
+      : { inline_keyboard: buttons.map((button) => [{ text: button.text, callback_data: `flow:${button.next}` }]) }
+    : node.keyboard === 'reply'
+      ? { remove_keyboard: true }
+      : undefined;
   await telegramApi(token, 'sendMessage', {
     chat_id: chatId,
     text: renderTemplate(node.message, state.data),
-    reply_markup: buttons.length ? { inline_keyboard: buttons.map((button) => [{ text: button.text, callback_data: `flow:${button.next}` }]) } : undefined,
+    reply_markup: replyMarkup,
   });
   if (node.notifyOwner && bot.owner_telegram_id) {
     const summary = Object.entries(state.data).map(([key, value]) => `${key}: ${value}`).join('\n') || 'No collected data.';
