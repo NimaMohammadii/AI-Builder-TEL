@@ -27,5 +27,11 @@ export function miniAppHtml(): string {
   html = html.replace('Open Workspace', 'AI Chat');
   html = html.replace('Select a bot first', 'Select a bot in Settings first');
 
+  const oldChatApply = `async function chatApply(){if(!selectedBot)return toast('Select a bot in Settings first');var input=e('chatInput');var instruction=input.value.trim();if(!instruction)return;input.value='';addMsg(instruction,'me');addMsg('Applying to live flow...','ai');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/chat',{method:'POST',body:JSON.stringify({instruction:instruction})});var last=document.querySelector('#chat .msg.ai:last-child');if(last)last.textContent=d.summary||'Applied.';await selectBot(selectedBot.id)}catch(x){var last=document.querySelector('#chat .msg.ai:last-child');if(last)last.textContent=x.message}}`;
+
+  const newChatApply = `async function chatApply(){var input=e('chatInput');var instruction=input.value.trim();if(!instruction)return;input.value='';addMsg(instruction,'me');if(!selectedBot){addMsg(noBotReply(instruction),'ai');return}addMsg('Applying to live flow...','ai');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/chat',{method:'POST',body:JSON.stringify({instruction:instruction})});var last=document.querySelector('#chat .msg.ai:last-child');if(last)last.textContent=d.summary||'Applied.';await selectBot(selectedBot.id)}catch(x){var last=document.querySelector('#chat .msg.ai:last-child');if(last)last.textContent=x.message}}function noBotReply(v){var fa=/[\\u0600-\\u06FF]/.test(v);var bot=/bot|ربات|telegram|تلگرام|build|create|ساخت|بساز|تغییر|ویرایش|دکمه|منو|flow|فلو/i.test(v);if(bot)return fa?'اول رباتت را در Start Builder وصل کن یا از Settings یک ربات را انتخاب کن؛ بعد تغییرات را انجام می‌دهم.':'First connect your bot in Start Builder or select a bot in Settings, then I can apply the changes.';return fa?'من آماده‌ام. برای ساخت یا تغییر ربات، اول رباتت را وصل کن یا یک ربات را از Settings انتخاب کن.':'I am ready. To build or change a bot, connect your bot first or select a bot in Settings.'}`;
+
+  html = html.replace(oldChatApply, newChatApply);
+
   return html;
 }
