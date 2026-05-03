@@ -216,6 +216,21 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
   }
 }
 
+export async function plainAiReply(env: Env, message: string): Promise<string> {
+  if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      messages: [{ role: 'user', content: message }],
+    }),
+  });
+  if (!response.ok) return 'I could not generate a response right now. Please try again.';
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return data.choices?.[0]?.message?.content?.slice(0, 3500) ?? 'No response was generated.';
+}
+
 export async function aiReply(env: Env, systemPrompt: string, message: string): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
   const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
