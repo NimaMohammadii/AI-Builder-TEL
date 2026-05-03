@@ -21,6 +21,18 @@ export type BotFlow = {
   variables: string[];
 };
 
+type ResponsesApiResult = {
+  output_text?: string;
+  output?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+  error?: { message?: string };
+};
+
 const blueprintSchemaHint = `Return only valid JSON matching this shape:
 {
   "version": 1,
@@ -218,6 +230,9 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
 
 export async function plainAiReply(env: Env, message: string): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
+  const webReply = await responsesWebReply(env, message);
+  if (webReply) return webReply;
+
   const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
@@ -233,6 +248,9 @@ export async function plainAiReply(env: Env, message: string): Promise<string> {
 
 export async function aiReply(env: Env, systemPrompt: string, message: string): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
+  const webReply = await responsesWebReply(env, message, systemPrompt);
+  if (webReply) return webReply;
+
   const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
@@ -248,6 +266,39 @@ export async function aiReply(env: Env, systemPrompt: string, message: string): 
   if (!response.ok) return 'I could not generate a response right now. Please try again.';
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
   return data.choices?.[0]?.message?.content?.slice(0, 3500) ?? 'No response was generated.';
+}
+
+async function responsesWebReply(env: Env, message: string, instructions?: string): Promise<string | null> {
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      input: message,
+      instructions,
+      tools: [{ type: 'web_search' }],
+      tool_choice: 'auto',
+    }),
+  });
+
+  const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
+  if (!response.ok || !data) {
+    console.warn('responses web reply failed', data?.error?.message);
+    return null;
+  }
+  const text = extractResponseText(data);
+  return text ? text.slice(0, 3500) : null;
+}
+
+function extractResponseText(data: ResponsesApiResult): string | null {
+  if (data.output_text) return data.output_text;
+  for (const item of data.output ?? []) {
+    if (item.type !== 'message') continue;
+    for (const content of item.content ?? []) {
+      if (content.type === 'output_text' && content.text) return content.text;
+    }
+  }
+  return null;
 }
 
 async function chatJson(env: Env, temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
