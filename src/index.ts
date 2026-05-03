@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveBlueprint, improveFlow, type BotFlow } from './ai';
+import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveBlueprint, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram';
 import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
@@ -27,6 +27,11 @@ app.post('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
   const menu = await setBuilderMenuButton(c.env.TELEGRAM_BOT_TOKEN, `${PUBLIC_BASE_URL}/app`);
   return c.json({ ...result, menu, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook`, miniApp: `${PUBLIC_BASE_URL}/app` });
+});
+
+app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
+  const body = c.req.valid('json');
+  return c.json({ reply: await plainAiReply(c.env, body.instruction) });
 });
 
 app.get('/app/api/bots', async (c) => {
