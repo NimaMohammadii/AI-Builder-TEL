@@ -29,6 +29,8 @@ type ResponsesApiResult = {
   error?: { message?: string };
 };
 
+const CONCISE_CHAT_INSTRUCTIONS = 'Reply in the user language. Be very concise and direct. No extra intro, no filler, no long explanations. Use at most 3 short sentences unless the user explicitly asks for details.';
+
 const blueprintSchemaHint = `Return only valid JSON matching this shape:
 {
   "version": 1,
@@ -105,52 +107,53 @@ export async function buildFlow(env: Env, userPrompt: string): Promise<BotFlow> 
 export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint, instruction: string): Promise<{ blueprint: BotBlueprint; summary: string }> {
   if (!env.OPENAI_API_KEY) return { blueprint: currentBlueprint, summary: 'AI is not configured yet.' };
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot blueprint. Return only JSON with keys "summary" and "blueprint". Keep it safe. ' + blueprintSchemaHint },
+    { role: 'system', content: 'Apply the user request to the existing Telegram bot blueprint. Return only JSON with keys "summary" and "blueprint". Keep it safe. Summary must be one short sentence. ' + blueprintSchemaHint },
     { role: 'user', content: JSON.stringify({ currentBlueprint, instruction }) },
   ]);
-  if (!response) return { blueprint: currentBlueprint, summary: 'I could not apply the change. Please try again.' };
+  if (!response) return { blueprint: currentBlueprint, summary: 'I could not apply the change.' };
   try {
     const parsed = JSON.parse(response) as { blueprint?: BotBlueprint; summary?: string };
-    return { blueprint: normalizeBlueprint(parsed.blueprint ?? currentBlueprint, instruction), summary: parsed.summary ?? 'Changes applied.' };
-  } catch { return { blueprint: currentBlueprint, summary: 'I could not parse the AI change safely.' }; }
+    return { blueprint: normalizeBlueprint(parsed.blueprint ?? currentBlueprint, instruction), summary: shortenText(parsed.summary ?? 'Changes applied.', 180) };
+  } catch { return { blueprint: currentBlueprint, summary: 'I could not apply the change.' }; }
 }
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
   if (!env.OPENAI_API_KEY) return { flow: currentFlow, summary: 'AI is not configured yet.' };
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. Keep it safe. ' + flowSchemaHint },
+    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. Keep it safe. Summary must be one short sentence. ' + flowSchemaHint },
     { role: 'user', content: JSON.stringify({ currentFlow, instruction }) },
   ]);
   if (!response) return { flow: currentFlow, summary: 'I could not apply the flow change.' };
   try {
     const parsed = JSON.parse(response) as { flow?: BotFlow; summary?: string };
-    return { flow: normalizeFlow(parsed.flow ?? currentFlow, instruction), summary: parsed.summary ?? 'Flow changes applied.' };
-  } catch { return { flow: currentFlow, summary: 'I could not parse the flow change safely.' }; }
+    return { flow: normalizeFlow(parsed.flow ?? currentFlow, instruction), summary: shortenText(parsed.summary ?? 'Flow updated.', 180) };
+  } catch { return { flow: currentFlow, summary: 'I could not apply the flow change.' }; }
 }
 
 export async function plainAiReply(env: Env, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
   const input = buildResponsesInput(history, message);
   if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, input);
-    if (webReply) return webReply;
+    const webReply = await responsesWebReply(env, input, CONCISE_CHAT_INSTRUCTIONS);
+    if (webReply) return shortenText(webReply, 900);
   }
-  return responsesTextReply(env, input);
+  return shortenText(await responsesTextReply(env, input, CONCISE_CHAT_INSTRUCTIONS), 900);
 }
 
 export async function aiReply(env: Env, systemPrompt: string, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
   const input = buildResponsesInput(history, message);
+  const instructions = `${systemPrompt}\n\n${CONCISE_CHAT_INSTRUCTIONS}`;
   if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, input, systemPrompt);
-    if (webReply) return webReply;
+    const webReply = await responsesWebReply(env, input, instructions);
+    if (webReply) return shortenText(webReply, 900);
   }
-  return responsesTextReply(env, input, systemPrompt);
+  return shortenText(await responsesTextReply(env, input, instructions), 900);
 }
 
 function buildResponsesInput(history: ChatHistoryMessage[], message: string): Array<{ role: 'user' | 'assistant'; content: string }> {
-  const recent = history.slice(-16).map((item) => ({ role: item.role, content: item.content.slice(0, 1400) }));
-  return [...recent, { role: 'user', content: message.slice(0, 4000) }];
+  const recent = history.slice(-12).map((item) => ({ role: item.role, content: item.content.slice(0, 900) }));
+  return [...recent, { role: 'user', content: message.slice(0, 3000) }];
 }
 
 function shouldUseWebSearch(message: string): boolean {
@@ -163,29 +166,35 @@ async function responsesTextReply(env: Env, input: string | Array<{ role: 'user'
   const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 1200, reasoning: { effort: 'low' } }),
+    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }),
   });
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
   if (!response.ok || !data) {
     console.warn('responses text reply failed', response.status, data?.error?.message ?? text.slice(0, 240));
-    return data?.error?.message ? `AI error: ${data.error.message}` : 'I could not generate a response right now. Please try again.';
+    return data?.error?.message ? `AI error: ${data.error.message}` : 'I could not generate a response right now.';
   }
   const output = extractResponseText(data);
-  return output ? output.slice(0, 3500) : 'No response was generated.';
+  return output ? output.slice(0, 900) : 'No response was generated.';
 }
 
 async function responsesWebReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string | null> {
   const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 1200, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
+    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
   });
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
   if (!response.ok || !data) { console.warn('responses web reply failed', response.status, data?.error?.message ?? text.slice(0, 240)); return null; }
   const output = extractResponseText(data);
-  return output ? output.slice(0, 3500) : null;
+  return output ? output.slice(0, 900) : null;
+}
+
+function shortenText(text: string, max: number): string {
+  const clean = text.trim().replace(/\n{3,}/g, '\n\n');
+  if (clean.length <= max) return clean;
+  return clean.slice(0, max - 1).trimEnd() + '…';
 }
 
 function extractResponseText(data: ResponsesApiResult): string | null {
