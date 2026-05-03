@@ -155,7 +155,7 @@ export async function plainAiReply(env: Env, message: string): Promise<string> {
     const webReply = await responsesWebReply(env, message);
     if (webReply) return webReply;
   }
-  return chatText(env, [{ role: 'user', content: message }]);
+  return responsesTextReply(env, message);
 }
 
 export async function aiReply(env: Env, systemPrompt: string, message: string): Promise<string> {
@@ -164,13 +164,35 @@ export async function aiReply(env: Env, systemPrompt: string, message: string): 
     const webReply = await responsesWebReply(env, message, systemPrompt);
     if (webReply) return webReply;
   }
-  return chatText(env, [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }]);
+  return responsesTextReply(env, message, systemPrompt);
 }
 
 function shouldUseWebSearch(message: string): boolean {
   const english = /\b(search|web|internet|google|latest|today|current|now|news|price|pricing|weather|score|stock|crypto|release|update|version|2025|2026)\b/i;
   const persian = /(سرچ|جستجو|وب|اینترنت|گوگل|جدید|آخرین|امروز|الان|قیمت|تعرفه|خبر|اخبار|هوا|آب و هوا|بورس|ارز|کریپتو|نسخه|آپدیت)/i;
   return english.test(message) || persian.test(message);
+}
+
+async function responsesTextReply(env: Env, message: string, instructions?: string): Promise<string> {
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      input: message,
+      instructions,
+      max_output_tokens: 1200,
+      reasoning: { effort: 'low' },
+    }),
+  });
+  const text = await response.text();
+  const data = safeJson<ResponsesApiResult>(text);
+  if (!response.ok || !data) {
+    console.warn('responses text reply failed', response.status, data?.error?.message ?? text.slice(0, 240));
+    return data?.error?.message ? `AI error: ${data.error.message}` : 'I could not generate a response right now. Please try again.';
+  }
+  const output = extractResponseText(data);
+  return output ? output.slice(0, 3500) : 'No response was generated.';
 }
 
 async function responsesWebReply(env: Env, message: string, instructions?: string): Promise<string | null> {
@@ -181,14 +203,17 @@ async function responsesWebReply(env: Env, message: string, instructions?: strin
       model: OPENAI_MODEL,
       input: message,
       instructions,
+      max_output_tokens: 1200,
+      reasoning: { effort: 'low' },
       tools: [{ type: 'web_search', search_context_size: 'low' }],
       tool_choice: 'auto',
     }),
   });
-  const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
-  if (!response.ok || !data) { console.warn('responses web reply failed', data?.error?.message); return null; }
-  const text = extractResponseText(data);
-  return text ? text.slice(0, 3500) : null;
+  const text = await response.text();
+  const data = safeJson<ResponsesApiResult>(text);
+  if (!response.ok || !data) { console.warn('responses web reply failed', response.status, data?.error?.message ?? text.slice(0, 240)); return null; }
+  const output = extractResponseText(data);
+  return output ? output.slice(0, 3500) : null;
 }
 
 function extractResponseText(data: ResponsesApiResult): string | null {
@@ -200,15 +225,8 @@ function extractResponseText(data: ResponsesApiResult): string | null {
   return null;
 }
 
-async function chatText(env: Env, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string> {
-  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, temperature: 0.45, messages }),
-  });
-  if (!response.ok) return 'I could not generate a response right now. Please try again.';
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content?.slice(0, 3500) ?? 'No response was generated.';
+function safeJson<T>(text: string): T | null {
+  try { return JSON.parse(text) as T; } catch { return null; }
 }
 
 async function chatJson(env: Env, temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
