@@ -95,26 +95,71 @@ async function handleBuilderMessage(env: Env, token: string, message: TelegramMe
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
+  const chatStateKey = `builder-ai-chat:${userId}`;
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(`builder-state:${userId}`).catch(() => undefined);
+    await env.BOT_CACHE.delete(chatStateKey).catch(() => undefined);
     await sendMainMenu(token, chatId);
     return;
   }
+
+  if (text === 'End Chat' || text === '/cancel') {
+    await env.BOT_CACHE.delete(chatStateKey).catch(() => undefined);
+    await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'AI chat closed.', reply_markup: { remove_keyboard: true } });
+    await sendMainMenu(token, chatId);
+    return;
+  }
+
+  const aiChatActive = await env.BOT_CACHE.get(chatStateKey).catch(() => null);
+  if (aiChatActive) {
+    await handleBuilderAiChat(env, token, chatId, userId, text);
+    return;
+  }
+
   if (text === '/newbot' || text === 'Build Bot') {
     await sendOpenMiniApp(token, chatId);
     return;
   }
-  if (text === '/cancel') {
-    await env.BOT_CACHE.delete(`builder-state:${userId}`).catch(() => undefined);
-    await sendText(token, chatId, 'Cancelled. Open the Mini App to build or edit your bots.');
-    return;
-  }
   if (text === '/help') {
-    await sendText(token, chatId, 'Open the Mini App to connect your BotFather token, chat with AI, and apply changes to your Telegram bot.');
+    await sendText(token, chatId, 'Open the Mini App to connect tokens, view results, and manage settings. Use Chat with AI here in Telegram to edit your bot.');
     return;
   }
   await sendMainMenu(token, chatId);
+}
+
+async function handleBuilderAiChat(env: Env, token: string, chatId: number, userId: string, text: string): Promise<void> {
+  const bot = await getLatestOwnerBot(env, userId);
+  const isBotRequest = /bot|telegram|build|create|flow|menu|button|ربات|تلگرام|ساخت|بساز|تغییر|ویرایش|دکمه|منو/i.test(text);
+
+  if (bot && isBotRequest) {
+    await sendText(token, chatId, 'Applying changes to your latest bot...');
+    const currentBlueprint = safeParseJson<BotBlueprint>(bot.blueprint_json, mainBuilderBlueprint());
+    const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
+    const currentFlow = ((settings.flow as BotFlow | undefined) ?? undefined);
+    const [{ improveBlueprint }, { improveFlow, defaultFlow }] = await Promise.all([import('./ai'), import('./ai')]);
+    const flow = currentFlow ?? defaultFlow('Telegram bot');
+    const [blueprintResult, flowResult] = await Promise.all([improveBlueprint(env, currentBlueprint, text), improveFlow(env, flow, text)]);
+    settings.flow = flowResult.flow;
+    try {
+      await env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), bot.id)
+        .run();
+      await env.BOT_CACHE.delete(`bot:${bot.id}`);
+      await sendText(token, chatId, `${flowResult.summary}\n${blueprintResult.summary}`);
+    } catch (error) {
+      console.error('telegram ai chat save failed', error);
+      await sendText(token, chatId, 'Could not save changes. Check D1 migration.');
+    }
+    return;
+  }
+
+  if (!bot && isBotRequest) {
+    await sendText(token, chatId, 'First add your BotFather token in the Mini App, then I can build or edit your bot.');
+    return;
+  }
+
+  await sendText(token, chatId, await runtimePlainAiReply(env, text));
 }
 
 async function handleBuilderCallback(env: Env, token: string, callback: TelegramCallbackQuery): Promise<void> {
@@ -122,12 +167,21 @@ async function handleBuilderCallback(env: Env, token: string, callback: Telegram
   const userId = String(callback.from.id);
   const data = callback.data ?? '';
   await telegramApi(token, 'answerCallbackQuery', { callback_query_id: callback.id });
+  if (data === 'builder:chat') {
+    await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: 7200 }).catch(() => undefined);
+    await telegramApi(token, 'sendMessage', {
+      chat_id: chatId,
+      text: 'AI chat is open. Ask anything, or tell me what to change in your latest bot.',
+      reply_markup: { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false },
+    });
+    return;
+  }
   if (data === 'builder:mybots') {
     await sendMyBots(env, token, chatId, userId);
     return;
   }
   if (data === 'builder:help') {
-    await sendText(token, chatId, 'Use the Mini App to create and manage bots.');
+    await sendText(token, chatId, 'Use the Mini App for token, results, and settings. Use Chat with AI here to edit your bot.');
     return;
   }
   await sendMainMenu(token, chatId);
@@ -237,20 +291,20 @@ async function handleRuntimeCallback(env: Env, token: string, bot: BotRecord, bl
 async function sendMainMenu(token: string, chatId: number): Promise<void> {
   await telegramApi(token, 'sendMessage', {
     chat_id: chatId,
-    text: 'Welcome to AI Builder TEL.\n\nBuild Telegram bots without code. Hidden image mode: /image',
-    reply_markup: { inline_keyboard: [[{ text: 'Build Bot Without Code', web_app: { url: `${PUBLIC_BASE_URL}/app` } }], [{ text: 'Open AI Workspace', web_app: { url: `${PUBLIC_BASE_URL}/app#workspace` } }], [{ text: 'My Bots', callback_data: 'builder:mybots' }, { text: 'Help', callback_data: 'builder:help' }]] },
+    text: 'Welcome to AI Builder TEL.\n\nUse the Mini App for token, results, and settings. Use Chat with AI here to edit your bot.',
+    reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'My Bots', callback_data: 'builder:mybots' }, { text: 'Help', callback_data: 'builder:help' }]] },
   });
 }
 
 async function sendOpenMiniApp(token: string, chatId: number): Promise<void> {
-  await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'Open the Mini App to build, connect, and edit your bot.', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] } });
+  await telegramApi(token, 'sendMessage', { chat_id: chatId, text: 'Open the Mini App to connect token, view results, and manage settings.', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] } });
 }
 
 async function sendMyBots(env: Env, token: string, chatId: number, userId: string): Promise<void> {
   try {
     const rows = await env.DB.prepare('SELECT id, title, username, status, created_at FROM bots WHERE owner_telegram_id = ? ORDER BY created_at DESC LIMIT 10').bind(userId).all<{ id: string; title: string; username: string | null; status: string; created_at: string }>();
     if (!rows.results.length) {
-      await sendText(token, chatId, 'No bots yet. Open the Mini App to create your first bot.');
+      await sendText(token, chatId, 'No bots yet. Open the Mini App to connect your first BotFather token.');
       return;
     }
     await sendText(token, chatId, rows.results.map((item, index) => `${index + 1}. ${item.title}\n${item.username ? '@' + item.username : 'No username'}\nID: ${item.id}\nStatus: ${item.status}`).join('\n\n'));
@@ -278,6 +332,14 @@ function buildKeyboard(buttons: BotButton[]): Array<Array<Record<string, string>
   });
 }
 
+async function getLatestOwnerBot(env: Env, userId: string): Promise<BotRecord | null> {
+  try {
+    return (await env.DB.prepare('SELECT * FROM bots WHERE owner_telegram_id = ? ORDER BY updated_at DESC LIMIT 1').bind(userId).first<BotRecord>()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function getFlowState(env: Env, botId: string, userId: string, flow: BotFlow): Promise<UserFlowState> {
   const raw = await env.BOT_CACHE.get(`flow-state:${botId}:${userId}`).catch(() => null);
   const parsed = raw ? safeParseJson<UserFlowState>(raw, { nodeId: flow.start, data: {} }) : { nodeId: flow.start, data: {} };
@@ -288,7 +350,8 @@ async function clearFlowState(env: Env, botId: string, userId: string): Promise<
 async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds: number): Promise<boolean> { try { return await rateLimit(env.RATE_LIMITS, key, limit, windowSeconds); } catch { return true; } }
 async function saveBotUser(env: Env, botId: string, message: TelegramMessage): Promise<void> { const user = message.from; if (!user) return; try { await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, updated_at = CURRENT_TIMESTAMP`).bind(botId, String(user.id), user.first_name ?? null, user.username ?? null).run(); } catch {} }
 async function runtimeAiReply(env: Env, systemPrompt: string, text: string): Promise<string> { const { aiReply } = await import('./ai'); return aiReply(env, systemPrompt, text); }
+async function runtimePlainAiReply(env: Env, text: string): Promise<string> { const { plainAiReply } = await import('./ai'); return plainAiReply(env, text); }
 async function sendText(token: string, chatId: number, text: string): Promise<void> { await telegramApi(token, 'sendMessage', { chat_id: chatId, text }); }
 async function telegramApi<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> { const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); return response.json() as Promise<T>; }
 function renderTemplate(template: string, data: Record<string, string>): string { return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => data[key] ?? ''); }
-function mainBuilderBlueprint(): BotBlueprint { return { version: 1, botType: 'custom', language: 'en', tone: 'premium', startScreen: 'home', screens: [{ id: 'home', title: 'AI Builder TEL', message: 'Open the Mini App to build Telegram bots without code.', buttons: [] }], aiSupport: { enabled: false, systemPrompt: '', handoffMessage: 'Message saved.' }, safety: { blockedTopics: [], requireHumanFor: [] } }; }
+function mainBuilderBlueprint(): BotBlueprint { return { version: 1, botType: 'custom', language: 'en', tone: 'premium', startScreen: 'home', screens: [{ id: 'home', title: 'AI Builder TEL', message: 'Open the Mini App to connect token, view results, and manage settings.', buttons: [] }], aiSupport: { enabled: false, systemPrompt: '', handoffMessage: 'Message saved.' }, safety: { blockedTopics: [], requireHumanFor: [] } }; }
