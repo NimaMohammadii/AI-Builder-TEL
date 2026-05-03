@@ -1,1 +1,1 @@
-export { miniAppHtml } from './miniapp-control';
+export { miniAppHtml } from './miniapp-control-v2';
