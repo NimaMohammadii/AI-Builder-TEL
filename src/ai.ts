@@ -98,27 +98,27 @@ export function defaultFlow(prompt: string): BotFlow {
 export async function buildBlueprint(env: Env, userPrompt: string): Promise<BotBlueprint> {
   if (!env.OPENAI_API_KEY) return defaultBlueprint(userPrompt);
   const response = await chatJson(env, 0.35, [
-    { role: 'system', content: 'Design a production-grade Telegram bot blueprint for a no-code builder. Do not enable AI chat/support inside the user bot unless the user explicitly asks for AI chat or AI support. Keep it concise and safe. Use English unless the user asks for another language. ' + blueprintSchemaHint },
+    { role: 'system', content: 'Design a production-grade Telegram bot blueprint for a no-code builder. The AI capability is available; decide from the user request whether this specific user bot should include AI support or only normal menus/flows. Do not use fixed keyword rules. Keep it concise and safe. Use English unless the user asks for another language. ' + blueprintSchemaHint },
     { role: 'user', content: userPrompt },
   ]);
   if (!response) return defaultBlueprint(userPrompt);
-  try { return enforceAiOptInOnBlueprint(normalizeBlueprint(JSON.parse(response) as BotBlueprint, userPrompt), userPrompt); } catch { return defaultBlueprint(userPrompt); }
+  try { return normalizeBlueprint(JSON.parse(response) as BotBlueprint, userPrompt); } catch { return defaultBlueprint(userPrompt); }
 }
 
 export async function buildFlow(env: Env, userPrompt: string): Promise<BotFlow> {
   if (!env.OPENAI_API_KEY) return defaultFlow(userPrompt);
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Create a dynamic Telegram bot flow using only the controlled JSON flow format. Do not add ai.enabled nodes unless the user explicitly asks for AI chat, AI support, or an AI assistant inside the user bot. Keep it concise and safe. Use English unless the user asks for another language. ' + flowSchemaHint },
+    { role: 'system', content: 'Create a dynamic Telegram bot flow using only the controlled JSON flow format. The AI capability is available; decide from the user request whether this bot should use ai.enabled nodes or only normal buttons/questions. Do not use fixed keyword rules. Keep it concise and safe. Use English unless the user asks for another language. ' + flowSchemaHint },
     { role: 'user', content: userPrompt },
   ]);
   if (!response) return defaultFlow(userPrompt);
-  try { return enforceAiOptInOnFlow(normalizeFlow(JSON.parse(response) as BotFlow, userPrompt), userPrompt); } catch { return defaultFlow(userPrompt); }
+  try { return normalizeFlow(JSON.parse(response) as BotFlow, userPrompt); } catch { return defaultFlow(userPrompt); }
 }
 
 export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint, instruction: string): Promise<{ blueprint: BotBlueprint; summary: string }> {
   if (!env.OPENAI_API_KEY) return { blueprint: currentBlueprint, summary: 'AI is not configured yet.' };
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot blueprint. Return only JSON with keys "summary" and "blueprint". Keep it safe. Summary must be one short sentence. ' + blueprintSchemaHint },
+    { role: 'system', content: 'Apply the user request to the existing Telegram bot blueprint. Return only JSON with keys "summary" and "blueprint". Keep it safe. Summary must be one short sentence. Decide from the user request whether the user bot itself should use AI support; do not rely on fixed keyword rules. ' + blueprintSchemaHint },
     { role: 'user', content: JSON.stringify({ currentBlueprint, instruction }) },
   ]);
   if (!response) return { blueprint: currentBlueprint, summary: 'I could not apply the change.' };
@@ -130,15 +130,30 @@ export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint,
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
   if (!env.OPENAI_API_KEY) return { flow: currentFlow, summary: 'AI is not configured yet.' };
+
+  const first = await generateFlowUpdate(env, currentFlow, instruction);
+  if (!first) return { flow: currentFlow, summary: 'I could not apply the flow change.' };
+  if (flowChanged(currentFlow, first.flow)) return first;
+
+  const retryInstruction = `${instruction}\n\nThe live bot runs from settings.flow. Your previous output did not change the executable flow. Return a changed executable flow with real nodes, buttons, and valid next targets. Do not claim success unless the flow JSON is actually different.`;
+  const second = await generateFlowUpdate(env, currentFlow, retryInstruction);
+  if (second && flowChanged(currentFlow, second.flow)) return second;
+
+  return { flow: currentFlow, summary: 'I could not save a real runtime change.' };
+}
+
+async function generateFlowUpdate(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
   const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. Keep it safe. Summary must be one short sentence. ' + flowSchemaHint },
+    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. The live user bot executes this returned flow, so menus/buttons/questions/navigation must be represented inside flow.nodes. Keep it safe. Summary must be one short sentence and must describe the real flow change. ' + flowSchemaHint },
     { role: 'user', content: JSON.stringify({ currentFlow, instruction }) },
   ]);
-  if (!response) return { flow: currentFlow, summary: 'I could not apply the flow change.' };
+  if (!response) return null;
   try {
     const parsed = JSON.parse(response) as { flow?: BotFlow; summary?: string };
     return { flow: normalizeFlow(parsed.flow ?? currentFlow, instruction), summary: shortenText(parsed.summary ?? 'Flow updated.', 180) };
-  } catch { return { flow: currentFlow, summary: 'I could not apply the flow change.' }; }
+  } catch {
+    return null;
+  }
 }
 
 export async function plainAiReply(env: Env, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
@@ -251,26 +266,8 @@ function extractJsonObject(value: string): string | null {
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : null;
 }
 
-function wantsAiFeature(prompt: string): boolean {
-  return /\b(ai|artificial intelligence|chatgpt|gpt|assistant|chat bot|chatbot|smart reply|auto reply|support ai|ai support)\b/i.test(prompt) || /(هوش مصنوعی|چت جی پی تی|چت\s*بات|دستیار|پشتیبانی\s*هوشمند|پاسخ\s*هوشمند|جواب\s*هوشمند|ربات\s*هوشمند)/i.test(prompt);
-}
-
-function enforceAiOptInOnBlueprint(blueprint: BotBlueprint, prompt: string): BotBlueprint {
-  if (wantsAiFeature(prompt)) return blueprint;
-  return {
-    ...blueprint,
-    aiSupport: { enabled: false, systemPrompt: '', handoffMessage: blueprint.aiSupport?.handoffMessage ?? 'Message saved.' },
-  };
-}
-
-function enforceAiOptInOnFlow(flow: BotFlow, prompt: string): BotFlow {
-  if (wantsAiFeature(prompt)) return flow;
-  const nodes: Record<string, FlowNode> = {};
-  for (const [id, node] of Object.entries(flow.nodes)) {
-    const { ai, ...rest } = node;
-    nodes[id] = rest;
-  }
-  return { ...flow, nodes };
+function flowChanged(before: BotFlow, after: BotFlow): boolean {
+  return JSON.stringify(before) !== JSON.stringify(after);
 }
 
 function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBlueprint {
