@@ -229,7 +229,7 @@ async function rejectPending(env: Env, key: string, chatId: number, userId: stri
 async function classifyPendingReply(env: Env, pending: PendingAction, history: ChatHistoryMessage[], userReply: string): Promise<'confirm' | 'reject' | 'other'> {
   if (!env.OPENAI_API_KEY) return 'other';
   try {
-    const response = await fetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, instructions: 'Classify reply to pending bot change. Return strict JSON: {"decision":"confirm"|"reject"|"other"}.', input: JSON.stringify({ pending, history: history.slice(-6), userReply }), max_output_tokens: 80, reasoning: { effort: 'low' } }) });
+    const response = await fetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, instructions: 'Classify reply to pending bot change. Return strict JSON: {"decision":"confirm"|"reject"|"other"}.', input: JSON.stringify({ pending, history: history.slice(-6), userReply }), max_output_tokens: 80 }) });
     const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
     const parsed = safeParseJson<{ decision?: string }>(extractJson(extractText(data) ?? ''), {});
     return parsed.decision === 'confirm' || parsed.decision === 'reject' ? parsed.decision : 'other';
