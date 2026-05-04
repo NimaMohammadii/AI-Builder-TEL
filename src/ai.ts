@@ -166,7 +166,7 @@ async function textReply(env: Env, instructions: string, message: string, histor
   if (!env.OPENAI_API_KEY) return 'AI is not configured yet.';
   const input = [...history.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 900) })), { role: 'user' as const, content: message.slice(0, 3000) }];
   try {
-    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }) }, TEXT_TIMEOUT);
+    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500 }) }, TEXT_TIMEOUT);
     const data = safeJson<ResponsesApiResult>(await res.text());
     return short(extractText(data) || data?.error?.message || 'I could not generate a response right now.', 900);
   } catch { return 'I could not generate a response right now.'; }
@@ -175,7 +175,7 @@ async function textReply(env: Env, instructions: string, message: string, histor
 async function jsonReply(env: Env, instructions: string, input: string, maxTokens: number): Promise<string | null> {
   if (!env.OPENAI_API_KEY) return null;
   try {
-    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, instructions: `${instructions}\nReturn strict JSON only. No markdown.`, input, max_output_tokens: maxTokens, reasoning: { effort: 'low' } }) }, JSON_TIMEOUT);
+    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, { method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: OPENAI_MODEL, instructions: `${instructions}\nReturn strict JSON only. No markdown.`, input, max_output_tokens: maxTokens }) }, JSON_TIMEOUT);
     const data = safeJson<ResponsesApiResult>(await res.text());
     return extractJson(extractText(data) || '');
   } catch { return null; }
