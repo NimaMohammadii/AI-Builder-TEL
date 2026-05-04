@@ -1,6 +1,6 @@
 import type { BotBlueprint, Env } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL } from './utils';
-import { applySmartFlowFallback } from './flow-fallback';
+import { applySafeFlowActions, applySmartFlowFallback, type SafeFlowAction } from './flow-fallback';
 
 export type BotFlowNode = {
   id: string;
@@ -89,9 +89,26 @@ export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint,
 }
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
+  const actionResult = await generateActions(env, currentFlow, instruction);
+  if (actionResult && changed(currentFlow, actionResult.flow)) return actionResult;
+
   const generated = await generateFlow(env, currentFlow, instruction);
   if (generated && changed(currentFlow, generated.flow)) return generated;
+
   return applySmartFlowFallback(currentFlow, instruction);
+}
+
+async function generateActions(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
+  const json = await jsonReply(env, actionInstructions(), JSON.stringify({ currentFlow, instruction }), 1200);
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json) as { actions?: SafeFlowAction[]; summary?: string };
+    if (!Array.isArray(parsed.actions) || !parsed.actions.length) return null;
+    const result = applySafeFlowActions(currentFlow, parsed.actions);
+    return { flow: result.flow, summary: short(parsed.summary || result.summary, 180) };
+  } catch {
+    return null;
+  }
 }
 
 async function generateFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
@@ -145,6 +162,10 @@ async function jsonReply(env: Env, instructions: string, input: string, maxToken
   } catch {
     return null;
   }
+}
+
+function actionInstructions(): string {
+  return 'Convert the user request into safe bot-flow actions. Do not write code. Allowed action types: add_button, upsert_node, update_message, rename_button, remove_button, connect_node, set_keyboard, end_node. Return JSON shape: {"summary":"short","actions":[...]}. add_button uses target, buttonText, message, keyboard. upsert_node uses id, message, buttons, keyboard, saveInputAs, next, notifyOwner, end. Use target hints from the user, such as menu names. Keep actions minimal and executable.';
 }
 
 function blueprintInstructions(prefix: string): string {
