@@ -13,14 +13,7 @@ export type BotFlowButton = {
   starsPayment?: BotFlowStarsPayment;
 };
 
-export type BotFlowStarsPayment = {
-  title: string;
-  description: string;
-  amount: number;
-  payload: string;
-  successNext?: string;
-};
-
+export type BotFlowStarsPayment = { title: string; description: string; amount: number; payload: string; successNext?: string };
 export type BotFlowMedia = { type: 'photo' | 'video' | 'document'; url: string; caption?: string };
 export type BotFlowCondition = { variable: string; equals?: string; exists?: boolean; next: string; elseNext?: string };
 
@@ -53,6 +46,20 @@ type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string
 const CONCISE = 'Reply in the user language. Be concise and direct. No filler.';
 const TEXT_TIMEOUT = 10_000;
 const JSON_TIMEOUT = 10_000;
+const RESET_FLOW_COMMAND = '__RESET_FLOW__';
+
+export function emptyFlow(): BotFlow {
+  return {
+    version: 1,
+    name: 'Blank Bot',
+    description: 'Flow cleared. Ready to build from scratch.',
+    start: 'start',
+    variables: [],
+    nodes: {
+      start: { id: 'start', message: 'ربات خالی شد. حالا می‌تونی از اول بسازی.', keyboard: 'inline', end: true },
+    },
+  };
+}
 
 export function defaultBlueprint(prompt: string): BotBlueprint {
   return {
@@ -102,14 +109,15 @@ export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint,
   try {
     const parsed = JSON.parse(json) as { blueprint?: Partial<BotBlueprint>; summary?: string };
     return { blueprint: normalizeBlueprint(parsed.blueprint ?? currentBlueprint, instruction), summary: short(parsed.summary ?? 'Blueprint updated.', 180) };
-  } catch {
-    return { blueprint: currentBlueprint, summary: 'Blueprint unchanged.' };
-  }
+  } catch { return { blueprint: currentBlueprint, summary: 'Blueprint unchanged.' }; }
 }
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
-  const complex = isComplexFlowInstruction(instruction);
+  if (instruction.trim() === RESET_FLOW_COMMAND) {
+    return { flow: emptyFlow(), summary: 'Flow cleared. Ready to build from scratch.' };
+  }
 
+  const complex = isComplexFlowInstruction(instruction);
   if (complex) {
     const generated = await generateFlow(env, currentFlow, instruction);
     if (generated && changed(currentFlow, generated.flow) && satisfiesRequestedShape(generated.flow, instruction)) return generated;
