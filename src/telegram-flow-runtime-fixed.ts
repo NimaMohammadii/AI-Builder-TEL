@@ -12,6 +12,7 @@ export async function handleExpandedPreCheckoutQuery(token: string, query: Teleg
 
 export async function handleExpandedFlowMessage(env: Env, token: string, bot: BotRecord, flow: BotFlow, message: TelegramMessage, deps: Deps): Promise<void> {
   repair(flow);
+  if (isEmptyFlow(flow)) return;
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
@@ -25,7 +26,7 @@ export async function handleExpandedFlowMessage(env: Env, token: string, bot: Bo
 
   const state = await getState(env, bot.id, userId, flow);
   const node = flow.nodes[state.nodeId] ?? flow.nodes[flow.start];
-  if (!node) return deps.sendText(token, chatId, 'This bot flow is not configured correctly.');
+  if (!node) return;
 
   if (message.contact) state.data.contact = JSON.stringify(message.contact);
   if (message.location) state.data.location = JSON.stringify(message.location);
@@ -50,6 +51,7 @@ export async function handleExpandedFlowMessage(env: Env, token: string, bot: Bo
 
 export async function handleExpandedFlowCallback(env: Env, token: string, bot: BotRecord, flow: BotFlow, callback: TelegramCallbackQuery, deps: Deps): Promise<void> {
   repair(flow);
+  if (isEmptyFlow(flow)) return;
   const chatId = callback.message?.chat.id ?? callback.from.id;
   const userId = String(callback.from.id);
   const data = callback.data ?? '';
@@ -83,8 +85,9 @@ async function paid(env: Env, token: string, bot: BotRecord, flow: BotFlow, mess
 
 async function sendNode(env: Env, token: string, bot: BotRecord, flow: BotFlow, chatId: number, userId: string, state: State, deps: Deps): Promise<void> {
   repair(flow);
+  if (isEmptyFlow(flow)) return;
   const node = flow.nodes[state.nodeId] ?? flow.nodes[flow.start];
-  if (!node) return deps.sendText(token, chatId, 'This bot flow is empty.');
+  if (!node) return;
   if (node.media?.url) await sendMedia(token, chatId, node.media, deps);
   const buttons = (node.buttons ?? []).filter((b) => renderable(flow, b));
   await deps.telegramApi(token, 'sendMessage', { chat_id: chatId, text: deps.renderTemplate(node.message, state.data), reply_markup: markup(buttons) });
@@ -98,6 +101,7 @@ async function sendNode(env: Env, token: string, bot: BotRecord, flow: BotFlow, 
 }
 
 function repair(flow: BotFlow): void {
+  if (!Object.keys(flow.nodes ?? {}).length) return;
   if (!flow.start || !flow.nodes[flow.start]) flow.start = Object.keys(flow.nodes)[0] ?? 'start';
   for (const node of Object.values(flow.nodes ?? {})) {
     node.message = node.message || 'Done.';
@@ -113,13 +117,13 @@ function repair(flow: BotFlow): void {
   }
 }
 
+function isEmptyFlow(flow: BotFlow): boolean { return !Object.keys(flow.nodes ?? {}).length || !flow.start || !flow.nodes[flow.start]; }
 function markup(buttons: BotFlowButton[]): unknown {
   if (!buttons.length) return undefined;
   const reply = buttons.some((b) => b.requestContact || b.requestLocation);
   if (reply) return { keyboard: buttons.filter((b) => b.requestContact || b.requestLocation).map((b) => [{ text: b.text, request_contact: b.requestContact || undefined, request_location: b.requestLocation || undefined }]), resize_keyboard: true, one_time_keyboard: false };
   return { inline_keyboard: buttons.map((b) => [{ text: b.text, ...(b.starsPayment ? { callback_data: `stars:${b.starsPayment.payload}` } : {}), ...(b.url ? { url: b.url } : {}), ...(b.webAppUrl ? { web_app: { url: b.webAppUrl } } : {}), ...(b.copyText ? { copy_text: { text: b.copyText } } : {}), ...(!b.starsPayment && b.next ? { callback_data: `flow:${b.next}` } : {}) }]) };
 }
-
 function renderable(flow: BotFlow, b: BotFlowButton): boolean { return Boolean(b.text && (b.starsPayment || b.url || b.webAppUrl || b.copyText || b.requestContact || b.requestLocation || (b.next && flow.nodes[b.next]))); }
 function findStars(flow: BotFlow, data: string): BotFlowButton | null { const payload = data.slice(6); for (const n of Object.values(flow.nodes)) for (const b of n.buttons ?? []) if (b.starsPayment?.payload === payload) return b; return null; }
 async function sendMedia(token: string, chatId: number, media: NonNullable<BotFlow['nodes'][string]['media']>, deps: Deps): Promise<void> { const p = { chat_id: chatId, caption: media.caption }; if (media.type === 'photo') await deps.telegramApi(token, 'sendPhoto', { ...p, photo: media.url }); if (media.type === 'video') await deps.telegramApi(token, 'sendVideo', { ...p, video: media.url }); if (media.type === 'document') await deps.telegramApi(token, 'sendDocument', { ...p, document: media.url }); }
