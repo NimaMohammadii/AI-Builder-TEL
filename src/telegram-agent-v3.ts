@@ -1,5 +1,5 @@
 import { aiReply, defaultFlow, improveFlow, type BotFlow, type ChatHistoryMessage } from './ai';
-import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision';
+import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision-fixed';
 import { processTelegramUpdate as runtimeProcessTelegramUpdate, setTelegramWebhook } from './telegram';
 import { handleExpandedFlowCallback, handleExpandedFlowMessage, handleExpandedPreCheckoutQuery } from './telegram-flow-runtime-fixed';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
@@ -120,7 +120,7 @@ async function agent(env: Env, key: string, chatId: number, userId: string, text
     return;
   }
 
-  const reply = await aiReply(env, 'Reply in the user language. Use only the real dashboard/flow data provided. Do not invent menus or buttons.', JSON.stringify({ request: text, bots: bots.map(botSnapshot) }), history);
+  const reply = await aiReply(env, 'Reply in the user language. Use only the real dashboard/flow data provided. Do not invent menus or buttons. Never claim a real bot change was applied.', JSON.stringify({ request: text, bots: bots.map(botSnapshot) }), history);
   await saveHistory(env, historyKey, history, text, reply);
   await send(key, chatId, reply);
 }
@@ -171,13 +171,19 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], targe
   const flow = await improveFlow(env, flowNow, instruction);
   if (JSON.stringify(flowNow) === JSON.stringify(flow.flow)) return { ok: false, action: 'edit_bot', botId: full.id, error: 'flow_not_changed', flowSummary: flow.summary };
 
-  settings.flow = flow.flow;
+  const revision = `rev_${Date.now()}`;
+  settings.flow = { ...flow.flow, revision };
   await progress('💾 دارم flow جدید را ذخیره و کش را پاک می‌کنم...');
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), full.id).run();
   await env.BOT_CACHE.delete(`bot:${full.id}`).catch(() => undefined);
   await env.BOT_CACHE.delete(`flow-state:${full.id}:${userId}`).catch(() => undefined);
 
-  return { ok: true, action: 'edit_bot', botId: full.id, flowChanged: true, flowSummary: flow.summary, runtimeSource: 'settings.flow', blueprintTouched: false, runtimeStateReset: true };
+  const saved = await env.DB.prepare('SELECT settings_json FROM bots WHERE id = ?').bind(full.id).first<{ settings_json: string }>();
+  const savedSettings = safeParseJson<Record<string, unknown>>(saved?.settings_json ?? '{}', {});
+  const savedFlow = savedSettings.flow as BotFlow | undefined;
+  if (!savedFlow || savedFlow.revision !== revision) return { ok: false, action: 'edit_bot', botId: full.id, error: 'flow_save_verify_failed' };
+
+  return { ok: true, action: 'edit_bot', botId: full.id, flowChanged: true, flowSummary: flow.summary, revision, runtimeSource: 'settings.flow', blueprintTouched: false, runtimeStateReset: true };
 }
 
 async function state(env: Env, target: BotView | null, action: 'publish_bot' | 'activate_bot' | 'pause_bot', progress: (text: string) => Promise<void>): Promise<ActionResult> {
@@ -246,7 +252,7 @@ async function tg<T = { ok: boolean; description?: string }>(key: string, method
 function isRealAction(action: string): action is RealAction { return action === 'edit_bot' || action === 'publish_bot' || action === 'activate_bot' || action === 'pause_bot'; }
 function pendingKey(userId: string): string { return `builder-pending-action:${userId}`; }
 function toPlan(b: BotView): AgentDashboardBot { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flowName: b.flowName ?? b.flow?.name ?? null, flowDescription: b.flowDescription ?? b.flow?.description ?? null }; }
-function compactFlow(flow: BotFlow | null | undefined): unknown { if (!flow) return null; return { name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next, url: button.url, webAppUrl: button.webAppUrl, copyText: button.copyText, requestContact: button.requestContact, requestLocation: button.requestLocation, starsPayment: button.starsPayment })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, media: node.media, condition: node.condition })) }; }
+function compactFlow(flow: BotFlow | null | undefined): unknown { if (!flow) return null; return { revision: flow.revision, name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next, url: button.url, webAppUrl: button.webAppUrl, copyText: button.copyText, requestContact: button.requestContact, requestLocation: button.requestLocation, starsPayment: button.starsPayment })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, media: node.media, condition: node.condition })) }; }
 function botSnapshot(b: BotView): unknown { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flow: compactFlow(b.flow) }; }
 function extractText(data: ResponsesApiResult | null): string | null { if (!data) return null; if (data.output_text) return data.output_text; for (const item of data.output ?? []) for (const content of item.content ?? []) if (content.type === 'output_text' && content.text) return content.text; return null; }
 function extractJson(value: string): string { const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim(); const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}'); return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned; }
