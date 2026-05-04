@@ -10,6 +10,15 @@ export type BotFlowButton = {
   copyText?: string;
   requestContact?: boolean;
   requestLocation?: boolean;
+  starsPayment?: BotFlowStarsPayment;
+};
+
+export type BotFlowStarsPayment = {
+  title: string;
+  description: string;
+  amount: number;
+  payload: string;
+  successNext?: string;
 };
 
 export type BotFlowMedia = {
@@ -191,7 +200,7 @@ async function jsonReply(env: Env, instructions: string, input: string, maxToken
 }
 
 function actionInstructions(): string {
-  return 'Convert the user request into safe Telegram bot-flow actions. Do not write code. Allowed action types: add_button, upsert_node, ask_input, update_message, rename_button, remove_button, connect_node, set_keyboard, end_node, request_contact, request_location, open_url, open_web_app, copy_text, send_photo, send_video, send_document, notify_owner, set_condition, deep_link, payment_placeholder, inline_mode_note. Return JSON shape: {"summary":"short","actions":[...]}. Use add_button for normal buttons with target, buttonText, message, keyboard. Use ask_input with target, variable, prompt, nextMessage. Use request_contact/location for Telegram reply keyboard buttons. Use open_url/open_web_app/copy_text for inline buttons. Use send_photo/video/document with target, url, caption. Use notify_owner to notify owner after collecting data. Use set_condition with target, variable, equals/exists, next, elseNext. payment_placeholder and inline_mode_note only create safe placeholder nodes/messages, no real payment/provider setup. Keep actions minimal and executable.';
+  return 'Convert the user request into safe Telegram bot-flow actions. Do not write code. Allowed action types: add_button, upsert_node, ask_input, update_message, rename_button, remove_button, connect_node, set_keyboard, end_node, request_contact, request_location, open_url, open_web_app, copy_text, send_photo, send_video, send_document, notify_owner, set_condition, deep_link, telegram_stars_payment, inline_mode_note. Return JSON shape: {"summary":"short","actions":[...]}. Use telegram_stars_payment for Telegram Stars/XTR payments with fields target, buttonText, title, description, amount, successMessage. amount is integer Stars. Stars payments use Telegram currency XTR and need successful_payment before delivery. Use payment placeholders only if user asks for unsupported non-Stars providers. Keep actions minimal and executable.';
 }
 
 function blueprintInstructions(prefix: string): string {
@@ -199,7 +208,7 @@ function blueprintInstructions(prefix: string): string {
 }
 
 function flowInstructions(prefix: string): string {
-  return `${prefix}\nShape: {"version":1,"name":"...","description":"...","start":"start","variables":[],"nodes":{"start":{"id":"start","message":"...","keyboard":"inline","buttons":[{"text":"...","next":"node_id","url":"https://...","webAppUrl":"https://...","copyText":"...","requestContact":true,"requestLocation":true}],"media":{"type":"photo|video|document","url":"https://...","caption":"..."},"condition":{"variable":"name","equals":"x","next":"node","elseNext":"other"}}}}. The live bot executes this flow. Use nodes, buttons, next, saveInputAs, notifyOwner, end, media, condition. Use keyboard reply for requestContact/requestLocation.`;
+  return `${prefix}\nShape: {"version":1,"name":"...","description":"...","start":"start","variables":[],"nodes":{"start":{"id":"start","message":"...","keyboard":"inline","buttons":[{"text":"...","next":"node_id","url":"https://...","webAppUrl":"https://...","copyText":"...","requestContact":true,"requestLocation":true,"starsPayment":{"title":"...","description":"...","amount":10,"payload":"...","successNext":"paid_node"}}],"media":{"type":"photo|video|document","url":"https://...","caption":"..."},"condition":{"variable":"name","equals":"x","next":"node","elseNext":"other"}}}}. The live bot executes this flow. Use nodes, buttons, next, saveInputAs, notifyOwner, end, media, condition. Use Telegram Stars payments with button.starsPayment and currency XTR.`;
 }
 
 async function openaiFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
