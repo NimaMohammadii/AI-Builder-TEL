@@ -1,11 +1,16 @@
 import { aiReply, defaultFlow, improveFlow, type BotFlow, type ChatHistoryMessage } from './ai';
 import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision-fixed';
-import { processTelegramUpdate as runtimeProcessTelegramUpdate, setTelegramWebhook } from './telegram';
 import { handleExpandedFlowCallback, handleExpandedFlowMessage, handleExpandedPreCheckoutQuery } from './telegram-flow-runtime-fixed';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 
-export { setTelegramWebhook };
+export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
+  return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
+    url: `${PUBLIC_BASE_URL}/telegram/webhook`,
+    allowed_updates: ['message', 'callback_query'],
+    drop_pending_updates: true,
+  });
+}
 
 type BotView = AgentDashboardBot & { flow?: BotFlow | null };
 type RealAction = 'edit_bot' | 'publish_bot' | 'activate_bot' | 'pause_bot';
@@ -24,7 +29,9 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
     if (settings.flow && update.pre_checkout_query) return handleExpandedPreCheckoutQuery(key, update.pre_checkout_query, flowRuntimeDeps);
     if (settings.flow && update.callback_query) return handleExpandedFlowCallback(env, key, bot, settings.flow, update.callback_query, flowRuntimeDeps);
     if (settings.flow && update.message) return handleExpandedFlowMessage(env, key, bot, settings.flow, update.message, flowRuntimeDeps);
-    return runtimeProcessTelegramUpdate(env, bot, update);
+    if (update.callback_query) await tg(key, 'answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
+    if (update.message) await send(key, update.message.chat.id, 'این ربات هنوز flow اجرایی ندارد. از AI Builder TEL تنظیمش کن.');
+    return;
   }
 
   if (update.callback_query) return onCallback(env, key, update.callback_query);
