@@ -80,7 +80,7 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   if (q.data === 'builder:chat') {
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: 7200 }).catch(() => undefined);
     const bots = await dashboard(env, userId);
-    const reply = await aiReply(env, 'The user opened AI chat. You can inspect their dashboard and connected bots. Reply naturally in the user language.', JSON.stringify({ connected_bots_count: bots.length, dashboard_bots: bots.map(sum) }), []);
+    const reply = await aiReply(env, 'The user opened AI chat. You can inspect their dashboard and connected bots. Reply naturally in the user language. Use only the provided dashboard data; do not invent menus or bot capabilities.', JSON.stringify({ connected_bots_count: bots.length, dashboard_bots: bots.map(botSnapshot) }), []);
     await tg(key, 'sendMessage', { chat_id: chatId, text: reply, reply_markup: { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false } });
     return;
   }
@@ -119,7 +119,7 @@ async function executePending(env: Env, key: string, chatId: number, userId: str
   const history = await loadHistory(env, historyKey);
   const botsBefore = await dashboard(env, userId);
   const target = pending.targetBotId ? botsBefore.find((b) => b.id === pending.targetBotId) ?? null : null;
-  const before = target ? sum(target) : 'none';
+  const before = target ? botSnapshot(target) : null;
 
   let result: ActionResult;
   if (pending.action === 'edit_bot') result = await edit(env, pending.originalRequest, history, botsBefore, target);
@@ -130,8 +130,8 @@ async function executePending(env: Env, key: string, chatId: number, userId: str
   const botsAfter = await dashboard(env, userId);
   const afterTarget = target ? botsAfter.find((b) => b.id === target.id) ?? null : null;
   const finalText = await aiReply(env,
-    'You are AI Builder TEL. Generate a final response in the user language. Do not claim success unless operation_result.ok is true. If ok is false, explain that the change was not applied and what failed. If pendingKeptForRetry is true, say the user can confirm/retry again.',
-    JSON.stringify({ user_confirmation: confirmationText, user_original_request: pending.originalRequest, pending_proposal: pending.proposalText, operation_result: result, dashboard_before: before, dashboard_after: afterTarget ? sum(afterTarget) : 'none' }),
+    'You are AI Builder TEL. Generate a final response in the user language. Do not claim success unless operation_result.ok is true. If ok is false, explain that the change was not applied and what failed. If pendingKeptForRetry is true, say the user can confirm/retry again. Use only provided dashboard data.',
+    JSON.stringify({ user_confirmation: confirmationText, user_original_request: pending.originalRequest, pending_proposal: pending.proposalText, operation_result: result, dashboard_before: before, dashboard_after: afterTarget ? botSnapshot(afterTarget) : null }),
     history
   );
 
@@ -191,7 +191,8 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], bots:
     'Apply the confirmed user request to the selected Telegram bot.',
     'The live bot runs from settings.flow. Any menu, button, reply keyboard, question, payment-like step, notification, or navigation must be represented inside returned flow.nodes.',
     'If the user asks for a reply keyboard, use keyboard: "reply" on the relevant flow node.',
-    `selected=${sum(target)}`,
+    `selected=${JSON.stringify(botSnapshot(target))}`,
+    `current_flow=${JSON.stringify(compactFlow(flowNow))}`,
     `request=${text}`,
     `history=${history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
   ].join('\n\n');
@@ -237,11 +238,11 @@ async function state(env: Env, text: string, history: ChatHistoryMessage[], bots
 }
 
 async function propose(env: Env, text: string, history: ChatHistoryMessage[], bots: BotView[], target: BotView | null, action: RealAction): Promise<string> {
-  return aiReply(env, 'Create a short proposal in the user language. Explain exactly what will be changed. Ask for confirmation. The UI will show Confirm and Reject buttons.', JSON.stringify({ action, target_bot: target ? sum(target) : 'none', dashboard_bots: bots.map(sum), user_request: text }), history);
+  return aiReply(env, 'Create a short proposal in the user language. Explain exactly what will be changed. Ask for confirmation. The UI will show Confirm and Reject buttons. Use only the actual bot snapshot below; do not invent existing menus or capabilities.', JSON.stringify({ action, target_bot: target ? botSnapshot(target) : null, dashboard_bots: bots.map(botSnapshot), user_request: text }), history);
 }
 
 async function answer(env: Env, text: string, history: ChatHistoryMessage[], bots: BotView[], target: BotView | null, extra = ''): Promise<string> {
-  return aiReply(env, `You are AI Builder TEL. Reply in user language. You can inspect dashboard data. ${extra}`, JSON.stringify({ target_bot: target ? sum(target) : 'none', connected_bots_count: bots.length, dashboard_bots: bots.map(sum), user_text: text }), history);
+  return aiReply(env, `You are AI Builder TEL. Reply in user language. You can inspect dashboard data. Use only the actual bot snapshot below; do not invent existing menus, screens, APIs, balances, positions, logs, payments, or capabilities that are not present in flow.nodes or blueprint. ${extra}`, JSON.stringify({ target_bot: target ? botSnapshot(target) : null, connected_bots_count: bots.length, dashboard_bots: bots.map(botSnapshot), user_text: text }), history);
 }
 
 async function dashboard(env: Env, userId: string): Promise<BotView[]> {
@@ -273,7 +274,12 @@ async function getPending(env: Env, userId: string): Promise<PendingAction | nul
 
 function toPlan(b: BotView): AgentDashboardBot { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flowName: b.flowName ?? b.flow?.name ?? null, flowDescription: b.flowDescription ?? b.flow?.description ?? null }; }
 function sum(b: BotView): string { return [b.title, b.username ? `@${b.username}` : null, `id=${b.id}`, `status=${b.status}`, b.flowName || b.flow?.name ? `flow=${b.flowName ?? b.flow?.name}` : null].filter(Boolean).join(', '); }
-async function showBots(env: Env, key: string, chatId: number, userId: string): Promise<void> { const bots = await dashboard(env, userId); const reply = await aiReply(env, 'Summarize the user connected bots in their language.', JSON.stringify({ bots: bots.map(sum) }), []); await send(key, chatId, reply); }
+function compactFlow(flow: BotFlow | null | undefined): unknown {
+  if (!flow) return null;
+  return { name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, ai: node.ai ? { enabled: node.ai.enabled, systemPrompt: node.ai.systemPrompt?.slice(0, 240) } : undefined })) };
+}
+function botSnapshot(b: BotView): unknown { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flow: compactFlow(b.flow), blueprint: b.blueprint ? { startScreen: b.blueprint.startScreen, botType: b.blueprint.botType, language: b.blueprint.language, screens: b.blueprint.screens?.map((screen) => ({ id: screen.id, title: screen.title, message: screen.message, buttons: screen.buttons?.map((button) => ({ text: button.text, action: button.action })) })) } : null }; }
+async function showBots(env: Env, key: string, chatId: number, userId: string): Promise<void> { const bots = await dashboard(env, userId); const reply = await aiReply(env, 'Summarize the user connected bots in their language. Use only the actual snapshots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []); await send(key, chatId, reply); }
 async function mainMenu(key: string, chatId: number): Promise<void> { await tg(key, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'My Bots', callback_data: 'builder:mybots' }, { text: 'Help', callback_data: 'builder:help' }]] } }); }
 async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> { const raw = await env.BOT_CACHE.get(key).catch(() => null); const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : []; return Array.isArray(parsed) ? parsed.filter((x) => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-16) : []; }
 async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> { const next = [...h, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16); await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: 7200 }).catch(() => undefined); }
