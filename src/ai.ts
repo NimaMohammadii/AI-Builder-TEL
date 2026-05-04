@@ -33,7 +33,7 @@ type ResponsesApiResult = {
 
 const CONCISE = 'Reply in the user language. Be concise and direct. No filler.';
 const TEXT_TIMEOUT = 10_000;
-const JSON_TIMEOUT = 14_000;
+const JSON_TIMEOUT = 8_000;
 
 export function defaultBlueprint(prompt: string): BotBlueprint {
   return {
@@ -89,17 +89,13 @@ export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint,
 }
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
-  const first = await generateFlow(env, currentFlow, instruction);
-  if (first && changed(currentFlow, first.flow)) return first;
-
-  const second = await generateFlow(env, currentFlow, `${instruction}\nReturn a changed executable flow. Do not return the same flow.`);
-  if (second && changed(currentFlow, second.flow)) return second;
-
+  const generated = await generateFlow(env, currentFlow, instruction);
+  if (generated && changed(currentFlow, generated.flow)) return generated;
   return applySmartFlowFallback(currentFlow, instruction);
 }
 
 async function generateFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
-  const json = await jsonReply(env, flowInstructions('Apply the requested edit to the existing flow. Return JSON with summary and flow.'), JSON.stringify({ currentFlow, instruction }), 2200);
+  const json = await jsonReply(env, flowInstructions('Apply the requested edit to the existing flow. Return JSON with summary and flow.'), JSON.stringify({ currentFlow, instruction }), 1600);
   if (!json) return null;
   try {
     const parsed = JSON.parse(json) as { flow?: Partial<BotFlow>; summary?: string };
@@ -161,11 +157,17 @@ function flowInstructions(prefix: string): string {
 
 async function openaiFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<Response>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`openai_timeout_${timeoutMs}ms`));
+    }, timeoutMs);
+  });
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await Promise.race([fetch(url, { ...init, signal: controller.signal }), timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
