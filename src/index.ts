@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
+import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
 import type { BotRecord, Env, TelegramUpdate } from './types';
@@ -56,14 +56,15 @@ app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
   const me = await telegramApiWithToken<{ ok: boolean; result?: { username?: string; first_name?: string }; description?: string }>(body.telegramToken, 'getMe', {});
   if (!me.ok) return c.json({ error: me.description ?? 'Invalid Telegram bot token' }, 400);
 
-  const [blueprint, flow] = await Promise.all([buildBlueprint(c.env, body.prompt), buildFlow(c.env, body.prompt)]);
+  const blueprint = defaultBlueprint('Blank connected bot. Build it with AI when the user asks.');
+  const flow = emptyFlow();
   const botId = id('bot');
   const encryptedToken = await encryptUserToken(c.env, body.telegramToken);
   const webhookUrl = `${PUBLIC_BASE_URL}/bot/${botId}/webhook`;
   const webhook = await setBotWebhook(body.telegramToken, webhookUrl);
   if (!webhook.ok) return c.json({ error: webhook.description ?? 'Could not set Telegram webhook' }, 502);
 
-  const title = me.result?.first_name ?? flow.name ?? inferTitle(body.prompt);
+  const title = me.result?.first_name ?? inferTitle(body.prompt);
   try {
     await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`)
       .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
@@ -88,7 +89,7 @@ app.post('/app/api/bots/:id/chat', zValidator('json', chatSchema), async (c) => 
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
   const body = c.req.valid('json');
   const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
-  const currentFlow = ((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot'));
+  const currentFlow = ((settings.flow as BotFlow | undefined) ?? emptyFlow());
   const flowResult = await improveFlow(c.env, currentFlow, body.instruction);
   settings.flow = flowResult.flow;
   try {
