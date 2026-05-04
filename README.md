@@ -27,7 +27,7 @@ Everything else is defined in code/config.
 The OpenAI model is hardcoded in `src/utils.ts`:
 
 ```ts
-export const OPENAI_MODEL = 'gpt-5-mini';
+export const OPENAI_MODEL = 'gpt-4.1-mini';
 ```
 
 ## Features
@@ -155,22 +155,13 @@ Content-Type: application/json
 POST /api/bots/:id/publish
 ```
 
-This calls Telegram `setWebhook` using `TELEGRAM_BOT_TOKEN` and activates the bot.
+This calls Telegram `setWebhook` and activates the bot.
 
 ### Get bot
 
 ```http
 GET /api/bots/:id
 ```
-
-### Update blueprint
-
-```http
-PUT /api/bots/:id/blueprint
-Content-Type: application/json
-```
-
-Send a full `BotBlueprint` JSON object.
 
 ## Architecture
 
@@ -179,7 +170,7 @@ Telegram user
   -> Telegram webhook
   -> Cloudflare Worker
   -> bot lookup in KV/D1
-  -> blueprint runtime engine
+  -> settings.flow runtime engine
   -> D1/KV/R2/OpenAI
   -> Telegram Bot API response
 ```
@@ -191,7 +182,7 @@ Telegram user
 Current Worker URL:
 
 ```text
-https://builder-tel.nimamohammadii.workers.dev
+https://builder-tel.vexaagent.workers.dev
 ```
 
 If your deployed Worker URL changes, update `PUBLIC_BASE_URL` in `src/utils.ts`.
