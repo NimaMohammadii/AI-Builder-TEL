@@ -21,6 +21,7 @@ export type SafeFlowAction =
   | { type: 'notify_owner'; target?: string; enabled?: boolean }
   | { type: 'set_condition'; target?: string; variable: string; equals?: string; exists?: boolean; next: string; elseNext?: string }
   | { type: 'deep_link'; target?: string; buttonText: string; payload: string }
+  | { type: 'telegram_stars_payment'; target?: string; buttonText?: string; title: string; description?: string; amount: number; successMessage?: string }
   | { type: 'payment_placeholder'; target?: string; buttonText?: string; title?: string; message?: string }
   | { type: 'inline_mode_note'; target?: string; message?: string };
 
@@ -131,6 +132,12 @@ export function applySafeFlowActions(currentFlow: BotFlow, actions: SafeFlowActi
         const payload = encodeURIComponent(action.payload || 'start');
         addExternalButton(flow, action.target, action.buttonText, { url: `https://t.me/share/url?url=start%20${payload}` });
         applied.push(`deep_link:${action.buttonText}`);
+      }
+      if (action.type === 'telegram_stars_payment') {
+        const successId = uniqueNodeId(flow, slug(`${action.title || 'stars'}_paid`));
+        flow.nodes[successId] = { id: successId, message: action.successMessage || 'Payment received.', end: true };
+        addExternalButton(flow, action.target, action.buttonText || 'Pay with Stars', { starsPayment: { title: clean(action.title || 'Payment'), description: clean(action.description || action.title || 'Telegram Stars payment'), amount: Math.max(1, Math.floor(Number(action.amount) || 1)), payload: `stars:${successId}:${Date.now()}`, successNext: successId } });
+        applied.push(`telegram_stars_payment:${action.amount}`);
       }
       if (action.type === 'payment_placeholder') {
         addButton(flow, action.target, action.buttonText || 'Payment', uniqueNodeId(flow, 'payment'), action.message || 'Payment setup needs provider token and invoice settings.', 'inline');
