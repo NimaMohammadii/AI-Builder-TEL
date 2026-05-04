@@ -39,7 +39,7 @@ async function maybeCreateCodeJob(env: Env, update: TelegramUpdate, userId: stri
   const history = await loadHistory(env, historyKey);
   const bots = await loadDashboardBots(env, userId);
   const decision = await decideBuilderAgentAction(env, text, history, bots);
-  if (decision.action !== 'code_agent') return false;
+  if (decision.action !== 'edit_bot') return false;
 
   const { jobId, plan, message } = await createCodeAgentJob(env, userId, text, history, bots.map((bot) => ({ ...bot, settings_json: undefined })));
   const proposal = await aiReply(env, [
