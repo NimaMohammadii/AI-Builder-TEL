@@ -1,7 +1,8 @@
 import type { BotBlueprint, Env } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL } from './utils';
+import { applySmartFlowFallback } from './flow-fallback';
 
-type FlowNode = {
+export type BotFlowNode = {
   id: string;
   message: string;
   saveInputAs?: string;
@@ -18,7 +19,7 @@ export type BotFlow = {
   name: string;
   description: string;
   start: string;
-  nodes: Record<string, FlowNode>;
+  nodes: Record<string, BotFlowNode>;
   variables: string[];
 };
 
@@ -30,36 +31,9 @@ type ResponsesApiResult = {
   error?: { message?: string };
 };
 
-const CONCISE_CHAT_INSTRUCTIONS = 'Reply in the user language. Be very concise and direct. No extra intro, no filler, no long explanations. Use at most 3 short sentences unless the user explicitly asks for details.';
-const AI_TEXT_TIMEOUT_MS = 10_000;
-const AI_JSON_TIMEOUT_MS = 14_000;
-
-const blueprintSchemaHint = `Return only valid JSON matching this shape:
-{
-  "version": 1,
-  "botType": "sales" | "support" | "vip" | "custom",
-  "language": "fa" | "en" | "multi",
-  "tone": "friendly" | "formal" | "premium" | "bold",
-  "startScreen": "home",
-  "screens": [{ "id": "home", "title": "...", "message": "...", "buttons": [{ "text": "...", "action": { "type": "support" } }] }],
-  "aiSupport": { "enabled": true, "systemPrompt": "...", "handoffMessage": "..." },
-  "safety": { "blockedTopics": ["unsafe requests"], "requireHumanFor": ["legal", "medical", "finance"] }
-}`;
-
-const flowSchemaHint = `Return only valid JSON matching this shape:
-{
-  "version": 1,
-  "name": "Bot name",
-  "description": "What this bot does",
-  "start": "start",
-  "variables": ["name", "phone"],
-  "nodes": {
-    "start": { "id": "start", "message": "Welcome message", "keyboard": "inline", "buttons": [{ "text": "Begin", "next": "ask_name" }] },
-    "ask_name": { "id": "ask_name", "message": "What is your name?", "saveInputAs": "name", "next": "finish" },
-    "finish": { "id": "finish", "message": "Thanks. We received your request.", "notifyOwner": true, "end": true }
-  }
-}
-Use "keyboard": "reply" only when the user asks for Telegram reply keyboard / keyboard buttons. Reply keyboard button text is handled as user input and must match a button.text.`;
+const CONCISE = 'Reply in the user language. Be concise and direct. No filler.';
+const TEXT_TIMEOUT = 10_000;
+const JSON_TIMEOUT = 14_000;
 
 export function defaultBlueprint(prompt: string): BotBlueprint {
   return {
@@ -92,203 +66,131 @@ export function defaultFlow(prompt: string): BotFlow {
 }
 
 export async function buildBlueprint(env: Env, userPrompt: string): Promise<BotBlueprint> {
-  if (!env.OPENAI_API_KEY) return defaultBlueprint(userPrompt);
-  const response = await chatJson(env, 0.35, [
-    { role: 'system', content: 'Design a production-grade Telegram bot blueprint for a no-code builder. The AI capability is available; decide from the user request whether this specific user bot should include AI support or only normal menus/flows. Do not use fixed keyword rules. Keep it concise and safe. Use English unless the user asks for another language. ' + blueprintSchemaHint },
-    { role: 'user', content: userPrompt },
-  ]);
-  if (!response) return defaultBlueprint(userPrompt);
-  try { return normalizeBlueprint(JSON.parse(response) as BotBlueprint, userPrompt); } catch { return defaultBlueprint(userPrompt); }
+  const json = await jsonReply(env, blueprintInstructions('Design a Telegram bot blueprint.'), userPrompt, 1600);
+  if (!json) return defaultBlueprint(userPrompt);
+  try { return normalizeBlueprint(JSON.parse(json) as Partial<BotBlueprint>, userPrompt); } catch { return defaultBlueprint(userPrompt); }
 }
 
 export async function buildFlow(env: Env, userPrompt: string): Promise<BotFlow> {
-  if (!env.OPENAI_API_KEY) return defaultFlow(userPrompt);
-  const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Create a dynamic Telegram bot flow using only the controlled JSON flow format. The AI capability is available; decide from the user request whether this bot should use ai.enabled nodes or only normal buttons/questions. Do not use fixed keyword rules. Keep it concise and safe. Use English unless the user asks for another language. ' + flowSchemaHint },
-    { role: 'user', content: userPrompt },
-  ]);
-  if (!response) return defaultFlow(userPrompt);
-  try { return normalizeFlow(JSON.parse(response) as BotFlow, userPrompt); } catch { return defaultFlow(userPrompt); }
+  const json = await jsonReply(env, flowInstructions('Create a Telegram bot flow.'), userPrompt, 1800);
+  if (!json) return defaultFlow(userPrompt);
+  try { return normalizeFlow(JSON.parse(json) as Partial<BotFlow>, userPrompt); } catch { return defaultFlow(userPrompt); }
 }
 
 export async function improveBlueprint(env: Env, currentBlueprint: BotBlueprint, instruction: string): Promise<{ blueprint: BotBlueprint; summary: string }> {
-  if (!env.OPENAI_API_KEY) return { blueprint: currentBlueprint, summary: 'AI is not configured yet.' };
-  const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot blueprint. Return only JSON with keys "summary" and "blueprint". Keep it safe. Summary must be one short sentence. Decide from the user request whether the user bot itself should use AI support; do not rely on fixed keyword rules. ' + blueprintSchemaHint },
-    { role: 'user', content: JSON.stringify({ currentBlueprint, instruction }) },
-  ]);
-  if (!response) return { blueprint: currentBlueprint, summary: 'I could not apply the change.' };
+  const json = await jsonReply(env, blueprintInstructions('Apply the requested edit to the existing blueprint. Return JSON with summary and blueprint.'), JSON.stringify({ currentBlueprint, instruction }), 1800);
+  if (!json) return { blueprint: currentBlueprint, summary: 'Blueprint unchanged.' };
   try {
-    const parsed = JSON.parse(response) as { blueprint?: BotBlueprint; summary?: string };
-    return { blueprint: normalizeBlueprint(parsed.blueprint ?? currentBlueprint, instruction), summary: shortenText(parsed.summary ?? 'Changes applied.', 180) };
-  } catch { return { blueprint: currentBlueprint, summary: 'I could not apply the change.' }; }
+    const parsed = JSON.parse(json) as { blueprint?: Partial<BotBlueprint>; summary?: string };
+    return { blueprint: normalizeBlueprint(parsed.blueprint ?? currentBlueprint, instruction), summary: short(parsed.summary ?? 'Blueprint updated.', 180) };
+  } catch {
+    return { blueprint: currentBlueprint, summary: 'Blueprint unchanged.' };
+  }
 }
 
 export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string }> {
-  if (!env.OPENAI_API_KEY) return { flow: currentFlow, summary: 'AI is not configured yet.' };
+  const first = await generateFlow(env, currentFlow, instruction);
+  if (first && changed(currentFlow, first.flow)) return first;
 
-  const first = await generateFlowUpdate(env, currentFlow, instruction);
-  if (!first) return { flow: currentFlow, summary: 'I could not apply the flow change.' };
-  if (flowChanged(currentFlow, first.flow)) return first;
+  const second = await generateFlow(env, currentFlow, `${instruction}\nReturn a changed executable flow. Do not return the same flow.`);
+  if (second && changed(currentFlow, second.flow)) return second;
 
-  const retryInstruction = `${instruction}\n\nThe live bot runs from settings.flow. Your previous output did not change the executable flow. Return a changed executable flow with real nodes, buttons, and valid next targets. If the user asks for keyboard buttons, set keyboard to reply on the node that should show the reply keyboard. Do not claim success unless the flow JSON is actually different.`;
-  const second = await generateFlowUpdate(env, currentFlow, retryInstruction);
-  if (second && flowChanged(currentFlow, second.flow)) return second;
-
-  return { flow: currentFlow, summary: 'I could not save a real runtime change.' };
+  return applySmartFlowFallback(currentFlow, instruction);
 }
 
-async function generateFlowUpdate(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
-  const response = await chatJson(env, 0.25, [
-    { role: 'system', content: 'Apply the user request to the existing Telegram bot flow. Return only JSON with keys "summary" and "flow". Use only the controlled JSON flow format. The live user bot executes this returned flow, so menus/buttons/questions/navigation must be represented inside flow.nodes. If the user asks for reply keyboard/keyboard buttons, put "keyboard":"reply" on the relevant node. Keep it safe. Summary must be one short sentence and must describe the real flow change. ' + flowSchemaHint },
-    { role: 'user', content: JSON.stringify({ currentFlow, instruction }) },
-  ]);
-  if (!response) return null;
+async function generateFlow(env: Env, currentFlow: BotFlow, instruction: string): Promise<{ flow: BotFlow; summary: string } | null> {
+  const json = await jsonReply(env, flowInstructions('Apply the requested edit to the existing flow. Return JSON with summary and flow.'), JSON.stringify({ currentFlow, instruction }), 2200);
+  if (!json) return null;
   try {
-    const parsed = JSON.parse(response) as { flow?: BotFlow; summary?: string };
-    return { flow: normalizeFlow(parsed.flow ?? currentFlow, instruction), summary: shortenText(parsed.summary ?? 'Flow updated.', 180) };
-  } catch { return null; }
+    const parsed = JSON.parse(json) as { flow?: Partial<BotFlow>; summary?: string };
+    const flow = normalizeFlow(parsed.flow ?? currentFlow, instruction);
+    return { flow, summary: short(parsed.summary ?? 'Flow updated.', 180) };
+  } catch {
+    return null;
+  }
 }
 
 export async function plainAiReply(env: Env, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
-  if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
-  const input = buildResponsesInput(history, message);
-  if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, input, CONCISE_CHAT_INSTRUCTIONS);
-    if (webReply) return shortenText(webReply, 900);
-  }
-  return shortenText(await responsesTextReply(env, input, CONCISE_CHAT_INSTRUCTIONS), 900);
+  return textReply(env, CONCISE, message, history);
 }
 
 export async function aiReply(env: Env, systemPrompt: string, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
-  if (!env.OPENAI_API_KEY) return 'AI is not configured yet. Set OPENAI_API_KEY in Cloudflare Secrets.';
-  const input = buildResponsesInput(history, message);
-  const instructions = `${systemPrompt}\n\n${CONCISE_CHAT_INSTRUCTIONS}`;
-  if (shouldUseWebSearch(message)) {
-    const webReply = await responsesWebReply(env, input, instructions);
-    if (webReply) return shortenText(webReply, 900);
-  }
-  return shortenText(await responsesTextReply(env, input, instructions), 900);
+  return textReply(env, `${systemPrompt}\n\n${CONCISE}`, message, history);
 }
 
-function buildResponsesInput(history: ChatHistoryMessage[], message: string): Array<{ role: 'user' | 'assistant'; content: string }> {
-  const recent = history.slice(-12).map((item) => ({ role: item.role, content: item.content.slice(0, 900) }));
-  return [...recent, { role: 'user', content: message.slice(0, 3000) }];
-}
-
-function shouldUseWebSearch(message: string): boolean {
-  const english = /\b(search|web|internet|google|latest|today|current|now|news|price|pricing|weather|score|stock|crypto|release|update|version|2025|2026)\b/i;
-  const persian = /(سرچ|جستجو|وب|اینترنت|گوگل|جدید|آخرین|امروز|الان|قیمت|تعرفه|خبر|اخبار|هوا|آب و هوا|بورس|ارز|کریپتو|نسخه|آپدیت)/i;
-  return english.test(message) || persian.test(message);
-}
-
-async function responsesTextReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string> {
-  let response: Response;
+async function textReply(env: Env, instructions: string, message: string, history: ChatHistoryMessage[]): Promise<string> {
+  if (!env.OPENAI_API_KEY) return 'AI is not configured yet.';
+  const input = [...history.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 900) })), { role: 'user' as const, content: message.slice(0, 3000) }];
   try {
-    response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
-      method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }),
-    }, AI_TEXT_TIMEOUT_MS);
-  } catch (error) {
-    console.warn('responses text reply timed out or failed', error instanceof Error ? error.message : String(error));
-    return 'I could not generate a response right now.';
-  }
-  const text = await response.text();
-  const data = safeJson<ResponsesApiResult>(text);
-  if (!response.ok || !data) {
-    console.warn('responses text reply failed', response.status, data?.error?.message ?? text.slice(0, 240));
-    return data?.error?.message ? `AI error: ${data.error.message}` : 'I could not generate a response right now.';
-  }
-  const output = extractResponseText(data);
-  return output ? output.slice(0, 900) : 'No response was generated.';
-}
-
-async function responsesWebReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string | null> {
-  let response: Response;
-  try {
-    response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
-      method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
-    }, AI_TEXT_TIMEOUT_MS);
-  } catch (error) {
-    console.warn('responses web reply timed out or failed', error instanceof Error ? error.message : String(error));
-    return null;
-  }
-  const text = await response.text();
-  const data = safeJson<ResponsesApiResult>(text);
-  if (!response.ok || !data) { console.warn('responses web reply failed', response.status, data?.error?.message ?? text.slice(0, 240)); return null; }
-  const output = extractResponseText(data);
-  return output ? output.slice(0, 900) : null;
-}
-
-function shortenText(text: string, max: number): string {
-  const clean = text.trim().replace(/\n{3,}/g, '\n\n');
-  if (clean.length <= max) return clean;
-  return clean.slice(0, max - 1).trimEnd() + '…';
-}
-
-function extractResponseText(data: ResponsesApiResult): string | null {
-  if (data.output_text) return data.output_text;
-  for (const item of data.output ?? []) {
-    if (item.type !== 'message') continue;
-    for (const content of item.content ?? []) if (content.type === 'output_text' && content.text) return content.text;
-  }
-  return null;
-}
-
-function safeJson<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
-
-async function chatJson(env: Env, _temperature: number, messages: Array<{ role: 'system' | 'user'; content: string }>): Promise<string | null> {
-  const system = messages.find((message) => message.role === 'system')?.content ?? '';
-  const user = messages.filter((message) => message.role === 'user').map((message) => message.content).join('\n\n');
-  let response: Response;
-  try {
-    response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
+    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: OPENAI_MODEL, instructions: `${system}\n\nReturn strict JSON only. Do not wrap it in markdown.`, input: user, max_output_tokens: 2200, reasoning: { effort: 'low' } }),
-    }, AI_JSON_TIMEOUT_MS);
-  } catch (error) {
-    console.warn('json generation request timed out or failed', error instanceof Error ? error.message : String(error));
+      body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }),
+    }, TEXT_TIMEOUT);
+    const raw = await res.text();
+    const data = safeJson<ResponsesApiResult>(raw);
+    return short(extractText(data) || data?.error?.message || 'I could not generate a response right now.', 900);
+  } catch {
+    return 'I could not generate a response right now.';
+  }
+}
+
+async function jsonReply(env: Env, instructions: string, input: string, maxTokens: number): Promise<string | null> {
+  if (!env.OPENAI_API_KEY) return null;
+  try {
+    const res = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model: OPENAI_MODEL, instructions: `${instructions}\nReturn strict JSON only. No markdown.`, input, max_output_tokens: maxTokens, reasoning: { effort: 'low' } }),
+    }, JSON_TIMEOUT);
+    const raw = await res.text();
+    const data = safeJson<ResponsesApiResult>(raw);
+    return extractJson(extractText(data) || '');
+  } catch {
     return null;
   }
-  const text = await response.text();
-  const data = safeJson<ResponsesApiResult>(text);
-  if (!response.ok || !data) {
-    console.warn('json generation failed', response.status, data?.error?.message ?? text.slice(0, 240));
-    return null;
-  }
-  const output = extractResponseText(data);
-  return output ? extractJsonObject(output) : null;
+}
+
+function blueprintInstructions(prefix: string): string {
+  return `${prefix}\nShape: {"version":1,"botType":"custom","language":"fa|en|multi","tone":"friendly|formal|premium|bold","startScreen":"home","screens":[{"id":"home","title":"...","message":"...","buttons":[{"text":"...","action":{"type":"menu","target":"..."}}]}],"aiSupport":{"enabled":false,"systemPrompt":"","handoffMessage":""},"safety":{"blockedTopics":[],"requireHumanFor":[]}}`;
+}
+
+function flowInstructions(prefix: string): string {
+  return `${prefix}\nShape: {"version":1,"name":"...","description":"...","start":"start","variables":[],"nodes":{"start":{"id":"start","message":"...","keyboard":"inline","buttons":[{"text":"...","next":"node_id"}]}}}. The live bot executes this flow. Use nodes, buttons, next, saveInputAs, notifyOwner, end. Use keyboard reply only when requested.`;
 }
 
 async function openaiFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
-  const fetchPromise = fetch(url, { ...init, signal: controller.signal });
-  const timeoutPromise = new Promise<Response>((_, reject) => {
-    setTimeout(() => {
-      controller.abort();
-      reject(new Error(`openai_timeout_${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-  return Promise.race([fetchPromise, timeoutPromise]);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-function extractJsonObject(value: string): string | null {
+function extractText(data: ResponsesApiResult | null): string | null {
+  if (!data) return null;
+  if (data.output_text) return data.output_text;
+  for (const item of data.output ?? []) {
+    if (item.type !== 'message') continue;
+    for (const part of item.content ?? []) if (part.type === 'output_text' && part.text) return part.text;
+  }
+  return null;
+}
+
+function extractJson(value: string): string | null {
   const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-  if (cleaned.startsWith('{') && cleaned.endsWith('}')) return cleaned;
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : null;
 }
 
-function flowChanged(before: BotFlow, after: BotFlow): boolean { return JSON.stringify(before) !== JSON.stringify(after); }
-
 function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBlueprint {
   const fallback = defaultBlueprint(prompt);
-  const screens = Array.isArray(input.screens) && input.screens.length > 0 ? input.screens : fallback.screens;
-  const hasStart = screens.some((screen) => screen.id === (input.startScreen ?? 'home'));
-  return { version: 1, botType: input.botType ?? fallback.botType, language: input.language ?? fallback.language, tone: input.tone ?? fallback.tone, startScreen: hasStart ? input.startScreen ?? 'home' : screens[0]?.id ?? 'home', screens, aiSupport: input.aiSupport ?? fallback.aiSupport, safety: input.safety ?? fallback.safety };
+  const screens = Array.isArray(input.screens) && input.screens.length ? input.screens : fallback.screens;
+  const startScreen = input.startScreen && screens.some((s) => s.id === input.startScreen) ? input.startScreen : screens[0]?.id ?? 'home';
+  return { version: 1, botType: input.botType ?? fallback.botType, language: input.language ?? fallback.language, tone: input.tone ?? fallback.tone, startScreen, screens, aiSupport: input.aiSupport ?? fallback.aiSupport, safety: input.safety ?? fallback.safety };
 }
 
 function normalizeFlow(input: Partial<BotFlow>, prompt: string): BotFlow {
@@ -296,4 +198,17 @@ function normalizeFlow(input: Partial<BotFlow>, prompt: string): BotFlow {
   const nodes = input.nodes && typeof input.nodes === 'object' ? input.nodes : fallback.nodes;
   const start = input.start && nodes[input.start] ? input.start : Object.keys(nodes)[0] ?? fallback.start;
   return { version: 1, name: input.name || fallback.name, description: input.description || fallback.description, start, nodes, variables: Array.isArray(input.variables) ? input.variables : [] };
+}
+
+function changed(before: BotFlow, after: BotFlow): boolean {
+  return JSON.stringify(before) !== JSON.stringify(after);
+}
+
+function short(text: string, max: number): string {
+  const clean = text.trim().replace(/\n{3,}/g, '\n\n');
+  return clean.length <= max ? clean : clean.slice(0, max - 1).trimEnd() + '…';
+}
+
+function safeJson<T>(text: string): T | null {
+  try { return JSON.parse(text) as T; } catch { return null; }
 }
