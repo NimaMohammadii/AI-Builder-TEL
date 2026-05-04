@@ -41,7 +41,6 @@ export async function decideBuilderAgentAction(env: Env, userText: string, histo
         ].join('\n'),
         input: JSON.stringify({ bots, latest_bot_id: bots[0]?.id ?? null, recent_history: history.slice(-12), latest_user_message: userText }),
         max_output_tokens: 220,
-        reasoning: { effort: 'low' },
       }),
     });
     const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
