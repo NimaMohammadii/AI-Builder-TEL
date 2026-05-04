@@ -115,18 +115,22 @@ async function agent(env: Env, key: string, chatId: number, userId: string, text
 }
 
 async function executePending(env: Env, key: string, chatId: number, userId: string, pending: PendingAction, callback: TelegramCallbackQuery | null, confirmationText: string): Promise<void> {
+  await updateProgress(key, chatId, callback, liveStatus(pending, 'accepted'));
   const historyKey = `builder-ai-history:${userId}`;
   const history = await loadHistory(env, historyKey);
+  await updateProgress(key, chatId, callback, liveStatus(pending, 'reading'));
   const botsBefore = await dashboard(env, userId);
   const target = pending.targetBotId ? botsBefore.find((b) => b.id === pending.targetBotId) ?? null : null;
   const before = target ? botSnapshot(target) : null;
 
   let result: ActionResult;
+  await updateProgress(key, chatId, callback, liveStatus(pending, pending.action === 'edit_bot' ? 'building' : 'publishing'));
   if (pending.action === 'edit_bot') result = await edit(env, pending.originalRequest, history, botsBefore, target);
   else result = await state(env, pending.originalRequest, history, botsBefore, target, pending.action);
 
   if (result.ok) await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
 
+  await updateProgress(key, chatId, callback, liveStatus(pending, result.ok ? 'finalizing' : 'failed'));
   const botsAfter = await dashboard(env, userId);
   const afterTarget = target ? botsAfter.find((b) => b.id === target.id) ?? null : null;
   const finalText = await aiReply(env,
@@ -140,6 +144,7 @@ async function executePending(env: Env, key: string, chatId: number, userId: str
 }
 
 async function rejectPending(env: Env, key: string, chatId: number, userId: string, pending: PendingAction | null, callback: TelegramCallbackQuery | null, userText: string): Promise<void> {
+  if (pending) await updateProgress(key, chatId, callback, liveStatus(pending, 'rejecting'));
   await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
   const historyKey = `builder-ai-history:${userId}`;
   const history = await loadHistory(env, historyKey);
@@ -279,6 +284,8 @@ function compactFlow(flow: BotFlow | null | undefined): unknown {
   return { name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, ai: node.ai ? { enabled: node.ai.enabled, systemPrompt: node.ai.systemPrompt?.slice(0, 240) } : undefined })) };
 }
 function botSnapshot(b: BotView): unknown { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flow: compactFlow(b.flow), blueprint: b.blueprint ? { startScreen: b.blueprint.startScreen, botType: b.blueprint.botType, language: b.blueprint.language, screens: b.blueprint.screens?.map((screen) => ({ id: screen.id, title: screen.title, message: screen.message, buttons: screen.buttons?.map((button) => ({ text: button.text, action: button.action })) })) } : null }; }
+function liveStatus(pending: PendingAction, phase: 'accepted' | 'reading' | 'building' | 'publishing' | 'finalizing' | 'failed' | 'rejecting'): string { const isFa = /[\u0600-\u06FF]/.test(`${pending.originalRequest} ${pending.proposalText}`); const fa: Record<typeof phase, string> = { accepted: 'تأیید شد. دارم عملیات رو شروع می‌کنم...', reading: 'دارم وضعیت فعلی ربات، flow و دکمه‌های واقعی رو می‌خونم...', building: 'دارم تغییر تأییدشده رو روی ساختار اجرایی ربات می‌سازم...', publishing: 'دارم وضعیت webhook و انتشار ربات رو به‌روزرسانی می‌کنم...', finalizing: 'دارم نتیجه نهایی رو از روی وضعیت واقعی ربات آماده می‌کنم...', failed: 'تغییر ذخیره نشد. دارم علت خطا رو آماده می‌کنم...', rejecting: 'رد شد. دارم درخواست معلق رو حذف می‌کنم...' }; const en: Record<typeof phase, string> = { accepted: 'Confirmed. Starting the operation...', reading: 'Reading the current bot state, flow, and real buttons...', building: 'Building the confirmed change into the executable bot flow...', publishing: 'Updating the bot webhook/status...', finalizing: 'Preparing the final result from the real bot state...', failed: 'The change was not saved. Preparing the error details...', rejecting: 'Rejected. Removing the pending request...' }; return isFa ? fa[phase] : en[phase]; }
+async function updateProgress(key: string, chatId: number, callback: TelegramCallbackQuery | null, text: string): Promise<void> { if (callback?.message?.message_id) await tg(key, 'editMessageText', { chat_id: chatId, message_id: callback.message.message_id, text, reply_markup: { inline_keyboard: [] } }).catch(() => undefined); else await send(key, chatId, text).catch(() => undefined); }
 async function showBots(env: Env, key: string, chatId: number, userId: string): Promise<void> { const bots = await dashboard(env, userId); const reply = await aiReply(env, 'Summarize the user connected bots in their language. Use only the actual snapshots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []); await send(key, chatId, reply); }
 async function mainMenu(key: string, chatId: number): Promise<void> { await tg(key, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'My Bots', callback_data: 'builder:mybots' }, { text: 'Help', callback_data: 'builder:help' }]] } }); }
 async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> { const raw = await env.BOT_CACHE.get(key).catch(() => null); const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : []; return Array.isArray(parsed) ? parsed.filter((x) => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-16) : []; }
