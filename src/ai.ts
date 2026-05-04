@@ -51,13 +51,11 @@ const RESET_FLOW_COMMAND = '__RESET_FLOW__';
 export function emptyFlow(): BotFlow {
   return {
     version: 1,
-    name: 'Blank Bot',
-    description: 'Flow cleared. Ready to build from scratch.',
+    name: '',
+    description: '',
     start: 'start',
     variables: [],
-    nodes: {
-      start: { id: 'start', message: 'ربات خالی شد. حالا می‌تونی از اول بسازی.', keyboard: 'inline', end: true },
-    },
+    nodes: {},
   };
 }
 
@@ -118,14 +116,14 @@ export async function improveFlow(env: Env, currentFlow: BotFlow, instruction: s
   }
 
   const complex = isComplexFlowInstruction(instruction);
-  if (complex) {
+  if (complex || isBlankFlow(currentFlow)) {
     const generated = await generateFlow(env, currentFlow, instruction);
     if (generated && changed(currentFlow, generated.flow) && satisfiesRequestedShape(generated.flow, instruction)) return generated;
 
     const actionResult = await generateActions(env, currentFlow, instruction);
     if (actionResult && changed(currentFlow, actionResult.flow) && satisfiesRequestedShape(actionResult.flow, instruction)) return actionResult;
 
-    return { flow: currentFlow, summary: 'Could not build the full requested multi-step flow safely. No change was saved.' };
+    return { flow: currentFlow, summary: 'Could not build the requested flow safely. No change was saved.' };
   }
 
   const actionResult = await generateActions(env, currentFlow, instruction);
@@ -199,6 +197,7 @@ function flowInstructions(prefix: string): string {
   return [
     prefix,
     'The output must be a COMPLETE executable flow, not a partial patch.',
+    'If currentFlow.nodes is empty, this is a blank bot. Build directly from /start by creating a real start node. Do not append after any placeholder node.',
     'Preserve existing useful nodes unless the user asks to replace/reset them.',
     'For multi-step requests, create every required node, message, button, and next target.',
     'If the user says: start shows a menu, then pressing that menu shows text with three buttons, you must create: start -> menu_node, and menu_node must contain the requested message plus exactly/at least those three buttons with valid next targets.',
@@ -238,16 +237,17 @@ function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBl
 
 function normalizeFlow(input: Partial<BotFlow>, prompt: string): BotFlow {
   const fallback = defaultFlow(prompt);
-  const nodes = input.nodes && typeof input.nodes === 'object' ? input.nodes : fallback.nodes;
-  const start = input.start && nodes[input.start] ? input.start : Object.keys(nodes)[0] ?? fallback.start;
-  const flow = { version: 1 as const, name: input.name || fallback.name, description: input.description || fallback.description, start, nodes, variables: Array.isArray(input.variables) ? input.variables : [] };
+  const rawNodes = input.nodes && typeof input.nodes === 'object' ? input.nodes : {};
+  if (!Object.keys(rawNodes).length) return emptyFlow();
+  const start = input.start && rawNodes[input.start] ? input.start : rawNodes.start ? 'start' : Object.keys(rawNodes)[0];
+  const flow = { version: 1 as const, name: input.name || fallback.name, description: input.description || fallback.description, start, nodes: rawNodes, variables: Array.isArray(input.variables) ? input.variables : [] };
   repairGeneratedFlow(flow);
   return flow;
 }
 
 function repairGeneratedFlow(flow: BotFlow): void {
+  if (!Object.keys(flow.nodes ?? {}).length) return;
   if (!flow.start || !flow.nodes[flow.start]) flow.start = Object.keys(flow.nodes)[0] ?? 'start';
-  if (!flow.nodes[flow.start]) flow.nodes[flow.start] = { id: flow.start, message: 'Start', keyboard: 'inline', end: true };
   for (const [id, node] of Object.entries(flow.nodes)) {
     node.id = node.id || id;
     node.message = node.message || 'Done.';
@@ -258,6 +258,10 @@ function repairGeneratedFlow(flow: BotFlow): void {
     }
     if (node.next && !flow.nodes[node.next]) delete node.next;
   }
+}
+
+function isBlankFlow(flow: BotFlow): boolean {
+  return !Object.keys(flow.nodes ?? {}).length;
 }
 
 function isComplexFlowInstruction(text: string): boolean {
