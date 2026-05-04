@@ -37,7 +37,8 @@ export function applySafeFlowActions(currentFlow: BotFlow, actions: SafeFlowActi
       }
       if (action.type === 'upsert_node') {
         const id = slug(action.id) || uniqueNodeId(flow, 'node');
-        flow.nodes[id] = { id, message: action.message || flow.nodes[id]?.message || 'Done.', keyboard: action.keyboard ?? flow.nodes[id]?.keyboard, buttons: sanitizeButtons(action.buttons), saveInputAs: action.saveInputAs, next: action.next ? slug(action.next) || action.next : undefined, notifyOwner: action.notifyOwner, end: action.end ?? (!action.buttons?.length && !action.next) };
+        const buttons = sanitizeButtons(action.buttons);
+        flow.nodes[id] = { id, message: action.message || flow.nodes[id]?.message || 'Done.', keyboard: action.keyboard ?? (buttons?.length ? 'inline' : flow.nodes[id]?.keyboard), buttons, saveInputAs: action.saveInputAs, next: action.next ? slug(action.next) || action.next : undefined, notifyOwner: action.notifyOwner, end: action.end ?? (!buttons?.length && !action.next) };
         applied.push(`upsert_node:${id}`);
       }
       if (action.type === 'ask_input') {
@@ -162,8 +163,8 @@ function addButton(flow: BotFlow, targetHint: string | undefined, buttonText: st
   const nextId = uniqueNodeId(flow, slug(nextHint || buttonText));
   const buttons = Array.isArray(target.buttons) ? target.buttons.filter((button) => normalize(button.text) !== normalize(buttonText)) : [];
   buttons.push({ text: buttonText, next: nextId, ...extras });
-  flow.nodes[target.id] = { ...target, keyboard: keyboard ?? target.keyboard, buttons, end: false };
-  if (!flow.nodes[nextId]) flow.nodes[nextId] = { id: nextId, message: clean(message || defaultNodeMessage('')) || 'Done.', end: true };
+  flow.nodes[target.id] = { ...target, keyboard: keyboard ?? target.keyboard ?? 'inline', buttons, end: false };
+  if (!flow.nodes[nextId]) flow.nodes[nextId] = { id: nextId, message: clean(message || defaultNodeMessage('')) || 'Done.', keyboard: 'inline', end: true };
   return nextId;
 }
 
@@ -222,13 +223,13 @@ function resolveTargetNode(flow: BotFlow, hint: string): string {
 function ensureNode(flow: BotFlow, id: string): BotFlowNode {
   const existing = flow.nodes[id];
   if (existing) return existing;
-  flow.nodes[id] = { id, message: 'Done.', end: true };
+  flow.nodes[id] = { id, message: 'Done.', keyboard: 'inline', end: true };
   return flow.nodes[id];
 }
 
 function ensureNamedNode(flow: BotFlow, hint: string): string {
   const id = slug(hint) || uniqueNodeId(flow, 'node');
-  if (!flow.nodes[id]) flow.nodes[id] = { id, message: hint || 'Done.', end: true };
+  if (!flow.nodes[id]) flow.nodes[id] = { id, message: hint || 'Done.', keyboard: 'inline', end: true };
   return id;
 }
 
@@ -244,12 +245,17 @@ function addVariable(flow: BotFlow, variable: string): void {
 
 function repairFlow(flow: BotFlow): void {
   if (!flow.start || !flow.nodes[flow.start]) flow.start = Object.keys(flow.nodes)[0] ?? 'start';
-  if (!flow.nodes[flow.start]) flow.nodes[flow.start] = { id: flow.start, message: 'Start', end: true };
+  if (!flow.nodes[flow.start]) flow.nodes[flow.start] = { id: flow.start, message: 'Start', keyboard: 'inline', end: true };
   for (const node of Object.values(flow.nodes)) {
     node.id = node.id || 'node';
     node.message = node.message || 'Done.';
     if (node.next && !flow.nodes[node.next]) delete node.next;
     if (node.buttons) node.buttons = node.buttons.filter((button) => button.text && (button.next ? flow.nodes[button.next] : true));
+    if (node.buttons?.length) {
+      node.end = false;
+      const needsReply = node.buttons.some((button) => button.requestContact || button.requestLocation);
+      node.keyboard = needsReply ? 'reply' : 'inline';
+    }
   }
 }
 
