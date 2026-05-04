@@ -1,4 +1,4 @@
-import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v2';
+import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { decryptUserToken, safeParseJson } from './utils';
 
