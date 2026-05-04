@@ -31,8 +31,8 @@ type ResponsesApiResult = {
 };
 
 const CONCISE_CHAT_INSTRUCTIONS = 'Reply in the user language. Be very concise and direct. No extra intro, no filler, no long explanations. Use at most 3 short sentences unless the user explicitly asks for details.';
-const AI_TEXT_TIMEOUT_MS = 18_000;
-const AI_JSON_TIMEOUT_MS = 32_000;
+const AI_TEXT_TIMEOUT_MS = 10_000;
+const AI_JSON_TIMEOUT_MS = 14_000;
 
 const blueprintSchemaHint = `Return only valid JSON matching this shape:
 {
@@ -85,16 +85,8 @@ export function defaultFlow(prompt: string): BotFlow {
     start: 'start',
     variables: [],
     nodes: {
-      start: {
-        id: 'start',
-        message: `Welcome.\n\n${prompt.slice(0, 500)}`,
-        buttons: [{ text: 'Start', next: 'finish' }],
-      },
-      finish: {
-        id: 'finish',
-        message: 'Done.',
-        end: true,
-      },
+      start: { id: 'start', message: `Welcome.\n\n${prompt.slice(0, 500)}`, buttons: [{ text: 'Start', next: 'finish' }] },
+      finish: { id: 'finish', message: 'Done.', end: true },
     },
   };
 }
@@ -155,9 +147,7 @@ async function generateFlowUpdate(env: Env, currentFlow: BotFlow, instruction: s
   try {
     const parsed = JSON.parse(response) as { flow?: BotFlow; summary?: string };
     return { flow: normalizeFlow(parsed.flow ?? currentFlow, instruction), summary: shortenText(parsed.summary ?? 'Flow updated.', 180) };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function plainAiReply(env: Env, message: string, history: ChatHistoryMessage[] = []): Promise<string> {
@@ -193,11 +183,16 @@ function shouldUseWebSearch(message: string): boolean {
 }
 
 async function responsesTextReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string> {
-  const response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }),
-  }, AI_TEXT_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
+      method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' } }),
+    }, AI_TEXT_TIMEOUT_MS);
+  } catch (error) {
+    console.warn('responses text reply timed out or failed', error instanceof Error ? error.message : String(error));
+    return 'I could not generate a response right now.';
+  }
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
   if (!response.ok || !data) {
@@ -209,11 +204,16 @@ async function responsesTextReply(env: Env, input: string | Array<{ role: 'user'
 }
 
 async function responsesWebReply(env: Env, input: string | Array<{ role: 'user' | 'assistant'; content: string }>, instructions?: string): Promise<string | null> {
-  const response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
-  }, AI_TEXT_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
+      method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model: OPENAI_MODEL, input, instructions, max_output_tokens: 500, reasoning: { effort: 'low' }, tools: [{ type: 'web_search', search_context_size: 'low' }], tool_choice: 'auto' }),
+    }, AI_TEXT_TIMEOUT_MS);
+  } catch (error) {
+    console.warn('responses web reply timed out or failed', error instanceof Error ? error.message : String(error));
+    return null;
+  }
   const text = await response.text();
   const data = safeJson<ResponsesApiResult>(text);
   if (!response.ok || !data) { console.warn('responses web reply failed', response.status, data?.error?.message ?? text.slice(0, 240)); return null; }
@@ -246,13 +246,7 @@ async function chatJson(env: Env, _temperature: number, messages: Array<{ role: 
     response = await openaiFetch(`${OPENAI_BASE_URL}/responses`, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        instructions: `${system}\n\nReturn strict JSON only. Do not wrap it in markdown.`,
-        input: user,
-        max_output_tokens: 2200,
-        reasoning: { effort: 'low' },
-      }),
+      body: JSON.stringify({ model: OPENAI_MODEL, instructions: `${system}\n\nReturn strict JSON only. Do not wrap it in markdown.`, input: user, max_output_tokens: 2200, reasoning: { effort: 'low' } }),
     }, AI_JSON_TIMEOUT_MS);
   } catch (error) {
     console.warn('json generation request timed out or failed', error instanceof Error ? error.message : String(error));
@@ -270,12 +264,14 @@ async function chatJson(env: Env, _temperature: number, messages: Array<{ role: 
 
 async function openaiFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort('openai_timeout'), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+  const fetchPromise = fetch(url, { ...init, signal: controller.signal });
+  const timeoutPromise = new Promise<Response>((_, reject) => {
+    setTimeout(() => {
+      controller.abort();
+      reject(new Error(`openai_timeout_${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 function extractJsonObject(value: string): string | null {
@@ -286,9 +282,7 @@ function extractJsonObject(value: string): string | null {
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : null;
 }
 
-function flowChanged(before: BotFlow, after: BotFlow): boolean {
-  return JSON.stringify(before) !== JSON.stringify(after);
-}
+function flowChanged(before: BotFlow, after: BotFlow): boolean { return JSON.stringify(before) !== JSON.stringify(after); }
 
 function normalizeBlueprint(input: Partial<BotBlueprint>, prompt: string): BotBlueprint {
   const fallback = defaultBlueprint(prompt);
