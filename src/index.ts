@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveBlueprint, improveFlow, plainAiReply, type BotFlow } from './ai';
+import { buildBlueprint, buildFlow, defaultBlueprint, defaultFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
-import type { BotBlueprint, BotRecord, Env, TelegramUpdate } from './types';
+import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -87,21 +87,20 @@ app.post('/app/api/bots/:id/chat', zValidator('json', chatSchema), async (c) => 
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
   const body = c.req.valid('json');
-  const currentBlueprint = safeParseJson<BotBlueprint>(bot.blueprint_json, defaultBlueprint('Telegram bot'));
   const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
   const currentFlow = ((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot'));
-  const [blueprintResult, flowResult] = await Promise.all([improveBlueprint(c.env, currentBlueprint, body.instruction), improveFlow(c.env, currentFlow, body.instruction)]);
+  const flowResult = await improveFlow(c.env, currentFlow, body.instruction);
   settings.flow = flowResult.flow;
   try {
-    await c.env.DB.prepare('UPDATE bots SET blueprint_json = ?, settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(JSON.stringify(blueprintResult.blueprint), JSON.stringify(settings), botId)
+    await c.env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(JSON.stringify(settings), botId)
       .run();
     await c.env.BOT_CACHE.delete(`bot:${botId}`);
   } catch (error) {
-    console.error('save blueprint change failed', error);
+    console.error('save flow change failed', error);
     return c.json({ error: 'Could not save changes. Check D1 migration.' }, 500);
   }
-  return c.json({ ok: true, summary: `${flowResult.summary}\n${blueprintResult.summary}`, blueprint: blueprintResult.blueprint, flow: flowResult.flow });
+  return c.json({ ok: true, summary: flowResult.summary, flow: flowResult.flow });
 });
 
 app.patch('/app/api/bots/:id/status', zValidator('json', statusSchema), async (c) => {
@@ -152,13 +151,10 @@ app.delete('/app/api/bots/:id', async (c) => {
 });
 
 app.put('/app/api/bots/:id/blueprint', async (c) => {
-  const body = (await c.req.json()) as BotBlueprint;
   const botId = c.req.param('id');
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
-  await c.env.DB.prepare('UPDATE bots SET blueprint_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(body), botId).run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId });
+  return c.json({ error: 'Blueprint editing is disabled. Runtime uses settings.flow only.' }, 409);
 });
 
 app.post('/api/bots/:id/products', zValidator('json', productSchema), async (c) => {
@@ -177,11 +173,14 @@ app.post('/api/bots/:id/publish', async (c) => {
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
   const token = await decryptUserToken(c.env, bot.encrypted_token);
-  const result = await setBotWebhook(token, `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`);
+  const webhookUrl = `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`;
+  const result = await setBotWebhook(token, webhookUrl);
   if (!result.ok) return c.json({ error: 'Telegram setWebhook failed', details: result }, 502);
-  await c.env.DB.prepare("UPDATE bots SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(botId).run();
+  const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
+  settings.webhookUrl = webhookUrl;
+  await c.env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), botId).run();
   await c.env.BOT_CACHE.delete(`bot:${botId}`);
-  return c.json({ ok: true, botId, webhookUrl: `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook` });
+  return c.json({ ok: true, botId, webhookUrl });
 });
 
 app.post('/telegram', async (c) => handleBuilderWebhook(c));
@@ -234,7 +233,7 @@ async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds
 }
 
 async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
-  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true }) });
+  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'], drop_pending_updates: true }) });
   return response.json() as Promise<{ ok: boolean; description?: string }>;
 }
 
