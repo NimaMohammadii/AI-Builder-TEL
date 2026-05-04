@@ -20,6 +20,10 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
     await handleDecision(env, update, data === 'builder:confirm');
     return;
   }
+  if (settings.isBuilderBot && update.message?.text) {
+    const handled = await handleTextDecisionIfPending(env, update);
+    if (handled) return;
+  }
   return baseProcessTelegramUpdate(env, bot, update);
 }
 
@@ -49,6 +53,58 @@ async function handleDecision(env: Env, update: TelegramUpdate, accepted: boolea
   const reply = await finalAiText(env, accepted, pending, operationResult, { before: dashboardBefore, after: dashboardAfter }, history);
   await env.BOT_CACHE.put(historyKey, JSON.stringify([...history, { role: 'assistant', content: reply }].slice(-16)), { expirationTtl: 7200 }).catch(() => undefined);
   await editMessage(token, chatId, messageId, reply);
+}
+
+async function handleTextDecisionIfPending(env: Env, update: TelegramUpdate): Promise<boolean> {
+  const message = update.message;
+  if (!message?.text) return false;
+  const chatId = message.chat.id;
+  const userId = String(message.from?.id ?? chatId);
+  const text = message.text.trim();
+  const pendingRaw = await env.BOT_CACHE.get(pendingKey(userId)).catch(() => null);
+  if (!pendingRaw) return false;
+
+  const decision = await classifyPendingDecision(env, text);
+  if (decision === 'other') return false;
+
+  const pending = safeParseJson<PendingAction | null>(pendingRaw, null);
+  await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
+
+  const historyKey = `builder-ai-history:${userId}`;
+  const history = await loadHistory(env, historyKey);
+  const dashboardBefore = await loadDashboard(env, userId);
+
+  let operationResult = '';
+  if (decision === 'confirm' && pending?.action && pending.targetBotId) {
+    operationResult = await executePending(env, pending);
+  }
+
+  const dashboardAfter = await loadDashboard(env, userId);
+  const reply = await finalAiText(env, decision === 'confirm', pending, operationResult, { before: dashboardBefore, after: dashboardAfter }, history);
+  await env.BOT_CACHE.put(historyKey, JSON.stringify([...history, { role: 'user', content: text }, { role: 'assistant', content: reply }].slice(-16)), { expirationTtl: 7200 }).catch(() => undefined);
+  await telegram(env.TELEGRAM_BOT_TOKEN, 'sendMessage', { chat_id: chatId, text });
+  await telegram(env.TELEGRAM_BOT_TOKEN, 'sendMessage', { chat_id: chatId, text: reply });
+  return true;
+}
+
+async function classifyPendingDecision(env: Env, text: string): Promise<'confirm' | 'reject' | 'other'> {
+  if (!env.OPENAI_API_KEY) return fallbackDecision(text);
+  try {
+    const reply = await aiReply(env, 'Classify this short user message only as confirm, reject, or other. Return exactly one word: confirm, reject, or other.', text, []);
+    const normalized = reply.trim().toLowerCase();
+    if (normalized.includes('confirm')) return 'confirm';
+    if (normalized.includes('reject')) return 'reject';
+    return fallbackDecision(text);
+  } catch {
+    return fallbackDecision(text);
+  }
+}
+
+function fallbackDecision(text: string): 'confirm' | 'reject' | 'other' {
+  const normalized = text.trim().toLowerCase();
+  if (/^(yes|y|ok|okay|confirm|do it|apply|run|retry|try again|اره|آره|بله|اوکی|تایید|تأیید|انجام بده|اجرا کن|دوباره تلاش کن)$/i.test(normalized)) return 'confirm';
+  if (/^(no|n|reject|cancel|stop|نه|لغو|رد|نکن|بیخیال)$/i.test(normalized)) return 'reject';
+  return 'other';
 }
 
 async function executePending(env: Env, pending: PendingAction): Promise<string> {
@@ -117,8 +173,7 @@ async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
 async function finalAiText(env: Env, accepted: boolean, pending: PendingAction | null, operationResult: string, dashboard: unknown, history: ChatHistoryMessage[]): Promise<string> {
   const instructions = [
     'You are AI Builder TEL and you oversee the user dashboard.',
-    'The user pressed one of the confirmation buttons under your previous proposal.',
-    'Edit that previous message into the final answer.',
+    'The user confirmed or rejected your previous proposal.',
     'Do not use canned wording. Reply in the user language and base the answer on the real operation result and dashboard data.',
     `button_pressed=${accepted ? 'confirm' : 'reject'}`,
     `pending_action=${JSON.stringify(pending ?? {})}`,
