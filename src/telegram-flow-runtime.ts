@@ -1,5 +1,5 @@
 import type { BotFlow, BotFlowButton } from './ai';
-import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage } from './types';
+import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramPreCheckoutQuery } from './types';
 
 type UserFlowState = { nodeId: string; data: Record<string, string> };
 
@@ -12,10 +12,24 @@ type RuntimeDeps = {
   renderTemplate: (template: string, data: Record<string, string>) => string;
 };
 
+export async function handleExpandedPreCheckoutQuery(token: string, query: TelegramPreCheckoutQuery, deps: RuntimeDeps): Promise<void> {
+  const ok = query.currency === 'XTR' && query.invoice_payload.startsWith('stars:');
+  await deps.telegramApi(token, 'answerPreCheckoutQuery', {
+    pre_checkout_query_id: query.id,
+    ok,
+    ...(ok ? {} : { error_message: 'Invalid Telegram Stars payment.' }),
+  });
+}
+
 export async function handleExpandedFlowMessage(env: Env, token: string, bot: BotRecord, flow: BotFlow, message: TelegramMessage, deps: RuntimeDeps): Promise<void> {
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
+
+  if (message.successful_payment) {
+    await handleSuccessfulStarsPayment(env, token, bot, flow, message, deps);
+    return;
+  }
 
   if (!text || text === '/start' || text === '/reset') {
     const state = { nodeId: flow.start, data: {} };
@@ -63,11 +77,52 @@ export async function handleExpandedFlowCallback(env: Env, token: string, bot: B
   const userId = String(callback.from.id);
   const data = callback.data ?? '';
   await deps.telegramApi(token, 'answerCallbackQuery', { callback_query_id: callback.id });
+
+  if (data.startsWith('stars:')) {
+    const button = findStarsButton(flow, data);
+    if (!button?.starsPayment) {
+      await deps.sendText(token, chatId, 'Payment is not configured correctly.');
+      return;
+    }
+    await sendStarsInvoice(token, chatId, button, deps);
+    return;
+  }
+
   const nextId = data.startsWith('flow:') ? data.slice('flow:'.length) : flow.start;
   const state = await getFlowState(env, bot.id, userId, flow);
   state.nodeId = flow.nodes[nextId] ? nextId : flow.start;
   await saveFlowState(env, bot.id, userId, state);
   await sendExpandedFlowNode(env, token, bot, flow, chatId, userId, state, deps);
+}
+
+async function handleSuccessfulStarsPayment(env: Env, token: string, bot: BotRecord, flow: BotFlow, message: TelegramMessage, deps: RuntimeDeps): Promise<void> {
+  const chatId = message.chat.id;
+  const userId = String(message.from?.id ?? chatId);
+  const payment = message.successful_payment;
+  if (!payment || payment.currency !== 'XTR' || !payment.invoice_payload.startsWith('stars:')) {
+    await deps.sendText(token, chatId, 'Payment was received but could not be verified.');
+    return;
+  }
+
+  const nextId = payment.invoice_payload.split(':')[1];
+  const state = await getFlowState(env, bot.id, userId, flow);
+  state.data.last_payment = JSON.stringify(payment);
+  state.nodeId = nextId && flow.nodes[nextId] ? nextId : flow.start;
+  await saveFlowState(env, bot.id, userId, state);
+  await sendExpandedFlowNode(env, token, bot, flow, chatId, userId, state, deps);
+}
+
+async function sendStarsInvoice(token: string, chatId: number, button: BotFlowButton, deps: RuntimeDeps): Promise<void> {
+  const payment = button.starsPayment;
+  if (!payment) return;
+  await deps.telegramApi(token, 'sendInvoice', {
+    chat_id: chatId,
+    title: payment.title,
+    description: payment.description || payment.title,
+    payload: payment.payload,
+    currency: 'XTR',
+    prices: [{ label: payment.title, amount: payment.amount }],
+  });
 }
 
 async function sendExpandedFlowNode(env: Env, token: string, bot: BotRecord, flow: BotFlow, chatId: number, userId: string, state: UserFlowState, deps: RuntimeDeps): Promise<void> {
@@ -98,7 +153,7 @@ async function sendExpandedFlowNode(env: Env, token: string, bot: BotRecord, flo
 }
 
 function isRenderableButton(flow: BotFlow, button: BotFlowButton): boolean {
-  return Boolean(button.text && (button.url || button.webAppUrl || button.copyText || button.requestContact || button.requestLocation || (button.next && flow.nodes[button.next])));
+  return Boolean(button.text && (button.starsPayment || button.url || button.webAppUrl || button.copyText || button.requestContact || button.requestLocation || (button.next && flow.nodes[button.next])));
 }
 
 function buildFlowReplyMarkup(keyboard: 'inline' | 'reply' | undefined, buttons: BotFlowButton[]): unknown {
@@ -106,7 +161,7 @@ function buildFlowReplyMarkup(keyboard: 'inline' | 'reply' | undefined, buttons:
 
   if (keyboard === 'reply' || buttons.some((button) => button.requestContact || button.requestLocation)) {
     return {
-      keyboard: buttons.map((button) => [{
+      keyboard: buttons.filter((button) => !button.starsPayment && !button.url && !button.webAppUrl && !button.copyText).map((button) => [{
         text: button.text,
         request_contact: button.requestContact || undefined,
         request_location: button.requestLocation || undefined,
@@ -119,12 +174,23 @@ function buildFlowReplyMarkup(keyboard: 'inline' | 'reply' | undefined, buttons:
   return {
     inline_keyboard: buttons.map((button) => [{
       text: button.text,
+      ...(button.starsPayment ? { callback_data: `stars:${button.starsPayment.payload}` } : {}),
       ...(button.url ? { url: button.url } : {}),
       ...(button.webAppUrl ? { web_app: { url: button.webAppUrl } } : {}),
       ...(button.copyText ? { copy_text: { text: button.copyText } } : {}),
-      ...(button.next ? { callback_data: `flow:${button.next}` } : {}),
+      ...(!button.starsPayment && button.next ? { callback_data: `flow:${button.next}` } : {}),
     }]),
   };
+}
+
+function findStarsButton(flow: BotFlow, callbackData: string): BotFlowButton | null {
+  const payload = callbackData.slice('stars:'.length);
+  for (const node of Object.values(flow.nodes)) {
+    for (const button of node.buttons ?? []) {
+      if (button.starsPayment?.payload === payload) return button;
+    }
+  }
+  return null;
 }
 
 async function sendNodeMedia(token: string, chatId: number, node: BotFlow['nodes'][string], deps: RuntimeDeps): Promise<void> {
