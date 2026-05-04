@@ -8,7 +8,6 @@ The Worker uses only two environment secrets:
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 OPENAI_API_KEY=your-openai-api-key
 ```
-
 Everything else is defined in code/config.
 
 ## Stack
