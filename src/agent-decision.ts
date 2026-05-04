@@ -63,7 +63,7 @@ export async function decideBuilderAgentAction(env: Env, userText: string, histo
   if (!response.ok || !text) return fallbackDecision(bots);
 
   try {
-    const parsed = JSON.parse(text) as Partial<AgentDecision>;
+    const parsed = JSON.parse(extractJson(text)) as Partial<AgentDecision>;
     return normalizeDecision(parsed, bots);
   } catch {
     return fallbackDecision(bots);
@@ -96,4 +96,11 @@ function extractText(data: ResponsesApiResult): string | null {
     }
   }
   return null;
+}
+
+function extractJson(value: string): string {
+  const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
 }
