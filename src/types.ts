@@ -62,11 +62,35 @@ export type TelegramUpdate = {
   update_id: number;
   message?: TelegramMessage;
   callback_query?: TelegramCallbackQuery;
+  pre_checkout_query?: TelegramPreCheckoutQuery;
+};
+
+export type TelegramSuccessfulPayment = {
+  currency: string;
+  total_amount: number;
+  invoice_payload: string;
+  telegram_payment_charge_id?: string;
+  provider_payment_charge_id?: string;
+};
+
+export type TelegramContact = {
+  phone_number: string;
+  first_name: string;
+  last_name?: string;
+  user_id?: number;
+};
+
+export type TelegramLocation = {
+  longitude: number;
+  latitude: number;
 };
 
 export type TelegramMessage = {
   message_id: number;
   text?: string;
+  successful_payment?: TelegramSuccessfulPayment;
+  contact?: TelegramContact;
+  location?: TelegramLocation;
   chat: { id: number; type: string };
   from?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
 };
@@ -76,4 +100,12 @@ export type TelegramCallbackQuery = {
   data?: string;
   from: { id: number; first_name?: string; username?: string };
   message?: TelegramMessage;
+};
+
+export type TelegramPreCheckoutQuery = {
+  id: string;
+  from: { id: number; first_name?: string; username?: string };
+  currency: string;
+  total_amount: number;
+  invoice_payload: string;
 };
