@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
-import { adminHtml, defaultCreditIconSvg } from './admin';
+import { adminHtml, adminPanelHtml, defaultCreditIconSvg } from './admin';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
@@ -15,6 +15,7 @@ const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramT
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
 const statusSchema = z.object({ status: z.enum(['active', 'paused']) });
 const productSchema = z.object({ title: z.string().min(1).max(120), description: z.string().max(1000).default(''), priceAmount: z.number().int().nonnegative().default(0), currency: z.string().min(3).max(8).default('USD'), deliveryText: z.string().max(4000).default(''), metadata: z.record(z.unknown()).default({}) });
+const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
@@ -26,6 +27,16 @@ app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString()
 
 app.get('/admin', () => html(adminHtml()));
 app.get('/admin/', () => html(adminHtml()));
+app.post('/admin/login', zValidator('json', adminLoginSchema), (c) => {
+  const { key } = c.req.valid('json');
+  if (!isAdmin(c.env, key)) return c.json({ error: 'Wrong admin key' }, 401);
+  return c.json({ ok: true });
+});
+app.get('/admin/panel', (c) => {
+  const key = c.req.header('x-admin-key') ?? '';
+  if (!isAdmin(c.env, key)) return c.json({ error: 'Unauthorized' }, 401);
+  return html(adminPanelHtml());
+});
 app.get('/app/api/credit-icon', async (c) => {
   try {
     const icon = await c.env.ASSETS.get('credit-icon');
@@ -39,7 +50,7 @@ app.get('/app/api/credit-icon', async (c) => {
 });
 app.post('/admin/upload-credit-icon', async (c) => {
   const key = c.req.header('x-admin-key') ?? '';
-  if (!c.env.ADMIN_KEY || key !== c.env.ADMIN_KEY) return c.json({ error: 'Unauthorized' }, 401);
+  if (!isAdmin(c.env, key)) return c.json({ error: 'Unauthorized' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
@@ -216,6 +227,8 @@ app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => { console.error(error); return c.json({ error: 'Internal error' }, 500); });
+
+function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
 
 async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
   try {
