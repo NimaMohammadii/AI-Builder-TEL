@@ -7,7 +7,7 @@ const COMPACT_TTS_CSS = `
 .tts-head p{font-size:11px!important;line-height:1.25!important;max-width:260px!important}
 .tts-top-tools{display:grid!important;gap:7px!important;justify-items:end!important}
 .credit-pill{height:34px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.13)!important;background:rgba(255,255,255,.055)!important;color:#fff!important;display:flex!important;align-items:center!important;gap:7px!important;padding:0 10px!important;font-size:13px!important;font-weight:850!important}
-.credit-pill img{width:19px!important;height:19px!important;border-radius:50%!important;object-fit:cover!important}
+.credit-pill img{width:22px!important;height:22px!important;border-radius:0!important;object-fit:contain!important;background:transparent!important;box-shadow:none!important;display:block!important}
 .voice-btn{height:38px!important;min-width:104px!important;padding:0 11px!important;font-size:14px!important;gap:8px!important}
 .voice-btn svg{width:15px!important;height:15px!important}
 .voice-menu{top:43px!important;width:150px!important;max-height:260px!important;padding:5px!important;border-radius:18px!important}
