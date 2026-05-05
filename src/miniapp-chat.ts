@@ -32,7 +32,7 @@ export function miniAppHtml(): string {
     .replace('</style>', VEXA_THEME_CSS + COMPACT_TTS_CSS + '</style>')
     .replace(
       '<div id="voiceWrap" class="voice-wrap"><button class="voice-btn" data-action="toggle-voice">',
-      '<div class="tts-top-tools"><div class="credit-pill"><img src="/app/api/credit-icon" alt=""/><span id="creditCount">0</span></div><div id="voiceWrap" class="voice-wrap"><button class="voice-btn" data-action="toggle-voice">'
+      '<div class="tts-top-tools"><div class="credit-pill"><img src="/app/api/credit-icon.png" alt=""/><span id="creditCount">0</span></div><div id="voiceWrap" class="voice-wrap"><button class="voice-btn" data-action="toggle-voice">'
     )
     .replace('</div></div></div><div class="tts-area">', '</div></div></div></div><div class="tts-area">');
 }
