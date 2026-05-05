@@ -11,6 +11,7 @@ import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rate
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
+const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
@@ -47,10 +48,11 @@ app.post('/admin/logout', (c) => new Response(JSON.stringify({ ok: true }), { he
 app.get('/app/api/credit-icon', (c) => c.redirect('/app/api/credit-icon.png'));
 app.get('/app/api/credit-icon.png', async (c) => {
   const kvIcon = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
-  if (kvIcon) return new Response(kvIcon, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
+  const kvType = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
+  if (kvIcon) return new Response(kvIcon, { headers: { 'content-type': kvType ?? 'image/png', 'cache-control': 'no-store' } });
   try {
-    const icon = await c.env.ASSETS.get('credit-icon.png');
-    if (icon) return new Response(icon.body, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
+    const icon = await c.env.ASSETS.get('credit-icon');
+    if (icon) return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'no-store' } });
   } catch (error) { console.warn('load credit icon failed', error); }
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
 });
@@ -58,14 +60,14 @@ app.post('/admin/upload-credit-icon', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
-  if (!(file instanceof File)) return c.json({ error: 'Choose a PNG image file.' }, 400);
-  if (file.type !== 'image/png') return c.json({ error: 'Only PNG files are allowed.' }, 400);
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
   if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const data = await file.arrayBuffer();
   await c.env.BOT_CACHE.put('admin:credit-icon', data as ArrayBuffer, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:credit-icon-type', 'image/png', { expirationTtl: 60 * 60 * 24 * 365 });
-  try { await c.env.ASSETS.put('credit-icon.png', new Blob([data]).stream(), { httpMetadata: { contentType: 'image/png' } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
-  return c.json({ ok: true, size: file.size, type: 'image/png' });
+  await c.env.BOT_CACHE.put('admin:credit-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+  try { await c.env.ASSETS.put('credit-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
+  return c.json({ ok: true, size: file.size, type: file.type });
 });
 
 app.post('/setup-webhook', async (c) => {
