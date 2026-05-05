@@ -5,6 +5,7 @@ export type Env = {
   ASSETS: R2Bucket;
   TELEGRAM_BOT_TOKEN: string;
   OPENAI_API_KEY: string;
+  ADMIN_KEY: string;
 };
 
 export type ButtonAction =
