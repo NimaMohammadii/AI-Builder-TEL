@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
+import { adminHtml, defaultCreditIconSvg } from './admin';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
@@ -22,6 +23,31 @@ app.get('/miniapp', () => html(miniAppHtml()));
 app.get('/app/index.html', () => html(miniAppHtml()));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
+
+app.get('/admin', () => html(adminHtml()));
+app.get('/admin/', () => html(adminHtml()));
+app.get('/app/api/credit-icon', async (c) => {
+  try {
+    const icon = await c.env.ASSETS.get('credit-icon');
+    if (icon) {
+      return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'no-store' } });
+    }
+  } catch (error) {
+    console.warn('load credit icon failed', error);
+  }
+  return new Response(defaultCreditIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' } });
+});
+app.post('/admin/upload-credit-icon', async (c) => {
+  const key = c.req.header('x-admin-key') ?? '';
+  if (!c.env.ADMIN_KEY || key !== c.env.ADMIN_KEY) return c.json({ error: 'Unauthorized' }, 401);
+  const form = await c.req.formData();
+  const file = form.get('icon');
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!file.type.startsWith('image/')) return c.json({ error: 'Only image files are allowed.' }, 400);
+  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type } });
+  return c.json({ ok: true, size: file.size, type: file.type });
+});
 
 app.post('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
