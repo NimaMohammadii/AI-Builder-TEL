@@ -32,31 +32,38 @@ app.post('/admin/login', zValidator('json', adminLoginSchema), (c) => {
   if (!isAdmin(c.env, key)) return c.json({ error: 'Wrong admin key' }, 401);
   return c.json({ ok: true });
 });
+app.post('/admin/panel', async (c) => {
+  const form = await c.req.formData();
+  const key = String(form.get('key') ?? '');
+  if (!isAdmin(c.env, key)) return html(adminHtml().replace('Only authenticated admins can open tools.', 'Wrong admin key.'));
+  return html(adminPanelHtml(), { 'set-cookie': adminCookie(key) });
+});
 app.get('/admin/panel', (c) => {
-  const key = c.req.header('x-admin-key') ?? '';
-  if (!isAdmin(c.env, key)) return c.json({ error: 'Unauthorized' }, 401);
+  if (!isAdminRequest(c)) return c.redirect('/admin');
   return html(adminPanelHtml());
 });
+app.post('/admin/logout', (c) => new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json', 'set-cookie': 'vexa_admin=; Path=/admin; Max-Age=0; HttpOnly; SameSite=Lax; Secure' } }));
 app.get('/app/api/credit-icon', async (c) => {
+  const kvIcon = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
+  const kvType = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
+  if (kvIcon) return new Response(kvIcon, { headers: { 'content-type': kvType ?? 'image/png', 'cache-control': 'no-store' } });
   try {
     const icon = await c.env.ASSETS.get('credit-icon');
-    if (icon) {
-      return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'no-store' } });
-    }
-  } catch (error) {
-    console.warn('load credit icon failed', error);
-  }
+    if (icon) return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'no-store' } });
+  } catch (error) { console.warn('load credit icon failed', error); }
   return new Response(defaultCreditIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' } });
 });
 app.post('/admin/upload-credit-icon', async (c) => {
-  const key = c.req.header('x-admin-key') ?? '';
-  if (!isAdmin(c.env, key)) return c.json({ error: 'Unauthorized' }, 401);
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
   if (!file.type.startsWith('image/')) return c.json({ error: 'Only image files are allowed.' }, 400);
   if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type } });
+  const data = await file.arrayBuffer();
+  await c.env.BOT_CACHE.put('admin:credit-icon', data as ArrayBuffer, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:credit-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+  try { await c.env.ASSETS.put('credit-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
   return c.json({ ok: true, size: file.size, type: file.type });
 });
 
@@ -228,7 +235,13 @@ app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => { console.error(error); return c.json({ error: 'Internal error' }, 500); });
 
+function adminCookie(key: string): string { return `vexa_admin=${encodeURIComponent(key)}; Path=/admin; Max-Age=604800; HttpOnly; SameSite=Lax; Secure`; }
+function adminCookieValue(cookie: string | undefined): string {
+  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
 function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
+function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
 
 async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
   try {
@@ -293,6 +306,6 @@ async function telegramApiWithToken<T>(token: string, method: string, payload: u
 }
 
 function inferTitle(prompt: string): string { const cleaned = prompt.replace(/\s+/g, ' ').trim(); return cleaned.length <= 34 ? cleaned : cleaned.slice(0, 34) + '...'; }
-function html(content: string): Response { return new Response(content, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store, no-cache, must-revalidate', 'x-frame-options': 'ALLOWALL' } }); }
+function html(content: string, extraHeaders: Record<string, string> = {}): Response { return new Response(content, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store, no-cache, must-revalidate', 'x-frame-options': 'ALLOWALL', ...extraHeaders } }); }
 
 export default app;
