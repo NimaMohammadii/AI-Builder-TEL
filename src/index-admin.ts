@@ -4,6 +4,8 @@ import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
 import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
+import { setTelegramWebhook } from './telegram-agent-safe';
+import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
 
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -22,6 +24,14 @@ const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
 const userCreditSchema = z.object({ userId: z.string().min(1).max(80), credit: z.number().int().nonnegative() });
 const userCreditAdjustSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
+
+app.get('/setup-webhook', async (c) => {
+  const result = await setTelegramWebhook(c.env);
+  const menu = await setBuilderMenuButton(c.env.TELEGRAM_BOT_TOKEN, `${PUBLIC_BASE_URL}/app`);
+  const payload = { ...result, menu, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook`, miniApp: `${PUBLIC_BASE_URL}/app` };
+  const ok = Boolean((payload as { ok?: boolean }).ok);
+  return new Response(`<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Setup Webhook</title><style>body{margin:0;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:22px}main{max-width:520px;margin:auto}h1{font-size:28px;margin:0 0 10px}.box{border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:16px;background:#080808}pre{white-space:pre-wrap;word-break:break-word;color:#ddd;font-size:12px}.ok{color:#7CFFB2}.bad{color:#FF8A8A}</style></head><body><main><h1 class="${ok ? 'ok' : 'bad'}">${ok ? 'Webhook updated' : 'Webhook failed'}</h1><div class="box"><p>Webhook URL:</p><pre>${escapeHtml(`${PUBLIC_BASE_URL}/telegram/webhook`)}</pre><p>Mini app:</p><pre>${escapeHtml(`${PUBLIC_BASE_URL}/app`)}</pre><p>Telegram response:</p><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></div></main></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+});
 
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c.json(await trackAppUser(c.env, c.req.valid('json'))));
 
@@ -162,6 +172,12 @@ app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), as
   catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400); }
 });
 
+async function setBuilderMenuButton(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ menu_button: { type: 'web_app', text: 'AI Builder TEL', web_app: { url } } }) });
+  return response.json() as Promise<{ ok: boolean; description?: string }>;
+}
+
+function escapeHtml(value: string): string { return value.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char] ?? char)); }
 function adminCookieValue(cookie: string | undefined): string {
   const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
