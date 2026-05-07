@@ -66,6 +66,17 @@ export const SECTION_LOCK_SCRIPT = `
     }
   }
 
+  function focusCodeInput(input, view){
+    if(!input)return;
+    view&&view.classList.add('code-focused');
+    setKeyboardMode(true);
+    updateKeyboardInset();
+    try{input.focus({preventScroll:true})}catch(e){input.focus()}
+    setTimeout(updateKeyboardInset,80);
+    setTimeout(updateKeyboardInset,260);
+    setTimeout(updateKeyboardInset,520);
+  }
+
   function ensureOverlay(section, item){
     if(!section)return;
     var old=section.querySelector('.section-locked-view');
@@ -74,26 +85,29 @@ export const SECTION_LOCK_SCRIPT = `
     view.className='section-locked-view';
     if(item&&item.mode==='code'){
       view.classList.add('section-code-view');
-      view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
+      view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
       var input=view.querySelector('.section-code-input');
       var button=view.querySelector('.section-code-submit');
       var status=view.querySelector('.section-code-status');
       var dismiss=view.querySelector('.section-keyboard-dismiss');
       var submit=function(){
         var code=(input&&input.value||'').trim();
-        if(!code){status.textContent='Enter the access code.';return}
+        if(!code){status.textContent='Enter the access code.';focusCodeInput(input,view);return}
         status.textContent='Checking...';
         fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:section.id,code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
           if(res.ok&&res.json&&res.json.ok){setKeyboardMode(false);setUnlocked(section.id);applyLocks();return}
           status.textContent=(res.json&&res.json.error)||'Wrong access code.';
-        }).catch(function(){status.textContent='Could not verify code.'});
+          focusCodeInput(input,view);
+        }).catch(function(){status.textContent='Could not verify code.';focusCodeInput(input,view)});
       };
       button.addEventListener('click',submit);
-      input.addEventListener('pointerdown',function(){setTimeout(function(){input.focus()},20)});
-      input.addEventListener('click',function(){setTimeout(function(){input.focus()},20)});
-      input.addEventListener('focus',function(){view.classList.add('code-focused');setKeyboardMode(true);setTimeout(updateKeyboardInset,80);setTimeout(updateKeyboardInset,280)});
-      input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},120)});
+      input.addEventListener('touchstart',function(){focusCodeInput(input,view)},{passive:true});
+      input.addEventListener('mousedown',function(){focusCodeInput(input,view)});
+      input.addEventListener('click',function(){focusCodeInput(input,view)});
+      input.addEventListener('focus',function(){focusCodeInput(input,view)});
+      input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},160)});
       input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
+      dismiss.addEventListener('touchstart',function(e){e.preventDefault();input.blur();setKeyboardMode(false)},{passive:false});
       dismiss.addEventListener('click',function(){input.blur();setKeyboardMode(false)});
     }else{
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
@@ -142,7 +156,10 @@ export const SECTION_LOCK_SCRIPT = `
     loadUserControls().then(applyLocks);
   }
 
-  document.addEventListener('click',function(){setTimeout(applyLocks,40)},true);
+  document.addEventListener('click',function(ev){
+    if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view'))return;
+    setTimeout(applyLocks,40);
+  },true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls();updateKeyboardInset()}});
   loadLocks();
   setInterval(loadGlobalLocks,20000);
