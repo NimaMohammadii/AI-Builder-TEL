@@ -1,5 +1,9 @@
 import { MINIAPP_STYLES } from './styles';
-import { CONNECT_SECTION, HOME_SECTION, RESULTS_SECTION, SETTINGS_SECTION, TTS_SECTION } from './sections';
+import { HOME_SECTION } from './home';
+import { CONNECT_SECTION } from './connect';
+import { RESULTS_SECTION } from './results';
+import { TTS_SECTION } from './tts';
+import { SETTINGS_SECTION } from './settings';
 import { MINIAPP_SCRIPT } from './script';
 
 export function miniAppShellHtml(): string {
