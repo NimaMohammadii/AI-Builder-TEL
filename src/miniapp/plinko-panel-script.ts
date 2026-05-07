@@ -24,9 +24,18 @@ export const PLINKO_PANEL_SCRIPT = `
     if(input)input.value=String(next);
   }
 
-  function changeBet(delta){
+  function currentBet(){
     var input=q('plinkoBet');
-    normalizeBet((Math.floor(Number(input&&input.value)||1))+delta);
+    return Math.max(1,Math.floor(Number(input&&input.value)||1));
+  }
+
+  function multiplyBet(multiplier){
+    var value=currentBet();
+    normalizeBet(multiplier===.5?Math.max(1,Math.floor(value/2)):value*2);
+  }
+
+  function setBetKeyboard(active){
+    document.body.classList.toggle('plinko-bet-keyboard',!!active);
   }
 
   function stopAuto(){
@@ -55,9 +64,17 @@ export const PLINKO_PANEL_SCRIPT = `
     var button=ev.target&&ev.target.closest&&ev.target.closest('button');
     if(!button)return;
     var action=button.getAttribute('data-action');
-    if(action==='plinko-bet-minus'){ev.preventDefault();changeBet(-1);return}
-    if(action==='plinko-bet-plus'){ev.preventDefault();changeBet(1);return}
+    if(action==='plinko-bet-half'){ev.preventDefault();multiplyBet(.5);return}
+    if(action==='plinko-bet-double'){ev.preventDefault();multiplyBet(2);return}
     if(action==='toggle-autoplay'){ev.preventDefault();toggleAuto(button);return}
+  });
+
+  document.addEventListener('focusin',function(ev){
+    if(ev.target&&ev.target.id==='plinkoBet')setBetKeyboard(true);
+  });
+
+  document.addEventListener('focusout',function(ev){
+    if(ev.target&&ev.target.id==='plinkoBet')setTimeout(function(){setBetKeyboard(false)},120);
   });
 
   document.addEventListener('input',function(ev){
