@@ -3,6 +3,7 @@ export const SECTION_LOCK_SCRIPT = `
   var locks={};
   var userBlocked={};
   var userCredit=null;
+  var lastSyncedCredit=null;
   var unlocked={};
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
@@ -23,6 +24,10 @@ export const SECTION_LOCK_SCRIPT = `
     var targets=[document.getElementById('plinkoCredit'),document.getElementById('plinkoCreditHeader')];
     targets.forEach(function(el){if(el)el.textContent=String(credit)});
     try{localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
+    if(lastSyncedCredit!==credit){
+      lastSyncedCredit=credit;
+      try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
+    }
   }
 
   function ensureOverlay(section, item){
@@ -88,8 +93,15 @@ export const SECTION_LOCK_SCRIPT = `
     Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks);
   }
 
-  document.addEventListener('click',function(){setTimeout(applyLocks,40)},true);
+  function syncUserFast(){
+    if(document.hidden)return;
+    loadUserControls().then(applyLocks);
+  }
+
+  document.addEventListener('click',function(){setTimeout(applyLocks,40);setTimeout(syncUserFast,90)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserFast()}});
   loadLocks();
-  setInterval(loadLocks,15000);
+  setInterval(loadGlobalLocks,15000);
+  setInterval(syncUserFast,1200);
 })();
 `;
