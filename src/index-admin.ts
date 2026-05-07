@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
-import { getSectionLocks, setSectionLock } from './section-locks';
+import { getSectionLocks, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import type { Env } from './types';
 
 const activitySchema = z.object({
@@ -18,11 +18,22 @@ const lockSchema = z.object({
   locked: z.boolean(),
 });
 
+const codeLockSchema = z.object({
+  sectionId: z.string().min(1).max(40),
+  code: z.string().min(1).max(80),
+});
+
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => {
   return c.json(await trackAppUser(c.env, c.req.valid('json')));
 });
 
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
+
+app.post('/app/api/section-locks/verify', zValidator('json', codeLockSchema), async (c) => {
+  const body = c.req.valid('json');
+  try { return c.json(await verifySectionCode(c.env, body.sectionId, body.code)); }
+  catch (error) { return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not verify code' }, 400); }
+});
 
 app.get('/admin/api/users', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -46,6 +57,16 @@ app.post('/admin/api/section-locks', zValidator('json', lockSchema), async (c) =
     return c.json(await setSectionLock(c.env, body.sectionId, body.locked));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400);
+  }
+});
+
+app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try {
+    return c.json(await setSectionCodeLock(c.env, body.sectionId, body.code));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400);
   }
 });
 
