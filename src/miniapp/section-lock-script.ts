@@ -93,15 +93,15 @@ export const SECTION_LOCK_SCRIPT = `
     Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks);
   }
 
-  function syncUserFast(){
+  function syncUserControls(){
     if(document.hidden)return;
     loadUserControls().then(applyLocks);
   }
 
-  document.addEventListener('click',function(){setTimeout(applyLocks,40);setTimeout(syncUserFast,90)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserFast()}});
+  document.addEventListener('click',function(){setTimeout(applyLocks,40)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls()}});
   loadLocks();
-  setInterval(loadGlobalLocks,15000);
-  setInterval(syncUserFast,1200);
+  setInterval(loadGlobalLocks,20000);
+  setInterval(syncUserControls,20000);
 })();
 `;
