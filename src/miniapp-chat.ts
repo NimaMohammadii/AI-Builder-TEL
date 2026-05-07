@@ -1,5 +1,5 @@
-import { miniAppHtml as baseMiniAppHtml } from './miniapp-control-v2';
+import { miniAppShellHtml } from './miniapp/shell';
 
 export function miniAppHtml(): string {
-  return baseMiniAppHtml();
+  return miniAppShellHtml();
 }
