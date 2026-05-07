@@ -10,7 +10,7 @@ export const PLINKO_STYLES = `
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  gap:8px;
+  gap:7px;
   padding:0 0 10px;
   position:relative;
 }
@@ -53,14 +53,13 @@ export const PLINKO_STYLES = `
 
 .plinko-stage{
   width:min(100%,332px);
-  height:min(49vh,365px);
-  min-height:330px;
+  aspect-ratio:320/430;
   display:grid;
   place-items:center;
-  margin-top:0;
+  margin-top:-4px;
   position:relative;
   z-index:1;
-  flex:0 1 auto;
+  flex:0 0 auto;
   overflow:hidden;
 }
 
@@ -77,7 +76,7 @@ export const PLINKO_STYLES = `
   grid-template-columns:96px 1fr;
   align-items:center;
   gap:10px;
-  margin-top:2px;
+  margin-top:-6px;
   position:relative;
   z-index:2;
   flex:0 0 auto;
