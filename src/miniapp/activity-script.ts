@@ -45,6 +45,6 @@ export const ACTIVITY_SCRIPT = `
   document.addEventListener('visibilitychange',function(){send(true)});
   window.addEventListener('beforeunload',function(){send(true)});
   setTimeout(function(){send(true)},600);
-  setInterval(function(){send(false)},15000);
+  setInterval(function(){send(false)},20000);
 })();
 `;
