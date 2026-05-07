@@ -16,6 +16,7 @@ type AdminUserRow = {
   credit: number | null;
   last_seen_at: string | null;
   created_at: string | null;
+  source: string | null;
 };
 
 export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -46,9 +47,17 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 }
 
 export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<string, unknown>>; stats: Record<string, number> }> {
-  const rows = await env.DB.prepare(`SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at
-    FROM app_users
-    ORDER BY datetime(last_seen_at) DESC
+  const rows = await env.DB.prepare(`WITH all_users AS (
+      SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at, 'miniapp' AS source FROM app_users
+      UNION ALL
+      SELECT telegram_user_id, first_name, username, current_section, credit, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
+    ), ranked AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
+    )
+    SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at, source
+    FROM ranked
+    WHERE rn = 1
+    ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
     LIMIT 500`).all<AdminUserRow>();
   const now = Date.now();
   const users = (rows.results ?? []).map((row) => {
@@ -64,6 +73,7 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       credit: Number(row.credit ?? 0),
       lastSeenAt: row.last_seen_at,
       createdAt: row.created_at,
+      source: row.source || 'unknown',
     };
   });
   const online = users.filter((user) => user.isActive).length;
