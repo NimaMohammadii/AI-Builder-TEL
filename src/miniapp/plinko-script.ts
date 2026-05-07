@@ -18,8 +18,9 @@ export const PLINKO_SCRIPT = `
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
   function currentMultipliers(){return multiplierTable[rows][risk]}
-  function pegRadius(){return rows===7?4.45:rows===9?3.85:3.48}
-  function ballRadius(){return rows===7?8.0:rows===9?6.75:5.65}
+  function pegRadius(){return rows===7?7.4:rows===9?3.85:3.48}
+  function pegVisualRadius(){return rows===7?10.8:pegRadius()}
+  function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 
@@ -37,11 +38,12 @@ export const PLINKO_SCRIPT = `
     var slotWidth=296;
     var slotGap=slotWidth/slotCount;
     var r=pegRadius();
+    var vr=pegVisualRadius();
     for(var row=0;row<rows;row++){
       var count=row+3;
       var start=slotLeft+((slotCount-(count-1))*slotGap)/2;
       var y=top+row*rowGap;
-      for(var i=0;i<count;i++)pegs.push({x:start+i*slotGap,y:y,r:r});
+      for(var i=0;i<count;i++)pegs.push({x:start+i*slotGap,y:y,r:r,vr:vr});
     }
     return pegs;
   }
@@ -105,7 +107,7 @@ export const PLINKO_SCRIPT = `
   function draw(){
     if(!state)return;
     var ctx=state.ctx,dpr=state.dpr||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,320,306);ctx.fillStyle='#fff';
-    for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];ctx.beginPath();ctx.arc(peg.x,peg.y,peg.r,0,Math.PI*2);ctx.fill()}
+    for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];ctx.beginPath();ctx.arc(peg.x,peg.y,peg.vr||peg.r,0,Math.PI*2);ctx.fill()}
     var bins=state.bins;var size=binTextSize(bins.length);ctx.font='800 '+size+'px Inter, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
     for(var i=0;i<bins.length;i++){var bin=bins[i];roundRect(ctx,bin.x,bin.y,bin.w,bin.h,7);ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.05;ctx.stroke();ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h/2)}
     for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/30):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}
