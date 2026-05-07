@@ -16,12 +16,15 @@ export const MINIAPP_SCRIPT = `
   function initials(v){v=String(v||'B').replace(/@/g,'').trim();return (v.match(/[A-Za-z0-9]/g)||['B']).slice(0,2).join('').toUpperCase()}
   function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
+  function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
+  function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
 
   function show(id){
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',id==='flow'?'Text To Speech':'Vexa FLOW');
+    if(id!=='flow')setKeyboardOpen(false);
     loadBots(false);
   }
 
@@ -111,6 +114,9 @@ export const MINIAPP_SCRIPT = `
   async function deleteBot(){if(!selectedBot)return toast('Select a bot first');if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(selectedBot.id),{method:'DELETE'});selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
   function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
 
+  document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
+  document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
+
   document.body.addEventListener('click',function(ev){
     var b=ev.target.closest('button');
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
@@ -118,6 +124,7 @@ export const MINIAPP_SCRIPT = `
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
+    if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='toggle-voice'){q('voiceWrap').classList.toggle('open');return}
     if(a==='create-bot')createBot();
     if(a==='generate-tts')generateTts();
