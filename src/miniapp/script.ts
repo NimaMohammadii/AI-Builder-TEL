@@ -7,6 +7,7 @@ export const MINIAPP_SCRIPT = `
   var bots=[];
   var selectedBot=null;
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
+  var plinkoState=null;
 
   function q(id){return document.getElementById(id)}
   function clean(v){return String(v||'').replace(/[^0-9A-Za-z:_-]/g,'').replace(/：/g,':').trim()}
@@ -25,8 +26,9 @@ export const MINIAPP_SCRIPT = `
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
-    setText('brandTitle',id==='flow'?'Text To Speech':'Vexa FLOW');
+    setText('brandTitle',id==='flow'?'Text To Speech':id==='plinko'?'Plinko':'Vexa FLOW');
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
+    if(id==='plinko')initPlinko();
     loadBots(false);
   }
 
@@ -117,6 +119,91 @@ export const MINIAPP_SCRIPT = `
   async function deleteBot(){if(!selectedBot)return toast('Select a bot first');if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(selectedBot.id),{method:'DELETE'});selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
   function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
 
+  function initPlinko(){
+    var canvas=q('plinkoCanvas');
+    if(!canvas)return;
+    if(plinkoState&&plinkoState.canvas===canvas){drawPlinko();return}
+    var ctx=canvas.getContext('2d');
+    var pegs=[];
+    for(var row=0;row<8;row++){
+      var count=row+3;
+      var gap=28;
+      var start=160-((count-1)*gap)/2;
+      var y=86+row*34;
+      for(var i=0;i<count;i++)pegs.push({x:start+i*gap,y:y,r:4});
+    }
+    plinkoState={canvas:canvas,ctx:ctx,pegs:pegs,balls:[],last:0,raf:0};
+    if(!plinkoState.raf)plinkoState.raf=requestAnimationFrame(tickPlinko);
+  }
+
+  function dropPlinkoBall(){
+    initPlinko();
+    if(!plinkoState)return;
+    plinkoState.balls.push({x:160+(Math.random()*18-9),y:36,vx:Math.random()*1.2-.6,vy:0,r:6,live:true});
+  }
+
+  function tickPlinko(time){
+    if(!plinkoState)return;
+    var dt=Math.min(24,(time-(plinkoState.last||time))||16)/16.67;
+    plinkoState.last=time;
+    var balls=plinkoState.balls;
+    for(var b=balls.length-1;b>=0;b--){
+      var ball=balls[b];
+      ball.vy+=.28*dt;
+      ball.x+=ball.vx*dt;
+      ball.y+=ball.vy*dt;
+      if(ball.x<42){ball.x=42;ball.vx=Math.abs(ball.vx)*.74}
+      if(ball.x>278){ball.x=278;ball.vx=-Math.abs(ball.vx)*.74}
+      for(var p=0;p<plinkoState.pegs.length;p++){
+        var peg=plinkoState.pegs[p];
+        var dx=ball.x-peg.x,dy=ball.y-peg.y;
+        var min=ball.r+peg.r;
+        var d=Math.sqrt(dx*dx+dy*dy)||1;
+        if(d<min){
+          var nx=dx/d,ny=dy/d;
+          ball.x=peg.x+nx*min;
+          ball.y=peg.y+ny*min;
+          var dot=ball.vx*nx+ball.vy*ny;
+          ball.vx=(ball.vx-1.65*dot*nx)*.82+(Math.random()-.5)*.28;
+          ball.vy=(ball.vy-1.65*dot*ny)*.82;
+          if(ball.vy<.45)ball.vy=.45;
+        }
+      }
+      if(ball.y>402){balls.splice(b,1)}
+    }
+    drawPlinko();
+    plinkoState.raf=requestAnimationFrame(tickPlinko);
+  }
+
+  function drawPlinko(){
+    if(!plinkoState)return;
+    var c=plinkoState.canvas,ctx=plinkoState.ctx;
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.strokeStyle='rgba(255,255,255,.82)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.moveTo(160,34);
+    ctx.lineTo(42,382);
+    ctx.lineTo(278,382);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle='#fff';
+    for(var p=0;p<plinkoState.pegs.length;p++){
+      var peg=plinkoState.pegs[p];
+      ctx.beginPath();ctx.arc(peg.x,peg.y,peg.r,0,Math.PI*2);ctx.fill();
+    }
+    ctx.strokeStyle='rgba(255,255,255,.55)';
+    ctx.lineWidth=1;
+    for(var i=0;i<8;i++){
+      var x=58+i*30;
+      ctx.beginPath();ctx.moveTo(x,382);ctx.lineTo(x,406);ctx.stroke();
+    }
+    for(var b=0;b<plinkoState.balls.length;b++){
+      var ball=plinkoState.balls[b];
+      ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
+    }
+  }
+
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
 
@@ -127,6 +214,7 @@ export const MINIAPP_SCRIPT = `
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
+    if(a==='drop-plinko-ball'){dropPlinkoBall();return}
     if(a==='open-char-limit'){setLimitSheet(true);return}
     if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
