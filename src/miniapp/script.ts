@@ -18,6 +18,7 @@ export const MINIAPP_SCRIPT = `
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
+  function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');if(counter)counter.textContent=String((input&&input.value||'').length)+' chars'}
 
   function show(id){
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
@@ -137,9 +138,11 @@ export const MINIAPP_SCRIPT = `
   });
 
   if(q('botKey'))q('botKey').addEventListener('input',function(){var k=clean(q('botKey').value);if(q('botKey').value!==k)q('botKey').value=k});
+  if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(q('botSelect'))q('botSelect').addEventListener('change',function(){selectBot(this.value)});
   if(q('ownerId'))q('ownerId').value=ownerId;
   userLine();
+  updateTtsCharCount();
   loadBots(true);
 })();
 `;
