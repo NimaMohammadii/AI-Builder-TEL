@@ -10,8 +10,8 @@ export const PLINKO_STYLES = `
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  gap:5px;
-  padding:0 0 10px;
+  gap:3px;
+  padding:0 0 108px;
   position:relative;
 }
 
@@ -54,11 +54,11 @@ export const PLINKO_STYLES = `
 }
 
 .plinko-stage{
-  width:min(100%,332px);
+  width:min(100%,326px);
   aspect-ratio:320/430;
   display:grid;
   place-items:center;
-  margin-top:-10px;
+  margin-top:-18px;
   position:relative;
   z-index:1;
   flex:0 0 auto;
@@ -75,42 +75,42 @@ export const PLINKO_STYLES = `
 .plinko-controls{
   width:min(94%,342px);
   display:grid;
-  gap:9px;
-  margin-top:-18px;
+  gap:7px;
+  margin-top:-54px;
   position:relative;
   z-index:2;
   flex:0 0 auto;
-  padding:12px;
+  padding:10px;
   border:1px solid rgba(255,255,255,.12);
-  border-radius:26px;
+  border-radius:24px;
   background:rgba(255,255,255,.045);
-  box-shadow:0 22px 60px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
+  box-shadow:0 18px 50px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
   backdrop-filter:blur(18px);
 }
 
 .plinko-control-row{
   display:grid;
-  grid-template-columns:minmax(0,1fr) 112px;
-  gap:10px;
+  grid-template-columns:minmax(0,1fr) 108px;
+  gap:8px;
   align-items:end;
 }
 
 .plinko-field{
   display:grid;
-  gap:6px;
+  gap:5px;
 }
 
 .plinko-label{
   color:rgba(255,255,255,.58);
-  font-size:11px;
+  font-size:10px;
   font-weight:760;
   letter-spacing:.01em;
 }
 
 .risk-segment{
-  height:42px;
+  height:38px;
   padding:4px;
-  border-radius:18px;
+  border-radius:17px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.32);
   display:grid;
@@ -119,10 +119,10 @@ export const PLINKO_STYLES = `
 }
 
 .risk-segment button{
-  border-radius:14px;
+  border-radius:13px;
   background:transparent;
   color:rgba(255,255,255,.52);
-  font-size:12px;
+  font-size:11px;
   font-weight:820;
 }
 
@@ -133,9 +133,9 @@ export const PLINKO_STYLES = `
 }
 
 .rows-select{
-  height:42px;
+  height:38px;
   width:100%;
-  border-radius:18px;
+  border-radius:17px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.32);
   color:#fff;
@@ -143,45 +143,45 @@ export const PLINKO_STYLES = `
   align-items:center;
   justify-content:space-between;
   gap:8px;
-  padding:0 12px;
+  padding:0 11px;
 }
 
 .rows-select strong{
-  font-size:15px;
+  font-size:14px;
   font-weight:900;
 }
 
 .bet-amount{
-  height:48px;
-  border-radius:20px;
+  height:43px;
+  border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.34);
   display:grid;
-  grid-template-columns:42px 1fr 42px;
+  grid-template-columns:38px 1fr 38px;
   align-items:center;
   gap:7px;
-  padding:5px;
+  padding:4px;
 }
 
 .bet-amount button{
-  height:38px;
-  border-radius:15px;
+  height:35px;
+  border-radius:14px;
   border:1px solid rgba(255,255,255,.1);
   background:rgba(255,255,255,.07);
   color:#fff;
-  font-size:22px;
+  font-size:21px;
   line-height:1;
   font-weight:600;
 }
 
 .bet-amount input{
   min-width:0;
-  height:38px;
+  height:35px;
   border:0!important;
   background:transparent!important;
   padding:0!important;
   color:#fff;
-  font-size:20px;
+  font-size:18px;
   font-weight:900;
   text-align:center;
   box-shadow:none!important;
@@ -190,34 +190,34 @@ export const PLINKO_STYLES = `
 
 .plinko-drop{
   width:100%;
-  height:48px;
-  border-radius:20px;
+  height:44px;
+  border-radius:19px;
   background:#fff;
   color:#050505;
-  font-size:15px;
+  font-size:14px;
   font-weight:900;
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:10px;
+  gap:9px;
   box-shadow:0 12px 34px rgba(255,255,255,.12);
 }
 
 .plinko-drop span{
-  font-size:16px;
+  font-size:15px;
   line-height:1;
 }
 
 .autoplay-row{
-  height:44px;
-  border-radius:18px;
+  height:38px;
+  border-radius:17px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.26);
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  padding:0 10px 0 12px;
+  padding:0 10px 0 11px;
 }
 
 .autoplay-label{
@@ -225,24 +225,24 @@ export const PLINKO_STYLES = `
   align-items:center;
   gap:8px;
   color:rgba(255,255,255,.82);
-  font-size:13px;
+  font-size:12px;
   font-weight:820;
 }
 
 .autoplay-icon{
-  width:23px;
-  height:23px;
+  width:22px;
+  height:22px;
   border-radius:50%;
   border:1px solid rgba(255,255,255,.18);
   display:grid;
   place-items:center;
   color:rgba(255,255,255,.62);
-  font-size:14px;
+  font-size:13px;
 }
 
 .autoplay-toggle{
-  width:48px;
-  height:28px;
+  width:46px;
+  height:26px;
   border-radius:999px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.12);
@@ -253,8 +253,8 @@ export const PLINKO_STYLES = `
 }
 
 .autoplay-toggle span{
-  width:22px;
-  height:22px;
+  width:20px;
+  height:20px;
   border-radius:50%;
   background:#fff;
   box-shadow:0 3px 12px rgba(0,0,0,.36);
