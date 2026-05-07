@@ -1,12 +1,13 @@
 import { mobileAdminLoginHtml, mobileAdminPanelHtml } from './admin-mobile';
 import { ADMIN_IMAGE_PANEL_SCRIPT } from './admin-image-panel';
+import { ADMIN_UPLOAD_CACHE_SCRIPT } from './admin-upload-cache-panel';
 
 export function adminHtml(): string {
   return mobileAdminLoginHtml();
 }
 
 export function adminPanelHtml(): string {
-  return mobileAdminPanelHtml().replace('</body></html>', ADMIN_IMAGE_PANEL_SCRIPT + '</body></html>');
+  return mobileAdminPanelHtml().replace('</body></html>', ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {
