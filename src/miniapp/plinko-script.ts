@@ -16,7 +16,7 @@ export const PLINKO_SCRIPT = `
   function saveCredit(){localStorage.setItem('plinkoCredit',String(Math.max(0,Math.round(credit))))}
   function updateCredit(){var el=q('plinkoCredit');if(el)el.textContent=String(Math.max(0,Math.round(credit)));saveCredit()}
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
-  function fmt(n){return Number.isInteger(n)?'X'+n:'X'+String(n).replace(/^0/,'')}
+  function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
   function currentMultipliers(){return multiplierTable[rows][risk]}
   function pegRadius(){return rows===7?4.1:rows===9?3.45:2.9}
   function ballRadius(){return rows===7?8.2:rows===9?7.1:6.2}
