@@ -18,8 +18,8 @@ export const PLINKO_SCRIPT = `
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
   function currentMultipliers(){return multiplierTable[rows][risk]}
-  function pegRadius(){return rows===7?5.0:rows===9?4.35:3.48}
-  function pegVisualRadius(){return rows===7?7.2:rows===9?5.25:pegRadius()}
+  function pegRadius(){return rows===7?4.6:rows===9?4.35:3.48}
+  function pegVisualRadius(){return rows===7?6.6:rows===9?5.25:pegRadius()}
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
