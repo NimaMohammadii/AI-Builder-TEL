@@ -145,6 +145,12 @@ export class PlinkoScene extends Phaser.Scene {
     return 5.35;
   }
 
+  private pegVisualRadius(): number {
+    if (this.rows === 7) return 10.8;
+    if (this.rows === 9) return 9.3;
+    return 8.0;
+  }
+
   private ballRadius(): number {
     if (this.rows === 7) return 8.0;
     if (this.rows === 9) return 6.65;
@@ -295,14 +301,15 @@ export class PlinkoScene extends Phaser.Scene {
     this.drawMachine(machine);
     for (const peg of this.pegs) {
       if (peg.hit > 0) peg.hit -= 1;
+      const visualRadius = this.pegVisualRadius() + (peg.hit > 0 ? 1.4 : 0);
       if (peg.hit > 0) {
         g.fillStyle(0xffffff, 0.085);
-        g.fillCircle(peg.x, peg.y, 18);
+        g.fillCircle(peg.x, peg.y, visualRadius + 8);
       }
-      g.fillStyle(0xffffff, peg.hit > 0 ? 0.95 : 0.66);
-      g.fillCircle(peg.x, peg.y, peg.r + (peg.hit > 0 ? 1.4 : 0));
-      g.lineStyle(1, 0xffffff, 0.28);
-      g.strokeCircle(peg.x, peg.y, peg.r + (peg.hit > 0 ? 1.4 : 0));
+      g.fillStyle(0xffffff, peg.hit > 0 ? 0.95 : 0.7);
+      g.fillCircle(peg.x, peg.y, visualRadius);
+      g.lineStyle(1, 0xffffff, 0.3);
+      g.strokeCircle(peg.x, peg.y, visualRadius);
     }
 
     for (let i = this.sparks.length - 1; i >= 0; i -= 1) {
