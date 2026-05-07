@@ -131,13 +131,17 @@ export const MINIAPP_SCRIPT = `
       var count=row+3;
       var gap=28;
       var start=160-((count-1)*gap)/2;
-      var y=86+row*34;
+      var y=52+row*30;
       for(var i=0;i<count;i++)pegs.push({x:start+i*gap,y:y,r:4});
     }
+    var bins=[];
+    var labels=['X4','X2.5','X1.2','X0.4','X1.2','X2.5','X4'];
+    var left=32,top=328,width=256,height=62,binW=width/7;
+    for(var j=0;j<7;j++)bins.push({x:left+j*binW,y:top,w:binW,h:height,label:labels[j]});
     var img=new Image();
     img.onload=function(){drawPlinko()};
     img.src='/app/api/credit-icon.png';
-    plinkoState={canvas:canvas,ctx:ctx,pegs:pegs,balls:[],last:0,raf:0,tokenImg:img};
+    plinkoState={canvas:canvas,ctx:ctx,pegs:pegs,bins:bins,balls:[],last:0,raf:0,tokenImg:img};
     drawPlinko();
     if(!plinkoState.raf)plinkoState.raf=requestAnimationFrame(tickPlinko);
   }
@@ -145,7 +149,7 @@ export const MINIAPP_SCRIPT = `
   function dropPlinkoBall(){
     initPlinko();
     if(!plinkoState)return;
-    plinkoState.balls.push({x:160+(Math.random()*14-7),y:34,vx:Math.random()*.8-.4,vy:0,r:9,live:true});
+    plinkoState.balls.push({x:160+(Math.random()*14-7),y:24,vx:Math.random()*.8-.4,vy:0,r:9,settled:false,settle:0});
   }
 
   function tickPlinko(time){
@@ -153,13 +157,16 @@ export const MINIAPP_SCRIPT = `
     var dt=Math.min(24,(time-(plinkoState.last||time))||16)/16.67;
     plinkoState.last=time;
     var balls=plinkoState.balls;
+    var bins=plinkoState.bins;
+    var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;
     for(var b=balls.length-1;b>=0;b--){
       var ball=balls[b];
+      if(ball.settled){ball.settle+=dt;if(ball.settle>130)balls.splice(b,1);continue}
       ball.vy+=.34*dt;
       ball.x+=ball.vx*dt;
       ball.y+=ball.vy*dt;
-      if(ball.x<42){ball.x=42;ball.vx=Math.abs(ball.vx)*.68}
-      if(ball.x>278){ball.x=278;ball.vx=-Math.abs(ball.vx)*.68}
+      if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.68}
+      if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.68}
       for(var p=0;p<plinkoState.pegs.length;p++){
         var peg=plinkoState.pegs[p];
         var dx=ball.x-peg.x,dy=ball.y-peg.y;
@@ -175,7 +182,21 @@ export const MINIAPP_SCRIPT = `
           if(ball.vy<.52)ball.vy=.52;
         }
       }
-      if(ball.y>408){balls.splice(b,1)}
+      if(ball.y+ball.r>binTop){
+        for(var s=1;s<7;s++){
+          var wall=left+s*(right-left)/7;
+          if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-4&&ball.y<binBottom){
+            if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.42}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.42}
+          }
+        }
+        if(ball.y+ball.r>binBottom-6){
+          ball.y=binBottom-6-ball.r;
+          ball.vy=0;
+          ball.vx*=.22;
+          if(Math.abs(ball.vx)<.08){ball.vx=0;ball.settled=true}
+        }
+      }
+      if(ball.y>414){balls.splice(b,1)}
     }
     drawPlinko();
     plinkoState.raf=requestAnimationFrame(tickPlinko);
@@ -190,11 +211,18 @@ export const MINIAPP_SCRIPT = `
       var peg=plinkoState.pegs[p];
       ctx.beginPath();ctx.arc(peg.x,peg.y,peg.r,0,Math.PI*2);ctx.fill();
     }
-    ctx.strokeStyle='rgba(255,255,255,.55)';
+    var bins=plinkoState.bins;
     ctx.lineWidth=1;
-    for(var i=0;i<8;i++){
-      var x=58+i*30;
-      ctx.beginPath();ctx.moveTo(x,382);ctx.lineTo(x,406);ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.58)';
+    ctx.font='700 10px Inter, system-ui, sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    for(var i=0;i<bins.length;i++){
+      var bin=bins[i];
+      ctx.strokeRect(bin.x,bin.y,bin.w,bin.h);
+      ctx.fillStyle='rgba(255,255,255,.78)';
+      ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-14);
+      ctx.fillStyle='#fff';
     }
     for(var b=0;b<plinkoState.balls.length;b++){
       var ball=plinkoState.balls[b];
