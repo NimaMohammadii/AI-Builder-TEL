@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
-import { getSectionLocks, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
+import { getSectionLocks, normalizeSectionId, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
 import type { Env } from './types';
 
@@ -34,6 +34,18 @@ app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => {
 });
 
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
+
+app.get('/app/api/section-lock-image/:section', async (c) => {
+  try {
+    const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, ''));
+    const data = await c.env.BOT_CACHE.get(sectionImageKey(section), 'arrayBuffer').catch(() => null);
+    const type = await c.env.BOT_CACHE.get(sectionImageTypeKey(section)).catch(() => null);
+    if (!data) return c.text('Not found', 404);
+    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'no-store' } });
+  } catch (error) {
+    return c.text('Not found', 404);
+  }
+});
 
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => {
   const query = c.req.valid('query');
@@ -85,6 +97,24 @@ app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSc
 app.get('/admin/api/section-locks', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getSectionLocks(c.env));
+});
+
+app.post('/admin/api/section-lock-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const section = normalizeSectionId(String(form.get('sectionId') || ''));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+    const data = await file.arrayBuffer();
+    await c.env.BOT_CACHE.put(sectionImageKey(section), data, { expirationTtl: 60 * 60 * 24 * 365 });
+    await c.env.BOT_CACHE.put(sectionImageTypeKey(section), file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+    return c.json(await getSectionLocks(c.env));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400);
+  }
 });
 
 app.post('/admin/api/section-locks', zValidator('json', lockSchema), async (c) => {
