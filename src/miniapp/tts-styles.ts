@@ -1,33 +1,67 @@
 export const TTS_STYLES = `
 /* TTS-only sizing refinements. This file must not style the main bottom navigation. */
+#flow .tts-head{
+  align-items:flex-end!important;
+}
+
 #flow .tts-area textarea{
-  font-size:17px!important;
-  line-height:1.24!important;
+  font-size:14px!important;
+  line-height:1.22!important;
 }
 
 #flow .tts-area textarea::placeholder{
-  font-size:17px!important;
+  font-size:14px!important;
+}
+
+#flow .credit-pill{
+  order:2;
+  margin-left:auto;
+  margin-bottom:38px;
+}
+
+#flow .voice-wrap{
+  order:1;
+  margin-left:auto;
 }
 
 #flow .tts-bottom{
   width:92%;
   max-width:480px;
-  margin-left:auto!important;
+  margin-left:0!important;
   margin-right:auto!important;
   margin-bottom:18px!important;
   gap:12px!important;
 }
 
 #flow .wave-player{
-  width:94%;
-  margin-left:auto;
+  width:86%;
+  margin-left:0;
+  margin-right:auto;
+}
+
+#flow .tts-generate-row{
+  width:86%;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-left:0;
   margin-right:auto;
 }
 
 #flow .tts-generate{
-  width:88%;
-  margin-left:auto;
-  margin-right:auto;
+  width:min(70%,330px);
+  margin-left:0;
+  margin-right:0;
+  flex:0 0 auto;
+}
+
+#flow .char-count{
+  color:rgba(255,255,255,.42);
+  font-size:11px;
+  font-weight:750;
+  letter-spacing:.02em;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
 }
 
 #flow .wave-svg rect{
