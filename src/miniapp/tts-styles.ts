@@ -1,15 +1,16 @@
 export const TTS_STYLES = `
 /* TTS-only sizing refinements. This file must not style the main bottom navigation. */
 #flow .tts-head{
-  align-items:flex-start!important;
+  align-items:center!important;
   justify-content:flex-end!important;
   gap:12px!important;
-  margin-top:-56px!important;
-  margin-bottom:16px!important;
+  margin-top:0!important;
+  margin-bottom:14px!important;
 }
 
 #flow .tts-area{
-  transform:translateY(-28px);
+  transform:none!important;
+  margin-top:-8px!important;
 }
 
 #flow .tts-area textarea{
@@ -26,14 +27,14 @@ export const TTS_STYLES = `
   margin-left:auto;
   margin-right:0;
   margin-bottom:0;
-  transform:translateY(-18px);
+  transform:none!important;
 }
 
 #flow .voice-wrap{
   order:2;
   margin-left:0;
   margin-right:0;
-  transform:translateY(44px);
+  transform:none!important;
 }
 
 #flow .tts-bottom{
