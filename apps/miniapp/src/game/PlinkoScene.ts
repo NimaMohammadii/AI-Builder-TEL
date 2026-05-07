@@ -146,7 +146,7 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private pegVisualRadius(): number {
-    if (this.rows === 7) return 10.8;
+    if (this.rows === 7) return 13.2;
     if (this.rows === 9) return 9.3;
     return 8.0;
   }
