@@ -50,6 +50,6 @@ export const SECTION_LOCK_IMAGE_SPLIT_SCRIPT = `
   }
   document.addEventListener('click',function(){setTimeout(patchVisuals,80)},true);
   load();
-  setInterval(function(){load();patchVisuals();},15000);
+  setInterval(function(){load();patchVisuals();},20000);
 })();
 `;
