@@ -23,6 +23,26 @@ export const PLINKO_SCRIPT = `
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+  function drawGlassPeg(ctx,x,y,r){
+    ctx.save();
+    ctx.shadowColor='rgba(255,255,255,.22)';
+    ctx.shadowBlur=Math.max(2,r*.55);
+    var edge=ctx.createRadialGradient(x-r*.34,y-r*.42,r*.12,x,y,r);
+    edge.addColorStop(0,'rgba(255,255,255,.98)');
+    edge.addColorStop(.34,'rgba(255,255,255,.78)');
+    edge.addColorStop(.68,'rgba(255,255,255,.33)');
+    edge.addColorStop(1,'rgba(255,255,255,.12)');
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=edge;ctx.fill();
+    ctx.shadowBlur=0;
+    var core=ctx.createRadialGradient(x-r*.24,y-r*.28,r*.05,x+r*.05,y+r*.08,r*.9);
+    core.addColorStop(0,'rgba(255,255,255,.82)');
+    core.addColorStop(.42,'rgba(255,255,255,.34)');
+    core.addColorStop(1,'rgba(255,255,255,.07)');
+    ctx.beginPath();ctx.arc(x,y,r*.78,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
+    ctx.beginPath();ctx.arc(x-r*.24,y-r*.32,Math.max(1,r*.28),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.72)';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=Math.max(.65,r*.11);ctx.stroke();
+    ctx.restore();
+  }
 
   function setRisk(next){risk=next||'medium';document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});rebuildBoard()}
   function setRows(next){rows=Number(next)||7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);rebuildBoard()}
@@ -106,8 +126,8 @@ export const PLINKO_SCRIPT = `
 
   function draw(){
     if(!state)return;
-    var ctx=state.ctx,dpr=state.dpr||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,320,306);ctx.fillStyle='#fff';
-    for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];ctx.beginPath();ctx.arc(peg.x,peg.y,peg.vr||peg.r,0,Math.PI*2);ctx.fill()}
+    var ctx=state.ctx,dpr=state.dpr||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,320,306);
+    for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];drawGlassPeg(ctx,peg.x,peg.y,peg.vr||peg.r)}
     var bins=state.bins;var size=binTextSize(bins.length);ctx.font='800 '+size+'px Inter, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
     for(var i=0;i<bins.length;i++){var bin=bins[i];roundRect(ctx,bin.x,bin.y,bin.w,bin.h,7);ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.05;ctx.stroke();ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h/2)}
     for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/30):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}
