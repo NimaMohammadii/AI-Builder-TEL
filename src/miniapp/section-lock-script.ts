@@ -9,6 +9,7 @@ export const SECTION_LOCK_SCRIPT = `
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';
+  var dismissSvg='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function storageKey(id){return 'sectionUnlocked:'+id}
@@ -38,6 +39,20 @@ export const SECTION_LOCK_SCRIPT = `
     if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}
     return lockSvg;
   }
+  function setKeyboardMode(on){
+    document.body.classList.toggle('section-code-keyboard-open',!!on);
+    updateKeyboardInset();
+  }
+  function updateKeyboardInset(){
+    var vv=window.visualViewport;
+    var inset=0;
+    if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}
+    document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px');
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',updateKeyboardInset);
+    window.visualViewport.addEventListener('scroll',updateKeyboardInset);
+  }
 
   function syncCredit(){
     if(userCredit===null||userCredit===undefined)return;
@@ -58,21 +73,28 @@ export const SECTION_LOCK_SCRIPT = `
     var view=document.createElement('div');
     view.className='section-locked-view';
     if(item&&item.mode==='code'){
-      view.innerHTML='<div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="off"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
+      view.classList.add('section-code-view');
+      view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
       var input=view.querySelector('.section-code-input');
       var button=view.querySelector('.section-code-submit');
       var status=view.querySelector('.section-code-status');
+      var dismiss=view.querySelector('.section-keyboard-dismiss');
       var submit=function(){
         var code=(input&&input.value||'').trim();
         if(!code){status.textContent='Enter the access code.';return}
         status.textContent='Checking...';
         fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:section.id,code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
-          if(res.ok&&res.json&&res.json.ok){setUnlocked(section.id);applyLocks();return}
+          if(res.ok&&res.json&&res.json.ok){setKeyboardMode(false);setUnlocked(section.id);applyLocks();return}
           status.textContent=(res.json&&res.json.error)||'Wrong access code.';
         }).catch(function(){status.textContent='Could not verify code.'});
       };
       button.addEventListener('click',submit);
+      input.addEventListener('pointerdown',function(){setTimeout(function(){input.focus()},20)});
+      input.addEventListener('click',function(){setTimeout(function(){input.focus()},20)});
+      input.addEventListener('focus',function(){view.classList.add('code-focused');setKeyboardMode(true);setTimeout(updateKeyboardInset,80);setTimeout(updateKeyboardInset,280)});
+      input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},120)});
       input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
+      dismiss.addEventListener('click',function(){input.blur();setKeyboardMode(false)});
     }else{
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
       view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2><p>Please try again later.</p></div>';
@@ -121,7 +143,7 @@ export const SECTION_LOCK_SCRIPT = `
   }
 
   document.addEventListener('click',function(){setTimeout(applyLocks,40)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls()}});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls();updateKeyboardInset()}});
   loadLocks();
   setInterval(loadGlobalLocks,20000);
   setInterval(syncUserControls,20000);
