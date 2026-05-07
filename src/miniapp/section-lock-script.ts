@@ -12,6 +12,10 @@ export const SECTION_LOCK_SCRIPT = `
   function storageKey(id){return 'sectionUnlocked:'+id}
   function isUnlocked(id){return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
   function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
+  function lockVisual(item){
+    if(item&&item.imageUrl)return '<img class="section-lock-image" src="'+item.imageUrl+'?t='+(Date.now())+'" alt=""/>';
+    return lockSvg;
+  }
 
   function syncCredit(){
     if(userCredit===null||userCredit===undefined)return;
@@ -28,7 +32,7 @@ export const SECTION_LOCK_SCRIPT = `
     var view=document.createElement('div');
     view.className='section-locked-view';
     if(item&&item.mode==='code'){
-      view.innerHTML='<div class="section-locked-card code-card">'+lockSvg+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="off"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
+      view.innerHTML='<div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="off"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
       var input=view.querySelector('.section-code-input');
       var button=view.querySelector('.section-code-submit');
       var status=view.querySelector('.section-code-status');
@@ -45,7 +49,7 @@ export const SECTION_LOCK_SCRIPT = `
       input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
     }else{
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
-      view.innerHTML='<div class="section-locked-card">'+lockSvg+'<h2>'+text+'</h2><p>Please try again later.</p></div>';
+      view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2><p>Please try again later.</p></div>';
     }
     section.appendChild(view);
   }
@@ -55,7 +59,7 @@ export const SECTION_LOCK_SCRIPT = `
     document.querySelectorAll('.view').forEach(function(section){
       var id=section.id;
       var globalItem=locks[id];
-      var item=(userBlocked[id])?{mode:'locked',locked:true,userBlocked:true}:globalItem;
+      var item=(userBlocked[id])?Object.assign({},globalItem||{}, {mode:'locked',locked:true,userBlocked:true}):globalItem;
       var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(id);
       section.classList.toggle('is-section-locked',isLocked);
       if(isLocked)ensureOverlay(section,item);
@@ -66,7 +70,7 @@ export const SECTION_LOCK_SCRIPT = `
   function loadGlobalLocks(){
     return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
       locks={};
-      (data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode}});
+      (data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage}});
     }).catch(function(){});
   }
 
