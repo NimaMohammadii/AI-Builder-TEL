@@ -15,6 +15,9 @@ export const PLINKO_SCRIPT = `
   function toast(message){var n=q('toast');if(!n)return;n.textContent=message;n.style.display='block';setTimeout(function(){n.style.display='none'},2500)}
   function saveCredit(){localStorage.setItem('plinkoCredit',String(Math.max(0,Math.round(credit))))}
   function updateCredit(){var el=q('plinkoCredit');if(el)el.textContent=String(Math.max(0,Math.round(credit)));saveCredit()}
+  function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;updateCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
+  window.addEventListener('vexa-credit-sync',function(ev){if(ev&&ev.detail)forceCredit(ev.detail.credit)});
+  window.addEventListener('storage',function(ev){if(ev&&ev.key==='plinkoCredit')forceCredit(ev.newValue)});
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
   function currentMultipliers(){return multiplierTable[rows][risk]}
