@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
-import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
+import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
 import type { Env } from './types';
 
@@ -31,7 +31,7 @@ app.get('/app/api/section-lock-image/:section/:kind', async (c) => {
     const data = await c.env.BOT_CACHE.get(sectionImageKey(section, kind), 'arrayBuffer').catch(() => null);
     const type = await c.env.BOT_CACHE.get(sectionImageTypeKey(section, kind)).catch(() => null);
     if (!data) return c.text('Not found', 404);
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'no-store' } });
+    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
   } catch { return c.text('Not found', 404); }
 });
 
@@ -41,7 +41,7 @@ app.get('/app/api/section-lock-image/:section', async (c) => {
     const data = await c.env.BOT_CACHE.get(legacySectionImageKey(section), 'arrayBuffer').catch(() => null);
     const type = await c.env.BOT_CACHE.get(legacySectionImageTypeKey(section)).catch(() => null);
     if (!data) return c.text('Not found', 404);
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'no-store' } });
+    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
   } catch { return c.text('Not found', 404); }
 });
 
@@ -104,6 +104,7 @@ app.post('/admin/api/section-lock-image', async (c) => {
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     await c.env.BOT_CACHE.put(sectionImageKey(section, kind), await file.arrayBuffer(), { expirationTtl: 60 * 60 * 24 * 365 });
     await c.env.BOT_CACHE.put(sectionImageTypeKey(section, kind), file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+    await c.env.BOT_CACHE.put(sectionImageVersionKey(section, kind), String(Date.now()), { expirationTtl: 60 * 60 * 24 * 365 });
     return c.json(await getSectionLocks(c.env));
   } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); }
 });
