@@ -140,15 +140,15 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private pegRadius(): number {
-    if (this.rows === 7) return 5.1;
-    if (this.rows === 9) return 4.35;
-    return 3.55;
+    if (this.rows === 7) return 5.65;
+    if (this.rows === 9) return 4.85;
+    return 4.05;
   }
 
   private ballRadius(): number {
-    if (this.rows === 7) return 8.8;
-    if (this.rows === 9) return 7.5;
-    return 6.4;
+    if (this.rows === 7) return 8.45;
+    if (this.rows === 9) return 7.05;
+    return 5.9;
   }
 
   private currentMultipliers(): number[] {
@@ -178,17 +178,18 @@ export class PlinkoScene extends Phaser.Scene {
     const top = 70;
     const bottom = this.boardHeight - 112;
     const rowGap = (bottom - top) / (rows - 1);
-    const maxBoardWidth = this.boardWidth * 0.82;
     const pegR = this.pegRadius();
+    const slotCount = rows + 1;
+    const slotLeft = 14;
+    const slotWidth = this.boardWidth - 28;
+    const slotGap = slotWidth / slotCount;
 
     for (let row = 0; row < rows; row += 1) {
       const count = row + 3;
-      const spread = Phaser.Math.Linear(72, maxBoardWidth, row / Math.max(1, rows - 1));
-      const gap = Math.min(rows === 11 ? 27 : 32, spread / (count - 1));
+      const start = slotLeft + ((slotCount - (count - 1)) * slotGap) / 2;
       const y = top + row * rowGap;
-      const start = this.boardWidth / 2 - ((count - 1) * gap) / 2;
       for (let i = 0; i < count; i += 1) {
-        const x = start + i * gap;
+        const x = start + i * slotGap;
         const body = this.matter.add.circle(x, y, pegR, {
           isStatic: true,
           label: `peg:${row}:${i}`,
@@ -214,7 +215,6 @@ export class PlinkoScene extends Phaser.Scene {
       friction: 0.01,
     });
 
-    const slotCount = rows + 1;
     this.slotLeft = 14;
     this.slotWidth = (this.boardWidth - 28) / slotCount;
     const slotTop = this.boardHeight - 58;
