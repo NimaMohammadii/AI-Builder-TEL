@@ -1,12 +1,12 @@
 export const TTS_STYLES = `
 /* TTS-only sizing refinements. This file must not style the main bottom navigation. */
 #flow .tts-area textarea{
-  font-size:22px!important;
-  line-height:1.28!important;
+  font-size:17px!important;
+  line-height:1.24!important;
 }
 
 #flow .tts-area textarea::placeholder{
-  font-size:22px!important;
+  font-size:17px!important;
 }
 
 #flow .tts-bottom{
