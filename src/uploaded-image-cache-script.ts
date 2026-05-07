@@ -22,7 +22,6 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     }).catch(function(){});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  document.addEventListener('click',function(){setTimeout(load,60)},true);
-  setInterval(load,30000);
+  setInterval(load,20000);
 })();
 `;
