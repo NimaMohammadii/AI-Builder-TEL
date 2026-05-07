@@ -18,14 +18,15 @@ export const MINIAPP_SCRIPT = `
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
-  function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');if(counter)counter.textContent=String((input&&input.value||'').length)+' characters'}
+  function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
 
   function show(id){
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',id==='flow'?'Text To Speech':'Vexa FLOW');
-    if(id!=='flow')setKeyboardOpen(false);
+    if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     loadBots(false);
   }
 
@@ -98,6 +99,7 @@ export const MINIAPP_SCRIPT = `
   async function generateTts(){
     var text=(q('ttsText')&&q('ttsText').value.trim())||'';
     if(!text)return toast('Type text first');
+    if(text.length>1000){setLimitSheet(true);return}
     try{
       var r=await fetch('/app/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:text,voice:selectedVoice})});
       if(!r.ok)throw new Error('TTS API is not ready yet');
@@ -125,6 +127,8 @@ export const MINIAPP_SCRIPT = `
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
+    if(a==='open-char-limit'){setLimitSheet(true);return}
+    if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='toggle-voice'){q('voiceWrap').classList.toggle('open');return}
     if(a==='create-bot')createBot();
