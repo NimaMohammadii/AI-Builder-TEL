@@ -11,7 +11,7 @@ export const PLINKO_STYLES = `
   align-items:center;
   justify-content:flex-start;
   gap:0;
-  padding:0 0 108px;
+  padding:14px 0 108px;
   position:relative;
 }
 
@@ -58,7 +58,7 @@ export const PLINKO_STYLES = `
   aspect-ratio:320/306;
   display:grid;
   place-items:center;
-  margin-top:-18px;
+  margin-top:0;
   position:relative;
   z-index:1;
   flex:0 0 auto;
