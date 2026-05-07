@@ -6,6 +6,8 @@ import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, norm
 import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
 import type { Env } from './types';
 
+const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
 const activitySchema = z.object({
   userId: z.string().min(1).max(64),
   username: z.string().max(80).nullable().optional(),
@@ -22,6 +24,27 @@ const userCreditAdjustSchema = z.object({ userId: z.string().min(1).max(80), del
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
 
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c.json(await trackAppUser(c.env, c.req.valid('json'))));
+
+app.get('/app/api/uploaded-images', async (c) => {
+  const version = (await c.env.BOT_CACHE.get('admin:credit-icon-version').catch(() => null)) || '1';
+  const hasCreditIcon = Boolean(await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null));
+  const creditIconUrl = hasCreditIcon ? `/app/api/uploaded-image/credit-icon.png?v=${version}` : `/app/api/credit-icon.png?v=${version}`;
+  const locks = await getSectionLocks(c.env);
+  const preload = [creditIconUrl];
+  for (const section of locks.sections) {
+    if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
+    if (section.codeImageUrl) preload.push(section.codeImageUrl);
+  }
+  return c.json({ creditIconUrl, preload });
+});
+
+app.get('/app/api/uploaded-image/credit-icon.png', async (c) => {
+  const data = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
+  const type = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
+  if (!data) return c.redirect('/app/api/credit-icon.png');
+  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
+});
+
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
 
 app.get('/app/api/section-lock-image/:section/:kind', async (c) => {
@@ -90,6 +113,22 @@ app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSc
 app.get('/admin/api/section-locks', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getSectionLocks(c.env));
+});
+
+app.post('/admin/api/upload-credit-icon', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const form = await c.req.formData();
+  const file = form.get('icon');
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  const data = await file.arrayBuffer();
+  const version = String(Date.now());
+  await c.env.BOT_CACHE.put('admin:credit-icon', data, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:credit-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:credit-icon-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
+  try { await c.env.ASSETS.put('credit-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
+  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/uploaded-image/credit-icon.png?v=${version}` });
 });
 
 app.post('/admin/api/section-lock-image', async (c) => {
