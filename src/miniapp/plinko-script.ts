@@ -32,8 +32,8 @@ export const PLINKO_SCRIPT = `
       for(var i=0;i<count;i++)pegs.push({x:start+i*gap,y:y,r:4});
     }
     var bins=[];
-    var left=30,top=310,width=260,height=70,binW=width/7;
-    for(var j=0;j<7;j++)bins.push({x:left+j*binW,y:top,w:binW,h:height,label:labels[j],mult:multipliers[j]});
+    var left=27,top=292,width=266,height=70,binW=width/7,gutter=4;
+    for(var j=0;j<7;j++)bins.push({x:left+j*binW+gutter/2,y:top,w:binW-gutter,h:height,label:labels[j],mult:multipliers[j]});
     var img=new Image();
     img.onload=function(){draw()};
     img.src='/app/api/credit-icon.png';
@@ -138,10 +138,10 @@ export const PLINKO_SCRIPT = `
     ctx.textBaseline='middle';
     for(var i=0;i<bins.length;i++){
       var bin=bins[i];
-      roundRect(ctx,bin.x+1,bin.y,bin.w-2,bin.h,8);
+      roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
       ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.15;ctx.stroke();
-      ctx.beginPath();ctx.ellipse(bin.x+bin.w/2,bin.y+18,bin.w*.34,7,0,0,Math.PI*2);
+      ctx.beginPath();ctx.ellipse(bin.x+bin.w/2,bin.y+18,bin.w*.32,7,0,0,Math.PI*2);
       ctx.fillStyle='rgba(0,0,0,.95)';ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.34)';ctx.stroke();
       ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-15);
