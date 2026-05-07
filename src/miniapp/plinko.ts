@@ -1,0 +1,1 @@
+export const PLINKO_SECTION = `<section id="plinko" class="view"><div class="plinko-page"><div class="plinko-stage"><canvas id="plinkoCanvas" class="plinko-canvas" width="320" height="430" aria-label="Plinko board"></canvas></div><button class="plinko-drop" data-action="drop-plinko-ball">Drop Ball</button></div></section>`;
