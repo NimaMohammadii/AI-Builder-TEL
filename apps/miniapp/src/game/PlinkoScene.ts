@@ -140,15 +140,15 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private pegRadius(): number {
-    if (this.rows === 7) return 5.65;
-    if (this.rows === 9) return 4.85;
-    return 4.05;
+    if (this.rows === 7) return 7.25;
+    if (this.rows === 9) return 6.25;
+    return 5.35;
   }
 
   private ballRadius(): number {
-    if (this.rows === 7) return 8.45;
-    if (this.rows === 9) return 7.05;
-    return 5.9;
+    if (this.rows === 7) return 8.0;
+    if (this.rows === 9) return 6.65;
+    return 5.45;
   }
 
   private currentMultipliers(): number[] {
