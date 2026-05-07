@@ -42,8 +42,11 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
     const hasLockedImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'locked')).catch(() => null));
     const hasCodeImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'code')).catch(() => null));
     const legacyHasImage = Boolean(await env.BOT_CACHE.get(legacySectionImageTypeKey(section.id)).catch(() => null));
-    const lockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${section.id}/locked.png` : legacyHasImage ? `/app/api/section-lock-image/${section.id}.png` : null;
-    const codeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${section.id}/code.png` : null;
+    const lockedVersion = await sectionImageVersion(env, section.id, 'locked');
+    const codeVersion = await sectionImageVersion(env, section.id, 'code');
+    const legacyVersion = await legacySectionImageVersion(env, section.id);
+    const lockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${section.id}/locked.png?v=${lockedVersion}` : legacyHasImage ? `/app/api/section-lock-image/${section.id}.png?v=${legacyVersion}` : null;
+    const codeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${section.id}/code.png?v=${codeVersion}` : null;
     return {
       ...section,
       locked: mode !== 'open',
@@ -103,12 +106,28 @@ export function sectionImageTypeKey(sectionId: string, kind: SectionLockImageKin
   return `admin:section-lock-image-type:${ensureSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
 }
 
+export function sectionImageVersionKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
+  return `admin:section-lock-image-version:${ensureSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
+}
+
 export function legacySectionImageKey(sectionId: string): string {
   return `admin:section-lock-image:${ensureSection(sectionId)}`;
 }
 
 export function legacySectionImageTypeKey(sectionId: string): string {
   return `admin:section-lock-image-type:${ensureSection(sectionId)}`;
+}
+
+export function legacySectionImageVersionKey(sectionId: string): string {
+  return `admin:section-lock-image-version:${ensureSection(sectionId)}`;
+}
+
+async function sectionImageVersion(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<string> {
+  return (await env.BOT_CACHE.get(sectionImageVersionKey(sectionId, kind)).catch(() => null)) || '1';
+}
+
+async function legacySectionImageVersion(env: Env, sectionId: string): Promise<string> {
+  return (await env.BOT_CACHE.get(legacySectionImageVersionKey(sectionId)).catch(() => null)) || '1';
 }
 
 async function readLocks(env: Env): Promise<Record<string, SavedSectionLock>> {
