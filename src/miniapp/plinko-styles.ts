@@ -10,15 +10,19 @@ export const PLINKO_STYLES = `
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  gap:10px;
-  padding:0 0 18px;
+  gap:8px;
+  padding:0 0 10px;
+  position:relative;
 }
 
 .plinko-top{
   width:min(100%,340px);
   display:flex;
   justify-content:flex-end;
-  margin-top:-2px;
+  margin-top:0;
+  position:relative;
+  z-index:3;
+  flex:0 0 auto;
 }
 
 .plinko-credit{
@@ -34,6 +38,7 @@ export const PLINKO_STYLES = `
   font-size:13px;
   font-weight:900;
   font-variant-numeric:tabular-nums;
+  overflow:hidden;
 }
 
 .plinko-credit img{
@@ -43,14 +48,20 @@ export const PLINKO_STYLES = `
   border:0;
   box-shadow:none;
   background:transparent;
+  flex:0 0 auto;
 }
 
 .plinko-stage{
-  width:min(100%,340px);
-  aspect-ratio:320/430;
+  width:min(100%,332px);
+  height:min(49vh,365px);
+  min-height:330px;
   display:grid;
   place-items:center;
-  margin-top:-18px;
+  margin-top:0;
+  position:relative;
+  z-index:1;
+  flex:0 1 auto;
+  overflow:hidden;
 }
 
 .plinko-canvas{
@@ -66,7 +77,10 @@ export const PLINKO_STYLES = `
   grid-template-columns:96px 1fr;
   align-items:center;
   gap:10px;
-  margin-top:-18px;
+  margin-top:2px;
+  position:relative;
+  z-index:2;
+  flex:0 0 auto;
 }
 
 .plinko-bet{
@@ -78,6 +92,7 @@ export const PLINKO_STYLES = `
   align-items:center;
   gap:6px;
   padding:0 10px;
+  overflow:hidden;
 }
 
 .plinko-bet span{
@@ -86,6 +101,7 @@ export const PLINKO_STYLES = `
   font-weight:850;
   text-transform:uppercase;
   letter-spacing:.08em;
+  flex:0 0 auto;
 }
 
 .plinko-bet input{
