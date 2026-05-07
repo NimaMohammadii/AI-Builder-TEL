@@ -9,6 +9,8 @@ export type SectionLock = {
   locked: boolean;
   mode: SectionLockMode;
   hasCode: boolean;
+  hasImage: boolean;
+  imageUrl: string | null;
 };
 
 type SavedSectionLock = {
@@ -18,8 +20,9 @@ type SavedSectionLock = {
 };
 
 const LOCKS_KEY = 'admin:section-locks';
+export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
-const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode'>> = [
+const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 'hasImage' | 'imageUrl'>> = [
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Bot connection section' },
   { id: 'flow', label: 'Text to Speech', description: 'TTS generator section' },
@@ -28,11 +31,20 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode'>> 
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
   const saved = await readLocks(env);
-  return { sections: DEFAULT_SECTIONS.map((section) => {
+  const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
-    return { ...section, locked: mode !== 'open', mode, hasCode: Boolean(item?.code) };
-  }) };
+    const hasImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id)).catch(() => null));
+    return {
+      ...section,
+      locked: mode !== 'open',
+      mode,
+      hasCode: Boolean(item?.code),
+      hasImage,
+      imageUrl: hasImage ? `/app/api/section-lock-image/${section.id}.png` : null,
+    };
+  }));
+  return { sections };
 }
 
 export async function setSectionLock(env: Env, sectionId: string, locked: boolean): Promise<{ sections: SectionLock[] }> {
@@ -60,6 +72,18 @@ export async function verifySectionCode(env: Env, sectionId: string, code: strin
   const item = current[normalized];
   if (normalizeMode(item) !== 'code') return { ok: true };
   return cleanCode(code) === cleanCode(item?.code) ? { ok: true } : { ok: false, error: 'Wrong access code' };
+}
+
+export function normalizeSectionId(sectionId: string): string {
+  return ensureSection(sectionId);
+}
+
+export function sectionImageKey(sectionId: string): string {
+  return `admin:section-lock-image:${ensureSection(sectionId)}`;
+}
+
+export function sectionImageTypeKey(sectionId: string): string {
+  return `admin:section-lock-image-type:${ensureSection(sectionId)}`;
 }
 
 async function readLocks(env: Env): Promise<Record<string, SavedSectionLock>> {
