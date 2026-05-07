@@ -1,6 +1,7 @@
 import type { Env } from './types';
 
 export type SectionLockMode = 'open' | 'locked' | 'code';
+export type SectionLockImageKind = 'locked' | 'code';
 
 export type SectionLock = {
   id: string;
@@ -11,6 +12,10 @@ export type SectionLock = {
   hasCode: boolean;
   hasImage: boolean;
   imageUrl: string | null;
+  hasLockedImage: boolean;
+  lockedImageUrl: string | null;
+  hasCodeImage: boolean;
+  codeImageUrl: string | null;
 };
 
 type SavedSectionLock = {
@@ -22,7 +27,7 @@ type SavedSectionLock = {
 const LOCKS_KEY = 'admin:section-locks';
 export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
-const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 'hasImage' | 'imageUrl'>> = [
+const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeImageUrl'>> = [
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Bot connection section' },
   { id: 'flow', label: 'Text to Speech', description: 'TTS generator section' },
@@ -34,14 +39,22 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
   const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
-    const hasImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id)).catch(() => null));
+    const hasLockedImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'locked')).catch(() => null));
+    const hasCodeImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'code')).catch(() => null));
+    const legacyHasImage = Boolean(await env.BOT_CACHE.get(legacySectionImageTypeKey(section.id)).catch(() => null));
+    const lockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${section.id}/locked.png` : legacyHasImage ? `/app/api/section-lock-image/${section.id}.png` : null;
+    const codeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${section.id}/code.png` : null;
     return {
       ...section,
       locked: mode !== 'open',
       mode,
       hasCode: Boolean(item?.code),
-      hasImage,
-      imageUrl: hasImage ? `/app/api/section-lock-image/${section.id}.png` : null,
+      hasImage: hasLockedImage || legacyHasImage,
+      imageUrl: lockedImageUrl,
+      hasLockedImage: hasLockedImage || legacyHasImage,
+      lockedImageUrl,
+      hasCodeImage,
+      codeImageUrl,
     };
   }));
   return { sections };
@@ -78,11 +91,23 @@ export function normalizeSectionId(sectionId: string): string {
   return ensureSection(sectionId);
 }
 
-export function sectionImageKey(sectionId: string): string {
+export function normalizeSectionImageKind(kind: string | null | undefined): SectionLockImageKind {
+  return kind === 'code' ? 'code' : 'locked';
+}
+
+export function sectionImageKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
+  return `admin:section-lock-image:${ensureSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
+}
+
+export function sectionImageTypeKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
+  return `admin:section-lock-image-type:${ensureSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
+}
+
+export function legacySectionImageKey(sectionId: string): string {
   return `admin:section-lock-image:${ensureSection(sectionId)}`;
 }
 
-export function sectionImageTypeKey(sectionId: string): string {
+export function legacySectionImageTypeKey(sectionId: string): string {
   return `admin:section-lock-image-type:${ensureSection(sectionId)}`;
 }
 
