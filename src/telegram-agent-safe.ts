@@ -1,10 +1,12 @@
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
+import { trackTelegramBotUser } from './admin-users';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { decryptUserToken, safeParseJson } from './utils';
 
 export { setTelegramWebhook };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
+  await trackTelegramBotUser(env, bot.id, update).catch((error) => console.warn('admin user tracking skipped', error));
   try {
     await baseProcessTelegramUpdate(env, bot, update);
   } catch (error) {
@@ -42,7 +44,7 @@ async function notifyBuilderFailure(env: Env, bot: BotRecord, update: TelegramUp
 
 function buildFailureText(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || 'unknown error');
-  return `تغییر کامل نشد و عملیات متوقف شد.\nعلت: ${message.slice(0, 500)}\n\nدرخواست معلق حذف نشده؛ می‌تونی دوباره تأیید کنی یا درخواست رو واضح‌تر بفرستی.`;
+  return 'Change was not completed. Reason: ' + message.slice(0, 500) + '\n\nThe pending request was not removed. You can confirm again or send a clearer request.';
 }
 
 async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
