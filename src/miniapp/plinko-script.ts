@@ -3,12 +3,12 @@ export const PLINKO_SCRIPT = `
   var state=null;
   var risk='medium';
   var rows=7;
-  var rowOptions=[7,9,12];
+  var rowOptions=[7,9,11];
   var credit=Number(localStorage.getItem('plinkoCredit')||'1000')||1000;
   var multiplierTable={
     7:{low:[2,1.4,1.1,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,1.5,4,12]},
     9:{low:[3,1.6,1.3,1.1,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,1.3,3,8,25]},
-    12:{low:[5,2,1.6,1.3,1.1,.9,.8,.9,1.1,1.3,1.6,2,5],medium:[18,5,2.5,1.6,1.1,.5,.3,.5,1.1,1.6,2.5,5,18],high:[80,18,7,3,1.5,.5,.2,.5,1.5,3,7,18,80]}
+    11:{low:[4,1.8,1.5,1.2,1,.85,.85,1,1.2,1.5,1.8,4],medium:[14,4,2.2,1.5,1,.5,.5,1,1.5,2.2,4,14],high:[60,14,6,2.5,1.2,.25,.25,1.2,2.5,6,14,60]}
   };
 
   function q(id){return document.getElementById(id)}
@@ -18,8 +18,8 @@ export const PLINKO_SCRIPT = `
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){return Number.isInteger(n)?'X'+n:'X'+String(n).replace(/^0/,'')}
   function currentMultipliers(){return multiplierTable[rows][risk]}
-  function pegRadius(){return rows===7?4.1:rows===9?3.45:2.75}
-  function ballRadius(){return rows===7?8.2:rows===9?7.1:5.9}
+  function pegRadius(){return rows===7?4.1:rows===9?3.45:2.9}
+  function ballRadius(){return rows===7?8.2:rows===9?7.1:6.2}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 
   function setRisk(next){risk=next||'medium';document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});rebuildBoard()}
@@ -30,14 +30,14 @@ export const PLINKO_SCRIPT = `
     var pegs=[];
     var boardW=320;
     var top=14;
-    var bottom=rows===12?238:rows===9?235:230;
+    var bottom=rows===11?238:rows===9?235:230;
     var rowGap=(bottom-top)/Math.max(1,rows-1);
     var r=pegRadius();
     for(var row=0;row<rows;row++){
       var count=row+3;
       var t=rows>1?row/(rows-1):0;
-      var maxWidth=rows===12?(86+t*206):rows===9?(76+t*208):(66+t*202);
-      maxWidth=Math.min(maxWidth,rows===12?294:286);
+      var maxWidth=rows===11?(84+t*208):rows===9?(76+t*208):(66+t*202);
+      maxWidth=Math.min(maxWidth,rows===11?292:286);
       var gap=count>1?maxWidth/(count-1):0;
       var start=boardW/2-maxWidth/2;
       var y=top+row*rowGap;
