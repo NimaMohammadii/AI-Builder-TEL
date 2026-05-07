@@ -4,6 +4,12 @@ export const TTS_STYLES = `
   align-items:flex-start!important;
   justify-content:flex-end!important;
   gap:12px!important;
+  margin-top:-56px!important;
+  margin-bottom:16px!important;
+}
+
+#flow .tts-area{
+  transform:translateY(-28px);
 }
 
 #flow .tts-area textarea{
@@ -20,12 +26,14 @@ export const TTS_STYLES = `
   margin-left:auto;
   margin-right:0;
   margin-bottom:0;
+  transform:translateY(-18px);
 }
 
 #flow .voice-wrap{
   order:2;
   margin-left:0;
   margin-right:0;
+  transform:translateY(44px);
 }
 
 #flow .tts-bottom{
@@ -44,12 +52,12 @@ export const TTS_STYLES = `
 }
 
 #flow .tts-generate-row{
-  width:86%;
+  width:100%;
   display:flex;
   align-items:center;
   gap:12px;
   margin-left:0;
-  margin-right:auto;
+  margin-right:0;
 }
 
 #flow .tts-generate{
@@ -60,11 +68,14 @@ export const TTS_STYLES = `
 }
 
 #flow .char-count{
+  margin-left:auto;
+  margin-right:0;
   color:rgba(255,255,255,.42);
   font-size:11px;
   font-weight:750;
   letter-spacing:.02em;
   white-space:nowrap;
+  text-align:right;
   font-variant-numeric:tabular-nums;
 }
 
