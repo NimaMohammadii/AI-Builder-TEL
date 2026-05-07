@@ -55,7 +55,7 @@ export const PLINKO_STYLES = `
 
 .plinko-stage{
   width:min(94%,342px);
-  aspect-ratio:320/355;
+  aspect-ratio:320/306;
   display:grid;
   place-items:center;
   margin-top:-18px;
