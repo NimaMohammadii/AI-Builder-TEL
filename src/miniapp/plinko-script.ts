@@ -32,7 +32,7 @@ export const PLINKO_SCRIPT = `
       for(var i=0;i<count;i++)pegs.push({x:start+i*gap,y:y,r:4});
     }
     var bins=[];
-    var left=27,top=292,width=266,height=70,binW=width/7,gutter=4;
+    var left=27,top=270,width=266,height=50,binW=width/7,gutter=4;
     for(var j=0;j<7;j++)bins.push({x:left+j*binW+gutter/2,y:top,w:binW-gutter,h:height,label:labels[j],mult:multipliers[j]});
     var img=new Image();
     img.onload=function(){draw()};
@@ -73,7 +73,7 @@ export const PLINKO_SCRIPT = `
         ball.sink+=dt;
         ball.y+=.7*dt;
         ball.r*=.965;
-        if(ball.sink>36||ball.r<1.2)balls.splice(b,1);
+        if(ball.sink>32||ball.r<1.2)balls.splice(b,1);
         continue;
       }
       ball.vy+=.36*dt;
@@ -107,7 +107,7 @@ export const PLINKO_SCRIPT = `
             if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.36}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.36}
           }
         }
-        if(ball.y+ball.r>bin.y+bin.h*.48){
+        if(ball.y+ball.r>bin.y+bin.h*.42){
           ball.x+=(holeX-ball.x)*.18;
           ball.vx*=.38;
           ball.vy*=.22;
@@ -141,15 +141,15 @@ export const PLINKO_SCRIPT = `
       roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
       ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.15;ctx.stroke();
-      ctx.beginPath();ctx.ellipse(bin.x+bin.w/2,bin.y+18,bin.w*.32,7,0,0,Math.PI*2);
+      ctx.beginPath();ctx.ellipse(bin.x+bin.w/2,bin.y+14,bin.w*.32,5.5,0,0,Math.PI*2);
       ctx.fillStyle='rgba(0,0,0,.95)';ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.34)';ctx.stroke();
-      ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-15);
+      ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-12);
     }
     for(var b=0;b<state.balls.length;b++){
       var ball=state.balls[b];
       var img=state.tokenImg;
-      var alpha=ball.sinking?Math.max(0,1-ball.sink/34):1;
+      var alpha=ball.sinking?Math.max(0,1-ball.sink/30):1;
       ctx.save();ctx.globalAlpha=alpha;
       if(img&&img.complete&&img.naturalWidth>0){var size=ball.r*2.45;ctx.drawImage(img,ball.x-size/2,ball.y-size/2,size,size)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
       ctx.restore();
