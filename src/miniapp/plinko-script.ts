@@ -18,7 +18,7 @@ export const PLINKO_SCRIPT = `
     if(state&&state.canvas===canvas){draw();return}
     var dpr=Math.min(window.devicePixelRatio||1,3);
     canvas.width=320*dpr;
-    canvas.height=430*dpr;
+    canvas.height=355*dpr;
     var ctx=canvas.getContext('2d');
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.imageSmoothingEnabled=true;
@@ -28,11 +28,11 @@ export const PLINKO_SCRIPT = `
       var count=row+3;
       var gap=28;
       var start=160-((count-1)*gap)/2;
-      var y=48+row*30;
+      var y=26+row*28;
       for(var i=0;i<count;i++)pegs.push({x:start+i*gap,y:y,r:4});
     }
     var bins=[];
-    var left=27,top=270,width=266,height=50,binW=width/7,gutter=4;
+    var left=27,top=252,width=266,height=46,binW=width/7,gutter=4;
     for(var j=0;j<7;j++)bins.push({x:left+j*binW+gutter/2,y:top,w:binW-gutter,h:height,label:labels[j],mult:multipliers[j]});
     var img=new Image();
     img.onload=function(){draw()};
@@ -50,7 +50,7 @@ export const PLINKO_SCRIPT = `
     if(!bet||credit<bet){toast('Not enough credit');return}
     credit-=bet;
     updateCredit();
-    state.balls.push({x:160+(Math.random()*14-7),y:22,vx:Math.random()*.8-.4,vy:0,r:9,bet:bet,sinking:false,sink:0,paid:false});
+    state.balls.push({x:160+(Math.random()*14-7),y:10,vx:Math.random()*.8-.4,vy:0,r:9,bet:bet,sinking:false,sink:0,paid:false});
   }
 
   function settle(ball,bin){
@@ -116,7 +116,7 @@ export const PLINKO_SCRIPT = `
           ball.sink=0;
         }
       }
-      if(ball.y>414){balls.splice(b,1)}
+      if(ball.y>348){balls.splice(b,1)}
     }
     draw();
     state.raf=requestAnimationFrame(tick);
@@ -126,7 +126,7 @@ export const PLINKO_SCRIPT = `
     if(!state)return;
     var ctx=state.ctx,dpr=state.dpr||1;
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,320,430);
+    ctx.clearRect(0,0,320,355);
     ctx.fillStyle='#fff';
     for(var p=0;p<state.pegs.length;p++){
       var peg=state.pegs[p];
@@ -141,10 +141,7 @@ export const PLINKO_SCRIPT = `
       roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
       ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.15;ctx.stroke();
-      ctx.beginPath();ctx.ellipse(bin.x+bin.w/2,bin.y+14,bin.w*.32,5.5,0,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,0,0,.95)';ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,.34)';ctx.stroke();
-      ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-12);
+      ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h-14);
     }
     for(var b=0;b<state.balls.length;b++){
       var ball=state.balls[b];
