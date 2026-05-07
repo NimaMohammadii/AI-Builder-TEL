@@ -1,4 +1,4 @@
-import type { Env } from './types';
+import type { Env, TelegramUpdate } from './types';
 
 export type AppUserActivityPayload = {
   userId?: string;
@@ -18,6 +18,26 @@ type AdminUserRow = {
   created_at: string | null;
   source: string | null;
 };
+
+export async function trackTelegramBotUser(env: Env, botId: string, update: TelegramUpdate): Promise<void> {
+  const from = update.message?.from ?? update.callback_query?.from ?? update.pre_checkout_query?.from;
+  if (!from?.id) return;
+  const section = update.callback_query ? 'callback' : update.pre_checkout_query ? 'payment' : cleanSection(update.message?.text?.startsWith('/') ? update.message.text.slice(1) : 'message');
+  try {
+    await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET
+        first_name = excluded.first_name,
+        username = excluded.username,
+        current_section = excluded.current_section,
+        last_seen_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP`)
+      .bind(botId, String(from.id), cleanText(from.first_name, 120), cleanText(from.username, 80), section)
+      .run();
+  } catch (error) {
+    console.warn('track telegram bot user failed', error);
+  }
+}
 
 export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
