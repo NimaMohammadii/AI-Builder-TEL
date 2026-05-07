@@ -155,6 +155,16 @@ export class PlinkoScene extends Phaser.Scene {
     return MULTIPLIERS[this.rows][this.risk];
   }
 
+  private formatMultiplier(value: number): string {
+    return `${Number.isInteger(value) ? value : String(value).replace(/0+$/, '').replace(/\.$/, '')}x`;
+  }
+
+  private multiplierFontSize(): number {
+    if (this.rows === 11) return 15;
+    if (this.rows === 9) return 17;
+    return 19;
+  }
+
   private rebuildMachine(): void {
     this.boardWidth = Math.max(300, this.scale.width);
     this.boardHeight = Math.max(330, this.scale.height);
@@ -207,9 +217,9 @@ export class PlinkoScene extends Phaser.Scene {
     const slotCount = rows + 1;
     this.slotLeft = 14;
     this.slotWidth = (this.boardWidth - 28) / slotCount;
-    const slotTop = this.boardHeight - 72;
+    const slotTop = this.boardHeight - 58;
     for (let divider = 1; divider < slotCount; divider += 1) {
-      this.matter.add.rectangle(this.slotLeft + divider * this.slotWidth, slotTop + 24, 4, 54, {
+      this.matter.add.rectangle(this.slotLeft + divider * this.slotWidth, slotTop + 17, 4, 34, {
         isStatic: true,
         label: 'slot-divider',
         restitution: 0.35,
@@ -217,7 +227,7 @@ export class PlinkoScene extends Phaser.Scene {
       });
     }
     for (let slot = 0; slot < slotCount; slot += 1) {
-      const sensor = this.matter.add.rectangle(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 30, this.slotWidth - 5, 20, {
+      const sensor = this.matter.add.rectangle(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 24, this.slotWidth - 5, 18, {
         isStatic: true,
         isSensor: true,
         label: `slot:${slot}`,
@@ -324,25 +334,31 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private drawMachine(g: Phaser.GameObjects.Graphics): void {
-    g.lineStyle(1, 0xffffff, 0.045);
-    for (let y = 50; y < this.boardHeight - 90; y += 28) {
-      g.lineBetween(24, y, this.boardWidth - 24, y);
-    }
-
-    g.lineStyle(4, 0xffffff, 0.17);
-    g.beginPath();
-    g.moveTo(32, 60);
-    g.quadraticCurveTo(20, this.boardHeight * 0.5, 36, this.boardHeight - 90);
-    g.strokePath();
-    g.beginPath();
-    g.moveTo(this.boardWidth - 32, 60);
-    g.quadraticCurveTo(this.boardWidth - 20, this.boardHeight * 0.5, this.boardWidth - 36, this.boardHeight - 90);
-    g.strokePath();
+    const slotTop = this.boardHeight - 58;
+    const slotHeight = 34;
+    const multipliers = this.currentMultipliers();
 
     g.lineStyle(1, 0xffffff, 0.13);
     for (let i = 0; i <= this.rows + 1; i += 1) {
       const x = this.slotLeft + i * this.slotWidth;
-      g.lineBetween(x, this.boardHeight - 72, x, this.boardHeight - 16);
+      g.lineBetween(x, slotTop, x, slotTop + slotHeight);
+    }
+
+    const labels = this.add.graphics();
+    labels.destroy();
+    const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: `${this.multiplierFontSize()}px`,
+      fontStyle: '800',
+      color: '#ffffff',
+    };
+
+    for (let i = 0; i < multipliers.length; i += 1) {
+      const x = this.slotLeft + i * this.slotWidth + this.slotWidth / 2;
+      const y = slotTop + slotHeight / 2;
+      const label = this.add.text(x, y, this.formatMultiplier(multipliers[i]), textStyle).setOrigin(0.5);
+      label.setAlpha(0.86);
+      this.time.delayedCall(16, () => label.destroy());
     }
   }
 
