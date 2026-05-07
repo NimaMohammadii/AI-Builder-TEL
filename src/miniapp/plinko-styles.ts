@@ -10,7 +10,7 @@ export const PLINKO_STYLES = `
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  gap:7px;
+  gap:5px;
   padding:0 0 10px;
   position:relative;
 }
@@ -58,7 +58,7 @@ export const PLINKO_STYLES = `
   aspect-ratio:320/430;
   display:grid;
   place-items:center;
-  margin-top:-4px;
+  margin-top:-10px;
   position:relative;
   z-index:1;
   flex:0 0 auto;
@@ -73,58 +73,195 @@ export const PLINKO_STYLES = `
 }
 
 .plinko-controls{
-  width:min(88%,320px);
+  width:min(94%,342px);
   display:grid;
-  grid-template-columns:96px 1fr;
-  align-items:center;
-  gap:10px;
-  margin-top:-6px;
+  gap:9px;
+  margin-top:-18px;
   position:relative;
   z-index:2;
   flex:0 0 auto;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:26px;
+  background:rgba(255,255,255,.045);
+  box-shadow:0 22px 60px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
 }
 
-.plinko-bet{
+.plinko-control-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 112px;
+  gap:10px;
+  align-items:end;
+}
+
+.plinko-field{
+  display:grid;
+  gap:6px;
+}
+
+.plinko-label{
+  color:rgba(255,255,255,.58);
+  font-size:11px;
+  font-weight:760;
+  letter-spacing:.01em;
+}
+
+.risk-segment{
   height:42px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.16);
-  background:rgba(255,255,255,.055);
+  padding:4px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.32);
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:3px;
+}
+
+.risk-segment button{
+  border-radius:14px;
+  background:transparent;
+  color:rgba(255,255,255,.52);
+  font-size:12px;
+  font-weight:820;
+}
+
+.risk-segment button.active{
+  background:#fff;
+  color:#050505;
+  box-shadow:0 8px 22px rgba(255,255,255,.12);
+}
+
+.rows-select{
+  height:42px;
+  width:100%;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.32);
+  color:#fff;
   display:flex;
   align-items:center;
-  gap:6px;
-  padding:0 10px;
-  overflow:hidden;
+  justify-content:space-between;
+  gap:8px;
+  padding:0 12px;
 }
 
-.plinko-bet span{
-  color:rgba(255,255,255,.52);
-  font-size:10px;
-  font-weight:850;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  flex:0 0 auto;
+.rows-select strong{
+  font-size:15px;
+  font-weight:900;
 }
 
-.plinko-bet input{
+.bet-amount{
+  height:48px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.34);
+  display:grid;
+  grid-template-columns:42px 1fr 42px;
+  align-items:center;
+  gap:7px;
+  padding:5px;
+}
+
+.bet-amount button{
+  height:38px;
+  border-radius:15px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.07);
+  color:#fff;
+  font-size:22px;
+  line-height:1;
+  font-weight:600;
+}
+
+.bet-amount input{
   min-width:0;
-  height:auto;
+  height:38px;
   border:0!important;
   background:transparent!important;
   padding:0!important;
   color:#fff;
-  font-size:13px;
+  font-size:20px;
   font-weight:900;
-  text-align:right;
+  text-align:center;
   box-shadow:none!important;
+  font-variant-numeric:tabular-nums;
 }
 
 .plinko-drop{
   width:100%;
-  height:42px;
-  border-radius:999px;
+  height:48px;
+  border-radius:20px;
   background:#fff;
   color:#050505;
-  font-size:13px;
+  font-size:15px;
   font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  box-shadow:0 12px 34px rgba(255,255,255,.12);
+}
+
+.plinko-drop span{
+  font-size:16px;
+  line-height:1;
+}
+
+.autoplay-row{
+  height:44px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.26);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:0 10px 0 12px;
+}
+
+.autoplay-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:rgba(255,255,255,.82);
+  font-size:13px;
+  font-weight:820;
+}
+
+.autoplay-icon{
+  width:23px;
+  height:23px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);
+  display:grid;
+  place-items:center;
+  color:rgba(255,255,255,.62);
+  font-size:14px;
+}
+
+.autoplay-toggle{
+  width:48px;
+  height:28px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.12);
+  padding:3px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+}
+
+.autoplay-toggle span{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 3px 12px rgba(0,0,0,.36);
+}
+
+.autoplay-toggle.active{
+  justify-content:flex-end;
+  background:rgba(255,255,255,.28);
 }
 `;
