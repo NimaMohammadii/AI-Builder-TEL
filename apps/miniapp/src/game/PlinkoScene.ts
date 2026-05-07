@@ -7,13 +7,33 @@ export type PlinkoDropResult = {
   win: number;
 };
 
+export type PlinkoRisk = 'low' | 'medium' | 'high';
+export type PlinkoRows = 7 | 9 | 11;
+
 export type PlinkoSceneEvents = {
   onDropStarted: (bet: number) => void;
   onDropFinished: (result: PlinkoDropResult) => void;
   onPegHit: () => void;
 };
 
-const MULTIPLIERS = [10, 3, 0.5, 0.5, 3, 10] as const;
+const ROW_OPTIONS: PlinkoRows[] = [7, 9, 11];
+const MULTIPLIERS: Record<PlinkoRows, Record<PlinkoRisk, number[]>> = {
+  7: {
+    low: [2, 1.4, 1.1, 0.9, 0.9, 1.1, 1.4, 2],
+    medium: [5, 2, 1.2, 0.5, 0.5, 1.2, 2, 5],
+    high: [12, 4, 1.5, 0.2, 0.2, 1.5, 4, 12],
+  },
+  9: {
+    low: [3, 1.6, 1.3, 1.1, 0.8, 0.8, 1.1, 1.3, 1.6, 3],
+    medium: [8, 3, 1.6, 1.1, 0.4, 0.4, 1.1, 1.6, 3, 8],
+    high: [25, 8, 3, 1.3, 0.2, 0.2, 1.3, 3, 8, 25],
+  },
+  11: {
+    low: [4, 1.8, 1.5, 1.2, 1, 0.85, 0.85, 1, 1.2, 1.5, 1.8, 4],
+    medium: [14, 4, 2.2, 1.5, 1, 0.5, 0.5, 1, 1.5, 2.2, 4, 14],
+    high: [60, 14, 6, 2.5, 1.2, 0.25, 0.25, 1.2, 2.5, 6, 14, 60],
+  },
+};
 
 type PegView = {
   x: number;
@@ -42,6 +62,8 @@ export class PlinkoScene extends Phaser.Scene {
   private active = false;
   private slotLeft = 16;
   private slotWidth = 56;
+  private rows: PlinkoRows = 7;
+  private risk: PlinkoRisk = 'medium';
   private graphics!: Phaser.GameObjects.Graphics;
   private trailGraphics!: Phaser.GameObjects.Graphics;
   private machineGraphics!: Phaser.GameObjects.Graphics;
@@ -61,13 +83,33 @@ export class PlinkoScene extends Phaser.Scene {
     this.scale.on('resize', () => this.rebuildMachine());
   }
 
+  setRows(rows: PlinkoRows): void {
+    if (!ROW_OPTIONS.includes(rows) || this.rows === rows) return;
+    this.rows = rows;
+    this.rebuildMachine();
+  }
+
+  setRisk(risk: PlinkoRisk): void {
+    if (this.risk === risk) return;
+    this.risk = risk;
+  }
+
+  getRows(): PlinkoRows {
+    return this.rows;
+  }
+
+  getRisk(): PlinkoRisk {
+    return this.risk;
+  }
+
   drop(bet: number): boolean {
     if (this.active || this.ball) return false;
     this.active = true;
     this.callbacks.onDropStarted(bet);
 
+    const radius = this.ballRadius();
     const x = this.boardWidth / 2 + Phaser.Math.Between(-12, 12);
-    const ball = this.matter.add.circle(x, 49, 9, {
+    const ball = this.matter.add.circle(x, 49, radius, {
       label: 'ball',
       restitution: 0.73,
       friction: 0.004,
@@ -83,7 +125,7 @@ export class PlinkoScene extends Phaser.Scene {
 
     this.ball = {
       body: ball,
-      radius: 9,
+      radius,
       bet,
       trail: [],
       startedAt: performance.now(),
@@ -97,33 +139,53 @@ export class PlinkoScene extends Phaser.Scene {
     this.checkTimeoutFinish();
   }
 
+  private pegRadius(): number {
+    if (this.rows === 7) return 5.1;
+    if (this.rows === 9) return 4.35;
+    return 3.55;
+  }
+
+  private ballRadius(): number {
+    if (this.rows === 7) return 8.8;
+    if (this.rows === 9) return 7.5;
+    return 6.4;
+  }
+
+  private currentMultipliers(): number[] {
+    return MULTIPLIERS[this.rows][this.risk];
+  }
+
   private rebuildMachine(): void {
     this.boardWidth = Math.max(300, this.scale.width);
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
+    this.ball = null;
+    this.active = false;
     this.matter.world.localWorld.bodies.slice().forEach((body) => this.matter.world.remove(body));
     this.matter.world.setBounds(22, 36, this.boardWidth - 44, this.boardHeight - 54, 28, true, true, false, true);
 
-    const rows = 10;
+    const rows = this.rows;
     const top = 70;
     const bottom = this.boardHeight - 112;
     const rowGap = (bottom - top) / (rows - 1);
-    const maxWidth = this.boardWidth * 0.78;
+    const maxBoardWidth = this.boardWidth * 0.82;
+    const pegR = this.pegRadius();
 
     for (let row = 0; row < rows; row += 1) {
       const count = row + 3;
-      const gap = Math.min(32, maxWidth / (count - 1));
+      const spread = Phaser.Math.Linear(72, maxBoardWidth, row / Math.max(1, rows - 1));
+      const gap = Math.min(rows === 11 ? 27 : 32, spread / (count - 1));
       const y = top + row * rowGap;
       const start = this.boardWidth / 2 - ((count - 1) * gap) / 2;
       for (let i = 0; i < count; i += 1) {
         const x = start + i * gap;
-        const body = this.matter.add.circle(x, y, 5.25, {
+        const body = this.matter.add.circle(x, y, pegR, {
           isStatic: true,
           label: `peg:${row}:${i}`,
           restitution: 0.92,
           friction: 0.01,
         });
-        this.pegs.push({ x, y, r: 5.25, body, hit: 0 });
+        this.pegs.push({ x, y, r: pegR, body, hit: 0 });
       }
     }
 
@@ -142,19 +204,20 @@ export class PlinkoScene extends Phaser.Scene {
       friction: 0.01,
     });
 
+    const slotCount = rows + 1;
     this.slotLeft = 14;
-    this.slotWidth = (this.boardWidth - 28) / 6;
+    this.slotWidth = (this.boardWidth - 28) / slotCount;
     const slotTop = this.boardHeight - 72;
-    for (let divider = 1; divider < 6; divider += 1) {
-      this.matter.add.rectangle(this.slotLeft + divider * this.slotWidth, slotTop + 24, 5, 54, {
+    for (let divider = 1; divider < slotCount; divider += 1) {
+      this.matter.add.rectangle(this.slotLeft + divider * this.slotWidth, slotTop + 24, 4, 54, {
         isStatic: true,
         label: 'slot-divider',
         restitution: 0.35,
         friction: 0.03,
       });
     }
-    for (let slot = 0; slot < 6; slot += 1) {
-      const sensor = this.matter.add.rectangle(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 30, this.slotWidth - 6, 20, {
+    for (let slot = 0; slot < slotCount; slot += 1) {
+      const sensor = this.matter.add.rectangle(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 30, this.slotWidth - 5, 20, {
         isStatic: true,
         isSensor: true,
         label: `slot:${slot}`,
@@ -189,7 +252,8 @@ export class PlinkoScene extends Phaser.Scene {
   private finish(slot: number): void {
     if (!this.ball || this.ball.done) return;
     this.ball.done = true;
-    const multiplier = MULTIPLIERS[slot] ?? 0.5;
+    const multipliers = this.currentMultipliers();
+    const multiplier = multipliers[slot] ?? 0.5;
     const win = Math.round(this.ball.bet * multiplier);
     const body = this.ball.body;
     this.spawnSpark(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 45, multiplier >= 10 ? 1.9 : 1.0);
@@ -203,8 +267,9 @@ export class PlinkoScene extends Phaser.Scene {
   private checkTimeoutFinish(): void {
     if (!this.ball || this.ball.done) return;
     const pos = this.ball.body.position;
+    const slotCount = this.rows + 1;
     if (performance.now() - this.ball.startedAt > 7600 || pos.y > this.boardHeight - 26) {
-      const slot = Phaser.Math.Clamp(Math.floor((pos.x - this.slotLeft) / (this.boardWidth - 28) * 6), 0, 5);
+      const slot = Phaser.Math.Clamp(Math.floor((pos.x - this.slotLeft) / (this.boardWidth - 28) * slotCount), 0, slotCount - 1);
       this.finish(slot);
     }
   }
@@ -250,7 +315,7 @@ export class PlinkoScene extends Phaser.Scene {
         trail.fillCircle(point.x, point.y, 25);
       });
       g.fillStyle(0xffffff, 0.12);
-      g.fillCircle(pos.x, pos.y, 32);
+      g.fillCircle(pos.x, pos.y, this.ball.radius * 3.2);
       g.fillStyle(0xffffff, 0.96);
       g.fillCircle(pos.x, pos.y, this.ball.radius);
       g.lineStyle(1, 0xffffff, 0.75);
@@ -275,7 +340,7 @@ export class PlinkoScene extends Phaser.Scene {
     g.strokePath();
 
     g.lineStyle(1, 0xffffff, 0.13);
-    for (let i = 0; i <= 6; i += 1) {
+    for (let i = 0; i <= this.rows + 1; i += 1) {
       const x = this.slotLeft + i * this.slotWidth;
       g.lineBetween(x, this.boardHeight - 72, x, this.boardHeight - 16);
     }
