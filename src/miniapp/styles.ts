@@ -12,7 +12,7 @@ button{border:0}
 .brand h1{font-size:21px;line-height:1;margin:0;font-weight:900;letter-spacing:-.05em}
 .brand p{font-size:11px;margin:4px 0 0;color:var(--muted)}
 .content{height:calc(100dvh - 68px - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden}
-.view{display:none;height:100%;overflow:auto;padding-bottom:8px}.view.active{display:block}
+.view{display:none;height:100%;overflow:auto;padding-bottom:8px;position:relative}.view.active{display:block}
 .hero h2{font-size:clamp(46px,13vw,72px);line-height:.88;letter-spacing:-.09em;margin:12px 0 10px}.hero p{color:var(--muted);line-height:1.45;margin:0 0 16px}
 .card{border:1px solid var(--line);border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.03));box-shadow:0 28px 80px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.10);margin-bottom:13px;backdrop-filter:blur(22px)}
 .pad{padding:16px}.title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.title h3{margin:0;font-size:16px}.title span,.tiny,label{font-size:12px;color:var(--muted)}label{font-size:10.5px;letter-spacing:.095em;text-transform:uppercase}
@@ -42,4 +42,7 @@ button{border:0}
 #flow .wave-svg rect{opacity:.34}
 #flow .wave-time{font-size:11px}
 #flow .tts-page:focus-within .tts-bottom{display:none!important}
+.view.is-section-locked>*:not(.section-locked-view){display:none!important}
+.section-locked-view{position:absolute;inset:0;display:grid;place-items:center;z-index:30;background:#000;color:#fff;padding:24px;text-align:center}
+.section-locked-card{display:grid;justify-items:center;gap:10px;max-width:260px;margin:auto}.section-locked-card svg{width:54px;height:54px;color:#fff;opacity:.9}.section-locked-card h2{margin:4px 0 0;font-size:19px;letter-spacing:-.04em;line-height:1.1}.section-locked-card p{margin:0;color:rgba(255,255,255,.52);font-size:12px}
 `;
