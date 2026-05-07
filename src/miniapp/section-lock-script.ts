@@ -5,6 +5,7 @@ export const SECTION_LOCK_SCRIPT = `
   var userCredit=null;
   var lastSyncedCredit=null;
   var unlocked={};
+  var preloaded={};
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';
@@ -13,8 +14,28 @@ export const SECTION_LOCK_SCRIPT = `
   function storageKey(id){return 'sectionUnlocked:'+id}
   function isUnlocked(id){return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
   function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
+  function visualUrl(item){
+    if(!item)return '';
+    if(item.mode==='code')return item.codeImageUrl||'';
+    return item.lockedImageUrl||item.imageUrl||'';
+  }
+  function preload(url){
+    if(!url||preloaded[url])return;
+    preloaded[url]=true;
+    var img=new Image();
+    img.decoding='async';
+    img.src=url;
+  }
+  function preloadLockImages(){
+    Object.keys(locks).forEach(function(id){
+      var item=locks[id];
+      preload(item.lockedImageUrl||item.imageUrl||'');
+      preload(item.codeImageUrl||'');
+    });
+  }
   function lockVisual(item){
-    if(item&&item.imageUrl)return '<img class="section-lock-image" src="'+item.imageUrl+'?t='+(Date.now())+'" alt=""/>';
+    var url=visualUrl(item);
+    if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}
     return lockSvg;
   }
 
@@ -75,7 +96,8 @@ export const SECTION_LOCK_SCRIPT = `
   function loadGlobalLocks(){
     return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
       locks={};
-      (data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage}});
+      (data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});
+      preloadLockImages();
     }).catch(function(){});
   }
 
