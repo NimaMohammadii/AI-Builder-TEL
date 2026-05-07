@@ -5,6 +5,7 @@ export const PLINKO_SCRIPT = `
   var rows=7;
   var rowOptions=[7,9,11];
   var credit=Number(localStorage.getItem('plinkoCredit')||'1000')||1000;
+  var creditIconUrl='/app/api/uploaded-image/credit-icon.png';
   var multiplierTable={
     7:{low:[2,1.4,1.1,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,1.5,4,12]},
     9:{low:[3,1.6,1.3,1.1,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,1.3,3,8,25]},
@@ -18,6 +19,7 @@ export const PLINKO_SCRIPT = `
   function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;updateCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
   window.addEventListener('vexa-credit-sync',function(ev){if(ev&&ev.detail)forceCredit(ev.detail.credit)});
   window.addEventListener('storage',function(ev){if(ev&&ev.key==='plinkoCredit')forceCredit(ev.newValue)});
+  window.addEventListener('vexa-credit-icon-sync',function(ev){if(ev&&ev.detail&&ev.detail.url)updateTokenImage(ev.detail.url)});
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
   function currentMultipliers(){return multiplierTable[rows][risk]}
@@ -26,6 +28,7 @@ export const PLINKO_SCRIPT = `
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+  function updateTokenImage(url){creditIconUrl=url||creditIconUrl;if(state&&state.tokenImg&&state.tokenImg.src!==creditIconUrl){state.tokenImg.src=creditIconUrl}}
   function drawGlassPeg(ctx,x,y,r){
     ctx.save();
     ctx.shadowColor='rgba(255,255,255,.22)';
@@ -107,7 +110,7 @@ export const PLINKO_SCRIPT = `
     var dpr=Math.min(window.devicePixelRatio||1,3);
     canvas.width=320*dpr;canvas.height=306*dpr;
     var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    var img=new Image();img.onload=function(){draw()};img.src='/app/api/credit-icon.png';
+    var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;
     state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],last:0,raf:state&&state.raf||0,tokenImg:img};
     updateCredit();setRows(rows);setRisk(risk);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
