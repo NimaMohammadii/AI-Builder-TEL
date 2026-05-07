@@ -10,7 +10,7 @@ export const PLINKO_STYLES = `
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  gap:3px;
+  gap:0;
   padding:0 0 108px;
   position:relative;
 }
@@ -54,8 +54,8 @@ export const PLINKO_STYLES = `
 }
 
 .plinko-stage{
-  width:min(100%,326px);
-  aspect-ratio:320/430;
+  width:min(94%,342px);
+  aspect-ratio:320/355;
   display:grid;
   place-items:center;
   margin-top:-18px;
@@ -63,6 +63,13 @@ export const PLINKO_STYLES = `
   z-index:1;
   flex:0 0 auto;
   overflow:hidden;
+  padding:10px 10px 0;
+  border:1px solid rgba(255,255,255,.12);
+  border-bottom:0;
+  border-radius:24px 24px 0 0;
+  background:rgba(255,255,255,.045);
+  box-shadow:0 18px 50px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
 }
 
 .plinko-canvas{
@@ -76,15 +83,16 @@ export const PLINKO_STYLES = `
   width:min(94%,342px);
   display:grid;
   gap:7px;
-  margin-top:-54px;
+  margin-top:0;
   position:relative;
   z-index:2;
   flex:0 0 auto;
   padding:10px;
   border:1px solid rgba(255,255,255,.12);
-  border-radius:24px;
+  border-top:0;
+  border-radius:0 0 24px 24px;
   background:rgba(255,255,255,.045);
-  box-shadow:0 18px 50px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
+  box-shadow:0 18px 50px rgba(0,0,0,.58), inset 0 -1px 0 rgba(255,255,255,.05);
   backdrop-filter:blur(18px);
 }
 
