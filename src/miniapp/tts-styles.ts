@@ -1,7 +1,9 @@
 export const TTS_STYLES = `
 /* TTS-only sizing refinements. This file must not style the main bottom navigation. */
 #flow .tts-head{
-  align-items:flex-end!important;
+  align-items:flex-start!important;
+  justify-content:flex-end!important;
+  gap:12px!important;
 }
 
 #flow .tts-area textarea{
@@ -14,14 +16,16 @@ export const TTS_STYLES = `
 }
 
 #flow .credit-pill{
-  order:2;
+  order:1;
   margin-left:auto;
-  margin-bottom:38px;
+  margin-right:0;
+  margin-bottom:0;
 }
 
 #flow .voice-wrap{
-  order:1;
-  margin-left:auto;
+  order:2;
+  margin-left:0;
+  margin-right:0;
 }
 
 #flow .tts-bottom{
