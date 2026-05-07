@@ -16,13 +16,14 @@ export const PLINKO_STYLES = `
 }
 
 .plinko-top{
-  width:min(100%,340px);
+  width:auto;
   display:flex;
   justify-content:flex-end;
-  margin-top:0;
-  position:relative;
-  z-index:3;
-  flex:0 0 auto;
+  position:fixed;
+  top:calc(26px + env(safe-area-inset-top));
+  right:16px;
+  z-index:12;
+  pointer-events:none;
 }
 
 .plinko-credit{
@@ -39,6 +40,7 @@ export const PLINKO_STYLES = `
   font-weight:900;
   font-variant-numeric:tabular-nums;
   overflow:hidden;
+  pointer-events:auto;
 }
 
 .plinko-credit img{
