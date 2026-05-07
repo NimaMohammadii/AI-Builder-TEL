@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
 import { getSectionLocks, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
+import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
 import type { Env } from './types';
 
 const activitySchema = z.object({
@@ -23,11 +24,21 @@ const codeLockSchema = z.object({
   code: z.string().min(1).max(80),
 });
 
+const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
+const userCreditSchema = z.object({ userId: z.string().min(1).max(80), credit: z.number().int().nonnegative() });
+const userCreditAdjustSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
+const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
+
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => {
   return c.json(await trackAppUser(c.env, c.req.valid('json')));
 });
 
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
+
+app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => {
+  const query = c.req.valid('query');
+  return c.json(await publicUserControls(c.env, query.userId));
+});
 
 app.post('/app/api/section-locks/verify', zValidator('json', codeLockSchema), async (c) => {
   const body = c.req.valid('json');
@@ -43,6 +54,32 @@ app.get('/admin/api/users', async (c) => {
     console.error('load admin users failed', error);
     return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalCredit: 0 }, error: 'Database is not ready. Run migrations.' }, 500);
   }
+});
+
+app.get('/admin/api/user-controls', zValidator('query', userIdSchema), async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await getUserControls(c.env, c.req.valid('query').userId));
+});
+
+app.post('/admin/api/users/credit', zValidator('json', userCreditSchema), async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try { return c.json(await setUserCredit(c.env, body.userId, body.credit)); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update credit' }, 400); }
+});
+
+app.post('/admin/api/users/credit-adjust', zValidator('json', userCreditAdjustSchema), async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try { return c.json(await adjustUserCredit(c.env, body.userId, body.delta)); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not adjust credit' }, 400); }
+});
+
+app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSchema), async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try { return c.json(await setUserSectionBlocked(c.env, body.userId, body.sectionId, body.blocked)); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update access' }, 400); }
 });
 
 app.get('/admin/api/section-locks', async (c) => {
