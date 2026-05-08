@@ -40,11 +40,11 @@ export const ACTIVITY_SCRIPT = `
     try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
   }
 
-  function markCreditChanged(value){
+  function markGameCreditChanged(value){
     var credit=writeCreditToUi(value);
     localCreditVersion++;
     try{localStorage.setItem('vexaCreditVersion',String(localCreditVersion))}catch(e){}
-    if(lastConfirmedCredit===null||credit!==lastConfirmedCredit)localCreditDirty=true;
+    localCreditDirty=lastConfirmedCredit===null||credit!==lastConfirmedCredit;
   }
 
   function userId(){
@@ -78,15 +78,12 @@ export const ACTIVITY_SCRIPT = `
       .catch(function(){});
   }
 
-  function onLocalCreditChange(ev){
+  window.addEventListener('vexa-credit-game-change',function(ev){
     if(ev&&ev.detail&&ev.detail.credit!==undefined){
-      markCreditChanged(ev.detail.credit);
+      markGameCreditChanged(ev.detail.credit);
       setTimeout(function(){send(true)},40);
     }
-  }
-
-  window.addEventListener('vexa-credit-set',onLocalCreditChange);
-  window.addEventListener('vexa-credit-game-change',onLocalCreditChange);
+  });
   document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
   document.addEventListener('visibilitychange',function(){send(true)});
   window.addEventListener('beforeunload',function(){send(true)});
