@@ -1,4 +1,5 @@
 import type { Env, TelegramUpdate } from './types';
+import { syncActivityCredit } from './user-controls';
 
 export type AppUserActivityPayload = {
   userId?: string;
@@ -39,15 +40,16 @@ export async function trackTelegramBotUser(env: Env, botId: string, update: Tele
   }
 }
 
-export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; credit?: number } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
   if (!userId) return { ok: false, error: 'Missing user id' };
   const username = cleanText(payload.username, 80);
   const firstName = cleanText(payload.firstName, 120);
   const section = cleanSection(payload.section);
-  const credit = Math.max(0, Math.floor(Number(payload.credit ?? 0) || 0));
+  const incomingCredit = Math.max(0, Math.floor(Number(payload.credit ?? 0) || 0));
 
   try {
+    const credit = await syncActivityCredit(env, userId, incomingCredit);
     await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(telegram_user_id) DO UPDATE SET
@@ -59,7 +61,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, section, credit)
       .run();
-    return { ok: true };
+    return { ok: true, credit };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };
