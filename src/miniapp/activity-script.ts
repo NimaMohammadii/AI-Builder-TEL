@@ -4,6 +4,8 @@ export const ACTIVITY_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lastPayload='';
   var lastSent=0;
+  var lastConfirmedCredit=null;
+  var localCreditDirty=false;
 
   function activeSection(){
     var active=document.querySelector('.view.active');
@@ -25,9 +27,16 @@ export const ACTIVITY_SCRIPT = `
   function applyServerCredit(value){
     if(value===null||value===undefined)return;
     var credit=Math.max(0,Math.floor(Number(value)||0));
+    lastConfirmedCredit=credit;
+    localCreditDirty=false;
     try{localStorage.setItem('vexaCredit',String(credit));localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
     ['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
     try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
+  }
+
+  function markCreditChanged(value){
+    var credit=Math.max(0,Math.floor(Number(value)||0));
+    if(lastConfirmedCredit===null||credit!==lastConfirmedCredit)localCreditDirty=true;
   }
 
   function userId(){
@@ -40,7 +49,8 @@ export const ACTIVITY_SCRIPT = `
       username:user.username||null,
       firstName:user.first_name||null,
       section:activeSection(),
-      credit:currentCredit()
+      credit:currentCredit(),
+      creditChanged:localCreditDirty
     };
   }
 
@@ -58,7 +68,12 @@ export const ACTIVITY_SCRIPT = `
       .catch(function(){});
   }
 
-  window.addEventListener('vexa-credit-set',function(ev){if(ev&&ev.detail&&ev.detail.credit!==undefined)applyServerCredit(ev.detail.credit)});
+  window.addEventListener('vexa-credit-set',function(ev){
+    if(ev&&ev.detail&&ev.detail.credit!==undefined){
+      markCreditChanged(ev.detail.credit);
+      setTimeout(function(){send(true)},40);
+    }
+  });
   document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
   document.addEventListener('visibilitychange',function(){send(true)});
   window.addEventListener('beforeunload',function(){send(true)});
