@@ -203,7 +203,7 @@ button { font: inherit; border: 0; cursor: pointer; }
   right: 13px;
   bottom: 12px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   gap: 6px;
   z-index: 5;
   pointer-events: none;
@@ -217,9 +217,35 @@ button { font: inherit; border: 0; cursor: pointer; }
   place-items: center;
   align-content: center;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.11), 0 14px 26px rgba(0,0,0,.34);
+  overflow: hidden;
+  position: relative;
   transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
 }
+.slot::before,
+.slot::after {
+  content: "";
+  position: absolute;
+  inset: 9px 11px;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.64) rotate(-6deg);
+}
+.slot::before {
+  background:
+    linear-gradient(32deg, transparent 47%, rgba(255,255,255,.9) 48% 51%, transparent 52%),
+    linear-gradient(112deg, transparent 49%, rgba(160,232,255,.72) 50% 52%, transparent 53%),
+    linear-gradient(-18deg, transparent 44%, rgba(255,255,255,.72) 45% 47%, transparent 48%);
+}
+.slot::after {
+  border: 1px solid rgba(211,246,255,.75);
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(198,244,255,.42), inset 0 0 18px rgba(255,255,255,.08);
+}
 .slot b { font-size: 16px; line-height: 1; font-weight: 1000; letter-spacing: -.04em; }
+.slot.breaking::before,
+.slot.breaking::after {
+  animation: glass-crack-flash .52s ease-out both;
+}
 .slot.active {
   transform: translateY(-7px) scale(1.04);
   border-color: rgba(255,255,255,.68);
@@ -325,4 +351,11 @@ button { font: inherit; border: 0; cursor: pointer; }
   .hud-card { min-height: 62px; padding: 10px; }
   .drop-button { height: 52px; }
   .result-pill { height: 46px; }
+}
+
+
+@keyframes glass-crack-flash {
+  0% { opacity: 0; transform: scale(.58) rotate(-8deg); }
+  18% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 0; transform: scale(1.28) rotate(7deg); }
 }

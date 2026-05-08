@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import './styles.css';
 import { PlinkoScene, type PlinkoDropResult } from './game/PlinkoScene';
 
-const MULTIPLIERS = [10, 3, 0.5, 0.5, 3, 10] as const;
+const UI_MULTIPLIERS = [5, 2, 1.2, 0.5, 0.5, 1.2, 2, 5] as const;
 
 type TelegramWebApp = {
   ready?: () => void;
@@ -16,6 +16,7 @@ type TelegramWebApp = {
 declare global {
   interface Window {
     Telegram?: { WebApp?: TelegramWebApp };
+    webkitAudioContext?: typeof AudioContext;
   }
 }
 
@@ -25,6 +26,7 @@ let lastWin = 0;
 let phaserGame: Phaser.Game | null = null;
 let plinkoScene: PlinkoScene | null = null;
 let isDropping = false;
+let audioContext: AudioContext | null = null;
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -59,7 +61,7 @@ app.innerHTML = `
         <div id="gameStage" class="game-stage"></div>
         <div class="drop-gate"><span>∨</span></div>
         <div class="slots" id="slots">
-          ${MULTIPLIERS.map((m, i) => `<div class="slot${i === 0 || i === 5 ? ' hot' : ''}" data-slot="${i}"><b>${m}x</b></div>`).join('')}
+          ${UI_MULTIPLIERS.map((m, i) => `<div class="slot${i === 0 || i === UI_MULTIPLIERS.length - 1 ? ' hot' : ''}" data-slot="${i}"><b>${m}x</b></div>`).join('')}
         </div>
       </div>
 
@@ -89,8 +91,61 @@ app.innerHTML = `
   </main>
 `;
 
-const stage = document.querySelector<HTMLDivElement>('#gameStage');
-if (!stage) throw new Error('Game stage not found');
+const stageElement = document.querySelector<HTMLDivElement>('#gameStage');
+if (!stageElement) throw new Error('Game stage not found');
+const stage = stageElement;
+
+function getAudioContext(): AudioContext | null {
+  const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext;
+  if (!AudioContextCtor) return null;
+  if (!audioContext) audioContext = new AudioContextCtor();
+  return audioContext;
+}
+
+function primeAudio(): void {
+  void getAudioContext()?.resume();
+}
+
+function playGlassBreakSound(): void {
+  const context = getAudioContext();
+  if (!context) return;
+  void context.resume();
+
+  const now = context.currentTime;
+  const noiseBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.34), context.sampleRate);
+  const samples = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < samples.length; i += 1) {
+    const fade = 1 - i / samples.length;
+    samples[i] = (Math.random() * 2 - 1) * fade * fade;
+  }
+
+  const noise = context.createBufferSource();
+  noise.buffer = noiseBuffer;
+  const highpass = context.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.setValueAtTime(1800, now);
+  const noiseGain = context.createGain();
+  noiseGain.gain.setValueAtTime(0.0001, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.38, now + 0.012);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+  noise.connect(highpass).connect(noiseGain).connect(context.destination);
+  noise.start(now);
+  noise.stop(now + 0.36);
+
+  for (let i = 0; i < 9; i += 1) {
+    const ping = context.createOscillator();
+    const pingGain = context.createGain();
+    const start = now + i * 0.012;
+    ping.type = 'triangle';
+    ping.frequency.setValueAtTime(Phaser.Math.Between(1800, 5200), start);
+    pingGain.gain.setValueAtTime(0.0001, start);
+    pingGain.gain.exponentialRampToValueAtTime(0.07, start + 0.004);
+    pingGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.095);
+    ping.connect(pingGain).connect(context.destination);
+    ping.start(start);
+    ping.stop(start + 0.11);
+  }
+}
 
 function haptic(kind: 'impact' | 'success'): void {
   try {
@@ -131,7 +186,18 @@ function setActiveSlot(slot: number): void {
   document.querySelector(`.slot[data-slot="${slot}"]`)?.classList.add('active');
 }
 
+function triggerGlassSlotBreak(slot: number): void {
+  const slotElement = document.querySelector(`.slot[data-slot="${slot}"]`);
+  if (!slotElement) return;
+  slotElement.classList.remove('breaking');
+  window.requestAnimationFrame(() => {
+    slotElement.classList.add('breaking');
+    window.setTimeout(() => slotElement.classList.remove('breaking'), 520);
+  });
+}
+
 function onDropStarted(dropBet: number): void {
+  primeAudio();
   isDropping = true;
   balance -= dropBet;
   clearActiveSlot();
@@ -160,6 +226,11 @@ function mountGame(): void {
     onDropStarted,
     onDropFinished,
     onPegHit: () => haptic('impact'),
+    onGlassBreak: (slot) => {
+      triggerGlassSlotBreak(slot);
+      playGlassBreakSound();
+      haptic('impact');
+    },
   });
 
   phaserGame = new Phaser.Game({
@@ -177,7 +248,7 @@ function mountGame(): void {
       default: 'matter',
       matter: {
         debug: false,
-        gravity: { y: 1.08 },
+        gravity: { x: 0, y: 1.08 },
       },
     },
     scene: plinkoScene,
