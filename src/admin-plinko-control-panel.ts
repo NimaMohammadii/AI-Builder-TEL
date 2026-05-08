@@ -73,7 +73,7 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
   function cleanConfig(){
     const next=JSON.parse(JSON.stringify(config));
     next.mode=document.getElementById('plinkoMode').value;
-    rowLabels.forEach(row=>riskLabels.forEach(risk=>{const item=next.rows[row][risk];const expected=Number(row)+1;item.multipliers=(item.multipliers||[]).slice(0,expected).map(v=>Math.max(0,Number(v)||0));item.weights=(item.weights||[]).slice(0,expected).map(v=>Math.max(0,Number(v)||0));}));
+    rowLabels.forEach(row=>riskLabels.forEach(risk=>{const item=next.rows[row][risk];const expected=Number(row)+2;item.multipliers=(item.multipliers||[]).slice(0,expected).map(v=>Math.max(0,Number(v)||0));item.weights=(item.weights||[]).slice(0,expected).map(v=>Math.max(0,Number(v)||0));}));
     return next;
   }
   async function savePlinkoControl(){
