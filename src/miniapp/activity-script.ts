@@ -68,12 +68,15 @@ export const ACTIVITY_SCRIPT = `
       .catch(function(){});
   }
 
-  window.addEventListener('vexa-credit-set',function(ev){
+  function onLocalCreditChange(ev){
     if(ev&&ev.detail&&ev.detail.credit!==undefined){
       markCreditChanged(ev.detail.credit);
       setTimeout(function(){send(true)},40);
     }
-  });
+  }
+
+  window.addEventListener('vexa-credit-set',onLocalCreditChange);
+  window.addEventListener('vexa-credit-game-change',onLocalCreditChange);
   document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
   document.addEventListener('visibilitychange',function(){send(true)});
   window.addEventListener('beforeunload',function(){send(true)});
