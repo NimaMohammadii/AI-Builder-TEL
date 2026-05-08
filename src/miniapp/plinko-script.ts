@@ -54,18 +54,13 @@ export const PLINKO_SCRIPT = `
   }
   function drawGlassPeg(ctx,x,y,r){
     ctx.save();
-    ctx.shadowColor='rgba(255,255,255,.18)';
-    ctx.shadowBlur=Math.max(3,r*.75);
-    ctx.beginPath();ctx.arc(x,y,r*1.04,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fill();ctx.shadowBlur=0;
-    var edge=ctx.createRadialGradient(x-r*.36,y-r*.42,r*.08,x,y,r*1.08);
-    edge.addColorStop(0,'rgba(255,255,255,1)');edge.addColorStop(.25,'rgba(255,255,255,.86)');edge.addColorStop(.58,'rgba(255,255,255,.38)');edge.addColorStop(1,'rgba(255,255,255,.10)');
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=edge;ctx.fill();
-    var core=ctx.createRadialGradient(x-r*.26,y-r*.30,r*.05,x+r*.08,y+r*.12,r*.82);
-    core.addColorStop(0,'rgba(255,255,255,.92)');core.addColorStop(.38,'rgba(255,255,255,.42)');core.addColorStop(1,'rgba(255,255,255,.055)');
-    ctx.beginPath();ctx.arc(x,y,r*.74,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
-    ctx.beginPath();ctx.arc(x-r*.28,y-r*.34,Math.max(1,r*.24),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.86)';ctx.fill();
-    ctx.beginPath();ctx.arc(x+r*.24,y+r*.28,Math.max(.7,r*.11),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.20)';ctx.fill();
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=Math.max(.7,r*.105);ctx.stroke();ctx.restore();
+    ctx.shadowColor='rgba(255,255,255,.14)';ctx.shadowBlur=Math.max(4,r*.78);
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+    var fill=ctx.createRadialGradient(x-r*.28,y-r*.34,r*.08,x,y,r*1.05);
+    fill.addColorStop(0,'rgba(255,255,255,.34)');fill.addColorStop(.42,'rgba(255,255,255,.12)');fill.addColorStop(1,'rgba(255,255,255,.018)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(x,y,r-.35,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.46)';ctx.lineWidth=Math.max(.75,r*.12);ctx.stroke();
+    ctx.beginPath();ctx.arc(x-r*.18,y-r*.26,Math.max(1,r*.32),Math.PI*.95,Math.PI*1.9);ctx.strokeStyle='rgba(255,255,255,.38)';ctx.lineWidth=Math.max(.7,r*.1);ctx.stroke();
+    ctx.restore();
   }
   function drawGlassBin(ctx,bin){
     var r=Math.min(10,Math.max(5,bin.w*.28));
