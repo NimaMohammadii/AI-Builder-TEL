@@ -14,13 +14,15 @@ type StoredUserControls = {
   blockedSections?: unknown;
 };
 
+type UserControlRow = { blocked_sections_json: string };
+
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
-  const saved = await env.BOT_CACHE.get(key(id), 'json').catch(() => null) as StoredUserControls | null;
+  const saved = await readSectionControls(env, id);
   return {
     userId: id,
     credit: await readAppUserCredit(env, id),
-    blockedSections: Array.isArray(saved?.blockedSections) ? saved.blockedSections.filter((section): section is string => typeof section === 'string' && VALID_SECTIONS.has(section)) : [],
+    blockedSections: normalizeBlockedSections(saved?.blockedSections),
   };
 }
 
@@ -58,8 +60,34 @@ export async function publicUserControls(env: Env, userId: string): Promise<{ us
   return { userId: controls.userId, credit: controls.credit, blockedSections: controls.blockedSections };
 }
 
+async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
+  try {
+    await ensureUserControlsTable(env);
+    const row = await env.DB.prepare('SELECT blocked_sections_json FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
+    if (row?.blocked_sections_json) return { userId, blockedSections: JSON.parse(row.blocked_sections_json) };
+  } catch (error) {
+    console.warn('read user section controls from D1 failed', error);
+  }
+  return env.BOT_CACHE.get(key(userId), 'json').catch(() => null) as Promise<StoredUserControls | null>;
+}
+
 async function saveSectionControls(env: Env, userId: string, blockedSections: string[]): Promise<void> {
-  await env.BOT_CACHE.put(key(userId), JSON.stringify({ userId, blockedSections }));
+  await ensureUserControlsTable(env);
+  await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET
+      blocked_sections_json = excluded.blocked_sections_json,
+      updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, JSON.stringify(normalizeBlockedSections(blockedSections)))
+    .run();
+}
+
+async function ensureUserControlsTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_controls (
+    user_id TEXT PRIMARY KEY,
+    blocked_sections_json TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
 }
 
 async function readAppUserCredit(env: Env, userId: string): Promise<number> {
@@ -87,6 +115,10 @@ async function addAppUserCredit(env: Env, userId: string, delta: number): Promis
       updated_at = CURRENT_TIMESTAMP`)
     .bind(userId, DEFAULT_CREDIT + value, value)
     .run();
+}
+
+function normalizeBlockedSections(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((section): section is string => typeof section === 'string' && VALID_SECTIONS.has(section)) : [];
 }
 
 function normalizeCredit(value: unknown): number {
