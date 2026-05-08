@@ -61,12 +61,13 @@ export const ACTIVITY_SCRIPT = `
     var delta=Number.isFinite(Number(explicitDelta))?Math.floor(Number(explicitDelta)):nextCredit-previous;
     pendingCredit=Math.max(0,previous+delta);
     creditVersion++;
+    var requestCreditVersion=creditVersion;
     if(delta===0)return;
     creditInFlight++;
     creditQueue=creditQueue.then(function(){
       return fetch('/app/api/credit/game-delta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,delta:delta})})
         .then(function(r){return r.json().catch(function(){return null})})
-        .then(function(j){if(j&&j.credit!==undefined)applyServerCredit(j.credit)})
+        .then(function(j){if(j&&j.credit!==undefined){if(requestCreditVersion===creditVersion){applyServerCredit(j.credit)}else{confirmedCredit=Math.max(0,Math.floor(Number(j.credit)||0))}}})
         .catch(function(){})
         .then(function(){creditInFlight=Math.max(0,creditInFlight-1)});
     });

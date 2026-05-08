@@ -37,7 +37,7 @@ export const PLINKO_SCRIPT = `
 
   function loadPlinkoControl(){
     fetch('/app/api/plinko-control',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
-      if(data&&data.rows){plinkoControl=data;rebuildBoard()}
+      if(data&&data.rows){plinkoControl=data;rebuildBoard(hasActiveBalls())}
     }).catch(function(){});
   }
 
@@ -61,9 +61,10 @@ export const PLINKO_SCRIPT = `
     roundRect(ctx,bin.x+2,bin.y+2,bin.w-4,Math.max(7,bin.h*.42),6);var shine=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h*.55);shine.addColorStop(0,'rgba(255,255,255,.34)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();ctx.restore();
   }
 
-  function setRisk(next){risk=next||'medium';document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});rebuildBoard()}
-  function setRows(next){rows=Number(next)||7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);rebuildBoard()}
-  function rebuildBoard(){if(!state)return init(true);state.pegs=makePegs();state.bins=makeBins();state.balls=[];draw()}
+  function hasActiveBalls(){return !!(state&&state.balls&&state.balls.some(function(ball){return ball&&!ball.sinking}))}
+  function setRisk(next){if(hasActiveBalls()){toast('Wait for current balls to finish');return false}risk=next||'medium';document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});rebuildBoard(false);return true}
+  function setRows(next){if(hasActiveBalls()){toast('Wait for current balls to finish');return false}rows=Number(next)||7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);rebuildBoard(false);return true}
+  function rebuildBoard(preserveBalls){if(!state)return init(true);var oldBalls=preserveBalls&&state.balls?state.balls:[];state.pegs=makePegs();state.bins=makeBins();state.balls=oldBalls;draw()}
 
   function makePegs(){
     var pegs=[];var top=14;var bottom=rows===11?238:rows===9?235:230;var rowGap=(bottom-top)/Math.max(1,rows-1);var slotCount=rows+1;var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
@@ -83,7 +84,7 @@ export const PLINKO_SCRIPT = `
     var canvas=q('plinkoCanvasV2');if(!canvas)return;if(state&&state.canvas===canvas&&!force){draw();return}
     var dpr=Math.min(window.devicePixelRatio||1,3);canvas.width=320*dpr;canvas.height=306*dpr;var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],last:0,raf:state&&state.raf||0,tokenImg:img};
-    renderCredit();setRows(rows);setRisk(risk);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
+    renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
   function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
@@ -97,7 +98,7 @@ export const PLINKO_SCRIPT = `
       ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.58}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.58}
       for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<min){ball.hitCount=(ball.hitCount||0)+1;var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*min;ball.y=peg.y+ny*min;var dot=ball.vx*nx+ball.vy*ny;ball.vx=(ball.vx-1.55*dot*nx)*.82+(Math.random()-.5)*.34;ball.vy=(ball.vy-1.46*dot*ny)*.72;if(ball.vy<.32)ball.vy=.32;if(ball.vy>2.65)ball.vy=2.65}}
       if(ball.y+ball.r>binTop+5){var idx=binIndexFromX(ball.x,bins,left,right);var bin=bins[idx],holeX=bin.x+bin.w/2;ball.vx+=(holeX-ball.x)*.006*dt;ball.vy*=.965;for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.42}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.42}ball.vy*=.82}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.x+=(holeX-ball.x)*.10;ball.vx*=.46;ball.vy*=.18;settle(ball,bin);ball.sinking=true;ball.sink=0}}
-      if(ball.y>316)balls.splice(b,1)}
+      if(ball.y>316){if(!ball.paid){var fallbackIdx=binIndexFromX(ball.x,bins,left,right);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
     draw();state.raf=requestAnimationFrame(tick);
   }
 
