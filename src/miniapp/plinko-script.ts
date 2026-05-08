@@ -54,12 +54,14 @@ export const PLINKO_SCRIPT = `
     ball.targetIndex=resolveLandingIndex(ball.targetIndex);
     var target=controlledLaneX(ball.targetIndex,bins,left,right,ball.r);
     if(!Number.isFinite(ball.targetX)||ball.targetLaneIndex!==ball.targetIndex){ball.targetX=target;ball.targetLaneIndex=ball.targetIndex}
-    var early=clamp((ball.y+8)/130,0,1);
+    var firstRow=state&&state.pegs&&state.pegs[0]?state.pegs[0].y:32;
+    var rowGap=state&&state.pegs&&state.pegs[3]?state.pegs[3].y-firstRow:34;
+    var early=clamp((ball.y-(firstRow+rowGap*.55))/120,0,1);
     var late=clamp((ball.y-132)/112,0,1);
     var desired=ball.targetX;
     var delta=desired-ball.x;
-    ball.vx+=clamp(delta*(.0048+.0042*early+.0038*late),-.15,.15)*dt;
-    ball.vx*=1-(.018+.058*late)*dt;
+    if(early>0)ball.vx+=clamp(delta*(.0028+.0034*early+.0038*late),-.13,.13)*dt;
+    ball.vx*=1-(.01*early+.058*late)*dt;
     if(ball.y>222){
       ball.x+=clamp(delta,-2.3,2.3)*dt;
       ball.vx*=.86;
@@ -157,6 +159,12 @@ export const PLINKO_SCRIPT = `
   }
 
   function binIndexFromX(x,bins,left,right){return clamp(Math.floor((x-left)/((right-left)/bins.length)),0,bins.length-1)}
+  function topDropPoint(radius){
+    var pegs=state&&state.pegs&&state.pegs.length>=3?state.pegs:makePegs();
+    var center=(pegs[0].x+pegs[1].x+pegs[2].x)/3;
+    var y=pegs[0].y-(radius*2.9)-2;
+    return {x:center,y:y};
+  }
 
   function init(force){
     var canvas=q('plinkoCanvasV2');if(!canvas)return;if(state&&state.canvas===canvas&&!force){draw();return}
@@ -165,7 +173,7 @@ export const PLINKO_SCRIPT = `
     renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var controlled=isControlled();var target=controlled?chooseWeightedIndex():null;var radius=ballRadius();var bins=state.bins||makeBins();var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=controlled?controlledLaneX(target,bins,left,right,radius):null;var weakBias=target!==null&&target!==undefined?(target-(rows/2))*.012:0;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=controlled?targetX:160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);var vx=controlled?clamp((targetX-startX)*.004,-.04,.04):weakBias+(Math.random()*.12-.06);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:radius,bet:bet,targetIndex:target,targetX:targetX,targetLaneIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
+  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var controlled=isControlled();var target=controlled?chooseWeightedIndex():null;var radius=ballRadius();var bins=state.bins||makeBins();var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=controlled?controlledLaneX(target,bins,left,right,radius):null;var weakBias=target!==null&&target!==undefined?(target-(rows/2))*.006:0;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<32}).length;var spread=[0,-3.2,3.2,-5.4,5.4,-1.6,1.6];var dropPoint=topDropPoint(radius);var startX=dropPoint.x+(spread[activeTop%spread.length]||0)+(Math.random()*1.2-.6);var vx=weakBias+(Math.random()*.035-.0175);state.balls.push({x:startX,y:dropPoint.y,vx:vx,vy:.12,r:radius,bet:bet,targetIndex:target,targetX:targetX,targetLaneIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){

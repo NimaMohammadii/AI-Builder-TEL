@@ -108,8 +108,9 @@ export class PlinkoScene extends Phaser.Scene {
     this.callbacks.onDropStarted(bet);
 
     const radius = this.ballRadius();
-    const x = this.boardWidth / 2 + Phaser.Math.Between(-12, 12);
-    const ball = this.matter.add.circle(x, 49, radius, {
+    const spawn = this.topDropPoint(radius);
+    const x = spawn.x + Phaser.Math.FloatBetween(-3.5, 3.5);
+    const ball = this.matter.add.circle(x, spawn.y, radius, {
       label: 'ball',
       restitution: 0.73,
       friction: 0.004,
@@ -118,8 +119,8 @@ export class PlinkoScene extends Phaser.Scene {
     });
 
     this.matter.body.setVelocity(ball, {
-      x: Phaser.Math.FloatBetween(-1.8, 1.8),
-      y: Phaser.Math.FloatBetween(1.0, 1.55),
+      x: Phaser.Math.FloatBetween(-0.28, 0.28),
+      y: Phaser.Math.FloatBetween(0.85, 1.15),
     });
     this.matter.body.setAngularVelocity(ball, Phaser.Math.FloatBetween(-0.12, 0.12));
 
@@ -155,6 +156,15 @@ export class PlinkoScene extends Phaser.Scene {
     if (this.rows === 7) return 8.0;
     if (this.rows === 9) return 6.65;
     return 5.45;
+  }
+
+  private topDropPoint(radius: number): Phaser.Math.Vector2 {
+    const topPegs = this.pegs.slice(0, 3);
+    if (topPegs.length === 3) {
+      const x = topPegs.reduce((sum, peg) => sum + peg.x, 0) / topPegs.length;
+      return new Phaser.Math.Vector2(x, topPegs[0].y - radius * 2.85 - 2);
+    }
+    return new Phaser.Math.Vector2(this.boardWidth / 2, 49);
   }
 
   private currentMultipliers(): number[] {
