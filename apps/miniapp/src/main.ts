@@ -220,15 +220,6 @@ function setActiveSlot(slot: number): void {
   document.querySelector(`.slot[data-slot="${slot}"]`)?.classList.add('active');
 }
 
-function triggerGlassSlotBreak(slot: number): void {
-  const slotElement = document.querySelector(`.slot[data-slot="${slot}"]`);
-  if (!slotElement) return;
-  slotElement.classList.remove('breaking');
-  window.requestAnimationFrame(() => {
-    slotElement.classList.add('breaking');
-    window.setTimeout(() => slotElement.classList.remove('breaking'), 520);
-  });
-}
 
 function onDropStarted(dropBet: number): void {
   primeAudio();
@@ -264,7 +255,6 @@ function mountGame(): void {
       haptic('impact');
     },
     onGlassBreak: (slot) => {
-      triggerGlassSlotBreak(slot);
       playGlassBreakSound();
       haptic('impact');
     },

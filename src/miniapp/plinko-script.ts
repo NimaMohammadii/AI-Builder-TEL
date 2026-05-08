@@ -9,6 +9,9 @@ export const PLINKO_SCRIPT = `
   var plinkoControl=null;
   var lastPlinkoControlStamp='';
   var BOARD_TOP_PAD=20;
+  var audioContext=null;
+  var lastPegSoundAt=0;
+  var pegToneIndex=0;
   var multiplierTable={
     7:{low:[2,1.4,1.1,.9,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,.2,1.5,4,12]},
     9:{low:[3,1.6,1.3,1.1,.8,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,.2,1.3,3,8,25]},
@@ -68,6 +71,9 @@ export const PLINKO_SCRIPT = `
   function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
   function updateTokenImage(url){creditIconUrl=url||creditIconUrl;if(state&&state.tokenImg&&state.tokenImg.src!==creditIconUrl){state.tokenImg.src=creditIconUrl}}
+  function getAudioContext(){var Ctor=window.AudioContext||window.webkitAudioContext;if(!Ctor)return null;if(!audioContext)audioContext=new Ctor();return audioContext}
+  function primeAudio(){var context=getAudioContext();if(context&&context.resume)context.resume()}
+  function playPegHitSound(){var context=getAudioContext();if(!context)return;var nowMs=performance.now();if(nowMs-lastPegSoundAt<34)return;lastPegSoundAt=nowMs;if(context.resume)context.resume();var now=context.currentTime;var oscillator=context.createOscillator();var gain=context.createGain();var filter=context.createBiquadFilter();var tones=[820,980,1160,1320];var tone=tones[pegToneIndex%tones.length]+(Math.random()*110-55);pegToneIndex+=1;oscillator.type='sine';oscillator.frequency.setValueAtTime(tone,now);oscillator.frequency.exponentialRampToValueAtTime(Math.max(220,tone*.58),now+.055);filter.type='bandpass';filter.frequency.setValueAtTime(tone,now);filter.Q.setValueAtTime(8,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.095,now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+.07);oscillator.connect(filter).connect(gain).connect(context.destination);oscillator.start(now);oscillator.stop(now+.075)}
   function resolvePegCollision(ball,peg,left,right,prevX,prevY){
     var dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r+1.05,dist=Math.sqrt(dx*dx+dy*dy)||1;
     if(dist>=min&&prevX!==undefined&&prevY!==undefined){
@@ -113,18 +119,12 @@ export const PLINKO_SCRIPT = `
 
   function spawnPegImpact(x,y,vx,vy){
     if(!state)return;
+    playPegHitSound();
     state.impactRings.push({x:x,y:y,r:5,life:14,max:14});
-  }
-  function spawnBinBreak(bin,ball){
-    if(!state||!bin)return;var x=clamp(Number.isFinite(ball.x)?ball.x:bin.x+bin.w/2,bin.x+3,bin.x+bin.w-3),y=clamp(Number.isFinite(ball.y)?ball.y:bin.y+bin.h*.55,bin.y+5,bin.y+bin.h-5),br=Math.min(10,Math.max(5,bin.w*.28));
-    state.glassCracks.push({x:x,y:y,bx:bin.x,by:bin.y,bw:bin.w,bh:bin.h,br:br,life:36,max:36,branches:Array(8).fill(0).map(function(_,i){return{a:(Math.PI*2*i/8)+(Math.random()-.5)*.42,l:Math.min(bin.w,bin.h)*(0.22+Math.random()*.42),s:Math.random()*.75}})});
-    for(var i=0;i<24;i++){var a=-Math.PI*.92+Math.random()*Math.PI*.84;state.glassShards.push({x:clamp(x+(Math.random()-.5)*bin.w*.58,bin.x+3,bin.x+bin.w-3),y:clamp(y+(Math.random()-.5)*bin.h*.55,bin.y+3,bin.y+bin.h-3),vx:Math.cos(a)*(.45+Math.random()*1.35),vy:Math.sin(a)*(.45+Math.random()*1.35)-.25,rot:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.24,size:1.4+Math.random()*3.1,life:42+Math.random()*22,max:64,edge:Math.random()<.55?3:4,bx:bin.x,by:bin.y,bw:bin.w,bh:bin.h,br:br})}
   }
   function drawGlassEffects(ctx){
     if(!state)return;
     for(var r=state.impactRings.length-1;r>=0;r--){var ring=state.impactRings[r];ring.life-=1;ring.r+=1.25;var ra=Math.max(0,ring.life/ring.max);ctx.save();ctx.globalAlpha=ra*.75;ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(ring.x,ring.y,ring.r,0,Math.PI*2);ctx.stroke();ctx.restore();if(ring.life<=0)state.impactRings.splice(r,1)}
-    for(var c=state.glassCracks.length-1;c>=0;c--){var crack=state.glassCracks[c];crack.life-=1;var ca=Math.max(0,crack.life/crack.max);ctx.save();ctx.globalAlpha=ca;if(Number.isFinite(crack.bx)){roundRect(ctx,crack.bx,crack.by,crack.bw,crack.bh,crack.br||8);ctx.clip()}ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=1;for(var bi=0;bi<crack.branches.length;bi++){var br=crack.branches[bi],ex=clamp(crack.x+Math.cos(br.a)*br.l,crack.bx||0,(crack.bx||0)+(crack.bw||320)),ey=clamp(crack.y+Math.sin(br.a)*br.l,crack.by||0,(crack.by||0)+(crack.bh||326));ctx.beginPath();ctx.moveTo(crack.x,crack.y);ctx.lineTo(ex,ey);ctx.stroke();ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(clamp(ex+Math.cos(br.a+br.s)*br.l*.35,crack.bx||0,(crack.bx||0)+(crack.bw||320)),clamp(ey+Math.sin(br.a+br.s)*br.l*.35,crack.by||0,(crack.by||0)+(crack.bh||326)));ctx.stroke()}ctx.restore();ctx.save();ctx.globalAlpha=ca;roundRect(ctx,crack.bx,crack.by,crack.bw,crack.bh,crack.br||8);ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=1.15;ctx.stroke();ctx.restore();if(crack.life<=0)state.glassCracks.splice(c,1)}
-    for(var s=state.glassShards.length-1;s>=0;s--){var shard=state.glassShards[s];shard.life-=1;shard.x+=shard.vx;shard.y+=shard.vy;shard.vy+=.055;shard.vx*=.992;shard.rot+=shard.spin;if(Number.isFinite(shard.bx)){shard.x=clamp(shard.x,shard.bx+2,shard.bx+shard.bw-2);shard.y=clamp(shard.y,shard.by+2,shard.by+shard.bh-2)}var sa=Math.max(0,shard.life/shard.max);ctx.save();if(Number.isFinite(shard.bx)){roundRect(ctx,shard.bx,shard.by,shard.bw,shard.bh,shard.br||8);ctx.clip()}ctx.translate(shard.x,shard.y);ctx.rotate(shard.rot);ctx.globalAlpha=sa;ctx.beginPath();for(var pi=0;pi<shard.edge;pi++){var pa=Math.PI*2*pi/shard.edge,px=Math.cos(pa)*shard.size*1.5,py=Math.sin(pa)*shard.size;pi?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.fillStyle='rgba(220,245,255,.48)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=.65;ctx.stroke();ctx.restore();if(shard.life<=0||shard.y>345)state.glassShards.splice(s,1)}
   }
   function drawGlassPeg(ctx,x,y,r,hit){
     ctx.save();
@@ -156,7 +156,7 @@ export const PLINKO_SCRIPT = `
   function hasActiveBalls(){return !!(state&&state.balls&&state.balls.some(function(ball){return ball&&!ball.sinking}))}
   function setRisk(next){if(hasActiveBalls()){toast('Wait for current balls to finish');return false}risk=next||'medium';document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});rebuildBoard(false);return true}
   function setRows(next){if(hasActiveBalls()){toast('Wait for current balls to finish');return false}rows=Number(next)||7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);rebuildBoard(false);return true}
-  function rebuildBoard(preserveBalls){if(!state)return init(true);var oldBalls=preserveBalls&&state.balls?state.balls:[];state.pegs=makePegs();state.bins=makeBins();state.balls=oldBalls;state.impactRings=state.impactRings||[];state.glassShards=state.glassShards||[];state.glassCracks=state.glassCracks||[];draw()}
+  function rebuildBoard(preserveBalls){if(!state)return init(true);var oldBalls=preserveBalls&&state.balls?state.balls:[];state.pegs=makePegs();state.bins=makeBins();state.balls=oldBalls;state.impactRings=state.impactRings||[];draw()}
 
   function makePegs(){
     var pegs=[];var top=32;var bottom=rows===11?238:rows===9?235:230;var pegRows=rows+1;var rowGap=(bottom-top)/Math.max(1,pegRows-1);var slotCount=houseCount();var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
@@ -174,12 +174,12 @@ export const PLINKO_SCRIPT = `
   function init(force){
     var canvas=q('plinkoCanvasV2');if(!canvas)return;if(state&&state.canvas===canvas&&!force){draw();return}
     var dpr=Math.min(window.devicePixelRatio||1,3);canvas.width=320*dpr;canvas.height=326*dpr;var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],impactRings:[],glassShards:[],glassCracks:[],last:0,raf:state&&state.raf||0,tokenImg:img};
+    var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],impactRings:[],last:0,raf:state&&state.raf||0,tokenImg:img};
     renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.08,-10,10);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.004,-.34,.34):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false,settleX:null})}
-  function settle(ball,bin){if(ball.paid)return;ball.paid=true;spawnBinBreak(bin,ball);var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
+  function drop(){init();primeAudio();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.08,-10,10);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.004,-.34,.34):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false,settleX:null})}
+  function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
     if(!state)return;var rawDt=(time-(state.last||time))||16;var dt=Math.min(20,rawDt)/16.67;state.last=time;var balls=state.balls,bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;

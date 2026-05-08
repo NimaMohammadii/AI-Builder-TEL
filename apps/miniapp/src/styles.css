@@ -242,10 +242,6 @@ button { font: inherit; border: 0; cursor: pointer; }
   box-shadow: 0 0 18px rgba(198,244,255,.42), inset 0 0 18px rgba(255,255,255,.08);
 }
 .slot b { font-size: 16px; line-height: 1; font-weight: 1000; letter-spacing: -.04em; }
-.slot.breaking::before,
-.slot.breaking::after {
-  animation: glass-crack-flash .52s ease-out both;
-}
 .slot.active {
   transform: translateY(-7px) scale(1.04);
   border-color: rgba(255,255,255,.68);
@@ -351,11 +347,4 @@ button { font: inherit; border: 0; cursor: pointer; }
   .hud-card { min-height: 62px; padding: 10px; }
   .drop-button { height: 52px; }
   .result-pill { height: 46px; }
-}
-
-
-@keyframes glass-crack-flash {
-  0% { opacity: 0; transform: scale(.58) rotate(-8deg); }
-  18% { opacity: 1; transform: scale(1.08) rotate(2deg); }
-  100% { opacity: 0; transform: scale(1.28) rotate(7deg); }
 }
