@@ -11,16 +11,22 @@ export const ACTIVITY_SCRIPT = `
   }
 
   function currentCredit(){
-    var plinko=document.getElementById('plinkoCredit');
-    var text=plinko&&plinko.textContent?plinko.textContent:localStorage.getItem('plinkoCredit')||'1000';
-    return Math.max(0,Math.floor(Number(String(text).replace(/[^0-9]/g,''))||0));
+    var ids=['plinkoCredit','creditCount','plinkoCreditHeader'];
+    for(var i=0;i<ids.length;i++){
+      var el=document.getElementById(ids[i]);
+      if(el&&el.textContent){
+        var n=Number(String(el.textContent).replace(/[^0-9]/g,''));
+        if(Number.isFinite(n))return Math.max(0,Math.floor(n));
+      }
+    }
+    return Math.max(0,Math.floor(Number(localStorage.getItem('vexaCredit')||localStorage.getItem('plinkoCredit')||'1000')||0));
   }
 
   function applyServerCredit(value){
     if(value===null||value===undefined)return;
     var credit=Math.max(0,Math.floor(Number(value)||0));
-    try{localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
-    ['plinkoCredit','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
+    try{localStorage.setItem('vexaCredit',String(credit));localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
+    ['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
     try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
   }
 
@@ -52,6 +58,7 @@ export const ACTIVITY_SCRIPT = `
       .catch(function(){});
   }
 
+  window.addEventListener('vexa-credit-set',function(ev){if(ev&&ev.detail&&ev.detail.credit!==undefined)applyServerCredit(ev.detail.credit)});
   document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
   document.addEventListener('visibilitychange',function(){send(true)});
   window.addEventListener('beforeunload',function(){send(true)});
