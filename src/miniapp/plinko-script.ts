@@ -26,8 +26,10 @@ export const PLINKO_SCRIPT = `
   function controlItem(){var rk=String(rows);return plinkoControl&&plinkoControl.enabled!==false&&plinkoControl.rows&&plinkoControl.rows[rk]&&plinkoControl.rows[rk][risk]?plinkoControl.rows[rk][risk]:null}
   function currentMultipliers(){var item=controlItem();return item&&Array.isArray(item.multipliers)&&item.multipliers.length===rows+1?item.multipliers:multiplierTable[rows][risk]}
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===rows+1)return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(rows+1).fill(1)}
-  function isControlled(){return plinkoControl&&plinkoControl.enabled!==false&&(plinkoControl.mode==='weighted'||plinkoControl.mode==='house')}
-  function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(Math.random()*(rows+1));var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0)return i}return weights.length-1}
+  function hasZeroChance(){var item=controlItem();return !!(item&&Array.isArray(item.weights)&&item.weights.some(function(v){return Math.max(0,Number(v)||0)===0}))}
+  function hasPositiveChance(){return currentWeights().some(function(v){return v>0})}
+  function isControlled(){return !!(plinkoControl&&plinkoControl.enabled!==false&&controlItem()&&hasPositiveChance()&&(plinkoControl.mode==='weighted'||plinkoControl.mode==='house'||hasZeroChance()))}
+  function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(weights.length/2);var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0&&weights[i]>0)return i}for(var j=weights.length-1;j>=0;j--){if(weights[j]>0)return j}return Math.floor(weights.length/2)}
   function resolveLandingIndex(index){
     if(!isControlled())return index;
     var weights=currentWeights();
@@ -37,8 +39,9 @@ export const PLINKO_SCRIPT = `
     for(var i=0;i<weights.length;i++){
       if(weights[i]>0){var d=Math.abs(i-idx);if(d<bestDistance){best=i;bestDistance=d}}
     }
-    return best>=0?best:idx;
+    return best>=0?best:Math.floor(weights.length/2);
   }
+  function retargetControlledBalls(){if(!state||!state.balls||!isControlled())return;state.balls.forEach(function(ball){if(!ball||ball.sinking)return;ball.targetIndex=resolveLandingIndex(Number.isFinite(ball.targetIndex)?ball.targetIndex:chooseWeightedIndex())})}
   function landingIndexForBall(ball,physicalIndex){
     if(!isControlled())return physicalIndex;
     var target=Number.isFinite(ball.targetIndex)?ball.targetIndex:physicalIndex;
@@ -47,6 +50,7 @@ export const PLINKO_SCRIPT = `
   function targetCenterX(index,bins,left,right){var idx=resolveLandingIndex(index);return left+(idx+.5)*((right-left)/bins.length)}
   function guideControlledBall(ball,bins,left,right,dt){
     if(!isControlled()||!Number.isFinite(ball.targetIndex)||!bins||!bins.length)return;
+    ball.targetIndex=resolveLandingIndex(ball.targetIndex);
     var target=targetCenterX(ball.targetIndex,bins,left,right);
     var progress=clamp((ball.y-118)/118,0,1);
     if(progress>0){
@@ -103,7 +107,7 @@ export const PLINKO_SCRIPT = `
 
   function loadPlinkoControl(){
     fetch('/app/api/plinko-control',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
-      if(data&&data.rows){plinkoControl=data;rebuildBoard(hasActiveBalls())}
+      if(data&&data.rows){plinkoControl=data;retargetControlledBalls();rebuildBoard(hasActiveBalls())}
     }).catch(function(){});
   }
 
