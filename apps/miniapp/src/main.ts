@@ -220,6 +220,14 @@ function setActiveSlot(slot: number): void {
   document.querySelector(`.slot[data-slot="${slot}"]`)?.classList.add('active');
 }
 
+function triggerSlotBreak(slot: number): void {
+  const slotElement = document.querySelector<HTMLDivElement>(`.slot[data-slot="${slot}"]`);
+  if (!slotElement) return;
+  slotElement.classList.remove('breaking');
+  void slotElement.offsetWidth;
+  slotElement.classList.add('breaking');
+  window.setTimeout(() => slotElement.classList.remove('breaking'), 760);
+}
 
 function onDropStarted(dropBet: number): void {
   primeAudio();
@@ -255,6 +263,7 @@ function mountGame(): void {
       haptic('impact');
     },
     onGlassBreak: (slot) => {
+      triggerSlotBreak(slot);
       playGlassBreakSound();
       haptic('impact');
     },
