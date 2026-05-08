@@ -7,6 +7,8 @@ export const ACTIVITY_SCRIPT = `
   var confirmedCredit=null;
   var pendingCredit=null;
   var creditQueue=Promise.resolve();
+  var creditVersion=0;
+  var creditInFlight=0;
 
   function activeSection(){
     var active=document.querySelector('.view.active');
@@ -19,7 +21,6 @@ export const ACTIVITY_SCRIPT = `
 
   function writeCreditToUi(value){
     var credit=Math.max(0,Math.floor(Number(value)||0));
-    try{localStorage.setItem('vexaCredit',String(credit));localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
     ['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
     return credit;
   }
@@ -40,30 +41,39 @@ export const ACTIVITY_SCRIPT = `
     if(!force&&encoded===lastPayload&&now-lastSent<25000)return;
     lastPayload=encoded;
     lastSent=now;
+    var requestCreditVersion=creditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
       .then(function(r){return r.json().catch(function(){return null})})
-      .then(function(j){if(j&&j.ok&&j.credit!==undefined)applyServerCredit(j.credit)})
+      .then(function(j){if(j&&j.ok&&j.credit!==undefined&&creditInFlight===0&&requestCreditVersion===creditVersion)applyServerCredit(j.credit)})
       .catch(function(){});
   }
 
-  function sendGameDelta(nextCredit){
+  function readUiCredit(){
+    var el=document.getElementById('plinkoCredit')||document.getElementById('creditCount')||document.getElementById('plinkoCreditHeader');
+    return Math.max(0,Math.floor(Number(el&&el.textContent)||0));
+  }
+
+  function sendGameDelta(nextCredit, explicitDelta){
     var id=userId();
     if(!id)return;
+    var previous=pendingCredit===null?(confirmedCredit===null?readUiCredit():confirmedCredit):pendingCredit;
     nextCredit=writeCreditToUi(nextCredit);
-    if(pendingCredit===null)pendingCredit=confirmedCredit===null?nextCredit:confirmedCredit;
-    var delta=nextCredit-pendingCredit;
-    pendingCredit=nextCredit;
+    var delta=Number.isFinite(Number(explicitDelta))?Math.floor(Number(explicitDelta)):nextCredit-previous;
+    pendingCredit=Math.max(0,previous+delta);
+    creditVersion++;
     if(delta===0)return;
+    creditInFlight++;
     creditQueue=creditQueue.then(function(){
       return fetch('/app/api/credit/game-delta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,delta:delta})})
         .then(function(r){return r.json().catch(function(){return null})})
         .then(function(j){if(j&&j.credit!==undefined)applyServerCredit(j.credit)})
-        .catch(function(){});
+        .catch(function(){})
+        .then(function(){creditInFlight=Math.max(0,creditInFlight-1)});
     });
   }
 
   window.addEventListener('vexa-credit-game-change',function(ev){
-    if(ev&&ev.detail&&ev.detail.credit!==undefined)sendGameDelta(ev.detail.credit);
+    if(ev&&ev.detail&&ev.detail.credit!==undefined)sendGameDelta(ev.detail.credit,ev.detail.delta);
   });
   document.addEventListener('click',function(){setTimeout(function(){sendActivity(false)},80)},true);
   document.addEventListener('visibilitychange',function(){sendActivity(true)});

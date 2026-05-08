@@ -59,7 +59,6 @@ export const SECTION_LOCK_SCRIPT = `
     var credit=Math.max(0,Math.floor(Number(userCredit)||0));
     var targets=[document.getElementById('plinkoCredit'),document.getElementById('plinkoCreditHeader'),document.getElementById('creditCount')];
     targets.forEach(function(el){if(el)el.textContent=String(credit)});
-    try{localStorage.setItem('vexaCredit',String(credit));localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
     if(lastSyncedCredit!==credit){
       lastSyncedCredit=credit;
       try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
