@@ -28,8 +28,8 @@ export const PLINKO_SCRIPT = `
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===rows+1)return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(rows+1).fill(1)}
   function isControlled(){return plinkoControl&&plinkoControl.enabled!==false&&(plinkoControl.mode==='weighted'||plinkoControl.mode==='house')}
   function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(Math.random()*(rows+1));var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0)return i}return weights.length-1}
-  function pegRadius(){return rows===7?5.25:rows===9?4.6:4.35}
-  function pegVisualRadius(){return rows===7?7.1:rows===9?6.6:5.25}
+  function pegRadius(){return rows===7?5.85:rows===9?5.25:4.35}
+  function pegVisualRadius(){return rows===7?7.7:rows===9?7.1:5.25}
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
