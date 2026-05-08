@@ -11,6 +11,8 @@ export const PLINKO_SCRIPT = `
   var BOARD_TOP_PAD=20;
   var audioContext=null;
   var audioReady=false;
+  var pegAudioPool=[];
+  var pegAudioIndex=0;
   var lastPegSoundAt=0;
   var pegToneIndex=0;
   var multiplierTable={
@@ -73,8 +75,21 @@ export const PLINKO_SCRIPT = `
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
   function updateTokenImage(url){creditIconUrl=url||creditIconUrl;if(state&&state.tokenImg&&state.tokenImg.src!==creditIconUrl){state.tokenImg.src=creditIconUrl}}
   function getAudioContext(){var Ctor=window.AudioContext||window.webkitAudioContext;if(!Ctor)return null;if(!audioContext)audioContext=new Ctor();return audioContext}
-  function primeAudio(){var context=getAudioContext();if(!context)return;if(context.resume)context.resume().then(function(){audioReady=true}).catch(function(){});else audioReady=true}
-  function playPegHitSound(){var context=getAudioContext();if(!context)return;if(context.state==='suspended'){primeAudio();return}audioReady=true;var nowMs=performance.now();if(nowMs-lastPegSoundAt<20)return;lastPegSoundAt=nowMs;var now=context.currentTime;var oscillator=context.createOscillator();var click=context.createOscillator();var gain=context.createGain();var clickGain=context.createGain();var filter=context.createBiquadFilter();var tones=[760,920,1080,1240];var tone=tones[pegToneIndex%tones.length]+(Math.random()*90-45);pegToneIndex+=1;oscillator.type='triangle';oscillator.frequency.setValueAtTime(tone,now);oscillator.frequency.exponentialRampToValueAtTime(Math.max(260,tone*.62),now+.06);click.type='square';click.frequency.setValueAtTime(tone*1.9,now);filter.type='bandpass';filter.frequency.setValueAtTime(tone,now);filter.Q.setValueAtTime(10,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.18,now+.005);gain.gain.exponentialRampToValueAtTime(.0001,now+.085);clickGain.gain.setValueAtTime(.08,now);clickGain.gain.exponentialRampToValueAtTime(.0001,now+.022);oscillator.connect(filter).connect(gain).connect(context.destination);click.connect(clickGain).connect(context.destination);oscillator.start(now);click.start(now);oscillator.stop(now+.09);click.stop(now+.025)}
+  function makePegAudioUrl(){
+    var sampleRate=22050,duration=.095,count=Math.floor(sampleRate*duration),data=[];
+    for(var i=0;i<count;i++){
+      var t=i/sampleRate,env=Math.exp(-t*42),tone=Math.sin(2*Math.PI*(920-t*4100)*t),click=Math.sin(2*Math.PI*2500*t)*(t<.018?1:0);
+      var v=Math.max(-1,Math.min(1,(tone*.75+click*.35)*env));
+      data.push(Math.floor(v*24000));
+    }
+    var bytes=[];function s(v){for(var i=0;i<v.length;i++)bytes.push(v.charCodeAt(i))}function u16(v){bytes.push(v&255,(v>>8)&255)}function u32(v){bytes.push(v&255,(v>>8)&255,(v>>16)&255,(v>>24)&255)}
+    s('RIFF');u32(36+data.length*2);s('WAVEfmt ');u32(16);u16(1);u16(1);u32(sampleRate);u32(sampleRate*2);u16(2);u16(16);s('data');u32(data.length*2);for(var j=0;j<data.length;j++)u16(data[j]<0?data[j]+65536:data[j]);
+    var binary='';for(var k=0;k<bytes.length;k++)binary+=String.fromCharCode(bytes[k]);return 'data:audio/wav;base64,'+btoa(binary);
+  }
+  function ensurePegAudioPool(){if(pegAudioPool.length)return;try{var url=makePegAudioUrl();for(var i=0;i<5;i++){var audio=new Audio(url);audio.preload='auto';audio.volume=.9;pegAudioPool.push(audio)}}catch(e){}}
+  function playPegAudioFallback(){ensurePegAudioPool();if(!pegAudioPool.length)return;var audio=pegAudioPool[pegAudioIndex%pegAudioPool.length];pegAudioIndex+=1;try{audio.currentTime=0;audio.volume=.9;var p=audio.play();if(p&&p.catch)p.catch(function(){})}catch(e){}}
+  function primeAudio(){var context=getAudioContext();ensurePegAudioPool();if(context&&context.resume)context.resume().then(function(){audioReady=true}).catch(function(){});else audioReady=true;try{if(pegAudioPool[0]){pegAudioPool[0].muted=true;var p=pegAudioPool[0].play();if(p&&p.then)p.then(function(){pegAudioPool[0].pause();pegAudioPool[0].currentTime=0;pegAudioPool[0].muted=false}).catch(function(){pegAudioPool[0].muted=false})}}catch(e){}}
+  function playPegHitSound(){var nowMs=performance.now();if(nowMs-lastPegSoundAt<18)return;lastPegSoundAt=nowMs;playPegAudioFallback();var context=getAudioContext();if(!context)return;if(context.state==='suspended'){primeAudio();return}audioReady=true;var now=context.currentTime;var oscillator=context.createOscillator();var click=context.createOscillator();var gain=context.createGain();var clickGain=context.createGain();var filter=context.createBiquadFilter();var tones=[760,920,1080,1240];var tone=tones[pegToneIndex%tones.length]+(Math.random()*90-45);pegToneIndex+=1;oscillator.type='triangle';oscillator.frequency.setValueAtTime(tone,now);oscillator.frequency.exponentialRampToValueAtTime(Math.max(260,tone*.62),now+.06);click.type='square';click.frequency.setValueAtTime(tone*1.9,now);filter.type='bandpass';filter.frequency.setValueAtTime(tone,now);filter.Q.setValueAtTime(10,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.2,now+.005);gain.gain.exponentialRampToValueAtTime(.0001,now+.085);clickGain.gain.setValueAtTime(.1,now);clickGain.gain.exponentialRampToValueAtTime(.0001,now+.022);oscillator.connect(filter).connect(gain).connect(context.destination);click.connect(clickGain).connect(context.destination);oscillator.start(now);click.start(now);oscillator.stop(now+.09);click.stop(now+.025)}
   function resolvePegCollision(ball,peg,left,right,prevX,prevY){
     var dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r+1.05,dist=Math.sqrt(dx*dx+dy*dy)||1;
     if(dist>=min&&prevX!==undefined&&prevY!==undefined){
@@ -176,7 +191,7 @@ export const PLINKO_SCRIPT = `
     var canvas=q('plinkoCanvasV2');if(!canvas)return;if(state&&state.canvas===canvas&&!force){draw();return}
     var dpr=Math.min(window.devicePixelRatio||1,3);canvas.width=320*dpr;canvas.height=326*dpr;var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],impactRings:[],last:0,raf:state&&state.raf||0,tokenImg:img};
-    renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
+    ensurePegAudioPool();renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
   function drop(){init();primeAudio();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.08,-10,10);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.004,-.34,.34):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false,settleX:null})}
@@ -201,7 +216,7 @@ export const PLINKO_SCRIPT = `
 
   document.addEventListener('pointerdown',primeAudio,{passive:true});
   document.addEventListener('touchstart',primeAudio,{passive:true});
-  document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');if(!button)return;primeAudio();if(button.getAttribute('data-view')==='plinko')setTimeout(init,0);var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopPropagation();drop()}if(action==='plinko-risk'){ev.preventDefault();setRisk(button.getAttribute('data-risk'))}if(action==='plinko-rows'){ev.preventDefault();var idx=rowOptions.indexOf(rows);setRows(rowOptions[(idx+1)%rowOptions.length])}},true);
+  document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');primeAudio();if(!button)return;if(button.getAttribute('data-view')==='plinko')setTimeout(init,0);var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopPropagation();drop()}if(action==='plinko-risk'){ev.preventDefault();setRisk(button.getAttribute('data-risk'))}if(action==='plinko-rows'){ev.preventDefault();var idx=rowOptions.indexOf(rows);setRows(rowOptions[(idx+1)%rowOptions.length])}},true);
   document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='plinkoBet')getBet()});loadPlinkoControl();setInterval(loadPlinkoControl,5000);if(q('plinkoCanvasV2'))init();
 })();
 `;
