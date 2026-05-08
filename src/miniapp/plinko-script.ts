@@ -17,9 +17,9 @@ export const PLINKO_SCRIPT = `
   var pegToneIndex=0;
   var PEG_IMPACT_FEEDBACK_COOLDOWN_MS=220;
   var multiplierTable={
-    7:{low:[2,1.4,1.1,.9,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,.2,1.5,4,12]},
-    9:{low:[3,1.6,1.3,1.1,.8,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,.2,1.3,3,8,25]},
-    11:{low:[4,1.8,1.5,1.2,1,.85,.85,.85,1,1.2,1.5,1.8,4],medium:[14,4,2.2,1.5,1,.5,.5,.5,1,1.5,2.2,4,14],high:[60,14,6,2.5,1.2,.25,.25,.25,1.2,2.5,6,14,60]}
+    7:{low:[2,1.4,1.1,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,1.5,4,12]},
+    9:{low:[3,1.6,1.3,1.1,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,1.3,3,8,25]},
+    11:{low:[4,1.8,1.5,1.2,1,.85,.85,1,1.2,1.5,1.8,4],medium:[14,4,2.2,1.5,1,.5,.5,1,1.5,2.2,4,14],high:[60,14,6,2.5,1.2,.25,.25,1.2,2.5,6,14,60]}
   };
 
   function q(id){return document.getElementById(id)}
@@ -31,7 +31,7 @@ export const PLINKO_SCRIPT = `
   window.addEventListener('vexa-credit-icon-sync',function(ev){if(ev&&ev.detail&&ev.detail.url)updateTokenImage(ev.detail.url)});
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value}
-  function houseCount(){return rows+2}
+  function houseCount(){return rows+1}
   function controlItem(){var rk=String(rows);return plinkoControl&&plinkoControl.enabled!==false&&plinkoControl.rows&&plinkoControl.rows[rk]&&plinkoControl.rows[rk][risk]?plinkoControl.rows[rk][risk]:null}
   function currentMultipliers(){var item=controlItem();return item&&Array.isArray(item.multipliers)&&item.multipliers.length===houseCount()?item.multipliers:multiplierTable[rows][risk]}
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===houseCount())return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(houseCount()).fill(1)}
@@ -185,7 +185,7 @@ export const PLINKO_SCRIPT = `
   function rebuildBoard(preserveBalls){if(!state)return init(true);var oldBalls=preserveBalls&&state.balls?state.balls:[];state.pegs=makePegs();state.bins=makeBins();state.balls=oldBalls;state.impactRings=state.impactRings||[];draw()}
 
   function makePegs(){
-    var pegs=[];var top=32;var bottom=rows===11?238:rows===9?235:230;var pegRows=rows+1;var rowGap=(bottom-top)/Math.max(1,pegRows-1);var slotCount=houseCount();var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
+    var pegs=[];var top=32;var bottom=rows===11?238:rows===9?235:230;var pegRows=rows;var rowGap=(bottom-top)/Math.max(1,pegRows-1);var slotCount=houseCount();var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
     for(var row=0;row<pegRows;row++){var count=row+3;var start=slotLeft+((slotCount-(count-1))*slotGap)/2;var y=top+row*rowGap;for(var i=0;i<count;i++)pegs.push({key:row+':'+i,x:start+i*slotGap,y:y,r:r,vr:vr,lastImpactAt:0})}
     return pegs;
   }
