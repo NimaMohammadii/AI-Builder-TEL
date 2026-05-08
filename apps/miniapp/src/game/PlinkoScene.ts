@@ -14,6 +14,7 @@ export type PlinkoSceneEvents = {
   onDropStarted: (bet: number) => void;
   onDropFinished: (result: PlinkoDropResult) => void;
   onPegHit: () => void;
+  onGlassBreak: (slot: number) => void;
 };
 
 const ROW_OPTIONS: PlinkoRows[] = [7, 9, 11];
@@ -52,12 +53,36 @@ type BallState = {
   done: boolean;
 };
 
+type GlassShard = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  rotation: number;
+  spin: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  sides: 3 | 4;
+};
+
+type GlassCrack = {
+  x: number;
+  y: number;
+  slotWidth: number;
+  life: number;
+  maxLife: number;
+  branches: Array<{ angle: number; length: number; split: number }>;
+};
+
 export class PlinkoScene extends Phaser.Scene {
   private callbacks: PlinkoSceneEvents;
   private boardWidth = 360;
   private boardHeight = 430;
   private pegs: PegView[] = [];
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
+  private glassShards: GlassShard[] = [];
+  private glassCracks: GlassCrack[] = [];
   private ball: BallState | null = null;
   private active = false;
   private slotLeft = 16;
@@ -77,8 +102,8 @@ export class PlinkoScene extends Phaser.Scene {
     this.graphics = this.add.graphics();
     this.trailGraphics = this.add.graphics();
     this.machineGraphics = this.add.graphics();
-    this.matter.world.engine.gravity.y = 1.08;
-    this.matter.world.set60Hz();
+    (this.matter.world.engine as MatterJS.Engine & { gravity: MatterJS.Vector }).gravity.y = 1.08;
+    (this.matter.world as Phaser.Physics.Matter.World & { set60Hz: () => void }).set60Hz();
     this.rebuildMachine();
     this.scale.on('resize', () => this.rebuildMachine());
   }
@@ -185,9 +210,12 @@ export class PlinkoScene extends Phaser.Scene {
     this.boardWidth = Math.max(300, this.scale.width);
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
+    this.sparks = [];
+    this.glassShards = [];
+    this.glassCracks = [];
     this.ball = null;
     this.active = false;
-    this.matter.world.localWorld.bodies.slice().forEach((body) => this.matter.world.remove(body));
+    (this.matter.world.localWorld as unknown as MatterJS.CompositeType).bodies.slice().forEach((body: MatterJS.BodyType) => this.matter.world.remove(body));
     this.matter.world.setBounds(22, 36, this.boardWidth - 44, this.boardHeight - 54, 28, true, true, false, true);
 
     const rows = this.rows;
@@ -282,8 +310,11 @@ export class PlinkoScene extends Phaser.Scene {
     const multiplier = multipliers[slot] ?? 0.5;
     const win = Math.round(this.ball.bet * multiplier);
     const body = this.ball.body;
-    this.spawnSpark(this.slotLeft + slot * this.slotWidth + this.slotWidth / 2, this.boardHeight - 45, multiplier >= 10 ? 1.9 : 1.0);
+    const impactX = this.slotLeft + slot * this.slotWidth + this.slotWidth / 2;
+    const impactY = this.boardHeight - 45;
+    this.spawnGlassBreak(slot, impactX, impactY, multiplier >= 10 ? 1.35 : 1.0);
     this.matter.world.remove(body);
+    this.callbacks.onGlassBreak(slot);
     const result = { slot, multiplier, bet: this.ball.bet, win };
     this.ball = null;
     this.active = false;
@@ -322,16 +353,8 @@ export class PlinkoScene extends Phaser.Scene {
       g.strokeCircle(peg.x, peg.y, visualRadius);
     }
 
-    for (let i = this.sparks.length - 1; i >= 0; i -= 1) {
-      const spark = this.sparks[i];
-      spark.life -= 1;
-      spark.x += spark.vx;
-      spark.y += spark.vy;
-      spark.vy += 0.05;
-      g.fillStyle(0xffffff, Math.max(0, spark.life / 38));
-      g.fillCircle(spark.x, spark.y, spark.r);
-      if (spark.life <= 0) this.sparks.splice(i, 1);
-    }
+    this.drawSparks(g);
+    this.drawGlassBreak(g);
 
     if (this.ball && !this.ball.done) {
       const pos = this.ball.body.position;
@@ -355,6 +378,16 @@ export class PlinkoScene extends Phaser.Scene {
     const slotHeight = 34;
     const multipliers = this.currentMultipliers();
 
+    for (let i = 0; i < this.rows + 1; i += 1) {
+      const x = this.slotLeft + i * this.slotWidth;
+      g.fillStyle(0xffffff, 0.035);
+      g.fillRoundedRect(x + 3, slotTop + 2, this.slotWidth - 6, slotHeight - 3, 9);
+      g.lineStyle(1, 0xffffff, 0.15);
+      g.strokeRoundedRect(x + 3, slotTop + 2, this.slotWidth - 6, slotHeight - 3, 9);
+      g.lineStyle(1, 0xffffff, 0.13);
+      g.lineBetween(x + 9, slotTop + 6, x + this.slotWidth * 0.48, slotTop + 6);
+    }
+
     g.lineStyle(1, 0xffffff, 0.13);
     for (let i = 0; i <= this.rows + 1; i += 1) {
       const x = this.slotLeft + i * this.slotWidth;
@@ -376,6 +409,119 @@ export class PlinkoScene extends Phaser.Scene {
       const label = this.add.text(x, y, this.formatMultiplier(multipliers[i]), textStyle).setOrigin(0.5);
       label.setAlpha(0.86);
       this.time.delayedCall(16, () => label.destroy());
+    }
+  }
+
+  private drawSparks(g: Phaser.GameObjects.Graphics): void {
+    for (let i = this.sparks.length - 1; i >= 0; i -= 1) {
+      const spark = this.sparks[i];
+      spark.life -= 1;
+      spark.x += spark.vx;
+      spark.y += spark.vy;
+      spark.vy += 0.05;
+      g.fillStyle(0xffffff, Math.max(0, spark.life / 38));
+      g.fillCircle(spark.x, spark.y, spark.r);
+      if (spark.life <= 0) this.sparks.splice(i, 1);
+    }
+  }
+
+  private drawGlassBreak(g: Phaser.GameObjects.Graphics): void {
+    for (let i = this.glassCracks.length - 1; i >= 0; i -= 1) {
+      const crack = this.glassCracks[i];
+      crack.life -= 1;
+      const alpha = Phaser.Math.Clamp(crack.life / crack.maxLife, 0, 1);
+      g.lineStyle(1, 0xffffff, 0.58 * alpha);
+      for (const branch of crack.branches) {
+        const endX = crack.x + Math.cos(branch.angle) * branch.length;
+        const endY = crack.y + Math.sin(branch.angle) * branch.length;
+        g.lineBetween(crack.x, crack.y, endX, endY);
+        g.lineBetween(
+          endX,
+          endY,
+          endX + Math.cos(branch.angle + 0.72) * branch.split,
+          endY + Math.sin(branch.angle + 0.72) * branch.split,
+        );
+      }
+      g.lineStyle(1, 0x9ee7ff, 0.2 * alpha);
+      g.strokeRoundedRect(crack.x - crack.slotWidth / 2 + 5, crack.y - 14, crack.slotWidth - 10, 29, 9);
+      if (crack.life <= 0) this.glassCracks.splice(i, 1);
+    }
+
+    for (let i = this.glassShards.length - 1; i >= 0; i -= 1) {
+      const shard = this.glassShards[i];
+      shard.life -= 1;
+      shard.x += shard.vx;
+      shard.y += shard.vy;
+      shard.vy += 0.082;
+      shard.rotation += shard.spin;
+      shard.vx *= 0.992;
+      const alpha = Phaser.Math.Clamp(shard.life / shard.maxLife, 0, 1);
+      this.drawShard(g, shard, alpha);
+      if (shard.life <= 0 || shard.y > this.boardHeight + 24) this.glassShards.splice(i, 1);
+    }
+  }
+
+  private drawShard(g: Phaser.GameObjects.Graphics, shard: GlassShard, alpha: number): void {
+    const points: Phaser.Math.Vector2[] = [];
+    const sides = shard.sides;
+    for (let i = 0; i < sides; i += 1) {
+      const angle = shard.rotation + (Math.PI * 2 * i) / sides;
+      const stretch = i % 2 === 0 ? 1.25 : 0.72;
+      points.push(new Phaser.Math.Vector2(shard.x + Math.cos(angle) * shard.size * stretch, shard.y + Math.sin(angle) * shard.size));
+    }
+    g.fillStyle(0xdff7ff, 0.2 * alpha);
+    g.fillPoints(points, true);
+    g.lineStyle(1, 0xffffff, 0.7 * alpha);
+    g.strokePoints(points, true);
+  }
+
+  private spawnGlassBreak(slot: number, x: number, y: number, power: number): void {
+    this.spawnSpark(x, y, 1.25 * power);
+    const branches = Array.from({ length: 9 }, (_, index) => ({
+      angle: -Math.PI + (Math.PI * 2 * index) / 9 + Phaser.Math.FloatBetween(-0.2, 0.2),
+      length: Phaser.Math.FloatBetween(9, 21) * power,
+      split: Phaser.Math.FloatBetween(4, 10) * power,
+    }));
+    this.glassCracks.push({
+      x,
+      y: y - 2,
+      slotWidth: this.slotWidth,
+      life: 26,
+      maxLife: 26,
+      branches,
+    });
+
+    const shardCount = Math.round(22 * power);
+    for (let i = 0; i < shardCount; i += 1) {
+      const outward = Phaser.Math.FloatBetween(-1, 1);
+      this.glassShards.push({
+        x: x + outward * this.slotWidth * 0.28,
+        y: y + Phaser.Math.FloatBetween(-10, 8),
+        vx: outward * Phaser.Math.FloatBetween(0.8, 2.7) * power,
+        vy: Phaser.Math.FloatBetween(-2.5, 1.3) * power,
+        rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
+        spin: Phaser.Math.FloatBetween(-0.22, 0.22),
+        life: Phaser.Math.Between(34, 58),
+        maxLife: 58,
+        size: Phaser.Math.FloatBetween(2.2, 5.6) * power,
+        sides: Phaser.Math.Between(0, 1) === 0 ? 3 : 4,
+      });
+    }
+
+    const slotEdge = this.slotLeft + slot * this.slotWidth;
+    for (let i = 0; i < 7; i += 1) {
+      this.glassShards.push({
+        x: Phaser.Math.FloatBetween(slotEdge + 8, slotEdge + this.slotWidth - 8),
+        y: y + Phaser.Math.FloatBetween(9, 18),
+        vx: Phaser.Math.FloatBetween(-0.8, 0.8),
+        vy: Phaser.Math.FloatBetween(0.7, 2.2),
+        rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
+        spin: Phaser.Math.FloatBetween(-0.12, 0.12),
+        life: Phaser.Math.Between(44, 70),
+        maxLife: 70,
+        size: Phaser.Math.FloatBetween(1.7, 4.3),
+        sides: 3,
+      });
     }
   }
 
