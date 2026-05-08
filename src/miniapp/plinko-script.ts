@@ -104,10 +104,10 @@ export const PLINKO_SCRIPT = `
   function tick(time){
     if(!state)return;var rawDt=(time-(state.last||time))||16;var dt=Math.min(20,rawDt)/16.67;state.last=time;var balls=state.balls,bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;
     for(var b=balls.length-1;b>=0;b--){var ball=balls[b];ball.age=(ball.age||0)+dt;if(ball.sinking){ball.sink+=dt;ball.y+=.46*dt;ball.r*=.978;if(ball.sink>42||ball.r<1.2)balls.splice(b,1);continue}
-      ball.vy+=.155*dt;ball.vx*=.996;if(ball.vy>2.55)ball.vy=2.55;
-      ball.vx+=(Math.random()-.5)*.022*dt;
-      ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.58}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.58}
-      for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<min){ball.hitCount=(ball.hitCount||0)+1;var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*min;ball.y=peg.y+ny*min;var dot=ball.vx*nx+ball.vy*ny;var bounce=.86+Math.random()*.1;ball.vx=(ball.vx-(1.72*dot*nx))*bounce+(Math.random()-.5)*.42;ball.vy=(ball.vy-(1.62*dot*ny))*.76;if(ball.vy<.22)ball.vy=.22;if(ball.vy>2.25)ball.vy=2.25}}
+      ball.vy+=.145*dt;ball.vx*=.995;if(ball.vy>2.4)ball.vy=2.4;
+      ball.vx+=(Math.random()-.5)*.018*dt;
+      ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.54}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.54}
+      for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<min){ball.hitCount=(ball.hitCount||0)+1;var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*(min+.08);ball.y=peg.y+ny*(min+.08);var dot=ball.vx*nx+ball.vy*ny;if(dot<0){var bounce=.72+Math.random()*.1;ball.vx=ball.vx-(1+bounce)*dot*nx+(Math.random()-.5)*.18;ball.vy=ball.vy-(1+bounce)*dot*ny}ball.vx*=.992;ball.vy*=.992;if(ball.vy<-1.15)ball.vy=-1.15;if(ball.vy>2.15)ball.vy=2.15}}
       if(ball.y+ball.r>binTop+5){var idx=binIndexFromX(ball.x,bins,left,right);var bin=bins[idx];for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.46}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.46}ball.vy*=.84}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.vx*=.52;ball.vy*=.2;settle(ball,bin);ball.sinking=true;ball.sink=0}}
       if(ball.y>316){if(!ball.paid){var fallbackIdx=binIndexFromX(ball.x,bins,left,right);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
     draw();state.raf=requestAnimationFrame(tick);
