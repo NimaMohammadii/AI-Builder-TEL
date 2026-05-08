@@ -61,20 +61,6 @@ type GlassBounds = {
   radius: number;
 };
 
-type GlassShard = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  rotation: number;
-  spin: number;
-  life: number;
-  maxLife: number;
-  size: number;
-  sides: 3 | 4;
-  bounds?: GlassBounds;
-};
-
 type GlassCrack = {
   x: number;
   y: number;
@@ -90,7 +76,6 @@ export class PlinkoScene extends Phaser.Scene {
   private boardHeight = 430;
   private pegs: PegView[] = [];
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
-  private glassShards: GlassShard[] = [];
   private glassCracks: GlassCrack[] = [];
   private ball: BallState | null = null;
   private active = false;
@@ -220,7 +205,6 @@ export class PlinkoScene extends Phaser.Scene {
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
     this.sparks = [];
-    this.glassShards = [];
     this.glassCracks = [];
     this.ball = null;
     this.active = false;
@@ -455,46 +439,6 @@ export class PlinkoScene extends Phaser.Scene {
       g.strokeRoundedRect(crack.bounds.x, crack.bounds.y, crack.bounds.width, crack.bounds.height, crack.bounds.radius);
       if (crack.life <= 0) this.glassCracks.splice(i, 1);
     }
-
-    for (let i = this.glassShards.length - 1; i >= 0; i -= 1) {
-      const shard = this.glassShards[i];
-      shard.life -= 1;
-      shard.x += shard.vx;
-      shard.y += shard.vy;
-      shard.vy += 0.082;
-      shard.rotation += shard.spin;
-      shard.vx *= 0.992;
-      if (shard.bounds) {
-        shard.x = Phaser.Math.Clamp(shard.x, shard.bounds.x + 2, shard.bounds.x + shard.bounds.width - 2);
-        shard.y = Phaser.Math.Clamp(shard.y, shard.bounds.y + 2, shard.bounds.y + shard.bounds.height - 2);
-      }
-      const alpha = Phaser.Math.Clamp(shard.life / shard.maxLife, 0, 1);
-      this.drawShard(g, shard, alpha);
-      if (shard.life <= 0 || shard.y > this.boardHeight + 24) this.glassShards.splice(i, 1);
-    }
-  }
-
-  private drawShard(g: Phaser.GameObjects.Graphics, shard: GlassShard, alpha: number): void {
-    const points: Phaser.Math.Vector2[] = [];
-    const sides = shard.sides;
-    for (let i = 0; i < sides; i += 1) {
-      const angle = shard.rotation + (Math.PI * 2 * i) / sides;
-      const stretch = i % 2 === 0 ? 1.25 : 0.72;
-      const px = shard.x + Math.cos(angle) * shard.size * stretch;
-      const py = shard.y + Math.sin(angle) * shard.size;
-      points.push(
-        shard.bounds
-          ? new Phaser.Math.Vector2(
-              Phaser.Math.Clamp(px, shard.bounds.x, shard.bounds.x + shard.bounds.width),
-              Phaser.Math.Clamp(py, shard.bounds.y, shard.bounds.y + shard.bounds.height),
-            )
-          : new Phaser.Math.Vector2(px, py),
-      );
-    }
-    g.fillStyle(0xdff7ff, 0.2 * alpha);
-    g.fillPoints(points, true);
-    g.lineStyle(1, 0xffffff, 0.7 * alpha);
-    g.strokePoints(points, true);
   }
 
   private spawnGlassBreak(slot: number, x: number, y: number, power: number): void {
@@ -520,24 +464,6 @@ export class PlinkoScene extends Phaser.Scene {
       maxLife: 26,
       branches,
     });
-
-    const shardCount = Math.round(24 * power);
-    for (let i = 0; i < shardCount; i += 1) {
-      const outward = Phaser.Math.FloatBetween(-1, 1);
-      this.glassShards.push({
-        x: Phaser.Math.Clamp(impactX + outward * bounds.width * 0.32, bounds.x + 3, bounds.x + bounds.width - 3),
-        y: Phaser.Math.Clamp(impactY + Phaser.Math.FloatBetween(-bounds.height * 0.33, bounds.height * 0.33), bounds.y + 3, bounds.y + bounds.height - 3),
-        vx: outward * Phaser.Math.FloatBetween(0.45, 1.65) * power,
-        vy: Phaser.Math.FloatBetween(-1.35, 0.85) * power,
-        rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
-        spin: Phaser.Math.FloatBetween(-0.2, 0.2),
-        life: Phaser.Math.Between(34, 58),
-        maxLife: 58,
-        size: Phaser.Math.FloatBetween(1.4, 3.8) * power,
-        sides: Phaser.Math.Between(0, 1) === 0 ? 3 : 4,
-        bounds,
-      });
-    }
   }
 
   private spawnSpark(x: number, y: number, power: number): void {
