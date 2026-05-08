@@ -4,9 +4,12 @@ export type UserControls = {
   userId: string;
   credit: number | null;
   blockedSections: string[];
+  creditSource?: 'admin' | 'activity';
+  creditUpdatedAt?: number;
 };
 
 const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko']);
+const ADMIN_CREDIT_PROTECTION_MS = 35_000;
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
@@ -15,15 +18,22 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
     userId: id,
     credit: typeof saved?.credit === 'number' ? Math.max(0, Math.floor(saved.credit)) : null,
     blockedSections: Array.isArray(saved?.blockedSections) ? saved.blockedSections.filter((section) => VALID_SECTIONS.has(section)) : [],
+    creditSource: saved?.creditSource === 'admin' || saved?.creditSource === 'activity' ? saved.creditSource : undefined,
+    creditUpdatedAt: typeof saved?.creditUpdatedAt === 'number' ? saved.creditUpdatedAt : undefined,
   };
 }
 
 export async function setUserCredit(env: Env, userId: string, credit: number): Promise<UserControls> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
-  const next: UserControls = { ...current, credit: Math.max(0, Math.floor(Number(credit) || 0)) };
+  const next: UserControls = {
+    ...current,
+    credit: Math.max(0, Math.floor(Number(credit) || 0)),
+    creditSource: 'admin',
+    creditUpdatedAt: Date.now(),
+  };
   await save(env, next);
-  await updateKnownUserCredit(env, id, next.credit);
+  await updateKnownUserCredit(env, id, next.credit ?? 0);
   return next;
 }
 
@@ -32,6 +42,31 @@ export async function adjustUserCredit(env: Env, userId: string, delta: number):
   const current = await getUserControls(env, id);
   const existing = current.credit ?? await readKnownUserCredit(env, id);
   return setUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)));
+}
+
+export async function syncActivityCredit(env: Env, userId: string, credit: number): Promise<number> {
+  const id = cleanUserId(userId);
+  const incoming = Math.max(0, Math.floor(Number(credit) || 0));
+  const current = await getUserControls(env, id);
+  const protectedAdminCredit = current.creditSource === 'admin'
+    && typeof current.credit === 'number'
+    && typeof current.creditUpdatedAt === 'number'
+    && Date.now() - current.creditUpdatedAt < ADMIN_CREDIT_PROTECTION_MS
+    && current.credit !== incoming;
+
+  if (protectedAdminCredit) {
+    await updateKnownUserCredit(env, id, current.credit ?? 0);
+    return current.credit ?? incoming;
+  }
+
+  const next: UserControls = {
+    ...current,
+    credit: incoming,
+    creditSource: 'activity',
+    creditUpdatedAt: Date.now(),
+  };
+  await save(env, next);
+  return incoming;
 }
 
 export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean): Promise<UserControls> {
