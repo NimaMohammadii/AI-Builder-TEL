@@ -4,7 +4,7 @@ export type UserControls = {
   userId: string;
   credit: number | null;
   blockedSections: string[];
-  creditSource?: 'admin' | 'activity';
+  creditSource?: 'admin' | 'game' | 'system';
   creditUpdatedAt?: number;
 };
 
@@ -15,60 +15,35 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   const saved = await env.BOT_CACHE.get(key(id), 'json').catch(() => null) as Partial<UserControls> | null;
   return {
     userId: id,
-    credit: typeof saved?.credit === 'number' ? Math.max(0, Math.floor(saved.credit)) : await readKnownUserCredit(env, id),
+    credit: typeof saved?.credit === 'number' ? normalizeCredit(saved.credit) : await readKnownUserCredit(env, id),
     blockedSections: Array.isArray(saved?.blockedSections) ? saved.blockedSections.filter((section) => VALID_SECTIONS.has(section)) : [],
-    creditSource: saved?.creditSource === 'admin' || saved?.creditSource === 'activity' ? saved.creditSource : undefined,
+    creditSource: saved?.creditSource === 'admin' || saved?.creditSource === 'game' || saved?.creditSource === 'system' ? saved.creditSource : undefined,
     creditUpdatedAt: typeof saved?.creditUpdatedAt === 'number' ? saved.creditUpdatedAt : undefined,
   };
 }
 
 export async function setUserCredit(env: Env, userId: string, credit: number): Promise<UserControls> {
-  const id = cleanUserId(userId);
-  const current = await getUserControls(env, id);
-  const next: UserControls = {
-    ...current,
-    credit: normalizeCredit(credit),
-    creditSource: 'admin',
-    creditUpdatedAt: Date.now(),
-  };
-  await save(env, next);
-  await updateKnownUserCredit(env, id, next.credit ?? 0);
-  return next;
+  return writeUserCredit(env, userId, credit, 'admin');
 }
 
 export async function adjustUserCredit(env: Env, userId: string, delta: number): Promise<UserControls> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
   const existing = typeof current.credit === 'number' ? current.credit : await readKnownUserCredit(env, id);
-  return setUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)));
+  return writeUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)), 'admin');
 }
 
 export async function syncActivityCredit(env: Env, userId: string, credit: number, creditChanged = false): Promise<number> {
   const id = cleanUserId(userId);
-  const incoming = normalizeCredit(credit);
   const current = await getUserControls(env, id);
 
-  if (current.creditSource === 'admin' && typeof current.credit === 'number' && !creditChanged) {
-    const delivered: UserControls = {
-      ...current,
-      credit: current.credit,
-      creditSource: 'activity',
-      creditUpdatedAt: Date.now(),
-    };
-    await save(env, delivered);
-    await updateKnownUserCredit(env, id, current.credit);
-    return current.credit;
+  if (!creditChanged) {
+    const serverCredit = typeof current.credit === 'number' ? current.credit : await readKnownUserCredit(env, id);
+    return normalizeCredit(serverCredit);
   }
 
-  const next: UserControls = {
-    ...current,
-    credit: incoming,
-    creditSource: 'activity',
-    creditUpdatedAt: Date.now(),
-  };
-  await save(env, next);
-  await updateKnownUserCredit(env, id, incoming);
-  return incoming;
+  const next = await writeUserCredit(env, id, credit, 'game');
+  return normalizeCredit(next.credit ?? 0);
 }
 
 export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean): Promise<UserControls> {
@@ -86,6 +61,21 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
 export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; credit: number | null; blockedSections: string[] }> {
   const controls = await getUserControls(env, userId);
   return { userId: controls.userId, credit: controls.credit, blockedSections: controls.blockedSections };
+}
+
+async function writeUserCredit(env: Env, userId: string, credit: number, source: 'admin' | 'game' | 'system'): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  const current = await getUserControls(env, id);
+  const next: UserControls = {
+    ...current,
+    userId: id,
+    credit: normalizeCredit(credit),
+    creditSource: source,
+    creditUpdatedAt: Date.now(),
+  };
+  await save(env, next);
+  await updateKnownUserCredit(env, id, next.credit ?? 0);
+  return next;
 }
 
 async function save(env: Env, controls: UserControls): Promise<void> {
