@@ -54,12 +54,17 @@ export const PLINKO_SCRIPT = `
   }
   function drawGlassPeg(ctx,x,y,r){
     ctx.save();
-    ctx.shadowColor='rgba(255,255,255,.14)';ctx.shadowBlur=Math.max(4,r*.78);
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-    var fill=ctx.createRadialGradient(x-r*.28,y-r*.34,r*.08,x,y,r*1.05);
-    fill.addColorStop(0,'rgba(255,255,255,.34)');fill.addColorStop(.42,'rgba(255,255,255,.12)');fill.addColorStop(1,'rgba(255,255,255,.018)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
-    ctx.beginPath();ctx.arc(x,y,r-.35,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.46)';ctx.lineWidth=Math.max(.75,r*.12);ctx.stroke();
-    ctx.beginPath();ctx.arc(x-r*.18,y-r*.26,Math.max(1,r*.32),Math.PI*.95,Math.PI*1.9);ctx.strokeStyle='rgba(255,255,255,.38)';ctx.lineWidth=Math.max(.7,r*.1);ctx.stroke();
+    ctx.shadowColor='rgba(255,255,255,.22)';ctx.shadowBlur=Math.max(5,r*.9);
+    ctx.beginPath();ctx.arc(x,y,r*1.04,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.10)';ctx.fill();ctx.shadowBlur=0;
+    var edge=ctx.createRadialGradient(x-r*.36,y-r*.42,r*.06,x,y,r*1.08);
+    edge.addColorStop(0,'rgba(255,255,255,1)');edge.addColorStop(.24,'rgba(255,255,255,.88)');edge.addColorStop(.58,'rgba(255,255,255,.42)');edge.addColorStop(1,'rgba(255,255,255,.12)');
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=edge;ctx.fill();
+    var core=ctx.createRadialGradient(x-r*.25,y-r*.30,r*.05,x+r*.08,y+r*.12,r*.82);
+    core.addColorStop(0,'rgba(255,255,255,.96)');core.addColorStop(.36,'rgba(255,255,255,.46)');core.addColorStop(1,'rgba(255,255,255,.07)');
+    ctx.beginPath();ctx.arc(x,y,r*.74,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
+    ctx.beginPath();ctx.arc(x-r*.28,y-r*.34,Math.max(1,r*.23),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.88)';ctx.fill();
+    ctx.beginPath();ctx.arc(x+r*.22,y+r*.26,Math.max(.7,r*.11),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.22)';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=Math.max(.75,r*.11);ctx.stroke();
     ctx.restore();
   }
   function drawGlassBin(ctx,bin){
@@ -107,6 +112,7 @@ export const PLINKO_SCRIPT = `
       ball.vy+=.155*dt;ball.vx*=.995;if(ball.vy>2.55)ball.vy=2.55;
       ball.vx+=(Math.random()-.5)*.014*dt;
       ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.48}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.48}
+      for(var c=0;c<balls.length;c++){if(c===b)continue;var other=balls[c];if(!other||other.sinking)continue;var odx=ball.x-other.x,ody=ball.y-other.y,omin=ball.r+other.r,od=Math.sqrt(odx*odx+ody*ody)||1;if(od<omin){var onx=odx/od,ony=ody/od,overlap=(omin-od)*.5;ball.x+=onx*overlap;ball.y+=ony*overlap;other.x-=onx*overlap;other.y-=ony*overlap;var rvx=ball.vx-other.vx,rvy=ball.vy-other.vy,impact=rvx*onx+rvy*ony;if(impact<0){var impulse=-(1+.42)*impact*.5;ball.vx+=impulse*onx;ball.vy+=impulse*ony;other.vx-=impulse*onx;other.vy-=impulse*ony}ball.vx*=.992;other.vx*=.992;if(ball.vy<.045)ball.vy=.045;if(other.vy<.045)other.vy=.045;if(ball.vy>2.25)ball.vy=2.25;if(other.vy>2.25)other.vy=2.25;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}if(other.x<left+other.r){other.x=left+other.r;other.vx=Math.abs(other.vx)*.45}if(other.x>right-other.r){other.x=right-other.r;other.vx=-Math.abs(other.vx)*.45}}}
       for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<min){ball.hitCount=(ball.hitCount||0)+1;var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*(min+.22);ball.y=peg.y+ny*(min+.22);var dot=ball.vx*nx+ball.vy*ny;if(dot<0){var bounce=.58+Math.random()*.08;ball.vx=ball.vx-(1+bounce)*dot*nx+(Math.random()-.5)*.14;ball.vy=ball.vy-(1+bounce)*dot*ny}ball.vx*=.988;ball.vy*=.988;if(ball.vy<.045)ball.vy=.045;if(ball.vy>2.2)ball.vy=2.2;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}}}
       if(ball.y+ball.r>binTop+5){var idx=binIndexFromX(ball.x,bins,left,right);var bin=bins[idx];for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.46}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.46}ball.vy*=.84}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.vx*=.52;ball.vy*=.2;settle(ball,bin);ball.sinking=true;ball.sink=0}}
       if(ball.y>316){if(!ball.paid){var fallbackIdx=binIndexFromX(ball.x,bins,left,right);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
