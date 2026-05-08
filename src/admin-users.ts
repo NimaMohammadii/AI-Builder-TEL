@@ -24,8 +24,8 @@ export async function trackTelegramBotUser(env: Env, botId: string, update: Tele
   if (!from?.id) return;
   const section = update.callback_query ? 'callback' : update.pre_checkout_query ? 'payment' : cleanSection(update.message?.text?.startsWith('/') ? update.message.text.slice(1) : 'message');
   try {
-    await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, current_section, last_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET
         first_name = excluded.first_name,
         username = excluded.username,
@@ -70,7 +70,7 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
   const rows = await env.DB.prepare(`WITH all_users AS (
       SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at, 'miniapp' AS source FROM app_users
       UNION ALL
-      SELECT telegram_user_id, first_name, username, current_section, credit, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
+      SELECT telegram_user_id, first_name, username, current_section, NULL AS credit, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
     ), ranked AS (
       SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
