@@ -8,6 +8,7 @@ export type AppUserActivityPayload = {
   section?: string | null;
   credit?: number | null;
   creditChanged?: boolean | null;
+  creditVersion?: number | null;
 };
 
 type AdminUserRow = {
@@ -50,7 +51,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
   const incomingCredit = Math.max(0, Math.floor(Number(payload.credit ?? 0) || 0));
 
   try {
-    const credit = await syncActivityCredit(env, userId, incomingCredit, payload.creditChanged === true);
+    const credit = await syncActivityCredit(env, userId, incomingCredit, payload.creditChanged === true, payload.creditVersion);
     await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(telegram_user_id) DO UPDATE SET
