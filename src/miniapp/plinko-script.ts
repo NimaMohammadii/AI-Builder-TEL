@@ -17,7 +17,7 @@ export const PLINKO_SCRIPT = `
   function toast(message){var n=q('toast');if(!n)return;n.textContent=message;n.style.display='block';setTimeout(function(){n.style.display='none'},2500)}
   function saveCredit(){var value=Math.max(0,Math.round(credit));localStorage.setItem('vexaCredit',String(value));localStorage.setItem('plinkoCredit',String(value))}
   function renderCredit(){var value=Math.max(0,Math.round(credit));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=String(value)});saveCredit();return value}
-  function reportGameCredit(){var value=renderCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-set',{detail:{credit:value}}))}catch(e){}}
+  function reportGameCredit(){var value=renderCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-game-change',{detail:{credit:value}}))}catch(e){}}
   function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;renderCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
   window.addEventListener('vexa-credit-sync',function(ev){if(ev&&ev.detail)forceCredit(ev.detail.credit)});
   window.addEventListener('storage',function(ev){if(ev&&(ev.key==='vexaCredit'||ev.key==='plinkoCredit'))forceCredit(ev.newValue)});
