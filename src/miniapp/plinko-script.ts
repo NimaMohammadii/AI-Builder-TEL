@@ -68,14 +68,13 @@ export const PLINKO_SCRIPT = `
     ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=Math.max(.7,r*.105);ctx.stroke();ctx.restore();
   }
   function drawGlassBin(ctx,bin){
+    var r=Math.min(10,Math.max(5,bin.w*.28));
+    var shineX=Math.min(5,bin.w*.16);
     ctx.save();
-    ctx.shadowColor='rgba(255,255,255,.16)';ctx.shadowBlur=8;roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
-    var fill=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h);fill.addColorStop(0,'rgba(255,255,255,.30)');fill.addColorStop(.36,'rgba(255,255,255,.105)');fill.addColorStop(.72,'rgba(255,255,255,.038)');fill.addColorStop(1,'rgba(255,255,255,.018)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
-    roundRect(ctx,bin.x+.65,bin.y+.65,bin.w-1.3,bin.h-1.3,7.4);ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.05;ctx.stroke();
-    roundRect(ctx,bin.x+2,bin.y+2,bin.w-4,Math.max(8,bin.h*.46),6);var shine=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h*.62);shine.addColorStop(0,'rgba(255,255,255,.48)');shine.addColorStop(.58,'rgba(255,255,255,.10)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
-    ctx.beginPath();ctx.moveTo(bin.x+4,bin.y+4);ctx.lineTo(bin.x+4,bin.y+bin.h-6);ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bin.x+bin.w-4,bin.y+5);ctx.lineTo(bin.x+bin.w-4,bin.y+bin.h-7);ctx.strokeStyle='rgba(255,255,255,.10)';ctx.lineWidth=1;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bin.x+6,bin.y+bin.h-6);ctx.lineTo(bin.x+bin.w-6,bin.y+bin.h-6);ctx.strokeStyle='rgba(255,255,255,.17)';ctx.lineWidth=1;ctx.stroke();
+    ctx.shadowColor='rgba(255,255,255,.12)';ctx.shadowBlur=6;roundRect(ctx,bin.x,bin.y,bin.w,bin.h,r);
+    var fill=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h);fill.addColorStop(0,'rgba(255,255,255,.22)');fill.addColorStop(.5,'rgba(255,255,255,.07)');fill.addColorStop(1,'rgba(255,255,255,.016)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
+    roundRect(ctx,bin.x+.8,bin.y+.8,bin.w-1.6,bin.h-1.6,Math.max(2,r-1));ctx.strokeStyle='rgba(255,255,255,.44)';ctx.lineWidth=1;ctx.stroke();
+    roundRect(ctx,bin.x+shineX,bin.y+3,Math.max(2,bin.w-shineX*2),Math.min(7,bin.h*.24),Math.min(6,r));var shine=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+12);shine.addColorStop(0,'rgba(255,255,255,.34)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
     ctx.restore();
   }
 
