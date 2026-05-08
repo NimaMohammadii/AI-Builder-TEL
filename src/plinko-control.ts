@@ -34,19 +34,19 @@ export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
   volatility: 50,
   rows: {
     '7': {
-      low: { multipliers: [2, 1.4, 1.1, 0.9, 0.9, 0.9, 1.1, 1.4, 2], weights: [4, 7, 12, 18, 24, 18, 12, 7, 4] },
-      medium: { multipliers: [5, 2, 1.2, 0.5, 0.5, 0.5, 1.2, 2, 5], weights: [2, 5, 12, 19, 24, 19, 12, 5, 2] },
-      high: { multipliers: [12, 4, 1.5, 0.2, 0.2, 0.2, 1.5, 4, 12], weights: [1, 3, 8, 18, 40, 18, 8, 3, 1] },
+      low: { multipliers: [2, 1.4, 1.1, 0.9, 0.9, 1.1, 1.4, 2], weights: [4, 8, 14, 24, 24, 14, 8, 4] },
+      medium: { multipliers: [5, 2, 1.2, 0.5, 0.5, 1.2, 2, 5], weights: [2, 6, 15, 27, 27, 15, 6, 2] },
+      high: { multipliers: [12, 4, 1.5, 0.2, 0.2, 1.5, 4, 12], weights: [1, 3, 9, 37, 37, 9, 3, 1] },
     },
     '9': {
-      low: { multipliers: [3, 1.6, 1.3, 1.1, 0.8, 0.8, 0.8, 1.1, 1.3, 1.6, 3], weights: [2, 4, 7, 11, 15, 22, 15, 11, 7, 4, 2] },
-      medium: { multipliers: [8, 3, 1.6, 1.1, 0.4, 0.4, 0.4, 1.1, 1.6, 3, 8], weights: [1, 3, 6, 11, 17, 24, 17, 11, 6, 3, 1] },
-      high: { multipliers: [25, 8, 3, 1.3, 0.2, 0.2, 0.2, 1.3, 3, 8, 25], weights: [0.5, 1.2, 3, 7, 15, 46.6, 15, 7, 3, 1.2, 0.5] },
+      low: { multipliers: [3, 1.6, 1.3, 1.1, 0.8, 0.8, 1.1, 1.3, 1.6, 3], weights: [2, 5, 8, 14, 21, 21, 14, 8, 5, 2] },
+      medium: { multipliers: [8, 3, 1.6, 1.1, 0.4, 0.4, 1.1, 1.6, 3, 8], weights: [1, 3, 7, 14, 25, 25, 14, 7, 3, 1] },
+      high: { multipliers: [25, 8, 3, 1.3, 0.2, 0.2, 1.3, 3, 8, 25], weights: [0.5, 1.5, 4, 10, 34, 34, 10, 4, 1.5, 0.5] },
     },
     '11': {
-      low: { multipliers: [4, 1.8, 1.5, 1.2, 1, 0.85, 0.85, 0.85, 1, 1.2, 1.5, 1.8, 4], weights: [1, 2.5, 4, 6.5, 10, 14, 24, 14, 10, 6.5, 4, 2.5, 1] },
-      medium: { multipliers: [14, 4, 2.2, 1.5, 1, 0.5, 0.5, 0.5, 1, 1.5, 2.2, 4, 14], weights: [0.5, 1, 2.5, 4.5, 8, 14, 39, 14, 8, 4.5, 2.5, 1, 0.5] },
-      high: { multipliers: [60, 14, 6, 2.5, 1.2, 0.25, 0.25, 0.25, 1.2, 2.5, 6, 14, 60], weights: [0.2, 0.5, 1, 2.2, 4.8, 10, 62.6, 10, 4.8, 2.2, 1, 0.5, 0.2] },
+      low: { multipliers: [4, 1.8, 1.5, 1.2, 1, 0.85, 0.85, 1, 1.2, 1.5, 1.8, 4], weights: [1.5, 3, 5, 8, 13, 19.5, 19.5, 13, 8, 5, 3, 1.5] },
+      medium: { multipliers: [14, 4, 2.2, 1.5, 1, 0.5, 0.5, 1, 1.5, 2.2, 4, 14], weights: [0.5, 1.5, 3, 6, 11, 28, 28, 11, 6, 3, 1.5, 0.5] },
+      high: { multipliers: [60, 14, 6, 2.5, 1.2, 0.25, 0.25, 1.2, 2.5, 6, 14, 60], weights: [0.2, 0.6, 1.4, 3.8, 8, 36, 36, 8, 3.8, 1.4, 0.6, 0.2] },
     },
   },
 };
@@ -114,7 +114,7 @@ function normalizePlinkoConfig(input: any): PlinkoControlConfig {
   };
   (['7', '9', '11'] as const).forEach((rowKey) => {
     (['low', 'medium', 'high'] as const).forEach((risk) => {
-      const expected = Number(rowKey) + 2;
+      const expected = Number(rowKey) + 1;
       const item = input?.rows?.[rowKey]?.[risk] ?? input?.rows?.[rowKey]?.[risk.toString()];
       out.rows[rowKey][risk] = {
         multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows[rowKey][risk].multipliers, 0, 1000),
