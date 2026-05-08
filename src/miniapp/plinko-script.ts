@@ -29,6 +29,22 @@ export const PLINKO_SCRIPT = `
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===rows+1)return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(rows+1).fill(1)}
   function isControlled(){return plinkoControl&&plinkoControl.enabled!==false&&(plinkoControl.mode==='weighted'||plinkoControl.mode==='house')}
   function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(Math.random()*(rows+1));var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0)return i}return weights.length-1}
+  function resolveLandingIndex(index){
+    if(!isControlled())return index;
+    var weights=currentWeights();
+    var idx=clamp(Math.floor(Number(index)||0),0,weights.length-1);
+    if(weights[idx]>0)return idx;
+    var best=-1,bestDistance=Infinity;
+    for(var i=0;i<weights.length;i++){
+      if(weights[i]>0){var d=Math.abs(i-idx);if(d<bestDistance){best=i;bestDistance=d}}
+    }
+    return best>=0?best:idx;
+  }
+  function landingIndexForBall(ball,physicalIndex){
+    if(!isControlled())return physicalIndex;
+    var target=Number.isFinite(ball.targetIndex)?ball.targetIndex:physicalIndex;
+    return resolveLandingIndex(target);
+  }
   function pegRadius(){return rows===7?5.85:rows===9?5.25:4.35}
   function pegVisualRadius(){return rows===7?7.7:rows===9?7.1:5.25}
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
@@ -106,8 +122,8 @@ export const PLINKO_SCRIPT = `
       ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.48}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.48}
       for(var c=0;c<balls.length;c++){if(c===b)continue;var other=balls[c];if(!other||other.sinking)continue;var odx=ball.x-other.x,ody=ball.y-other.y,omin=ball.r+other.r,od=Math.sqrt(odx*odx+ody*ody)||1;if(od<omin){var onx=odx/od,ony=ody/od,overlap=(omin-od)*.5;ball.x+=onx*overlap;ball.y+=ony*overlap;other.x-=onx*overlap;other.y-=ony*overlap;var rvx=ball.vx-other.vx,rvy=ball.vy-other.vy,impact=rvx*onx+rvy*ony;if(impact<0){var impulse=-(1+.42)*impact*.5;ball.vx+=impulse*onx;ball.vy+=impulse*ony;other.vx-=impulse*onx;other.vy-=impulse*ony}ball.vx*=.992;other.vx*=.992;if(ball.vy<.045)ball.vy=.045;if(other.vy<.045)other.vy=.045;if(ball.vy>2.25)ball.vy=2.25;if(other.vy>2.25)other.vy=2.25;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}if(other.x<left+other.r){other.x=left+other.r;other.vx=Math.abs(other.vx)*.45}if(other.x>right-other.r){other.x=right-other.r;other.vx=-Math.abs(other.vx)*.45}}}
       for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<min){ball.hitCount=(ball.hitCount||0)+1;var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*(min+.22);ball.y=peg.y+ny*(min+.22);var dot=ball.vx*nx+ball.vy*ny;if(dot<0){var bounce=.58+Math.random()*.08;ball.vx=ball.vx-(1+bounce)*dot*nx+(Math.random()-.5)*.14;ball.vy=ball.vy-(1+bounce)*dot*ny}ball.vx*=.988;ball.vy*=.988;if(ball.vy<.045)ball.vy=.045;if(ball.vy>2.2)ball.vy=2.2;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}}}
-      if(ball.y+ball.r>binTop+5){var idx=binIndexFromX(ball.x,bins,left,right);var bin=bins[idx];for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.46}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.46}ball.vy*=.84}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.vx*=.52;ball.vy*=.2;settle(ball,bin);ball.sinking=true;ball.sink=0}}
-      if(ball.y>316){if(!ball.paid){var fallbackIdx=binIndexFromX(ball.x,bins,left,right);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
+      if(ball.y+ball.r>binTop+5){var physicalIdx=binIndexFromX(ball.x,bins,left,right);var idx=landingIndexForBall(ball,physicalIdx);var bin=bins[idx];if(isControlled()){var center=bin.x+bin.w/2;ball.x+=clamp(center-ball.x,-3,3)*dt;ball.x=clamp(ball.x,left+ball.r,right-ball.r)}for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.46}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.46}ball.vy*=.84}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.vx*=.52;ball.vy*=.2;settle(ball,bin);ball.sinking=true;ball.sink=0}}
+      if(ball.y>316){if(!ball.paid){var fallbackPhysicalIdx=binIndexFromX(ball.x,bins,left,right);var fallbackIdx=landingIndexForBall(ball,fallbackPhysicalIdx);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
     draw();state.raf=requestAnimationFrame(tick);
   }
 
