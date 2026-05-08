@@ -1,12 +1,12 @@
 export const PLINKO_STYLES = `
 #plinko.view{overflow:hidden}
-.plinko-page{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:14px 0 108px;position:relative}
+.plinko-page{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:10px 0 132px;position:relative}
 .plinko-top{width:auto;display:flex;justify-content:flex-end;position:fixed;top:calc(26px + env(safe-area-inset-top));right:16px;z-index:12;pointer-events:none}
 .plinko-credit{height:34px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.42);display:flex;align-items:center;gap:8px;padding:0 12px;color:#fff;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;overflow:hidden;pointer-events:auto;box-shadow:0 8px 22px rgba(0,0,0,.22)}
 .plinko-credit img{width:22px;height:22px;object-fit:contain;border:0;box-shadow:none;background:transparent;flex:0 0 auto}
-.plinko-stage{width:min(94%,342px);aspect-ratio:320/326;display:grid;place-items:center;margin-top:0;position:relative;z-index:1;flex:0 0 auto;overflow:hidden;padding:10px 10px 0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
+.plinko-stage{width:min(91%,330px);aspect-ratio:320/326;display:grid;place-items:center;margin-top:0;position:relative;z-index:1;flex:0 0 auto;overflow:hidden;padding:10px 10px 0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
 .plinko-canvas{width:100%;height:100%;display:block;background:transparent}
-.plinko-controls{width:min(94%,362px);display:grid;gap:8px;margin-top:0;position:relative;z-index:2;flex:0 0 auto;padding:12px 12px 13px;border:1px solid rgba(255,255,255,.13);border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02) 42%,rgba(0,0,0,.2));box-shadow:0 18px 46px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.045)}
+.plinko-controls{width:min(94%,362px);display:grid;gap:8px;margin-top:-4px;position:relative;z-index:2;flex:0 0 auto;padding:12px 12px 13px;border:1px solid rgba(255,255,255,.13);border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02) 42%,rgba(0,0,0,.2));box-shadow:0 18px 46px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.045)}
 .plinko-control-row{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:9px;align-items:end}
 .plinko-field{display:grid;gap:5px}.plinko-label{color:rgba(255,255,255,.58);font-size:10px;font-weight:760;letter-spacing:.01em}
 .risk-segment{height:38px;padding:4px;border-radius:17px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.34);display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
