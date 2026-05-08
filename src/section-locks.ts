@@ -24,6 +24,8 @@ type SavedSectionLock = {
   code?: string;
 };
 
+type AdminSettingRow = { value_json: string };
+
 const LOCKS_KEY = 'admin:section-locks';
 export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -68,7 +70,7 @@ export async function setSectionLock(env: Env, sectionId: string, locked: boolea
   const current = await readLocks(env);
   const existing = current[normalized] ?? {};
   current[normalized] = { ...existing, locked: Boolean(locked), mode: locked ? 'locked' : 'open' };
-  await env.BOT_CACHE.put(LOCKS_KEY, JSON.stringify(current));
+  await writeLocks(env, current);
   return getSectionLocks(env);
 }
 
@@ -78,7 +80,7 @@ export async function setSectionCodeLock(env: Env, sectionId: string, code: stri
   if (!cleaned) throw new Error('Enter an access code first');
   const current = await readLocks(env);
   current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'code', code: cleaned };
-  await env.BOT_CACHE.put(LOCKS_KEY, JSON.stringify(current));
+  await writeLocks(env, current);
   return getSectionLocks(env);
 }
 
@@ -131,9 +133,43 @@ async function legacySectionImageVersion(env: Env, sectionId: string): Promise<s
 }
 
 async function readLocks(env: Env): Promise<Record<string, SavedSectionLock>> {
-  const raw = await env.BOT_CACHE.get(LOCKS_KEY, 'json').catch(() => null) as Record<string, boolean | SavedSectionLock> | null;
+  const stored = await readSetting<Record<string, boolean | SavedSectionLock>>(env, LOCKS_KEY);
+  return normalizeSavedLocks(stored ?? {});
+}
+
+async function writeLocks(env: Env, locks: Record<string, SavedSectionLock>): Promise<void> {
+  await ensureAdminSettingsTable(env);
+  await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(name) DO UPDATE SET
+      value_json = excluded.value_json,
+      updated_at = CURRENT_TIMESTAMP`)
+    .bind(LOCKS_KEY, JSON.stringify(locks))
+    .run();
+}
+
+async function readSetting<T>(env: Env, name: string): Promise<T | null> {
+  try {
+    await ensureAdminSettingsTable(env);
+    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(name).first<AdminSettingRow>();
+    if (row?.value_json) return JSON.parse(row.value_json) as T;
+  } catch (error) {
+    console.warn('read admin setting from D1 failed', error);
+  }
+  return env.BOT_CACHE.get(name, 'json').catch(() => null) as Promise<T | null>;
+}
+
+async function ensureAdminSettingsTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
+    name TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+}
+
+function normalizeSavedLocks(raw: Record<string, boolean | SavedSectionLock>): Record<string, SavedSectionLock> {
   const out: Record<string, SavedSectionLock> = {};
-  for (const [key, value] of Object.entries(raw ?? {})) {
+  for (const [key, value] of Object.entries(raw)) {
     if (typeof value === 'boolean') out[key] = { locked: value, mode: value ? 'locked' : 'open' };
     else out[key] = value ?? {};
   }
