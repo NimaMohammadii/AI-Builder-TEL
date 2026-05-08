@@ -53,12 +53,21 @@ type BallState = {
   done: boolean;
 };
 
+type SlotBreakEffect = {
+  slot: number;
+  life: number;
+  totalLife: number;
+  cracks: Array<{ startX: number; startY: number; endX: number; endY: number; width: number }>;
+  shards: Array<{ x: number; y: number; vx: number; vy: number; rotation: number; spin: number; size: number; alpha: number }>;
+};
+
 export class PlinkoScene extends Phaser.Scene {
   private callbacks: PlinkoSceneEvents;
   private boardWidth = 360;
   private boardHeight = 430;
   private pegs: PegView[] = [];
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
+  private slotBreakEffects: SlotBreakEffect[] = [];
   private ball: BallState | null = null;
   private active = false;
   private slotLeft = 16;
@@ -68,6 +77,7 @@ export class PlinkoScene extends Phaser.Scene {
   private graphics!: Phaser.GameObjects.Graphics;
   private trailGraphics!: Phaser.GameObjects.Graphics;
   private machineGraphics!: Phaser.GameObjects.Graphics;
+  private multiplierLabels: Phaser.GameObjects.Text[] = [];
 
   constructor(callbacks: PlinkoSceneEvents) {
     super('PlinkoScene');
@@ -93,6 +103,8 @@ export class PlinkoScene extends Phaser.Scene {
   setRisk(risk: PlinkoRisk): void {
     if (this.risk === risk) return;
     this.risk = risk;
+    this.machineGraphics?.clear();
+    if (this.machineGraphics) this.drawMachine(this.machineGraphics);
   }
 
   getRows(): PlinkoRows {
@@ -187,10 +199,13 @@ export class PlinkoScene extends Phaser.Scene {
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
     this.sparks = [];
+    this.slotBreakEffects = [];
     this.ball = null;
     this.active = false;
     (this.matter.world.localWorld as unknown as MatterJS.CompositeType).bodies.slice().forEach((body: MatterJS.BodyType) => this.matter.world.remove(body));
     this.matter.world.setBounds(22, 36, this.boardWidth - 44, this.boardHeight - 54, 28, true, true, false, true);
+    this.clearMultiplierLabels();
+    this.machineGraphics.clear();
 
     const rows = this.rows;
     const top = 70;
@@ -253,6 +268,8 @@ export class PlinkoScene extends Phaser.Scene {
       (sensor as MatterJS.BodyType & { slot?: number }).slot = slot;
     }
 
+    this.drawMachine(this.machineGraphics);
+
     this.matter.world.off('collisionstart');
     this.matter.world.on('collisionstart', (event: Phaser.Physics.Matter.Events.CollisionStartEvent) => {
       for (const pair of event.pairs) {
@@ -264,9 +281,11 @@ export class PlinkoScene extends Phaser.Scene {
 
         if (other.label.startsWith('peg:')) {
           const peg = this.pegs.find((item) => item.body === other);
-          if (peg) peg.hit = 9;
-          this.spawnSpark(ball.position.x, ball.position.y, 0.6);
-          this.callbacks.onPegHit();
+          if (peg && peg.hit <= 0) {
+            peg.hit = 9;
+            this.spawnSpark(ball.position.x, ball.position.y, 0.6);
+            this.callbacks.onPegHit();
+          }
         }
 
         const slot = (other as MatterJS.BodyType & { slot?: number }).slot;
@@ -280,6 +299,7 @@ export class PlinkoScene extends Phaser.Scene {
   private finish(slot: number): void {
     if (!this.ball || this.ball.done) return;
     this.ball.done = true;
+    this.spawnSlotBreak(slot);
     const multipliers = this.currentMultipliers();
     const multiplier = multipliers[slot] ?? 0.5;
     const win = Math.round(this.ball.bet * multiplier);
@@ -305,12 +325,8 @@ export class PlinkoScene extends Phaser.Scene {
   private drawScene(): void {
     const g = this.graphics;
     const trail = this.trailGraphics;
-    const machine = this.machineGraphics;
     g.clear();
     trail.clear();
-    machine.clear();
-
-    this.drawMachine(machine);
     for (const peg of this.pegs) {
       if (peg.hit > 0) peg.hit -= 1;
       const visualRadius = this.pegVisualRadius() + (peg.hit > 0 ? 1.4 : 0);
@@ -324,6 +340,7 @@ export class PlinkoScene extends Phaser.Scene {
       g.strokeCircle(peg.x, peg.y, visualRadius);
     }
 
+    this.drawSlotBreakEffects(g);
     this.drawSparks(g);
     if (this.ball && !this.ball.done) {
       const pos = this.ball.body.position;
@@ -343,6 +360,7 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private drawMachine(g: Phaser.GameObjects.Graphics): void {
+    this.clearMultiplierLabels();
     const slotTop = this.boardHeight - 58;
     const slotHeight = 34;
     const multipliers = this.currentMultipliers();
@@ -363,8 +381,6 @@ export class PlinkoScene extends Phaser.Scene {
       g.lineBetween(x, slotTop, x, slotTop + slotHeight);
     }
 
-    const labels = this.add.graphics();
-    labels.destroy();
     const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'Inter, system-ui, sans-serif',
       fontSize: `${this.multiplierFontSize()}px`,
@@ -377,7 +393,64 @@ export class PlinkoScene extends Phaser.Scene {
       const y = slotTop + slotHeight / 2;
       const label = this.add.text(x, y, this.formatMultiplier(multipliers[i]), textStyle).setOrigin(0.5);
       label.setAlpha(0.86);
-      this.time.delayedCall(16, () => label.destroy());
+      label.setDepth(2);
+      this.multiplierLabels.push(label);
+    }
+  }
+
+  private clearMultiplierLabels(): void {
+    this.multiplierLabels.forEach((label) => label.destroy());
+    this.multiplierLabels = [];
+  }
+
+  private drawSlotBreakEffects(g: Phaser.GameObjects.Graphics): void {
+    const slotTop = this.boardHeight - 58;
+    const slotHeight = 34;
+
+    for (let i = this.slotBreakEffects.length - 1; i >= 0; i -= 1) {
+      const effect = this.slotBreakEffects[i];
+      effect.life -= 1;
+      const progress = 1 - effect.life / effect.totalLife;
+      const alpha = Math.max(0, effect.life / effect.totalLife);
+      const left = this.slotLeft + effect.slot * this.slotWidth + 3;
+      const top = slotTop + 2;
+      const width = this.slotWidth - 6;
+      const height = slotHeight - 3;
+      const centerX = left + width / 2;
+      const centerY = top + height / 2;
+
+      g.fillStyle(0xffffff, 0.22 * alpha);
+      g.fillRoundedRect(left, top, width, height, 9);
+      g.lineStyle(2, 0xd8fbff, 0.92 * alpha);
+      g.strokeRoundedRect(left, top, width, height, 9);
+      for (const crack of effect.cracks) {
+        g.lineStyle(crack.width, 0xffffff, 0.88 * alpha);
+        g.lineBetween(
+          centerX + crack.startX,
+          centerY + crack.startY,
+          centerX + crack.startX + (crack.endX - crack.startX) * Math.min(1, progress * 2.4),
+          centerY + crack.startY + (crack.endY - crack.startY) * Math.min(1, progress * 2.4),
+        );
+      }
+
+      for (const shard of effect.shards) {
+        shard.x += shard.vx;
+        shard.y += shard.vy;
+        shard.vy += 0.06;
+        shard.rotation += shard.spin;
+        const shardAlpha = alpha * shard.alpha;
+        const points = [
+          new Phaser.Math.Vector2(shard.x + Math.cos(shard.rotation) * shard.size, shard.y + Math.sin(shard.rotation) * shard.size),
+          new Phaser.Math.Vector2(shard.x + Math.cos(shard.rotation + 2.35) * shard.size * 0.75, shard.y + Math.sin(shard.rotation + 2.35) * shard.size * 0.75),
+          new Phaser.Math.Vector2(shard.x + Math.cos(shard.rotation + 4.25) * shard.size * 0.92, shard.y + Math.sin(shard.rotation + 4.25) * shard.size * 0.92),
+        ];
+        g.fillStyle(0xe9fdff, 0.46 * shardAlpha);
+        g.fillPoints(points, true);
+        g.lineStyle(1, 0xffffff, 0.62 * shardAlpha);
+        g.strokePoints(points, true);
+      }
+
+      if (effect.life <= 0) this.slotBreakEffects.splice(i, 1);
     }
   }
 
@@ -392,6 +465,42 @@ export class PlinkoScene extends Phaser.Scene {
       g.fillCircle(spark.x, spark.y, spark.r);
       if (spark.life <= 0) this.sparks.splice(i, 1);
     }
+  }
+
+  private spawnSlotBreak(slot: number): void {
+    const slotTop = this.boardHeight - 58;
+    const x = this.slotLeft + slot * this.slotWidth + this.slotWidth / 2;
+    const y = slotTop + 19;
+    const width = Math.max(18, this.slotWidth - 10);
+
+    this.slotBreakEffects = this.slotBreakEffects.filter((effect) => effect.slot !== slot);
+    this.slotBreakEffects.push({
+      slot,
+      life: 46,
+      totalLife: 46,
+      cracks: Array.from({ length: 9 }, (_, index) => {
+        const angle = -Math.PI * 0.9 + (index / 8) * Math.PI * 1.8 + Phaser.Math.FloatBetween(-0.16, 0.16);
+        const length = Phaser.Math.FloatBetween(width * 0.18, width * 0.46);
+        return {
+          startX: Phaser.Math.FloatBetween(-width * 0.08, width * 0.08),
+          startY: Phaser.Math.FloatBetween(-5, 5),
+          endX: Math.cos(angle) * length,
+          endY: Math.sin(angle) * Math.min(20, length),
+          width: Phaser.Math.FloatBetween(0.8, 1.8),
+        };
+      }),
+      shards: Array.from({ length: 14 }, () => ({
+        x: x + Phaser.Math.FloatBetween(-width * 0.28, width * 0.28),
+        y: y + Phaser.Math.FloatBetween(-9, 8),
+        vx: Phaser.Math.FloatBetween(-1.55, 1.55),
+        vy: Phaser.Math.FloatBetween(-2.15, -0.25),
+        rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
+        spin: Phaser.Math.FloatBetween(-0.22, 0.22),
+        size: Phaser.Math.FloatBetween(2.4, 5.8),
+        alpha: Phaser.Math.FloatBetween(0.66, 1),
+      })),
+    });
+    this.spawnSpark(x, y, 1.3);
   }
 
   private spawnSpark(x: number, y: number, power: number): void {
