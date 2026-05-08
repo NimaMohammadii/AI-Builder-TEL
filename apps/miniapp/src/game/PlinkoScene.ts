@@ -53,30 +53,12 @@ type BallState = {
   done: boolean;
 };
 
-type GlassBounds = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  radius: number;
-};
-
-type GlassCrack = {
-  x: number;
-  y: number;
-  bounds: GlassBounds;
-  life: number;
-  maxLife: number;
-  branches: Array<{ angle: number; length: number; split: number }>;
-};
-
 export class PlinkoScene extends Phaser.Scene {
   private callbacks: PlinkoSceneEvents;
   private boardWidth = 360;
   private boardHeight = 430;
   private pegs: PegView[] = [];
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
-  private glassCracks: GlassCrack[] = [];
   private ball: BallState | null = null;
   private active = false;
   private slotLeft = 16;
@@ -205,7 +187,6 @@ export class PlinkoScene extends Phaser.Scene {
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
     this.sparks = [];
-    this.glassCracks = [];
     this.ball = null;
     this.active = false;
     (this.matter.world.localWorld as unknown as MatterJS.CompositeType).bodies.slice().forEach((body: MatterJS.BodyType) => this.matter.world.remove(body));
@@ -303,9 +284,6 @@ export class PlinkoScene extends Phaser.Scene {
     const multiplier = multipliers[slot] ?? 0.5;
     const win = Math.round(this.ball.bet * multiplier);
     const body = this.ball.body;
-    const impactX = this.slotLeft + slot * this.slotWidth + this.slotWidth / 2;
-    const impactY = this.boardHeight - 45;
-    this.spawnGlassBreak(slot, impactX, impactY, multiplier >= 10 ? 1.35 : 1.0);
     this.matter.world.remove(body);
     this.callbacks.onGlassBreak(slot);
     const result = { slot, multiplier, bet: this.ball.bet, win };
@@ -347,8 +325,6 @@ export class PlinkoScene extends Phaser.Scene {
     }
 
     this.drawSparks(g);
-    this.drawGlassBreak(g);
-
     if (this.ball && !this.ball.done) {
       const pos = this.ball.body.position;
       this.ball.trail.push(new Phaser.Math.Vector2(pos.x, pos.y));
@@ -416,54 +392,6 @@ export class PlinkoScene extends Phaser.Scene {
       g.fillCircle(spark.x, spark.y, spark.r);
       if (spark.life <= 0) this.sparks.splice(i, 1);
     }
-  }
-
-  private drawGlassBreak(g: Phaser.GameObjects.Graphics): void {
-    for (let i = this.glassCracks.length - 1; i >= 0; i -= 1) {
-      const crack = this.glassCracks[i];
-      crack.life -= 1;
-      const alpha = Phaser.Math.Clamp(crack.life / crack.maxLife, 0, 1);
-      g.lineStyle(1, 0xffffff, 0.58 * alpha);
-      for (const branch of crack.branches) {
-        const endX = Phaser.Math.Clamp(crack.x + Math.cos(branch.angle) * branch.length, crack.bounds.x, crack.bounds.x + crack.bounds.width);
-        const endY = Phaser.Math.Clamp(crack.y + Math.sin(branch.angle) * branch.length, crack.bounds.y, crack.bounds.y + crack.bounds.height);
-        g.lineBetween(crack.x, crack.y, endX, endY);
-        g.lineBetween(
-          endX,
-          endY,
-          Phaser.Math.Clamp(endX + Math.cos(branch.angle + 0.72) * branch.split, crack.bounds.x, crack.bounds.x + crack.bounds.width),
-          Phaser.Math.Clamp(endY + Math.sin(branch.angle + 0.72) * branch.split, crack.bounds.y, crack.bounds.y + crack.bounds.height),
-        );
-      }
-      g.lineStyle(1, 0x9ee7ff, 0.32 * alpha);
-      g.strokeRoundedRect(crack.bounds.x, crack.bounds.y, crack.bounds.width, crack.bounds.height, crack.bounds.radius);
-      if (crack.life <= 0) this.glassCracks.splice(i, 1);
-    }
-  }
-
-  private spawnGlassBreak(slot: number, x: number, y: number, power: number): void {
-    const bounds: GlassBounds = {
-      x: this.slotLeft + slot * this.slotWidth + 3,
-      y: this.boardHeight - 56,
-      width: this.slotWidth - 6,
-      height: 31,
-      radius: 9,
-    };
-    const impactX = Phaser.Math.Clamp(x, bounds.x + 3, bounds.x + bounds.width - 3);
-    const impactY = Phaser.Math.Clamp(y, bounds.y + 4, bounds.y + bounds.height - 4);
-    const branches = Array.from({ length: 9 }, (_, index) => ({
-      angle: -Math.PI + (Math.PI * 2 * index) / 9 + Phaser.Math.FloatBetween(-0.18, 0.18),
-      length: Phaser.Math.FloatBetween(7, Math.min(bounds.width, bounds.height) * 0.58) * power,
-      split: Phaser.Math.FloatBetween(3, 8) * power,
-    }));
-    this.glassCracks.push({
-      x: impactX,
-      y: impactY,
-      bounds,
-      life: 26,
-      maxLife: 26,
-      branches,
-    });
   }
 
   private spawnSpark(x: number, y: number, power: number): void {
