@@ -16,8 +16,9 @@ export const PLINKO_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function toast(message){var n=q('toast');if(!n)return;n.textContent=message;n.style.display='block';setTimeout(function(){n.style.display='none'},2500)}
   function saveCredit(){var value=Math.max(0,Math.round(credit));localStorage.setItem('vexaCredit',String(value));localStorage.setItem('plinkoCredit',String(value))}
-  function updateCredit(){var value=Math.max(0,Math.round(credit));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=String(value)});saveCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-set',{detail:{credit:value}}))}catch(e){}}
-  function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;updateCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
+  function renderCredit(){var value=Math.max(0,Math.round(credit));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=String(value)});saveCredit();return value}
+  function reportGameCredit(){var value=renderCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-game-change',{detail:{credit:value}}))}catch(e){}}
+  function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;renderCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
   window.addEventListener('vexa-credit-sync',function(ev){if(ev&&ev.detail)forceCredit(ev.detail.credit)});
   window.addEventListener('storage',function(ev){if(ev&&(ev.key==='vexaCredit'||ev.key==='plinkoCredit'))forceCredit(ev.newValue)});
   window.addEventListener('vexa-credit-icon-sync',function(ev){if(ev&&ev.detail&&ev.detail.url)updateTokenImage(ev.detail.url)});
@@ -84,11 +85,11 @@ export const PLINKO_SCRIPT = `
     var canvas=q('plinkoCanvasV2');if(!canvas)return;if(state&&state.canvas===canvas&&!force){draw();return}
     var dpr=Math.min(window.devicePixelRatio||1,3);canvas.width=320*dpr;canvas.height=306*dpr;var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     var img=new Image();img.onload=function(){draw()};img.src=creditIconUrl;state={canvas:canvas,ctx:ctx,dpr:dpr,pegs:makePegs(),bins:makeBins(),balls:[],last:0,raf:state&&state.raf||0,tokenImg:img};
-    updateCredit();setRows(rows);setRisk(risk);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
+    renderCredit();setRows(rows);setRisk(risk);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;updateCredit();var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
-  function settle(ball,bin){if(ball.paid)return;ball.paid=true;credit+=ball.bet*bin.mult;updateCredit()}
+  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit();var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
+  function settle(ball,bin){if(ball.paid)return;ball.paid=true;credit+=ball.bet*bin.mult;reportGameCredit()}
 
   function tick(time){
     if(!state)return;var rawDt=(time-(state.last||time))||16;var dt=Math.min(20,rawDt)/16.67;state.last=time;var balls=state.balls,bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;
