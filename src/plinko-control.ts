@@ -23,6 +23,8 @@ export interface PlinkoControlConfig {
   updatedAt?: string;
 }
 
+type AdminSettingRow = { value_json: string };
+
 const KEY = 'admin:plinko-control';
 
 export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
@@ -50,26 +52,53 @@ export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
 };
 
 export async function getPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
-  const raw = await env.BOT_CACHE.get(KEY).catch(() => null);
-  if (!raw) return DEFAULT_PLINKO_CONTROL;
-  try {
-    return normalizePlinkoConfig(JSON.parse(raw));
-  } catch {
-    return DEFAULT_PLINKO_CONTROL;
-  }
+  const saved = await readConfig(env);
+  return saved ? normalizePlinkoConfig(saved) : DEFAULT_PLINKO_CONTROL;
 }
 
 export async function savePlinkoControl(env: Env, value: unknown): Promise<PlinkoControlConfig> {
   const config = normalizePlinkoConfig(value);
   config.updatedAt = new Date().toISOString();
-  await env.BOT_CACHE.put(KEY, JSON.stringify(config), { expirationTtl: 60 * 60 * 24 * 365 });
+  await writeConfig(env, config);
   return config;
 }
 
 export async function resetPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
   const config = { ...DEFAULT_PLINKO_CONTROL, updatedAt: new Date().toISOString() };
-  await env.BOT_CACHE.put(KEY, JSON.stringify(config), { expirationTtl: 60 * 60 * 24 * 365 });
+  await writeConfig(env, config);
   return config;
+}
+
+async function readConfig(env: Env): Promise<unknown | null> {
+  try {
+    await ensureAdminSettingsTable(env);
+    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(KEY).first<AdminSettingRow>();
+    if (row?.value_json) return JSON.parse(row.value_json);
+  } catch (error) {
+    console.warn('read plinko control from D1 failed', error);
+  }
+  const raw = await env.BOT_CACHE.get(KEY).catch(() => null);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+async function writeConfig(env: Env, config: PlinkoControlConfig): Promise<void> {
+  await ensureAdminSettingsTable(env);
+  await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(name) DO UPDATE SET
+      value_json = excluded.value_json,
+      updated_at = CURRENT_TIMESTAMP`)
+    .bind(KEY, JSON.stringify(config))
+    .run();
+}
+
+async function ensureAdminSettingsTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
+    name TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
 }
 
 function normalizePlinkoConfig(input: any): PlinkoControlConfig {
