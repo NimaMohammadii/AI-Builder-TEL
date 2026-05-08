@@ -4,7 +4,7 @@ export const PLINKO_SCRIPT = `
   var risk='medium';
   var rows=7;
   var rowOptions=[7,9,11];
-  var credit=Number(localStorage.getItem('vexaCredit')||localStorage.getItem('plinkoCredit')||'1000')||1000;
+  var credit=Number((document.getElementById('plinkoCredit')||{}).textContent||'1000')||1000;
   var creditIconUrl='/app/api/uploaded-image/credit-icon.png';
   var plinkoControl=null;
   var multiplierTable={
@@ -15,12 +15,10 @@ export const PLINKO_SCRIPT = `
 
   function q(id){return document.getElementById(id)}
   function toast(message){var n=q('toast');if(!n)return;n.textContent=message;n.style.display='block';setTimeout(function(){n.style.display='none'},2500)}
-  function saveCredit(){var value=Math.max(0,Math.round(credit));localStorage.setItem('vexaCredit',String(value));localStorage.setItem('plinkoCredit',String(value))}
-  function renderCredit(){var value=Math.max(0,Math.round(credit));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=String(value)});saveCredit();return value}
-  function reportGameCredit(){var value=renderCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-game-change',{detail:{credit:value}}))}catch(e){}}
+  function renderCredit(){var value=Math.max(0,Math.round(credit));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=String(value)});return value}
+  function reportGameCredit(delta){var value=renderCredit();try{window.dispatchEvent(new CustomEvent('vexa-credit-game-change',{detail:{credit:value,delta:delta}}))}catch(e){}}
   function forceCredit(next){var value=Math.max(0,Math.floor(Number(next)||0));if(value===Math.max(0,Math.round(credit)))return;credit=value;renderCredit();var input=q('plinkoBet');if(input&&Number(input.value)>credit)input.value=String(Math.max(1,Math.floor(credit)))}
   window.addEventListener('vexa-credit-sync',function(ev){if(ev&&ev.detail)forceCredit(ev.detail.credit)});
-  window.addEventListener('storage',function(ev){if(ev&&(ev.key==='vexaCredit'||ev.key==='plinkoCredit'))forceCredit(ev.newValue)});
   window.addEventListener('vexa-credit-icon-sync',function(ev){if(ev&&ev.detail&&ev.detail.url)updateTokenImage(ev.detail.url)});
   function getBet(){var input=q('plinkoBet');var value=Math.floor(Number(input&&input.value)||0);if(value<1)value=1;if(value>credit)value=Math.floor(credit);if(input)input.value=String(value);return value}
   function fmt(n){var value=Number.isInteger(n)?String(n):String(n).replace(/^0/,'0');return value+'x'}
@@ -88,8 +86,8 @@ export const PLINKO_SCRIPT = `
     renderCredit();setRows(rows);setRisk(risk);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit();var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
-  function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit()}
+  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
+  function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
     if(!state)return;var rawDt=(time-(state.last||time))||16;var dt=Math.min(20,rawDt)/16.67;state.last=time;var balls=state.balls,bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;

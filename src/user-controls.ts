@@ -32,15 +32,13 @@ export async function setUserCredit(env: Env, userId: string, credit: number): P
 
 export async function adjustUserCredit(env: Env, userId: string, delta: number): Promise<UserControls> {
   const id = cleanUserId(userId);
-  const existing = await readAppUserCredit(env, id);
-  await writeAppUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)));
+  await addAppUserCredit(env, id, delta);
   return getUserControls(env, id);
 }
 
 export async function applyGameCreditDelta(env: Env, userId: string, delta: number): Promise<UserControls> {
   const id = cleanUserId(userId);
-  const existing = await readAppUserCredit(env, id);
-  await writeAppUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)));
+  await addAppUserCredit(env, id, delta);
   return getUserControls(env, id);
 }
 
@@ -77,6 +75,17 @@ async function writeAppUserCredit(env: Env, userId: string, credit: number): Pro
       credit = excluded.credit,
       updated_at = CURRENT_TIMESTAMP`)
     .bind(userId, value)
+    .run();
+}
+
+async function addAppUserCredit(env: Env, userId: string, delta: number): Promise<void> {
+  const value = Math.floor(Number(delta) || 0);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, credit, last_seen_at, updated_at)
+    VALUES (?, 'home', max(0, ?), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET
+      credit = max(0, credit + ?),
+      updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, DEFAULT_CREDIT + value, value)
     .run();
 }
 
