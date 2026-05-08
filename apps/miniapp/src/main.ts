@@ -27,6 +27,8 @@ let phaserGame: Phaser.Game | null = null;
 let plinkoScene: PlinkoScene | null = null;
 let isDropping = false;
 let audioContext: AudioContext | null = null;
+let lastPegSoundAt = 0;
+let pegToneIndex = 0;
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -104,6 +106,38 @@ function getAudioContext(): AudioContext | null {
 
 function primeAudio(): void {
   void getAudioContext()?.resume();
+}
+
+function playPegHitSound(): void {
+  const context = getAudioContext();
+  if (!context) return;
+
+  const nowMs = performance.now();
+  if (nowMs - lastPegSoundAt < 34) return;
+  lastPegSoundAt = nowMs;
+  void context.resume();
+
+  const now = context.currentTime;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  const filter = context.createBiquadFilter();
+  const tones = [820, 980, 1160, 1320];
+  const tone = tones[pegToneIndex % tones.length] + Phaser.Math.Between(-55, 55);
+  pegToneIndex += 1;
+
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(tone, now);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(220, tone * 0.58), now + 0.055);
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(tone, now);
+  filter.Q.setValueAtTime(8, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.095, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+
+  oscillator.connect(filter).connect(gain).connect(context.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.075);
 }
 
 function playGlassBreakSound(): void {
@@ -225,7 +259,10 @@ function mountGame(): void {
   plinkoScene = new PlinkoScene({
     onDropStarted,
     onDropFinished,
-    onPegHit: () => haptic('impact'),
+    onPegHit: () => {
+      playPegHitSound();
+      haptic('impact');
+    },
     onGlassBreak: (slot) => {
       triggerGlassSlotBreak(slot);
       playGlassBreakSound();
