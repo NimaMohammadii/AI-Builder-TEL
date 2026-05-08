@@ -17,6 +17,7 @@ export type PlinkoSceneEvents = {
   onGlassBreak: (slot: number) => void;
 };
 
+const PEG_HIT_FEEDBACK_COOLDOWN_MS = 220;
 const ROW_OPTIONS: PlinkoRows[] = [7, 9, 11];
 const MULTIPLIERS: Record<PlinkoRows, Record<PlinkoRisk, number[]>> = {
   7: {
@@ -41,6 +42,7 @@ type PegView = {
   y: number;
   r: number;
   hit: number;
+  lastImpactAt: number;
   body: MatterJS.BodyType;
 };
 
@@ -229,7 +231,7 @@ export class PlinkoScene extends Phaser.Scene {
           restitution: 0.92,
           friction: 0.01,
         });
-        this.pegs.push({ x, y, r: pegR, body, hit: 0 });
+        this.pegs.push({ x, y, r: pegR, body, hit: 0, lastImpactAt: Number.NEGATIVE_INFINITY });
       }
     }
 
@@ -281,10 +283,14 @@ export class PlinkoScene extends Phaser.Scene {
 
         if (other.label.startsWith('peg:')) {
           const peg = this.pegs.find((item) => item.body === other);
-          if (peg && peg.hit <= 0) {
-            peg.hit = 9;
-            this.spawnSpark(ball.position.x, ball.position.y, 0.6);
-            this.callbacks.onPegHit();
+          if (peg) {
+            const now = performance.now();
+            if (peg.hit <= 0 && now - peg.lastImpactAt >= PEG_HIT_FEEDBACK_COOLDOWN_MS) {
+              peg.lastImpactAt = now;
+              peg.hit = 9;
+              this.spawnSpark(ball.position.x, ball.position.y, 0.6);
+              this.callbacks.onPegHit();
+            }
           }
         }
 

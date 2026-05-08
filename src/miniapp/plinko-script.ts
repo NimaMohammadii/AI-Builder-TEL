@@ -15,6 +15,7 @@ export const PLINKO_SCRIPT = `
   var pegAudioIndex=0;
   var lastPegSoundAt=0;
   var pegToneIndex=0;
+  var PEG_IMPACT_FEEDBACK_COOLDOWN_MS=220;
   var multiplierTable={
     7:{low:[2,1.4,1.1,.9,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,.2,1.5,4,12]},
     9:{low:[3,1.6,1.3,1.1,.8,.8,.8,1.1,1.3,1.6,3],medium:[8,3,1.6,1.1,.4,.4,.4,1.1,1.6,3,8],high:[25,8,3,1.3,.2,.2,.2,1.3,3,8,25]},
@@ -101,8 +102,17 @@ export const PLINKO_SCRIPT = `
       }else{return}
     }else if(dist>=min){return}
     ball.hitCount=(ball.hitCount||0)+1;
-    if(!peg.hit||peg.hit<2)spawnPegImpact(peg.x,peg.y,ball.vx,ball.vy);
-    peg.hit=9;
+    var pegKey=peg.key||String(peg.x)+':'+String(peg.y);
+    var nowMs=performance.now();
+    var samePegBackToBack=ball.lastPegKey===pegKey&&nowMs-(ball.lastPegImpactAt||0)<PEG_IMPACT_FEEDBACK_COOLDOWN_MS;
+    var pegFeedbackReady=(!peg.lastImpactAt||nowMs-peg.lastImpactAt>=PEG_IMPACT_FEEDBACK_COOLDOWN_MS)&&!samePegBackToBack;
+    if(pegFeedbackReady){
+      peg.lastImpactAt=nowMs;
+      ball.lastPegKey=pegKey;
+      ball.lastPegImpactAt=nowMs;
+      spawnPegImpact(peg.x,peg.y,ball.vx,ball.vy);
+      peg.hit=9;
+    }
     var nx=dx/dist,ny=dy/dist;
     var overlap=min-dist;
     ball.x+=nx*(overlap+.08);
@@ -176,7 +186,7 @@ export const PLINKO_SCRIPT = `
 
   function makePegs(){
     var pegs=[];var top=32;var bottom=rows===11?238:rows===9?235:230;var pegRows=rows+1;var rowGap=(bottom-top)/Math.max(1,pegRows-1);var slotCount=houseCount();var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
-    for(var row=0;row<pegRows;row++){var count=row+3;var start=slotLeft+((slotCount-(count-1))*slotGap)/2;var y=top+row*rowGap;for(var i=0;i<count;i++)pegs.push({x:start+i*slotGap,y:y,r:r,vr:vr})}
+    for(var row=0;row<pegRows;row++){var count=row+3;var start=slotLeft+((slotCount-(count-1))*slotGap)/2;var y=top+row*rowGap;for(var i=0;i<count;i++)pegs.push({key:row+':'+i,x:start+i*slotGap,y:y,r:r,vr:vr,lastImpactAt:0})}
     return pegs;
   }
 
@@ -194,7 +204,7 @@ export const PLINKO_SCRIPT = `
     ensurePegAudioPool();renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();primeAudio();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.08,-10,10);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.004,-.34,.34):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false,settleX:null})}
+  function drop(){init();primeAudio();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.08,-10,10);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.004,-.34,.34):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,lastPegKey:null,lastPegImpactAt:0,sinking:false,sink:0,paid:false,settleX:null})}
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;if(state)state.impactRings.push({bin:bin,life:34,max:34});var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
