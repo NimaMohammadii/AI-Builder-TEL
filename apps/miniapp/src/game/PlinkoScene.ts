@@ -68,6 +68,7 @@ export class PlinkoScene extends Phaser.Scene {
   private boardWidth = 360;
   private boardHeight = 430;
   private pegs: PegView[] = [];
+  private pegByBody = new Map<MatterJS.BodyType, PegView>();
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
   private slotBreakEffects: SlotBreakEffect[] = [];
   private ball: BallState | null = null;
@@ -200,6 +201,7 @@ export class PlinkoScene extends Phaser.Scene {
     this.boardWidth = Math.max(300, this.scale.width);
     this.boardHeight = Math.max(330, this.scale.height);
     this.pegs = [];
+    this.pegByBody.clear();
     this.sparks = [];
     this.slotBreakEffects = [];
     this.ball = null;
@@ -231,7 +233,9 @@ export class PlinkoScene extends Phaser.Scene {
           restitution: 0.92,
           friction: 0.01,
         });
-        this.pegs.push({ x, y, r: pegR, body, hit: 0, lastImpactAt: Number.NEGATIVE_INFINITY });
+        const peg = { x, y, r: pegR, body, hit: 0, lastImpactAt: Number.NEGATIVE_INFINITY };
+        this.pegs.push(peg);
+        this.pegByBody.set(body, peg);
       }
     }
 
@@ -282,7 +286,7 @@ export class PlinkoScene extends Phaser.Scene {
         if (!ball) continue;
 
         if (other.label.startsWith('peg:')) {
-          const peg = this.pegs.find((item) => item.body === other);
+          const peg = this.pegByBody.get(other);
           if (peg) {
             const now = performance.now();
             if (peg.hit <= 0 && now - peg.lastImpactAt >= PEG_HIT_FEEDBACK_COOLDOWN_MS) {
@@ -334,13 +338,12 @@ export class PlinkoScene extends Phaser.Scene {
     g.clear();
     trail.clear();
     for (const peg of this.pegs) {
-      if (peg.hit > 0) peg.hit -= 1;
-      const visualRadius = this.pegVisualRadius() + (peg.hit > 0 ? 1.4 : 0);
-      if (peg.hit > 0) {
-        g.fillStyle(0xffffff, 0.085);
-        g.fillCircle(peg.x, peg.y, visualRadius + 8);
-      }
-      g.fillStyle(0xffffff, peg.hit > 0 ? 0.95 : 0.7);
+      if (peg.hit <= 0) continue;
+      peg.hit -= 1;
+      const visualRadius = this.pegVisualRadius() + 1.4;
+      g.fillStyle(0xffffff, 0.085);
+      g.fillCircle(peg.x, peg.y, visualRadius + 8);
+      g.fillStyle(0xffffff, 0.95);
       g.fillCircle(peg.x, peg.y, visualRadius);
       g.lineStyle(1, 0xffffff, 0.3);
       g.strokeCircle(peg.x, peg.y, visualRadius);
@@ -370,6 +373,14 @@ export class PlinkoScene extends Phaser.Scene {
     const slotTop = this.boardHeight - 58;
     const slotHeight = 34;
     const multipliers = this.currentMultipliers();
+
+    const pegVisualRadius = this.pegVisualRadius();
+    for (const peg of this.pegs) {
+      g.fillStyle(0xffffff, 0.7);
+      g.fillCircle(peg.x, peg.y, pegVisualRadius);
+      g.lineStyle(1, 0xffffff, 0.3);
+      g.strokeCircle(peg.x, peg.y, pegVisualRadius);
+    }
 
     for (let i = 0; i < this.rows + 1; i += 1) {
       const x = this.slotLeft + i * this.slotWidth;
