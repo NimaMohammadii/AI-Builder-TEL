@@ -1,14 +1,11 @@
 import type { Env, TelegramUpdate } from './types';
-import { syncActivityCredit } from './user-controls';
+import { getUserControls } from './user-controls';
 
 export type AppUserActivityPayload = {
   userId?: string;
   username?: string | null;
   firstName?: string | null;
   section?: string | null;
-  credit?: number | null;
-  creditChanged?: boolean | null;
-  creditVersion?: number | null;
 };
 
 type AdminUserRow = {
@@ -48,17 +45,16 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
   const username = cleanText(payload.username, 80);
   const firstName = cleanText(payload.firstName, 120);
   const section = cleanSection(payload.section);
-  const incomingCredit = Math.max(0, Math.floor(Number(payload.credit ?? 0) || 0));
 
   try {
-    const credit = await syncActivityCredit(env, userId, incomingCredit, payload.creditChanged === true, payload.creditVersion);
+    const controls = await getUserControls(env, userId);
+    const credit = Math.max(0, Math.floor(Number(controls.credit ?? 1000) || 0));
     await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(telegram_user_id) DO UPDATE SET
         first_name = excluded.first_name,
         username = excluded.username,
         current_section = excluded.current_section,
-        credit = excluded.credit,
         last_seen_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, section, credit)
@@ -84,7 +80,8 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
     ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
     LIMIT 500`).all<AdminUserRow>();
   const now = Date.now();
-  const users = (rows.results ?? []).map((row) => {
+  const users = await Promise.all((rows.results ?? []).map(async (row) => {
+    const controls = await getUserControls(env, row.telegram_user_id).catch(() => null);
     const lastSeenMs = row.last_seen_at ? Date.parse(row.last_seen_at) : 0;
     const online = lastSeenMs > 0 && now - lastSeenMs <= 90_000;
     return {
@@ -94,12 +91,12 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       isActive: online,
       status: online ? 'Online' : 'Inactive',
       currentSection: row.current_section || 'unknown',
-      credit: Number(row.credit ?? 0),
+      credit: Number(controls?.credit ?? row.credit ?? 0),
       lastSeenAt: row.last_seen_at,
       createdAt: row.created_at,
       source: row.source || 'unknown',
     };
-  });
+  }));
   const online = users.filter((user) => user.isActive).length;
   const totalCredit = users.reduce((sum, user) => sum + Number(user.credit || 0), 0);
   return { users, stats: { total: users.length, online, inactive: users.length - online, totalCredit } };
