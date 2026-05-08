@@ -42,13 +42,13 @@ export const PLINKO_SCRIPT = `
   }
 
   function drawGlassDropChute(ctx){
-    var x=132,y=0,w=56,h=36,r=15;
+    var x=140,y=-8,w=40,h=24,r=11;
     ctx.save();
-    ctx.shadowColor='rgba(255,255,255,.13)';ctx.shadowBlur=8;roundRect(ctx,x,y,w,h,r);
-    var fill=ctx.createLinearGradient(x,y,x,y+h);fill.addColorStop(0,'rgba(255,255,255,.23)');fill.addColorStop(.48,'rgba(255,255,255,.075)');fill.addColorStop(1,'rgba(255,255,255,.018)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
-    roundRect(ctx,x+.8,y+.8,w-1.6,h-1.6,r-1);ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=1.05;ctx.stroke();
-    roundRect(ctx,x+6,y+4,w-12,10,8);var shine=ctx.createLinearGradient(x,y,x,y+16);shine.addColorStop(0,'rgba(255,255,255,.38)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
-    ctx.beginPath();ctx.moveTo(x+16,y+h-7);ctx.lineTo(x+w-16,y+h-7);ctx.strokeStyle='rgba(255,255,255,.34)';ctx.lineWidth=1.1;ctx.stroke();
+    ctx.shadowColor='rgba(255,255,255,.12)';ctx.shadowBlur=6;roundRect(ctx,x,y,w,h,r);
+    var fill=ctx.createLinearGradient(x,y,x,y+h);fill.addColorStop(0,'rgba(255,255,255,.22)');fill.addColorStop(.5,'rgba(255,255,255,.07)');fill.addColorStop(1,'rgba(255,255,255,.016)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
+    roundRect(ctx,x+.8,y+.8,w-1.6,h-1.6,r-1);ctx.strokeStyle='rgba(255,255,255,.44)';ctx.lineWidth=1;ctx.stroke();
+    roundRect(ctx,x+5,y+3,w-10,7,6);var shine=ctx.createLinearGradient(x,y,x,y+12);shine.addColorStop(0,'rgba(255,255,255,.34)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
+    ctx.beginPath();ctx.moveTo(x+12,y+h-5);ctx.lineTo(x+w-12,y+h-5);ctx.strokeStyle='rgba(255,255,255,.30)';ctx.lineWidth=1;ctx.stroke();
     ctx.restore();
   }
   function drawGlassPeg(ctx,x,y,r){
