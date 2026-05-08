@@ -49,6 +49,13 @@ export async function syncActivityCredit(env: Env, userId: string, credit: numbe
   const current = await getUserControls(env, id);
 
   if (current.creditSource === 'admin' && typeof current.credit === 'number') {
+    const next: UserControls = {
+      ...current,
+      credit: current.credit,
+      creditSource: 'activity',
+      creditUpdatedAt: Date.now(),
+    };
+    await save(env, next);
     await updateKnownUserCredit(env, id, current.credit);
     return current.credit;
   }
