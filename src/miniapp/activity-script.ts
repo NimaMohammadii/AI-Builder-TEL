@@ -4,25 +4,17 @@ export const ACTIVITY_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lastPayload='';
   var lastSent=0;
-  var lastConfirmedCredit=null;
-  var localCreditDirty=false;
-  var localCreditVersion=Math.max(0,Math.floor(Number(localStorage.getItem('vexaCreditVersion')||'0')||0));
+  var confirmedCredit=null;
+  var pendingCredit=null;
+  var creditQueue=Promise.resolve();
 
   function activeSection(){
     var active=document.querySelector('.view.active');
     return active&&active.id?active.id:'home';
   }
 
-  function currentCredit(){
-    var ids=['plinkoCredit','creditCount','plinkoCreditHeader'];
-    for(var i=0;i<ids.length;i++){
-      var el=document.getElementById(ids[i]);
-      if(el&&el.textContent){
-        var n=Number(String(el.textContent).replace(/[^0-9]/g,''));
-        if(Number.isFinite(n))return Math.max(0,Math.floor(n));
-      }
-    }
-    return Math.max(0,Math.floor(Number(localStorage.getItem('vexaCredit')||localStorage.getItem('plinkoCredit')||'1000')||0));
+  function userId(){
+    return String(user.id||localStorage.getItem('ownerId')||'').trim();
   }
 
   function writeCreditToUi(value){
@@ -35,59 +27,48 @@ export const ACTIVITY_SCRIPT = `
   function applyServerCredit(value){
     if(value===null||value===undefined)return;
     var credit=writeCreditToUi(value);
-    lastConfirmedCredit=credit;
-    localCreditDirty=false;
+    confirmedCredit=credit;
+    pendingCredit=credit;
     try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
   }
 
-  function markGameCreditChanged(value){
-    var credit=writeCreditToUi(value);
-    localCreditVersion++;
-    try{localStorage.setItem('vexaCreditVersion',String(localCreditVersion))}catch(e){}
-    localCreditDirty=lastConfirmedCredit===null||credit!==lastConfirmedCredit;
-  }
-
-  function userId(){
-    return String(user.id||localStorage.getItem('ownerId')||'').trim();
-  }
-
-  function payload(){
-    return {
-      userId:userId(),
-      username:user.username||null,
-      firstName:user.first_name||null,
-      section:activeSection(),
-      credit:currentCredit(),
-      creditChanged:localCreditDirty,
-      creditVersion:localCreditVersion
-    };
-  }
-
-  function send(force){
-    var body=payload();
+  function sendActivity(force){
+    var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:activeSection()};
     if(!body.userId)return;
     var encoded=JSON.stringify(body);
     var now=Date.now();
     if(!force&&encoded===lastPayload&&now-lastSent<25000)return;
     lastPayload=encoded;
     lastSent=now;
-    var requestCreditVersion=localCreditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
       .then(function(r){return r.json().catch(function(){return null})})
-      .then(function(j){if(j&&j.ok&&j.credit!==undefined&&requestCreditVersion===localCreditVersion)applyServerCredit(j.credit)})
+      .then(function(j){if(j&&j.ok&&j.credit!==undefined)applyServerCredit(j.credit)})
       .catch(function(){});
   }
 
+  function sendGameDelta(nextCredit){
+    var id=userId();
+    if(!id)return;
+    nextCredit=writeCreditToUi(nextCredit);
+    if(pendingCredit===null)pendingCredit=confirmedCredit===null?nextCredit:confirmedCredit;
+    var delta=nextCredit-pendingCredit;
+    pendingCredit=nextCredit;
+    if(delta===0)return;
+    creditQueue=creditQueue.then(function(){
+      return fetch('/app/api/credit/game-delta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,delta:delta})})
+        .then(function(r){return r.json().catch(function(){return null})})
+        .then(function(j){if(j&&j.credit!==undefined)applyServerCredit(j.credit)})
+        .catch(function(){});
+    });
+  }
+
   window.addEventListener('vexa-credit-game-change',function(ev){
-    if(ev&&ev.detail&&ev.detail.credit!==undefined){
-      markGameCreditChanged(ev.detail.credit);
-      setTimeout(function(){send(true)},40);
-    }
+    if(ev&&ev.detail&&ev.detail.credit!==undefined)sendGameDelta(ev.detail.credit);
   });
-  document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
-  document.addEventListener('visibilitychange',function(){send(true)});
-  window.addEventListener('beforeunload',function(){send(true)});
-  setTimeout(function(){send(true)},600);
-  setInterval(function(){send(false)},20000);
+  document.addEventListener('click',function(){setTimeout(function(){sendActivity(false)},80)},true);
+  document.addEventListener('visibilitychange',function(){sendActivity(true)});
+  window.addEventListener('beforeunload',function(){sendActivity(true)});
+  setTimeout(function(){sendActivity(true)},600);
+  setInterval(function(){sendActivity(false)},20000);
 })();
 `;
