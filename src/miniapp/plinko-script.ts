@@ -43,22 +43,26 @@ export const PLINKO_SCRIPT = `
 
   function drawGlassPeg(ctx,x,y,r){
     ctx.save();
-    ctx.shadowColor='rgba(255,255,255,.22)';
-    ctx.shadowBlur=Math.max(2,r*.55);
-    var edge=ctx.createRadialGradient(x-r*.34,y-r*.42,r*.12,x,y,r);
-    edge.addColorStop(0,'rgba(255,255,255,.98)');edge.addColorStop(.34,'rgba(255,255,255,.78)');edge.addColorStop(.68,'rgba(255,255,255,.33)');edge.addColorStop(1,'rgba(255,255,255,.12)');
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=edge;ctx.fill();ctx.shadowBlur=0;
-    var core=ctx.createRadialGradient(x-r*.24,y-r*.28,r*.05,x+r*.05,y+r*.08,r*.9);
-    core.addColorStop(0,'rgba(255,255,255,.82)');core.addColorStop(.42,'rgba(255,255,255,.34)');core.addColorStop(1,'rgba(255,255,255,.07)');
-    ctx.beginPath();ctx.arc(x,y,r*.78,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
-    ctx.beginPath();ctx.arc(x-r*.24,y-r*.32,Math.max(1,r*.28),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.72)';ctx.fill();
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=Math.max(.65,r*.11);ctx.stroke();ctx.restore();
+    ctx.shadowColor='rgba(255,255,255,.18)';
+    ctx.shadowBlur=Math.max(3,r*.75);
+    ctx.beginPath();ctx.arc(x,y,r*1.04,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fill();ctx.shadowBlur=0;
+    var edge=ctx.createRadialGradient(x-r*.36,y-r*.42,r*.08,x,y,r*1.08);
+    edge.addColorStop(0,'rgba(255,255,255,1)');edge.addColorStop(.25,'rgba(255,255,255,.86)');edge.addColorStop(.58,'rgba(255,255,255,.38)');edge.addColorStop(1,'rgba(255,255,255,.10)');
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=edge;ctx.fill();
+    var core=ctx.createRadialGradient(x-r*.26,y-r*.30,r*.05,x+r*.08,y+r*.12,r*.82);
+    core.addColorStop(0,'rgba(255,255,255,.92)');core.addColorStop(.38,'rgba(255,255,255,.42)');core.addColorStop(1,'rgba(255,255,255,.055)');
+    ctx.beginPath();ctx.arc(x,y,r*.74,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
+    ctx.beginPath();ctx.arc(x-r*.28,y-r*.34,Math.max(1,r*.24),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.86)';ctx.fill();
+    ctx.beginPath();ctx.arc(x+r*.24,y+r*.28,Math.max(.7,r*.11),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.20)';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=Math.max(.7,r*.105);ctx.stroke();ctx.restore();
   }
   function drawGlassBin(ctx,bin){
-    ctx.save();ctx.shadowColor='rgba(255,255,255,.13)';ctx.shadowBlur=5;roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
-    var fill=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h);fill.addColorStop(0,'rgba(255,255,255,.20)');fill.addColorStop(.46,'rgba(255,255,255,.075)');fill.addColorStop(1,'rgba(255,255,255,.025)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
-    roundRect(ctx,bin.x+.7,bin.y+.7,bin.w-1.4,bin.h-1.4,7.4);ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=1.05;ctx.stroke();
-    roundRect(ctx,bin.x+2,bin.y+2,bin.w-4,Math.max(7,bin.h*.42),6);var shine=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h*.55);shine.addColorStop(0,'rgba(255,255,255,.34)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();ctx.restore();
+    ctx.save();ctx.shadowColor='rgba(255,255,255,.12)';ctx.shadowBlur=6;roundRect(ctx,bin.x,bin.y,bin.w,bin.h,8);
+    var fill=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h);fill.addColorStop(0,'rgba(255,255,255,.24)');fill.addColorStop(.38,'rgba(255,255,255,.095)');fill.addColorStop(1,'rgba(255,255,255,.028)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
+    roundRect(ctx,bin.x+.65,bin.y+.65,bin.w-1.3,bin.h-1.3,7.4);ctx.strokeStyle='rgba(255,255,255,.54)';ctx.lineWidth=1.05;ctx.stroke();
+    roundRect(ctx,bin.x+2,bin.y+2,bin.w-4,Math.max(8,bin.h*.44),6);var shine=ctx.createLinearGradient(bin.x,bin.y,bin.x,bin.y+bin.h*.58);shine.addColorStop(0,'rgba(255,255,255,.38)');shine.addColorStop(.72,'rgba(255,255,255,.055)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
+    ctx.beginPath();ctx.moveTo(bin.x+5,bin.y+bin.h-6);ctx.lineTo(bin.x+bin.w-5,bin.y+bin.h-6);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
   }
 
   function hasActiveBalls(){return !!(state&&state.balls&&state.balls.some(function(ball){return ball&&!ball.sinking}))}
