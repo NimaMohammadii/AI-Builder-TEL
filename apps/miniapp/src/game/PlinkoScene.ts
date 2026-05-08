@@ -18,6 +18,7 @@ export type PlinkoSceneEvents = {
 };
 
 const PEG_HIT_FEEDBACK_COOLDOWN_MS = 220;
+const MIN_PEG_SOUND_IMPACT_SPEED = 0.26;
 const ROW_OPTIONS: PlinkoRows[] = [7, 9, 11];
 const MULTIPLIERS: Record<PlinkoRows, Record<PlinkoRisk, number[]>> = {
   7: {
@@ -51,6 +52,7 @@ type BallState = {
   radius: number;
   bet: number;
   trail: Phaser.Math.Vector2[];
+  hitPegs: Set<MatterJS.BodyType>;
   startedAt: number;
   done: boolean;
 };
@@ -71,6 +73,7 @@ export class PlinkoScene extends Phaser.Scene {
   private pegByBody = new Map<MatterJS.BodyType, PegView>();
   private sparks: Array<{ x: number; y: number; vx: number; vy: number; life: number; r: number }> = [];
   private slotBreakEffects: SlotBreakEffect[] = [];
+  private lastPegSoundAt = Number.NEGATIVE_INFINITY;
   private ball: BallState | null = null;
   private active = false;
   private slotLeft = 16;
@@ -145,6 +148,7 @@ export class PlinkoScene extends Phaser.Scene {
       radius,
       bet,
       trail: [],
+      hitPegs: new Set(),
       startedAt: performance.now(),
       done: false,
     };
@@ -287,12 +291,16 @@ export class PlinkoScene extends Phaser.Scene {
 
         if (other.label.startsWith('peg:')) {
           const peg = this.pegByBody.get(other);
-          if (peg) {
+          const activeBall = this.ball && this.ball.body === ball ? this.ball : null;
+          if (peg && activeBall && !activeBall.hitPegs.has(other)) {
+            activeBall.hitPegs.add(other);
+            const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
             const now = performance.now();
-            if (peg.hit <= 0 && now - peg.lastImpactAt >= PEG_HIT_FEEDBACK_COOLDOWN_MS) {
-              peg.lastImpactAt = now;
-              peg.hit = 9;
-              this.spawnSpark(ball.position.x, ball.position.y, 0.6);
+            peg.lastImpactAt = now;
+            peg.hit = 9;
+            this.spawnSpark(ball.position.x, ball.position.y, 0.6);
+            if (speed >= MIN_PEG_SOUND_IMPACT_SPEED && now - this.lastPegSoundAt >= PEG_HIT_FEEDBACK_COOLDOWN_MS) {
+              this.lastPegSoundAt = now;
               this.callbacks.onPegHit();
             }
           }
