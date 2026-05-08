@@ -78,7 +78,7 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
   }
   async function savePlinkoControl(){
     const status=document.getElementById('plinkoControlStatus'); status.textContent='Saving...';
-    try{const r=await fetch('/admin/api/plinko-control',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(cleanConfig())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not save');config=j;render();status.textContent='Saved. Mini app syncs within 20 seconds.';}
+    try{const r=await fetch('/admin/api/plinko-control',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(cleanConfig())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not save');config=j;render();status.textContent='Saved. Mini app syncs within 5 seconds.';}
     catch(e){status.textContent=e.message||'Could not save'}
   }
   async function resetPlinkoControl(){
