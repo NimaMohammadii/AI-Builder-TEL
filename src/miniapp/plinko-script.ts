@@ -32,6 +32,7 @@ export const PLINKO_SCRIPT = `
   function pegVisualRadius(){return rows===7?6.6:rows===9?5.25:pegRadius()}
   function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
+  function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
   function updateTokenImage(url){creditIconUrl=url||creditIconUrl;if(state&&state.tokenImg&&state.tokenImg.src!==creditIconUrl){state.tokenImg.src=creditIconUrl}}
 
@@ -116,6 +117,19 @@ export const PLINKO_SCRIPT = `
     return bins;
   }
 
+  function targetLaneX(ball,bins){
+    if(ball.targetIndex===null||ball.targetIndex===undefined)return null;
+    var idx=clamp(ball.targetIndex,0,bins.length-1);
+    var target=bins[idx].x+bins[idx].w/2;
+    var topLane=160+(idx-(bins.length-1)/2)*5.8;
+    var progress=clamp((ball.y-18)/205,0,1);
+    return topLane+(target-topLane)*progress;
+  }
+
+  function binIndexFromX(x,bins,left,right){
+    return clamp(Math.floor((x-left)/((right-left)/bins.length)),0,bins.length-1);
+  }
+
   function init(force){
     var canvas=q('plinkoCanvasV2');if(!canvas)return;
     if(state&&state.canvas===canvas&&!force){draw();return}
@@ -132,7 +146,9 @@ export const PLINKO_SCRIPT = `
     var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}
     credit-=bet;updateCredit();
     var target=isControlled()?chooseWeightedIndex():null;
-    state.balls.push({x:160+(Math.random()*18-9),y:5,vx:Math.random()*.95-.475,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false});
+    var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);
+    var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);
+    state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false});
   }
 
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;credit+=ball.bet*bin.mult;updateCredit()}
@@ -153,12 +169,11 @@ export const PLINKO_SCRIPT = `
       ball.vx*=.994;
       if(ball.vy>3.15)ball.vy=3.15;
 
-      if(ball.targetIndex!==null&&ball.targetIndex!==undefined&&ball.y>128&&ball.age>18){
-        var targetBin=bins[Math.max(0,Math.min(bins.length-1,ball.targetIndex))];
-        var tx=targetBin.x+targetBin.w/2;
-        var guide=ball.y>222?.010:ball.y>180?.006:.0032;
-        ball.vx+=(tx-ball.x)*guide*dt;
-        if(ball.y<212){ball.vx+=(Math.random()-.5)*.032*dt}
+      var lane=targetLaneX(ball,bins);
+      if(lane!==null&&ball.y>24&&ball.y<210&&ball.age>4){
+        var guide=ball.y<90?.0038:ball.y<155?.0048:.0035;
+        ball.vx+=(lane-ball.x)*guide*dt;
+        ball.vx+=(Math.random()-.5)*.025*dt;
       }else{
         ball.vx+=(Math.random()-.5)*.018*dt;
       }
@@ -181,9 +196,9 @@ export const PLINKO_SCRIPT = `
         }
       }
       if(ball.y+ball.r>binTop+5){
-        var idx=ball.targetIndex!==null&&ball.targetIndex!==undefined?Math.max(0,Math.min(bins.length-1,ball.targetIndex)):Math.max(0,Math.min(bins.length-1,Math.floor((ball.x-left)/((right-left)/bins.length))));
+        var idx=binIndexFromX(ball.x,bins,left,right);
         var bin=bins[idx],holeX=bin.x+bin.w/2;
-        ball.vx+=(holeX-ball.x)*.010*dt;
+        ball.vx+=(holeX-ball.x)*.006*dt;
         ball.vy*=.965;
         for(var s=1;s<bins.length;s++){
           var wall=left+s*(right-left)/bins.length;
@@ -192,7 +207,7 @@ export const PLINKO_SCRIPT = `
             ball.vy*=.82;
           }
         }
-        if(ball.y+ball.r>bin.y+bin.h*.62){ball.x+=(holeX-ball.x)*.13;ball.vx*=.46;ball.vy*=.18;settle(ball,bin);ball.sinking=true;ball.sink=0}
+        if(ball.y+ball.r>bin.y+bin.h*.62){ball.x+=(holeX-ball.x)*.10;ball.vx*=.46;ball.vy*=.18;settle(ball,bin);ball.sinking=true;ball.sink=0}
       }
       if(ball.y>316)balls.splice(b,1);
     }
