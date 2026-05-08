@@ -9,7 +9,6 @@ export type UserControls = {
 };
 
 const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko']);
-const ADMIN_CREDIT_PROTECTION_MS = 35_000;
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
@@ -48,15 +47,10 @@ export async function syncActivityCredit(env: Env, userId: string, credit: numbe
   const id = cleanUserId(userId);
   const incoming = Math.max(0, Math.floor(Number(credit) || 0));
   const current = await getUserControls(env, id);
-  const protectedAdminCredit = current.creditSource === 'admin'
-    && typeof current.credit === 'number'
-    && typeof current.creditUpdatedAt === 'number'
-    && Date.now() - current.creditUpdatedAt < ADMIN_CREDIT_PROTECTION_MS
-    && current.credit !== incoming;
 
-  if (protectedAdminCredit) {
-    await updateKnownUserCredit(env, id, current.credit ?? 0);
-    return current.credit ?? incoming;
+  if (current.creditSource === 'admin' && typeof current.credit === 'number') {
+    await updateKnownUserCredit(env, id, current.credit);
+    return current.credit;
   }
 
   const next: UserControls = {
@@ -66,6 +60,7 @@ export async function syncActivityCredit(env: Env, userId: string, credit: numbe
     creditUpdatedAt: Date.now(),
   };
   await save(env, next);
+  await updateKnownUserCredit(env, id, incoming);
   return incoming;
 }
 
