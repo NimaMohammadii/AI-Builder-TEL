@@ -6,6 +6,7 @@ export const ACTIVITY_SCRIPT = `
   var lastSent=0;
   var lastConfirmedCredit=null;
   var localCreditDirty=false;
+  var localCreditVersion=0;
 
   function activeSection(){
     var active=document.querySelector('.view.active');
@@ -24,18 +25,24 @@ export const ACTIVITY_SCRIPT = `
     return Math.max(0,Math.floor(Number(localStorage.getItem('vexaCredit')||localStorage.getItem('plinkoCredit')||'1000')||0));
   }
 
-  function applyServerCredit(value){
-    if(value===null||value===undefined)return;
+  function writeCreditToUi(value){
     var credit=Math.max(0,Math.floor(Number(value)||0));
-    lastConfirmedCredit=credit;
-    localCreditDirty=false;
     try{localStorage.setItem('vexaCredit',String(credit));localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
     ['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
+    return credit;
+  }
+
+  function applyServerCredit(value){
+    if(value===null||value===undefined)return;
+    var credit=writeCreditToUi(value);
+    lastConfirmedCredit=credit;
+    localCreditDirty=false;
     try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
   }
 
   function markCreditChanged(value){
-    var credit=Math.max(0,Math.floor(Number(value)||0));
+    var credit=writeCreditToUi(value);
+    localCreditVersion++;
     if(lastConfirmedCredit===null||credit!==lastConfirmedCredit)localCreditDirty=true;
   }
 
@@ -62,9 +69,10 @@ export const ACTIVITY_SCRIPT = `
     if(!force&&encoded===lastPayload&&now-lastSent<25000)return;
     lastPayload=encoded;
     lastSent=now;
+    var requestCreditVersion=localCreditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
       .then(function(r){return r.json().catch(function(){return null})})
-      .then(function(j){if(j&&j.ok&&j.credit!==undefined)applyServerCredit(j.credit)})
+      .then(function(j){if(j&&j.ok&&j.credit!==undefined&&requestCreditVersion===localCreditVersion)applyServerCredit(j.credit)})
       .catch(function(){});
   }
 
