@@ -44,9 +44,9 @@ export const PLINKO_SCRIPT = `
     var target=Number.isFinite(ball.targetIndex)?ball.targetIndex:physicalIndex;
     return resolveLandingIndex(target);
   }
-  function pegRadius(){return rows===7?5.85:rows===9?5.25:4.35}
-  function pegVisualRadius(){return rows===7?7.7:rows===9?7.1:5.25}
-  function ballRadius(){return rows===7?7.6:rows===9?6.75:5.65}
+  function pegRadius(){return rows===7?5.25:rows===9?4.6:3.48}
+  function pegVisualRadius(){return rows===7?7.1:rows===9?6.6:4.35}
+  function ballRadius(){return rows===7?8.4:rows===9?7.6:6.75}
   function binTextSize(count){return count>=12?7.4:count>=10?8.1:8.8}
   function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
   function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
