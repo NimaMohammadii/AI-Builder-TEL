@@ -52,13 +52,6 @@ export const PLINKO_SCRIPT = `
     ctx.beginPath();ctx.moveTo(x+12,y+h-5);ctx.lineTo(x+w-12,y+h-5);ctx.strokeStyle='rgba(255,255,255,.30)';ctx.lineWidth=1;ctx.stroke();
     ctx.restore();
   }
-  function drawGlassDropChuteFront(ctx){
-    var x=140,y=-16,w=40,h=24,r=11;
-    ctx.save();
-    roundRect(ctx,x+.8,y+.8,w-1.6,h-1.6,r-1);ctx.strokeStyle='rgba(255,255,255,.50)';ctx.lineWidth=1;ctx.stroke();
-    roundRect(ctx,x+5,y+3,w-10,7,6);var shine=ctx.createLinearGradient(x,y,x,y+12);shine.addColorStop(0,'rgba(255,255,255,.32)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fill();
-    ctx.restore();
-  }
   function drawGlassPeg(ctx,x,y,r){
     ctx.save();
     ctx.shadowColor='rgba(255,255,255,.14)';ctx.shadowBlur=Math.max(4,r*.78);
@@ -105,7 +98,7 @@ export const PLINKO_SCRIPT = `
     renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();if(!state.raf)state.raf=requestAnimationFrame(tick);
   }
 
-  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var weakBias=target!==null&&target!==undefined?(target-(rows/2))*.018:0;var startX=160+(Math.random()*12-6);var vx=weakBias+(Math.random()*.52-.26);state.balls.push({x:startX,y:-12,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
+  function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var weakBias=target!==null&&target!==undefined?(target-(rows/2))*.018:0;var startX=160+(Math.random()*7-3.5);var vx=weakBias+(Math.random()*.24-.12);state.balls.push({x:startX,y:-8,vx:vx,vy:.12,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
@@ -120,7 +113,7 @@ export const PLINKO_SCRIPT = `
     draw();state.raf=requestAnimationFrame(tick);
   }
 
-  function draw(){if(!state)return;var ctx=state.ctx,dpr=state.dpr||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,320,326);ctx.save();ctx.translate(0,BOARD_TOP_PAD);drawGlassDropChute(ctx);for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];drawGlassPeg(ctx,peg.x,peg.y,peg.vr||peg.r)}var bins=state.bins;var size=binTextSize(bins.length);ctx.font='800 '+size+'px Inter, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';for(var i=0;i<bins.length;i++){var bin=bins[i];drawGlassBin(ctx,bin);ctx.fillStyle='rgba(255,255,255,.94)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h/2)}for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/40):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}drawGlassDropChuteFront(ctx);ctx.restore()}
+  function draw(){if(!state)return;var ctx=state.ctx,dpr=state.dpr||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,320,326);ctx.save();ctx.translate(0,BOARD_TOP_PAD);drawGlassDropChute(ctx);for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];drawGlassPeg(ctx,peg.x,peg.y,peg.vr||peg.r)}var bins=state.bins;var size=binTextSize(bins.length);ctx.font='800 '+size+'px Inter, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';for(var i=0;i<bins.length;i++){var bin=bins[i];drawGlassBin(ctx,bin);ctx.fillStyle='rgba(255,255,255,.94)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h/2)}for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/40):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}ctx.restore()}
 
   document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');if(!button)return;if(button.getAttribute('data-view')==='plinko')setTimeout(init,0);var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopPropagation();drop()}if(action==='plinko-risk'){ev.preventDefault();setRisk(button.getAttribute('data-risk'))}if(action==='plinko-rows'){ev.preventDefault();var idx=rowOptions.indexOf(rows);setRows(rowOptions[(idx+1)%rowOptions.length])}},true);
   document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='plinkoBet')getBet()});loadPlinkoControl();setInterval(loadPlinkoControl,20000);if(q('plinkoCanvasV2'))init();
