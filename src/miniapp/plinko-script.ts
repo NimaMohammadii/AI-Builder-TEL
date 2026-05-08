@@ -43,7 +43,7 @@ export const PLINKO_SCRIPT = `
   }
 
   function drawGlassDropChute(ctx){
-    var x=140,y=-8,w=40,h=24,r=11;
+    var x=140,y=-16,w=40,h=24,r=11;
     ctx.save();
     ctx.shadowColor='rgba(255,255,255,.12)';ctx.shadowBlur=6;roundRect(ctx,x,y,w,h,r);
     var fill=ctx.createLinearGradient(x,y,x,y+h);fill.addColorStop(0,'rgba(255,255,255,.22)');fill.addColorStop(.5,'rgba(255,255,255,.07)');fill.addColorStop(1,'rgba(255,255,255,.016)');ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;
