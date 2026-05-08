@@ -89,7 +89,7 @@ export const PLINKO_SCRIPT = `
   }
 
   function drop(){init();if(!state)return;var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit();var target=isControlled()?chooseWeightedIndex():null;var startX=160+(target!==null&&target!==undefined?(target-(rows/2))*5.8:0)+(Math.random()*10-5);var vx=(target!==null&&target!==undefined?(target-(rows/2))*.075:0)+(Math.random()*.42-.21);state.balls.push({x:startX,y:5,vx:vx,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false})}
-  function settle(ball,bin){if(ball.paid)return;ball.paid=true;credit+=ball.bet*bin.mult;reportGameCredit()}
+  function settle(ball,bin){if(ball.paid)return;ball.paid=true;var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit()}
 
   function tick(time){
     if(!state)return;var rawDt=(time-(state.last||time))||16;var dt=Math.min(20,rawDt)/16.67;state.last=time;var balls=state.balls,bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;

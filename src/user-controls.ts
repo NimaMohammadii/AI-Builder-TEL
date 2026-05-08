@@ -6,6 +6,7 @@ export type UserControls = {
   blockedSections: string[];
   creditSource?: 'admin' | 'game' | 'system';
   creditUpdatedAt?: number;
+  creditVersion?: number;
 };
 
 const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko']);
@@ -19,6 +20,7 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
     blockedSections: Array.isArray(saved?.blockedSections) ? saved.blockedSections.filter((section) => VALID_SECTIONS.has(section)) : [],
     creditSource: saved?.creditSource === 'admin' || saved?.creditSource === 'game' || saved?.creditSource === 'system' ? saved.creditSource : undefined,
     creditUpdatedAt: typeof saved?.creditUpdatedAt === 'number' ? saved.creditUpdatedAt : undefined,
+    creditVersion: typeof saved?.creditVersion === 'number' ? Math.max(0, Math.floor(saved.creditVersion)) : undefined,
   };
 }
 
@@ -33,7 +35,7 @@ export async function adjustUserCredit(env: Env, userId: string, delta: number):
   return writeUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)), 'admin');
 }
 
-export async function syncActivityCredit(env: Env, userId: string, credit: number, creditChanged = false): Promise<number> {
+export async function syncActivityCredit(env: Env, userId: string, credit: number, creditChanged = false, creditVersion?: number | null): Promise<number> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
 
@@ -42,7 +44,12 @@ export async function syncActivityCredit(env: Env, userId: string, credit: numbe
     return normalizeCredit(serverCredit);
   }
 
-  const next = await writeUserCredit(env, id, credit, 'game');
+  const incomingVersion = normalizeVersion(creditVersion);
+  if (incomingVersion !== null && typeof current.creditVersion === 'number' && incomingVersion < current.creditVersion) {
+    return normalizeCredit(current.credit ?? await readKnownUserCredit(env, id));
+  }
+
+  const next = await writeUserCredit(env, id, credit, 'game', incomingVersion);
   return normalizeCredit(next.credit ?? 0);
 }
 
@@ -63,7 +70,7 @@ export async function publicUserControls(env: Env, userId: string): Promise<{ us
   return { userId: controls.userId, credit: controls.credit, blockedSections: controls.blockedSections };
 }
 
-async function writeUserCredit(env: Env, userId: string, credit: number, source: 'admin' | 'game' | 'system'): Promise<UserControls> {
+async function writeUserCredit(env: Env, userId: string, credit: number, source: 'admin' | 'game' | 'system', creditVersion?: number | null): Promise<UserControls> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
   const next: UserControls = {
@@ -72,6 +79,7 @@ async function writeUserCredit(env: Env, userId: string, credit: number, source:
     credit: normalizeCredit(credit),
     creditSource: source,
     creditUpdatedAt: Date.now(),
+    creditVersion: creditVersion ?? (source === 'game' ? current.creditVersion : undefined),
   };
   await save(env, next);
   await updateKnownUserCredit(env, id, next.credit ?? 0);
@@ -86,7 +94,7 @@ async function readKnownUserCredit(env: Env, userId: string): Promise<number> {
   const app = await env.DB.prepare('SELECT credit FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ credit: number }>().catch(() => null);
   if (app?.credit !== undefined) return normalizeCredit(app.credit);
   const bot = await env.DB.prepare('SELECT credit FROM bot_users WHERE telegram_user_id = ? ORDER BY datetime(COALESCE(last_seen_at, updated_at, created_at)) DESC LIMIT 1').bind(userId).first<{ credit: number }>().catch(() => null);
-  return normalizeCredit(bot?.credit ?? 0);
+  return normalizeCredit(bot?.credit ?? 1000);
 }
 
 async function updateKnownUserCredit(env: Env, userId: string, credit: number): Promise<void> {
@@ -97,6 +105,12 @@ async function updateKnownUserCredit(env: Env, userId: string, credit: number): 
 
 function normalizeCredit(value: unknown): number {
   return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function normalizeVersion(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const version = Math.floor(Number(value));
+  return Number.isFinite(version) && version >= 0 ? version : null;
 }
 
 function key(userId: string): string {

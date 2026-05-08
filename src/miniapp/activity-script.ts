@@ -6,7 +6,7 @@ export const ACTIVITY_SCRIPT = `
   var lastSent=0;
   var lastConfirmedCredit=null;
   var localCreditDirty=false;
-  var localCreditVersion=0;
+  var localCreditVersion=Math.max(0,Math.floor(Number(localStorage.getItem('vexaCreditVersion')||'0')||0));
 
   function activeSection(){
     var active=document.querySelector('.view.active');
@@ -43,6 +43,7 @@ export const ACTIVITY_SCRIPT = `
   function markCreditChanged(value){
     var credit=writeCreditToUi(value);
     localCreditVersion++;
+    try{localStorage.setItem('vexaCreditVersion',String(localCreditVersion))}catch(e){}
     if(lastConfirmedCredit===null||credit!==lastConfirmedCredit)localCreditDirty=true;
   }
 
@@ -57,7 +58,8 @@ export const ACTIVITY_SCRIPT = `
       firstName:user.first_name||null,
       section:activeSection(),
       credit:currentCredit(),
-      creditChanged:localCreditDirty
+      creditChanged:localCreditDirty,
+      creditVersion:localCreditVersion
     };
   }
 

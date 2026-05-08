@@ -17,6 +17,7 @@ const activitySchema = z.object({
   section: z.string().max(40).nullable().optional(),
   credit: z.number().int().nonnegative().nullable().optional(),
   creditChanged: z.boolean().optional(),
+  creditVersion: z.number().int().nonnegative().optional(),
 });
 
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
