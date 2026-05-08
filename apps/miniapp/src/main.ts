@@ -113,7 +113,7 @@ function playPegHitSound(): void {
   if (!context) return;
 
   const nowMs = performance.now();
-  if (nowMs - lastPegSoundAt < 34) return;
+  if (nowMs - lastPegSoundAt < 130) return;
   lastPegSoundAt = nowMs;
   void context.resume();
 
