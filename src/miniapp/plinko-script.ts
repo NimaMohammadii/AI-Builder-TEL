@@ -26,9 +26,8 @@ export const PLINKO_SCRIPT = `
   function controlItem(){var rk=String(rows);return plinkoControl&&plinkoControl.enabled!==false&&plinkoControl.rows&&plinkoControl.rows[rk]&&plinkoControl.rows[rk][risk]?plinkoControl.rows[rk][risk]:null}
   function currentMultipliers(){var item=controlItem();return item&&Array.isArray(item.multipliers)&&item.multipliers.length===rows+1?item.multipliers:multiplierTable[rows][risk]}
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===rows+1)return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(rows+1).fill(1)}
-  function hasZeroChance(){var item=controlItem();return !!(item&&Array.isArray(item.weights)&&item.weights.some(function(v){return Math.max(0,Number(v)||0)===0}))}
   function hasPositiveChance(){return currentWeights().some(function(v){return v>0})}
-  function isControlled(){return !!(plinkoControl&&plinkoControl.enabled!==false&&controlItem()&&hasPositiveChance()&&(plinkoControl.mode==='weighted'||plinkoControl.mode==='house'||hasZeroChance()))}
+  function isControlled(){return !!(plinkoControl&&plinkoControl.enabled!==false&&controlItem()&&hasPositiveChance())}
   function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(weights.length/2);var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0&&weights[i]>0)return i}for(var j=weights.length-1;j>=0;j--){if(weights[j]>0)return j}return Math.floor(weights.length/2)}
   function resolveLandingIndex(index){
     if(!isControlled())return index;
