@@ -15,7 +15,7 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   const saved = await env.BOT_CACHE.get(key(id), 'json').catch(() => null) as Partial<UserControls> | null;
   return {
     userId: id,
-    credit: typeof saved?.credit === 'number' ? Math.max(0, Math.floor(saved.credit)) : null,
+    credit: typeof saved?.credit === 'number' ? Math.max(0, Math.floor(saved.credit)) : await readKnownUserCredit(env, id),
     blockedSections: Array.isArray(saved?.blockedSections) ? saved.blockedSections.filter((section) => VALID_SECTIONS.has(section)) : [],
     creditSource: saved?.creditSource === 'admin' || saved?.creditSource === 'activity' ? saved.creditSource : undefined,
     creditUpdatedAt: typeof saved?.creditUpdatedAt === 'number' ? saved.creditUpdatedAt : undefined,
@@ -27,7 +27,7 @@ export async function setUserCredit(env: Env, userId: string, credit: number): P
   const current = await getUserControls(env, id);
   const next: UserControls = {
     ...current,
-    credit: Math.max(0, Math.floor(Number(credit) || 0)),
+    credit: normalizeCredit(credit),
     creditSource: 'admin',
     creditUpdatedAt: Date.now(),
   };
@@ -39,23 +39,23 @@ export async function setUserCredit(env: Env, userId: string, credit: number): P
 export async function adjustUserCredit(env: Env, userId: string, delta: number): Promise<UserControls> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
-  const existing = current.credit ?? await readKnownUserCredit(env, id);
+  const existing = typeof current.credit === 'number' ? current.credit : await readKnownUserCredit(env, id);
   return setUserCredit(env, id, Math.max(0, existing + Math.floor(Number(delta) || 0)));
 }
 
-export async function syncActivityCredit(env: Env, userId: string, credit: number): Promise<number> {
+export async function syncActivityCredit(env: Env, userId: string, credit: number, creditChanged = false): Promise<number> {
   const id = cleanUserId(userId);
-  const incoming = Math.max(0, Math.floor(Number(credit) || 0));
+  const incoming = normalizeCredit(credit);
   const current = await getUserControls(env, id);
 
-  if (current.creditSource === 'admin' && typeof current.credit === 'number') {
-    const next: UserControls = {
+  if (current.creditSource === 'admin' && typeof current.credit === 'number' && !creditChanged) {
+    const delivered: UserControls = {
       ...current,
       credit: current.credit,
       creditSource: 'activity',
       creditUpdatedAt: Date.now(),
     };
-    await save(env, next);
+    await save(env, delivered);
     await updateKnownUserCredit(env, id, current.credit);
     return current.credit;
   }
@@ -94,14 +94,19 @@ async function save(env: Env, controls: UserControls): Promise<void> {
 
 async function readKnownUserCredit(env: Env, userId: string): Promise<number> {
   const app = await env.DB.prepare('SELECT credit FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ credit: number }>().catch(() => null);
-  if (app?.credit !== undefined) return Math.max(0, Math.floor(Number(app.credit) || 0));
+  if (app?.credit !== undefined) return normalizeCredit(app.credit);
   const bot = await env.DB.prepare('SELECT credit FROM bot_users WHERE telegram_user_id = ? ORDER BY datetime(COALESCE(last_seen_at, updated_at, created_at)) DESC LIMIT 1').bind(userId).first<{ credit: number }>().catch(() => null);
-  return Math.max(0, Math.floor(Number(bot?.credit) || 0));
+  return normalizeCredit(bot?.credit ?? 0);
 }
 
 async function updateKnownUserCredit(env: Env, userId: string, credit: number): Promise<void> {
-  await env.DB.prepare('UPDATE app_users SET credit = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ?').bind(credit, userId).run().catch(() => null);
-  await env.DB.prepare('UPDATE bot_users SET credit = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ?').bind(credit, userId).run().catch(() => null);
+  const value = normalizeCredit(credit);
+  await env.DB.prepare('UPDATE app_users SET credit = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ?').bind(value, userId).run().catch(() => null);
+  await env.DB.prepare('UPDATE bot_users SET credit = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ?').bind(value, userId).run().catch(() => null);
+}
+
+function normalizeCredit(value: unknown): number {
+  return Math.max(0, Math.floor(Number(value) || 0));
 }
 
 function key(userId: string): string {
