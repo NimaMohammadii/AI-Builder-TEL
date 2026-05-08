@@ -53,6 +53,14 @@ type BallState = {
   done: boolean;
 };
 
+type GlassBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+};
+
 type GlassShard = {
   x: number;
   y: number;
@@ -64,12 +72,13 @@ type GlassShard = {
   maxLife: number;
   size: number;
   sides: 3 | 4;
+  bounds?: GlassBounds;
 };
 
 type GlassCrack = {
   x: number;
   y: number;
-  slotWidth: number;
+  bounds: GlassBounds;
   life: number;
   maxLife: number;
   branches: Array<{ angle: number; length: number; split: number }>;
@@ -432,18 +441,18 @@ export class PlinkoScene extends Phaser.Scene {
       const alpha = Phaser.Math.Clamp(crack.life / crack.maxLife, 0, 1);
       g.lineStyle(1, 0xffffff, 0.58 * alpha);
       for (const branch of crack.branches) {
-        const endX = crack.x + Math.cos(branch.angle) * branch.length;
-        const endY = crack.y + Math.sin(branch.angle) * branch.length;
+        const endX = Phaser.Math.Clamp(crack.x + Math.cos(branch.angle) * branch.length, crack.bounds.x, crack.bounds.x + crack.bounds.width);
+        const endY = Phaser.Math.Clamp(crack.y + Math.sin(branch.angle) * branch.length, crack.bounds.y, crack.bounds.y + crack.bounds.height);
         g.lineBetween(crack.x, crack.y, endX, endY);
         g.lineBetween(
           endX,
           endY,
-          endX + Math.cos(branch.angle + 0.72) * branch.split,
-          endY + Math.sin(branch.angle + 0.72) * branch.split,
+          Phaser.Math.Clamp(endX + Math.cos(branch.angle + 0.72) * branch.split, crack.bounds.x, crack.bounds.x + crack.bounds.width),
+          Phaser.Math.Clamp(endY + Math.sin(branch.angle + 0.72) * branch.split, crack.bounds.y, crack.bounds.y + crack.bounds.height),
         );
       }
-      g.lineStyle(1, 0x9ee7ff, 0.2 * alpha);
-      g.strokeRoundedRect(crack.x - crack.slotWidth / 2 + 5, crack.y - 14, crack.slotWidth - 10, 29, 9);
+      g.lineStyle(1, 0x9ee7ff, 0.32 * alpha);
+      g.strokeRoundedRect(crack.bounds.x, crack.bounds.y, crack.bounds.width, crack.bounds.height, crack.bounds.radius);
       if (crack.life <= 0) this.glassCracks.splice(i, 1);
     }
 
@@ -455,6 +464,10 @@ export class PlinkoScene extends Phaser.Scene {
       shard.vy += 0.082;
       shard.rotation += shard.spin;
       shard.vx *= 0.992;
+      if (shard.bounds) {
+        shard.x = Phaser.Math.Clamp(shard.x, shard.bounds.x + 2, shard.bounds.x + shard.bounds.width - 2);
+        shard.y = Phaser.Math.Clamp(shard.y, shard.bounds.y + 2, shard.bounds.y + shard.bounds.height - 2);
+      }
       const alpha = Phaser.Math.Clamp(shard.life / shard.maxLife, 0, 1);
       this.drawShard(g, shard, alpha);
       if (shard.life <= 0 || shard.y > this.boardHeight + 24) this.glassShards.splice(i, 1);
@@ -467,7 +480,16 @@ export class PlinkoScene extends Phaser.Scene {
     for (let i = 0; i < sides; i += 1) {
       const angle = shard.rotation + (Math.PI * 2 * i) / sides;
       const stretch = i % 2 === 0 ? 1.25 : 0.72;
-      points.push(new Phaser.Math.Vector2(shard.x + Math.cos(angle) * shard.size * stretch, shard.y + Math.sin(angle) * shard.size));
+      const px = shard.x + Math.cos(angle) * shard.size * stretch;
+      const py = shard.y + Math.sin(angle) * shard.size;
+      points.push(
+        shard.bounds
+          ? new Phaser.Math.Vector2(
+              Phaser.Math.Clamp(px, shard.bounds.x, shard.bounds.x + shard.bounds.width),
+              Phaser.Math.Clamp(py, shard.bounds.y, shard.bounds.y + shard.bounds.height),
+            )
+          : new Phaser.Math.Vector2(px, py),
+      );
     }
     g.fillStyle(0xdff7ff, 0.2 * alpha);
     g.fillPoints(points, true);
@@ -476,51 +498,44 @@ export class PlinkoScene extends Phaser.Scene {
   }
 
   private spawnGlassBreak(slot: number, x: number, y: number, power: number): void {
-    this.spawnSpark(x, y, 1.25 * power);
+    const bounds: GlassBounds = {
+      x: this.slotLeft + slot * this.slotWidth + 3,
+      y: this.boardHeight - 56,
+      width: this.slotWidth - 6,
+      height: 31,
+      radius: 9,
+    };
+    const impactX = Phaser.Math.Clamp(x, bounds.x + 3, bounds.x + bounds.width - 3);
+    const impactY = Phaser.Math.Clamp(y, bounds.y + 4, bounds.y + bounds.height - 4);
     const branches = Array.from({ length: 9 }, (_, index) => ({
-      angle: -Math.PI + (Math.PI * 2 * index) / 9 + Phaser.Math.FloatBetween(-0.2, 0.2),
-      length: Phaser.Math.FloatBetween(9, 21) * power,
-      split: Phaser.Math.FloatBetween(4, 10) * power,
+      angle: -Math.PI + (Math.PI * 2 * index) / 9 + Phaser.Math.FloatBetween(-0.18, 0.18),
+      length: Phaser.Math.FloatBetween(7, Math.min(bounds.width, bounds.height) * 0.58) * power,
+      split: Phaser.Math.FloatBetween(3, 8) * power,
     }));
     this.glassCracks.push({
-      x,
-      y: y - 2,
-      slotWidth: this.slotWidth,
+      x: impactX,
+      y: impactY,
+      bounds,
       life: 26,
       maxLife: 26,
       branches,
     });
 
-    const shardCount = Math.round(22 * power);
+    const shardCount = Math.round(24 * power);
     for (let i = 0; i < shardCount; i += 1) {
       const outward = Phaser.Math.FloatBetween(-1, 1);
       this.glassShards.push({
-        x: x + outward * this.slotWidth * 0.28,
-        y: y + Phaser.Math.FloatBetween(-10, 8),
-        vx: outward * Phaser.Math.FloatBetween(0.8, 2.7) * power,
-        vy: Phaser.Math.FloatBetween(-2.5, 1.3) * power,
+        x: Phaser.Math.Clamp(impactX + outward * bounds.width * 0.32, bounds.x + 3, bounds.x + bounds.width - 3),
+        y: Phaser.Math.Clamp(impactY + Phaser.Math.FloatBetween(-bounds.height * 0.33, bounds.height * 0.33), bounds.y + 3, bounds.y + bounds.height - 3),
+        vx: outward * Phaser.Math.FloatBetween(0.45, 1.65) * power,
+        vy: Phaser.Math.FloatBetween(-1.35, 0.85) * power,
         rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
-        spin: Phaser.Math.FloatBetween(-0.22, 0.22),
+        spin: Phaser.Math.FloatBetween(-0.2, 0.2),
         life: Phaser.Math.Between(34, 58),
         maxLife: 58,
-        size: Phaser.Math.FloatBetween(2.2, 5.6) * power,
+        size: Phaser.Math.FloatBetween(1.4, 3.8) * power,
         sides: Phaser.Math.Between(0, 1) === 0 ? 3 : 4,
-      });
-    }
-
-    const slotEdge = this.slotLeft + slot * this.slotWidth;
-    for (let i = 0; i < 7; i += 1) {
-      this.glassShards.push({
-        x: Phaser.Math.FloatBetween(slotEdge + 8, slotEdge + this.slotWidth - 8),
-        y: y + Phaser.Math.FloatBetween(9, 18),
-        vx: Phaser.Math.FloatBetween(-0.8, 0.8),
-        vy: Phaser.Math.FloatBetween(0.7, 2.2),
-        rotation: Phaser.Math.FloatBetween(0, Math.PI * 2),
-        spin: Phaser.Math.FloatBetween(-0.12, 0.12),
-        life: Phaser.Math.Between(44, 70),
-        maxLife: 70,
-        size: Phaser.Math.FloatBetween(1.7, 4.3),
-        sides: 3,
+        bounds,
       });
     }
   }
