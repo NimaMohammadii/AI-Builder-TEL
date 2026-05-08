@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
 import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
-import { adjustUserCredit, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
+import { adjustUserCredit, applyGameCreditDelta, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
@@ -15,14 +15,12 @@ const activitySchema = z.object({
   username: z.string().max(80).nullable().optional(),
   firstName: z.string().max(120).nullable().optional(),
   section: z.string().max(40).nullable().optional(),
-  credit: z.number().int().nonnegative().nullable().optional(),
-  creditChanged: z.boolean().optional(),
-  creditVersion: z.number().int().nonnegative().optional(),
 });
 
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
+const gameCreditSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
 const userCreditSchema = z.object({ userId: z.string().min(1).max(80), credit: z.number().int().nonnegative() });
 const userCreditAdjustSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
@@ -36,6 +34,14 @@ app.get('/setup-webhook', async (c) => {
 });
 
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c.json(await trackAppUser(c.env, c.req.valid('json'))));
+app.post('/app/api/credit/game-delta', zValidator('json', gameCreditSchema), async (c) => {
+  const body = c.req.valid('json');
+  try {
+    return c.json(await applyGameCreditDelta(c.env, body.userId, body.delta));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not update game credit' }, 400);
+  }
+});
 
 app.get('/app/api/uploaded-images', async (c) => {
   const version = (await c.env.BOT_CACHE.get('admin:credit-icon-version').catch(() => null)) || '1';
