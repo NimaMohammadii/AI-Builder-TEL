@@ -1,0 +1,110 @@
+import type { Env } from './types';
+
+export type PlinkoRisk = 'low' | 'medium' | 'high';
+export type PlinkoMode = 'fair' | 'weighted' | 'house';
+
+export interface PlinkoRiskConfig {
+  multipliers: number[];
+  weights: number[];
+}
+
+export interface PlinkoRowsConfig {
+  low: PlinkoRiskConfig;
+  medium: PlinkoRiskConfig;
+  high: PlinkoRiskConfig;
+}
+
+export interface PlinkoControlConfig {
+  enabled: boolean;
+  mode: PlinkoMode;
+  houseEdge: number;
+  volatility: number;
+  rows: Record<'7' | '9' | '11', PlinkoRowsConfig>;
+  updatedAt?: string;
+}
+
+const KEY = 'admin:plinko-control';
+
+export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
+  enabled: true,
+  mode: 'fair',
+  houseEdge: 8,
+  volatility: 50,
+  rows: {
+    '7': {
+      low: { multipliers: [2, 1.4, 1.1, 0.9, 0.9, 1.1, 1.4, 2], weights: [4, 8, 14, 24, 24, 14, 8, 4] },
+      medium: { multipliers: [5, 2, 1.2, 0.5, 0.5, 1.2, 2, 5], weights: [2, 6, 15, 27, 27, 15, 6, 2] },
+      high: { multipliers: [12, 4, 1.5, 0.2, 0.2, 1.5, 4, 12], weights: [1, 3, 9, 37, 37, 9, 3, 1] },
+    },
+    '9': {
+      low: { multipliers: [3, 1.6, 1.3, 1.1, 0.8, 0.8, 1.1, 1.3, 1.6, 3], weights: [2, 5, 8, 14, 21, 21, 14, 8, 5, 2] },
+      medium: { multipliers: [8, 3, 1.6, 1.1, 0.4, 0.4, 1.1, 1.6, 3, 8], weights: [1, 3, 7, 14, 25, 25, 14, 7, 3, 1] },
+      high: { multipliers: [25, 8, 3, 1.3, 0.2, 0.2, 1.3, 3, 8, 25], weights: [0.5, 1.5, 4, 10, 34, 34, 10, 4, 1.5, 0.5] },
+    },
+    '11': {
+      low: { multipliers: [4, 1.8, 1.5, 1.2, 1, 0.85, 0.85, 1, 1.2, 1.5, 1.8, 4], weights: [1.5, 3, 5, 8, 13, 19.5, 19.5, 13, 8, 5, 3, 1.5] },
+      medium: { multipliers: [14, 4, 2.2, 1.5, 1, 0.5, 0.5, 1, 1.5, 2.2, 4, 14], weights: [0.5, 1.5, 3, 6, 11, 28, 28, 11, 6, 3, 1.5, 0.5] },
+      high: { multipliers: [60, 14, 6, 2.5, 1.2, 0.25, 0.25, 1.2, 2.5, 6, 14, 60], weights: [0.2, 0.6, 1.4, 3.8, 8, 36, 36, 8, 3.8, 1.4, 0.6, 0.2] },
+    },
+  },
+};
+
+export async function getPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
+  const raw = await env.BOT_CACHE.get(KEY).catch(() => null);
+  if (!raw) return DEFAULT_PLINKO_CONTROL;
+  try {
+    return normalizePlinkoConfig(JSON.parse(raw));
+  } catch {
+    return DEFAULT_PLINKO_CONTROL;
+  }
+}
+
+export async function savePlinkoControl(env: Env, value: unknown): Promise<PlinkoControlConfig> {
+  const config = normalizePlinkoConfig(value);
+  config.updatedAt = new Date().toISOString();
+  await env.BOT_CACHE.put(KEY, JSON.stringify(config), { expirationTtl: 60 * 60 * 24 * 365 });
+  return config;
+}
+
+export async function resetPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
+  const config = { ...DEFAULT_PLINKO_CONTROL, updatedAt: new Date().toISOString() };
+  await env.BOT_CACHE.put(KEY, JSON.stringify(config), { expirationTtl: 60 * 60 * 24 * 365 });
+  return config;
+}
+
+function normalizePlinkoConfig(input: any): PlinkoControlConfig {
+  const base = JSON.parse(JSON.stringify(DEFAULT_PLINKO_CONTROL)) as PlinkoControlConfig;
+  const mode: PlinkoMode = input?.mode === 'weighted' || input?.mode === 'house' || input?.mode === 'fair' ? input.mode : base.mode;
+  const out: PlinkoControlConfig = {
+    enabled: input?.enabled !== false,
+    mode,
+    houseEdge: clampNumber(input?.houseEdge, 0, 60, base.houseEdge),
+    volatility: clampNumber(input?.volatility, 0, 100, base.volatility),
+    rows: base.rows,
+    updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined,
+  };
+  (['7', '9', '11'] as const).forEach((rowKey) => {
+    (['low', 'medium', 'high'] as const).forEach((risk) => {
+      const expected = Number(rowKey) + 1;
+      const item = input?.rows?.[rowKey]?.[risk] ?? input?.rows?.[rowKey]?.[risk.toString()];
+      out.rows[rowKey][risk] = {
+        multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows[rowKey][risk].multipliers, 0, 1000),
+        weights: normalizeNumberArray(item?.weights, expected, base.rows[rowKey][risk].weights, 0, 100000),
+      };
+    });
+  });
+  return out;
+}
+
+function normalizeNumberArray(value: unknown, expected: number, fallback: number[], min: number, max: number): number[] {
+  const input = Array.isArray(value) ? value : String(value ?? '').split(',');
+  const nums = input.map((v) => clampNumber(v, min, max, NaN)).filter((n) => Number.isFinite(n));
+  if (nums.length !== expected) return fallback.slice(0, expected);
+  return nums;
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
