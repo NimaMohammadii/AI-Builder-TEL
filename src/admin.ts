@@ -26,7 +26,8 @@ export function adminHtml(): string {
 }
 
 export function adminPanelHtml(): string {
-  return mobileAdminPanelHtml().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_CREDIT_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
+  const panel = mobileAdminPanelHtml().replace('loadUsers();loadLocks();setInterval(loadUsers,15000);', 'loadUsers();loadLocks();');
+  return panel.replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_CREDIT_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {
