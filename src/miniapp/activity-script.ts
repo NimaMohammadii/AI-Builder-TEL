@@ -16,6 +16,14 @@ export const ACTIVITY_SCRIPT = `
     return Math.max(0,Math.floor(Number(String(text).replace(/[^0-9]/g,''))||0));
   }
 
+  function applyServerCredit(value){
+    if(value===null||value===undefined)return;
+    var credit=Math.max(0,Math.floor(Number(value)||0));
+    try{localStorage.setItem('plinkoCredit',String(credit))}catch(e){}
+    ['plinkoCredit','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});
+    try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
+  }
+
   function userId(){
     return String(user.id||localStorage.getItem('ownerId')||'').trim();
   }
@@ -38,7 +46,10 @@ export const ACTIVITY_SCRIPT = `
     if(!force&&encoded===lastPayload&&now-lastSent<25000)return;
     lastPayload=encoded;
     lastSent=now;
-    fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true}).catch(function(){});
+    fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
+      .then(function(r){return r.json().catch(function(){return null})})
+      .then(function(j){if(j&&j.ok&&j.credit!==undefined)applyServerCredit(j.credit)})
+      .catch(function(){});
   }
 
   document.addEventListener('click',function(){setTimeout(function(){send(false)},80)},true);
