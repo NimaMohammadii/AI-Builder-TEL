@@ -132,39 +132,69 @@ export const PLINKO_SCRIPT = `
     var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}
     credit-=bet;updateCredit();
     var target=isControlled()?chooseWeightedIndex():null;
-    state.balls.push({x:160+(Math.random()*14-7),y:8,vx:Math.random()*.8-.4,vy:0,r:ballRadius(),bet:bet,targetIndex:target,sinking:false,sink:0,paid:false});
+    state.balls.push({x:160+(Math.random()*18-9),y:5,vx:Math.random()*.95-.475,vy:0,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,sinking:false,sink:0,paid:false});
   }
 
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;credit+=ball.bet*bin.mult;updateCredit()}
 
   function tick(time){
     if(!state)return;
-    var dt=Math.min(24,(time-(state.last||time))||16)/16.67;state.last=time;
+    var rawDt=(time-(state.last||time))||16;
+    var dt=Math.min(20,rawDt)/16.67;
+    state.last=time;
     var balls=state.balls,bins=state.bins;
     var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w,binTop=bins[0].y,binBottom=bins[0].y+bins[0].h;
     for(var b=balls.length-1;b>=0;b--){
       var ball=balls[b];
-      if(ball.sinking){ball.sink+=dt;ball.y+=.7*dt;ball.r*=.965;if(ball.sink>32||ball.r<1.2)balls.splice(b,1);continue}
-      ball.vy+=.36*dt;
-      if(ball.targetIndex!==null&&ball.targetIndex!==undefined&&ball.y>70){
+      ball.age=(ball.age||0)+dt;
+      if(ball.sinking){ball.sink+=dt;ball.y+=.46*dt;ball.r*=.978;if(ball.sink>42||ball.r<1.2)balls.splice(b,1);continue}
+
+      ball.vy+=.205*dt;
+      ball.vx*=.994;
+      if(ball.vy>3.15)ball.vy=3.15;
+
+      if(ball.targetIndex!==null&&ball.targetIndex!==undefined&&ball.y>128&&ball.age>18){
         var targetBin=bins[Math.max(0,Math.min(bins.length-1,ball.targetIndex))];
         var tx=targetBin.x+targetBin.w/2;
-        ball.vx+=(tx-ball.x)*(ball.y>190?.015:.006)*dt;
+        var guide=ball.y>222?.010:ball.y>180?.006:.0032;
+        ball.vx+=(tx-ball.x)*guide*dt;
+        if(ball.y<212){ball.vx+=(Math.random()-.5)*.032*dt}
+      }else{
+        ball.vx+=(Math.random()-.5)*.018*dt;
       }
+
       ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
-      if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.64}
-      if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.64}
+      if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.58}
+      if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.58}
       for(var p=0;p<state.pegs.length;p++){
         var peg=state.pegs[p],dx=ball.x-peg.x,dy=ball.y-peg.y,min=ball.r+peg.r,d=Math.sqrt(dx*dx+dy*dy)||1;
-        if(d<min){var nx=dx/d,ny=dy/d;ball.x=peg.x+nx*min;ball.y=peg.y+ny*min;var dot=ball.vx*nx+ball.vy*ny;ball.vx=(ball.vx-1.38*dot*nx)*.7+(Math.random()-.5)*.2;ball.vy=(ball.vy-1.38*dot*ny)*.7;if(ball.vy<.55)ball.vy=.55}
+        if(d<min){
+          ball.hitCount=(ball.hitCount||0)+1;
+          var nx=dx/d,ny=dy/d;
+          ball.x=peg.x+nx*min;
+          ball.y=peg.y+ny*min;
+          var dot=ball.vx*nx+ball.vy*ny;
+          ball.vx=(ball.vx-1.55*dot*nx)*.82+(Math.random()-.5)*.34;
+          ball.vy=(ball.vy-1.46*dot*ny)*.72;
+          if(ball.vy<.32)ball.vy=.32;
+          if(ball.vy>2.65)ball.vy=2.65;
+        }
       }
       if(ball.y+ball.r>binTop+5){
         var idx=ball.targetIndex!==null&&ball.targetIndex!==undefined?Math.max(0,Math.min(bins.length-1,ball.targetIndex)):Math.max(0,Math.min(bins.length-1,Math.floor((ball.x-left)/((right-left)/bins.length))));
-        var bin=bins[idx],holeX=bin.x+bin.w/2;ball.vx+=(holeX-ball.x)*.018*dt;
-        for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-4&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.36}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.36}}}
-        if(ball.y+ball.r>bin.y+bin.h*.42){ball.x+=(holeX-ball.x)*.18;ball.vx*=.38;ball.vy*=.22;settle(ball,bin);ball.sinking=true;ball.sink=0}
+        var bin=bins[idx],holeX=bin.x+bin.w/2;
+        ball.vx+=(holeX-ball.x)*.010*dt;
+        ball.vy*=.965;
+        for(var s=1;s<bins.length;s++){
+          var wall=left+s*(right-left)/bins.length;
+          if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){
+            if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.42}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.42}
+            ball.vy*=.82;
+          }
+        }
+        if(ball.y+ball.r>bin.y+bin.h*.62){ball.x+=(holeX-ball.x)*.13;ball.vx*=.46;ball.vy*=.18;settle(ball,bin);ball.sinking=true;ball.sink=0}
       }
-      if(ball.y>302)balls.splice(b,1);
+      if(ball.y>316)balls.splice(b,1);
     }
     draw();state.raf=requestAnimationFrame(tick);
   }
@@ -175,7 +205,7 @@ export const PLINKO_SCRIPT = `
     for(var p=0;p<state.pegs.length;p++){var peg=state.pegs[p];drawGlassPeg(ctx,peg.x,peg.y,peg.vr||peg.r)}
     var bins=state.bins;var size=binTextSize(bins.length);ctx.font='800 '+size+'px Inter, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
     for(var i=0;i<bins.length;i++){var bin=bins[i];drawGlassBin(ctx,bin);ctx.fillStyle='rgba(255,255,255,.94)';ctx.fillText(bin.label,bin.x+bin.w/2,bin.y+bin.h/2)}
-    for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/30):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}
+    for(var b=0;b<state.balls.length;b++){var ball=state.balls[b],img=state.tokenImg,alpha=ball.sinking?Math.max(0,1-ball.sink/40):1;ctx.save();ctx.globalAlpha=alpha;if(img&&img.complete&&img.naturalWidth>0){var sizeImg=ball.r*2.45;ctx.drawImage(img,ball.x-sizeImg/2,ball.y-sizeImg/2,sizeImg,sizeImg)}else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.restore()}
   }
 
   document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');if(!button)return;if(button.getAttribute('data-view')==='plinko')setTimeout(init,0);var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopPropagation();drop()}if(action==='plinko-risk'){ev.preventDefault();setRisk(button.getAttribute('data-risk'))}if(action==='plinko-rows'){ev.preventDefault();var idx=rowOptions.indexOf(rows);setRows(rowOptions[(idx+1)%rowOptions.length])}},true);
