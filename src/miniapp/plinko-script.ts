@@ -7,6 +7,7 @@ export const PLINKO_SCRIPT = `
   var credit=Number((document.getElementById('plinkoCredit')||{}).textContent||'1000')||1000;
   var creditIconUrl='/app/api/uploaded-image/credit-icon.png';
   var plinkoControl=null;
+  var lastPlinkoControlStamp='';
   var BOARD_TOP_PAD=20;
   var multiplierTable={
     7:{low:[2,1.4,1.1,.9,.9,1.1,1.4,2],medium:[5,2,1.2,.5,.5,1.2,2,5],high:[12,4,1.5,.2,.2,1.5,4,12]},
@@ -40,7 +41,7 @@ export const PLINKO_SCRIPT = `
     }
     return best>=0?best:Math.floor(weights.length/2);
   }
-  function retargetControlledBalls(){if(!state||!state.balls||!isControlled())return;state.balls.forEach(function(ball){if(!ball||ball.sinking)return;ball.targetIndex=resolveLandingIndex(Number.isFinite(ball.targetIndex)?ball.targetIndex:chooseWeightedIndex())})}
+  function retargetControlledBalls(force){if(!state||!state.balls||!isControlled())return;state.balls.forEach(function(ball){if(!ball||ball.sinking)return;ball.targetIndex=force?chooseWeightedIndex():resolveLandingIndex(Number.isFinite(ball.targetIndex)?ball.targetIndex:chooseWeightedIndex())})}
   function landingIndexForBall(ball,physicalIndex){
     if(!isControlled())return physicalIndex;
     var target=Number.isFinite(ball.targetIndex)?ball.targetIndex:physicalIndex;
@@ -106,7 +107,7 @@ export const PLINKO_SCRIPT = `
 
   function loadPlinkoControl(){
     fetch('/app/api/plinko-control',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
-      if(data&&data.rows){plinkoControl=data;retargetControlledBalls();rebuildBoard(hasActiveBalls())}
+      if(data&&data.rows){var stamp=String(data.updatedAt||JSON.stringify(data.rows));var changed=stamp!==lastPlinkoControlStamp;plinkoControl=data;lastPlinkoControlStamp=stamp;retargetControlledBalls(changed);rebuildBoard(hasActiveBalls())}
     }).catch(function(){});
   }
 
