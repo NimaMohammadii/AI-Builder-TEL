@@ -59,29 +59,35 @@ export const PLINKO_SCRIPT = `
     return physicalIndex;
   }
   function targetCenterX(index,bins,left,right){var idx=resolveLandingIndex(index);return left+(idx+.5)*((right-left)/bins.length)}
+  function controlledPathX(ball,bins,left,right){
+    if(!Number.isFinite(ball.targetIndex)||!bins||!bins.length)return 160;
+    var target=targetCenterX(ball.targetIndex,bins,left,right);
+    var binTop=bins[0].y;
+    var progress=clamp((ball.y+8)/Math.max(1,binTop+8),0,1);
+    var earlyCurve=Math.pow(progress,.72);
+    var lane=160+(target-160)*earlyCurve;
+    var slotW=(right-left)/bins.length;
+    var phase=Number.isFinite(ball.pathPhase)?ball.pathPhase:0;
+    var weave=Math.sin((progress*(rows+1.35)+phase)*Math.PI)*Math.max(0,1-progress)*Math.min(7,slotW*.18);
+    return clamp(lane+weave,left+ball.r,right-ball.r);
+  }
   function guideControlledBall(ball,bins,left,right,dt){
     if(!isControlled()||!Number.isFinite(ball.targetIndex)||!bins||!bins.length)return;
     ball.targetIndex=resolveLandingIndex(ball.targetIndex);
-    var target=targetCenterX(ball.targetIndex,bins,left,right);
+    var desired=controlledPathX(ball,bins,left,right);
     var binTop=bins[0].y;
-    var progress=clamp((ball.y+12)/Math.max(1,binTop+12),0,1);
-    if(progress<.08)return;
+    var progress=clamp((ball.y+8)/Math.max(1,binTop+8),0,1);
     var eased=progress*progress*(3-2*progress);
-    var delta=target-ball.x;
-    var slotW=(right-left)/bins.length;
-    if(progress>.86){
-      var minX=left+ball.targetIndex*slotW+ball.r+1.8;
-      var maxX=left+(ball.targetIndex+1)*slotW-ball.r-1.8;
-      if(ball.x<minX){
-        ball.x+=Math.min((minX-ball.x)*.26,4.2*dt);
-        ball.vx=Math.max(ball.vx,.03);
-      }
-      if(ball.x>maxX){
-        ball.x-=Math.min((ball.x-maxX)*.26,4.2*dt);
-        ball.vx=Math.min(ball.vx,-.03);
-      }
+    var delta=desired-ball.x;
+    var steering=.00115+.00145*eased;
+    ball.vx+=clamp(delta*steering,-.052,.052)*dt;
+    if(progress>.55){
+      ball.x+=clamp(delta*(.018+.035*eased),-.82,.82)*dt;
     }
-    ball.vx+=clamp(delta*(.00035+.00095*eased),-.024,.024)*dt;
+    if(progress>.88){
+      ball.x+=clamp(delta*.075,-1.35,1.35)*dt;
+      ball.vx*=.965;
+    }
   }
   function pegRadius(){return rows===7?5.25:rows===9?4.6:3.48}
   function pegVisualRadius(){return rows===7?7.1:rows===9?6.6:4.35}
@@ -150,6 +156,7 @@ export const PLINKO_SCRIPT = `
     ball.vy*=.996;
     if(ball.vy<-0.55)ball.vy=-0.55;
     if(ball.vy>2.45)ball.vy=2.45;
+    if(isControlled()&&Number.isFinite(ball.targetIndex)&&state&&state.bins&&state.bins.length){ball.vx+=clamp((controlledPathX(ball,state.bins,left,right)-ball.x)*.0018,-.045,.045)}
     if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}
     if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}
   }
@@ -225,7 +232,7 @@ export const PLINKO_SCRIPT = `
     ensurePegAudioPool();renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();scheduleFrame(0);
   }
 
-  function drop(){init();primeAudio();if(!state)return;if(state.balls&&state.balls.length>=MAX_ACTIVE_BALLS){toast('Please wait for a few balls to finish');return}var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.035,-5,5);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.0018,-.16,.16):0)+(Math.random()*.1-.05);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,hitPegKeys:{},lastPegKey:null,lastPegImpactAt:0,sinking:false,sink:0,paid:false,settleX:null});scheduleFrame(0)}
+  function drop(){init();primeAudio();if(!state)return;if(state.balls&&state.balls.length>=MAX_ACTIVE_BALLS){toast('Please wait for a few balls to finish');return}var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.105,-14,14);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.0038,-.22,.22):0)+(Math.random()*.08-.04);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,pathPhase:Math.random()*2,age:0,hitCount:0,hitPegKeys:{},lastPegKey:null,lastPegImpactAt:0,sinking:false,sink:0,paid:false,settleX:null});scheduleFrame(0)}
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;if(state)state.impactRings.push({bin:bin,life:34,max:34});var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
