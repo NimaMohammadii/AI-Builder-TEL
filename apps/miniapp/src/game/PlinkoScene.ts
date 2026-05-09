@@ -55,6 +55,8 @@ type BallState = {
   hitPegs: Set<MatterJS.BodyType>;
   startedAt: number;
   done: boolean;
+  targetSlot: number;
+  targetX: number;
 };
 
 type SlotBreakEffect = {
@@ -128,18 +130,20 @@ export class PlinkoScene extends Phaser.Scene {
 
     const radius = this.ballRadius();
     const spawn = this.topDropPoint(radius);
-    const x = spawn.x + Phaser.Math.FloatBetween(-3.5, 3.5);
+    const targetSlot = Phaser.Math.Between(0, this.rows);
+    const targetX = this.slotCenter(targetSlot);
+    const x = spawn.x + (targetX - spawn.x) * 0.1;
     const ball = this.matter.add.circle(x, spawn.y, radius, {
       label: 'ball',
-      restitution: 0.73,
-      friction: 0.004,
-      frictionAir: 0.0028,
+      restitution: 0.68,
+      friction: 0.002,
+      frictionAir: 0.002,
       density: 0.0022,
     });
 
     this.matter.body.setVelocity(ball, {
-      x: Phaser.Math.FloatBetween(-0.28, 0.28),
-      y: Phaser.Math.FloatBetween(0.85, 1.15),
+      x: Phaser.Math.Clamp((targetX - spawn.x) * 0.012, -0.9, 0.9),
+      y: Phaser.Math.FloatBetween(0.95, 1.15),
     });
     this.matter.body.setAngularVelocity(ball, Phaser.Math.FloatBetween(-0.12, 0.12));
 
@@ -151,11 +155,14 @@ export class PlinkoScene extends Phaser.Scene {
       hitPegs: new Set(),
       startedAt: performance.now(),
       done: false,
+      targetSlot,
+      targetX,
     };
     return true;
   }
 
   update(): void {
+    this.guideActiveBall();
     this.drawScene();
     this.checkTimeoutFinish();
   }
@@ -201,6 +208,23 @@ export class PlinkoScene extends Phaser.Scene {
     return 19;
   }
 
+  private slotCenter(slot: number): number {
+    return this.slotLeft + slot * this.slotWidth + this.slotWidth / 2;
+  }
+
+  private guideActiveBall(): void {
+    if (!this.ball || this.ball.done) return;
+    const body = this.ball.body;
+    const slotTop = this.boardHeight - 58;
+    const progress = Phaser.Math.Clamp((body.position.y - 52) / Math.max(1, slotTop - 52), 0, 1);
+    const smooth = progress * progress * (3 - 2 * progress);
+    const pathX = this.boardWidth / 2 + (this.ball.targetX - this.boardWidth / 2) * smooth;
+    const nearSlots = body.position.y > slotTop - 72;
+    const vx = Phaser.Math.Clamp(body.velocity.x + (pathX - body.position.x) * (nearSlots ? 0.03 : 0.012), nearSlots ? -5 : -3.2, nearSlots ? 5 : 3.2);
+    const vy = Math.max(body.velocity.y, nearSlots ? 2.1 : 0.75);
+    this.matter.body.setVelocity(body, { x: vx, y: vy });
+  }
+
   private rebuildMachine(): void {
     this.boardWidth = Math.max(300, this.scale.width);
     this.boardHeight = Math.max(330, this.scale.height);
@@ -234,8 +258,8 @@ export class PlinkoScene extends Phaser.Scene {
         const body = this.matter.add.circle(x, y, pegR, {
           isStatic: true,
           label: `peg:${row}:${i}`,
-          restitution: 0.92,
-          friction: 0.01,
+          restitution: 0.78,
+          friction: 0.004,
         });
         const peg = { x, y, r: pegR, body, hit: 0, lastImpactAt: Number.NEGATIVE_INFINITY };
         this.pegs.push(peg);
@@ -292,13 +316,17 @@ export class PlinkoScene extends Phaser.Scene {
         if (other.label.startsWith('peg:')) {
           const peg = this.pegByBody.get(other);
           const activeBall = this.ball && this.ball.body === ball ? this.ball : null;
-          if (peg && activeBall && !activeBall.hitPegs.has(other)) {
+          if (peg && activeBall) {
             activeBall.hitPegs.add(other);
             const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
             const now = performance.now();
             peg.lastImpactAt = now;
             peg.hit = 9;
             this.spawnSpark(ball.position.x, ball.position.y, 0.6);
+            this.matter.body.setVelocity(ball, {
+              x: Phaser.Math.Clamp(ball.velocity.x + (activeBall.targetX - ball.position.x) * 0.015, -3.4, 3.4),
+              y: Math.max(ball.velocity.y, 0.9),
+            });
             if (speed >= MIN_PEG_SOUND_IMPACT_SPEED && now - this.lastPegSoundAt >= PEG_HIT_FEEDBACK_COOLDOWN_MS) {
               this.lastPegSoundAt = now;
               this.callbacks.onPegHit();
@@ -307,8 +335,15 @@ export class PlinkoScene extends Phaser.Scene {
         }
 
         const slot = (other as MatterJS.BodyType & { slot?: number }).slot;
-        if (other.isSensor && typeof slot === 'number') {
-          this.finish(slot);
+        if (other.isSensor && typeof slot === 'number' && this.ball) {
+          if (slot !== this.ball.targetSlot) {
+            this.matter.body.setVelocity(this.ball.body, {
+              x: Phaser.Math.Clamp((this.ball.targetX - this.ball.body.position.x) * 0.08, -3.6, 3.6),
+              y: 1.2,
+            });
+            continue;
+          }
+          this.finish(this.ball.targetSlot);
         }
       }
     });
@@ -316,15 +351,16 @@ export class PlinkoScene extends Phaser.Scene {
 
   private finish(slot: number): void {
     if (!this.ball || this.ball.done) return;
+    const finalSlot = Phaser.Math.Clamp(this.ball.targetSlot, 0, this.rows);
     this.ball.done = true;
-    this.spawnSlotBreak(slot);
+    this.spawnSlotBreak(finalSlot);
     const multipliers = this.currentMultipliers();
-    const multiplier = multipliers[slot] ?? 0.5;
+    const multiplier = multipliers[finalSlot] ?? 0.5;
     const win = Math.round(this.ball.bet * multiplier);
     const body = this.ball.body;
     this.matter.world.remove(body);
-    this.callbacks.onGlassBreak(slot);
-    const result = { slot, multiplier, bet: this.ball.bet, win };
+    this.callbacks.onGlassBreak(finalSlot);
+    const result = { slot: finalSlot, multiplier, bet: this.ball.bet, win };
     this.ball = null;
     this.active = false;
     this.callbacks.onDropFinished(result);
@@ -333,10 +369,8 @@ export class PlinkoScene extends Phaser.Scene {
   private checkTimeoutFinish(): void {
     if (!this.ball || this.ball.done) return;
     const pos = this.ball.body.position;
-    const slotCount = this.rows + 1;
     if (performance.now() - this.ball.startedAt > 7600 || pos.y > this.boardHeight - 26) {
-      const slot = Phaser.Math.Clamp(Math.floor((pos.x - this.slotLeft) / (this.boardWidth - 28) * slotCount), 0, slotCount - 1);
-      this.finish(slot);
+      this.finish(this.ball.targetSlot);
     }
   }
 
