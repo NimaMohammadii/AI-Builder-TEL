@@ -55,6 +55,7 @@ type BallState = {
   hitPegs: Set<MatterJS.BodyType>;
   startedAt: number;
   done: boolean;
+  slowFrames: number;
 };
 
 type SlotBreakEffect = {
@@ -151,11 +152,13 @@ export class PlinkoScene extends Phaser.Scene {
       hitPegs: new Set(),
       startedAt: performance.now(),
       done: false,
+      slowFrames: 0,
     };
     return true;
   }
 
   update(): void {
+    this.releaseStuckBall();
     this.drawScene();
     this.checkTimeoutFinish();
   }
@@ -294,6 +297,7 @@ export class PlinkoScene extends Phaser.Scene {
           const activeBall = this.ball && this.ball.body === ball ? this.ball : null;
           if (peg && activeBall && !activeBall.hitPegs.has(other)) {
             activeBall.hitPegs.add(other);
+            activeBall.slowFrames = 0;
             const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
             const now = performance.now();
             peg.lastImpactAt = now;
@@ -328,6 +332,37 @@ export class PlinkoScene extends Phaser.Scene {
     this.ball = null;
     this.active = false;
     this.callbacks.onDropFinished(result);
+  }
+
+  private releaseStuckBall(): void {
+    if (!this.ball || this.ball.done) return;
+    const body = this.ball.body;
+    const velocity = body.velocity;
+    const speed = Math.hypot(velocity.x, velocity.y);
+    const pos = body.position;
+    if (pos.y > this.boardHeight - 92 || speed > 0.095 || velocity.y > 0.18) {
+      this.ball.slowFrames = 0;
+      return;
+    }
+    const limit = this.ball.radius + this.pegRadius() + 5;
+    const nearbyPeg = this.pegs.find((peg) => Math.abs(pos.x - peg.x) < limit && Math.abs(pos.y - peg.y) < limit);
+    if (!nearbyPeg) {
+      this.ball.slowFrames = 0;
+      return;
+    }
+    this.ball.slowFrames += 1;
+    if (this.ball.slowFrames < 9) return;
+    const side = pos.x >= nearbyPeg.x ? 1 : -1;
+    this.matter.body.setPosition(body, {
+      x: pos.x + side * 1.4,
+      y: pos.y + 1.1,
+    });
+    this.matter.body.setVelocity(body, {
+      x: side * 0.42,
+      y: 0.76,
+    });
+    this.matter.body.setAngularVelocity(body, side * 0.08);
+    this.ball.slowFrames = 0;
   }
 
   private checkTimeoutFinish(): void {
