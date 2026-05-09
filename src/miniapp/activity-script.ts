@@ -25,12 +25,18 @@ export const ACTIVITY_SCRIPT = `
     return credit;
   }
 
+  function syncCreditToGames(value){
+    var credit=Math.max(0,Math.floor(Number(value)||0));
+    try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
+    return credit;
+  }
+
   function applyServerCredit(value){
     if(value===null||value===undefined)return;
     var credit=writeCreditToUi(value);
     confirmedCredit=credit;
     pendingCredit=credit;
-    try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
+    syncCreditToGames(credit);
   }
 
   function sendActivity(force){
@@ -58,6 +64,7 @@ export const ACTIVITY_SCRIPT = `
     if(!id)return;
     var previous=pendingCredit===null?(confirmedCredit===null?readUiCredit():confirmedCredit):pendingCredit;
     nextCredit=writeCreditToUi(nextCredit);
+    syncCreditToGames(nextCredit);
     var delta=Number.isFinite(Number(explicitDelta))?Math.floor(Number(explicitDelta)):nextCredit-previous;
     pendingCredit=Math.max(0,previous+delta);
     creditVersion++;
