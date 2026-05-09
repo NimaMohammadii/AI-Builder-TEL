@@ -54,7 +54,7 @@ app.get('/app/api/uploaded-images', async (c) => {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ creditIconUrl, preload });
+  return c.json({ creditIconUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/credit-icon.png', async (c) => {
@@ -64,7 +64,7 @@ app.get('/app/api/uploaded-image/credit-icon.png', async (c) => {
   return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
 });
 
-app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
+app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL }));
 
 app.get('/app/api/section-lock-image/:section/:kind', async (c) => {
   try {
