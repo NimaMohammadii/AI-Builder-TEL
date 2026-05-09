@@ -118,7 +118,7 @@ function normalizePlinkoConfig(input: any): PlinkoControlConfig {
       const item = input?.rows?.[rowKey]?.[risk] ?? input?.rows?.[rowKey]?.[risk.toString()];
       out.rows[rowKey][risk] = {
         multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows[rowKey][risk].multipliers, 0, 1000),
-        weights: normalizeNumberArray(item?.weights, expected, base.rows[rowKey][risk].weights, 0, 100),
+        weights: normalizeNumberArray(item?.weights, expected, base.rows[rowKey][risk].weights, 0, 100000),
       };
     });
   });
