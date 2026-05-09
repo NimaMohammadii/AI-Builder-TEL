@@ -1,6 +1,6 @@
 export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
 (function(){
-  var games=['mines','plinko','crash','wheel'];
+  var games=['mines','plinko','crash','wheel','dice','limbo','tower','coinflip','hilo'];
   function fallbackRefresh(){
     var stamp=String(Date.now());
     games.forEach(function(id){
