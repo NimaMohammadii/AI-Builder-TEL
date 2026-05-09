@@ -99,8 +99,8 @@ export async function listUserTonDeposits(env: Env, userId: string): Promise<{ d
 }
 
 async function findMatchingTransaction(env: Env, wallet: string, row: DepositRow): Promise<ToncenterTransaction | null> {
-  const key = env.TONCENTER_API_KEY;
-  if (!key) throw new Error('TONCENTER_API_KEY is not configured');
+  const key = envValue(env, 'TONCENTER_API_KEY');
+  if (!key) throw new Error('TON API key is not configured');
   const url = `${TONCENTER_BASE}/getTransactions?address=${encodeURIComponent(wallet)}&limit=30`;
   const res = await fetch(url, { headers: { 'X-API-Key': key } });
   const json = await res.json() as ToncenterResponse;
@@ -154,19 +154,23 @@ async function ensureTonDepositsTable(env: Env): Promise<void> {
 }
 
 function treasuryWallet(env: Env): string {
-  const wallet = String(env.TON_TREASURY_WALLET || '').trim();
-  if (!wallet) throw new Error('TON_TREASURY_WALLET is not configured');
+  const wallet = envValue(env, 'TON_TREASURY_WALLET');
+  if (!wallet) throw new Error('TON treasury wallet is not configured');
   return wallet;
 }
 
 function minDepositTon(env: Env): number {
-  const value = Number(env.TON_MIN_DEPOSIT || DEFAULT_MIN_TON);
+  const value = Number(envValue(env, 'TON_MIN_DEPOSIT') || DEFAULT_MIN_TON);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_MIN_TON;
 }
 
 function balanceRate(env: Env): number {
-  const value = Number(env.TON_BALANCE_RATE || DEFAULT_RATE);
+  const value = Number(envValue(env, 'TON_BALANCE_RATE') || DEFAULT_RATE);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_RATE;
+}
+
+function envValue(env: Env, name: string): string {
+  return String((env as unknown as Record<string, unknown>)[name] || '').trim();
 }
 
 function normalizeAmountTon(value: unknown): string {
