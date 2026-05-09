@@ -1,5 +1,5 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
-import { adjustUserCredit } from './user-controls';
+import { adjustUserTonBalance } from './user-controls';
 
 const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 
@@ -85,7 +85,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
   await env.DB.prepare(`UPDATE stars_deposits SET status = 'completed', telegram_payment_charge_id = ?, provider_payment_charge_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'completed'`)
     .bind(payment.telegram_payment_charge_id ?? null, payment.provider_payment_charge_id ?? null, id)
     .run();
-  await adjustUserCredit(env, row.user_id, row.amount_nano);
+  await adjustUserTonBalance(env, row.user_id, row.amount_nano);
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
