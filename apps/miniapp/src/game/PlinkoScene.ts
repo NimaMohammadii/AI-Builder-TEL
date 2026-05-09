@@ -137,15 +137,15 @@ export class PlinkoScene extends Phaser.Scene {
     const x = spawn.x + (targetX - spawn.x) * 0.1;
     const ball = this.matter.add.circle(x, spawn.y, radius, {
       label: 'ball',
-      restitution: 0.62,
-      friction: 0.001,
-      frictionAir: 0.0018,
+      restitution: 0.68,
+      friction: 0.002,
+      frictionAir: 0.002,
       density: 0.0022,
     });
 
     this.matter.body.setVelocity(ball, {
       x: Phaser.Math.Clamp((targetX - spawn.x) * 0.012, -0.9, 0.9),
-      y: Phaser.Math.FloatBetween(0.85, 1.15),
+      y: Phaser.Math.FloatBetween(0.95, 1.15),
     });
     this.matter.body.setAngularVelocity(ball, Phaser.Math.FloatBetween(-0.12, 0.12));
 
