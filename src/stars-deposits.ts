@@ -1,7 +1,7 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
 import { adjustUserCredit } from './user-controls';
 
-const DEFAULT_STAR_TO_NANO = 5_535_500; // Fragment 0.0061355 TON minus 0.0006 TON fee per Star.
+const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 
 type StarDepositRow = {
   id: string;
