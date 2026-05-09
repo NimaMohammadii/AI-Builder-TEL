@@ -27,7 +27,8 @@ export const PLINKO_SCRIPT = `
   function currentMultipliers(){var item=controlItem();return item&&Array.isArray(item.multipliers)&&item.multipliers.length===houseCount()?item.multipliers:multiplierTable[rows][risk]}
   function currentWeights(){var item=controlItem();if(item&&Array.isArray(item.weights)&&item.weights.length===houseCount())return item.weights.map(function(v){return Math.max(0,Number(v)||0)});return Array(houseCount()).fill(1)}
   function hasPositiveChance(){return currentWeights().some(function(v){return v>0})}
-  function isControlled(){return !!(plinkoControl&&plinkoControl.enabled!==false&&controlItem()&&hasPositiveChance())}
+  // Fair-physics mode: keep multiplier overrides, but never steer a ball toward weighted target houses.
+  function isControlled(){return false}
   function chooseWeightedIndex(){var weights=currentWeights(),sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(weights.length/2);var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0&&weights[i]>0)return i}return Math.floor(weights.length/2)}
   function resolveLandingIndex(index){if(!isControlled())return index;var weights=currentWeights(),idx=clamp(Math.floor(Number(index)||0),0,weights.length-1);if(weights[idx]>0)return idx;var best=-1,bestDistance=Infinity;for(var i=0;i<weights.length;i++){if(weights[i]>0){var d=Math.abs(i-idx);if(d<bestDistance){best=i;bestDistance=d}}}return best>=0?best:Math.floor(weights.length/2)}
   function pegRadius(){return rows===7?5.25:rows===9?4.6:3.48}
