@@ -1,5 +1,6 @@
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import { trackTelegramBotUser } from './admin-users';
+import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { decryptUserToken, safeParseJson } from './utils';
 
@@ -8,6 +9,15 @@ export { setTelegramWebhook };
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
   await trackTelegramBotUser(env, bot.id, update).catch((error) => console.warn('admin user tracking skipped', error));
   try {
+    if (update.pre_checkout_query) {
+      await handleStarsPreCheckout(env, update.pre_checkout_query);
+      return;
+    }
+    if (update.message?.successful_payment) {
+      const userId = update.message.from?.id ?? update.message.chat.id;
+      await handleStarsSuccessfulPayment(env, userId, update.message.successful_payment);
+      return;
+    }
     await baseProcessTelegramUpdate(env, bot, update);
   } catch (error) {
     console.error('safe builder runtime caught error', error);
