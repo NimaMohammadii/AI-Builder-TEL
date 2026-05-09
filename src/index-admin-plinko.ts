@@ -1,9 +1,27 @@
 import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
+import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import type { Env } from './types';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
+
+app.post('/app/api/stars/deposits', async (c) => {
+  try {
+    const body = await c.req.json() as { userId?: string; stars?: unknown };
+    return c.json(await createStarsDeposit(c.env, String(body.userId || ''), body.stars));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create Stars deposit' }, 400);
+  }
+});
+
+app.get('/app/api/stars/deposits', async (c) => {
+  try {
+    return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
+  }
+});
 
 app.post('/app/api/ton/deposits', async (c) => {
   try {
