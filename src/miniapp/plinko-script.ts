@@ -148,6 +148,10 @@ export const PLINKO_SCRIPT = `
     }
     ball.vx*=.996;
     ball.vy*=.996;
+    if(Math.abs(ball.vx)<.018&&Math.abs(ball.vy)<.18){
+      ball.vx+=(nx>=0?.08:-.08);
+      ball.vy=.32;
+    }
     if(ball.vy<-0.55)ball.vy=-0.55;
     if(ball.vy>2.45)ball.vy=2.45;
     if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}
@@ -225,7 +229,7 @@ export const PLINKO_SCRIPT = `
     ensurePegAudioPool();renderCredit();document.querySelectorAll('[data-risk]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-risk')===risk)});var rowsEl=q('plinkoRowsValue');if(rowsEl)rowsEl.textContent=String(rows);draw();scheduleFrame(0);
   }
 
-  function drop(){init();primeAudio();if(!state)return;if(state.balls&&state.balls.length>=MAX_ACTIVE_BALLS){toast('Please wait for a few balls to finish');return}var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.035,-5,5);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.0018,-.16,.16):0)+(Math.random()*.1-.05);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,hitPegKeys:{},lastPegKey:null,lastPegImpactAt:0,sinking:false,sink:0,paid:false,settleX:null});scheduleFrame(0)}
+  function drop(){init();primeAudio();if(!state)return;if(state.balls&&state.balls.length>=MAX_ACTIVE_BALLS){toast('Please wait for a few balls to finish');return}var bet=getBet();if(!bet||credit<bet){toast('Not enough credit');return}credit-=bet;reportGameCredit(-bet);var target=isControlled()?chooseWeightedIndex():null;var bins=state.bins;var left=bins[0].x,right=bins[bins.length-1].x+bins[bins.length-1].w;var targetX=target!==null&&target!==undefined?targetCenterX(target,bins,left,right):160;var activeTop=state.balls.filter(function(ball){return ball&&!ball.sinking&&ball.y<28}).length;var spread=[0,-6,6,-12,12,-3,3,-9,9];var startX=160+(spread[activeTop%spread.length]||0)+(Math.random()*2-1);if(target!==null&&target!==undefined)startX+=clamp((targetX-160)*.035,-5,5);var vx=(target!==null&&target!==undefined?clamp((targetX-startX)*.0018,-.16,.16):0)+(Math.random()*.1-.05);state.balls.push({x:startX,y:-8,vx:vx,vy:.08,r:ballRadius(),bet:bet,targetIndex:target,age:0,hitCount:0,hitPegKeys:{},lastPegKey:null,lastPegImpactAt:0,stuckFrames:0,sinking:false,sink:0,paid:false,settleX:null});scheduleFrame(0)}
   function settle(ball,bin){if(ball.paid)return;ball.paid=true;if(state)state.impactRings.push({bin:bin,life:34,max:34});var payout=Math.max(0,Math.round(ball.bet*bin.mult));credit+=payout;reportGameCredit(payout)}
 
   function tick(time){
@@ -237,6 +241,18 @@ export const PLINKO_SCRIPT = `
       ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.48}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.48}
       var checked=0;for(var c=Math.max(0,b-MAX_BALL_COLLISION_NEIGHBORS);c<Math.min(balls.length,b+MAX_BALL_COLLISION_NEIGHBORS+1);c++){if(c===b)continue;var other=balls[c];if(!other||other.sinking||ball.y<10||other.y<10)continue;checked+=1;if(checked>MAX_BALL_COLLISION_NEIGHBORS)break;var odx=ball.x-other.x,ody=ball.y-other.y,omin=ball.r+other.r;if(Math.abs(odx)>omin+2||Math.abs(ody)>omin+2)continue;var od=Math.sqrt(odx*odx+ody*ody)||1;if(od<omin){var onx=odx/od,ony=ody/od,overlap=(omin-od)*.5;ball.x+=onx*overlap;ball.y+=ony*overlap;other.x-=onx*overlap;other.y-=ony*overlap;var rvx=ball.vx-other.vx,rvy=ball.vy-other.vy,impact=rvx*onx+rvy*ony;if(impact<0){var impulse=-(1+.42)*impact*.5;ball.vx+=impulse*onx;ball.vy+=impulse*ony;other.vx-=impulse*onx;other.vy-=impulse*ony}ball.vx*=.992;other.vx*=.992;if(ball.vy<-0.45)ball.vy=-0.45;if(other.vy<-0.45)other.vy=-0.45;if(ball.vy>2.25)ball.vy=2.25;if(other.vy>2.25)other.vy=2.25;if(ball.x<left+ball.r){ball.x=left+ball.r;ball.vx=Math.abs(ball.vx)*.45}if(ball.x>right-ball.r){ball.x=right-ball.r;ball.vx=-Math.abs(ball.vx)*.45}if(other.x<left+other.r){other.x=left+other.r;other.vx=Math.abs(other.vx)*.45}if(other.x>right-other.r){other.x=right-other.r;other.vx=-Math.abs(other.vx)*.45}}}
       for(var pass=0;pass<2;pass++){for(var p=0;p<state.pegs.length;p++){resolvePegCollision(ball,state.pegs[p],left,right,pass===0?prevX:undefined,pass===0?prevY:undefined)}}
+      var speed=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+      if(ball.y>12&&ball.y<binTop-8&&speed<.055){
+        ball.stuckFrames=(ball.stuckFrames||0)+1;
+      }else{
+        ball.stuckFrames=0;
+      }
+      if(ball.stuckFrames>8){
+        ball.vx+=(Math.random()<.5?-.18:.18);
+        ball.vy=Math.max(ball.vy,.55);
+        ball.y+=1.2;
+        ball.stuckFrames=0;
+      }
       guideControlledBall(ball,bins,left,right,dt);
       if(ball.y+ball.r>binTop+5){guideControlledBall(ball,bins,left,right,dt*1.35);var physicalIdx=binIndexFromX(ball.x,bins,left,right);var idx=landingIndexForBall(ball,physicalIdx);var bin=bins[idx];if(isControlled()){var center=targetCenterX(idx,bins,left,right);ball.vx+=clamp((center-ball.x)*.0018,-.03,.03)*dt}for(var s=1;s<bins.length;s++){var wall=left+s*(right-left)/bins.length;if(Math.abs(ball.x-wall)<ball.r&&ball.y>binTop-6&&ball.y<binBottom){if(ball.x<wall){ball.x=wall-ball.r;ball.vx=-Math.abs(ball.vx)*.46}else{ball.x=wall+ball.r;ball.vx=Math.abs(ball.vx)*.46}ball.vy*=.84}}if(ball.y+ball.r>bin.y+bin.h*.62){ball.settleX=clamp(bin.x+bin.w/2,left+ball.r,right-ball.r);ball.vx*=.2;ball.vy*=.2;settle(ball,bin);ball.sinking=true;ball.sink=0}}
       if(ball.y>316){if(!ball.paid){var fallbackPhysicalIdx=binIndexFromX(ball.x,bins,left,right);var fallbackIdx=landingIndexForBall(ball,fallbackPhysicalIdx);settle(ball,bins[fallbackIdx])}balls.splice(b,1)}}
