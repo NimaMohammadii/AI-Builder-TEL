@@ -1,5 +1,5 @@
 import type { Env, TelegramUpdate } from './types';
-import { getUserControls } from './user-controls';
+import { ensureTonBalanceColumn, getUserControls } from './user-controls';
 
 export type AppUserActivityPayload = {
   userId?: string;
@@ -13,7 +13,7 @@ type AdminUserRow = {
   first_name: string | null;
   username: string | null;
   current_section: string | null;
-  credit: number | null;
+  ton_balance_nano: number | null;
   last_seen_at: string | null;
   created_at: string | null;
   source: string | null;
@@ -39,7 +39,7 @@ export async function trackTelegramBotUser(env: Env, botId: string, update: Tele
   }
 }
 
-export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; credit?: number } | { ok: false; error: string }> {
+export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; tonBalanceNano: number } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
   if (!userId) return { ok: false, error: 'Missing user id' };
   const username = cleanText(payload.username, 80);
@@ -47,9 +47,10 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
   const section = cleanSection(payload.section);
 
   try {
+    await ensureTonBalanceColumn(env);
     const controls = await getUserControls(env, userId);
-    const credit = Math.max(0, Math.floor(Number(controls.credit ?? 1000) || 0));
-    await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, credit, last_seen_at, updated_at)
+    const tonBalanceNano = Math.max(0, Math.floor(Number(controls.tonBalanceNano ?? 0) || 0));
+    await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(telegram_user_id) DO UPDATE SET
         first_name = excluded.first_name,
@@ -57,9 +58,9 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         current_section = excluded.current_section,
         last_seen_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP`)
-      .bind(userId, firstName, username, section, credit)
+      .bind(userId, firstName, username, section, tonBalanceNano)
       .run();
-    return { ok: true, credit };
+    return { ok: true, tonBalanceNano };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };
@@ -67,14 +68,15 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 }
 
 export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<string, unknown>>; stats: Record<string, number> }> {
+  await ensureTonBalanceColumn(env);
   const rows = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at, 'miniapp' AS source FROM app_users
+      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'miniapp' AS source FROM app_users
       UNION ALL
-      SELECT telegram_user_id, first_name, username, current_section, NULL AS credit, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
+      SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
     ), ranked AS (
       SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
-    SELECT telegram_user_id, first_name, username, current_section, credit, last_seen_at, created_at, source
+    SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source
     FROM ranked
     WHERE rn = 1
     ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
@@ -84,6 +86,7 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
     const controls = await getUserControls(env, row.telegram_user_id).catch(() => null);
     const lastSeenMs = row.last_seen_at ? Date.parse(row.last_seen_at) : 0;
     const online = lastSeenMs > 0 && now - lastSeenMs <= 90_000;
+    const tonBalanceNano = Number(controls?.tonBalanceNano ?? row.ton_balance_nano ?? 0);
     return {
       id: row.telegram_user_id,
       username: row.username ? '@' + row.username.replace(/^@+/, '') : '—',
@@ -91,15 +94,21 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       isActive: online,
       status: online ? 'Online' : 'Inactive',
       currentSection: row.current_section || 'unknown',
-      credit: Number(controls?.credit ?? row.credit ?? 0),
+      tonBalanceNano,
+      tonBalance: formatTon(tonBalanceNano),
       lastSeenAt: row.last_seen_at,
       createdAt: row.created_at,
       source: row.source || 'unknown',
     };
   }));
   const online = users.filter((user) => user.isActive).length;
-  const totalCredit = users.reduce((sum, user) => sum + Number(user.credit || 0), 0);
-  return { users, stats: { total: users.length, online, inactive: users.length - online, totalCredit } };
+  const totalTonBalanceNano = users.reduce((sum, user) => sum + Number(user.tonBalanceNano || 0), 0);
+  return { users, stats: { total: users.length, online, inactive: users.length - online, totalTonBalanceNano } };
+}
+
+function formatTon(nano: number): string {
+  const value = Math.max(0, Math.floor(Number(nano) || 0)) / 1_000_000_000;
+  return value.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') + ' TON';
 }
 
 function cleanText(value: unknown, max: number): string | null {
