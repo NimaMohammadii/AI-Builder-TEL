@@ -38,7 +38,7 @@ export const MINIAPP_SCRIPT = `
     return j;
   }
 
-  function userLine(){setText('userLine',ownerId?'User '+ownerId:'Connect Telegram user')}
+  function userLine(){var n=q('userLine');if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level 1 <span style="color:rgba(255,255,255,.55);font-weight:700">• 42%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:42%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">580 XP left to finish</span>'}
   function row(b){var img=avatarImg(b);return '<button class="bot-row" data-bot-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><span class="pill">'+esc(b.status)+'</span></button>'}
   function render(){
     var html=bots.length?bots.map(row).join(''):'<div class="notice">No bots yet. Connect your bot first.</div>';
