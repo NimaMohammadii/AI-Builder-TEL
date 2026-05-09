@@ -32,8 +32,10 @@ export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'ima
 const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeImageUrl'>> = [
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Bot connection section' },
+  { id: 'playzone', label: 'Play Zone', description: 'Games hub section' },
   { id: 'flow', label: 'Text to Speech', description: 'TTS generator section' },
-  { id: 'plinko', label: 'Plinko', description: 'Plinko game section' },
+  { id: 'mines', label: 'Mines', description: 'Mines game card and access image' },
+  { id: 'plinko', label: 'Plinko', description: 'Plinko game card and access image' },
 ];
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
