@@ -3,7 +3,6 @@ import { adjustUserCredit } from './user-controls';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 const DEFAULT_MIN_TON = 0.1;
-const DEFAULT_RATE = 1000;
 
 type DepositRow = {
   id: string;
@@ -54,7 +53,7 @@ export async function createTonDeposit(env: Env, userId: string, amountTonInput:
   const minTon = minDepositTon(env);
   if (Number(amountTon) < minTon) throw new Error(`Minimum deposit is ${minTon} TON`);
   const amountNano = tonToNanoString(amountTon);
-  const creditAmount = Math.max(1, Math.floor(Number(amountTon) * balanceRate(env)));
+  const creditAmount = safeNanoNumber(amountNano);
   const depositId = 'dep_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
   await ensureTonDepositsTable(env);
   await env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, credit_amount, status, created_at, updated_at)
@@ -164,11 +163,6 @@ function minDepositTon(env: Env): number {
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_MIN_TON;
 }
 
-function balanceRate(env: Env): number {
-  const value = Number(envValue(env, 'TON_BALANCE_RATE') || DEFAULT_RATE);
-  return Number.isFinite(value) && value > 0 ? value : DEFAULT_RATE;
-}
-
 function envValue(env: Env, name: string): string {
   return String((env as unknown as Record<string, unknown>)[name] || '').trim();
 }
@@ -183,6 +177,12 @@ function tonToNanoString(amountTon: string): string {
   const [whole, fractionRaw = ''] = amountTon.split('.');
   const fraction = (fractionRaw + '000000000').slice(0, 9);
   return (BigInt(whole || '0') * 1000000000n + BigInt(fraction || '0')).toString();
+}
+
+function safeNanoNumber(value: string): number {
+  const numberValue = Number(value);
+  if (!Number.isSafeInteger(numberValue) || numberValue < 1) throw new Error('TON amount is too large');
+  return numberValue;
 }
 
 function cleanUserId(value: unknown): string {
