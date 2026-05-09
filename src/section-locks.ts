@@ -36,6 +36,8 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 
   { id: 'flow', label: 'Text to Speech', description: 'TTS generator section' },
   { id: 'mines', label: 'Mines', description: 'Mines game card and access image' },
   { id: 'plinko', label: 'Plinko', description: 'Plinko game card and access image' },
+  { id: 'crash', label: 'Crash', description: 'Crash game card image' },
+  { id: 'wheel', label: 'Wheel', description: 'Wheel game card image' },
 ];
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
