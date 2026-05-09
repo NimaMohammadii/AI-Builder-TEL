@@ -6,7 +6,7 @@ export const CREDIT_SCRIPT = `
   var syncing=false;
   var pendingDelta=0;
   function clean(value){var n=Math.floor(Number(value));return Number.isFinite(n)&&n>=0?n:DEFAULT_CREDIT}
-  function formatTon(value){var raw=clean(value);var whole=Math.floor(raw/NANO_PER_TON);var frac=String(raw%NANO_PER_TON).padStart(9,'0').replace(/0+$/,'');return (frac?whole+'.'+frac:String(whole))+' TON'}
+  function formatTon(value){var raw=clean(value);var ton=raw/NANO_PER_TON;var text=ton.toFixed(3).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');return text+' TON'}
   function parseTonText(text){var value=String(text||'').replace(/TON/i,'').trim();if(!value)return NaN;if(value.indexOf('.')>=0)return Math.floor(Number(value)*NANO_PER_TON);return Math.floor(Number(value))}
   function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=localStorage.getItem('ownerId')||String((u&&u.id)||'');return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
   function readDomCredit(){var nodes=document.querySelectorAll('[data-credit-display],#plinkoCredit,#minesCredit,#creditCount,#plinkoCreditHeader');for(var i=0;i<nodes.length;i++){var raw=nodes[i].getAttribute('data-credit-raw');if(raw!==null){var r=clean(raw);if(Number.isFinite(r))return r}var n=parseTonText(nodes[i].textContent);if(Number.isFinite(n)&&n>=0)return n}return DEFAULT_CREDIT}
