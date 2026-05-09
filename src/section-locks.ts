@@ -38,6 +38,11 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 
   { id: 'plinko', label: 'Plinko', description: 'Plinko game card and access image' },
   { id: 'crash', label: 'Crash', description: 'Crash game card image' },
   { id: 'wheel', label: 'Wheel', description: 'Wheel game card image' },
+  { id: 'dice', label: 'Dice', description: 'Dice game card image' },
+  { id: 'limbo', label: 'Limbo', description: 'Limbo game card image' },
+  { id: 'tower', label: 'Tower', description: 'Tower game card image' },
+  { id: 'coinflip', label: 'Coin Flip', description: 'Coin Flip game card image' },
+  { id: 'hilo', label: 'Hi-Lo', description: 'Hi-Lo game card image' },
 ];
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
