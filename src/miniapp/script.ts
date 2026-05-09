@@ -25,7 +25,7 @@ export const MINIAPP_SCRIPT = `
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
-    setText('brandTitle',id==='flow'?'Text To Speech':id==='plinko'?'Plinko':'Vexa FLOW');
+    setText('brandTitle',id==='flow'?'Text To Speech':id==='plinko'?'Plinko':id==='mines'?'Mines':'Vexa FLOW');
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     loadBots(false);
   }
