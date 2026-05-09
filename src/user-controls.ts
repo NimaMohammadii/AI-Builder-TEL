@@ -2,12 +2,11 @@ import type { Env } from './types';
 
 export type UserControls = {
   userId: string;
-  credit: number | null;
+  tonBalanceNano: number;
   blockedSections: string[];
 };
 
-const DEFAULT_CREDIT = 1000;
-const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko']);
+const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko', 'playzone', 'mines']);
 
 type StoredUserControls = {
   userId?: string;
@@ -21,26 +20,26 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   const saved = await readSectionControls(env, id);
   return {
     userId: id,
-    credit: await readAppUserCredit(env, id),
+    tonBalanceNano: await readUserTonBalance(env, id),
     blockedSections: normalizeBlockedSections(saved?.blockedSections),
   };
 }
 
-export async function setUserCredit(env: Env, userId: string, credit: number): Promise<UserControls> {
+export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano: number): Promise<UserControls> {
   const id = cleanUserId(userId);
-  await writeAppUserCredit(env, id, credit);
+  await writeUserTonBalance(env, id, tonBalanceNano);
   return getUserControls(env, id);
 }
 
-export async function adjustUserCredit(env: Env, userId: string, delta: number): Promise<UserControls> {
+export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number): Promise<UserControls> {
   const id = cleanUserId(userId);
-  await addAppUserCredit(env, id, delta);
+  await addUserTonBalance(env, id, deltaNano);
   return getUserControls(env, id);
 }
 
-export async function applyGameCreditDelta(env: Env, userId: string, delta: number): Promise<UserControls> {
+export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number): Promise<UserControls> {
   const id = cleanUserId(userId);
-  await addAppUserCredit(env, id, delta);
+  await addUserTonBalance(env, id, deltaNano);
   return getUserControls(env, id);
 }
 
@@ -55,9 +54,9 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
   return getUserControls(env, id);
 }
 
-export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; credit: number | null; blockedSections: string[] }> {
+export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; blockedSections: string[] }> {
   const controls = await getUserControls(env, userId);
-  return { userId: controls.userId, credit: controls.credit, blockedSections: controls.blockedSections };
+  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, blockedSections: controls.blockedSections };
 }
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
@@ -90,30 +89,37 @@ async function ensureUserControlsTable(env: Env): Promise<void> {
   )`).run();
 }
 
-async function readAppUserCredit(env: Env, userId: string): Promise<number> {
-  const app = await env.DB.prepare('SELECT credit FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ credit: number }>().catch(() => null);
-  return normalizeCredit(app?.credit ?? DEFAULT_CREDIT);
+export async function ensureTonBalanceColumn(env: Env): Promise<void> {
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN ton_balance_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 }
 
-async function writeAppUserCredit(env: Env, userId: string, credit: number): Promise<void> {
-  const value = normalizeCredit(credit);
-  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, credit, last_seen_at, updated_at)
+async function readUserTonBalance(env: Env, userId: string): Promise<number> {
+  await ensureTonBalanceColumn(env);
+  const app = await env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ ton_balance_nano: number }>().catch(() => null);
+  return normalizeNano(app?.ton_balance_nano ?? 0);
+}
+
+async function writeUserTonBalance(env: Env, userId: string, tonBalanceNano: number): Promise<void> {
+  await ensureTonBalanceColumn(env);
+  const value = normalizeNano(tonBalanceNano);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
     VALUES (?, 'home', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(telegram_user_id) DO UPDATE SET
-      credit = excluded.credit,
+      ton_balance_nano = excluded.ton_balance_nano,
       updated_at = CURRENT_TIMESTAMP`)
     .bind(userId, value)
     .run();
 }
 
-async function addAppUserCredit(env: Env, userId: string, delta: number): Promise<void> {
-  const value = Math.floor(Number(delta) || 0);
-  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, credit, last_seen_at, updated_at)
+async function addUserTonBalance(env: Env, userId: string, deltaNano: number): Promise<void> {
+  await ensureTonBalanceColumn(env);
+  const value = Math.floor(Number(deltaNano) || 0);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
     VALUES (?, 'home', max(0, ?), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(telegram_user_id) DO UPDATE SET
-      credit = max(0, credit + ?),
+      ton_balance_nano = max(0, ton_balance_nano + ?),
       updated_at = CURRENT_TIMESTAMP`)
-    .bind(userId, DEFAULT_CREDIT + value, value)
+    .bind(userId, value, value)
     .run();
 }
 
@@ -121,7 +127,7 @@ function normalizeBlockedSections(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((section): section is string => typeof section === 'string' && VALID_SECTIONS.has(section)) : [];
 }
 
-function normalizeCredit(value: unknown): number {
+function normalizeNano(value: unknown): number {
   return Math.max(0, Math.floor(Number(value) || 0));
 }
 
