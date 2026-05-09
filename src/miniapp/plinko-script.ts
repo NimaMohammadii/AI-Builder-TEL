@@ -207,7 +207,7 @@ export const PLINKO_SCRIPT = `
 
   function makePegs(){
     var pegs=[];var top=32;var bottom=rows===11?238:rows===9?235:230;var pegRows=rows;var rowGap=(bottom-top)/Math.max(1,pegRows-1);var slotCount=houseCount();var slotLeft=12;var slotWidth=296;var slotGap=slotWidth/slotCount;var r=pegRadius();var vr=pegVisualRadius();
-    for(var row=0;row<pegRows;row++){var count=row+3;var start=slotLeft+((slotCount-(count-1))*slotGap)/2;var y=top+row*rowGap;for(var i=0;i<count;i++)pegs.push({key:row+':'+i,x:start+i*slotGap,y:y,r:r,vr:vr,lastImpactAt:0})}
+    for(var row=0;row<pegRows;row++){var count=row+3;var start=slotLeft+((slotCount-(count-1))*slotGap)/2;var y=top+row*rowGap;var pr=row===pegRows-1?r*.6:r;for(var i=0;i<count;i++)pegs.push({key:row+':'+i,x:start+i*slotGap,y:y,r:pr,vr:vr,lastImpactAt:0})}
     return pegs;
   }
 
