@@ -3,12 +3,12 @@ import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
 import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
-import { adjustUserCredit, applyGameCreditDelta, getUserControls, publicUserControls, setUserCredit, setUserSectionBlocked } from './user-controls';
+import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
 
-const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const TON_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const UPLOADED_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 const activitySchema = z.object({
@@ -21,9 +21,9 @@ const activitySchema = z.object({
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
-const gameCreditSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
-const userCreditSchema = z.object({ userId: z.string().min(1).max(80), credit: z.number().int().nonnegative() });
-const userCreditAdjustSchema = z.object({ userId: z.string().min(1).max(80), delta: z.number().int() });
+const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
+const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBalanceNano: z.number().int().nonnegative() });
+const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
 
 app.get('/setup-webhook', async (c) => {
@@ -35,31 +35,31 @@ app.get('/setup-webhook', async (c) => {
 });
 
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c.json(await trackAppUser(c.env, c.req.valid('json'))));
-app.post('/app/api/credit/game-delta', zValidator('json', gameCreditSchema), async (c) => {
+app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSchema), async (c) => {
   const body = c.req.valid('json');
   try {
-    return c.json(await applyGameCreditDelta(c.env, body.userId, body.delta));
+    return c.json(await applyGameTonBalanceDelta(c.env, body.userId, body.deltaNano));
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not update game credit' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400);
   }
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
-  const version = (await c.env.BOT_CACHE.get('admin:credit-icon-version').catch(() => null)) || '1';
-  const hasCreditIcon = Boolean(await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null));
-  const creditIconUrl = hasCreditIcon ? `/app/api/uploaded-image/credit-icon.png?v=${version}` : `/app/api/credit-icon.png?v=${version}`;
+  const version = (await c.env.BOT_CACHE.get('admin:ton-icon-version').catch(() => null)) || '1';
+  const hasTonIcon = Boolean(await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null));
+  const tonIconUrl = hasTonIcon ? `/app/api/uploaded-image/ton-icon.png?v=${version}` : `/app/api/credit-icon.png?v=${version}`;
   const locks = await getSectionLocks(c.env);
-  const preload = [creditIconUrl];
+  const preload = [tonIconUrl];
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ creditIconUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL });
+  return c.json({ tonIconUrl, creditIconUrl: tonIconUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL });
 });
 
-app.get('/app/api/uploaded-image/credit-icon.png', async (c) => {
-  const data = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
-  const type = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
+app.get('/app/api/uploaded-image/ton-icon.png', async (c) => {
+  const data = await c.env.BOT_CACHE.get('admin:ton-icon', 'arrayBuffer').catch(() => null);
+  const type = await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null);
   if (!data) return c.redirect('/app/api/credit-icon.png');
   return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
 });
@@ -99,7 +99,7 @@ app.get('/admin/api/users', async (c) => {
   try { return c.json(await adminUsersJson(c.env)); }
   catch (error) {
     console.error('load admin users failed', error);
-    return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalCredit: 0 }, error: 'Database is not ready. Run migrations.' }, 500);
+    return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalTonBalanceNano: 0 }, error: 'Database is not ready. Run migrations.' }, 500);
   }
 });
 
@@ -108,18 +108,18 @@ app.get('/admin/api/user-controls', zValidator('query', userIdSchema), async (c)
   return c.json(await getUserControls(c.env, c.req.valid('query').userId));
 });
 
-app.post('/admin/api/users/credit', zValidator('json', userCreditSchema), async (c) => {
+app.post('/admin/api/users/ton-balance', zValidator('json', userTonBalanceSchema), async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const body = c.req.valid('json');
-  try { return c.json(await setUserCredit(c.env, body.userId, body.credit)); }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update credit' }, 400); }
+  try { return c.json(await setUserTonBalance(c.env, body.userId, body.tonBalanceNano)); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); }
 });
 
-app.post('/admin/api/users/credit-adjust', zValidator('json', userCreditAdjustSchema), async (c) => {
+app.post('/admin/api/users/ton-balance-adjust', zValidator('json', userTonBalanceAdjustSchema), async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const body = c.req.valid('json');
-  try { return c.json(await adjustUserCredit(c.env, body.userId, body.delta)); }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not adjust credit' }, 400); }
+  try { return c.json(await adjustUserTonBalance(c.env, body.userId, body.deltaNano)); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not adjust TON balance' }, 400); }
 });
 
 app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSchema), async (c) => {
@@ -134,20 +134,20 @@ app.get('/admin/api/section-locks', async (c) => {
   return c.json(await getSectionLocks(c.env));
 });
 
-app.post('/admin/api/upload-credit-icon', async (c) => {
+app.post('/admin/api/upload-ton-icon', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (!TON_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
   if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const data = await file.arrayBuffer();
   const version = String(Date.now());
-  await c.env.BOT_CACHE.put('admin:credit-icon', data, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:credit-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:credit-icon-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
-  try { await c.env.ASSETS.put('credit-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
-  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/uploaded-image/credit-icon.png?v=${version}` });
+  await c.env.BOT_CACHE.put('admin:ton-icon', data, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:ton-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:ton-icon-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
+  try { await c.env.ASSETS.put('ton-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 TON icon save skipped', error); }
+  return c.json({ ok: true, size: file.size, type: file.type, tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` });
 });
 
 app.post('/admin/api/section-lock-image', async (c) => {
