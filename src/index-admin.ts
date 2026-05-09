@@ -9,6 +9,7 @@ import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
 
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const UPLOADED_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 const activitySchema = z.object({
   userId: z.string().min(1).max(64),
@@ -60,7 +61,7 @@ app.get('/app/api/uploaded-image/credit-icon.png', async (c) => {
   const data = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
   const type = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
   if (!data) return c.redirect('/app/api/credit-icon.png');
-  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
+  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
 });
 
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env)));
@@ -71,9 +72,9 @@ app.get('/app/api/section-lock-image/:section/:kind', async (c) => {
     const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, ''));
     const data = await c.env.BOT_CACHE.get(sectionImageKey(section, kind), 'arrayBuffer').catch(() => null);
     const type = await c.env.BOT_CACHE.get(sectionImageTypeKey(section, kind)).catch(() => null);
-    if (!data) return c.text('Not found', 404);
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
-  } catch { return c.text('Not found', 404); }
+    if (!data) return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL });
+    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
+  } catch { return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL }); }
 });
 
 app.get('/app/api/section-lock-image/:section', async (c) => {
@@ -81,9 +82,9 @@ app.get('/app/api/section-lock-image/:section', async (c) => {
     const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, ''));
     const data = await c.env.BOT_CACHE.get(legacySectionImageKey(section), 'arrayBuffer').catch(() => null);
     const type = await c.env.BOT_CACHE.get(legacySectionImageTypeKey(section)).catch(() => null);
-    if (!data) return c.text('Not found', 404);
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
-  } catch { return c.text('Not found', 404); }
+    if (!data) return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL });
+    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
+  } catch { return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL }); }
 });
 
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
