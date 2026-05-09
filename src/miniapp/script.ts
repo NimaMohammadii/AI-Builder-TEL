@@ -110,7 +110,7 @@ export const MINIAPP_SCRIPT = `
         if(tg&&typeof tg.openInvoice==='function'){
           tg.openInvoice(d.invoiceLink,function(state){
             if(status)status.textContent=state==='paid'?'Payment received. Balance will update shortly.':'Payment status: '+state;
-            if(state==='paid'&&window.VexaCredit&&window.VexaCredit.load)setTimeout(function(){window.VexaCredit.load()},900);
+            if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);
           });
         }else{window.location.href=d.invoiceLink}
       }
@@ -152,6 +152,7 @@ export const MINIAPP_SCRIPT = `
     if(a==='open-deposit'){setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
     if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
+    if(a==='deposit-custom-stars-sheet'){depositStars(q('starsAmountSheet')&&q('starsAmountSheet').value);return}
     if(a==='open-char-limit'){setLimitSheet(true);return}
     if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
