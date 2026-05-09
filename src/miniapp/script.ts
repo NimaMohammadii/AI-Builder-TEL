@@ -19,6 +19,7 @@ export const MINIAPP_SCRIPT = `
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function setDepositSheet(open){var s=q('depositSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
 
   function show(id){
@@ -96,6 +97,26 @@ export const MINIAPP_SCRIPT = `
     var w=q('voiceWrap');if(w)w.classList.remove('open');
   }
 
+  async function depositStars(stars){
+    var amount=Math.floor(Number(stars)||0);
+    if(!ownerId)return toast('Telegram user not found');
+    if(!amount||amount<1)return toast('Enter a valid Stars amount');
+    var status=q('depositStatus');
+    if(status)status.textContent='Creating secure Telegram invoice...';
+    try{
+      var d=await api('/app/api/stars/deposits',{method:'POST',body:JSON.stringify({userId:ownerId,stars:amount})});
+      if(status)status.textContent='Opening Telegram Stars payment...';
+      if(d.invoiceLink){
+        if(tg&&typeof tg.openInvoice==='function'){
+          tg.openInvoice(d.invoiceLink,function(state){
+            if(status)status.textContent=state==='paid'?'Payment received. Balance will update shortly.':'Payment status: '+state;
+            if(state==='paid'&&window.VexaCredit&&window.VexaCredit.load)setTimeout(function(){window.VexaCredit.load()},900);
+          });
+        }else{window.location.href=d.invoiceLink}
+      }
+    }catch(x){if(status)status.textContent=x.message;toast(x.message)}
+  }
+
   async function generateTts(){
     var text=(q('ttsText')&&q('ttsText').value.trim())||'';
     if(!text)return toast('Type text first');
@@ -125,8 +146,12 @@ export const MINIAPP_SCRIPT = `
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
+    var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
+    if(a==='open-deposit'){setDepositSheet(true);return}
+    if(a==='close-deposit'){setDepositSheet(false);return}
+    if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
     if(a==='open-char-limit'){setLimitSheet(true);return}
     if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
