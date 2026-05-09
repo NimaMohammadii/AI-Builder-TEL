@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { adjustUserCredit } from './user-controls';
+import { adjustUserTonBalance } from './user-controls';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 const DEFAULT_MIN_TON = 0.1;
@@ -9,7 +9,7 @@ type DepositRow = {
   user_id: string;
   amount_ton: string;
   amount_nano: string;
-  credit_amount: number;
+  ton_balance_nano: number;
   status: string;
   tx_hash: string | null;
   created_at: string;
@@ -37,7 +37,7 @@ export type TonDeposit = {
   userId: string;
   amountTon: string;
   amountNano: string;
-  creditAmount: number;
+  tonBalanceNano: number;
   status: string;
   txHash: string | null;
   payUrl: string;
@@ -53,14 +53,14 @@ export async function createTonDeposit(env: Env, userId: string, amountTonInput:
   const minTon = minDepositTon(env);
   if (Number(amountTon) < minTon) throw new Error(`Minimum deposit is ${minTon} TON`);
   const amountNano = tonToNanoString(amountTon);
-  const creditAmount = safeNanoNumber(amountNano);
+  const tonBalanceNano = safeNanoNumber(amountNano);
   const depositId = 'dep_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
   await ensureTonDepositsTable(env);
-  await env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, credit_amount, status, created_at, updated_at)
+  await env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, ton_balance_nano, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
-    .bind(depositId, user, amountTon, amountNano, creditAmount)
+    .bind(depositId, user, amountTon, amountNano, tonBalanceNano)
     .run();
-  return rowToDeposit({ id: depositId, user_id: user, amount_ton: amountTon, amount_nano: amountNano, credit_amount: creditAmount, status: 'pending', tx_hash: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, wallet);
+  return rowToDeposit({ id: depositId, user_id: user, amount_ton: amountTon, amount_nano: amountNano, ton_balance_nano: tonBalanceNano, status: 'pending', tx_hash: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, wallet);
 }
 
 export async function getTonDeposit(env: Env, depositId: string): Promise<TonDeposit | null> {
@@ -85,7 +85,7 @@ export async function verifyTonDeposit(env: Env, depositId: string): Promise<Ton
   await env.DB.prepare(`UPDATE ton_deposits SET status = 'completed', tx_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'completed'`)
     .bind(txHash, id)
     .run();
-  await adjustUserCredit(env, row.user_id, row.credit_amount);
+  await adjustUserTonBalance(env, row.user_id, row.ton_balance_nano);
   const completed = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ?').bind(id).first<DepositRow>();
   return rowToDeposit(completed ?? { ...row, status: 'completed', tx_hash: txHash }, wallet);
 }
@@ -123,7 +123,7 @@ function rowToDeposit(row: DepositRow, wallet: string): TonDeposit {
     userId: row.user_id,
     amountTon: row.amount_ton,
     amountNano: row.amount_nano,
-    creditAmount: row.credit_amount,
+    tonBalanceNano: row.ton_balance_nano,
     status: row.status,
     txHash: row.tx_hash,
     payUrl: tonPayUrl(wallet, row.amount_nano, row.id),
@@ -143,12 +143,13 @@ async function ensureTonDepositsTable(env: Env): Promise<void> {
     user_id TEXT NOT NULL,
     amount_ton TEXT NOT NULL,
     amount_nano TEXT NOT NULL,
-    credit_amount INTEGER NOT NULL,
+    ton_balance_nano INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     tx_hash TEXT UNIQUE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
+  await env.DB.prepare('ALTER TABLE ton_deposits ADD COLUMN ton_balance_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_deposits_user ON ton_deposits(user_id, created_at)').run();
 }
 
