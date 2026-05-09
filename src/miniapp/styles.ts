@@ -11,6 +11,7 @@ button{border:0}
 .logo,.avatar{width:64px;height:64px;border-radius:26px;object-fit:cover;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
 .brand h1{font-size:21px;line-height:1;margin:0;font-weight:900;letter-spacing:-.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:178px}
 .brand p{font-size:11px;margin:4px 0 0;color:var(--muted)}
+.balance-source{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;opacity:0!important;pointer-events:none!important}
 .top-balance-pill{height:44px;max-width:156px;flex:0 0 auto;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.045));color:#fff;display:flex;align-items:center;gap:8px;padding:0 11px;backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 18px 55px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22)}
 .top-balance-pill b{font-size:12.5px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ton-mini-icon{width:26px;height:26px;display:grid;place-items:center;flex:0 0 auto}.ton-mini-icon svg{width:26px;height:26px;display:block}
 .content{height:calc(100dvh - 72px - 94px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden}
