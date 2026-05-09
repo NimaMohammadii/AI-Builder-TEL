@@ -5,13 +5,13 @@ html,body{margin:0;height:100%;background:#000!important;color:#fff;overflow:hid
 body{height:100dvh}
 button,input,select,textarea{font:inherit}
 button{border:0}
-.app{position:relative;width:min(100%,560px);height:100dvh;margin:auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));background:#000!important;overflow:hidden}
-.top{height:68px;display:flex;align-items:center;margin-bottom:14px}
+.app{position:relative;width:min(100%,560px);height:100dvh;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));background:#000!important;overflow:hidden}
+.top{height:72px;display:flex;align-items:center;margin-bottom:16px}
 .brand{display:flex;gap:12px;align-items:center}
-.logo,.avatar{width:58px;height:58px;border-radius:24px;object-fit:cover;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
+.logo,.avatar{width:64px;height:64px;border-radius:26px;object-fit:cover;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
 .brand h1{font-size:21px;line-height:1;margin:0;font-weight:900;letter-spacing:-.05em}
 .brand p{font-size:11px;margin:4px 0 0;color:var(--muted)}
-.content{height:calc(100dvh - 68px - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden}
+.content{height:calc(100dvh - 72px - 94px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden}
 .view{display:none;height:100%;overflow:auto;padding-bottom:8px;position:relative}.view.active{display:block}
 .hero h2{font-size:clamp(46px,13vw,72px);line-height:.88;letter-spacing:-.09em;margin:12px 0 10px}.hero p{color:var(--muted);line-height:1.45;margin:0 0 16px}
 .card{border:1px solid var(--line);border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.03));box-shadow:0 28px 80px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.10);margin-bottom:13px;backdrop-filter:blur(22px)}
