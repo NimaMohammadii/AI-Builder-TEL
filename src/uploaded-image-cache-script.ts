@@ -23,9 +23,17 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     });
     try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url}}))}catch(e){}
   }
+  function applyTonIcon(url){
+    if(!url)return;
+    preload(url);
+    document.querySelectorAll('.top-balance-pill .ton-mini-icon img,img[data-ton-icon]').forEach(function(img){
+      if(img.getAttribute('src')!==url)img.setAttribute('src',url);
+    });
+  }
   function load(){
     fetch('/app/api/uploaded-images',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
       if(data&&data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
+      if(data&&data.tonIconUrl)applyTonIcon(data.tonIconUrl);
       (data&&data.preload||[]).forEach(preload);
     }).catch(function(){});
   }
