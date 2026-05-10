@@ -1,8 +1,9 @@
 export const BALANCE_OVERRIDES = `
 .top-balance-pill{
   height:35px!important;
-  min-width:84px!important;
-  max-width:126px!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:min(44vw,180px)!important;
   padding:0 8px!important;
   gap:3px!important;
   border-radius:999px!important;
@@ -13,8 +14,9 @@ export const BALANCE_OVERRIDES = `
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
   display:inline-flex!important;
   align-items:center!important;
-  justify-content:center!important;
+  justify-content:flex-start!important;
   flex:0 0 auto!important;
+  box-sizing:border-box!important;
 }
 .top-balance-pill b{
   font-size:13px!important;
@@ -24,6 +26,11 @@ export const BALANCE_OVERRIDES = `
   margin:0!important;
   padding:0!important;
   display:block!important;
+  white-space:nowrap!important;
+  min-width:0!important;
+  max-width:calc(min(44vw,180px) - 42px)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
 }
 .top-balance-pill .ton-mini-icon{
   width:23px!important;
