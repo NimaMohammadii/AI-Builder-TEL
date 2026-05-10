@@ -1,34 +1,7 @@
 export const HOME_SECTION = `<section id="home" class="view active">
-  <section class="card">
-    <div class="pad">
-      <div class="title">
-        <h3>TON Balance</h3>
-        <span id="homeTonBalance" data-ton-balance-display>0 TON</span>
-      </div>
-      <div class="notice">Charge with Telegram Stars. Your balance updates automatically after Telegram confirms the payment.</div>
-      <button class="primary home-deposit-btn" type="button" data-action="open-deposit">Deposit</button>
-      <div class="tiny" style="margin-top:10px">Stars payments are processed securely inside Telegram.</div>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="pad">
-      <div class="title">
-        <h3>Deposit Options</h3>
-        <span>Stars</span>
-      </div>
-      <div class="deposit-presets connect-style-presets">
-        <button type="button" data-stars-deposit="50"><b>50</b><span>Stars</span></button>
-        <button type="button" data-stars-deposit="100"><b>100</b><span>Stars</span></button>
-        <button type="button" data-stars-deposit="200"><b>200</b><span>Stars</span></button>
-      </div>
-      <div class="field">
-        <label>Custom Stars Amount</label>
-        <input id="starsAmount" inputmode="numeric" placeholder="Enter Stars amount" value="100" />
-      </div>
-      <button class="secondary" type="button" data-action="deposit-custom-stars">Pay With Stars</button>
-      <div id="depositStatus" class="tiny" style="margin-top:10px">1 Star ≈ 0.00589 TON after 4% commission.</div>
-    </div>
+  <section class="home-intro-card">
+    <h2>Welcome to Vexa FLOW</h2>
+    <p>Vexa FLOW is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience.</p>
   </section>
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
