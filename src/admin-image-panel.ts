@@ -13,7 +13,7 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
     if(!target||document.getElementById('sectionLockImagesPanel'))return;
     const wrap=document.createElement('div');
     wrap.id='sectionLockImagesPanel';
-    wrap.innerHTML='<h2 style="margin-top:24px">Section lock images</h2><p class="muted small-text">Upload separate images for normal locked sections and access-code sections.</p><div id="adminLockImageList" class="admin-lock-image-list"><div class="empty">Loading...</div></div><p id="adminLockImageStatus" class="admin-lock-image-status"></p>';
+    wrap.innerHTML='<h2 style="margin-top:24px">Section lock images</h2><p class="muted small-text">Each section has one normal-lock image and one code-lock image. Images are stored in R2.</p><div id="adminLockImageList" class="admin-lock-image-list"><div class="empty">Loading...</div></div><p id="adminLockImageStatus" class="admin-lock-image-status"></p>';
     target.appendChild(wrap);
     load();
   }
@@ -36,8 +36,8 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
     if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first.';return;}
     if(!allowed.includes(input.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP.';return;}
     const form=new FormData();form.append('sectionId',sectionId);form.append('kind',kind);form.append('image',input.files[0]);
-    if(status)status.textContent='Uploading...';
-    try{const r=await fetch('/admin/api/section-lock-image-v2',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
+    if(status)status.textContent='Uploading to R2...';
+    try{const r=await fetch('/admin/api/section-lock-image',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved in R2.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
   }
   document.addEventListener('click',()=>setTimeout(mount,80),true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
