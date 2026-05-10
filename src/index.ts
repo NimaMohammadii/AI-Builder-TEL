@@ -12,6 +12,7 @@ const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
 
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
@@ -287,7 +288,7 @@ async function safeRateLimit(env: Env, key: string, limit: number, windowSeconds
 }
 
 async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
-  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'], drop_pending_updates: true }) });
+  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, allowed_updates: USER_BOT_ALLOWED_UPDATES, drop_pending_updates: true }) });
   return response.json() as Promise<{ ok: boolean; description?: string }>;
 }
 
