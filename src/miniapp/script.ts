@@ -16,7 +16,7 @@ export const MINIAPP_SCRIPT = `
   function esc(v){return String(v||'').replace(/[&<>']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[s]||s})}
   function initials(v){v=String(v||'B').replace(/@/g,'').trim();return (v.match(/[A-Za-z0-9]/g)||['B']).slice(0,2).join('').toUpperCase()}
   function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
-  function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
+  function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<span class="bot-avatar"><img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"/><span class="avatar-fallback" style="display:none"><span>'+esc(initials(b.username||b.title||b.id))+'</span></span></span>'}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
@@ -41,7 +41,7 @@ export const MINIAPP_SCRIPT = `
   }
 
   function userLine(){var n=q('userLine');if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level 1 <span style="color:rgba(255,255,255,.55);font-weight:700">• 42%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:42%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">580 XP left to finish</span>'}
-  function row(b){var img=avatarImg(b);return '<button class="bot-row" data-bot-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><span class="pill">'+esc(b.status)+'</span></button>'}
+  function row(b){var img=avatarImg(b);var action=b.status==='active'?'Stop':'Start';return '<div class="bot-row" data-bot-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><div class="bot-row-actions"><button class="bot-toggle" type="button" data-action="toggle-bot-row" data-bot-id="'+esc(b.id)+'" data-bot-status="'+esc(b.status)+'">'+action+'</button><button class="bot-trash" type="button" data-action="delete-bot-row" data-bot-id="'+esc(b.id)+'" aria-label="Delete bot">🗑</button></div></div>'}
   function render(){
     var html=bots.length?bots.map(row).join(''):'<div class="notice">No bots yet. Connect your bot first.</div>';
     if(q('botsList'))q('botsList').innerHTML=html;
@@ -135,8 +135,10 @@ export const MINIAPP_SCRIPT = `
 
   function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','❚❚')}else{a.pause();setText('wavePlay','▶')}}
   async function publishBot(){if(!selectedBot)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/publish',{method:'POST'});toast('Published');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
-  async function togglePause(){if(!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Activated':'Paused');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
-  async function deleteBot(){if(!selectedBot)return toast('Select a bot first');if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(selectedBot.id),{method:'DELETE'});selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
+  async function setBotStatus(id,status){try{var d=await api('/app/api/bots/'+encodeURIComponent(id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Started':'Stopped');bots=[];await loadBots(true);if(selectedBot&&selectedBot.id===id)await selectBot(d.botId)}catch(x){toast(x.message)}}
+  async function togglePause(){if(!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';await setBotStatus(selectedBot.id,status)}
+  async function deleteBotById(id){if(!confirm('Delete this bot and all its data?'))return;try{await api('/app/api/bots/'+encodeURIComponent(id),{method:'DELETE'});if(selectedBot&&selectedBot.id===id)selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
+  async function deleteBot(){if(!selectedBot)return toast('Select a bot first');await deleteBotById(selectedBot.id)}
   function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
 
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
@@ -144,12 +146,14 @@ export const MINIAPP_SCRIPT = `
 
   document.body.addEventListener('click',function(ev){
     var b=ev.target.closest('button');
-    if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
+    var a=b&&b.getAttribute('data-action');
+    if(a==='toggle-bot-row'){var botId=b.getAttribute('data-bot-id');var current=b.getAttribute('data-bot-status');if(botId)setBotStatus(botId,current==='active'?'paused':'active');return}
+    if(a==='delete-bot-row'){var delId=b.getAttribute('data-bot-id');if(delId)deleteBotById(delId);return}
+    if(!b){var rowEl=ev.target.closest('[data-bot-id]');if(rowEl){selectBot(rowEl.getAttribute('data-bot-id'));show('results');return}var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
-    var a=b.getAttribute('data-action');
     if(a==='open-deposit'){setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
     if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
