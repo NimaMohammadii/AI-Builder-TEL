@@ -267,7 +267,11 @@ async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
   try {
     const cached = await env.BOT_CACHE.get(`bot:${botId}`);
-    if (cached) return safeParseJson<BotRecord | null>(cached, null);
+    if (cached) {
+      const parsed = safeParseJson<BotRecord | null>(cached, null);
+      if (parsed?.id === botId) return parsed;
+      await env.BOT_CACHE.delete(`bot:${botId}`).catch(() => undefined);
+    }
     const bot = await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>();
     if (bot) await env.BOT_CACHE.put(`bot:${botId}`, JSON.stringify(bot), { expirationTtl: 60 });
     return bot ?? null;
