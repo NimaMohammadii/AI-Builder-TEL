@@ -2,7 +2,7 @@ import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
-import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
+import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
 import type { Env } from './types';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
@@ -89,14 +89,12 @@ app.post('/admin/api/section-lock-image-v2', async (c) => {
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const data = await file.arrayBuffer();
     const version = String(Date.now());
-    await c.env.BOT_CACHE.put(sectionImageKey(section, kind), data);
-    await c.env.BOT_CACHE.put(sectionImageTypeKey(section, kind), file.type);
-    await c.env.BOT_CACHE.put(sectionImageVersionKey(section, kind), version);
-    try {
-      await c.env.ASSETS.put(`section-lock-image/${section}/${kind}`, new Blob([data]).stream(), { httpMetadata: { contentType: file.type } });
-    } catch (error) {
-      console.warn('R2 section lock image save skipped', error);
-    }
+    await c.env.ASSETS.put(sectionImageR2Key(section, kind), new Blob([data]).stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    await Promise.all([
+      c.env.BOT_CACHE.delete(sectionImageKey(section, kind)).catch(() => undefined),
+      c.env.BOT_CACHE.delete(sectionImageTypeKey(section, kind)).catch(() => undefined),
+      c.env.BOT_CACHE.put(sectionImageVersionKey(section, kind), version).catch(() => undefined),
+    ]);
     return c.json(await getSectionLocks(c.env));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400);
