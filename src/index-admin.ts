@@ -49,18 +49,28 @@ app.get('/app/api/uploaded-images', async (c) => {
   const version = (await c.env.BOT_CACHE.get('admin:ton-icon-version').catch(() => null)) || '1';
   const hasTonIcon = Boolean(await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null));
   const tonIconUrl = hasTonIcon ? `/app/api/uploaded-image/ton-icon.png?v=${version}` : `/app/api/credit-icon.png?v=${version}`;
+  const plinkoVersion = (await c.env.BOT_CACHE.get('admin:plinko-ball-version').catch(() => null)) || version;
+  const hasPlinkoBall = Boolean(await c.env.BOT_CACHE.get('admin:plinko-ball-type').catch(() => null));
+  const plinkoBallUrl = hasPlinkoBall ? `/app/api/uploaded-image/plinko-ball.png?v=${plinkoVersion}` : `/app/api/credit-icon.png?v=${plinkoVersion}`;
   const locks = await getSectionLocks(c.env);
-  const preload = [tonIconUrl];
+  const preload = [tonIconUrl, plinkoBallUrl];
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ tonIconUrl, creditIconUrl: tonIconUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  return c.json({ tonIconUrl, creditIconUrl: tonIconUrl, plinkoBallUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => {
   const data = await c.env.BOT_CACHE.get('admin:ton-icon', 'arrayBuffer').catch(() => null);
   const type = await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null);
+  if (!data) return c.redirect('/app/api/credit-icon.png');
+  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
+});
+
+app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => {
+  const data = await c.env.BOT_CACHE.get('admin:plinko-ball', 'arrayBuffer').catch(() => null);
+  const type = await c.env.BOT_CACHE.get('admin:plinko-ball-type').catch(() => null);
   if (!data) return c.redirect('/app/api/credit-icon.png');
   return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
 });
@@ -149,6 +159,22 @@ app.post('/admin/api/upload-ton-icon', async (c) => {
   await c.env.BOT_CACHE.put('admin:ton-icon-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
   try { await c.env.ASSETS.put('ton-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 TON icon save skipped', error); }
   return c.json({ ok: true, size: file.size, type: file.type, tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` });
+});
+
+app.post('/admin/api/upload-plinko-ball', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const form = await c.req.formData();
+  const file = form.get('image');
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!TON_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  const data = await file.arrayBuffer();
+  const version = String(Date.now());
+  await c.env.BOT_CACHE.put('admin:plinko-ball', data, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:plinko-ball-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
+  await c.env.BOT_CACHE.put('admin:plinko-ball-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
+  try { await c.env.ASSETS.put('plinko-ball', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 plinko ball save skipped', error); }
+  return c.json({ ok: true, size: file.size, type: file.type, plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` });
 });
 
 app.post('/admin/api/section-lock-image', async (c) => {
