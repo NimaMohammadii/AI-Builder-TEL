@@ -50,8 +50,8 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
   const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
-    const hasLockedImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'locked')).catch(() => null));
-    const hasCodeImage = Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(section.id, 'code')).catch(() => null));
+    const hasLockedImage = await hasStoredSectionImage(env, section.id, 'locked');
+    const hasCodeImage = await hasStoredSectionImage(env, section.id, 'code');
     const legacyHasImage = Boolean(await env.BOT_CACHE.get(legacySectionImageTypeKey(section.id)).catch(() => null));
     const lockedVersion = await sectionImageVersion(env, section.id, 'locked');
     const codeVersion = await sectionImageVersion(env, section.id, 'code');
@@ -121,6 +121,10 @@ export function sectionImageVersionKey(sectionId: string, kind: SectionLockImage
   return `admin:section-lock-image-version:${ensureSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
 }
 
+export function sectionImageR2Key(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
+  return `section-lock-image/${ensureSection(sectionId)}/${normalizeSectionImageKind(kind)}`;
+}
+
 export function legacySectionImageKey(sectionId: string): string {
   return `admin:section-lock-image:${ensureSection(sectionId)}`;
 }
@@ -131,6 +135,12 @@ export function legacySectionImageTypeKey(sectionId: string): string {
 
 export function legacySectionImageVersionKey(sectionId: string): string {
   return `admin:section-lock-image-version:${ensureSection(sectionId)}`;
+}
+
+async function hasStoredSectionImage(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<boolean> {
+  const object = await env.ASSETS.head(sectionImageR2Key(sectionId, kind)).catch(() => null);
+  if (object) return true;
+  return Boolean(await env.BOT_CACHE.get(sectionImageTypeKey(sectionId, kind)).catch(() => null));
 }
 
 async function sectionImageVersion(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<string> {
