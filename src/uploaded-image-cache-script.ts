@@ -21,7 +21,6 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     document.querySelectorAll('img[src^="/app/api/credit-icon"],img[src^="/app/api/uploaded-image/credit-icon"]').forEach(function(img){
       if(img.getAttribute('src')!==url)img.setAttribute('src',url);
     });
-    try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url}}))}catch(e){}
   }
   function applyTonIcon(url){
     if(!url)return;
@@ -30,10 +29,16 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
       if(img.getAttribute('src')!==url)img.setAttribute('src',url);
     });
   }
+  function applyPlinkoBall(url){
+    if(!url)return;
+    preload(url);
+    try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url,source:'plinko-ball'}}))}catch(e){}
+  }
   function load(){
     fetch('/app/api/uploaded-images',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
       if(data&&data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
       if(data&&data.tonIconUrl)applyTonIcon(data.tonIconUrl);
+      if(data&&data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
       (data&&data.preload||[]).forEach(preload);
     }).catch(function(){});
   }
