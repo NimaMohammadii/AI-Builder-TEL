@@ -2,7 +2,7 @@ export const TON_BALANCE_SCRIPT = `
 (function(){
   var KEY='vexaTonBalanceNano';
   var NANO_PER_TON=1000000000;
-  var PLINKO_UNIT_NANO=1000000;
+  var PLINKO_UNIT_NANO=NANO_PER_TON;
   var syncing=false;
   var pendingDelta=0;
   var lastLocalMutationAt=0;
@@ -35,7 +35,7 @@ export const TON_BALANCE_SCRIPT = `
         var r=await fetch('/app/api/ton-balance/game-delta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:u.id,deltaNano:next})});
         var j=await r.json().catch(function(){return null});
         var server=Number(j&&j.tonBalanceNano);
-        if(Number.isFinite(server))write(server,0,false);
+        if(Number.isFinite(server)&&pendingDelta===0)write(server,0,false);
       }catch(e){
         pendingDelta+=next;
         setTimeout(function(){if(!syncing)pushDelta(0)},900);
