@@ -86,7 +86,6 @@ async function saveGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInf
   const groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
   settings.groups = [{ chatId, type: chat.type, title: chat.title || chat.username || chatId, username: chat.username || '', lastSeenAt: now }, ...groups].slice(0, 30);
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), bot.id).run();
-  await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
   await env.DB.prepare('INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, last_seen_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(bot_id, chat_id) DO UPDATE SET chat_type = excluded.chat_type, title = excluded.title, username = excluded.username, last_seen_at = CURRENT_TIMESTAMP')
     .bind(bot.id, chatId, chat.type, chat.title || null, chat.username || null)
     .run()
@@ -97,7 +96,6 @@ async function removeGroup(env: Env, bot: BotRecord, settings: { groups?: GroupI
   const chatId = String(chat.id);
   settings.groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), bot.id).run();
-  await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
   await env.DB.prepare('DELETE FROM bot_groups WHERE bot_id = ? AND chat_id = ?').bind(bot.id, chatId).run().catch(() => undefined);
 }
 
