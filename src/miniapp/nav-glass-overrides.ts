@@ -1,6 +1,6 @@
 export const NAV_GLASS_OVERRIDES = `
-.tabs{background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.30)!important;box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(255,255,255,.06)!important;backdrop-filter:blur(10px) saturate(1.18)!important;-webkit-backdrop-filter:blur(10px) saturate(1.18)!important;overflow:hidden!important}
-.tabs:before{content:"";position:absolute;inset:0;border-radius:inherit;background:transparent!important;pointer-events:none;z-index:0}
+.tabs{position:absolute!important;left:16px!important;right:16px!important;bottom:calc(12px + env(safe-area-inset-bottom))!important;height:58px!important;border:0!important;outline:0!important;background:rgba(255,255,255,.035)!important;box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16)!important;backdrop-filter:blur(10px) saturate(1.18)!important;-webkit-backdrop-filter:blur(10px) saturate(1.18)!important;overflow:hidden!important}
+.tabs:before{content:"";position:absolute;inset:0;border-radius:inherit;background:transparent!important;border:0!important;outline:0!important;pointer-events:none;z-index:0}
 .tabs .tab{position:relative;z-index:1;color:rgba(255,255,255,.74)!important;text-shadow:0 1px 10px rgba(0,0,0,.28)}
 .tabs .tab.active{background:rgba(255,255,255,.92)!important;color:#050505!important;box-shadow:0 10px 26px rgba(255,255,255,.10),inset 0 1px 0 rgba(255,255,255,.78);text-shadow:none}
 `;
