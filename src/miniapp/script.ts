@@ -6,7 +6,6 @@ export const MINIAPP_SCRIPT = `
   var ownerId=localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var bots=[];
   var selectedBot=null;
-  var selectedBotId='';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
   var sectionTitles={home:'Home',connect:'Connect',results:'Bot Control',playzone:'Play Zone',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
 
@@ -51,13 +50,13 @@ export const MINIAPP_SCRIPT = `
     setText('statActive',String(bots.filter(function(b){return b.status==='active'}).length));
     setText('statPaused',String(bots.filter(function(b){return b.status==='paused'}).length));
     if(q('botSelect'))q('botSelect').innerHTML=bots.length?bots.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(b.title)+'</option>'}).join(''):'<option value="">No bots</option>';
-    if(bots[0]&&!selectedBotId)selectBot(bots[0].id);
+    if(bots[0]&&!selectedBot)selectBot(bots[0].id);
   }
 
   async function loadBots(force){
     if(!ownerId){render();return}
     if(bots.length&&!force){render();return}
-    try{var d=await api('/app/api/bots?ownerId='+encodeURIComponent(ownerId));bots=d.bots||[];if(selectedBotId&&!bots.some(function(b){return b.id===selectedBotId})){selectedBot=null;selectedBotId='';setText('activeBotLabel','No bot selected');if(q('botInfo'))q('botInfo').textContent='Choose a bot.'}render()}catch(x){render();toast(x.message)}
+    try{var d=await api('/app/api/bots?ownerId='+encodeURIComponent(ownerId));bots=d.bots||[];render()}catch(x){render();toast(x.message)}
   }
 
   async function createBot(){
@@ -80,29 +79,16 @@ export const MINIAPP_SCRIPT = `
     }catch(x){setText('builderStatus','Failed');toast(x.message)}
   }
 
-  function setSelectedFromList(id){
-    var b=bots.find(function(x){return x.id===id});
-    selectedBotId=id;
-    if(b){
-      selectedBot=b;
-      setText('activeBotLabel',b.username?'@'+b.username:b.title);
-      if(q('botInfo'))q('botInfo').innerHTML='<b>'+esc(b.title)+'</b><br>Status: '+esc(b.status);
-      if(q('botSelect'))q('botSelect').value=id;
-    }
-  }
-
   async function selectBot(id){
     if(!id)return;
-    setSelectedFromList(id);
     try{
       var d=await api('/app/api/bots/'+encodeURIComponent(id));
       selectedBot=d;
-      selectedBotId=d.id||id;
       setText('activeBotLabel',d.username?'@'+d.username:d.title);
       if(q('botInfo'))q('botInfo').innerHTML='<b>'+esc(d.title)+'</b><br>Status: '+esc(d.status);
       setText('pauseBtn',d.status==='active'?'Pause':'Activate');
       if(q('botSelect'))q('botSelect').value=id;
-    }catch(x){toast(x.message);bots=[];await loadBots(true)}
+    }catch(x){toast(x.message)}
   }
 
   function setVoice(v,label){
@@ -148,10 +134,10 @@ export const MINIAPP_SCRIPT = `
   }
 
   function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','❚❚')}else{a.pause();setText('wavePlay','▶')}}
-  async function publishBot(){var id=selectedBotId||(selectedBot&&selectedBot.id)||'';if(!id)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(id)+'/publish',{method:'POST'});toast('Reconnected');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){bots=[];await loadBots(true);toast(x.message)}}
-  async function togglePause(){var id=selectedBotId||(selectedBot&&selectedBot.id)||'';if(!id||!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';try{var d=await api('/app/api/bots/'+encodeURIComponent(id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Activated':'Paused');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){bots=[];await loadBots(true);toast(x.message)}}
-  async function deleteBot(){var id=selectedBotId||(selectedBot&&selectedBot.id)||'';if(!id)return toast('Select a bot first');if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(id),{method:'DELETE'});selectedBot=null;selectedBotId='';bots=[];await loadBots(true);toast('Bot deleted')}catch(x){bots=[];await loadBots(true);toast(x.message)}}
-  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);selectedBot=null;selectedBotId='';userLine();loadBots(true)}
+  async function publishBot(){if(!selectedBot)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/publish',{method:'POST'});toast('Published');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
+  async function togglePause(){if(!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Activated':'Paused');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
+  async function deleteBot(){if(!selectedBot)return toast('Select a bot first');if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(selectedBot.id),{method:'DELETE'});selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
+  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
 
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
@@ -160,7 +146,7 @@ export const MINIAPP_SCRIPT = `
     var b=ev.target.closest('button');
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
-    var id=b.getAttribute('data-bot-id');if(id){setSelectedFromList(id);show('results');selectBot(id);return}
+    var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
