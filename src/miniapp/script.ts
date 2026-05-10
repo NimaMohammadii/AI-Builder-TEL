@@ -18,8 +18,8 @@ export const MINIAPP_SCRIPT = `
   function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<span class="bot-avatar"><img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"/><span class="avatar-fallback" style="display:none"><span>'+esc(initials(b.username||b.title||b.id))+'</span></span></span>'}
   function iconButtonStyle(){return 'width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;padding:0'}
-  function toggleIcon(status){return status==='active'?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 6v12M16 6v12"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>'}
-  function trashIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>'}
+  function toggleIcon(status){return status==='active'?'<svg style="pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 6v12M16 6v12"/></svg>':'<svg style="pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>'}
+  function trashIcon(){return '<svg style="pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>'}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
@@ -148,11 +148,12 @@ export const MINIAPP_SCRIPT = `
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
 
   document.body.addEventListener('click',function(ev){
-    var b=ev.target.closest('button');
+    var t=ev.target;
+    var b=t&&t.closest?t.closest('button'):null;
     var a=b&&b.getAttribute('data-action');
     if(a==='toggle-bot-row'){var botId=b.getAttribute('data-bot-id');var current=b.getAttribute('data-bot-status');if(botId)setBotStatus(botId,current==='active'?'paused':'active');return}
     if(a==='delete-bot-row'){var delId=b.getAttribute('data-bot-id');if(delId)deleteBotById(delId);return}
-    if(!b){var rowEl=ev.target.closest('[data-bot-id]');if(rowEl){selectBot(rowEl.getAttribute('data-bot-id'));show('results');return}var w=q('voiceWrap');if(w)w.classList.remove('open');return}
+    if(!b){var rowEl=t&&t.closest?t.closest('[data-bot-id]'):null;if(rowEl){selectBot(rowEl.getAttribute('data-bot-id'));show('results');return}var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
