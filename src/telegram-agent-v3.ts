@@ -20,6 +20,7 @@ type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
+const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
   const settings = safeParseJson<{ isBuilderBot?: boolean; flow?: BotFlow }>(bot.settings_json, {});
@@ -182,7 +183,6 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], targe
   settings.flow = { ...flow.flow, revision };
   await progress('💾 دارم flow جدید را ذخیره و کش را پاک می‌کنم...');
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), full.id).run();
-  await env.BOT_CACHE.delete(`bot:${full.id}`).catch(() => undefined);
   await env.BOT_CACHE.delete(`flow-state:${full.id}:${userId}`).catch(() => undefined);
 
   const saved = await env.DB.prepare('SELECT settings_json FROM bots WHERE id = ?').bind(full.id).first<{ settings_json: string }>();
@@ -203,17 +203,15 @@ async function state(env: Env, target: BotView | null, action: 'publish_bot' | '
   if (action === 'pause_bot') {
     await tg(userKey, 'deleteWebhook', { drop_pending_updates: true }).catch(() => undefined);
     await env.DB.prepare("UPDATE bots SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(full.id).run();
-    await env.BOT_CACHE.delete(`bot:${full.id}`).catch(() => undefined);
     return { ok: true, action, botId: full.id };
   }
 
   const url = `${PUBLIC_BASE_URL}/bot/${full.id}/webhook`;
-  const result = await tg<{ ok: boolean; description?: string }>(userKey, 'setWebhook', { url, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'], drop_pending_updates: true });
+  const result = await tg<{ ok: boolean; description?: string }>(userKey, 'setWebhook', { url, allowed_updates: USER_BOT_ALLOWED_UPDATES, drop_pending_updates: true });
   if (!result.ok) return { ok: false, action, botId: full.id, error: result.description ?? 'telegram_set_webhook_failed' };
   const settings = safeParseJson<Record<string, unknown>>(full.settings_json, {});
   settings.webhookUrl = url;
   await env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), full.id).run();
-  await env.BOT_CACHE.delete(`bot:${full.id}`).catch(() => undefined);
   return { ok: true, action, botId: full.id, webhookUrl: url };
 }
 
