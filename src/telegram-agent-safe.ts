@@ -8,6 +8,7 @@ import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from '
 export { setTelegramWebhook };
 
 type GroupInfo = { chatId: string; type: string; title: string; username: string; lastSeenAt: string };
+type TelegramServiceMessage = { new_chat_members?: Array<{ id: number; is_bot?: boolean; username?: string }>; left_chat_member?: { id: number; is_bot?: boolean; username?: string } };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
@@ -51,6 +52,7 @@ async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: Telegram
   const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
   if (settings.isBuilderBot) return false;
 
+  if (await handleGroupServiceMessage(env, bot, settings, message.chat, message as unknown as TelegramServiceMessage)) return true;
   await saveGroup(env, bot, settings, message.chat).catch((error) => console.warn('group save skipped', error));
 
   const text = message.text?.trim() ?? '';
@@ -63,6 +65,21 @@ async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: Telegram
   const reply = await groupReply(env, bot, prompt);
   await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('group reply failed', error));
   return true;
+}
+
+async function handleGroupServiceMessage(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat, message: TelegramServiceMessage): Promise<boolean> {
+  const botUsername = bot.username?.toLowerCase() ?? '';
+  const added = message.new_chat_members?.some((member) => member.is_bot && (!botUsername || member.username?.toLowerCase() === botUsername));
+  if (added) {
+    await saveGroup(env, bot, settings, chat);
+    return true;
+  }
+  const removed = message.left_chat_member?.is_bot && (!botUsername || message.left_chat_member.username?.toLowerCase() === botUsername);
+  if (removed) {
+    await removeGroup(env, bot, settings, chat);
+    return true;
+  }
+  return false;
 }
 
 function isGroupChat(type: string): boolean {
