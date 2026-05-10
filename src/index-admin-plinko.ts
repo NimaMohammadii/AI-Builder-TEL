@@ -2,6 +2,7 @@ import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
+import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
 import type { Env } from './types';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
@@ -74,6 +75,32 @@ app.post('/admin/api/plinko-control', async (c) => {
 app.post('/admin/api/plinko-control/reset', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetPlinkoControl(c.env));
+});
+
+app.post('/admin/api/section-lock-image-v2', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const section = normalizeSectionId(String(form.get('sectionId') || ''));
+    const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked'));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+    const data = await file.arrayBuffer();
+    const version = String(Date.now());
+    await c.env.BOT_CACHE.put(sectionImageKey(section, kind), data);
+    await c.env.BOT_CACHE.put(sectionImageTypeKey(section, kind), file.type);
+    await c.env.BOT_CACHE.put(sectionImageVersionKey(section, kind), version);
+    try {
+      await c.env.ASSETS.put(`section-lock-image/${section}/${kind}`, new Blob([data]).stream(), { httpMetadata: { contentType: file.type } });
+    } catch (error) {
+      console.warn('R2 section lock image save skipped', error);
+    }
+    return c.json(await getSectionLocks(c.env));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400);
+  }
 });
 
 function adminCookieValue(cookie: string | undefined): string {
