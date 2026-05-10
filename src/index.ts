@@ -115,7 +115,6 @@ app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
     await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`)
       .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
       .run();
-    await c.env.BOT_CACHE.delete(`bot:${botId}`);
   } catch (error) {
     console.error('create mini app bot failed', error);
     return c.json({ error: 'Database is not ready. Run the D1 migration first.' }, 500);
@@ -142,7 +141,6 @@ app.post('/app/api/bots/:id/chat', zValidator('json', chatSchema), async (c) => 
     await c.env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .bind(JSON.stringify(settings), botId)
       .run();
-    await c.env.BOT_CACHE.delete(`bot:${botId}`);
   } catch (error) {
     console.error('save flow change failed', error);
     return c.json({ error: 'Could not save changes. Check D1 migration.' }, 500);
@@ -163,7 +161,6 @@ app.patch('/app/api/bots/:id/status', zValidator('json', statusSchema), async (c
     await deleteBotWebhook(token);
   }
   await c.env.DB.prepare('UPDATE bots SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(body.status, botId).run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
   return c.json({ ok: true, botId, status: body.status });
 });
 
@@ -178,7 +175,6 @@ app.post('/app/api/bots/:id/publish', async (c) => {
   const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
   settings.webhookUrl = webhookUrl;
   await c.env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), botId).run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
   return c.json({ ok: true, botId, status: 'active', webhookUrl });
 });
 
@@ -193,7 +189,6 @@ app.delete('/app/api/bots/:id', async (c) => {
     console.warn('delete webhook failed', error);
   }
   await c.env.DB.prepare('DELETE FROM bots WHERE id = ?').bind(botId).run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
   return c.json({ ok: true, botId });
 });
 
@@ -226,7 +221,6 @@ app.post('/api/bots/:id/publish', async (c) => {
   const settings = safeParseJson<Record<string, unknown>>(bot.settings_json, {});
   settings.webhookUrl = webhookUrl;
   await c.env.DB.prepare("UPDATE bots SET status = 'active', settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(JSON.stringify(settings), botId).run();
-  await c.env.BOT_CACHE.delete(`bot:${botId}`);
   return c.json({ ok: true, botId, webhookUrl });
 });
 
@@ -266,15 +260,7 @@ async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; 
 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
   try {
-    const cached = await env.BOT_CACHE.get(`bot:${botId}`);
-    if (cached) {
-      const parsed = safeParseJson<BotRecord | null>(cached, null);
-      if (parsed?.id === botId) return parsed;
-      await env.BOT_CACHE.delete(`bot:${botId}`).catch(() => undefined);
-    }
-    const bot = await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>();
-    if (bot) await env.BOT_CACHE.put(`bot:${botId}`, JSON.stringify(bot), { expirationTtl: 60 });
-    return bot ?? null;
+    return (await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(botId).first<BotRecord>()) ?? null;
   } catch (error) { console.warn('getBot failed', error); return null; }
 }
 
