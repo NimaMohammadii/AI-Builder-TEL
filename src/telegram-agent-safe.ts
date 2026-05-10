@@ -2,7 +2,7 @@ import { aiReply } from './ai';
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
-import type { BotRecord, Env, TelegramUpdate } from './types';
+import type { BotRecord, Env, TelegramChat, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
 export { setTelegramWebhook };
@@ -22,12 +22,26 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
       await handleStarsSuccessfulPayment(env, userId, update.message.successful_payment);
       return;
     }
+    if (update.my_chat_member && (await handleGroupMembershipUpdate(env, bot, update))) return;
     if (update.message && (await handleGroupVexaMessage(env, bot, update))) return;
     await baseProcessTelegramUpdate(env, bot, update);
   } catch (error) {
     console.error('safe builder runtime caught error', error);
     await notifyBuilderFailure(env, bot, update, error).catch((notifyError) => console.error('failed to notify builder error', notifyError));
   }
+}
+
+async function handleGroupMembershipUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<boolean> {
+  const member = update.my_chat_member;
+  if (!member || !isGroupChat(member.chat.type)) return false;
+
+  const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
+  if (settings.isBuilderBot) return false;
+
+  const status = member.new_chat_member?.status || '';
+  if (status === 'left' || status === 'kicked') await removeGroup(env, bot, settings, member.chat);
+  else await saveGroup(env, bot, settings, member.chat);
+  return true;
 }
 
 async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<boolean> {
@@ -37,7 +51,7 @@ async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: Telegram
   const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
   if (settings.isBuilderBot) return false;
 
-  await saveGroup(env, bot, settings, message.chat as { id: number; type: string; title?: string; username?: string }).catch((error) => console.warn('group save skipped', error));
+  await saveGroup(env, bot, settings, message.chat).catch((error) => console.warn('group save skipped', error));
 
   const text = message.text?.trim() ?? '';
   if (!mentionsVexa(text, bot.username)) return true;
@@ -66,7 +80,7 @@ function cleanGroupPrompt(text: string, username: string | null): string {
   return cleaned.replace(/\s+/g, ' ').trim();
 }
 
-async function saveGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: { id: number; type: string; title?: string; username?: string }): Promise<void> {
+async function saveGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat): Promise<void> {
   const now = new Date().toISOString();
   const chatId = String(chat.id);
   const groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
@@ -77,6 +91,14 @@ async function saveGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInf
     .bind(bot.id, chatId, chat.type, chat.title || null, chat.username || null)
     .run()
     .catch(() => undefined);
+}
+
+async function removeGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat): Promise<void> {
+  const chatId = String(chat.id);
+  settings.groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
+  await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), bot.id).run();
+  await env.BOT_CACHE.delete(`bot:${bot.id}`).catch(() => undefined);
+  await env.DB.prepare('DELETE FROM bot_groups WHERE bot_id = ? AND chat_id = ?').bind(bot.id, chatId).run().catch(() => undefined);
 }
 
 async function groupReply(env: Env, bot: BotRecord, prompt: string): Promise<string> {
