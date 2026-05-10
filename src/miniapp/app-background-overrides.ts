@@ -16,5 +16,6 @@ body:after{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradie
 .vexa-boot-title{margin:4px 0 0;color:#fff;font-size:24px;font-weight:850;letter-spacing:-.055em;text-shadow:0 8px 28px rgba(0,0,0,.45),0 0 28px rgba(0,0,0,.75)}
 .vexa-boot-sub{margin:9px 0 0;color:rgba(255,255,255,.52);font-size:12px;font-weight:560;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 0 18px rgba(0,0,0,.72)}
 .vexa-boot.hide{opacity:0;visibility:hidden;pointer-events:none}
+.section-locked-view{background:transparent!important;color:#fff!important;padding:24px 24px calc(94px + env(safe-area-inset-bottom))!important}.section-locked-card{background:transparent!important;border:0!important;box-shadow:none!important}
 @keyframes vexaBootIn{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:translateY(-12px) scale(1)}}
 `;
