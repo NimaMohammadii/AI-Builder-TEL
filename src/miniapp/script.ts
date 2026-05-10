@@ -14,7 +14,6 @@ export const MINIAPP_SCRIPT = `
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
   function toast(v){var n=q('toast');if(!n)return;n.textContent=v;n.style.display='block';setTimeout(function(){n.style.display='none'},3000)}
   function esc(v){return String(v||'').replace(/[&<>']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[s]||s})}
-  function addTs(path){var sep=path.indexOf('?')===-1?'?':'&';return path+sep+'_ts='+Date.now()}
   function initials(v){v=String(v||'B').replace(/@/g,'').trim();return (v.match(/[A-Za-z0-9]/g)||['B']).slice(0,2).join('').toUpperCase()}
   function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
@@ -22,7 +21,6 @@ export const MINIAPP_SCRIPT = `
   function playIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="pointer-events:none"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>'}
   function pauseIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="pointer-events:none"><path d="M8 6v12M16 6v12"/></svg>'}
   function trashIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>'}
-  function findBot(id){return bots.find(function(b){return b&&b.id===id})||null}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
@@ -40,9 +38,7 @@ export const MINIAPP_SCRIPT = `
 
   async function api(path,opt){
     opt=opt||{};
-    var method=String(opt.method||'GET').toUpperCase();
-    var url=method==='GET'?addTs(path):path;
-    var r=await fetch(url,Object.assign({},opt,{cache:'no-store',headers:Object.assign({'content-type':'application/json','cache-control':'no-store'},opt.headers||{})}));
+    var r=await fetch(path,Object.assign({},opt,{headers:Object.assign({'content-type':'application/json'},opt.headers||{})}));
     var j=await r.json().catch(function(){return{error:'Invalid response'}});
     if(!r.ok)throw new Error(j.error||'Request failed');
     return j;
@@ -58,7 +54,6 @@ export const MINIAPP_SCRIPT = `
     setText('statActive',String(bots.filter(function(b){return b.status==='active'}).length));
     setText('statPaused',String(bots.filter(function(b){return b.status==='paused'}).length));
     if(q('botSelect'))q('botSelect').innerHTML=bots.length?bots.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(b.title)+'</option>'}).join(''):'<option value="">No bots</option>';
-    if(selectedBot&&!findBot(selectedBot.id))selectedBot=null;
     if(bots[0]&&!selectedBot)selectBot(bots[0].id);
   }
 
@@ -66,13 +61,6 @@ export const MINIAPP_SCRIPT = `
     if(!ownerId){render();return}
     if(bots.length&&!force){render();return}
     try{var d=await api('/app/api/bots?ownerId='+encodeURIComponent(ownerId));bots=d.bots||[];render()}catch(x){render();toast(x.message)}
-  }
-  async function requireFreshBot(id){
-    if(!id)return null;
-    var bot=findBot(id);
-    if(bot)return bot;
-    await loadBots(true);
-    return findBot(id);
   }
 
   async function createBot(){
@@ -96,16 +84,15 @@ export const MINIAPP_SCRIPT = `
   }
 
   async function selectBot(id){
-    var bot=await requireFreshBot(id);
-    if(!bot){selectedBot=null;setText('activeBotLabel','No bot selected');if(q('botInfo'))q('botInfo').textContent='Choose a bot.';toast('Bot list is outdated. Refreshed.');return}
+    if(!id)return;
     try{
-      var d=await api('/app/api/bots/'+encodeURIComponent(bot.id));
+      var d=await api('/app/api/bots/'+encodeURIComponent(id));
       selectedBot=d;
       setText('activeBotLabel',d.username?'@'+d.username:d.title);
       if(q('botInfo'))q('botInfo').innerHTML='<b>'+esc(d.title)+'</b><br>Status: '+esc(d.status);
       setText('pauseBtn',d.status==='active'?'Pause':'Activate');
-      if(q('botSelect'))q('botSelect').value=bot.id;
-    }catch(x){selectedBot=null;bots=[];await loadBots(true);toast(x.message)}
+      if(q('botSelect'))q('botSelect').value=id;
+    }catch(x){toast(x.message)}
   }
 
   function setVoice(v,label){
@@ -151,21 +138,12 @@ export const MINIAPP_SCRIPT = `
   }
 
   function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','Pause')}else{a.pause();setText('wavePlay','Play')}}
-  async function publishBot(){if(!selectedBot)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/publish',{method:'POST'});toast('Published');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){bots=[];await loadBots(true);toast(x.message)}}
-  async function setBotStatus(id,status){
-    var bot=await requireFreshBot(id);
-    if(!bot)return toast('Bot list is outdated. Refreshed.');
-    try{var d=await api('/app/api/bots/'+encodeURIComponent(bot.id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Started':'Stopped');bots=[];await loadBots(true);if(selectedBot&&selectedBot.id===bot.id)await selectBot(d.botId)}catch(x){bots=[];await loadBots(true);toast(x.message)}
-  }
+  async function publishBot(){if(!selectedBot)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/publish',{method:'POST'});toast('Published');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
+  async function setBotStatus(id,status){try{var d=await api('/app/api/bots/'+encodeURIComponent(id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Started':'Stopped');bots=[];await loadBots(true);if(selectedBot&&selectedBot.id===id)await selectBot(d.botId)}catch(x){toast(x.message)}}
   async function togglePause(){if(!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';await setBotStatus(selectedBot.id,status)}
-  async function deleteBotById(id){
-    var bot=await requireFreshBot(id);
-    if(!bot)return toast('Bot list is outdated. Refreshed.');
-    if(!confirm('Delete this bot?'))return;
-    try{await api('/app/api/bots/'+encodeURIComponent(bot.id),{method:'DELETE'});if(selectedBot&&selectedBot.id===bot.id)selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){bots=[];await loadBots(true);toast(x.message)}
-  }
+  async function deleteBotById(id){if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(id),{method:'DELETE'});if(selectedBot&&selectedBot.id===id)selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
   async function deleteBot(){if(!selectedBot)return toast('Select a bot first');await deleteBotById(selectedBot.id)}
-  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);selectedBot=null;bots=[];userLine();loadBots(true)}
+  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
 
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
