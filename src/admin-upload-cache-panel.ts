@@ -31,7 +31,7 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       if(!allowed.includes(file.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP files are allowed.';return}
       if(status)status.textContent='Uploading...';
       const form=new FormData();form.append('icon',file.files[0]);
-      try{const r=await fetch('/admin/api/upload-credit-icon',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}if(j.creditIconUrl){preload(j.creditIconUrl);const preview=document.getElementById('preview');if(preview)preview.src=j.creditIconUrl;}if(status)status.textContent='Image uploaded and cached.';refreshPreview();}
+      try{const r=await fetch('/admin/upload-credit-icon',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}const url=j.creditIconUrl||('/app/api/credit-icon.png?t='+Date.now());preload(url);const preview=document.getElementById('preview');if(preview)preview.src=url;if(status)status.textContent='Image uploaded and cached.';refreshPreview();}
       catch(e){if(status)status.textContent='Upload request failed.';}
     };
   }
