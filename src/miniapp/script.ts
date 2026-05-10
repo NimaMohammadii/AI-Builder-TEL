@@ -149,11 +149,12 @@ export const MINIAPP_SCRIPT = `
 
   document.body.addEventListener('click',function(ev){
     var t=ev.target;
-    var b=t&&t.closest?t.closest('button'):null;
+    var el=t&&t.nodeType===1?t:(t&&t.parentElement?t.parentElement:null);
+    var b=el&&el.closest?el.closest('button'):null;
     var a=b&&b.getAttribute('data-action');
     if(a==='toggle-bot-row'){var botId=b.getAttribute('data-bot-id');var current=b.getAttribute('data-bot-status');if(botId)setBotStatus(botId,current==='active'?'paused':'active');return}
     if(a==='delete-bot-row'){var delId=b.getAttribute('data-bot-id');if(delId)deleteBotById(delId);return}
-    if(!b){var rowEl=t&&t.closest?t.closest('[data-bot-id]'):null;if(rowEl){selectBot(rowEl.getAttribute('data-bot-id'));show('results');return}var w=q('voiceWrap');if(w)w.classList.remove('open');return}
+    if(!b){var rowEl=el&&el.closest?el.closest('[data-bot-id]'):null;if(rowEl){selectBot(rowEl.getAttribute('data-bot-id'));show('results');return}var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
     var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
