@@ -4,7 +4,7 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
 </style>
 <script>
 (function(){
-  const labels={home:'Home',connect:'Connect',flow:'TTS',plinko:'Plinko'};
+  const labels={home:'Home',connect:'Connect',playzone:'Play Zone',flow:'TTS',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
   const allowed=['image/png','image/jpeg','image/webp'];
   let sections=[];
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
@@ -17,17 +17,18 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
     target.appendChild(wrap);
     load();
   }
+  function imgTag(url){return url?'<img src="'+esc(url)+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now()+'" alt=""/>':'<img alt=""/>'}
   function render(){
     const list=document.getElementById('adminLockImageList');
     if(!list)return;
     if(!sections.length){list.innerHTML='<div class="empty">No sections found.</div>';return;}
-    list.innerHTML=sections.map(s=>'<article class="admin-lock-image-row"><div class="admin-lock-image-head"><strong>'+esc(s.label||labels[s.id]||s.id)+'</strong><span>'+esc(s.id)+'</span></div><div class="admin-lock-image-grid"><div class="admin-lock-image-box"><small>Normal lock image</small>'+(s.lockedImageUrl?'<img src="'+esc(s.lockedImageUrl)+'?t='+Date.now()+'" alt=""/>':'<img alt=""/>')+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="locked" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="locked">Upload normal</button></div><div class="admin-lock-image-box"><small>Code entry image</small>'+(s.codeImageUrl?'<img src="'+esc(s.codeImageUrl)+'?t='+Date.now()+'" alt=""/>':'<img alt=""/>')+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="code" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="code">Upload code</button></div></div></article>').join('');
+    list.innerHTML=sections.map(s=>'<article class="admin-lock-image-row"><div class="admin-lock-image-head"><strong>'+esc(s.label||labels[s.id]||s.id)+'</strong><span>'+esc(s.id)+'</span></div><div class="admin-lock-image-grid"><div class="admin-lock-image-box"><small>Normal lock image</small>'+imgTag(s.lockedImageUrl)+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="locked" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="locked">Upload normal</button></div><div class="admin-lock-image-box"><small>Code entry image</small>'+imgTag(s.codeImageUrl)+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="code" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="code">Upload code</button></div></div></article>').join('');
     document.querySelectorAll('[data-lock-img-upload]').forEach(btn=>btn.onclick=()=>upload(btn.getAttribute('data-lock-img-upload'),btn.getAttribute('data-kind')));
   }
   async function load(){
     const status=document.getElementById('adminLockImageStatus');
     if(status)status.textContent='Loading images...';
-    try{const r=await fetch('/admin/api/section-locks',{credentials:'same-origin'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load images');sections=j.sections||[];render();if(status)status.textContent='';}catch(e){if(status)status.textContent=e.message||'Could not load images';}
+    try{const r=await fetch('/admin/api/section-locks',{credentials:'same-origin',cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load images');sections=j.sections||[];render();if(status)status.textContent='';}catch(e){if(status)status.textContent=e.message||'Could not load images';}
   }
   async function upload(sectionId,kind){
     const status=document.getElementById('adminLockImageStatus');
@@ -36,7 +37,7 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
     if(!allowed.includes(input.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP.';return;}
     const form=new FormData();form.append('sectionId',sectionId);form.append('kind',kind);form.append('image',input.files[0]);
     if(status)status.textContent='Uploading...';
-    try{const r=await fetch('/admin/api/section-lock-image',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
+    try{const r=await fetch('/admin/api/section-lock-image-v2',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
   }
   document.addEventListener('click',()=>setTimeout(mount,80),true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
