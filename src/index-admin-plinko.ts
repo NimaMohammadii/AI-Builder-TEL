@@ -61,6 +61,22 @@ app.post('/app/api/ton/deposits/:id/verify', async (c) => {
   }
 });
 
+app.get('/app/api/bots/:id/groups', async (c) => {
+  try {
+    const rows = await c.env.DB.prepare(`SELECT chat_id AS chatId, chat_type AS type, title, username, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt
+      FROM bot_groups
+      WHERE bot_id = ?
+      ORDER BY datetime(last_seen_at) DESC
+      LIMIT 50`)
+      .bind(c.req.param('id'))
+      .all<{ chatId: string; type: string; title: string | null; username: string | null; firstSeenAt: string; lastSeenAt: string }>();
+    return c.json({ groups: rows.results ?? [] });
+  } catch (error) {
+    console.warn('load bot groups failed', error);
+    return c.json({ groups: [], warning: 'Could not load bot groups from D1.' });
+  }
+});
+
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
