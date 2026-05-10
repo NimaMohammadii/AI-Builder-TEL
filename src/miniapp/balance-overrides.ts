@@ -19,8 +19,8 @@ export const BALANCE_OVERRIDES = `
   box-sizing:border-box!important;
 }
 .top-balance-pill b{
-  font-size:13px!important;
-  letter-spacing:-.02em!important;
+  font-size:13.8px!important;
+  letter-spacing:-.025em!important;
   line-height:1!important;
   color:#fff!important;
   margin:0!important;
