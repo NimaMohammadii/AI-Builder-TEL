@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
-import { adminHtml, adminPanelHtml, defaultCreditIconSvg } from './admin';
+import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
@@ -47,13 +47,8 @@ app.get('/admin/panel', (c) => {
 app.post('/admin/logout', (c) => new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json', 'set-cookie': 'vexa_admin=; Path=/admin; Max-Age=0; HttpOnly; SameSite=Lax; Secure' } }));
 app.get('/app/api/credit-icon', (c) => c.redirect('/app/api/credit-icon.png'));
 app.get('/app/api/credit-icon.png', async (c) => {
-  const kvIcon = await c.env.BOT_CACHE.get('admin:credit-icon', 'arrayBuffer').catch(() => null);
-  const kvType = await c.env.BOT_CACHE.get('admin:credit-icon-type').catch(() => null);
-  if (kvIcon) return new Response(kvIcon, { headers: { 'content-type': kvType ?? 'image/png', 'cache-control': 'no-store' } });
-  try {
-    const icon = await c.env.ASSETS.get('credit-icon');
-    if (icon) return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'no-store' } });
-  } catch (error) { console.warn('load credit icon failed', error); }
+  const icon = await c.env.ASSETS.get('credit-icon').catch(() => null);
+  if (icon) return new Response(icon.body, { headers: { 'content-type': icon.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
 });
 app.post('/admin/upload-credit-icon', async (c) => {
@@ -63,11 +58,14 @@ app.post('/admin/upload-credit-icon', async (c) => {
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
   if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
   if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-  const data = await file.arrayBuffer();
-  await c.env.BOT_CACHE.put('admin:credit-icon', data as ArrayBuffer, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:credit-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
-  try { await c.env.ASSETS.put('credit-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 credit icon save skipped', error); }
-  return c.json({ ok: true, size: file.size, type: file.type });
+  const version = String(Date.now());
+  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+  await Promise.all([
+    c.env.BOT_CACHE.delete('admin:credit-icon').catch(() => undefined),
+    c.env.BOT_CACHE.delete('admin:credit-icon-type').catch(() => undefined),
+    c.env.BOT_CACHE.delete('admin:credit-icon-version').catch(() => undefined),
+  ]);
+  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
 });
 
 app.post('/setup-webhook', async (c) => {
