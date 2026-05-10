@@ -154,12 +154,8 @@ app.patch('/app/api/bots/:id/status', zValidator('json', statusSchema), async (c
   const bot = await getBot(c.env, botId);
   if (!bot) return c.json({ error: 'Bot not found' }, 404);
   const token = await decryptUserToken(c.env, bot.encrypted_token);
-  if (body.status === 'active') {
-    const result = await setBotWebhook(token, `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`);
-    if (!result.ok) return c.json({ error: result.description ?? 'Could not activate webhook' }, 502);
-  } else {
-    await deleteBotWebhook(token);
-  }
+  const result = await setBotWebhook(token, `${PUBLIC_BASE_URL}/bot/${bot.id}/webhook`);
+  if (!result.ok) return c.json({ error: result.description ?? 'Could not update webhook' }, 502);
   await c.env.DB.prepare('UPDATE bots SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(body.status, botId).run();
   return c.json({ ok: true, botId, status: body.status });
 });
@@ -252,10 +248,20 @@ async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; 
   try {
     const update = (await c.req.json()) as TelegramUpdate;
     const bot = await getBot(c.env, botId);
-    if (!bot || bot.status === 'suspended' || bot.status === 'paused') return Response.json({ ok: true, ignored: true });
+    if (!bot || bot.status === 'suspended') return Response.json({ ok: true, ignored: true });
+    if (bot.status === 'paused') {
+      if (isGroupMembershipUpdate(update)) c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('paused bot group tracking failed', error)));
+      return Response.json({ ok: true, ignored: true });
+    }
     c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('user bot telegram processing failed', error)));
     return Response.json({ ok: true });
   } catch (error) { console.error('user bot webhook failed', error); return Response.json({ ok: true, recovered: true }); }
+}
+
+function isGroupMembershipUpdate(update: TelegramUpdate): boolean {
+  if (update.my_chat_member) return true;
+  const message = update.message as (TelegramUpdate['message'] & { new_chat_members?: unknown[]; left_chat_member?: unknown }) | undefined;
+  return Boolean(message && (Array.isArray(message.new_chat_members) || message.left_chat_member));
 }
 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
