@@ -7,6 +7,7 @@ export const MINIAPP_SCRIPT = `
   var bots=[];
   var selectedBot=null;
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
+  var sectionTitles={home:'Home',connect:'Connect',results:'Bot Control',playzone:'Play Zone',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
 
   function q(id){return document.getElementById(id)}
   function clean(v){return String(v||'').replace(/[^0-9A-Za-z:_-]/g,'').replace(/：/g,':').trim()}
@@ -26,7 +27,7 @@ export const MINIAPP_SCRIPT = `
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
-    setText('brandTitle',id==='flow'?'Text To Speech':id==='plinko'?'Plinko':id==='mines'?'Mines':'Vexa FLOW');
+    setText('brandTitle',sectionTitles[id]||'Vexa FLOW');
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     loadBots(false);
   }
@@ -171,6 +172,7 @@ export const MINIAPP_SCRIPT = `
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(q('botSelect'))q('botSelect').addEventListener('change',function(){selectBot(this.value)});
   if(q('ownerId'))q('ownerId').value=ownerId;
+  setText('brandTitle',sectionTitles.home);
   userLine();
   updateTtsCharCount();
   loadBots(true);
