@@ -17,9 +17,14 @@ export const BALANCE_OVERRIDES = `
 .top-balance-pill .ton-mini-icon{
   width:28px!important;
   height:28px!important;
+  border-radius:999px!important;
+  overflow:hidden!important;
 }
-.top-balance-pill .ton-mini-icon svg{
+.top-balance-pill .ton-mini-icon svg,
+.top-balance-pill .ton-mini-icon img{
   width:28px!important;
   height:28px!important;
+  display:block!important;
+  object-fit:contain!important;
 }
 `;
