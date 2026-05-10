@@ -59,11 +59,26 @@ export type BotRecord = {
   updated_at: string;
 };
 
+export type TelegramChat = {
+  id: number;
+  type: string;
+  title?: string;
+  username?: string;
+};
+
+export type TelegramUser = {
+  id: number;
+  is_bot?: boolean;
+  first_name?: string;
+  username?: string;
+};
+
 export type TelegramUpdate = {
   update_id: number;
   message?: TelegramMessage;
   callback_query?: TelegramCallbackQuery;
   pre_checkout_query?: TelegramPreCheckoutQuery;
+  my_chat_member?: TelegramChatMemberUpdated;
 };
 
 export type TelegramSuccessfulPayment = {
@@ -92,20 +107,28 @@ export type TelegramMessage = {
   successful_payment?: TelegramSuccessfulPayment;
   contact?: TelegramContact;
   location?: TelegramLocation;
-  chat: { id: number; type: string };
-  from?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
+  chat: TelegramChat;
+  from?: TelegramUser;
+};
+
+export type TelegramChatMemberUpdated = {
+  chat: TelegramChat;
+  from: TelegramUser;
+  date: number;
+  old_chat_member?: { status?: string; user?: TelegramUser };
+  new_chat_member?: { status?: string; user?: TelegramUser };
 };
 
 export type TelegramCallbackQuery = {
   id: string;
   data?: string;
-  from: { id: number; first_name?: string; username?: string };
+  from: TelegramUser;
   message?: TelegramMessage;
 };
 
 export type TelegramPreCheckoutQuery = {
   id: string;
-  from: { id: number; first_name?: string; username?: string };
+  from: TelegramUser;
   currency: string;
   total_amount: number;
   invoice_payload: string;
