@@ -17,7 +17,7 @@ export const MINIAPP_SCRIPT = `
   function initials(v){v=String(v||'B').replace(/@/g,'').trim();return (v.match(/[A-Za-z0-9]/g)||['B']).slice(0,2).join('').toUpperCase()}
   function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
   function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
-  function botActionStyle(){return 'width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;flex:0 0 auto'}
+  function botActionStyle(){return 'width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;flex:0 0 auto;padding:0'}
   function playIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="pointer-events:none"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>'}
   function pauseIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="pointer-events:none"><path d="M8 6v12M16 6v12"/></svg>'}
   function trashIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>'}
@@ -45,7 +45,7 @@ export const MINIAPP_SCRIPT = `
   }
 
   function userLine(){var n=q('userLine');if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level 1 <span style="color:rgba(255,255,255,.55);font-weight:700">• 42%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:42%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">580 XP left to finish</span>'}
-  function row(b){var img=avatarImg(b);var next=b.status==='active'?'paused':'active';var label=b.status==='active'?'Stop bot':'Start bot';return '<button class="bot-row" data-bot-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><span class="bot-row-actions" style="display:flex;align-items:center;gap:7px;margin-left:auto"><span role="button" tabindex="0" style="'+botActionStyle()+'" data-action="row-toggle" data-bot-id="'+esc(b.id)+'" data-next-status="'+next+'" aria-label="'+label+'">'+(b.status==='active'?pauseIcon():playIcon())+'</span><span role="button" tabindex="0" style="'+botActionStyle()+';color:rgba(255,255,255,.78)" data-action="row-delete" data-bot-id="'+esc(b.id)+'" aria-label="Delete bot">'+trashIcon()+'</span></span></button>'}
+  function row(b){var img=avatarImg(b);var next=b.status==='active'?'paused':'active';var label=b.status==='active'?'Stop bot':'Start bot';return '<div class="bot-row" data-bot-row-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><div class="bot-row-actions" style="display:flex;align-items:center;gap:7px;margin-left:auto"><button type="button" style="'+botActionStyle()+'" data-action="row-toggle" data-bot-id="'+esc(b.id)+'" data-next-status="'+next+'" aria-label="'+label+'">'+(b.status==='active'?pauseIcon():playIcon())+'</button><button type="button" style="'+botActionStyle()+';color:rgba(255,255,255,.78)" data-action="row-delete" data-bot-id="'+esc(b.id)+'" aria-label="Delete bot">'+trashIcon()+'</button></div></div>'}
   function render(){
     var html=bots.length?bots.map(row).join(''):'<div class="notice">No bots yet. Connect your bot first.</div>';
     if(q('botsList'))q('botsList').innerHTML=html;
@@ -154,6 +154,8 @@ export const MINIAPP_SCRIPT = `
     var action=actionEl&&actionEl.getAttribute('data-action');
     if(action==='row-toggle'){setBotStatus(actionEl.getAttribute('data-bot-id'),actionEl.getAttribute('data-next-status'));return}
     if(action==='row-delete'){deleteBotById(actionEl.getAttribute('data-bot-id'));return}
+    var rowEl=target&&target.closest?target.closest('[data-bot-row-id]'):null;
+    if(rowEl){selectBot(rowEl.getAttribute('data-bot-row-id'));show('results');return}
     var b=target.closest('button');
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
