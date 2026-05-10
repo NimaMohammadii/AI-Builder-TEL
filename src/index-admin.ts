@@ -2,15 +2,15 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { adminUsersJson, trackAppUser } from './admin-users';
-import { getSectionLocks, legacySectionImageKey, legacySectionImageTypeKey, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
+import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
 
-const TON_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
+const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 
 const activitySchema = z.object({
   userId: z.string().min(1).max(64),
@@ -46,34 +46,25 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
-  const version = (await c.env.BOT_CACHE.get('admin:ton-icon-version').catch(() => null)) || '1';
-  const hasTonIcon = Boolean(await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null));
-  const tonIconUrl = hasTonIcon ? `/app/api/uploaded-image/ton-icon.png?v=${version}` : `/app/api/credit-icon.png?v=${version}`;
-  const plinkoVersion = (await c.env.BOT_CACHE.get('admin:plinko-ball-version').catch(() => null)) || version;
-  const hasPlinkoBall = Boolean(await c.env.BOT_CACHE.get('admin:plinko-ball-type').catch(() => null));
-  const plinkoBallUrl = hasPlinkoBall ? `/app/api/uploaded-image/plinko-ball.png?v=${plinkoVersion}` : `/app/api/credit-icon.png?v=${plinkoVersion}`;
+  const [creditHead, tonHead, plinkoHead] = await Promise.all([
+    c.env.ASSETS.head('credit-icon').catch(() => null),
+    c.env.ASSETS.head('ton-icon').catch(() => null),
+    c.env.ASSETS.head('plinko-ball').catch(() => null),
+  ]);
+  const creditIconUrl = `/app/api/credit-icon.png?v=${assetVersion(creditHead)}`;
+  const tonIconUrl = tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl;
+  const plinkoBallUrl = plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl;
   const locks = await getSectionLocks(c.env);
-  const preload = [tonIconUrl, plinkoBallUrl];
+  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl];
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ tonIconUrl, creditIconUrl: tonIconUrl, plinkoBallUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
-app.get('/app/api/uploaded-image/ton-icon.png', async (c) => {
-  const data = await c.env.BOT_CACHE.get('admin:ton-icon', 'arrayBuffer').catch(() => null);
-  const type = await c.env.BOT_CACHE.get('admin:ton-icon-type').catch(() => null);
-  if (!data) return c.redirect('/app/api/credit-icon.png');
-  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
-});
-
-app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => {
-  const data = await c.env.BOT_CACHE.get('admin:plinko-ball', 'arrayBuffer').catch(() => null);
-  const type = await c.env.BOT_CACHE.get('admin:plinko-ball-type').catch(() => null);
-  if (!data) return c.redirect('/app/api/credit-icon.png');
-  return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
-});
+app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
+app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse(c.env, 'plinko-ball', '/app/api/credit-icon.png'));
 
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
 
@@ -81,21 +72,15 @@ app.get('/app/api/section-lock-image/:section/:kind', async (c) => {
   try {
     const section = normalizeSectionId(c.req.param('section'));
     const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, ''));
-    const data = await c.env.BOT_CACHE.get(sectionImageKey(section, kind), 'arrayBuffer').catch(() => null);
-    const type = await c.env.BOT_CACHE.get(sectionImageTypeKey(section, kind)).catch(() => null);
-    if (!data) return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
-  } catch { return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }); }
+    return getAssetResponse(c.env, sectionImageR2Key(section, kind), null);
+  } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); }
 });
 
 app.get('/app/api/section-lock-image/:section', async (c) => {
   try {
     const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, ''));
-    const data = await c.env.BOT_CACHE.get(legacySectionImageKey(section), 'arrayBuffer').catch(() => null);
-    const type = await c.env.BOT_CACHE.get(legacySectionImageTypeKey(section)).catch(() => null);
-    if (!data) return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
-    return new Response(data, { headers: { 'content-type': type || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
-  } catch { return c.text('Not found', 404, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }); }
+    return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null);
+  } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); }
 });
 
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
@@ -145,37 +130,8 @@ app.get('/admin/api/section-locks', async (c) => {
   return c.json(await getSectionLocks(c.env));
 });
 
-app.post('/admin/api/upload-ton-icon', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const form = await c.req.formData();
-  const file = form.get('icon');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!TON_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-  const data = await file.arrayBuffer();
-  const version = String(Date.now());
-  await c.env.BOT_CACHE.put('admin:ton-icon', data, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:ton-icon-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:ton-icon-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
-  try { await c.env.ASSETS.put('ton-icon', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 TON icon save skipped', error); }
-  return c.json({ ok: true, size: file.size, type: file.type, tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` });
-});
-
-app.post('/admin/api/upload-plinko-ball', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const form = await c.req.formData();
-  const file = form.get('image');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!TON_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-  const data = await file.arrayBuffer();
-  const version = String(Date.now());
-  await c.env.BOT_CACHE.put('admin:plinko-ball', data, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:plinko-ball-type', file.type, { expirationTtl: 60 * 60 * 24 * 365 });
-  await c.env.BOT_CACHE.put('admin:plinko-ball-version', version, { expirationTtl: 60 * 60 * 24 * 365 });
-  try { await c.env.ASSETS.put('plinko-ball', new Blob([data]).stream(), { httpMetadata: { contentType: file.type } }); } catch (error) { console.warn('R2 plinko ball save skipped', error); }
-  return c.json({ ok: true, size: file.size, type: file.type, plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` });
-});
+app.post('/admin/api/upload-ton-icon', async (c) => uploadImageToR2(c, 'icon', 'ton-icon', (version) => ({ tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` })));
+app.post('/admin/api/upload-plinko-ball', async (c) => uploadImageToR2(c, 'image', 'plinko-ball', (version) => ({ plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` })));
 
 app.post('/admin/api/section-lock-image', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -187,9 +143,9 @@ app.post('/admin/api/section-lock-image', async (c) => {
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-    await c.env.BOT_CACHE.put(sectionImageKey(section, kind), await file.arrayBuffer(), { expirationTtl: 60 * 60 * 24 * 365 });
-    await c.env.BOT_CACHE.put(sectionImageTypeKey(section, kind), file.type, { expirationTtl: 60 * 60 * 24 * 365 });
-    await c.env.BOT_CACHE.put(sectionImageVersionKey(section, kind), String(Date.now()), { expirationTtl: 60 * 60 * 24 * 365 });
+    const version = String(Date.now());
+    await putR2Image(c.env, sectionImageR2Key(section, kind), file, version);
+    await cleanupLegacyImageKv(c.env, [sectionImageKey(section, kind), sectionImageTypeKey(section, kind), sectionImageVersionKey(section, kind)]);
     return c.json(await getSectionLocks(c.env));
   } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); }
 });
@@ -207,6 +163,39 @@ app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), as
   try { return c.json(await setSectionCodeLock(c.env, body.sectionId, body.code)); }
   catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400); }
 });
+
+async function getAssetResponse(env: Env, key: string, fallbackUrl: string | null): Promise<Response> {
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) {
+    return fallbackUrl ? Response.redirect(fallbackUrl, 302) : new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  }
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': UPLOADED_IMAGE_CACHE_CONTROL } });
+}
+
+async function uploadImageToR2(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: Record<string, unknown>, status?: number) => Response }, field: string, key: string, extra: (version: string) => Record<string, unknown>): Promise<Response> {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const form = await c.req.formData();
+  const file = form.get(field);
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  const version = String(Date.now());
+  await putR2Image(c.env, key, file, version);
+  await cleanupLegacyImageKv(c.env, [`admin:${key}`, `admin:${key}-type`, `admin:${key}-version`]);
+  return c.json({ ok: true, size: file.size, type: file.type, ...extra(version) });
+}
+
+async function putR2Image(env: Env, key: string, file: File, version: string): Promise<void> {
+  await env.ASSETS.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+}
+
+async function cleanupLegacyImageKv(env: Env, keys: string[]): Promise<void> {
+  await Promise.all(keys.map((key) => env.BOT_CACHE.delete(key).catch(() => undefined)));
+}
+
+function assetVersion(object: { customMetadata?: Record<string, string> } | null): string {
+  return object?.customMetadata?.version || '1';
+}
 
 async function setBuilderMenuButton(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
   const response = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ menu_button: { type: 'web_app', text: 'AI Builder TEL', web_app: { url } } }) });
