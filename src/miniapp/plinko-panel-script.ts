@@ -4,34 +4,45 @@ export const PLINKO_PANEL_SCRIPT = `
 
   function q(id){return document.getElementById(id)}
 
+  function tonToNano(value){
+    return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*1000000000));
+  }
+
+  function readBalanceNano(){
+    if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function')return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));
+    var source=q('plinkoTonBalance')||q('topTonBalance')||q('plinkoCredit');
+    return tonToNano(source&&source.textContent);
+  }
+
   function syncHeaderCredit(){
-    var source=q('plinkoCredit');
+    var source=q('plinkoTonBalance')||q('topTonBalance')||q('plinkoCredit');
     var header=q('plinkoCreditHeader');
-    if(source&&header)header.textContent=source.textContent||'1000';
+    if(source&&header)header.textContent=source.textContent||'0';
   }
 
   function currentCredit(){
-    var source=q('plinkoCredit');
-    return Math.max(0,Math.floor(Number(source&&source.textContent)||0));
+    return readBalanceNano();
   }
 
   function normalizeBet(value){
     var input=q('plinkoBet');
-    var next=Math.floor(Number(value)||1);
-    var credit=currentCredit();
-    if(next<1)next=1;
-    if(credit>0&&next>credit)next=credit;
-    if(input)input.value=String(next);
+    var raw=String(value||'').replace(',','.').trim();
+    var next=Number(raw);
+    if(!Number.isFinite(next)||next<=0)next=.01;
+    var creditTon=currentCredit()/1000000000;
+    if(creditTon>0&&next>creditTon)next=creditTon;
+    if(input)input.value=String(next).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
   }
 
   function currentBet(){
     var input=q('plinkoBet');
-    return Math.max(1,Math.floor(Number(input&&input.value)||1));
+    var value=Number(String(input&&input.value||'').replace(',','.'));
+    return Number.isFinite(value)&&value>0?value:.01;
   }
 
   function multiplyBet(multiplier){
     var value=currentBet();
-    normalizeBet(multiplier===.5?Math.max(1,Math.floor(value/2)):value*2);
+    normalizeBet(multiplier===.5?Math.max(.01,value/2):value*2);
   }
 
   function setBetKeyboard(active){
@@ -44,6 +55,12 @@ export const PLINKO_PANEL_SCRIPT = `
     if(toggle){toggle.classList.remove('active');toggle.setAttribute('aria-pressed','false')}
   }
 
+  function canDrop(){
+    var dropButton=document.querySelector('[data-action="drop-plinko-ball"]');
+    if(!dropButton||dropButton.disabled)return false;
+    return readBalanceNano()>=tonToNano(currentBet());
+  }
+
   function toggleAuto(button){
     var active=!button.classList.contains('active');
     button.classList.toggle('active',active);
@@ -52,11 +69,11 @@ export const PLINKO_PANEL_SCRIPT = `
     if(active){
       var drop=function(){
         var dropButton=document.querySelector('[data-action="drop-plinko-ball"]');
-        if(!dropButton||currentCredit()<1){stopAuto();return}
+        if(!dropButton||!canDrop()){stopAuto();return}
         dropButton.click();
       };
       drop();
-      autoTimer=setInterval(drop,1300);
+      autoTimer=setInterval(drop,1350);
     }
   }
 
@@ -84,8 +101,10 @@ export const PLINKO_PANEL_SCRIPT = `
   var observer=new MutationObserver(syncHeaderCredit);
   var start=function(){
     syncHeaderCredit();
-    var source=q('plinkoCredit');
-    if(source)observer.observe(source,{childList:true,characterData:true,subtree:true});
+    ['plinkoTonBalance','topTonBalance','plinkoCredit'].forEach(function(id){
+      var source=q(id);
+      if(source)observer.observe(source,{childList:true,characterData:true,subtree:true});
+    });
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
   setInterval(syncHeaderCredit,1000);
