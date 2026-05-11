@@ -7,7 +7,11 @@ app.get('/app/api/ton/history', async (c) => {
   try {
     const userId = String(c.req.query('userId') || '');
     const limit = Number(c.req.query('limit') || 50);
-    return c.json(await listUserTonTransactions(c.env, userId, limit));
+    const walletOnly = String(c.req.query('wallet') || '') === '1';
+    const result = await listUserTonTransactions(c.env, userId, limit);
+    return c.json(walletOnly ? {
+      transactions: result.transactions.filter((item) => item.kind === 'deposit' || item.kind === 'withdraw'),
+    } : result);
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load history' }, 400);
   }
