@@ -8,6 +8,10 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
     var value=Math.max(0,Math.floor(Number(nano)||0))/1000000000;
     return value.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')+' TON';
   }
+  function dateText(value){
+    try{return new Date(value).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return String(value||'')}
+  }
+  function escapeHtml(value){return String(value||'').replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c})}
   function toast(text){
     var n=q('toast');
     if(!n)return;
@@ -17,6 +21,12 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
   }
   async function api(path,payload){
     var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    var j=await r.json().catch(function(){return{error:'Invalid response'}});
+    if(!r.ok)throw new Error(j.error||'Request failed');
+    return j;
+  }
+  async function getJson(path){
+    var r=await fetch(path,{headers:{'accept':'application/json'}});
     var j=await r.json().catch(function(){return{error:'Invalid response'}});
     if(!r.ok)throw new Error(j.error||'Request failed');
     return j;
@@ -31,8 +41,10 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
   function syncOpenState(){
     var deposit=q('depositSheet');
     var withdraw=q('withdrawSheet');
+    var transactions=q('transactionsSheet');
     document.body.classList.toggle('deposit-open',!!(deposit&&deposit.classList.contains('open')));
     document.body.classList.toggle('withdraw-open',!!(withdraw&&withdraw.classList.contains('open')));
+    document.body.classList.toggle('transactions-open',!!(transactions&&transactions.classList.contains('open')));
   }
   function setDepositKeyboard(open){
     document.body.classList.toggle('deposit-keyboard-open',!!open);
@@ -51,6 +63,35 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
     if(status)status.textContent='';
     if(success){success.classList.remove('show');success.setAttribute('aria-hidden','true')}
     if(content)content.classList.remove('withdraw-done');
+  }
+  function transactionIcon(type){
+    if(type==='deposit')return '<svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 22l10 10 10-10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return '<svg viewBox="0 0 48 48" fill="none"><path d="M24 40V16" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 26l10-10 10 10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function rowHtml(item){
+    var isDeposit=item.type==='deposit';
+    var title=isDeposit?'Stars purchase':'TON withdrawal';
+    var amount=(isDeposit?'+':'-')+tonText(item.amountNano||0);
+    var sub=isDeposit?((item.starsAmount||0)+' Stars • '+dateText(item.createdAt)):(escapeHtml(item.walletAddress||'TON wallet')+' • '+dateText(item.createdAt));
+    var status=String(item.status||'pending').toLowerCase();
+    return '<div class="transaction-row"><span class="transaction-icon '+(isDeposit?'in':'out')+'">'+transactionIcon(item.type)+'</span><span class="transaction-main"><strong>'+title+'</strong><span>'+sub+'</span></span><span class="transaction-side"><b>'+amount+'</b><em class="'+status+'">'+escapeHtml(status)+'</em></span></div>';
+  }
+  async function loadTransactions(){
+    var list=q('transactionsList');
+    if(!list)return;
+    if(!ownerId){list.innerHTML='<div class="transactions-empty">Telegram user not found.</div>';return}
+    list.innerHTML='<div class="transactions-empty">Loading transactions...</div>';
+    try{
+      var depositsPromise=getJson('/app/api/stars/deposits?userId='+encodeURIComponent(ownerId));
+      var withdrawalsPromise=getJson('/app/api/ton/withdrawals?userId='+encodeURIComponent(ownerId));
+      var results=await Promise.all([depositsPromise,withdrawalsPromise]);
+      var deposits=(results[0].deposits||[]).map(function(d){return {type:'deposit',id:d.id,amountNano:d.amountNano,starsAmount:d.starsAmount,status:d.status,createdAt:d.createdAt}});
+      var withdrawals=(results[1].withdrawals||[]).map(function(w){return {type:'withdraw',id:w.id,amountNano:w.amountNano,walletAddress:w.walletAddress,status:w.status,createdAt:w.createdAt}});
+      var items=deposits.concat(withdrawals).sort(function(a,b){return new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime()}).slice(0,50);
+      list.innerHTML=items.length?items.map(rowHtml).join(''):'<div class="transactions-empty">No transactions yet.</div>';
+    }catch(error){
+      list.innerHTML='<div class="transactions-empty">'+escapeHtml(error&&error.message?error.message:'Could not load transactions')+'</div>';
+    }
   }
   async function submitWithdraw(){
     var amount=q('withdrawAmountTon');
@@ -76,7 +117,7 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
   function bind(){
     updateEquivalent();
     syncOpenState();
-    ['depositSheet','withdrawSheet'].forEach(function(id){
+    ['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){
       var sheet=q(id);
       if(sheet&&window.MutationObserver)new MutationObserver(syncOpenState).observe(sheet,{attributes:true,attributeFilter:['class','aria-hidden']});
     });
@@ -101,6 +142,8 @@ export const DEPOSIT_ENHANCEMENTS_SCRIPT = `
       if(action==='open-withdraw'){resetWithdraw();setSheet('withdrawSheet',true)}
       if(action==='close-withdraw'){setDepositKeyboard(false);setSheet('withdrawSheet',false)}
       if(action==='submit-withdraw'){submitWithdraw()}
+      if(action==='open-transactions'){setSheet('transactionsSheet',true);loadTransactions()}
+      if(action==='close-transactions'){setSheet('transactionsSheet',false)}
     },true);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
