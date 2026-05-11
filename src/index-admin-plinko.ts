@@ -2,6 +2,7 @@ import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
+import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageVersionKey } from './section-locks';
 import type { Env } from './types';
 
@@ -37,6 +38,23 @@ app.get('/app/api/stars/deposits', async (c) => {
     return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
+  }
+});
+
+app.post('/app/api/ton/withdrawals', async (c) => {
+  try {
+    const body = await c.req.json() as { userId?: string; amountTon?: unknown; walletAddress?: unknown };
+    return c.json(await createTonWithdrawal(c.env, body.userId, body.amountTon, body.walletAddress));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create TON withdrawal' }, 400);
+  }
+});
+
+app.get('/app/api/ton/withdrawals', async (c) => {
+  try {
+    return c.json(await listUserTonWithdrawals(c.env, String(c.req.query('userId') || '')));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON withdrawals' }, 400);
   }
 });
 
