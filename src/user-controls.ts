@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { recordTonTransaction, type TonTransactionMeta } from './ton-transactions';
 
 export type UserControls = {
   userId: string;
@@ -25,21 +26,28 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   };
 }
 
-export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano: number): Promise<UserControls> {
+export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
+  const before = await readUserTonBalance(env, id);
   await writeUserTonBalance(env, id, tonBalanceNano);
+  const after = await readUserTonBalance(env, id);
+  await recordTonTransaction(env, id, after - before, after, { kind: 'admin', title: 'Admin balance update', ...meta });
   return getUserControls(env, id);
 }
 
-export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number): Promise<UserControls> {
+export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
   await addUserTonBalance(env, id, deltaNano);
+  const after = await readUserTonBalance(env, id);
+  await recordTonTransaction(env, id, Math.floor(Number(deltaNano) || 0), after, meta);
   return getUserControls(env, id);
 }
 
-export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number): Promise<UserControls> {
+export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
   await addUserTonBalance(env, id, deltaNano);
+  const after = await readUserTonBalance(env, id);
+  await recordTonTransaction(env, id, Math.floor(Number(deltaNano) || 0), after, { kind: 'game', title: Math.floor(Number(deltaNano) || 0) >= 0 ? 'Game reward' : 'Game bet', ...meta });
   return getUserControls(env, id);
 }
 
