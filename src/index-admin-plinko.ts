@@ -9,6 +9,7 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const HOME_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
 
@@ -102,6 +103,7 @@ app.delete('/app/api/groups/:chatId/leave', async (c) => {
 });
 
 app.get('/app/api/home-finance-image.png', async (c) => imageFromR2(c.env, HOME_FINANCE_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
+app.get('/app/api/crash-tip-image.png', async (c) => imageFromR2(c.env, CRASH_TIP_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
@@ -118,6 +120,22 @@ app.post('/admin/api/upload-home-finance-image', async (c) => {
     return c.json({ ok: true, url: `/app/api/home-finance-image.png?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home image' }, 400);
+  }
+});
+
+app.post('/admin/api/upload-crash-tip-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(CRASH_TIP_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, url: `/app/api/crash-tip-image.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Crash image' }, 400);
   }
 });
 
