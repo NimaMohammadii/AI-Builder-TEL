@@ -1,7 +1,25 @@
 import app from './index-admin-plinko';
 import { listUserTonTransactions } from './ton-transactions';
+import { addUserXp, getUserLevel } from './levels';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+
+app.get('/app/api/level', async (c) => {
+  try {
+    return c.json(await getUserLevel(c.env, c.req.query('userId') || ''));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load level' }, 400);
+  }
+});
+
+app.post('/app/api/level/xp', async (c) => {
+  try {
+    const body = await c.req.json() as { userId?: string; amount?: unknown; source?: unknown; metadata?: unknown };
+    return c.json(await addUserXp(c.env, body.userId || '', body.amount, body.source || 'manual', body.metadata || {}));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not add XP' }, 400);
+  }
+});
 
 app.get('/app/api/ton/history', async (c) => {
   try {
