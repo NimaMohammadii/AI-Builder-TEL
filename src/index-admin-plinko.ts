@@ -10,6 +10,16 @@ const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
 
+app.get('/app/api/main-bot', async (c) => {
+  try {
+    const me = await telegram<{ ok: boolean; result?: { username?: string; first_name?: string }; description?: string }>(c.env.TELEGRAM_BOT_TOKEN, 'getMe', {});
+    if (!me.ok || !me.result?.username) return c.json({ error: me.description || 'Main bot username not found' }, 502);
+    return c.json({ username: me.result.username, title: me.result.first_name || 'Vexa', addGroupUrl: `https://t.me/${me.result.username}?startgroup=true` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load main bot' }, 502);
+  }
+});
+
 app.post('/app/api/stars/deposits', async (c) => {
   try {
     const body = await c.req.json() as { userId?: string; stars?: unknown };
