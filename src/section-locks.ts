@@ -34,6 +34,8 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
   { id: 'playzone', label: 'Play Zone', description: 'Games hub section' },
+  { id: 'playzone-row-ad-right', label: 'Play Zone Row Ad Right', description: 'Image shown between the first and second Play Zone rows' },
+  { id: 'playzone-row-ad-left', label: 'Play Zone Row Ad Left', description: 'Image shown between the second and third Play Zone rows' },
   { id: 'flow', label: 'Text to Speech', description: 'TTS generator section' },
   { id: 'mines', label: 'Mines', description: 'Mines game card and access image' },
   { id: 'plinko', label: 'Plinko', description: 'Plinko game card and access image' },
