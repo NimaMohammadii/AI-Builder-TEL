@@ -1,4 +1,7 @@
 export const HOME_SECTION = `<section id="home" class="view active">
+  <button id="homeGlassButton" class="home-floating-glass-button" type="button" data-view="connect" aria-label="Open Connect">
+    <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+  </button>
   <section class="home-intro-card">
     <h2>Welcome to Vexa FLOW</h2>
     <p>Vexa FLOW is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>

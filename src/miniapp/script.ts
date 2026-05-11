@@ -16,6 +16,23 @@ export const MINIAPP_SCRIPT = `
   function setDepositSheet(open){var s=q('depositSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
 
+  function initHomeGlassButton(){
+    var btn=q('homeGlassButton');if(!btn)return;
+    var storageKey='homeGlassButtonPosition';
+    var size=68;var startX=0;var startY=0;var baseX=0;var baseY=0;var didDrag=false;var pointerId=null;
+    function bounds(){var w=Math.max(document.documentElement.clientWidth||0,window.innerWidth||0);var h=Math.max(document.documentElement.clientHeight||0,window.innerHeight||0);var r=btn.getBoundingClientRect();size=Math.max(r.width||68,r.height||68);return{minX:10,maxX:Math.max(10,w-size-10),minY:Math.max(10,(tg&&tg.safeAreaInset&&tg.safeAreaInset.top||0)+10),maxY:Math.max(10,h-size-104)}}
+    function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+    function apply(x,y,save){var b=bounds();var nx=clamp(x,b.minX,b.maxX);var ny=clamp(y,b.minY,b.maxY);btn.style.left=nx+'px';btn.style.top=ny+'px';btn.style.right='auto';btn.style.bottom='auto';if(save)try{localStorage.setItem(storageKey,JSON.stringify({x:nx,y:ny}))}catch(e){}}
+    function load(){var b=bounds();var pos=null;try{pos=JSON.parse(localStorage.getItem(storageKey)||'null')}catch(e){};if(pos&&isFinite(pos.x)&&isFinite(pos.y)){apply(Number(pos.x),Number(pos.y),false)}else{apply(b.maxX-4,b.minY+110,false)}}
+    btn.addEventListener('pointerdown',function(ev){if(ev.button!==undefined&&ev.button!==0)return;var r=btn.getBoundingClientRect();pointerId=ev.pointerId;startX=ev.clientX;startY=ev.clientY;baseX=r.left;baseY=r.top;didDrag=false;btn.classList.add('is-dragging');try{btn.setPointerCapture(pointerId)}catch(e){}}, {passive:true});
+    btn.addEventListener('pointermove',function(ev){if(pointerId!==ev.pointerId)return;var dx=ev.clientX-startX;var dy=ev.clientY-startY;if(Math.abs(dx)+Math.abs(dy)>7)didDrag=true;apply(baseX+dx,baseY+dy,false)});
+    function finish(ev){if(pointerId!==ev.pointerId)return;pointerId=null;btn.classList.remove('is-dragging');var r=btn.getBoundingClientRect();apply(r.left,r.top,true);setTimeout(function(){didDrag=false},80)}
+    btn.addEventListener('pointerup',finish);btn.addEventListener('pointercancel',finish);
+    btn.addEventListener('click',function(ev){if(didDrag){ev.preventDefault();ev.stopPropagation();}},true);
+    window.addEventListener('resize',function(){var r=btn.getBoundingClientRect();apply(r.left,r.top,true)});
+    load();
+  }
+
   function show(id){
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
@@ -109,6 +126,7 @@ export const MINIAPP_SCRIPT = `
 
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(q('ownerId'))q('ownerId').value=ownerId;
+  initHomeGlassButton();
   setText('brandTitle',sectionTitles.home);
   userLine();
   updateTtsCharCount();
