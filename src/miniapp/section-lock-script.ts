@@ -20,7 +20,7 @@ export const SECTION_LOCK_SCRIPT = `
   function preload(url){if(!url||preloaded[url])return;preloaded[url]=true;var img=new Image();img.decoding='async';img.src=url}
   function preloadLockImages(){Object.keys(locks).forEach(function(id){var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
   function lockVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}return lockSvg}
-  function botCardVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}return '<div class="connect-card-lock-icon">'+lockSvg+'</div>'}
+  function botCardVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}return '<span class="connect-card-lock-icon">'+lockSvg+'</span>'}
   function setKeyboardMode(on){document.body.classList.toggle('section-code-keyboard-open',!!on);updateKeyboardInset()}
   function updateKeyboardInset(){var vv=window.visualViewport;var inset=0;if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px')}
   if(window.visualViewport){window.visualViewport.addEventListener('resize',updateKeyboardInset);window.visualViewport.addEventListener('scroll',updateKeyboardInset)}
@@ -42,9 +42,9 @@ export const SECTION_LOCK_SCRIPT = `
   function connectBotCard(){var connect=document.getElementById('connect');return connect&&connect.querySelector(':scope > .card:first-of-type')}
   function lockedCardHtml(item){
     if(item&&item.mode==='code'){
-      return '<div class="connect-card-locked-view"><div class="connect-card-lock-box code-card">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p><input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div></div>';
+      return '<div class="connect-card-locked-view connect-card-code-view">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p><input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div>';
     }
-    return '<div class="connect-card-locked-view"><div class="connect-card-lock-box">'+botCardVisual(item)+'<h2>Locked</h2><p>Bot token connection is currently unavailable.</p></div></div>';
+    return '<div class="connect-card-locked-view">'+botCardVisual(item)+'<h2>Locked</h2><p>Bot token connection is currently unavailable.</p></div>';
   }
   function bindBotCardCode(card){
     var input=card.querySelector('.connect-card-code-input');
