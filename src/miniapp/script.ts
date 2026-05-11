@@ -46,14 +46,14 @@ export const MINIAPP_SCRIPT = `
     if(!ownerId)return toast('Telegram user not found');
     if(!amount||amount<1)return toast('Enter a valid Stars amount');
     var status=q('depositStatus');
-    if(status)status.textContent='Creating secure Telegram invoice...';
+    if(status)status.textContent='Creating secure Telegram invoice';
     try{
       var d=await api('/app/api/stars/deposits',{method:'POST',body:JSON.stringify({userId:ownerId,stars:amount})});
-      if(status)status.textContent='Opening Telegram Stars payment...';
+      if(status)status.textContent='Opening Telegram Stars payment';
       if(d.invoiceLink){
         if(tg&&typeof tg.openInvoice==='function'){
           tg.openInvoice(d.invoiceLink,function(state){
-            if(status)status.textContent=state==='paid'?'Payment received. Balance will update shortly.':'Payment status: '+state;
+            if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;
             if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);
           });
         }else{window.location.href=d.invoiceLink}
