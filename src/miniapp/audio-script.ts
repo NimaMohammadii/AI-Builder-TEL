@@ -24,8 +24,14 @@ export const MINIAPP_AUDIO_SCRIPT = LEVEL_SYNC_SCRIPT + `
     if(document.getElementById('miniAppAudioStyles'))return;
     var style=document.createElement('style');
     style.id='miniAppAudioStyles';
-    style.textContent='#miniAppAudioButton{position:fixed;right:18px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:130;width:58px;height:58px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.075));color:#fff;display:grid;place-items:center;padding:0;box-shadow:0 18px 42px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.26),inset 0 -10px 24px rgba(255,255,255,.045);backdrop-filter:blur(10px) saturate(1.35);-webkit-backdrop-filter:blur(10px) saturate(1.35);touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}#miniAppAudioButton:active{transform:scale(.94)}#miniAppAudioButton svg{width:27px;height:27px;display:block;fill:currentColor;filter:drop-shadow(0 2px 8px rgba(0,0,0,.35))}#miniAppAudioButton:not(.is-playing) svg{transform:translateX(1.5px)}#miniAppAudioButton.is-playing{background:linear-gradient(145deg,rgba(255,255,255,.32),rgba(255,255,255,.12));border-color:rgba(255,255,255,.34);box-shadow:0 20px 46px rgba(0,0,0,.36),0 0 22px rgba(255,255,255,.11),inset 0 1px 0 rgba(255,255,255,.34)}';
+    style.textContent='#miniAppAudioButton{position:fixed;right:18px;bottom:calc(178px + env(safe-area-inset-bottom));z-index:240;width:52px;height:52px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.045);color:#fff;display:grid;place-items:center;padding:0;box-shadow:0 16px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(2px) saturate(1.12);-webkit-backdrop-filter:blur(2px) saturate(1.12);touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}#miniAppAudioButton:active{transform:scale(.94)}#miniAppAudioButton svg{width:25px;height:25px;display:block;fill:currentColor;filter:drop-shadow(0 2px 7px rgba(0,0,0,.38));pointer-events:none}#miniAppAudioButton:not(.is-playing) svg{transform:translateX(1.5px)}#miniAppAudioButton.is-playing{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.26);box-shadow:0 18px 38px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.22)}';
     document.head.appendChild(style);
+  }
+  function swallow(ev){
+    if(!ev)return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(typeof ev.stopImmediatePropagation==='function')ev.stopImmediatePropagation();
   }
   function removePlayer(){
     if(audio){audio.pause();audio.removeAttribute('src');audio.load();}
@@ -58,11 +64,9 @@ export const MINIAPP_AUDIO_SCRIPT = LEVEL_SYNC_SCRIPT + `
     button.id='miniAppAudioButton';
     button.type='button';
     button.setAttribute('aria-label','Play mini app music');
-    button.onclick=function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      if(isPlaying)stopNow();else{stoppedByUser=false;playNow(true)}
-    };
+    ['pointerdown','pointerup','touchstart','touchend','mousedown','mouseup','click'].forEach(function(name){
+      button.addEventListener(name,function(ev){swallow(ev);if(name==='click'||name==='pointerup'||name==='touchend'){toggleAudio()}},{capture:true});
+    });
     setButtonState(false);
     document.body.appendChild(button);
   }
@@ -87,6 +91,7 @@ export const MINIAPP_AUDIO_SCRIPT = LEVEL_SYNC_SCRIPT + `
     if(result&&typeof result.then==='function')result.then(function(){hasStarted=true;stoppedByUser=false;setButtonState(true)}).catch(function(){setButtonState(false)});
   }
   function stopNow(){stoppedByUser=true;if(audio){audio.pause();try{audio.currentTime=0}catch(e){}}setButtonState(false)}
+  function toggleAudio(){if(isPlaying)stopNow();else{stoppedByUser=false;playNow(true)}}
   function apply(info){
     config=info;
     if(!info||!info.hasAudio||!info.enabled||!info.url){removePlayer();return;}
@@ -95,7 +100,12 @@ export const MINIAPP_AUDIO_SCRIPT = LEVEL_SYNC_SCRIPT + `
     if(hasStarted&&!stoppedByUser)playNow(false);
   }
   function load(){fetch('/app/api/miniapp-audio',{cache:'no-store'}).then(function(r){return r.json()}).then(apply).catch(function(){})}
-  function firstGesture(){if(!config||!config.enabled||!config.hasAudio||!config.url)return;if(stoppedByUser||hasStarted)return;playNow(false)}
+  function firstGesture(ev){
+    if(ev&&ev.target&&ev.target.closest&&ev.target.closest('#miniAppAudioButton'))return;
+    if(!config||!config.enabled||!config.hasAudio||!config.url)return;
+    if(stoppedByUser||hasStarted)return;
+    playNow(false);
+  }
   ['pointerup','touchend','click'].forEach(function(name){document.addEventListener(name,firstGesture,{capture:false,passive:true})});
   document.addEventListener('visibilitychange',function(){if(document.hidden){if(audio)audio.pause()}else if(hasStarted&&!stoppedByUser){playNow(false)}});
   window.VexaMiniappAudio={reload:load,play:function(){stoppedByUser=false;playNow(true)},stop:stopNow};
