@@ -22,7 +22,7 @@ body.deposit-open #home .home-intro-card,body.withdraw-open #home .home-intro-ca
 #connect .card input,#connect .card .primary,#connect .card .ghost{border-radius:999px!important}
 #home .home-intro-card h2{margin:0 0 8px;font-size:24px;line-height:1.04;font-weight:850;letter-spacing:-.055em}
 #home .home-intro-card p{margin:0;color:rgba(255,255,255,.62);font-size:13px;line-height:1.48;font-weight:470;letter-spacing:-.015em}
-.top #rankPill{transform:translate(20px,-34px)!important;height:28px!important;min-width:66px!important;padding:0 10px!important;font-size:11.5px!important}
+.top #rankPill{position:fixed!important;left:178px!important;top:calc(120px + env(safe-area-inset-top))!important;transform:none!important;height:32px!important;min-width:76px!important;padding:0 12px!important;font-size:12px!important;z-index:95!important}
 #home .deposit-sheet{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:20px 16px calc(92px + env(safe-area-inset-bottom))}
 #home .deposit-sheet.open{display:flex}
 #home .deposit-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.30);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
