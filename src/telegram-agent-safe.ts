@@ -10,6 +10,7 @@ export { setTelegramWebhook };
 const GROUP_REPLY_COST_NANO = 200000;
 
 type MainGroupRow = { added_by_user_id?: string | null; credit_owner_user_id?: string | null };
+type GroupReplyMessage = { reply_to_message?: { from?: { is_bot?: boolean; username?: string } } };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
@@ -53,7 +54,9 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   if (!settings.isBuilderBot) return true;
 
   const text = message.text?.trim() ?? '';
-  if (!mentionsVexa(text, bot.username)) return true;
+  const calledByName = mentionsVexa(text, bot.username);
+  const calledByReply = isReplyToBot(message as unknown as GroupReplyMessage, bot.username);
+  if (!calledByName && !calledByReply) return true;
 
   const prompt = cleanGroupPrompt(text, bot.username);
   if (!prompt) return true;
@@ -147,6 +150,13 @@ function isGroupChat(type: string): boolean {
 function mentionsVexa(text: string, username: string | null): boolean {
   const lower = text.toLowerCase();
   return /(^|\s|[،,.!؟?])(?:vexa|وکسا)($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text);
+}
+
+function isReplyToBot(message: GroupReplyMessage, username: string | null): boolean {
+  const replied = message.reply_to_message?.from;
+  if (!replied?.is_bot) return false;
+  if (!username) return true;
+  return replied.username?.toLowerCase() === username.toLowerCase();
 }
 
 function cleanGroupPrompt(text: string, username: string | null): string {
