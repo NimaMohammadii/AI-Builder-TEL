@@ -67,6 +67,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
     return true;
   }
 
+  await addGroupTonUsage(env, message.chat, GROUP_REPLY_COST_NANO);
   const reply = await groupReply(env, prompt);
   await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
   return true;
@@ -75,8 +76,8 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
 async function saveMainGroup(env: Env, chat: TelegramChat, addedBy: TelegramUser): Promise<void> {
   const ownerId = String(addedBy.id);
   await ensureMainGroupColumns(env);
-  await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, added_by_user_id, added_by_username, added_by_first_name, first_seen_at, last_seen_at)
-    VALUES ('main', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, added_by_user_id, added_by_username, added_by_first_name, first_seen_at, last_seen_at, ton_spent_nano)
+    VALUES ('main', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
     ON CONFLICT(bot_id, chat_id) DO UPDATE SET
       chat_type = excluded.chat_type,
       title = excluded.title,
@@ -110,6 +111,14 @@ async function chargeMessageSender(env: Env, sender: TelegramUser | undefined): 
   return { ok: true, message: 'charged' };
 }
 
+async function addGroupTonUsage(env: Env, chat: TelegramChat, amountNano: number): Promise<void> {
+  await ensureMainGroupColumns(env);
+  await env.DB.prepare("UPDATE bot_groups SET ton_spent_nano = COALESCE(ton_spent_nano, 0) + ?, last_seen_at = CURRENT_TIMESTAMP WHERE bot_id = 'main' AND chat_id = ?")
+    .bind(Math.max(0, Math.floor(amountNano)), String(chat.id))
+    .run()
+    .catch((error) => console.warn('group TON usage tracking skipped', error));
+}
+
 async function ensureMainGroupColumns(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS bot_groups (
     bot_id TEXT NOT NULL,
@@ -119,11 +128,13 @@ async function ensureMainGroupColumns(env: Env): Promise<void> {
     username TEXT,
     first_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ton_spent_nano INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (bot_id, chat_id)
   )`).run();
   await env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_user_id TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_username TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_first_name TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN ton_spent_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 }
 
 async function ensureTonBalanceColumn(env: Env): Promise<void> {
