@@ -37,7 +37,7 @@ async function handleGroupMembershipUpdate(env: Env, bot: BotRecord, update: Tel
   if (!member || !isGroupChat(member.chat.type)) return false;
 
   const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
-  if (settings.isBuilderBot) return false;
+  if (settings.isBuilderBot) return true;
 
   const status = member.new_chat_member?.status || '';
   if (status === 'left' || status === 'kicked') await removeGroup(env, bot, settings, member.chat);
@@ -50,13 +50,14 @@ async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: Telegram
   if (!message || !isGroupChat(message.chat.type)) return false;
 
   const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
-  if (settings.isBuilderBot) return false;
 
-  if (await handleGroupServiceMessage(env, bot, settings, message.chat, message as unknown as TelegramServiceMessage)) return true;
-  await saveGroup(env, bot, settings, message.chat).catch((error) => console.warn('group save skipped', error));
+  if (!settings.isBuilderBot) {
+    if (await handleGroupServiceMessage(env, bot, settings, message.chat, message as unknown as TelegramServiceMessage)) return true;
+    await saveGroup(env, bot, settings, message.chat).catch((error) => console.warn('group save skipped', error));
+  }
 
   const text = message.text?.trim() ?? '';
-  if (!mentionsVexa(text, bot.username)) return true;
+  if (!mentionsVexa(text, bot.username, Boolean(settings.isBuilderBot))) return true;
 
   const prompt = cleanGroupPrompt(text, bot.username);
   if (!prompt) return true;
@@ -86,14 +87,15 @@ function isGroupChat(type: string): boolean {
   return type === 'group' || type === 'supergroup';
 }
 
-function mentionsVexa(text: string, username: string | null): boolean {
+function mentionsVexa(text: string, username: string | null, isMainBot = false): boolean {
   const lower = text.toLowerCase();
-  return /(^|\s|[،,.!؟?])vexa($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase()));
+  return /(^|\s|[،,.!؟?])vexa($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || Boolean(isMainBot && /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text));
 }
 
 function cleanGroupPrompt(text: string, username: string | null): string {
   let cleaned = text.replace(/(^|\s|[،,.!؟?])vexa([،,.!؟?:\s-]*)/ig, ' ');
   if (username) cleaned = cleaned.replace(new RegExp('@' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
+  cleaned = cleaned.replace(/(^|\s)@[a-z0-9_]+bot(\s|$)/ig, ' ');
   return cleaned.replace(/\s+/g, ' ').trim();
 }
 
