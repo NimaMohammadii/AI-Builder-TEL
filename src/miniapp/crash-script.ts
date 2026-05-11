@@ -38,7 +38,7 @@ export const CRASH_SCRIPT = `
   function getCanvas(){var canvas=q('crashCanvas');if(!canvas)return null;var dpr=Math.min(window.devicePixelRatio||1,2);var w=320,h=290;if(canvasCache!==canvas||canvas.width!==w*dpr||canvas.height!==h*dpr){canvas.width=w*dpr;canvas.height=h*dpr;canvasCache=canvas;ctxCache=canvas.getContext('2d')}ctxCache.setTransform(dpr,0,0,dpr,0,0);return ctxCache}
   function drawTip(ctx,x,y,ended){
     if(crashTipReady&&crashTipImage&&crashTipImage.naturalWidth){
-      var size=ended?30:34;
+      var size=ended?42:50;
       ctx.save();
       ctx.shadowColor='rgba(0,0,0,.34)';
       ctx.shadowBlur=14;
