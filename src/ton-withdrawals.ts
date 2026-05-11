@@ -37,11 +37,20 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   await ensureTonWithdrawalsTable(env);
   const id = 'wd_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 
-  await adjustUserTonBalance(env, userId, -amountNano);
   await env.DB.prepare(`INSERT INTO ton_withdrawals (id, user_id, wallet_address, amount_nano, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
     .bind(id, userId, wallet, amountNano)
     .run();
+
+  await adjustUserTonBalance(env, userId, -amountNano, {
+    kind: 'withdraw',
+    title: 'TON withdrawal',
+    description: 'Withdrawal request to ' + shortWallet(wallet),
+    referenceId: id,
+    referenceType: 'ton_withdrawal',
+    status: 'pending',
+    metadata: { walletAddress: wallet },
+  });
 
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   return rowToWithdrawal(row ?? {
@@ -106,6 +115,10 @@ function cleanWallet(value: unknown): string {
   if (!wallet) throw new Error('Enter your TON wallet address');
   if (!/^[A-Za-z0-9_\-:]{24,120}$/.test(wallet)) throw new Error('Enter a valid TON wallet address');
   return wallet;
+}
+
+function shortWallet(wallet: string): string {
+  return wallet.length > 14 ? wallet.slice(0, 6) + '...' + wallet.slice(-6) : wallet;
 }
 
 function cleanUserId(value: unknown): string {
