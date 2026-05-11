@@ -16,8 +16,8 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
 }
 
 const rowAdCopy = {
-  'playzone-row-ad-right': 'ربات وارد میشه و بازی رو روشن میکنه هر اسپین یه شانس تازه برای بردای بزرگه',
-  'playzone-row-ad-left': 'اینجا هر انتخاب میتونه مسیر برد رو عوض کنه با تمرکز برو بالا و جایزه رو شکار کن',
+  'playzone-row-ad-right': 'The bot enters and lights up the game. Every spin is a fresh shot at a big win',
+  'playzone-row-ad-left': 'Every choice here can shift your path to victory. Stay sharp, climb higher, and chase the prize',
 } as const;
 
 function rowAd(id: keyof typeof rowAdCopy, side: 'right' | 'left', label: string): string {
