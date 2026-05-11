@@ -52,6 +52,8 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
   if (!settings.isBuilderBot) return true;
 
+  await saveMainGroup(env, message.chat, message.from || fallbackTelegramUser(message.chat)).catch((error) => console.warn('main group message save skipped', error));
+
   const text = message.text?.trim() ?? '';
   const calledByName = mentionsVexa(text, bot.username);
   const calledByReply = isReplyToBot(message as unknown as GroupReplyMessage, bot.username);
@@ -171,6 +173,10 @@ function cleanGroupPrompt(text: string, username: string | null): string {
 
 function cleanUserId(value: unknown): string {
   return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+}
+
+function fallbackTelegramUser(chat: TelegramChat): TelegramUser {
+  return { id: Math.abs(Number(chat.id)) || 0, first_name: chat.title || 'Group' };
 }
 
 async function groupReply(env: Env, prompt: string): Promise<string> {
