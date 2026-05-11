@@ -15,8 +15,13 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
   return `<button class="game-card" type="button" data-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
-function rowAd(id: string, side: 'right' | 'left', label: string): string {
-  return `<div class="play-zone-row-ad play-zone-row-ad--${side}" data-play-zone-ad="${id}"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-row-ad').classList.add('is-empty')"/></div>`;
+const rowAdCopy = {
+  'playzone-row-ad-right': 'ربات وارد میشه و بازی رو روشن میکنه هر اسپین یه شانس تازه برای بردای بزرگه',
+  'playzone-row-ad-left': 'اینجا هر انتخاب میتونه مسیر برد رو عوض کنه با تمرکز برو بالا و جایزه رو شکار کن',
+} as const;
+
+function rowAd(id: keyof typeof rowAdCopy, side: 'right' | 'left', label: string): string {
+  return `<div class="play-zone-row-ad play-zone-row-ad--${side}" data-play-zone-ad="${id}"><p class="play-zone-row-ad__copy">${rowAdCopy[id]}</p><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-row-ad').classList.add('is-empty')"/></div>`;
 }
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${playZoneGames.slice(0, 3).map(gameCard).join('')}${rowAd('playzone-row-ad-right', 'right', 'Play Zone promo image')}${playZoneGames.slice(3, 6).map(gameCard).join('')}${rowAd('playzone-row-ad-left', 'left', 'Play Zone promo image')}${playZoneGames.slice(6).map(gameCard).join('')}</div></section>`;
