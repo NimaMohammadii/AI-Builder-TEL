@@ -4,23 +4,12 @@ export const MINIAPP_SCRIPT = `
   if(tg){try{tg.ready();tg.expand()}catch(e){}}
 
   var ownerId=localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
-  var bots=[];
-  var selectedBot=null;
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
   var sectionTitles={home:'Home',connect:'Connect',results:'Bot Control',playzone:'Play Zone',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
 
   function q(id){return document.getElementById(id)}
-  function clean(v){return String(v||'').replace(/[^0-9A-Za-z:_-]/g,'').replace(/：/g,':').trim()}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
   function toast(v){var n=q('toast');if(!n)return;n.textContent=v;n.style.display='block';setTimeout(function(){n.style.display='none'},3000)}
-  function esc(v){return String(v||'').replace(/[&<>']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[s]||s})}
-  function initials(v){v=String(v||'B').replace(/@/g,'').trim();return (v.match(/[A-Za-z0-9]/g)||['B']).slice(0,2).join('').toUpperCase()}
-  function fallbackAvatar(b){return '<div class="avatar-fallback"><span>'+esc(initials(b.username||b.title||b.id))+'</span></div>'}
-  function avatarImg(b){var username=b.username||'';if(!username)return fallbackAvatar(b);var src='https://t.me/i/userpic/320/'+encodeURIComponent(username)+'.jpg';return '<img class="avatar" src="'+src+'" alt="" referrerpolicy="no-referrer"/>'}
-  function botActionStyle(){return 'width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;flex:0 0 auto;padding:0'}
-  function playIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="pointer-events:none"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>'}
-  function pauseIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="pointer-events:none"><path d="M8 6v12M16 6v12"/></svg>'}
-  function trashIcon(){return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>'}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
@@ -33,7 +22,6 @@ export const MINIAPP_SCRIPT = `
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa FLOW');
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
-    loadBots(false);
   }
 
   async function api(path,opt){
@@ -45,55 +33,6 @@ export const MINIAPP_SCRIPT = `
   }
 
   function userLine(){var n=q('userLine');if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level 1 <span style="color:rgba(255,255,255,.55);font-weight:700">• 42%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:42%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">580 XP left to finish</span>'}
-  function row(b){var img=avatarImg(b);var next=b.status==='active'?'paused':'active';var label=b.status==='active'?'Stop bot':'Start bot';return '<div class="bot-row" data-bot-row-id="'+esc(b.id)+'">'+img+'<div><strong>'+esc(b.title)+'</strong><small>'+(b.username?'@'+esc(b.username):esc(b.id))+'</small></div><div class="bot-row-actions" style="display:flex;align-items:center;gap:7px;margin-left:auto"><button type="button" style="'+botActionStyle()+'" data-action="row-toggle" data-bot-id="'+esc(b.id)+'" data-next-status="'+next+'" aria-label="'+label+'">'+(b.status==='active'?pauseIcon():playIcon())+'</button><button type="button" style="'+botActionStyle()+';color:rgba(255,255,255,.78)" data-action="row-delete" data-bot-id="'+esc(b.id)+'" aria-label="Delete bot">'+trashIcon()+'</button></div></div>'}
-  function render(){
-    var html=bots.length?bots.map(row).join(''):'<div class="notice">No bots yet. Connect your bot first.</div>';
-    if(q('botsList'))q('botsList').innerHTML=html;
-    if(q('homeBots'))q('homeBots').innerHTML=html;
-    setText('statBots',String(bots.length));
-    setText('statActive',String(bots.filter(function(b){return b.status==='active'}).length));
-    setText('statPaused',String(bots.filter(function(b){return b.status==='paused'}).length));
-    if(q('botSelect'))q('botSelect').innerHTML=bots.length?bots.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(b.title)+'</option>'}).join(''):'<option value="">No bots</option>';
-    if(bots[0]&&!selectedBot)selectBot(bots[0].id);
-  }
-
-  async function loadBots(force){
-    if(!ownerId){render();return}
-    if(bots.length&&!force){render();return}
-    try{var d=await api('/app/api/bots?ownerId='+encodeURIComponent(ownerId));bots=d.bots||[];render()}catch(x){render();toast(x.message)}
-  }
-
-  async function createBot(){
-    var input=q('botKey');
-    var key=clean(input&&input.value);
-    if(input)input.value=key;
-    if(!ownerId)return toast('Set Telegram user first');
-    if(key.indexOf(':')<1)return toast('Paste the full BotFather key.');
-    try{
-      setText('builderStatus','Checking');
-      var body={ownerTelegramId:ownerId,prompt:'VexaFlow bot'};
-      body.telegramToken=key;
-      var d=await api('/app/api/bots',{method:'POST',body:JSON.stringify(body)});
-      if(input)input.value='';
-      bots=[];
-      await loadBots(true);
-      await selectBot(d.botId);
-      show('flow');
-      toast('Bot connected');
-    }catch(x){setText('builderStatus','Failed');toast(x.message)}
-  }
-
-  async function selectBot(id){
-    if(!id)return;
-    try{
-      var d=await api('/app/api/bots/'+encodeURIComponent(id));
-      selectedBot=d;
-      setText('activeBotLabel',d.username?'@'+d.username:d.title);
-      if(q('botInfo'))q('botInfo').innerHTML='<b>'+esc(d.title)+'</b><br>Status: '+esc(d.status);
-      setText('pauseBtn',d.status==='active'?'Pause':'Activate');
-      if(q('botSelect'))q('botSelect').value=id;
-    }catch(x){toast(x.message)}
-  }
 
   function setVoice(v,label){
     selectedVoice=v;
@@ -138,28 +77,16 @@ export const MINIAPP_SCRIPT = `
   }
 
   function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','Pause')}else{a.pause();setText('wavePlay','Play')}}
-  async function publishBot(){if(!selectedBot)return toast('Select a bot first');try{var d=await api('/app/api/bots/'+encodeURIComponent(selectedBot.id)+'/publish',{method:'POST'});toast('Published');bots=[];await loadBots(true);await selectBot(d.botId)}catch(x){toast(x.message)}}
-  async function setBotStatus(id,status){try{var d=await api('/app/api/bots/'+encodeURIComponent(id)+'/status',{method:'PATCH',body:JSON.stringify({status:status})});toast(status==='active'?'Started':'Stopped');bots=[];await loadBots(true);if(selectedBot&&selectedBot.id===id)await selectBot(d.botId)}catch(x){toast(x.message)}}
-  async function togglePause(){if(!selectedBot)return toast('Select a bot first');var status=selectedBot.status==='active'?'paused':'active';await setBotStatus(selectedBot.id,status)}
-  async function deleteBotById(id){if(!confirm('Delete this bot?'))return;try{await api('/app/api/bots/'+encodeURIComponent(id),{method:'DELETE'});if(selectedBot&&selectedBot.id===id)selectedBot=null;bots=[];await loadBots(true);toast('Bot deleted')}catch(x){toast(x.message)}}
-  async function deleteBot(){if(!selectedBot)return toast('Select a bot first');await deleteBotById(selectedBot.id)}
-  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();loadBots(true)}
+  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine()}
 
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
 
   document.body.addEventListener('click',function(ev){
     var target=ev.target;
-    var actionEl=target&&target.closest?target.closest('[data-action]'):null;
-    var action=actionEl&&actionEl.getAttribute('data-action');
-    if(action==='row-toggle'){ev.preventDefault();ev.stopPropagation();setBotStatus(actionEl.getAttribute('data-bot-id'),actionEl.getAttribute('data-next-status'));return}
-    if(action==='row-delete'){ev.preventDefault();ev.stopPropagation();deleteBotById(actionEl.getAttribute('data-bot-id'));return}
-    var rowEl=target&&target.closest?target.closest('[data-bot-row-id]'):null;
-    if(rowEl){selectBot(rowEl.getAttribute('data-bot-row-id'));show('results');return}
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     var v=b.getAttribute('data-view');if(v){show(v);return}
-    var id=b.getAttribute('data-bot-id');if(id){selectBot(id);show('results');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
@@ -171,23 +98,15 @@ export const MINIAPP_SCRIPT = `
     if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='toggle-voice'){q('voiceWrap').classList.toggle('open');return}
-    if(a==='create-bot')createBot();
     if(a==='generate-tts')generateTts();
     if(a==='play-tts')playTts();
-    if(a==='refresh')loadBots(true);
-    if(a==='publish')publishBot();
-    if(a==='toggle-pause')togglePause();
-    if(a==='delete')deleteBot();
     if(a==='save-user')saveUser();
   });
 
-  if(q('botKey'))q('botKey').addEventListener('input',function(){var k=clean(q('botKey').value);if(q('botKey').value!==k)q('botKey').value=k});
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
-  if(q('botSelect'))q('botSelect').addEventListener('change',function(){selectBot(this.value)});
   if(q('ownerId'))q('ownerId').value=ownerId;
   setText('brandTitle',sectionTitles.home);
   userLine();
   updateTtsCharCount();
-  loadBots(true);
 })();
 `;
