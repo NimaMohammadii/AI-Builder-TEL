@@ -6,157 +6,94 @@ export const SECTION_LOCK_SCRIPT = `
   var lastSyncedCredit=null;
   var unlocked={};
   var preloaded={};
+  var originalConnectBotCardHtml='';
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';
-  var heartSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 52s-18-10.5-23-24C5.7 19 10.8 11 19.2 11c5.1 0 9.1 3 12.8 7.7C35.7 14 39.7 11 44.8 11 53.2 11 58.3 19 55 28 50 41.5 32 52 32 52Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>';
   var dismissSvg='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function storageKey(id){return 'sectionUnlocked:'+id}
   function isUnlocked(id){return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
   function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
-  function visualUrl(item){
-    if(!item)return '';
-    if(item.mode==='code')return item.codeImageUrl||'';
-    return item.lockedImageUrl||item.imageUrl||'';
-  }
-  function preload(url){
-    if(!url||preloaded[url])return;
-    preloaded[url]=true;
-    var img=new Image();
-    img.decoding='async';
-    img.src=url;
-  }
-  function preloadLockImages(){
-    Object.keys(locks).forEach(function(id){
-      var item=locks[id];
-      preload(item.lockedImageUrl||item.imageUrl||'');
-      preload(item.codeImageUrl||'');
-    });
-  }
-  function lockVisual(item){
-    var url=visualUrl(item);
-    if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}
-    return lockSvg;
-  }
-  function botCardVisual(item){
-    var url=visualUrl(item);
-    if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}
-    return '<div class="connect-card-lock-icon">'+lockSvg+'</div>';
-  }
-  function setKeyboardMode(on){
-    document.body.classList.toggle('section-code-keyboard-open',!!on);
-    updateKeyboardInset();
-  }
-  function updateKeyboardInset(){
-    var vv=window.visualViewport;
-    var inset=0;
-    if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}
-    document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px');
-  }
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',updateKeyboardInset);
-    window.visualViewport.addEventListener('scroll',updateKeyboardInset);
-  }
+  function visualUrl(item){if(!item)return '';return item.mode==='code'?(item.codeImageUrl||''):(item.lockedImageUrl||item.imageUrl||'')}
+  function preload(url){if(!url||preloaded[url])return;preloaded[url]=true;var img=new Image();img.decoding='async';img.src=url}
+  function preloadLockImages(){Object.keys(locks).forEach(function(id){var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
+  function lockVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}return lockSvg}
+  function botCardVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}return '<div class="connect-card-lock-icon">'+lockSvg+'</div>'}
+  function setKeyboardMode(on){document.body.classList.toggle('section-code-keyboard-open',!!on);updateKeyboardInset()}
+  function updateKeyboardInset(){var vv=window.visualViewport;var inset=0;if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px')}
+  if(window.visualViewport){window.visualViewport.addEventListener('resize',updateKeyboardInset);window.visualViewport.addEventListener('scroll',updateKeyboardInset)}
 
   function syncCredit(){
     if(userCredit===null||userCredit===undefined)return;
     var credit=Math.max(0,Math.floor(Number(userCredit)||0));
-    var targets=[document.getElementById('plinkoCredit'),document.getElementById('plinkoCreditHeader'),document.getElementById('creditCount')];
-    targets.forEach(function(el){if(el)el.textContent=String(credit)});
-    if(lastSyncedCredit!==credit){
-      lastSyncedCredit=credit;
-      try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}
-    }
+    [document.getElementById('plinkoCredit'),document.getElementById('plinkoCreditHeader'),document.getElementById('creditCount')].forEach(function(el){if(el)el.textContent=String(credit)});
+    if(lastSyncedCredit!==credit){lastSyncedCredit=credit;try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}}
   }
 
   function focusCodeInput(input, view){
     if(!input)return;
-    view&&view.classList.add('code-focused');
-    setKeyboardMode(true);
-    updateKeyboardInset();
+    view&&view.classList.add('code-focused');setKeyboardMode(true);updateKeyboardInset();
     try{input.focus({preventScroll:true})}catch(e){input.focus()}
-    setTimeout(updateKeyboardInset,80);
-    setTimeout(updateKeyboardInset,260);
-    setTimeout(updateKeyboardInset,520);
+    setTimeout(updateKeyboardInset,80);setTimeout(updateKeyboardInset,260);setTimeout(updateKeyboardInset,520);
   }
 
-  function ensureBotCardOverlay(item){
-    var connect=document.getElementById('connect');
-    var card=connect&&connect.querySelector(':scope > .card:first-of-type');
-    if(!card)return;
-    card.classList.add('connect-bot-card-locked');
-    card.querySelectorAll('input,button').forEach(function(el){el.disabled=true});
-    var old=card.querySelector('.connect-card-locked-view');
-    if(old)old.remove();
-    var view=document.createElement('div');
-    view.className='connect-card-locked-view';
+  function connectBotCard(){var connect=document.getElementById('connect');return connect&&connect.querySelector(':scope > .card:first-of-type')}
+  function lockedCardHtml(item){
     if(item&&item.mode==='code'){
-      view.innerHTML='<div class="connect-card-lock-box code-card">'+botCardVisual(item)+'<div class="connect-card-heart">'+heartSvg+'</div><h2>Access code</h2><p>Enter code to connect a bot.</p><input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div>';
-      var input=view.querySelector('.connect-card-code-input');
-      var button=view.querySelector('.connect-card-code-submit');
-      var status=view.querySelector('.connect-card-code-status');
-      var submit=function(){
-        var code=(input&&input.value||'').trim();
-        if(!code){status.textContent='Enter the access code.';input&&input.focus();return}
-        status.textContent='Checking...';
-        fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:'connect-bot-card',code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
-          if(res.ok&&res.json&&res.json.ok){setUnlocked('connect-bot-card');applyLocks();return}
-          status.textContent=(res.json&&res.json.error)||'Wrong access code.';
-          input&&input.focus();
-        }).catch(function(){status.textContent='Could not verify code.'});
-      };
-      button&&button.addEventListener('click',submit);
-      input&&input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
-    }else{
-      view.innerHTML='<div class="connect-card-lock-box">'+botCardVisual(item)+'<div class="connect-card-heart">'+heartSvg+'</div><h2>Locked</h2><p>Bot token connection is currently unavailable.</p></div>';
+      return '<div class="connect-card-locked-view"><div class="connect-card-lock-box code-card">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p><input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div></div>';
     }
-    card.appendChild(view);
+    return '<div class="connect-card-locked-view"><div class="connect-card-lock-box">'+botCardVisual(item)+'<h2>Locked</h2><p>Bot token connection is currently unavailable.</p></div></div>';
   }
-
+  function bindBotCardCode(card){
+    var input=card.querySelector('.connect-card-code-input');
+    var button=card.querySelector('.connect-card-code-submit');
+    var status=card.querySelector('.connect-card-code-status');
+    if(!input||!button)return;
+    var submit=function(){
+      var code=(input.value||'').trim();
+      if(!code){status.textContent='Enter the access code.';input.focus();return}
+      status.textContent='Checking...';
+      fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:'connect-bot-card',code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
+        if(res.ok&&res.json&&res.json.ok){setUnlocked('connect-bot-card');applyLocks();return}
+        status.textContent=(res.json&&res.json.error)||'Wrong access code.';input.focus();
+      }).catch(function(){status.textContent='Could not verify code.'});
+    };
+    button.addEventListener('click',submit);
+    input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
+  }
+  function ensureBotCardOverlay(item){
+    var card=connectBotCard();if(!card)return;
+    if(!originalConnectBotCardHtml)originalConnectBotCardHtml=card.innerHTML;
+    card.classList.add('connect-bot-card-locked');
+    card.innerHTML=lockedCardHtml(item);
+    bindBotCardCode(card);
+  }
   function clearBotCardOverlay(){
-    var connect=document.getElementById('connect');
-    var card=connect&&connect.querySelector(':scope > .card:first-of-type');
-    if(!card)return;
+    var card=connectBotCard();if(!card)return;
+    if(card.classList.contains('connect-bot-card-locked')&&originalConnectBotCardHtml)card.innerHTML=originalConnectBotCardHtml;
     card.classList.remove('connect-bot-card-locked');
-    card.querySelectorAll('input,button').forEach(function(el){el.disabled=false});
-    var old=card.querySelector('.connect-card-locked-view');
-    if(old)old.remove();
   }
 
   function ensureOverlay(section, item){
     if(!section)return;
-    var old=section.querySelector('.section-locked-view');
-    if(old)old.remove();
-    var view=document.createElement('div');
-    view.className='section-locked-view';
+    var old=section.querySelector('.section-locked-view');if(old)old.remove();
+    var view=document.createElement('div');view.className='section-locked-view';
     if(item&&item.mode==='code'){
       view.classList.add('section-code-view');
       view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
-      var input=view.querySelector('.section-code-input');
-      var button=view.querySelector('.section-code-submit');
-      var status=view.querySelector('.section-code-status');
-      var dismiss=view.querySelector('.section-keyboard-dismiss');
+      var input=view.querySelector('.section-code-input');var button=view.querySelector('.section-code-submit');var status=view.querySelector('.section-code-status');var dismiss=view.querySelector('.section-keyboard-dismiss');
       var submit=function(){
         var code=(input&&input.value||'').trim();
         if(!code){status.textContent='Enter the access code.';focusCodeInput(input,view);return}
         status.textContent='Checking...';
         fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:section.id,code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
           if(res.ok&&res.json&&res.json.ok){setKeyboardMode(false);setUnlocked(section.id);applyLocks();return}
-          status.textContent=(res.json&&res.json.error)||'Wrong access code.';
-          focusCodeInput(input,view);
+          status.textContent=(res.json&&res.json.error)||'Wrong access code.';focusCodeInput(input,view);
         }).catch(function(){status.textContent='Could not verify code.';focusCodeInput(input,view)});
       };
-      button.addEventListener('click',submit);
-      input.addEventListener('touchstart',function(){focusCodeInput(input,view)},{passive:true});
-      input.addEventListener('mousedown',function(){focusCodeInput(input,view)});
-      input.addEventListener('click',function(){focusCodeInput(input,view)});
-      input.addEventListener('focus',function(){focusCodeInput(input,view)});
-      input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},160)});
-      input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
-      dismiss.addEventListener('touchstart',function(e){e.preventDefault();input.blur();setKeyboardMode(false)},{passive:false});
-      dismiss.addEventListener('click',function(){input.blur();setKeyboardMode(false)});
+      button.addEventListener('click',submit);input.addEventListener('touchstart',function(){focusCodeInput(input,view)},{passive:true});input.addEventListener('mousedown',function(){focusCodeInput(input,view)});input.addEventListener('click',function(){focusCodeInput(input,view)});input.addEventListener('focus',function(){focusCodeInput(input,view)});input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},160)});input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});dismiss.addEventListener('touchstart',function(e){e.preventDefault();input.blur();setKeyboardMode(false)},{passive:false});dismiss.addEventListener('click',function(){input.blur();setKeyboardMode(false)});
     }else{
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
       view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2><p>Please try again later.</p></div>';
@@ -170,50 +107,20 @@ export const SECTION_LOCK_SCRIPT = `
     var cardLocked=!!cardItem&&cardItem.mode!=='open'&&!isUnlocked('connect-bot-card');
     if(cardLocked)ensureBotCardOverlay(cardItem);else clearBotCardOverlay();
     document.querySelectorAll('.view').forEach(function(section){
-      var id=section.id;
-      var globalItem=locks[id];
-      var item=(userBlocked[id])?Object.assign({},globalItem||{}, {mode:'locked',locked:true,userBlocked:true}):globalItem;
+      var id=section.id;var globalItem=locks[id];var item=(userBlocked[id])?Object.assign({},globalItem||{}, {mode:'locked',locked:true,userBlocked:true}):globalItem;
       var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(id);
       section.classList.toggle('is-section-locked',isLocked);
-      if(isLocked)ensureOverlay(section,item);
-      else{var old=section.querySelector('.section-locked-view');if(old)old.remove()}
+      if(isLocked)ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view');if(old)old.remove()}
     });
   }
 
-  function loadGlobalLocks(){
-    return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
-      locks={};
-      (data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});
-      preloadLockImages();
-    }).catch(function(){});
-  }
+  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){locks={};(data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}).catch(function(){})}
+  function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){userBlocked={};(data.blockedSections||[]).forEach(function(section){userBlocked[section]=true});userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}).catch(function(){})}
+  function loadLocks(){Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks)}
+  function syncUserControls(){if(document.hidden)return;loadUserControls().then(applyLocks)}
 
-  function loadUserControls(){
-    var id=userId();
-    if(!id)return Promise.resolve();
-    return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
-      userBlocked={};
-      (data.blockedSections||[]).forEach(function(section){userBlocked[section]=true});
-      userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit);
-    }).catch(function(){});
-  }
-
-  function loadLocks(){
-    Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks);
-  }
-
-  function syncUserControls(){
-    if(document.hidden)return;
-    loadUserControls().then(applyLocks);
-  }
-
-  document.addEventListener('click',function(ev){
-    if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;
-    setTimeout(applyLocks,40);
-  },true);
+  document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;setTimeout(applyLocks,40)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls();updateKeyboardInset()}});
-  loadLocks();
-  setInterval(loadGlobalLocks,20000);
-  setInterval(syncUserControls,20000);
+  loadLocks();setInterval(loadGlobalLocks,20000);setInterval(syncUserControls,20000);
 })();
 `;
