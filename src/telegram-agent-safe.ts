@@ -60,11 +60,11 @@ function isGroupChat(type: string): boolean {
 
 function mentionsVexa(text: string, username: string | null): boolean {
   const lower = text.toLowerCase();
-  return /(^|\s|[،,.!؟?])vexa($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text);
+  return /(^|\s|[،,.!؟?])(?:vexa|وکسا)($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text);
 }
 
 function cleanGroupPrompt(text: string, username: string | null): string {
-  let cleaned = text.replace(/(^|\s|[،,.!؟?])vexa([،,.!؟?:\s-]*)/ig, ' ');
+  let cleaned = text.replace(/(^|\s|[،,.!؟?])(?:vexa|وکسا)([،,.!؟?:\s-]*)/ig, ' ');
   if (username) cleaned = cleaned.replace(new RegExp('@' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
   cleaned = cleaned.replace(/(^|\s)@[a-z0-9_]+bot(\s|$)/ig, ' ');
   return cleaned.replace(/\s+/g, ' ').trim();
