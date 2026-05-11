@@ -1,88 +1,55 @@
 export const MINIAPP_AUDIO_SCRIPT = `
 (function(){
-  let audio=null;
-  let currentUrl='';
-  let shouldPlay=false;
-  let pollTimer=0;
-  let unlockButton=null;
-  let userGestureSeen=false;
-  let refreshInFlight=null;
-  const GESTURE_EVENTS=['pointerdown','touchstart','click','keydown'];
-  function ensureUnlockButton(){
-    if(unlockButton)return unlockButton;
-    unlockButton=document.createElement('button');
-    unlockButton.type='button';
-    unlockButton.textContent='Tap to play music';
-    unlockButton.setAttribute('aria-label','Enable mini app music');
-    unlockButton.style.cssText='position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:9999;border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:11px 16px;background:rgba(12,8,10,.88);color:#fff;font:800 13px system-ui,-apple-system,Segoe UI,sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);display:none';
-    unlockButton.addEventListener('click',function(event){event.stopPropagation();handleUserGesture();tryPlay(true);});
-    document.body.appendChild(unlockButton);
-    return unlockButton;
+  var audio=null;
+  var box=null;
+  var playBtn=null;
+  var stopBtn=null;
+  var currentUrl='';
+  function styleButton(btn){
+    btn.style.cssText='height:30px;padding:0 12px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:12px;font-weight:850;letter-spacing:-.02em;box-shadow:inset 0 1px 0 rgba(255,255,255,.16)';
   }
-  function showUnlock(){
-    if(!shouldPlay||!currentUrl)return;
-    ensureUnlockButton().style.display='block';
+  function setPlaying(on){
+    if(playBtn)playBtn.textContent=on?'Playing':'Play';
   }
-  function hideUnlock(){
-    if(unlockButton)unlockButton.style.display='none';
+  function removePlayer(){
+    if(box&&box.parentNode)box.parentNode.removeChild(box);
+    if(audio&&audio.parentNode)audio.parentNode.removeChild(audio);
+    audio=null;box=null;playBtn=null;stopBtn=null;currentUrl='';
   }
-  function ensureAudio(){
-    if(audio)return audio;
-    audio=new Audio();
-    audio.loop=true;
-    audio.preload='auto';
-    audio.autoplay=false;
-    audio.setAttribute('playsinline','true');
-    audio.setAttribute('webkit-playsinline','true');
-    audio.volume=1;
-    audio.addEventListener('playing',hideUnlock);
-    audio.addEventListener('pause',function(){if(shouldPlay&&!document.hidden)showUnlock();});
-    audio.addEventListener('error',function(){if(shouldPlay)showUnlock();});
-    document.addEventListener('visibilitychange',function(){if(document.hidden&&audio){audio.pause();}else if(shouldPlay){tryPlay(false);}});
-    return audio;
-  }
-  function tryPlay(fromGesture){
-    const player=ensureAudio();
-    if(!shouldPlay||!currentUrl)return;
-    if(player.getAttribute('src')!==currentUrl)player.src=currentUrl;
-    const result=player.play();
-    if(result&&typeof result.then==='function'){
-      result.then(hideUnlock).catch(function(){if(!fromGesture||shouldPlay)showUnlock();});
+  function build(info){
+    if(!info||!info.hasAudio||!info.enabled||!info.url){removePlayer();return;}
+    var url=String(info.url);
+    if(!audio){
+      audio=document.createElement('audio');
+      audio.id='miniAppAudioPlayer';
+      audio.loop=true;
+      audio.preload='auto';
+      audio.setAttribute('playsinline','true');
+      audio.setAttribute('webkit-playsinline','true');
+      document.body.appendChild(audio);
+      audio.addEventListener('playing',function(){setPlaying(true)});
+      audio.addEventListener('pause',function(){setPlaying(false)});
+      audio.addEventListener('ended',function(){setPlaying(false)});
+    }
+    if(currentUrl!==url){currentUrl=url;audio.src=url;audio.load();setPlaying(false)}
+    if(!box){
+      box=document.createElement('div');
+      box.id='miniAppAudioBox';
+      box.style.cssText='position:fixed;right:14px;bottom:92px;z-index:90;display:flex;gap:7px;padding:7px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 18px 38px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+      playBtn=document.createElement('button');
+      stopBtn=document.createElement('button');
+      playBtn.type='button';stopBtn.type='button';
+      playBtn.textContent='Play';stopBtn.textContent='Stop';
+      styleButton(playBtn);styleButton(stopBtn);
+      playBtn.onclick=function(ev){ev.preventDefault();ev.stopPropagation();if(!audio)return;if(audio.paused){audio.play().catch(function(){setPlaying(false)})}else{audio.pause()}};
+      stopBtn.onclick=function(ev){ev.preventDefault();ev.stopPropagation();if(!audio)return;audio.pause();audio.currentTime=0;setPlaying(false)};
+      box.appendChild(playBtn);box.appendChild(stopBtn);
+      document.body.appendChild(box);
     }
   }
-  function stopAudio(){
-    shouldPlay=false;
-    hideUnlock();
-    if(audio){audio.pause();audio.currentTime=0;}
-  }
-  function applyConfig(config,fromGesture){
-    if(!config||!config.hasAudio||!config.enabled||!config.url){stopAudio();return;}
-    shouldPlay=true;
-    const nextUrl=String(config.url);
-    const player=ensureAudio();
-    if(currentUrl!==nextUrl){currentUrl=nextUrl;player.src=nextUrl;player.load();}
-    tryPlay(!!fromGesture);
-  }
-  async function refreshAudio(fromGesture){
-    if(refreshInFlight)return refreshInFlight;
-    refreshInFlight=(async function(){
-      try{
-        const response=await fetch('/app/api/miniapp-audio',{cache:'no-store'});
-        if(!response.ok)return;
-        applyConfig(await response.json(),fromGesture);
-      }catch(error){}finally{refreshInFlight=null;}
-    })();
-    return refreshInFlight;
-  }
-  function handleUserGesture(){
-    userGestureSeen=true;
-    ensureAudio();
-    if(currentUrl&&shouldPlay)tryPlay(true);
-    else refreshAudio(true);
-  }
-  GESTURE_EVENTS.forEach(function(eventName){document.addEventListener(eventName,handleUserGesture,{capture:true,passive:true});});
-  ensureAudio();
-  refreshAudio(false).then(function(){if(userGestureSeen)tryPlay(true);});
-  pollTimer=window.setInterval(function(){refreshAudio(false);},15000);
-  window.addEventListener('beforeunload',function(){if(pollTimer)window.clearInterval(pollTimer);});
-})();`;
+  function load(){fetch('/app/api/miniapp-audio',{cache:'no-store'}).then(function(r){return r.json()}).then(build).catch(function(){})}
+  window.VexaMiniappAudio={reload:load,stop:function(){if(audio){audio.pause();audio.currentTime=0;setPlaying(false)}}};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+  setInterval(load,15000);
+})();
+`;
