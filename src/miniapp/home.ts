@@ -36,7 +36,10 @@ export const HOME_SECTION = `<section id="home" class="view active">
         <p class="deposit-copy">Your balance will be charged as TON after Telegram confirms the payment.</p>
         <div class="field deposit-custom-field">
           <label>Custom Stars Amount</label>
-          <input id="starsAmountSheet" inputmode="numeric" placeholder="Enter Stars amount" value="100" />
+          <div class="deposit-amount-row">
+            <input id="starsAmountSheet" inputmode="numeric" placeholder="Stars amount" value="100" />
+            <span id="starsTonEquivalent" class="deposit-ton-equivalent">≈ 0.589 TON</span>
+          </div>
         </div>
         <button class="primary deposit-pay-button" type="button" data-action="deposit-custom-stars-sheet">Pay With Stars</button>
         <div class="deposit-stars-logo" aria-hidden="true">
