@@ -7,6 +7,7 @@ import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
 
@@ -99,8 +100,25 @@ app.delete('/app/api/groups/:chatId/leave', async (c) => {
   }
 });
 
+app.get('/app/api/home-finance-image.png', async (c) => imageFromR2(c.env, HOME_FINANCE_IMAGE_KEY));
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
+
+app.post('/admin/api/upload-home-finance-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(HOME_FINANCE_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, url: `/app/api/home-finance-image.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home image' }, 400);
+  }
+});
 
 app.get('/admin/api/plinko-control', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -163,7 +181,7 @@ app.post('/admin/api/section-lock-image-v2', async (c) => {
 
 async function imageFromR2(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
-  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
 }
 
