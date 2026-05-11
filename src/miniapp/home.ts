@@ -4,6 +4,22 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <p>Vexa FLOW is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience.</p>
   </section>
 
+  <section class="home-finance-split">
+    <div class="home-finance-actions">
+      <button class="home-finance-card" type="button" data-action="open-deposit">
+        <strong>Deposit</strong>
+        <span>Add TON balance</span>
+      </button>
+      <button class="home-finance-card" type="button">
+        <strong>Withdraw</strong>
+        <span>Coming soon</span>
+      </button>
+    </div>
+    <div class="home-finance-visual">
+      <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+    </div>
+  </section>
+
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-deposit"></div>
     <div class="deposit-panel card">
