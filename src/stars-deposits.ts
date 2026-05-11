@@ -85,7 +85,15 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
   await env.DB.prepare(`UPDATE stars_deposits SET status = 'completed', telegram_payment_charge_id = ?, provider_payment_charge_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'completed'`)
     .bind(payment.telegram_payment_charge_id ?? null, payment.provider_payment_charge_id ?? null, id)
     .run();
-  await adjustUserTonBalance(env, row.user_id, row.amount_nano);
+  await adjustUserTonBalance(env, row.user_id, row.amount_nano, {
+    kind: 'deposit',
+    title: 'Stars purchase',
+    description: `${row.stars_amount} Stars converted to TON balance`,
+    referenceId: row.id,
+    referenceType: 'stars_deposit',
+    status: 'completed',
+    metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: payment.telegram_payment_charge_id ?? null },
+  });
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
