@@ -32,7 +32,10 @@ export const MINIAPP_SCRIPT = `
     return j;
   }
 
-  function userLine(){var n=q('userLine');if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level 1 <span style="color:rgba(255,255,255,.55);font-weight:700">• 42%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:42%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">580 XP left to finish</span>'}
+  function rankFallback(level){level=Math.max(1,Math.floor(Number(level)||1));if(level>=50)return 'Legend';if(level>=35)return 'Elite';if(level>=20)return 'Pro';if(level>=10)return 'Builder';if(level>=5)return 'Explorer';return 'Starter'}
+  function renderLevel(profile){var n=q('userLine');var level=Math.max(1,Math.floor(Number(profile&&profile.level)||1));var progress=Math.max(0,Math.min(100,Math.floor(Number(profile&&profile.progressPercent)||0)));var left=Math.max(0,Math.floor(Number(profile&&profile.xpLeft)||0));var rank=String((profile&&profile.rankName)||rankFallback(level));var pill=q('rankPill');if(pill)pill.textContent=rank;if(!n)return;n.innerHTML='<span style="display:block;color:#fff;font-weight:800;font-size:12px;line-height:1">Level '+level+' <span style="color:rgba(255,255,255,.55);font-weight:700">• '+progress+'%</span></span><span style="display:block;width:158px;height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;width:'+progress+'%;height:100%;border-radius:999px;background:linear-gradient(90deg,#5b0f24,#8f1d3d,#c03a5b);box-shadow:0 0 14px rgba(192,58,91,.48)"></span></span><span style="display:block;margin-top:5px;color:rgba(255,255,255,.5);font-size:9.5px;line-height:1">'+left+' XP left to finish</span>'}
+  async function loadLevel(){renderLevel({level:1,progressPercent:42,xpLeft:580,rankName:'Starter'});if(!ownerId)return;try{renderLevel(await api('/app/api/level?userId='+encodeURIComponent(ownerId),{headers:{'accept':'application/json'}}))}catch(e){}}
+  function userLine(){loadLevel()}
 
   function setVoice(v,label){
     selectedVoice=v;
@@ -55,6 +58,7 @@ export const MINIAPP_SCRIPT = `
           tg.openInvoice(d.invoiceLink,function(state){
             if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;
             if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);
+            if(state==='paid')setTimeout(loadLevel,1100);
           });
         }else{window.location.href=d.invoiceLink}
       }
