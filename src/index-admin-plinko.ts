@@ -2,7 +2,7 @@ import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
-import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
+import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageVersionKey } from './section-locks';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -77,6 +77,17 @@ app.get('/app/api/bots/:id/groups', async (c) => {
   }
 });
 
+app.delete('/app/api/groups/:chatId/leave', async (c) => {
+  const chatId = c.req.param('chatId');
+  try {
+    await telegram(c.env.TELEGRAM_BOT_TOKEN, 'leaveChat', { chat_id: chatId }).catch((error) => console.warn('main bot leave group failed', error));
+    await c.env.DB.prepare('DELETE FROM bot_groups WHERE chat_id = ?').bind(chatId).run().catch(() => undefined);
+    return c.json({ ok: true, chatId });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not leave group' }, 400);
+  }
+});
+
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
@@ -143,6 +154,15 @@ async function imageFromR2(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
+}
+
+async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
+  const response = await fetch('https://api.telegram.org/bot' + token + '/' + method, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return response.json() as Promise<T>;
 }
 
 function adminCookieValue(cookie: string | undefined): string {
