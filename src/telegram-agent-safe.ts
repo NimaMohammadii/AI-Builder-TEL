@@ -2,13 +2,11 @@ import { aiReply } from './ai';
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
-import type { BotRecord, Env, TelegramChat, TelegramUpdate } from './types';
+import type { BotRecord, Env, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
 export { setTelegramWebhook };
 
-type GroupInfo = { chatId: string; type: string; title: string; username: string; lastSeenAt: string };
-type TelegramServiceMessage = { new_chat_members?: Array<{ id: number; is_bot?: boolean; username?: string }>; left_chat_member?: { id: number; is_bot?: boolean; username?: string } };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
@@ -23,8 +21,8 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
       await handleStarsSuccessfulPayment(env, userId, update.message.successful_payment);
       return;
     }
-    if (update.my_chat_member && (await handleGroupMembershipUpdate(env, bot, update))) return;
-    if (update.message && (await handleGroupVexaMessage(env, bot, update))) return;
+    if (update.message && (await handleMainBotGroupMessage(env, bot, update))) return;
+    if (isGroupUpdate(update)) return;
     await baseProcessTelegramUpdate(env, bot, update);
   } catch (error) {
     console.error('safe builder runtime caught error', error);
@@ -32,64 +30,37 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
   }
 }
 
-async function handleGroupMembershipUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<boolean> {
-  const member = update.my_chat_member;
-  if (!member || !isGroupChat(member.chat.type)) return false;
-
-  const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
-  if (settings.isBuilderBot) return true;
-
-  const status = member.new_chat_member?.status || '';
-  if (status === 'left' || status === 'kicked') await removeGroup(env, bot, settings, member.chat);
-  else await saveGroup(env, bot, settings, member.chat);
-  return true;
-}
-
-async function handleGroupVexaMessage(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<boolean> {
+async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<boolean> {
   const message = update.message;
   if (!message || !isGroupChat(message.chat.type)) return false;
 
-  const settings = safeParseJson<{ isBuilderBot?: boolean; groups?: GroupInfo[] }>(bot.settings_json, {});
-
-  if (!settings.isBuilderBot) {
-    if (await handleGroupServiceMessage(env, bot, settings, message.chat, message as unknown as TelegramServiceMessage)) return true;
-    await saveGroup(env, bot, settings, message.chat).catch((error) => console.warn('group save skipped', error));
-  }
+  const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
+  if (!settings.isBuilderBot) return true;
 
   const text = message.text?.trim() ?? '';
-  if (!mentionsVexa(text, bot.username, Boolean(settings.isBuilderBot))) return true;
+  if (!mentionsVexa(text, bot.username)) return true;
 
   const prompt = cleanGroupPrompt(text, bot.username);
   if (!prompt) return true;
 
   const token = await decryptUserToken(env, bot.encrypted_token);
-  const reply = await groupReply(env, bot, prompt);
-  await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('group reply failed', error));
+  const reply = await groupReply(env, prompt);
+  await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
   return true;
 }
 
-async function handleGroupServiceMessage(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat, message: TelegramServiceMessage): Promise<boolean> {
-  const botUsername = bot.username?.toLowerCase() ?? '';
-  const added = message.new_chat_members?.some((member) => member.is_bot && (!botUsername || member.username?.toLowerCase() === botUsername));
-  if (added) {
-    await saveGroup(env, bot, settings, chat);
-    return true;
-  }
-  const removed = message.left_chat_member?.is_bot && (!botUsername || message.left_chat_member.username?.toLowerCase() === botUsername);
-  if (removed) {
-    await removeGroup(env, bot, settings, chat);
-    return true;
-  }
-  return false;
+function isGroupUpdate(update: TelegramUpdate): boolean {
+  if (update.my_chat_member && isGroupChat(update.my_chat_member.chat.type)) return true;
+  return Boolean(update.message && isGroupChat(update.message.chat.type));
 }
 
 function isGroupChat(type: string): boolean {
   return type === 'group' || type === 'supergroup';
 }
 
-function mentionsVexa(text: string, username: string | null, isMainBot = false): boolean {
+function mentionsVexa(text: string, username: string | null): boolean {
   const lower = text.toLowerCase();
-  return /(^|\s|[،,.!؟?])vexa($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || Boolean(isMainBot && /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text));
+  return /(^|\s|[،,.!؟?])vexa($|\s|[،,.!؟?:])/i.test(text) || Boolean(username && lower.includes('@' + username.toLowerCase())) || /(^|\s)@[a-z0-9_]+bot(\s|$)/i.test(text);
 }
 
 function cleanGroupPrompt(text: string, username: string | null): string {
@@ -99,26 +70,7 @@ function cleanGroupPrompt(text: string, username: string | null): string {
   return cleaned.replace(/\s+/g, ' ').trim();
 }
 
-async function saveGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat): Promise<void> {
-  const now = new Date().toISOString();
-  const chatId = String(chat.id);
-  const groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
-  settings.groups = [{ chatId, type: chat.type, title: chat.title || chat.username || chatId, username: chat.username || '', lastSeenAt: now }, ...groups].slice(0, 30);
-  await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), bot.id).run();
-  await env.DB.prepare('INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, last_seen_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(bot_id, chat_id) DO UPDATE SET chat_type = excluded.chat_type, title = excluded.title, username = excluded.username, last_seen_at = CURRENT_TIMESTAMP')
-    .bind(bot.id, chatId, chat.type, chat.title || null, chat.username || null)
-    .run()
-    .catch(() => undefined);
-}
-
-async function removeGroup(env: Env, bot: BotRecord, settings: { groups?: GroupInfo[] }, chat: TelegramChat): Promise<void> {
-  const chatId = String(chat.id);
-  settings.groups = Array.isArray(settings.groups) ? settings.groups.filter((group) => group && group.chatId !== chatId) : [];
-  await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), bot.id).run();
-  await env.DB.prepare('DELETE FROM bot_groups WHERE bot_id = ? AND chat_id = ?').bind(bot.id, chatId).run().catch(() => undefined);
-}
-
-async function groupReply(env: Env, bot: BotRecord, prompt: string): Promise<string> {
+async function groupReply(env: Env, prompt: string): Promise<string> {
   const system = 'You are Vexa inside a Telegram group. Reply in the user language, be warm, friendly, helpful, and concise. Use live web search when current facts are useful. Do not mention tools.';
   if (!env.OPENAI_API_KEY) return aiReply(env, system, prompt, []);
   try {
