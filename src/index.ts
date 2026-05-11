@@ -12,7 +12,7 @@ const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
+const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query'];
 
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
@@ -248,20 +248,10 @@ async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; 
   try {
     const update = (await c.req.json()) as TelegramUpdate;
     const bot = await getBot(c.env, botId);
-    if (!bot || bot.status === 'suspended') return Response.json({ ok: true, ignored: true });
-    if (bot.status === 'paused') {
-      if (isGroupMembershipUpdate(update)) c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('paused bot group tracking failed', error)));
-      return Response.json({ ok: true, ignored: true });
-    }
+    if (!bot || bot.status === 'suspended' || bot.status === 'paused') return Response.json({ ok: true, ignored: true });
     c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('user bot telegram processing failed', error)));
     return Response.json({ ok: true });
   } catch (error) { console.error('user bot webhook failed', error); return Response.json({ ok: true, recovered: true }); }
-}
-
-function isGroupMembershipUpdate(update: TelegramUpdate): boolean {
-  if (update.my_chat_member) return true;
-  const message = update.message as (TelegramUpdate['message'] & { new_chat_members?: unknown[]; left_chat_member?: unknown }) | undefined;
-  return Boolean(message && (Array.isArray(message.new_chat_members) || message.left_chat_member));
 }
 
 async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
