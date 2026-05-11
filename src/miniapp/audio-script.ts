@@ -1,4 +1,6 @@
-export const MINIAPP_AUDIO_SCRIPT = `
+import { LEVEL_SYNC_SCRIPT } from './level-sync-script';
+
+export const MINIAPP_AUDIO_SCRIPT = LEVEL_SYNC_SCRIPT + `
 (function(){
   var audio=null;
   var box=null;
