@@ -73,14 +73,15 @@ app.post('/app/api/ton/deposits/:id/verify', async (c) => {
 
 app.get('/app/api/bots/:id/groups', async (c) => {
   try {
-    const rows = await c.env.DB.prepare(`SELECT chat_id AS chatId, chat_type AS type, title, username, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN ton_spent_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
+    const rows = await c.env.DB.prepare(`SELECT chat_id AS chatId, chat_type AS type, title, username, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt, COALESCE(ton_spent_nano, 0) AS tonSpentNano
       FROM bot_groups
       WHERE bot_id = ?
       ORDER BY datetime(last_seen_at) DESC
       LIMIT 50`)
       .bind(c.req.param('id'))
-      .all<{ chatId: string; type: string; title: string | null; username: string | null; firstSeenAt: string; lastSeenAt: string }>();
-    return c.json({ groups: rows.results ?? [] });
+      .all<{ chatId: string; type: string; title: string | null; username: string | null; firstSeenAt: string; lastSeenAt: string; tonSpentNano: number }>();
+    return c.json({ groups: (rows.results ?? []).map((group) => ({ ...group, tonSpent: Number(group.tonSpentNano || 0) / 1_000_000_000 })) });
   } catch (error) {
     console.warn('load bot groups failed', error);
     return c.json({ groups: [], warning: 'Could not load bot groups from D1.' });
