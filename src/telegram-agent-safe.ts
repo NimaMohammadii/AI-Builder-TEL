@@ -2,6 +2,7 @@ import { aiReply } from './ai';
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
+import { selectedGroupReply } from './group-ai-provider';
 import type { BotRecord, Env, TelegramChat, TelegramUpdate, TelegramUser } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
@@ -73,7 +74,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   }
 
   await addGroupTonUsage(env, message.chat, GROUP_REPLY_COST_NANO);
-  const reply = await groupReply(env, prompt);
+  const reply = await selectedGroupReply(env, prompt);
   await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
   return true;
 }
