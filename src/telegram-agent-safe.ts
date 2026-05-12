@@ -10,6 +10,7 @@ export { setTelegramWebhook };
 const GROUP_REPLY_COST_NANO = 400000;
 
 type GroupReplyMessage = { reply_to_message?: { from?: { is_bot?: boolean; username?: string } } };
+type GroupMembershipMessage = { new_chat_members?: TelegramUser[]; left_chat_member?: TelegramUser };
 type MainGroupBillingRow = { added_by_user_id: string | null };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
@@ -53,7 +54,8 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
   if (!settings.isBuilderBot) return true;
 
-  await saveMainGroup(env, message.chat).catch((error) => console.warn('main group message save skipped', error));
+  const addedBy = isBotAddedServiceMessage(message as unknown as GroupMembershipMessage) ? message.from : undefined;
+  await saveMainGroup(env, message.chat, addedBy).catch((error) => console.warn('main group message save skipped', error));
 
   const text = message.text?.trim() ?? '';
   const calledByName = mentionsVexa(text, bot.username);
@@ -168,6 +170,10 @@ function isGroupUpdate(update: TelegramUpdate): boolean {
 
 function isGroupChat(type: string): boolean {
   return type === 'group' || type === 'supergroup';
+}
+
+function isBotAddedServiceMessage(message: GroupMembershipMessage): boolean {
+  return Array.isArray(message.new_chat_members) && message.new_chat_members.some((member) => Boolean(member?.is_bot));
 }
 
 function mentionsVexa(text: string, username: string | null): boolean {
