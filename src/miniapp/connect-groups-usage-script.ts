@@ -28,23 +28,32 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
   }
   function markClaimPending(){sessionStorage.setItem('vexaGroupClaimPendingUntil',String(Date.now()+90000))}
   function shouldClaim(){return Number(sessionStorage.getItem('vexaGroupClaimPendingUntil')||0)>Date.now()}
+  function clearClaimPending(){sessionStorage.removeItem('vexaGroupClaimPendingUntil')}
   async function claimGroups(groups){
     if(!shouldClaim())return;
     var userId=ownerId();
     if(!userId)return;
     var user=tgUser();
+    var claimed=0;
     await Promise.all((groups||[]).map(function(group){
       if(!group||!group.chatId)return Promise.resolve();
-      return api('/app/api/groups/'+encodeURIComponent(group.chatId)+'/payer',{method:'POST',body:JSON.stringify({userId:userId,username:user.username||'',firstName:user.first_name||''})}).catch(function(){return null});
+      return api('/app/api/groups/'+encodeURIComponent(group.chatId)+'/payer',{method:'POST',body:JSON.stringify({userId:userId,username:user.username||'',firstName:user.first_name||''})}).then(function(r){if(r&&r.claimed)claimed++}).catch(function(){return null});
     }));
+    if(claimed>0)clearClaimPending();
   }
   async function loadGroups(){
     var box=q('homeGroups');
     if(!box)return;
+    var userId=ownerId();
+    if(!userId){box.innerHTML=empty();var s=q('groupsStatus');if(s)s.textContent='Login required';return}
     try{
-      var data=await api('/app/api/bots/main/groups');
+      var data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(userId)+(shouldClaim()?'&claim=1':''));
       var groups=data.groups||[];
       await claimGroups(groups);
+      if(shouldClaim()){
+        data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(userId));
+        groups=data.groups||[];
+      }
       box.innerHTML=groups.length?groups.map(row).join(''):empty();
       var status=q('groupsStatus');
       if(status)status.textContent=groups.length?String(groups.length)+' groups':'Auto-detected';
@@ -66,7 +75,13 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
     var refresh=event.target&&event.target.closest&&event.target.closest('[data-action="refresh"]');
     if(refresh){refreshSoon();return}
     var addGroup=event.target&&event.target.closest&&event.target.closest('[data-action="add-main-group"]');
-    if(addGroup){markClaimPending();refreshSoon()}
+    if(addGroup){markClaimPending();refreshSoon();return}
+    var leave=event.target&&event.target.closest&&event.target.closest('[data-action="leave-main-group"]');
+    if(leave){
+      var chatId=leave.getAttribute('data-chat-id'),userId=ownerId();
+      if(!chatId||!userId)return;
+      api('/app/api/groups/'+encodeURIComponent(chatId)+'/leave',{method:'DELETE',body:JSON.stringify({userId:userId})}).then(loadGroups).catch(loadGroups);
+    }
   },true);
   setTimeout(loadGroups,1000);
 })();
