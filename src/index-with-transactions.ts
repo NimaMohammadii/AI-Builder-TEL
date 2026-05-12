@@ -1,8 +1,25 @@
 import app from './index-admin-plinko';
+import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { listUserTonTransactions } from './ton-transactions';
 import { addUserXp, getUserLevel } from './levels';
+import type { Env } from './types';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+
+app.get('/admin/api/group-ai-provider', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await groupAiProviderJson(c.env));
+});
+
+app.post('/admin/api/group-ai-provider', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const body = await c.req.json() as { provider?: unknown };
+    return c.json(await setGroupAiProvider(c.env, body.provider));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save group AI provider' }, 400);
+  }
+});
 
 app.post('/app/api/groups/:chatId/payer', async (c) => {
   try {
@@ -66,5 +83,18 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
     });
   }
 });
+
+function adminCookieValue(cookie: string | undefined): string {
+  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function isAdmin(env: Env, key: string): boolean {
+  return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
+}
+
+function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
+  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+}
 
 export default app;
