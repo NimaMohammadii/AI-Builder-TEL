@@ -33,13 +33,25 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
       box.innerHTML=groups.length?groups.map(row).join(''):empty();
       var status=q('groupsStatus');
       if(status)status.textContent=groups.length?String(groups.length)+' groups':'Auto-detected';
-    }catch(error){box.innerHTML=empty()}
+    }catch(error){
+      box.innerHTML=empty();
+      var status=q('groupsStatus');
+      if(status)status.textContent='Could not load';
+    }
+  }
+  function refreshSoon(){
+    [250,1000,2500,5000,8000].forEach(function(delay){setTimeout(loadGroups,delay)});
   }
   window.VexaLoadGroups=loadGroups;
   document.addEventListener('DOMContentLoaded',function(){setTimeout(loadGroups,50)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshSoon()});
+  window.addEventListener('focus',refreshSoon);
+  window.addEventListener('pageshow',refreshSoon);
   document.addEventListener('click',function(event){
-    var target=event.target&&event.target.closest&&event.target.closest('[data-action="refresh"]');
-    if(target)setTimeout(loadGroups,250);
+    var refresh=event.target&&event.target.closest&&event.target.closest('[data-action="refresh"]');
+    if(refresh){refreshSoon();return}
+    var addGroup=event.target&&event.target.closest&&event.target.closest('[data-action="add-main-group"]');
+    if(addGroup)refreshSoon();
   },true);
   setTimeout(loadGroups,1000);
 })();
