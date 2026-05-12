@@ -10,6 +10,7 @@ export { setTelegramWebhook };
 
 const GROUP_REPLY_COST_NANO = 400000;
 const GROUP_CONTEXT_LIMIT = 30;
+const EMPTY_GROUP_CALL_PROMPT = 'The user called Vexa without adding a specific question. Use the recent group context and reply naturally. If there is a clear ongoing discussion, give a short helpful or funny reaction. If the context is unclear, ask a brief friendly follow-up question.';
 
 type GroupReplyMessage = { reply_to_message?: { message_id?: number; text?: string; from?: { id?: number; is_bot?: boolean; first_name?: string; username?: string } } };
 type GroupMembershipMessage = { new_chat_members?: TelegramUser[]; left_chat_member?: TelegramUser };
@@ -66,8 +67,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   const calledByReply = isReplyToBot(message as unknown as GroupReplyMessage, bot.username);
   if (!calledByName && !calledByReply) return true;
 
-  const prompt = cleanGroupPrompt(text, bot.username);
-  if (!prompt) return true;
+  const prompt = cleanGroupPrompt(text, bot.username) || EMPTY_GROUP_CALL_PROMPT;
 
   const token = await decryptUserToken(env, bot.encrypted_token);
   const charged = await chargeGroupAdder(env, message.chat);
