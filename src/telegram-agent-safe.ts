@@ -3,16 +3,18 @@ import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook 
 import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import { selectedGroupReply } from './group-ai-provider';
-import type { BotRecord, Env, TelegramChat, TelegramUpdate, TelegramUser } from './types';
+import type { BotRecord, Env, TelegramChat, TelegramMessage, TelegramUpdate, TelegramUser } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
 export { setTelegramWebhook };
 
 const GROUP_REPLY_COST_NANO = 400000;
+const GROUP_CONTEXT_LIMIT = 30;
 
-type GroupReplyMessage = { reply_to_message?: { from?: { is_bot?: boolean; username?: string } } };
+type GroupReplyMessage = { reply_to_message?: { message_id?: number; text?: string; from?: { id?: number; is_bot?: boolean; first_name?: string; username?: string } } };
 type GroupMembershipMessage = { new_chat_members?: TelegramUser[]; left_chat_member?: TelegramUser };
 type MainGroupBillingRow = { added_by_user_id: string | null };
+type GroupMessageContextRow = { message_id: string; user_id: string | null; first_name: string | null; username: string | null; text: string | null; created_at: string };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
@@ -57,6 +59,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
 
   const addedBy = isBotAddedServiceMessage(message as unknown as GroupMembershipMessage) ? message.from : undefined;
   await saveMainGroup(env, message.chat, addedBy, Boolean(addedBy)).catch((error) => console.warn('main group message save skipped', error));
+  await saveGroupMessage(env, message).catch((error) => console.warn('group message context save skipped', error));
 
   const text = message.text?.trim() ?? '';
   const calledByName = mentionsVexa(text, bot.username);
@@ -74,7 +77,11 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   }
 
   await addGroupTonUsage(env, message.chat, GROUP_REPLY_COST_NANO);
-  const reply = await selectedGroupReply(env, prompt);
+  const contextPrompt = await buildGroupContextPrompt(env, message, prompt).catch((error) => {
+    console.warn('group context prompt skipped', error);
+    return prompt;
+  });
+  const reply = await selectedGroupReply(env, contextPrompt);
   await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
   return true;
 }
@@ -113,6 +120,7 @@ async function saveMainGroup(env: Env, chat: TelegramChat, addedBy?: TelegramUse
 async function removeMainGroup(env: Env, chat: TelegramChat): Promise<void> {
   await ensureMainGroupColumns(env);
   await env.DB.prepare("DELETE FROM bot_groups WHERE bot_id = 'main' AND chat_id = ?").bind(String(chat.id)).run().catch(() => undefined);
+  await env.DB.prepare('DELETE FROM group_messages WHERE chat_id = ?').bind(String(chat.id)).run().catch(() => undefined);
 }
 
 async function chargeGroupAdder(env: Env, chat: TelegramChat): Promise<{ ok: boolean; message: string }> {
@@ -141,6 +149,82 @@ async function addGroupTonUsage(env: Env, chat: TelegramChat, amountNano: number
     .bind(Math.max(0, Math.floor(amountNano)), String(chat.id))
     .run()
     .catch((error) => console.warn('group TON usage tracking skipped', error));
+}
+
+async function saveGroupMessage(env: Env, message: TelegramMessage): Promise<void> {
+  const text = message.text?.trim();
+  if (!text || !message.from) return;
+  await ensureGroupMessagesTable(env);
+  await env.DB.prepare(`INSERT INTO group_messages (chat_id, message_id, user_id, first_name, username, text, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(chat_id, message_id) DO UPDATE SET
+      user_id = excluded.user_id,
+      first_name = excluded.first_name,
+      username = excluded.username,
+      text = excluded.text,
+      created_at = excluded.created_at`)
+    .bind(String(message.chat.id), String(message.message_id), String(message.from.id), message.from.first_name || null, message.from.username || null, text.slice(0, 1000))
+    .run();
+  await pruneGroupMessages(env, String(message.chat.id));
+}
+
+async function pruneGroupMessages(env: Env, chatId: string): Promise<void> {
+  await env.DB.prepare(`DELETE FROM group_messages
+    WHERE chat_id = ?
+      AND message_id NOT IN (
+        SELECT message_id FROM group_messages
+        WHERE chat_id = ?
+        ORDER BY datetime(created_at) DESC, CAST(message_id AS INTEGER) DESC
+        LIMIT ?
+      )`)
+    .bind(chatId, chatId, GROUP_CONTEXT_LIMIT)
+    .run();
+}
+
+async function buildGroupContextPrompt(env: Env, message: TelegramMessage, prompt: string): Promise<string> {
+  const rows = await loadGroupMessages(env, String(message.chat.id));
+  const currentUser = describeUser(message.from);
+  const replyContext = describeReplyContext(message as unknown as GroupReplyMessage);
+  const recent = rows.length ? rows.map(formatContextRow).join('\n') : 'No recent group messages saved yet.';
+  return [
+    'Telegram group context for Vexa:',
+    'Use the recent messages to understand the discussion. You may naturally use names when helpful, but do not overdo it.',
+    '',
+    'Current speaker: ' + currentUser,
+    replyContext ? 'Reply context: ' + replyContext : '',
+    '',
+    'Recent messages, oldest to newest:',
+    recent,
+    '',
+    'Current cleaned message:',
+    prompt,
+  ].filter(Boolean).join('\n');
+}
+
+async function loadGroupMessages(env: Env, chatId: string): Promise<GroupMessageContextRow[]> {
+  await ensureGroupMessagesTable(env);
+  const result = await env.DB.prepare(`SELECT message_id, user_id, first_name, username, text, created_at
+    FROM group_messages
+    WHERE chat_id = ?
+    ORDER BY datetime(created_at) DESC, CAST(message_id AS INTEGER) DESC
+    LIMIT ?`)
+    .bind(chatId, GROUP_CONTEXT_LIMIT)
+    .all<GroupMessageContextRow>();
+  return (result.results || []).slice().reverse();
+}
+
+async function ensureGroupMessagesTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS group_messages (
+    chat_id TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    user_id TEXT,
+    first_name TEXT,
+    username TEXT,
+    text TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (chat_id, message_id)
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_group_messages_chat_created ON group_messages (chat_id, created_at)').run().catch(() => undefined);
 }
 
 async function ensureMainGroupColumns(env: Env): Promise<void> {
@@ -195,6 +279,30 @@ function cleanGroupPrompt(text: string, username: string | null): string {
   if (username) cleaned = cleaned.replace(new RegExp('@' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
   cleaned = cleaned.replace(/(^|\s)@[a-z0-9_]+bot(\s|$)/ig, ' ');
   return cleaned.replace(/\s+/g, ' ').trim();
+}
+
+function describeUser(user?: TelegramUser): string {
+  if (!user) return 'Unknown user';
+  const name = user.first_name || 'Unknown';
+  return [name, user.username ? '@' + user.username : '', 'id=' + user.id].filter(Boolean).join(' ');
+}
+
+function describeReplyContext(message: GroupReplyMessage): string {
+  const reply = message.reply_to_message;
+  if (!reply) return '';
+  const who = describeUser(reply.from as TelegramUser | undefined);
+  const text = reply.text ? sanitizeContextText(reply.text, 500) : '';
+  return text ? who + ' said: ' + text : who;
+}
+
+function formatContextRow(row: GroupMessageContextRow): string {
+  const name = row.first_name || row.username || row.user_id || 'Unknown';
+  const handle = row.username ? ' @' + row.username : '';
+  return name + handle + ': ' + sanitizeContextText(row.text || '', 500);
+}
+
+function sanitizeContextText(value: string, maxLength: number): string {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
 }
 
 function cleanUserId(value: unknown): string {
