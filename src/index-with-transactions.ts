@@ -1,11 +1,14 @@
 import app from './index-admin-plinko';
 import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
+import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { listUserTonTransactions } from './ton-transactions';
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
 import type { Env } from './types';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+
+registerGroupPhotoEndpoint(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
