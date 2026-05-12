@@ -5,6 +5,7 @@ import { OPENAI_BASE_URL, OPENAI_MODEL } from './utils';
 export type GroupAiProvider = 'gpt' | 'grok';
 
 const GROUP_AI_PROVIDER_KEY = 'admin:group-ai-provider';
+const GROUP_AI_SETTINGS_ID = 'provider';
 const GROK_MODEL = 'grok-4-1-fast-reasoning';
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const GPT_GROUP_SYSTEM_PROMPT = 'You are Vexa inside a Telegram group. Reply in the user language, be warm, friendly, helpful, and concise. Do not mention tools.';
@@ -13,7 +14,7 @@ const GROK_GROUP_SYSTEM_PROMPT = 'You are Vexa powered by Grok inside a Telegram
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 type ChatCompletionResult = { choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>; error?: { message?: string } };
 
-type AdminSettingRow = { value: string | null };
+type GroupAiSettingRow = { provider: string | null };
 
 export async function getGroupAiProvider(env: Env): Promise<GroupAiProvider> {
   const dbValue = await readProviderFromD1(env);
@@ -41,9 +42,9 @@ export async function selectedGroupReply(env: Env, prompt: string): Promise<stri
 
 async function readProviderFromD1(env: Env): Promise<GroupAiProvider | null> {
   try {
-    await ensureAdminSettingsTable(env);
-    const row = await env.DB.prepare('SELECT value FROM admin_settings WHERE key = ?').bind(GROUP_AI_PROVIDER_KEY).first<AdminSettingRow>();
-    return row?.value === 'grok' ? 'grok' : row?.value === 'gpt' ? 'gpt' : null;
+    await ensureGroupAiSettingsTable(env);
+    const row = await env.DB.prepare('SELECT provider FROM group_ai_settings WHERE id = ?').bind(GROUP_AI_SETTINGS_ID).first<GroupAiSettingRow>();
+    return row?.provider === 'grok' ? 'grok' : row?.provider === 'gpt' ? 'gpt' : null;
   } catch (error) {
     console.warn('read group AI provider from D1 failed', error);
     return null;
@@ -51,18 +52,18 @@ async function readProviderFromD1(env: Env): Promise<GroupAiProvider | null> {
 }
 
 async function writeProviderToD1(env: Env, provider: GroupAiProvider): Promise<void> {
-  await ensureAdminSettingsTable(env);
-  await env.DB.prepare(`INSERT INTO admin_settings (key, value, updated_at)
+  await ensureGroupAiSettingsTable(env);
+  await env.DB.prepare(`INSERT INTO group_ai_settings (id, provider, updated_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-    .bind(GROUP_AI_PROVIDER_KEY, provider)
+    ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, updated_at = CURRENT_TIMESTAMP`)
+    .bind(GROUP_AI_SETTINGS_ID, provider)
     .run();
 }
 
-async function ensureAdminSettingsTable(env: Env): Promise<void> {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
+async function ensureGroupAiSettingsTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS group_ai_settings (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
 }
