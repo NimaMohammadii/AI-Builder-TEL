@@ -4,6 +4,7 @@ import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageVersionKey } from './section-locks';
+import { setTelegramWebhook } from './telegram-agent-safe';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -16,9 +17,11 @@ app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.
 
 app.get('/app/api/main-bot', async (c) => {
   try {
+    const webhook = await setTelegramWebhook(c.env).catch((error) => ({ ok: false, description: error instanceof Error ? error.message : 'Could not sync webhook' }));
     const me = await telegram<{ ok: boolean; result?: { username?: string; first_name?: string }; description?: string }>(c.env.TELEGRAM_BOT_TOKEN, 'getMe', {});
     if (!me.ok || !me.result?.username) return c.json({ error: me.description || 'Main bot username not found' }, 502);
-    return c.json({ username: me.result.username, title: me.result.first_name || 'Vexa', addGroupUrl: `https://t.me/${me.result.username}?startgroup=true` });
+    if (!webhook.ok) console.warn('main bot webhook sync failed before group add', webhook.description);
+    return c.json({ username: me.result.username, title: me.result.first_name || 'Vexa', addGroupUrl: `https://t.me/${me.result.username}?startgroup=true`, webhook });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load main bot' }, 502);
   }
