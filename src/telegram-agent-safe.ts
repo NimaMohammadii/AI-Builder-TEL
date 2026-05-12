@@ -10,6 +10,7 @@ export { setTelegramWebhook };
 const GROUP_REPLY_COST_NANO = 200000;
 
 type GroupReplyMessage = { reply_to_message?: { from?: { is_bot?: boolean; username?: string } } };
+type MainGroupBillingRow = { added_by_user_id: string | null };
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
@@ -52,7 +53,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
   if (!settings.isBuilderBot) return true;
 
-  await saveMainGroup(env, message.chat, message.from || fallbackTelegramUser(message.chat)).catch((error) => console.warn('main group message save skipped', error));
+  await saveMainGroup(env, message.chat).catch((error) => console.warn('main group message save skipped', error));
 
   const text = message.text?.trim() ?? '';
   const calledByName = mentionsVexa(text, bot.username);
@@ -63,7 +64,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   if (!prompt) return true;
 
   const token = await decryptUserToken(env, bot.encrypted_token);
-  const charged = await chargeMessageSender(env, message.from);
+  const charged = await chargeGroupAdder(env, message.chat);
   if (!charged.ok) {
     await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: charged.message, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot billing message failed', error));
     return true;
@@ -75,9 +76,22 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   return true;
 }
 
-async function saveMainGroup(env: Env, chat: TelegramChat, addedBy: TelegramUser): Promise<void> {
-  const ownerId = String(addedBy.id);
+async function saveMainGroup(env: Env, chat: TelegramChat, addedBy?: TelegramUser): Promise<void> {
   await ensureMainGroupColumns(env);
+  if (!addedBy) {
+    await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, first_seen_at, last_seen_at, ton_spent_nano)
+      VALUES ('main', ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+      ON CONFLICT(bot_id, chat_id) DO UPDATE SET
+        chat_type = excluded.chat_type,
+        title = excluded.title,
+        username = excluded.username,
+        last_seen_at = CURRENT_TIMESTAMP`)
+      .bind(String(chat.id), chat.type, chat.title || null, chat.username || null)
+      .run();
+    return;
+  }
+
+  const ownerId = String(addedBy.id);
   await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, added_by_user_id, added_by_username, added_by_first_name, first_seen_at, last_seen_at, ton_spent_nano)
     VALUES ('main', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
     ON CONFLICT(bot_id, chat_id) DO UPDATE SET
@@ -97,19 +111,23 @@ async function removeMainGroup(env: Env, chat: TelegramChat): Promise<void> {
   await env.DB.prepare("DELETE FROM bot_groups WHERE bot_id = 'main' AND chat_id = ?").bind(String(chat.id)).run().catch(() => undefined);
 }
 
-async function chargeMessageSender(env: Env, sender: TelegramUser | undefined): Promise<{ ok: boolean; message: string }> {
-  const userId = cleanUserId(sender?.id || '');
-  if (!userId) return { ok: false, message: 'کاربر پرداخت شناسایی نشد. لطفاً دوباره پیام بدهید.' };
+async function chargeGroupAdder(env: Env, chat: TelegramChat): Promise<{ ok: boolean; message: string }> {
+  await ensureMainGroupColumns(env);
+  const group = await env.DB.prepare("SELECT added_by_user_id FROM bot_groups WHERE bot_id = 'main' AND chat_id = ?")
+    .bind(String(chat.id))
+    .first<MainGroupBillingRow>();
+  const userId = cleanUserId(group?.added_by_user_id || '');
+  if (!userId) return { ok: false, message: 'پرداخت‌کننده‌ی این گروه شناسایی نشد. لطفاً Vexa را دوباره به گروه اضافه کنید.' };
   await ensureTonBalanceColumn(env);
   const balance = await env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?')
     .bind(userId)
     .first<{ ton_balance_nano: number }>();
   const current = Math.max(0, Math.floor(Number(balance?.ton_balance_nano) || 0));
-  if (current < GROUP_REPLY_COST_NANO) return { ok: false, message: 'موجودی TON شما کافی نیست. برای هر پاسخ Vexa مقدار 0.0002 TON نیاز است.' };
+  if (current < GROUP_REPLY_COST_NANO) return { ok: false, message: 'موجودی TON کاربری که Vexa را به این گروه اضافه کرده کافی نیست. برای هر پاسخ Vexa مقدار 0.0002 TON نیاز است.' };
   const result = await env.DB.prepare(`UPDATE app_users SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ? AND ton_balance_nano >= ?`)
     .bind(GROUP_REPLY_COST_NANO, userId, GROUP_REPLY_COST_NANO)
     .run();
-  if (!result.success || (result.meta?.changes ?? 0) < 1) return { ok: false, message: 'موجودی TON شما کافی نیست.' };
+  if (!result.success || (result.meta?.changes ?? 0) < 1) return { ok: false, message: 'موجودی TON کاربری که Vexa را به این گروه اضافه کرده کافی نیست.' };
   return { ok: true, message: 'charged' };
 }
 
@@ -173,10 +191,6 @@ function cleanGroupPrompt(text: string, username: string | null): string {
 
 function cleanUserId(value: unknown): string {
   return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
-}
-
-function fallbackTelegramUser(chat: TelegramChat): TelegramUser {
-  return { id: Math.abs(Number(chat.id)) || 0, first_name: chat.title || 'Group' };
 }
 
 async function groupReply(env: Env, prompt: string): Promise<string> {
