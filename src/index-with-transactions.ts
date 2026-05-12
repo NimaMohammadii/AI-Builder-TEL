@@ -4,6 +4,24 @@ import { addUserXp, getUserLevel } from './levels';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 
+app.post('/app/api/groups/:chatId/payer', async (c) => {
+  try {
+    const chatId = c.req.param('chatId');
+    const body = await c.req.json() as { userId?: unknown; username?: unknown; firstName?: unknown };
+    const userId = String(body.userId || '').replace(/[^0-9]/g, '').slice(0, 32);
+    if (!chatId || !userId) return c.json({ error: 'Missing chatId or userId' }, 400);
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_user_id TEXT').run().catch(() => undefined);
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_username TEXT').run().catch(() => undefined);
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_first_name TEXT').run().catch(() => undefined);
+    await c.env.DB.prepare(`UPDATE bot_groups SET added_by_user_id = ?, added_by_username = ?, added_by_first_name = ?, last_seen_at = CURRENT_TIMESTAMP WHERE bot_id = 'main' AND chat_id = ?`)
+      .bind(userId, String(body.username || '').slice(0, 80) || null, String(body.firstName || '').slice(0, 120) || null, chatId)
+      .run();
+    return c.json({ ok: true, chatId, userId });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not set group payer' }, 400);
+  }
+});
+
 app.get('/app/api/level', async (c) => {
   try {
     return c.json(await getUserLevel(c.env, c.req.query('userId') || ''));
