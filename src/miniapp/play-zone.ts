@@ -15,8 +15,13 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
   return `<button class="game-card" type="button" data-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
-function rowAd(id: string, label: string): string {
-  return `<div class="play-zone-row-ad" data-play-zone-ad="${id}"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-row-ad').classList.add('is-empty')"/></div>`;
+function cardAd(id: string, label: string): string {
+  return `<div class="play-zone-card-ad" data-play-zone-ad="${id}"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-card-ad').classList.add('is-empty')"/></div>`;
 }
 
-export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${playZoneGames.slice(0, 3).map(gameCard).join('')}${rowAd('playzone-row-ad-1', 'Play Zone image 1')}${playZoneGames.slice(3, 6).map(gameCard).join('')}${rowAd('playzone-row-ad-2', 'Play Zone image 2')}${playZoneGames.slice(6).map(gameCard).join('')}${rowAd('playzone-row-ad-3', 'Play Zone image 3')}</div></section>`;
+function row(start: number): string {
+  const items = playZoneGames.slice(start, start + 3);
+  return `${items.map(gameCard).join('')}${items.map(([id, label]) => cardAd(`playzone-card-ad-${id}`, `${label} row image`)).join('')}`;
+}
+
+export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${row(0)}${row(3)}${row(6)}</div></section>`;
