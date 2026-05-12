@@ -1,6 +1,7 @@
 import app from './index-admin-plinko';
 import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
+import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
 import { listUserTonTransactions } from './ton-transactions';
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
@@ -9,6 +10,7 @@ import type { Env } from './types';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 
 registerGroupPhotoEndpoint(app);
+registerHomeImageCacheEndpoint(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -100,12 +102,12 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
   try {
     const object = await c.env.ASSETS.head(HOME_FINANCE_IMAGE_KEY).catch(() => null);
     const version = object?.customMetadata?.version || object?.uploaded?.getTime?.() || 'default';
-    return c.json({ ok: true, version: String(version), url: `/app/api/home-finance-image.png?v=${encodeURIComponent(String(version))}` }, 200, {
-      'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
+    return c.json({ ok: true, version: String(version), url: `/app/api/home-finance-image-cached.png?v=${encodeURIComponent(String(version))}` }, 200, {
+      'cache-control': 'private, max-age=300',
     });
   } catch (error) {
-    return c.json({ ok: true, version: 'default', url: '/app/api/home-finance-image.png?v=default' }, 200, {
-      'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
+    return c.json({ ok: true, version: 'default', url: '/app/api/home-finance-image-cached.png?v=default' }, 200, {
+      'cache-control': 'private, max-age=300',
     });
   }
 });
