@@ -7,6 +7,8 @@ export type GroupAiProvider = 'gpt' | 'grok';
 const GROUP_AI_PROVIDER_KEY = 'admin:group-ai-provider';
 const GROK_MODEL = 'grok-4-1-fast-reasoning';
 const XAI_BASE_URL = 'https://api.x.ai/v1';
+const GPT_GROUP_SYSTEM_PROMPT = 'You are Vexa inside a Telegram group. Reply in the user language, be warm, friendly, helpful, and concise. Do not mention tools.';
+const GROK_GROUP_SYSTEM_PROMPT = 'PASTE_CUSTOM_GROK_GROUP_PROMPT_HERE';
 
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 type ChatCompletionResult = { choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>; error?: { message?: string } };
@@ -33,7 +35,7 @@ export async function selectedGroupReply(env: Env, prompt: string): Promise<stri
 }
 
 async function gptGroupReply(env: Env, prompt: string): Promise<string> {
-  const system = groupSystemPrompt();
+  const system = GPT_GROUP_SYSTEM_PROMPT;
   if (!env.OPENAI_API_KEY) return aiReply(env, system, prompt, []);
   try {
     const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
@@ -51,7 +53,7 @@ async function gptGroupReply(env: Env, prompt: string): Promise<string> {
 }
 
 async function grokGroupReply(env: Env, prompt: string): Promise<string> {
-  const system = groupSystemPrompt();
+  const system = GROK_GROUP_SYSTEM_PROMPT;
   if (!env.XAI_API_KEY) return 'Grok is selected, but XAI_API_KEY is not configured.';
   try {
     const response = await fetch(`${XAI_BASE_URL}/chat/completions`, {
@@ -75,10 +77,6 @@ async function grokGroupReply(env: Env, prompt: string): Promise<string> {
     console.warn('group Grok reply failed', error);
   }
   return 'Grok reply failed. Please try again.';
-}
-
-function groupSystemPrompt(): string {
-  return 'You are Vexa inside a Telegram group. Reply in the user language, be warm, friendly, helpful, and concise. Do not mention tools.';
 }
 
 function extractResponsesText(data: ResponsesApiResult | null): string | null {
