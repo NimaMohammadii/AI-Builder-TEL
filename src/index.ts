@@ -6,7 +6,7 @@ import { miniAppHtml } from './miniapp-chat';
 import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
 import type { BotRecord, Env, TelegramUpdate } from './types';
-import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
+import { APP_NAME, IMAGE_UPLOAD_TOO_LARGE_ERROR, MAX_IMAGE_UPLOAD_BYTES, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
@@ -58,7 +58,7 @@ app.post('/admin/upload-credit-icon', async (c) => {
   const file = form.get('icon');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
   if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) return c.json({ error: IMAGE_UPLOAD_TOO_LARGE_ERROR }, 400);
   const version = String(Date.now());
   await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
   await Promise.all([

@@ -5,7 +5,7 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
 <script>
 (function(){
   const labels={home:'Home',connect:'Connect',playzone:'Play Zone',flow:'TTS',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
-  const allowed=['image/png','image/jpeg','image/webp'];
+  const allowed=['image/png','image/jpeg','image/webp'],maxImageBytes=5000000,maxImageLabel='5MB';
   let sections=[];
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
   function mount(){
@@ -35,6 +35,7 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
     const input=document.querySelector('[data-lock-img-file="'+sectionId+'"][data-kind="'+kind+'"]');
     if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first.';return;}
     if(!allowed.includes(input.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP.';return;}
+    if(input.files[0].size>maxImageBytes){if(status)status.textContent='Image must be under '+maxImageLabel+'.';return;}
     const form=new FormData();form.append('sectionId',sectionId);form.append('kind',kind);form.append('image',input.files[0]);
     if(status)status.textContent='Uploading to R2...';
     try{const r=await fetch('/admin/api/section-lock-image',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved in R2.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}

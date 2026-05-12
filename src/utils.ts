@@ -4,6 +4,9 @@ export const APP_NAME = 'AI Builder TEL';
 export const PUBLIC_BASE_URL = 'https://builder-tel.vexaagent.workers.dev';
 export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 export const OPENAI_MODEL = 'gpt-4.1-mini';
+export const MAX_IMAGE_UPLOAD_BYTES = 5_000_000;
+export const IMAGE_UPLOAD_LIMIT_LABEL = '5MB';
+export const IMAGE_UPLOAD_TOO_LARGE_ERROR = `Image must be under ${IMAGE_UPLOAD_LIMIT_LABEL}.`;
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
