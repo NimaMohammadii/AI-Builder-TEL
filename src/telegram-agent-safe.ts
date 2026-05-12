@@ -43,7 +43,7 @@ async function handleMainBotGroupMembership(env: Env, bot: BotRecord, update: Te
   if (!settings.isBuilderBot) return true;
   const status = member.new_chat_member?.status || '';
   if (status === 'left' || status === 'kicked') await removeMainGroup(env, member.chat);
-  else await saveMainGroup(env, member.chat, member.from);
+  else await saveMainGroup(env, member.chat, member.from, true);
   return true;
 }
 
@@ -55,7 +55,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   if (!settings.isBuilderBot) return true;
 
   const addedBy = isBotAddedServiceMessage(message as unknown as GroupMembershipMessage) ? message.from : undefined;
-  await saveMainGroup(env, message.chat, addedBy).catch((error) => console.warn('main group message save skipped', error));
+  await saveMainGroup(env, message.chat, addedBy, Boolean(addedBy)).catch((error) => console.warn('main group message save skipped', error));
 
   const text = message.text?.trim() ?? '';
   const calledByName = mentionsVexa(text, bot.username);
@@ -78,7 +78,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   return true;
 }
 
-async function saveMainGroup(env: Env, chat: TelegramChat, addedBy?: TelegramUser): Promise<void> {
+async function saveMainGroup(env: Env, chat: TelegramChat, addedBy?: TelegramUser, replaceOwner = false): Promise<void> {
   await ensureMainGroupColumns(env);
   if (!addedBy) {
     await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, first_seen_at, last_seen_at, ton_spent_nano)
@@ -94,17 +94,18 @@ async function saveMainGroup(env: Env, chat: TelegramChat, addedBy?: TelegramUse
   }
 
   const ownerId = String(addedBy.id);
+  const forceOwner = replaceOwner ? 1 : 0;
   await env.DB.prepare(`INSERT INTO bot_groups (bot_id, chat_id, chat_type, title, username, added_by_user_id, added_by_username, added_by_first_name, first_seen_at, last_seen_at, ton_spent_nano)
     VALUES ('main', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
     ON CONFLICT(bot_id, chat_id) DO UPDATE SET
       chat_type = excluded.chat_type,
       title = excluded.title,
       username = excluded.username,
-      added_by_user_id = COALESCE(bot_groups.added_by_user_id, excluded.added_by_user_id),
-      added_by_username = COALESCE(bot_groups.added_by_username, excluded.added_by_username),
-      added_by_first_name = COALESCE(bot_groups.added_by_first_name, excluded.added_by_first_name),
+      added_by_user_id = CASE WHEN ? = 1 THEN excluded.added_by_user_id ELSE COALESCE(bot_groups.added_by_user_id, excluded.added_by_user_id) END,
+      added_by_username = CASE WHEN ? = 1 THEN excluded.added_by_username ELSE COALESCE(bot_groups.added_by_username, excluded.added_by_username) END,
+      added_by_first_name = CASE WHEN ? = 1 THEN excluded.added_by_first_name ELSE COALESCE(bot_groups.added_by_first_name, excluded.added_by_first_name) END,
       last_seen_at = CURRENT_TIMESTAMP`)
-    .bind(String(chat.id), chat.type, chat.title || null, chat.username || null, ownerId, addedBy.username || null, addedBy.first_name || null)
+    .bind(String(chat.id), chat.type, chat.title || null, chat.username || null, ownerId, addedBy.username || null, addedBy.first_name || null, forceOwner, forceOwner, forceOwner)
     .run();
 }
 
