@@ -7,7 +7,7 @@ import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from '
 
 export { setTelegramWebhook };
 
-const GROUP_REPLY_COST_NANO = 200000;
+const GROUP_REPLY_COST_NANO = 400000;
 
 type GroupReplyMessage = { reply_to_message?: { from?: { is_bot?: boolean; username?: string } } };
 type MainGroupBillingRow = { added_by_user_id: string | null };
@@ -123,7 +123,7 @@ async function chargeGroupAdder(env: Env, chat: TelegramChat): Promise<{ ok: boo
     .bind(userId)
     .first<{ ton_balance_nano: number }>();
   const current = Math.max(0, Math.floor(Number(balance?.ton_balance_nano) || 0));
-  if (current < GROUP_REPLY_COST_NANO) return { ok: false, message: 'موجودی TON کاربری که Vexa را به این گروه اضافه کرده کافی نیست. برای هر پاسخ Vexa مقدار 0.0002 TON نیاز است.' };
+  if (current < GROUP_REPLY_COST_NANO) return { ok: false, message: 'موجودی TON کاربری که Vexa را به این گروه اضافه کرده کافی نیست. برای هر پاسخ Vexa مقدار 0.0004 TON نیاز است.' };
   const result = await env.DB.prepare(`UPDATE app_users SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ? AND ton_balance_nano >= ?`)
     .bind(GROUP_REPLY_COST_NANO, userId, GROUP_REPLY_COST_NANO)
     .run();
