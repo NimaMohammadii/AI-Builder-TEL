@@ -1,6 +1,8 @@
 export const CONNECT_GROUPS_USAGE_SCRIPT = `
 (function(){
   function q(id){return document.getElementById(id)}
+  function tgUser(){return window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe&&window.Telegram.WebApp.initDataUnsafe.user||{}}
+  function ownerId(){return localStorage.getItem('ownerId')||String(tgUser().id||'')}
   function esc(v){return String(v||'').replace(/[&<>']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[s]||s})}
   function icon(name){
     if(name==='plus')return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="pointer-events:none"><path d="M12 5v14M5 12h14"/></svg>';
@@ -24,12 +26,25 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
     if(!response.ok)throw new Error(json.error||'Request failed');
     return json;
   }
+  function markClaimPending(){sessionStorage.setItem('vexaGroupClaimPendingUntil',String(Date.now()+90000))}
+  function shouldClaim(){return Number(sessionStorage.getItem('vexaGroupClaimPendingUntil')||0)>Date.now()}
+  async function claimGroups(groups){
+    if(!shouldClaim())return;
+    var userId=ownerId();
+    if(!userId)return;
+    var user=tgUser();
+    await Promise.all((groups||[]).map(function(group){
+      if(!group||!group.chatId)return Promise.resolve();
+      return api('/app/api/groups/'+encodeURIComponent(group.chatId)+'/payer',{method:'POST',body:JSON.stringify({userId:userId,username:user.username||'',firstName:user.first_name||''})}).catch(function(){return null});
+    }));
+  }
   async function loadGroups(){
     var box=q('homeGroups');
     if(!box)return;
     try{
       var data=await api('/app/api/bots/main/groups');
       var groups=data.groups||[];
+      await claimGroups(groups);
       box.innerHTML=groups.length?groups.map(row).join(''):empty();
       var status=q('groupsStatus');
       if(status)status.textContent=groups.length?String(groups.length)+' groups':'Auto-detected';
@@ -51,7 +66,7 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
     var refresh=event.target&&event.target.closest&&event.target.closest('[data-action="refresh"]');
     if(refresh){refreshSoon();return}
     var addGroup=event.target&&event.target.closest&&event.target.closest('[data-action="add-main-group"]');
-    if(addGroup)refreshSoon();
+    if(addGroup){markClaimPending();refreshSoon()}
   },true);
   setTimeout(loadGroups,1000);
 })();
