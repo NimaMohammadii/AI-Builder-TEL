@@ -13,10 +13,10 @@ app.post('/app/api/groups/:chatId/payer', async (c) => {
     await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_user_id TEXT').run().catch(() => undefined);
     await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_username TEXT').run().catch(() => undefined);
     await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_first_name TEXT').run().catch(() => undefined);
-    await c.env.DB.prepare(`UPDATE bot_groups SET added_by_user_id = ?, added_by_username = ?, added_by_first_name = ?, last_seen_at = CURRENT_TIMESTAMP WHERE bot_id = 'main' AND chat_id = ?`)
+    const result = await c.env.DB.prepare(`UPDATE bot_groups SET added_by_user_id = ?, added_by_username = ?, added_by_first_name = ?, last_seen_at = CURRENT_TIMESTAMP WHERE bot_id = 'main' AND chat_id = ? AND (added_by_user_id IS NULL OR added_by_user_id = '')`)
       .bind(userId, String(body.username || '').slice(0, 80) || null, String(body.firstName || '').slice(0, 120) || null, chatId)
       .run();
-    return c.json({ ok: true, chatId, userId });
+    return c.json({ ok: true, chatId, userId, claimed: (result.meta?.changes ?? 0) > 0 });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not set group payer' }, 400);
   }
