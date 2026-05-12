@@ -15,13 +15,8 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
   return `<button class="game-card" type="button" data-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
-const rowAdCopy = {
-  'playzone-row-ad-right': 'The bot enters and lights up the game. Every spin is a fresh shot at a big win',
-  'playzone-row-ad-left': 'Every choice here can shift your path to victory. Stay sharp, climb higher, and chase the prize',
-} as const;
-
-function rowAd(id: keyof typeof rowAdCopy, side: 'right' | 'left', label: string): string {
-  return `<div class="play-zone-row-ad play-zone-row-ad--${side}" data-play-zone-ad="${id}"><p class="play-zone-row-ad__copy">${rowAdCopy[id]}</p><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-row-ad').classList.add('is-empty')"/></div>`;
+function rowAd(id: string, label: string): string {
+  return `<div class="play-zone-row-ad" data-play-zone-ad="${id}"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-row-ad').classList.add('is-empty')"/></div>`;
 }
 
-export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${playZoneGames.slice(0, 3).map(gameCard).join('')}${rowAd('playzone-row-ad-right', 'right', 'Play Zone promo image')}${playZoneGames.slice(3, 6).map(gameCard).join('')}${rowAd('playzone-row-ad-left', 'left', 'Play Zone promo image')}${playZoneGames.slice(6).map(gameCard).join('')}</div></section>`;
+export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${playZoneGames.slice(0, 3).map(gameCard).join('')}${rowAd('playzone-row-ad-1', 'Play Zone image 1')}${playZoneGames.slice(3, 6).map(gameCard).join('')}${rowAd('playzone-row-ad-2', 'Play Zone image 2')}${playZoneGames.slice(6).map(gameCard).join('')}${rowAd('playzone-row-ad-3', 'Play Zone image 3')}</div></section>`;
