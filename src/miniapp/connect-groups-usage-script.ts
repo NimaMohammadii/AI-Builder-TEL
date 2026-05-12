@@ -20,7 +20,21 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
   function groupAvatar(g){
     var userId=ownerId();
     var url='/app/api/groups/'+encodeURIComponent(g.chatId)+'/photo?userId='+encodeURIComponent(userId)+'&v='+encodeURIComponent(g.lastSeenAt||'');
-    return '<div class="avatar-fallback" style="overflow:hidden;position:relative"><span>#</span><img src="'+esc(url)+'" alt="" loading="lazy" onload="this.style.display=\'block\';var s=this.parentNode&&this.parentNode.querySelector(\'span\');if(s)s.style.display=\'none\'" onerror="this.remove()" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:inherit;position:absolute;inset:0"/></div>';
+    return '<div class="avatar-fallback" data-group-photo="'+esc(url)+'" style="overflow:hidden;position:relative"><span>#</span></div>';
+  }
+  function attachGroupPhotos(){
+    document.querySelectorAll('[data-group-photo]').forEach(function(box){
+      var url=box.getAttribute('data-group-photo');
+      if(!url||box.getAttribute('data-photo-bound')==='1')return;
+      box.setAttribute('data-photo-bound','1');
+      var img=new Image();
+      img.alt='';
+      img.loading='lazy';
+      img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:inherit;position:absolute;inset:0';
+      img.onload=function(){var s=box.querySelector('span');if(s)s.style.display='none';box.appendChild(img)};
+      img.onerror=function(){img.onload=null;img.onerror=null};
+      img.src=url;
+    });
   }
   function row(g){
     return '<div class="bot-row connect-inner-glass">'+groupAvatar(g)+'<div><strong>'+esc(g.title||g.chatId)+'</strong><small>Vexa • '+esc(g.type||'group')+'</small></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><span class="connect-action-glass" style="height:36px;min-width:78px;border-radius:999px;color:rgba(255,255,255,.82);display:flex;align-items:center;justify-content:center;padding:0 10px;font-size:11px;font-weight:720;white-space:nowrap">'+esc(ton(g))+'</span><button class="connect-action-glass" type="button" data-action="leave-main-group" data-chat-id="'+esc(g.chatId)+'" aria-label="Leave group" style="width:36px;height:36px;border-radius:999px;color:rgba(255,255,255,.8);display:grid;place-items:center;padding:0">'+icon('trash')+'</button></div></div>';
@@ -60,6 +74,7 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
         groups=data.groups||[];
       }
       box.innerHTML=groups.length?groups.map(row).join(''):empty();
+      attachGroupPhotos();
       var status=q('groupsStatus');
       if(status)status.textContent=groups.length?String(groups.length)+' groups':'Auto-detected';
     }catch(error){
