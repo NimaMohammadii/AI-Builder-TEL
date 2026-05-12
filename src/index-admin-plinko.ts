@@ -97,13 +97,20 @@ app.post('/app/api/ton/deposits/:id/verify', async (c) => {
 
 app.get('/app/api/bots/:id/groups', async (c) => {
   try {
+    const userId = cleanTelegramUserId(c.req.query('userId'));
+    const claim = c.req.query('claim') === '1';
+    if (!userId) return c.json({ groups: [] });
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_user_id TEXT').run().catch(() => undefined);
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_username TEXT').run().catch(() => undefined);
+    await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN added_by_first_name TEXT').run().catch(() => undefined);
     await c.env.DB.prepare('ALTER TABLE bot_groups ADD COLUMN ton_spent_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
     const rows = await c.env.DB.prepare(`SELECT chat_id AS chatId, chat_type AS type, title, username, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt, COALESCE(ton_spent_nano, 0) AS tonSpentNano
       FROM bot_groups
       WHERE bot_id = ?
+        AND (added_by_user_id = ? OR (? = 1 AND (added_by_user_id IS NULL OR added_by_user_id = '')))
       ORDER BY datetime(last_seen_at) DESC
       LIMIT 50`)
-      .bind(c.req.param('id'))
+      .bind(c.req.param('id'), userId, claim ? 1 : 0)
       .all<{ chatId: string; type: string; title: string | null; username: string | null; firstSeenAt: string; lastSeenAt: string; tonSpentNano: number }>();
     return c.json({ groups: (rows.results ?? []).map((group) => ({ ...group, tonSpent: Number(group.tonSpentNano || 0) / 1_000_000_000 })) });
   } catch (error) {
@@ -115,8 +122,15 @@ app.get('/app/api/bots/:id/groups', async (c) => {
 app.delete('/app/api/groups/:chatId/leave', async (c) => {
   const chatId = c.req.param('chatId');
   try {
+    const body = await c.req.json().catch(() => ({})) as { userId?: unknown };
+    const userId = cleanTelegramUserId(body.userId);
+    if (!userId) return c.json({ error: 'Missing userId' }, 400);
+    const owner = await c.env.DB.prepare("SELECT added_by_user_id FROM bot_groups WHERE bot_id = 'main' AND chat_id = ?")
+      .bind(chatId)
+      .first<{ added_by_user_id: string | null }>();
+    if (String(owner?.added_by_user_id || '') !== userId) return c.json({ error: 'Group is not connected to this user.' }, 403);
     await telegram(c.env.TELEGRAM_BOT_TOKEN, 'leaveChat', { chat_id: chatId }).catch((error) => console.warn('main bot leave group failed', error));
-    await c.env.DB.prepare('DELETE FROM bot_groups WHERE chat_id = ?').bind(chatId).run().catch(() => undefined);
+    await c.env.DB.prepare("DELETE FROM bot_groups WHERE bot_id = 'main' AND chat_id = ? AND added_by_user_id = ?").bind(chatId, userId).run().catch(() => undefined);
     return c.json({ ok: true, chatId });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not leave group' }, 400);
@@ -232,6 +246,10 @@ async function telegram<T = unknown>(token: string, method: string, payload: unk
     body: JSON.stringify(payload),
   });
   return response.json() as Promise<T>;
+}
+
+function cleanTelegramUserId(value: unknown): string {
+  return String(value || '').replace(/[^0-9]/g, '').slice(0, 32);
 }
 
 function adminCookieValue(cookie: string | undefined): string {
