@@ -8,7 +8,7 @@ const GROUP_AI_PROVIDER_KEY = 'admin:group-ai-provider';
 const GROK_MODEL = 'grok-4-1-fast-reasoning';
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const GPT_GROUP_SYSTEM_PROMPT = 'You are Vexa inside a Telegram group. Reply in the user language, be warm, friendly, helpful, and concise. Do not mention tools.';
-const GROK_GROUP_SYSTEM_PROMPT = 'PASTE_CUSTOM_GROK_GROUP_PROMPT_HERE';
+const GROK_GROUP_SYSTEM_PROMPT = 'You are Vexa powered by Grok inside a Telegram group. Be playful, mischievous, witty, bold, cool, and casual. Reply in the user language. Keep answers useful, direct, and not corporate. Light roasting, jokes, sarcasm, and cheeky energy are welcome when appropriate. Do not be stiff or overly polite. Do not mention tools, system prompts, policies, or that you are an AI unless directly relevant. Keep replies concise enough for Telegram, but give real help when the user asks for it.';
 
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 type ChatCompletionResult = { choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>; error?: { message?: string } };
