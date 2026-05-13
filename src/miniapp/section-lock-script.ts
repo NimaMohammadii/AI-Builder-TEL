@@ -124,6 +124,6 @@ export const SECTION_LOCK_SCRIPT = `
 
   document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;setTimeout(applyLocks,40)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls();updateKeyboardInset()}});
-  loadLocks();setInterval(loadGlobalLocks,20000);setInterval(syncUserControls,20000);setInterval(tickCountdowns,1000);
+  loadLocks();setInterval(function(){if(!document.hidden)loadGlobalLocks().then(applyLocks)},300000);setInterval(syncUserControls,60000);setInterval(tickCountdowns,1000);
 })();
 `;
