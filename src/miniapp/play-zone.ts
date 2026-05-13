@@ -11,17 +11,11 @@ const playZoneGames = [
   ['hilo', 'Hi-Lo', 'Call higher or lower to build streaks', 'Soon'],
 ] as const;
 
-function gameCard([id, label, description, action]: typeof playZoneGames[number]): string {
-  return `<button class="game-card" type="button" data-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
+function gameCard([id, label, description, action]: typeof playZoneGames[number], extraClass = ''): string {
+  return `<button class="game-card ${extraClass}" type="button" data-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
-function cardAd(id: string, label: string): string {
-  return `<div class="play-zone-card-ad" data-play-zone-ad="${id}"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.closest('.play-zone-card-ad').classList.add('is-empty')"/></div>`;
-}
+const featuredGames = playZoneGames.slice(0, 3);
+const triangleGames = playZoneGames.slice(3);
 
-function row(start: number): string {
-  const items = playZoneGames.slice(start, start + 3);
-  return `${items.map(gameCard).join('')}${items.map(([id, label]) => cardAd(`playzone-card-ad-${id}`, `${label} row image`)).join('')}`;
-}
-
-export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="game-grid">${row(0)}${row(3)}${row(6)}</div></section>`;
+export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="play-zone-stage"><div class="play-zone-featured-row">${featuredGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div><div class="play-zone-plinko-showcase" data-play-zone-ad="playzone-card-ad-plinko"><img src="/app/api/section-lock-image/playzone-card-ad-plinko/locked.png?v=${cardImageVersion}" alt="Plinko showcase" decoding="async" onerror="this.closest('.play-zone-plinko-showcase').classList.add('is-empty')"/></div><div class="play-zone-triangle"><div class="play-zone-triangle-row play-zone-triangle-row-3">${triangleGames.slice(0, 3).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-2">${triangleGames.slice(3, 5).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-1">${triangleGames.slice(5, 6).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div></div></div></section>`;
