@@ -1,32 +1,16 @@
 export const MARKET_CONFIG_SCRIPT = `
 (function(){
   var animationClasses=['market-anim-none','market-anim-spin','market-anim-glow','market-anim-shine','market-anim-pulse','market-anim-spin-glow'];
-  var mediaCacheName='vexa-market-images-v1';
-  var objectUrls={};
   var marketItemsById={};
   var activeDetailItem=null;
+  var marketRequestInFlight=null;
+  var marketLoadedAt=0;
+  var MARKET_REFRESH_TTL=60000;
   function esc(v){return String(v==null?'':v)}
-  function cleanAnim(v){v=String(v||'none');return ['none','spin','glow','shine','pulse','spin-glow'].indexOf(v)>=0?v:'none'}
-  async function cachedImageUrl(url){
-    if(!url)return url;
-    if(objectUrls[url])return objectUrls[url];
-    if(!('caches' in window)||!window.caches)return url;
-    try{
-      var cache=await caches.open(mediaCacheName);
-      var cached=await cache.match(url);
-      if(cached){var cachedBlob=await cached.blob();objectUrls[url]=URL.createObjectURL(cachedBlob);return objectUrls[url]}
-      var response=await fetch(url,{cache:'force-cache'});
-      if(response&&response.ok){await cache.put(url,response.clone());var blob=await response.blob();objectUrls[url]=URL.createObjectURL(blob);cleanupOldMarketImages(cache,url).catch(function(){});return objectUrls[url]}
-    }catch(e){}
-    return url;
-  }
-  async function cleanupOldMarketImages(cache,currentUrl){
-    try{var currentPath=currentUrl.split('?')[0];var keys=await cache.keys();await Promise.all(keys.map(function(req){var u=req.url||'';if(u.indexOf('/app/api/market-item-media/')<0)return Promise.resolve();if(u.split('?')[0]===currentPath&&u!==currentUrl)return cache.delete(req);return Promise.resolve()}))}catch(e){}
-  }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
     if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
-    var mediaUrl=await cachedImageUrl(esc(item.imageUrl));
+    var mediaUrl=esc(item.imageUrl);
     imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
   }
   function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
@@ -50,13 +34,15 @@ export const MARKET_CONFIG_SCRIPT = `
       var badge=card.querySelector('.market-nft-title-row em');
       var price=card.querySelector('.market-price-button b');
       var imgWrap=card.querySelector('.market-nft-image');
-      var anim=cleanAnim(item.animation);
       animationClasses.forEach(function(cls){card.classList.remove(cls)});
-      card.classList.add('market-anim-'+anim);card.setAttribute('data-market-animation',anim);
+      card.classList.add('market-anim-none');card.setAttribute('data-market-animation','none');
       if(title&&item.title)title.textContent=esc(item.title);
       if(badge&&item.stock!==undefined&&item.stock!==null)badge.textContent='Stock '+esc(item.stock);
       if(price&&item.price)price.textContent=esc(item.price);
-      if(imgWrap&&item.imageUrl)renderMedia(imgWrap,item).catch(function(){});
+      if(imgWrap&&item.imageUrl&&imgWrap.dataset.marketImageUrl!==String(item.imageUrl)){
+        imgWrap.dataset.marketImageUrl=String(item.imageUrl);
+        renderMedia(imgWrap,item).catch(function(){});
+      }
     });
   }
   function setMarketTab(tab){
@@ -81,8 +67,20 @@ export const MARKET_CONFIG_SCRIPT = `
       setMarketTab(btn.getAttribute('data-market-tab')||'store');
     },true);
   }
-  async function loadMarket(){try{initMarketTabs();var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}}
+  async function loadMarket(force){
+    initMarketTabs();
+    var now=Date.now();
+    if(!force&&marketLoadedAt&&now-marketLoadedAt<MARKET_REFRESH_TTL)return;
+    if(marketRequestInFlight)return marketRequestInFlight;
+    marketRequestInFlight=fetch('/app/api/market-items',{cache:'default'})
+      .then(function(r){return r.json()})
+      .then(function(j){marketLoadedAt=Date.now();apply(j.items||[])})
+      .catch(function(){})
+      .finally(function(){marketRequestInFlight=null});
+    return marketRequestInFlight;
+  }
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadMarket);else loadMarket();window.VexaMarketRefresh=loadMarket;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadMarket(false)});else loadMarket(false);
+  window.VexaMarketRefresh=function(force){return loadMarket(!!force)};
 })();
 `;
