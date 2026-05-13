@@ -4,6 +4,7 @@ import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import { selectedGroupReply } from './group-ai-provider';
 import { isGroupAiDisabled } from './group-ai-access';
+import { awardGroupReplyXp } from './xp-rewards';
 import type { BotRecord, Env, TelegramChat, TelegramMessage, TelegramUpdate, TelegramUser } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
@@ -90,6 +91,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   });
   const reply = await selectedGroupReply(env, contextPrompt);
   await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
+  await awardGroupReplyXp(env, message.chat).catch((error) => console.warn('group reply XP milestone skipped', error));
   return true;
 }
 
