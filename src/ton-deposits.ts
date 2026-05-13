@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { adjustUserTonBalance } from './user-controls';
+import { awardDepositXp } from './xp-rewards';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 const DEFAULT_MIN_TON = 0.1;
@@ -86,6 +87,7 @@ export async function verifyTonDeposit(env: Env, depositId: string): Promise<Ton
     .bind(txHash, id)
     .run();
   await adjustUserTonBalance(env, row.user_id, row.ton_balance_nano);
+  await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
   const completed = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ?').bind(id).first<DepositRow>();
   return rowToDeposit(completed ?? { ...row, status: 'completed', tx_hash: txHash }, wallet);
 }
