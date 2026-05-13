@@ -3,6 +3,7 @@ import { getUserControls } from './user-controls';
 
 export type MarketNftStatus = 'owned' | 'listed' | 'gift_pending' | 'burned';
 export type MarketListingStatus = 'active' | 'sold' | 'cancelled';
+export type MarketGiftStatus = 'pending' | 'claimed' | 'cancelled' | 'expired';
 export type MarketTransactionKind = 'primary_buy' | 'resale_buy' | 'gift_send' | 'gift_claim' | 'list' | 'cancel_listing';
 
 export type MarketNftOwner = {
@@ -20,6 +21,17 @@ export type MarketListing = {
   sellerUserId: string;
   priceNano: number;
   status: MarketListingStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MarketGift = {
+  giftId: string;
+  instanceId: string;
+  fromUserId: string;
+  toUserId: string;
+  status: MarketGiftStatus;
+  expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -62,6 +74,20 @@ export async function ensureMarketRuleTables(env: Env): Promise<void> {
   )`).run();
   await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_market_active_listing_instance ON market_nft_listings(instance_id) WHERE status = \'active\'').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_market_active_listings ON market_nft_listings(status, created_at)').run();
+
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS market_nft_gifts (
+    gift_id TEXT PRIMARY KEY,
+    instance_id TEXT NOT NULL,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    expires_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+  await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pending_gift_instance ON market_nft_gifts(instance_id) WHERE status = \'pending\'').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_market_gifts_to_user ON market_nft_gifts(to_user_id, status, created_at)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_market_gifts_from_user ON market_nft_gifts(from_user_id, status, created_at)').run();
 
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS market_nft_transactions (
     transaction_id TEXT PRIMARY KEY,
@@ -126,6 +152,8 @@ export async function assertCanListNft(env: Env, input: { instanceId: string; se
   if (normalizeNano(input.priceNano) <= 0) throw new Error('Listing price must be greater than zero');
   const activeListing = await readActiveListingForInstance(env, owner.instanceId);
   if (activeListing) throw new Error('NFT is already listed for sale');
+  const pendingGift = await readPendingGiftForInstance(env, owner.instanceId);
+  if (pendingGift) throw new Error('Cancel the pending gift before listing this NFT');
   return owner;
 }
 
@@ -140,9 +168,37 @@ export async function assertCanGiftNft(env: Env, input: { instanceId: string; fr
   if (owner.status !== 'owned') throw new Error('NFT must be owned and unlocked before gifting');
   const activeListing = await readActiveListingForInstance(env, owner.instanceId);
   if (activeListing) throw new Error('Cancel the active listing before gifting this NFT');
+  const pendingGift = await readPendingGiftForInstance(env, owner.instanceId);
+  if (pendingGift) throw new Error('NFT already has a pending gift');
   const config = await getMarketRuleConfig(env);
   if (config.giftFeeNano > 0) await assertUserHasBalance(env, from, config.giftFeeNano, 'Not enough TON balance to gift this NFT');
   return owner;
+}
+
+export async function assertCanClaimGift(env: Env, input: { giftId: string; claimerUserId: string }): Promise<{ gift: MarketGift; owner: MarketNftOwner }> {
+  await ensureMarketRuleTables(env);
+  const claimer = cleanUserId(input.claimerUserId);
+  const gift = await readGift(env, input.giftId);
+  if (!gift || gift.status !== 'pending') throw new Error('Gift is not pending');
+  if (gift.toUserId !== claimer) throw new Error('Only the gift recipient can claim this NFT');
+  if (gift.expiresAt && Date.parse(gift.expiresAt) <= Date.now()) throw new Error('Gift has expired');
+  const owner = await readNftOwner(env, gift.instanceId);
+  if (!owner) throw new Error('NFT not found');
+  if (owner.ownerUserId !== gift.fromUserId) throw new Error('Gift sender no longer owns this NFT');
+  if (owner.status !== 'gift_pending') throw new Error('NFT is not locked for this gift');
+  return { gift, owner };
+}
+
+export async function assertCanCancelGift(env: Env, input: { giftId: string; userId: string }): Promise<{ gift: MarketGift; owner: MarketNftOwner }> {
+  await ensureMarketRuleTables(env);
+  const userId = cleanUserId(input.userId);
+  const gift = await readGift(env, input.giftId);
+  if (!gift || gift.status !== 'pending') throw new Error('Gift is not pending');
+  if (gift.fromUserId !== userId) throw new Error('Only the sender can cancel this gift');
+  const owner = await readNftOwner(env, gift.instanceId);
+  if (!owner) throw new Error('NFT not found');
+  if (owner.ownerUserId !== userId) throw new Error('Gift sender no longer owns this NFT');
+  return { gift, owner };
 }
 
 export async function assertCanBuyListing(env: Env, input: { listingId: string; buyerUserId: string }): Promise<{ listing: MarketListing; owner: MarketNftOwner; fee: MarketFeeBreakdown }> {
@@ -150,6 +206,7 @@ export async function assertCanBuyListing(env: Env, input: { listingId: string; 
   const buyer = cleanUserId(input.buyerUserId);
   const listing = await readListing(env, input.listingId);
   if (!listing || listing.status !== 'active') throw new Error('Listing is not active');
+  if (listing.priceNano <= 0) throw new Error('Listing price is invalid');
   if (listing.sellerUserId === buyer) throw new Error('You cannot buy your own listing');
   const owner = await readNftOwner(env, listing.instanceId);
   if (!owner) throw new Error('NFT not found');
@@ -186,11 +243,25 @@ export async function readListing(env: Env, listingIdInput: string): Promise<Mar
   return row ? listingFromRow(row) : null;
 }
 
+export async function readGift(env: Env, giftIdInput: string): Promise<MarketGift | null> {
+  await ensureMarketRuleTables(env);
+  const giftId = cleanId(giftIdInput, 'gift');
+  const row = await env.DB.prepare('SELECT * FROM market_nft_gifts WHERE gift_id = ?').bind(giftId).first<GiftRow>().catch(() => null);
+  return row ? giftFromRow(row) : null;
+}
+
 export async function readActiveListingForInstance(env: Env, instanceIdInput: string): Promise<MarketListing | null> {
   await ensureMarketRuleTables(env);
   const instanceId = cleanInstanceId(instanceIdInput);
   const row = await env.DB.prepare(`SELECT * FROM market_nft_listings WHERE instance_id = ? AND status = 'active' LIMIT 1`).bind(instanceId).first<ListingRow>().catch(() => null);
   return row ? listingFromRow(row) : null;
+}
+
+export async function readPendingGiftForInstance(env: Env, instanceIdInput: string): Promise<MarketGift | null> {
+  await ensureMarketRuleTables(env);
+  const instanceId = cleanInstanceId(instanceIdInput);
+  const row = await env.DB.prepare(`SELECT * FROM market_nft_gifts WHERE instance_id = ? AND status = 'pending' LIMIT 1`).bind(instanceId).first<GiftRow>().catch(() => null);
+  return row ? giftFromRow(row) : null;
 }
 
 export async function recordMarketRuleTransaction(env: Env, input: {
@@ -236,6 +307,10 @@ export function createListingId(): string {
   return 'mlist_' + crypto.randomUUID().replace(/-/g, '').slice(0, 18);
 }
 
+export function createGiftId(): string {
+  return 'mgift_' + crypto.randomUUID().replace(/-/g, '').slice(0, 18);
+}
+
 type OwnershipRow = {
   instance_id: string;
   item_id: string;
@@ -251,6 +326,17 @@ type ListingRow = {
   seller_user_id: string;
   price_nano: number;
   status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type GiftRow = {
+  gift_id: string;
+  instance_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  status: string;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -278,6 +364,19 @@ function listingFromRow(row: ListingRow): MarketListing {
   };
 }
 
+function giftFromRow(row: GiftRow): MarketGift {
+  return {
+    giftId: row.gift_id,
+    instanceId: row.instance_id,
+    fromUserId: row.from_user_id,
+    toUserId: row.to_user_id,
+    status: cleanGiftStatus(row.status),
+    expiresAt: normalizeExpiresAt(row.expires_at),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 async function assertUserHasBalance(env: Env, userId: string, amountNano: number, message: string): Promise<void> {
   const required = normalizeNano(amountNano);
   if (required <= 0) return;
@@ -291,6 +390,13 @@ function normalizeFeeBps(value: unknown): number {
 
 function normalizeNano(value: unknown): number {
   return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function normalizeExpiresAt(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 function cleanUserId(value: unknown): string {
@@ -334,6 +440,11 @@ function cleanOwnerStatus(value: unknown): MarketNftStatus {
 function cleanListingStatus(value: unknown): MarketListingStatus {
   const status = String(value || 'active').replace(/[^a-z_]/g, '') as MarketListingStatus;
   return ['active', 'sold', 'cancelled'].includes(status) ? status : 'active';
+}
+
+function cleanGiftStatus(value: unknown): MarketGiftStatus {
+  const status = String(value || 'pending').replace(/[^a-z_]/g, '') as MarketGiftStatus;
+  return ['pending', 'claimed', 'cancelled', 'expired'].includes(status) ? status : 'pending';
 }
 
 function cleanTransactionKind(value: unknown): MarketTransactionKind {
