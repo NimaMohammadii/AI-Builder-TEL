@@ -1,5 +1,5 @@
 import app from './index';
-import { getMarketItems, isAllowedMarketMedia, marketContentType, marketImageKey, normalizeMarketItemId, setMarketItem } from './market-config';
+import { getMarketItems, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
 import type { Env } from './types';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
@@ -7,6 +7,15 @@ const CACHE_NONE = 'no-store';
 const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 
 app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/market-item-media/:item', async (c) => {
+  try {
+    const id = normalizeMarketItemId(c.req.param('item'));
+    return getMarketAsset(c.env, marketImageKey(id));
+  } catch {
+    return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
+  }
+});
 
 app.get('/app/api/market-item-image/:item', async (c) => {
   try {
@@ -44,7 +53,8 @@ app.post('/admin/api/market-item-image', async (c) => {
     if (file.size > MARKET_UPLOAD_MAX_BYTES) return c.json({ error: 'Market media must be under 25MB.' }, 400);
     const version = String(Date.now());
     const contentType = marketContentType(file.type, file.name);
-    await c.env.ASSETS.put(marketImageKey(id), file.stream(), { httpMetadata: { contentType }, customMetadata: { version } });
+    const mediaType = marketMediaTypeFromContentType(contentType);
+    await c.env.ASSETS.put(marketImageKey(id), file.stream(), { httpMetadata: { contentType }, customMetadata: { version, contentType, mediaType } });
     return c.json(await getMarketItems(c.env));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload market media' }, 400);
@@ -56,7 +66,8 @@ async function getMarketAsset(env: Env, key: string): Promise<Response> {
   if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'application/octet-stream', 'cache-control': CACHE_LONG } });
+  const contentType = object.httpMetadata?.contentType || object.customMetadata?.contentType || head.httpMetadata?.contentType || head.customMetadata?.contentType || 'application/octet-stream';
+  return new Response(object.body, { headers: { 'content-type': contentType, 'cache-control': CACHE_LONG, 'accept-ranges': 'bytes' } });
 }
 
 function adminCookieValue(cookie: string | undefined): string {
