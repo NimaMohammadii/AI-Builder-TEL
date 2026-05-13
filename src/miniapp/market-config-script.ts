@@ -66,7 +66,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var sheet=document.getElementById('marketDetailSheet');if(!sheet||!item)return;activeDetailItem=item;
     var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
     if(title)title.textContent=esc(item.title||'NFT');if(desc)desc.textContent=esc(item.description||'Vexa internal collectible.');if(collection)collection.textContent=esc(item.collection||'Vexa Collectible');if(price)price.textContent=esc(item.price||'0');if(buy)buy.setAttribute('data-market-buy',esc(item.id));if(status)status.textContent='';
-    if(specs)specs.innerHTML=spec('Symbol',item.symbol)+spec('Rarity',item.rarity)+spec('Tag',item.tag)+spec('Supply',item.supply)+spec('Edition',item.edition)+spec('Stock',item.stock)+spec('Type',item.mediaType||'image')+spec('Utility',item.utility);
+    if(specs)specs.innerHTML=spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');setTimeout(forceAllMarketVideos,80);
   }
