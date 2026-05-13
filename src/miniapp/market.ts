@@ -1,76 +1,16 @@
-export const MARKET_SECTION = `
-<section id="market" class="view market-view">
-  <div class="market-hero card">
-    <div class="market-hero-copy">
-      <span class="market-kicker">Vexa Market</span>
-      <h2>Trade internal NFTs</h2>
-      <p>Collect Vexa-designed digital items, manage your inventory, and list assets for resale when marketplace logic is enabled.</p>
-    </div>
-    <div class="market-orb" aria-hidden="true">
-      <svg viewBox="0 0 120 120" fill="none">
-        <rect x="20" y="20" width="80" height="80" rx="26" stroke="currentColor" stroke-opacity=".55" stroke-width="2"/>
-        <path d="M60 32l27 15v30L60 92 33 77V47l27-15z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M60 32v31m27-16L60 63 33 47m27 16v29" stroke="currentColor" stroke-opacity=".5" stroke-width="1.6"/>
-      </svg>
-    </div>
-  </div>
+const tonLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAEiklEQVR42u3dQXajQAwFQMPL/a9Mtll4kcQNLelXHWDGbtCXRMjM6wUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADbHVU/2HVdl8vDyKI7jjJ1d7oc8Hxzq9LgBAAET7kCAIJDQABAMAEAwVOAAAATAJDoyzgEAkDhgxVA8cPTdr4ZeCh8yA2BM/FLg+IvtAIAoQFgCkD3Dw4AYGMAVfkgKx8IVpkqPv1O06ajCecx7T4tMwGsPIwpP12Y9FOSCd9lYpOyAkCwUgFgCkD3NwEAqQEwaQpY8V3szvu75tTuX3YCsApg9LcCAKkBYApA9w+fACa8CJP+HKD7/j/9Po5ZAUwBuF8aBoBVAKO/CQBIDYDuU4Bfee5zdkndv9UEkF5EHdeX5JWry/16KibIvS9aBYAHghj9TQBAagB0nQLSXgjq9AJQavdvOwFYBVD8VgAgNQBMAej+JoDY0HJWxAdA4hTQ4XOmfcbOYdV+ArAKoPitAEBqAJgC0P3DJ4AuF2P6C0Ep/wLQlIeUVgBTgOtqBTAFuFkUf1r3NwGACWCWDlPA1OcAVfd/3T9sAvAWGe4rK4BnAbh+qQHggSBGfxOAcdKZkBoA06eASp+p2vno/gJAV8H9YwWY2+VwnQSAVQCjvwBIDaYKgeS/ABcApgB0fwEgBFD8AgAQAKYA3eaJM9D9BYDxN/DvRgB4FiD8dH8BIAQUv+IXAALHd0MAmAI2/B13f27dXwDoXrhOAsCu6zwQAFYBxa/7CwBBs7+w/AtAAgBTgO4vAHCzOk8BQPsuCgJA13KOCACThKlDAKB7OT8BgJvYuQkAQAAwtZv9ZrevsP/r/gIAEACmAOeEAHBzOx8EAPc+B/DzfwGALudcBAAgANDtnIcAwE3vHAQAQ7x72OcBoABA9/P9BQAgANAFfW8BwMxi+LnzP73/K34BAAgA0rqi7i8ACC0OxS8AgCqB7AhqmvhSju5vAgAEAGndUvcXAIQWjeIXAIAAIK176v4CABAApHVR3V8AEFpMil8AAAKAtK6q+wsAQACQ1l11fwFAaJEpfgEACADSuq3uLwAILTrFLwAAAUBa99X9BQAgAEjrwrq/ACA0BBS/AAAEAGlTgO4vAAABQNoUoPsPu18cwVwr/3chhW8CIHQaUPwmAAKnAYUPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC08Q2FibINJmxEUAAAAABJRU5ErkJggg==';
 
-  <div class="market-grid">
-    <article class="market-card card">
-      <div class="market-card-head">
-        <div>
-          <span class="market-label">Featured drop</span>
-          <h3>Genesis Vexa Pass</h3>
-        </div>
-        <span class="market-chip">Soon</span>
-      </div>
-      <div class="market-art genesis-art"><span>VX</span></div>
-      <p class="market-text">Admin-created NFTs will appear here first. Price, supply, and utility will be connected in the next step.</p>
-      <button class="market-button" type="button" disabled>Buy soon</button>
-    </article>
+const marketItems = [
+  ['genesis', 'Genesis Vexa', '1/100', '12.5'],
+  ['ruby', 'Ruby Core', 'Rare', '8.0'],
+  ['nova', 'Nova Mask', 'Epic', '15.75'],
+  ['shadow', 'Shadow Pass', 'Limited', '6.25'],
+  ['orbit', 'Orbit Key', 'Utility', '4.5'],
+  ['pulse', 'Pulse Badge', 'Common', '2.0'],
+] as const;
 
-    <article class="market-card card">
-      <div class="market-card-head">
-        <div>
-          <span class="market-label">Marketplace</span>
-          <h3>Listed NFTs</h3>
-        </div>
-        <span class="market-chip">0 listed</span>
-      </div>
-      <div class="market-empty">
-        <strong>No listings yet</strong>
-        <span>When buying and selling is connected, live user listings will show here.</span>
-      </div>
-    </article>
+function nftCard([id, title, badge, price]: typeof marketItems[number]): string {
+  return `<button class="market-nft-card game-card" type="button" data-market-item="${id}"><span class="market-nft-image game-image"><span class="market-nft-art market-nft-art-${id}"><b>${title.split(' ').map((part) => part[0]).join('').slice(0, 2)}</b></span></span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>${title}</strong><em>${badge}</em></span><small>Internal Vexa NFT</small><span class="market-nft-bottom"><span class="market-price"><img src="${tonLogo}" alt="TON" decoding="async"/>${price}</span><span class="market-buy game-open">Buy</span></span></span></button>`;
+}
 
-    <article class="market-card card">
-      <div class="market-card-head">
-        <div>
-          <span class="market-label">Inventory</span>
-          <h3>My NFTs</h3>
-        </div>
-        <span class="market-chip">Wallet</span>
-      </div>
-      <div class="market-empty">
-        <strong>Your collection is empty</strong>
-        <span>Purchased NFTs will appear in this section with options to list them for sale.</span>
-      </div>
-    </article>
-
-    <article class="market-card card">
-      <div class="market-card-head">
-        <div>
-          <span class="market-label">Seller tools</span>
-          <h3>List for sale</h3>
-        </div>
-        <span class="market-chip">Fee ready</span>
-      </div>
-      <div class="market-seller-box">
-        <div><b>Market fee</b><span>Will be configured from admin panel later.</span></div>
-        <div><b>Resale</b><span>Users will be able to set price and cancel listing.</span></div>
-      </div>
-      <button class="market-button ghost" type="button" disabled>Listing logic soon</button>
-    </article>
-  </div>
-</section>
-`;
+export const MARKET_SECTION = `<section id="market" class="view market-view"><div class="market-grid game-grid">${marketItems.map(nftCard).join('')}</div></section>`;
