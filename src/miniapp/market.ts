@@ -7,6 +7,16 @@ const marketItems = [
   ['shadow', 'Shadow Pass', 'Limited', '6.25'],
   ['orbit', 'Orbit Key', 'Utility', '4.5'],
   ['pulse', 'Pulse Badge', 'Common', '2.0'],
+  ['onyx', 'Onyx Crown', 'Legend', '22.0'],
+  ['flare', 'Flare Wing', 'Rare', '9.5'],
+  ['ghost', 'Ghost Node', 'Epic', '14.0'],
+  ['matrix', 'Matrix Chip', 'Utility', '5.75'],
+  ['crystal', 'Crystal Bot', 'Rare', '7.25'],
+  ['void', 'Void Signal', 'Limited', '18.5'],
+  ['neon', 'Neon Fang', 'Common', '3.0'],
+  ['omega', 'Omega Key', 'Epic', '16.0'],
+  ['prism', 'Prism Eye', 'Rare', '10.25'],
+  ['alpha', 'Alpha Mark', '1/50', '25.0'],
 ] as const;
 
 function nftCard([id, title, badge, price]: typeof marketItems[number]): string {
