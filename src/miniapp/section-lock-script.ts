@@ -19,6 +19,9 @@ export const SECTION_LOCK_SCRIPT = `
   function visualUrl(item){if(!item)return '';return item.mode==='code'?(item.codeImageUrl||''):(item.lockedImageUrl||item.imageUrl||'')}
   function preload(url){if(!url||preloaded[url])return;preloaded[url]=true;var img=new Image();img.decoding='async';img.src=url}
   function preloadLockImages(){Object.keys(locks).forEach(function(id){var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
+  function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+  function countdownHtml(item){return item&&item.expiresAt?'<p>Opens in <span data-section-lock-expires-at="'+item.expiresAt+'">'+formatLeft(item.remainingMs)+'</span></p>':''}
+  function tickCountdowns(){document.querySelectorAll('[data-section-lock-expires-at]').forEach(function(el){el.textContent=formatLeft(Date.parse(el.getAttribute('data-section-lock-expires-at')||'')-Date.now())})}
   function lockVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}return lockSvg}
   function botCardVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}return '<span class="connect-card-lock-icon">'+lockSvg+'</span>'}
   function setKeyboardMode(on){document.body.classList.toggle('section-code-keyboard-open',!!on);updateKeyboardInset()}
@@ -42,9 +45,9 @@ export const SECTION_LOCK_SCRIPT = `
   function connectBotCard(){var connect=document.getElementById('connect');return connect&&connect.querySelector(':scope > .card:first-of-type')}
   function lockedCardHtml(item){
     if(item&&item.mode==='code'){
-      return '<div class="connect-card-locked-view connect-card-code-view">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p><input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div>';
+      return '<div class="connect-card-locked-view connect-card-code-view">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p>'+countdownHtml(item)+'<input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div>';
     }
-    return '<div class="connect-card-locked-view">'+botCardVisual(item)+'<h2>Locked</h2><p>Bot token connection is currently unavailable.</p></div>';
+    return '<div class="connect-card-locked-view">'+botCardVisual(item)+'<h2>Locked</h2>'+(countdownHtml(item)||'<p>Bot token connection is currently unavailable.</p>')+'</div>';
   }
   function bindBotCardCode(card){
     var input=card.querySelector('.connect-card-code-input');
@@ -82,7 +85,7 @@ export const SECTION_LOCK_SCRIPT = `
     var view=document.createElement('div');view.className='section-locked-view';
     if(item&&item.mode==='code'){
       view.classList.add('section-code-view');
-      view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p><input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
+      view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p>'+countdownHtml(item)+'<input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
       var input=view.querySelector('.section-code-input');var button=view.querySelector('.section-code-submit');var status=view.querySelector('.section-code-status');var dismiss=view.querySelector('.section-keyboard-dismiss');
       var submit=function(){
         var code=(input&&input.value||'').trim();
@@ -96,9 +99,9 @@ export const SECTION_LOCK_SCRIPT = `
       button.addEventListener('click',submit);input.addEventListener('touchstart',function(){focusCodeInput(input,view)},{passive:true});input.addEventListener('mousedown',function(){focusCodeInput(input,view)});input.addEventListener('click',function(){focusCodeInput(input,view)});input.addEventListener('focus',function(){focusCodeInput(input,view)});input.addEventListener('blur',function(){view.classList.remove('code-focused');setTimeout(function(){if(document.activeElement!==input)setKeyboardMode(false)},160)});input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});dismiss.addEventListener('touchstart',function(e){e.preventDefault();input.blur();setKeyboardMode(false)},{passive:false});dismiss.addEventListener('click',function(){input.blur();setKeyboardMode(false)});
     }else{
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
-      view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2><p>Please try again later.</p></div>';
+      view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2>'+(countdownHtml(item)||'<p>Please try again later.</p>')+'</div>';
     }
-    section.appendChild(view);
+    section.appendChild(view);tickCountdowns();
   }
 
   function applyLocks(){
@@ -107,20 +110,20 @@ export const SECTION_LOCK_SCRIPT = `
     var cardLocked=!!cardItem&&cardItem.mode!=='open'&&!isUnlocked('connect-bot-card');
     if(cardLocked)ensureBotCardOverlay(cardItem);else clearBotCardOverlay();
     document.querySelectorAll('.view').forEach(function(section){
-      var id=section.id;var globalItem=locks[id];var item=(userBlocked[id])?Object.assign({},globalItem||{}, {mode:'locked',locked:true,userBlocked:true}):globalItem;
+      var id=section.id;var globalItem=locks[id];var item=(userBlocked[id])?Object.assign({},globalItem||{}, userBlocked[id], {mode:'locked',locked:true,userBlocked:true}):globalItem;
       var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(id);
       section.classList.toggle('is-section-locked',isLocked);
       if(isLocked)ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view');if(old)old.remove()}
     });
   }
 
-  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){locks={};(data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}).catch(function(){})}
-  function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){userBlocked={};(data.blockedSections||[]).forEach(function(section){userBlocked[section]=true});userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}).catch(function(){})}
+  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){locks={};(data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}).catch(function(){})}
+  function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){userBlocked={};if(Array.isArray(data.sectionBlocks)){data.sectionBlocks.forEach(function(item){if(item&&item.blocked)userBlocked[item.sectionId]={expiresAt:item.expiresAt||null,remainingMs:item.remainingMs==null?null:Number(item.remainingMs)}})}else{(data.blockedSections||[]).forEach(function(section){userBlocked[section]={expiresAt:null,remainingMs:null}})}userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}).catch(function(){})}
   function loadLocks(){Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks)}
   function syncUserControls(){if(document.hidden)return;loadUserControls().then(applyLocks)}
 
   document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;setTimeout(applyLocks,40)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks();syncUserControls();updateKeyboardInset()}});
-  loadLocks();setInterval(loadGlobalLocks,20000);setInterval(syncUserControls,20000);
+  loadLocks();setInterval(loadGlobalLocks,20000);setInterval(syncUserControls,20000);setInterval(tickCountdowns,1000);
 })();
 `;

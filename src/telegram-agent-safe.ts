@@ -3,6 +3,7 @@ import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook 
 import { trackTelegramBotUser } from './admin-users';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import { selectedGroupReply } from './group-ai-provider';
+import { isGroupAiDisabled } from './group-ai-access';
 import type { BotRecord, Env, TelegramChat, TelegramMessage, TelegramUpdate, TelegramUser } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
@@ -66,6 +67,12 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
   const calledByName = mentionsVexa(text, bot.username);
   const calledByReply = isReplyToBot(message as unknown as GroupReplyMessage, bot.username);
   if (!calledByName && !calledByReply) return true;
+
+  const disabled = await isGroupAiDisabled(env, message.chat).catch((error) => {
+    console.warn('group AI access check skipped', error);
+    return false;
+  });
+  if (disabled) return true;
 
   const prompt = cleanGroupPrompt(text, bot.username) || EMPTY_GROUP_CALL_PROMPT;
 
