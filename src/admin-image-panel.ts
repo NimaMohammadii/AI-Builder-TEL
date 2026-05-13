@@ -4,40 +4,45 @@ export const ADMIN_IMAGE_PANEL_SCRIPT = `
 </style>
 <script>
 (function(){
-  const labels={home:'Home',connect:'Connect',playzone:'Play Zone',flow:'TTS',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
+  const SHARED_SECTION_ID='shared';
   const allowed=['image/png','image/jpeg','image/webp'];
-  let sections=[];
+  let shared={lockedImageUrl:null,codeImageUrl:null};
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
   function mount(){
     const target=document.getElementById('sectionImages');
     if(!target||document.getElementById('sectionLockImagesPanel'))return;
     const wrap=document.createElement('div');
     wrap.id='sectionLockImagesPanel';
-    wrap.innerHTML='<h2 style="margin-top:24px">Section lock images</h2><p class="muted small-text">Each section has one normal-lock image and one code-lock image. Images are stored in R2.</p><div id="adminLockImageList" class="admin-lock-image-list"><div class="empty">Loading...</div></div><p id="adminLockImageStatus" class="admin-lock-image-status"></p>';
+    wrap.innerHTML='<h2 style="margin-top:24px">Section lock images</h2><p class="muted small-text">One shared normal-lock image and one shared code-lock image are used for every locked section.</p><div id="adminLockImageList" class="admin-lock-image-list"><div class="empty">Loading...</div></div><p id="adminLockImageStatus" class="admin-lock-image-status"></p>';
     target.appendChild(wrap);
     load();
   }
   function imgTag(url){return url?'<img src="'+esc(url)+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now()+'" alt=""/>':'<img alt=""/>'}
+  function findSharedImages(sections){
+    const list=Array.isArray(sections)?sections:[];
+    const withLocked=list.find(s=>s&&s.lockedImageUrl)||list[0]||{};
+    const withCode=list.find(s=>s&&s.codeImageUrl)||list[0]||{};
+    shared={lockedImageUrl:withLocked.lockedImageUrl||withLocked.imageUrl||null,codeImageUrl:withCode.codeImageUrl||null};
+  }
   function render(){
     const list=document.getElementById('adminLockImageList');
     if(!list)return;
-    if(!sections.length){list.innerHTML='<div class="empty">No sections found.</div>';return;}
-    list.innerHTML=sections.map(s=>'<article class="admin-lock-image-row"><div class="admin-lock-image-head"><strong>'+esc(s.label||labels[s.id]||s.id)+'</strong><span>'+esc(s.id)+'</span></div><div class="admin-lock-image-grid"><div class="admin-lock-image-box"><small>Normal lock image</small>'+imgTag(s.lockedImageUrl)+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="locked" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="locked">Upload normal</button></div><div class="admin-lock-image-box"><small>Code entry image</small>'+imgTag(s.codeImageUrl)+'<input data-lock-img-file="'+esc(s.id)+'" data-kind="code" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+esc(s.id)+'" data-kind="code">Upload code</button></div></div></article>').join('');
+    list.innerHTML='<article class="admin-lock-image-row"><div class="admin-lock-image-head"><strong>Shared lock images</strong><span>all sections</span></div><div class="admin-lock-image-grid"><div class="admin-lock-image-box"><small>Normal lock image</small>'+imgTag(shared.lockedImageUrl)+'<input data-lock-img-file="'+SHARED_SECTION_ID+'" data-kind="locked" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+SHARED_SECTION_ID+'" data-kind="locked">Upload normal</button></div><div class="admin-lock-image-box"><small>Code entry image</small>'+imgTag(shared.codeImageUrl)+'<input data-lock-img-file="'+SHARED_SECTION_ID+'" data-kind="code" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-lock-img-upload="'+SHARED_SECTION_ID+'" data-kind="code">Upload code</button></div></div></article>';
     document.querySelectorAll('[data-lock-img-upload]').forEach(btn=>btn.onclick=()=>upload(btn.getAttribute('data-lock-img-upload'),btn.getAttribute('data-kind')));
   }
   async function load(){
     const status=document.getElementById('adminLockImageStatus');
     if(status)status.textContent='Loading images...';
-    try{const r=await fetch('/admin/api/section-locks',{credentials:'same-origin',cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load images');sections=j.sections||[];render();if(status)status.textContent='';}catch(e){if(status)status.textContent=e.message||'Could not load images';}
+    try{const r=await fetch('/admin/api/section-locks',{credentials:'same-origin',cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load images');findSharedImages(j.sections||[]);render();if(status)status.textContent='';}catch(e){if(status)status.textContent=e.message||'Could not load images';}
   }
   async function upload(sectionId,kind){
     const status=document.getElementById('adminLockImageStatus');
     const input=document.querySelector('[data-lock-img-file="'+sectionId+'"][data-kind="'+kind+'"]');
     if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first.';return;}
     if(!allowed.includes(input.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP.';return;}
-    const form=new FormData();form.append('sectionId',sectionId);form.append('kind',kind);form.append('image',input.files[0]);
-    if(status)status.textContent='Uploading to R2...';
-    try{const r=await fetch('/admin/api/section-lock-image',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');sections=j.sections||[];render();if(status)status.textContent='Image saved in R2.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
+    const form=new FormData();form.append('sectionId',SHARED_SECTION_ID);form.append('kind',kind);form.append('image',input.files[0]);
+    if(status)status.textContent='Uploading shared image to R2...';
+    try{const r=await fetch('/admin/api/section-lock-image',{method:'POST',credentials:'same-origin',body:form});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not upload image');findSharedImages(j.sections||[]);render();if(status)status.textContent='Shared image saved in R2.';}catch(e){if(status)status.textContent=e.message||'Could not upload image';}
   }
   document.addEventListener('click',()=>setTimeout(mount,80),true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
