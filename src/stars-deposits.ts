@@ -1,5 +1,6 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
 import { adjustUserTonBalance } from './user-controls';
+import { awardDepositXp } from './xp-rewards';
 
 const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 
@@ -94,6 +95,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
     status: 'completed',
     metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: payment.telegram_payment_charge_id ?? null },
   });
+  await awardDepositXp(env, row.user_id, 'stars_deposit', row.id);
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
