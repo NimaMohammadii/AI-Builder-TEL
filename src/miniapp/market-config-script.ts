@@ -4,6 +4,8 @@ export const MARKET_CONFIG_SCRIPT = `
   var mediaCacheName='vexa-market-media-v1';
   var objectUrls={};
   var keepAliveTimer=null;
+  var marketItemsById={};
+  var activeDetailItem=null;
   function esc(v){return String(v==null?'':v)}
   function cleanAnim(v){v=String(v||'none');return ['none','spin','glow','shine','pulse','spin-glow'].indexOf(v)>=0?v:'none'}
   function forcePlay(video){
@@ -50,7 +52,8 @@ export const MARKET_CONFIG_SCRIPT = `
     try{var currentPath=currentUrl.split('?')[0];var keys=await cache.keys();await Promise.all(keys.map(function(req){var u=req.url||'';if(u.indexOf('/app/api/market-item-media/')<0)return Promise.resolve();if(u.split('?')[0]===currentPath&&u!==currentUrl)return cache.delete(req);return Promise.resolve()}))}catch(e){}
   }
   async function renderMedia(imgWrap,item){
-    if(!imgWrap||!item.imageUrl)return;
+    if(!imgWrap)return;
+    if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
     var mediaUrl=await cachedMediaUrl(esc(item.imageUrl));
     if(item.mediaType==='video'){
       imgWrap.innerHTML='<video class="market-uploaded-video" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback"></video>';
@@ -58,10 +61,21 @@ export const MARKET_CONFIG_SCRIPT = `
       if(video){prepareMarketVideo(video);video.src=mediaUrl;video.load();prepareMarketVideo(video);forcePlay(video)}
     }else imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async"/>';
   }
+  function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
+  async function openDetail(item){
+    var sheet=document.getElementById('marketDetailSheet');if(!sheet||!item)return;activeDetailItem=item;
+    var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
+    if(title)title.textContent=esc(item.title||'NFT');if(desc)desc.textContent=esc(item.description||'Vexa internal collectible.');if(collection)collection.textContent=esc(item.collection||'Vexa Collectible');if(price)price.textContent=esc(item.price||'0');if(buy)buy.setAttribute('data-market-buy',esc(item.id));if(status)status.textContent='';
+    if(specs)specs.innerHTML=spec('Symbol',item.symbol)+spec('Rarity',item.rarity)+spec('Tag',item.tag)+spec('Supply',item.supply)+spec('Edition',item.edition)+spec('Stock',item.stock)+spec('Type',item.mediaType||'image')+spec('Utility',item.utility);
+    if(media){media.innerHTML='';await renderMedia(media,item)}
+    sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');setTimeout(forceAllMarketVideos,80);
+  }
+  function closeDetail(){var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');document.body.classList.remove('market-detail-open');activeDetailItem=null}
+  function handleBuy(){var status=document.querySelector('[data-market-detail-status]');if(status)status.textContent='Buy will be connected in the next step.'}
   function apply(items){
-    if(!Array.isArray(items))return;
+    if(!Array.isArray(items))return;marketItemsById={};
     items.forEach(function(item){
-      if(!item||!item.id)return;
+      if(!item||!item.id)return;marketItemsById[String(item.id)]=item;
       var card=document.querySelector('#market .market-nft-card[data-market-item="'+CSS.escape(String(item.id))+'"]');
       if(!card)return;
       var title=card.querySelector('.market-nft-title-row strong');
@@ -90,6 +104,9 @@ export const MARKET_CONFIG_SCRIPT = `
     root.dataset.marketTabsReady='1';
     root.addEventListener('click',function(event){
       var target=event.target;
+      var close=target&&target.closest?target.closest('[data-market-detail-close]'):null;if(close){event.preventDefault();event.stopPropagation();closeDetail();return}
+      var buy=target&&target.closest?target.closest('[data-market-buy]'):null;if(buy){event.preventDefault();event.stopPropagation();handleBuy();return}
+      var card=target&&target.closest?target.closest('.market-nft-card[data-market-item]'):null;if(card){event.preventDefault();event.stopPropagation();openDetail(marketItemsById[card.getAttribute('data-market-item')]);return}
       var btn=target&&target.closest?target.closest('[data-market-tab]'):null;
       if(!btn)return;
       event.preventDefault();
@@ -98,10 +115,8 @@ export const MARKET_CONFIG_SCRIPT = `
     },true);
   }
   async function loadMarket(){try{initMarketTabs();var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}}
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)forceAllMarketVideos()});
-  document.addEventListener('touchstart',forceAllMarketVideos,{capture:true,passive:true});
-  document.addEventListener('click',forceAllMarketVideos,{capture:true,passive:true});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadMarket);else loadMarket();
-  window.VexaMarketRefresh=loadMarket;
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)forceAllMarketVideos()});document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
+  document.addEventListener('touchstart',forceAllMarketVideos,{capture:true,passive:true});document.addEventListener('click',forceAllMarketVideos,{capture:true,passive:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadMarket);else loadMarket();window.VexaMarketRefresh=loadMarket;
 })();
 `;
