@@ -26,7 +26,7 @@ app.post('/admin/api/market-items', async (c) => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   try {
     const id = normalizeMarketItemId(String(body.id || ''));
-    return c.json(await setMarketItem(c.env, id, { title: String(body.title || ''), price: String(body.price || ''), stock: String(body.stock || '') }));
+    return c.json(await setMarketItem(c.env, id, { title: String(body.title || ''), price: String(body.price || ''), stock: String(body.stock || ''), animation: String(body.animation || 'none') as never }));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not save market item' }, 400);
   }
