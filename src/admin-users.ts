@@ -1,4 +1,5 @@
 import type { Env, TelegramUpdate } from './types';
+import { getUserLevel } from './levels';
 import { ensureTonBalanceColumn, getUserControls } from './user-controls';
 
 export type AppUserActivityPayload = {
@@ -83,7 +84,10 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
     LIMIT 500`).all<AdminUserRow>();
   const now = Date.now();
   const users = await Promise.all((rows.results ?? []).map(async (row) => {
-    const controls = await getUserControls(env, row.telegram_user_id).catch(() => null);
+    const [controls, levelInfo] = await Promise.all([
+      getUserControls(env, row.telegram_user_id).catch(() => null),
+      getUserLevel(env, row.telegram_user_id).catch(() => null),
+    ]);
     const lastSeenMs = row.last_seen_at ? Date.parse(row.last_seen_at) : 0;
     const online = lastSeenMs > 0 && now - lastSeenMs <= 90_000;
     const tonBalanceNano = Number(controls?.tonBalanceNano ?? row.ton_balance_nano ?? 0);
@@ -96,6 +100,10 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       currentSection: row.current_section || 'unknown',
       tonBalanceNano,
       tonBalance: formatTon(tonBalanceNano),
+      level: levelInfo?.level ?? 1,
+      xp: levelInfo?.xp ?? 0,
+      totalXp: levelInfo?.totalXp ?? 0,
+      rankName: levelInfo?.rankName ?? 'Starter',
       lastSeenAt: row.last_seen_at,
       createdAt: row.created_at,
       source: row.source || 'unknown',
