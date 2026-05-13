@@ -1,6 +1,9 @@
 export const MARKET_STYLES = `
 #market.market-view{padding:6px 0 calc(120px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important}
 #market .market-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:10px!important;row-gap:18px!important;padding-bottom:28px!important;scroll-snap-type:y proximity!important}
+#market.is-section-locked{overflow:hidden!important;padding:0!important;background:#000!important}
+#market.is-section-locked .market-grid{display:none!important;visibility:hidden!important;pointer-events:none!important}
+#market.is-section-locked .section-locked-view{position:absolute!important;inset:0!important;z-index:50!important;background:#000!important}
 #market .market-nft-card{background:rgba(255,255,255,.045)!important;-webkit-backdrop-filter:blur(3px) saturate(150%)!important;backdrop-filter:blur(3px) saturate(150%)!important}
 #market .market-nft-card:before,#market .market-nft-card:after{content:none!important;display:none!important}
 #market .market-nft-image{aspect-ratio:1/1!important}
@@ -20,5 +23,5 @@ export const MARKET_STYLES = `
 #market .market-price{height:29px;min-width:0;padding:0 8px;border-radius:999px;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.13);display:flex;align-items:center;gap:5px;color:#fff;font-size:10.2px;font-weight:950;letter-spacing:-.025em;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 #market .market-price img{width:15px;height:15px;border-radius:999px;display:block;flex:0 0 auto}
 #market .market-buy{justify-self:end!important;margin:0!important}
-@media(max-width:380px){#market .market-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:8px!important;row-gap:14px!important}#market .market-nft-title-row strong{font-size:12.5px}#market .market-nft-title-row em{max-width:50px;height:18px;font-size:7.8px;padding:0 6px}#market .market-price{height:26px;font-size:9.2px;padding:0 7px}#market .market-price img{width:13px;height:13px}#market .market-buy{height:26px!important;padding:0 10px!important;font-size:9px!important}#market .market-nft-art b{font-size:30px}}
+@media(max-width:380px){#market .market-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:8px!important;row-gap:14px!important}#market.is-section-locked .market-grid{display:none!important}#market .market-nft-title-row strong{font-size:12.5px}#market .market-nft-title-row em{max-width:50px;height:18px;font-size:7.8px;padding:0 6px}#market .market-price{height:26px;font-size:9.2px;padding:0 7px}#market .market-price img{width:13px;height:13px}#market .market-buy{height:26px!important;padding:0 10px!important;font-size:9px!important}#market .market-nft-art b{font-size:30px}}
 `;
