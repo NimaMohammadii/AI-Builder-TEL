@@ -1,7 +1,7 @@
 import type { Env } from './types';
 
 export type MarketAnimation = 'none' | 'spin' | 'glow' | 'shine' | 'pulse' | 'spin-glow';
-export type MarketMediaType = 'image' | 'video';
+export type MarketMediaType = 'image';
 
 export type MarketItem = {
   id: string;
@@ -26,8 +26,8 @@ type SavedMarketItem = Partial<Pick<MarketItem, 'title' | 'price' | 'stock' | 'a
 
 type R2Head = { customMetadata?: Record<string, string>; httpMetadata?: { contentType?: string } } | null;
 
-export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
-export const MARKET_MEDIA_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'm4v']);
+export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
+export const MARKET_MEDIA_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 export const MARKET_ITEMS_KEY = 'admin:market-items';
 export const MARKET_ANIMATIONS = new Set<MarketAnimation>(['none', 'spin', 'glow', 'shine', 'pulse', 'spin-glow']);
 
@@ -77,15 +77,11 @@ export function marketContentType(type: string, fileName: string): string {
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
   if (extension === 'webp') return 'image/webp';
   if (extension === 'gif') return 'image/gif';
-  if (extension === 'webm') return 'video/webm';
-  if (extension === 'mov') return 'video/quicktime';
-  if (extension === 'm4v') return 'video/x-m4v';
-  if (extension === 'mp4') return 'video/mp4';
   return cleanType;
 }
 
-export function marketMediaTypeFromContentType(contentType: string): MarketMediaType {
-  return String(contentType || '').toLowerCase().startsWith('video/') ? 'video' : 'image';
+export function marketMediaTypeFromContentType(_contentType: string): MarketMediaType {
+  return 'image';
 }
 
 export function isAllowedMarketMedia(type: string, fileName: string): boolean {
@@ -100,8 +96,6 @@ export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }>
     const custom = saved[item.id] || {};
     const head = await env.ASSETS.head(marketImageKey(item.id)).catch(() => null) as R2Head;
     const version = head?.customMetadata?.version || '1';
-    const contentType = head?.customMetadata?.contentType || head?.httpMetadata?.contentType || '';
-    const mediaType = (head?.customMetadata?.mediaType as MarketMediaType | undefined) || marketMediaTypeFromContentType(contentType);
     return {
       ...item,
       title: cleanText(custom.title, item.title, 80),
@@ -116,7 +110,7 @@ export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }>
       edition: cleanText(custom.edition, item.edition, 40),
       utility: cleanText(custom.utility, item.utility, 180),
       description: cleanText(custom.description, item.description, 280),
-      mediaType,
+      mediaType: 'image',
       imageUrl: head ? `/app/api/market-item-media/${item.id}?v=${version}` : null,
     };
   }));
