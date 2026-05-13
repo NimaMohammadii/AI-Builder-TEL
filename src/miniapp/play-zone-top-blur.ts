@@ -1,0 +1,3 @@
+export const PLAY_ZONE_TOP_BLUR = `
+.play-zone-view:before{content:"";position:fixed;left:0;right:0;top:0;height:calc(158px + env(safe-area-inset-top));z-index:8;pointer-events:none;background:linear-gradient(180deg,rgba(18,7,10,.72),rgba(18,7,10,.34) 62%,rgba(18,7,10,0));-webkit-backdrop-filter:blur(12px) saturate(135%);backdrop-filter:blur(12px) saturate(135%);mask-image:linear-gradient(180deg,#000 0%,#000 68%,transparent 100%);-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 68%,transparent 100%)}.play-zone-view:not(.active):before{display:none}.top{position:relative;z-index:12}.play-zone-view .play-zone-stage{position:relative;z-index:1}
+`;
