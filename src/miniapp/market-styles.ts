@@ -9,10 +9,11 @@ export const MARKET_STYLES = `
 #market .market-nft-art:before{content:"";position:absolute;inset:12%;border:1px solid rgba(255,255,255,.09);border-radius:22%;transform:rotate(8deg);opacity:.55}
 #market .market-nft-art:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 28% 18%,rgba(255,255,255,.08),transparent 24%),radial-gradient(circle at 50% 100%,rgba(255,46,99,.055),transparent 48%)}
 #market .market-nft-art b{display:none!important}
-#market .market-uploaded-image{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;will-change:transform,filter}
+#market .market-uploaded-image,#market .market-uploaded-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;will-change:transform,filter;background:#000}
+#market .market-uploaded-video{pointer-events:none}
 #market .market-anim-spin .market-uploaded-image,#market .market-anim-spin-glow .market-uploaded-image{animation:marketNftSpin 8s linear infinite;object-fit:contain;background:#000}
-#market .market-anim-glow .market-uploaded-image,#market .market-anim-spin-glow .market-uploaded-image{filter:drop-shadow(0 0 14px rgba(255,46,99,.34))}
-#market .market-anim-pulse .market-uploaded-image{animation:marketNftPulse 3s ease-in-out infinite}
+#market .market-anim-glow .market-uploaded-image,#market .market-anim-spin-glow .market-uploaded-image,#market .market-anim-glow .market-uploaded-video,#market .market-anim-spin-glow .market-uploaded-video{filter:drop-shadow(0 0 14px rgba(255,46,99,.34))}
+#market .market-anim-pulse .market-uploaded-image,#market .market-anim-pulse .market-uploaded-video{animation:marketNftPulse 3s ease-in-out infinite}
 #market .market-anim-shine .market-nft-image:after,#market .market-anim-spin-glow .market-nft-image:after{content:"";position:absolute;top:-35%;left:-70%;width:70%;height:170%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);transform:rotate(18deg);animation:marketNftImageShine 3.8s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen}
 #market .market-anim-glow .market-nft-image:before,#market .market-anim-spin-glow .market-nft-image:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,46,99,.16),transparent 62%);animation:marketNftGlow 2.7s ease-in-out infinite;pointer-events:none;z-index:2}
 #market .market-nft-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;min-width:0}
