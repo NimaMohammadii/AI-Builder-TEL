@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
+import './market-routes';
 import { adminUsersJson, trackAppUser } from './admin-users';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance } from './user-controls';
