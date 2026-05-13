@@ -11,7 +11,7 @@ app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env)
 app.get('/app/api/market-item-media/:item', async (c) => {
   try {
     const id = normalizeMarketItemId(c.req.param('item'));
-    return getMarketAsset(c.env, marketImageKey(id));
+    return getMarketAsset(c.env, marketImageKey(id), c.req.header('range'));
   } catch {
     return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
   }
@@ -20,7 +20,7 @@ app.get('/app/api/market-item-media/:item', async (c) => {
 app.get('/app/api/market-item-image/:item', async (c) => {
   try {
     const id = normalizeMarketItemId(c.req.param('item').replace(/\.png$/i, ''));
-    return getMarketAsset(c.env, marketImageKey(id));
+    return getMarketAsset(c.env, marketImageKey(id), c.req.header('range'));
   } catch {
     return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
   }
@@ -61,13 +61,34 @@ app.post('/admin/api/market-item-image', async (c) => {
   }
 });
 
-async function getMarketAsset(env: Env, key: string): Promise<Response> {
+async function getMarketAsset(env: Env, key: string, rangeHeader?: string): Promise<Response> {
   const head = await env.ASSETS.head(key).catch(() => null);
   if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  const object = await env.ASSETS.get(key).catch(() => null);
+  const contentType = head.httpMetadata?.contentType || head.customMetadata?.contentType || 'application/octet-stream';
+  const size = head.size || 0;
+  const range = parseByteRange(rangeHeader, size);
+  const object = await env.ASSETS.get(key, range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  const contentType = object.httpMetadata?.contentType || object.customMetadata?.contentType || head.httpMetadata?.contentType || head.customMetadata?.contentType || 'application/octet-stream';
-  return new Response(object.body, { headers: { 'content-type': contentType, 'cache-control': CACHE_LONG, 'accept-ranges': 'bytes' } });
+  const headers = new Headers({
+    'content-type': object.httpMetadata?.contentType || object.customMetadata?.contentType || contentType,
+    'cache-control': CACHE_LONG,
+    'accept-ranges': 'bytes',
+    'content-length': String(range ? range.end - range.start + 1 : size),
+  });
+  if (range) headers.set('content-range', `bytes ${range.start}-${range.end}/${size}`);
+  return new Response(object.body, { status: range ? 206 : 200, headers });
+}
+
+function parseByteRange(header: string | undefined, size: number): { start: number; end: number } | null {
+  if (!header || !Number.isFinite(size) || size <= 0) return null;
+  const match = header.match(/^bytes=(\d*)-(\d*)$/);
+  if (!match || (!match[1] && !match[2])) return null;
+  let start = match[1] ? Number(match[1]) : size - Number(match[2]);
+  let end = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
+  start = Math.max(0, start);
+  end = Math.min(size - 1, end);
+  return start <= end ? { start, end } : null;
 }
 
 function adminCookieValue(cookie: string | undefined): string {
