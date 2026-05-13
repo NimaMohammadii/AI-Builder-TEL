@@ -1,6 +1,5 @@
 export const MARKET_CONFIG_SCRIPT = `
 (function(){
-  var animationClasses=['market-anim-none','market-anim-spin','market-anim-glow','market-anim-shine','market-anim-pulse','market-anim-spin-glow'];
   var marketItemsById={};
   var activeDetailItem=null;
   var marketRequestInFlight=null;
@@ -34,8 +33,8 @@ export const MARKET_CONFIG_SCRIPT = `
       var badge=card.querySelector('.market-nft-title-row em');
       var price=card.querySelector('.market-price-button b');
       var imgWrap=card.querySelector('.market-nft-image');
-      animationClasses.forEach(function(cls){card.classList.remove(cls)});
-      card.classList.add('market-anim-none');card.setAttribute('data-market-animation','none');
+      card.removeAttribute('data-market-animation');
+      card.classList.remove('market-anim-none','market-anim-spin','market-anim-glow','market-anim-shine','market-anim-pulse','market-anim-spin-glow');
       if(title&&item.title)title.textContent=esc(item.title);
       if(badge&&item.stock!==undefined&&item.stock!==null)badge.textContent='Stock '+esc(item.stock);
       if(price&&item.price)price.textContent=esc(item.price);
@@ -81,6 +80,5 @@ export const MARKET_CONFIG_SCRIPT = `
   }
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadMarket(false)});else loadMarket(false);
-  window.VexaMarketRefresh=function(force){return loadMarket(!!force)};
 })();
 `;
