@@ -1,10 +1,10 @@
 import app from './index';
-import { getMarketItems, MARKET_IMAGE_TYPES, marketImageKey, normalizeMarketItemId, setMarketItem } from './market-config';
+import { getMarketItems, isAllowedMarketMedia, marketContentType, marketImageKey, normalizeMarketItemId, setMarketItem } from './market-config';
 import type { Env } from './types';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
-const MARKET_UPLOAD_MAX_BYTES = 8_000_000;
+const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 
 app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE }));
 
@@ -40,10 +40,11 @@ app.post('/admin/api/market-item-image', async (c) => {
     const id = normalizeMarketItemId(String(form.get('id') || ''));
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image or video file.' }, 400);
-    if (!MARKET_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, WebP, GIF, MP4, WebM or MOV files are allowed.' }, 400);
-    if (file.size > MARKET_UPLOAD_MAX_BYTES) return c.json({ error: 'Market media must be under 8MB.' }, 400);
+    if (!isAllowedMarketMedia(file.type, file.name)) return c.json({ error: `Only PNG, JPG, JPEG, WebP, GIF, MP4, WebM, MOV or M4V files are allowed. Got ${file.type || 'unknown'} ${file.name || ''}` }, 400);
+    if (file.size > MARKET_UPLOAD_MAX_BYTES) return c.json({ error: 'Market media must be under 25MB.' }, 400);
     const version = String(Date.now());
-    await c.env.ASSETS.put(marketImageKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    const contentType = marketContentType(file.type, file.name);
+    await c.env.ASSETS.put(marketImageKey(id), file.stream(), { httpMetadata: { contentType }, customMetadata: { version } });
     return c.json(await getMarketItems(c.env));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload market media' }, 400);
