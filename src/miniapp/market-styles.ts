@@ -10,7 +10,13 @@ export const MARKET_STYLES = `
 #market .market-nft-art:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 28% 18%,rgba(255,255,255,.08),transparent 24%),radial-gradient(circle at 50% 100%,rgba(255,46,99,.055),transparent 48%)}
 #market .market-nft-art b{display:none!important}
 #market .market-uploaded-image,#market .market-uploaded-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;will-change:transform,filter;background:#000}
-#market .market-uploaded-video{pointer-events:none}
+#market .market-uploaded-video{pointer-events:none!important;-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;appearance:none!important;-webkit-appearance:none!important}
+#market .market-uploaded-video::-webkit-media-controls{display:none!important;opacity:0!important;visibility:hidden!important}
+#market .market-uploaded-video::-webkit-media-controls-panel{display:none!important;opacity:0!important;visibility:hidden!important}
+#market .market-uploaded-video::-webkit-media-controls-start-playback-button{display:none!important;opacity:0!important;visibility:hidden!important;-webkit-appearance:none!important}
+#market .market-uploaded-video::-webkit-media-controls-play-button{display:none!important;opacity:0!important;visibility:hidden!important}
+#market .market-uploaded-video::-webkit-media-controls-overlay-play-button{display:none!important;opacity:0!important;visibility:hidden!important}
+#market .market-uploaded-video::-webkit-media-controls-enclosure{display:none!important;opacity:0!important;visibility:hidden!important}
 #market .market-anim-spin .market-uploaded-image,#market .market-anim-spin-glow .market-uploaded-image{animation:marketNftSpin 8s linear infinite;object-fit:contain;background:#000}
 #market .market-anim-glow .market-uploaded-image,#market .market-anim-spin-glow .market-uploaded-image,#market .market-anim-glow .market-uploaded-video,#market .market-anim-spin-glow .market-uploaded-video{filter:drop-shadow(0 0 14px rgba(255,46,99,.34))}
 #market .market-anim-pulse .market-uploaded-image,#market .market-anim-pulse .market-uploaded-video{animation:marketNftPulse 3s ease-in-out infinite}
