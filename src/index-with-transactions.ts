@@ -1,4 +1,5 @@
 import app from './index-admin-plinko';
+import { registerAdvancedAdminRoutes } from './admin-advanced-routes';
 import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
@@ -11,6 +12,7 @@ const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 
 registerGroupPhotoEndpoint(app);
 registerHomeImageCacheEndpoint(app);
+registerAdvancedAdminRoutes(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
