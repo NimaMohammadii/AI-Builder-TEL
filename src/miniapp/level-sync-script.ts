@@ -6,15 +6,19 @@ export const LEVEL_SYNC_SCRIPT = `
   var profile=null;
   var PLAY_XP_INTERVAL_MS=300000;
   var PLAY_XP_AMOUNT=30;
+  var DAILY_XP_AMOUNT=50;
   var ACTIVE_WINDOW_MS=90000;
   var lastActivityAt=Date.now();
   var lastTickAt=Date.now();
   var playMs=0;
+  var dailyChecked=false;
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,coinflip:1,hilo:1};
   function id(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function section(){var active=document.querySelector('.view.active');return active&&active.id?active.id:'home'}
   function isGameSection(name){return !!gameSections[String(name||section()).replace(/^view-/,'')]}
+  function todayKey(){return new Date().toISOString().slice(0,10)}
   function storageKey(){return 'vexa:play-xp-ms:'+id()}
+  function dailyStorageKey(){return 'vexa:daily-xp:'+id()}
   function loadPlayMs(){try{var v=Number(localStorage.getItem(storageKey())||0);playMs=Math.max(0,Math.min(PLAY_XP_INTERVAL_MS-1,Math.floor(v)||0))}catch(e){playMs=0}}
   function savePlayMs(){try{var userId=id();if(userId)localStorage.setItem(storageKey(),String(Math.max(0,Math.min(PLAY_XP_INTERVAL_MS-1,Math.floor(playMs)||0))))}catch(e){}}
   function markActivity(){lastActivityAt=Date.now()}
@@ -26,7 +30,19 @@ export const LEVEL_SYNC_SCRIPT = `
   function xpToast(amount){var t=document.getElementById('toast');if(!t)return;t.textContent='+'+amount+' XP';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
   function preview(amount){amount=Math.max(0,Math.floor(Number(amount)||0));if(!amount)return;var p=clean(profile||{level:1,xp:0,totalXp:0});var old=p.level;p.xp+=amount;p.totalXp+=amount;while(p.xp>=p.nextLevelXp){p.xp-=p.nextLevelXp;p.level++;p.nextLevelXp=need(p.level)}p.progressPercent=Math.max(0,Math.min(100,Math.floor((p.xp/p.nextLevelXp)*100)));p.xpLeft=Math.max(0,p.nextLevelXp-p.xp);p.rankName=rank(p.level);render(p);if(p.level>old)popup(p.level,p.rankName)}
   function add(amount,source,metadata){var userId=id();amount=Math.max(0,Math.floor(Number(amount)||0));if(!userId||!amount)return;preview(amount);queue=queue.then(function(){return fetch('/app/api/level/xp',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:userId,amount:amount,source:source||'activity',metadata:metadata||{section:section()}})}).then(function(r){return r.json().catch(function(){return null})}).then(function(j){if(j&&j.profile)render(j.profile);if(j&&j.leveledUp&&j.profile)popup(j.profile.level,j.profile.rankName)}).catch(function(){})})}
-  function load(){var userId=id();if(!userId)return;loadPlayMs();fetch('/app/api/level?userId='+encodeURIComponent(userId)).then(function(r){return r.json()}).then(render).catch(function(){})}
+  function awardDailyOpen(){
+    var userId=id();
+    if(!userId||dailyChecked)return;
+    dailyChecked=true;
+    try{
+      var key=dailyStorageKey(),today=todayKey();
+      if(localStorage.getItem(key)===today)return;
+      localStorage.setItem(key,today);
+      add(DAILY_XP_AMOUNT,'daily-open',{date:today});
+      xpToast(DAILY_XP_AMOUNT);
+    }catch(e){}
+  }
+  function load(){var userId=id();if(!userId)return;loadPlayMs();fetch('/app/api/level?userId='+encodeURIComponent(userId)).then(function(r){return r.json()}).then(function(p){render(p);awardDailyOpen()}).catch(function(){awardDailyOpen()})}
   function tickPlayXp(){
     var now=Date.now();
     var elapsed=Math.max(0,Math.min(30000,now-lastTickAt));
@@ -45,7 +61,7 @@ export const LEVEL_SYNC_SCRIPT = `
   }
   window.VexaLevel={add:add,load:load};
   ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section()))markActivity()},true)});
-  document.addEventListener('visibilitychange',function(){lastTickAt=Date.now();if(!document.hidden)markActivity()});
+  document.addEventListener('visibilitychange',function(){lastTickAt=Date.now();if(!document.hidden){markActivity();awardDailyOpen()}});
   document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
   setInterval(tickPlayXp,15000);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();markActivity();lastTickAt=Date.now()});else{load();markActivity();lastTickAt=Date.now()}
