@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { getUserControls } from './user-controls';
 
 export type MarketNftStatus = 'owned' | 'listed' | 'gift_pending' | 'burned';
 export type MarketListingStatus = 'active' | 'sold' | 'cancelled';
@@ -105,6 +106,16 @@ export function calculateMarketFee(priceNano: number, feeBps: number): MarketFee
   return { priceNano: price, feeNano: fee, sellerReceivesNano: Math.max(0, price - fee) };
 }
 
+export async function assertCanBuyPrimaryNft(env: Env, input: { buyerUserId: string; itemId: string; priceNano: number }): Promise<{ buyerUserId: string; itemId: string; priceNano: number }> {
+  await ensureMarketRuleTables(env);
+  const buyerUserId = cleanUserId(input.buyerUserId);
+  const itemId = cleanItemId(input.itemId);
+  const priceNano = normalizeNano(input.priceNano);
+  if (priceNano <= 0) throw new Error('NFT price must be greater than zero');
+  await assertUserHasBalance(env, buyerUserId, priceNano, 'Not enough TON balance to buy this NFT');
+  return { buyerUserId, itemId, priceNano };
+}
+
 export async function assertCanListNft(env: Env, input: { instanceId: string; sellerUserId: string; priceNano: number }): Promise<MarketNftOwner> {
   await ensureMarketRuleTables(env);
   const owner = await readNftOwner(env, input.instanceId);
@@ -129,6 +140,8 @@ export async function assertCanGiftNft(env: Env, input: { instanceId: string; fr
   if (owner.status !== 'owned') throw new Error('NFT must be owned and unlocked before gifting');
   const activeListing = await readActiveListingForInstance(env, owner.instanceId);
   if (activeListing) throw new Error('Cancel the active listing before gifting this NFT');
+  const config = await getMarketRuleConfig(env);
+  if (config.giftFeeNano > 0) await assertUserHasBalance(env, from, config.giftFeeNano, 'Not enough TON balance to gift this NFT');
   return owner;
 }
 
@@ -142,6 +155,7 @@ export async function assertCanBuyListing(env: Env, input: { listingId: string; 
   if (!owner) throw new Error('NFT not found');
   if (owner.ownerUserId !== listing.sellerUserId) throw new Error('Listing seller no longer owns this NFT');
   if (owner.status !== 'listed') throw new Error('NFT is not locked for this listing');
+  await assertUserHasBalance(env, buyer, listing.priceNano, 'Not enough TON balance to buy this NFT');
   const config = await getMarketRuleConfig(env);
   return { listing, owner, fee: calculateMarketFee(listing.priceNano, config.resaleFeeBps) };
 }
@@ -159,18 +173,21 @@ export async function assertCanCancelListing(env: Env, input: { listingId: strin
 }
 
 export async function readNftOwner(env: Env, instanceIdInput: string): Promise<MarketNftOwner | null> {
+  await ensureMarketRuleTables(env);
   const instanceId = cleanInstanceId(instanceIdInput);
   const row = await env.DB.prepare('SELECT * FROM market_nft_ownership WHERE instance_id = ?').bind(instanceId).first<OwnershipRow>().catch(() => null);
   return row ? ownerFromRow(row) : null;
 }
 
 export async function readListing(env: Env, listingIdInput: string): Promise<MarketListing | null> {
+  await ensureMarketRuleTables(env);
   const listingId = cleanId(listingIdInput, 'listing');
   const row = await env.DB.prepare('SELECT * FROM market_nft_listings WHERE listing_id = ?').bind(listingId).first<ListingRow>().catch(() => null);
   return row ? listingFromRow(row) : null;
 }
 
 export async function readActiveListingForInstance(env: Env, instanceIdInput: string): Promise<MarketListing | null> {
+  await ensureMarketRuleTables(env);
   const instanceId = cleanInstanceId(instanceIdInput);
   const row = await env.DB.prepare(`SELECT * FROM market_nft_listings WHERE instance_id = ? AND status = 'active' LIMIT 1`).bind(instanceId).first<ListingRow>().catch(() => null);
   return row ? listingFromRow(row) : null;
@@ -259,6 +276,13 @@ function listingFromRow(row: ListingRow): MarketListing {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function assertUserHasBalance(env: Env, userId: string, amountNano: number, message: string): Promise<void> {
+  const required = normalizeNano(amountNano);
+  if (required <= 0) return;
+  const controls = await getUserControls(env, cleanUserId(userId));
+  if (controls.tonBalanceNano < required) throw new Error(message);
 }
 
 function normalizeFeeBps(value: unknown): number {
