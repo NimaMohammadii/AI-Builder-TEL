@@ -21,7 +21,8 @@ export const MARKET_CONFIG_SCRIPT = `
       if(badge&&item.stock!==undefined&&item.stock!==null)badge.textContent='Stock '+esc(item.stock);
       if(price&&item.price)price.textContent=esc(item.price);
       if(imgWrap&&item.imageUrl){
-        imgWrap.innerHTML='<img class="market-uploaded-image" src="'+esc(item.imageUrl)+'" alt="" decoding="async"/>';
+        if(item.mediaType==='video')imgWrap.innerHTML='<video class="market-uploaded-video" src="'+esc(item.imageUrl)+'" autoplay muted loop playsinline preload="metadata"></video>';
+        else imgWrap.innerHTML='<img class="market-uploaded-image" src="'+esc(item.imageUrl)+'" alt="" decoding="async"/>';
       }
     });
   }
