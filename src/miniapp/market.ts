@@ -21,7 +21,7 @@ const marketItems = [
 ] as const;
 
 function nftCard([id, title, badge, price]: typeof marketItems[number]): string {
-  return `<button class="market-nft-card game-card" type="button" data-market-item="${id}"><span class="market-nft-image game-image"><span class="market-nft-art market-nft-art-${id}"><b>${title.split(' ').map((part) => part[0]).join('').slice(0, 2)}</b></span></span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>${title}</strong><em>${badge}</em></span><small>Internal Vexa NFT</small><span class="market-price-button"><img src="${creditLogo}" alt="Credit" decoding="async" onerror="this.onerror=null;this.src='${fallbackCreditLogo}'"/><b>${price}</b></span></span></button>`;
+  return `<button class="market-nft-card game-card" type="button" data-market-item="${id}"><span class="market-nft-image game-image"><span class="market-nft-art market-nft-art-${id}"><b>${title.split(' ').map((part) => part[0]).join('').slice(0, 2)}</b></span></span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>${title}</strong><em>${badge}</em></span><small>Internal Vexa NFT</small><span class="market-price-button game-open"><img src="${creditLogo}" alt="Credit" decoding="async" onerror="this.onerror=null;this.src='${fallbackCreditLogo}'"/><b>${price}</b></span></span></button>`;
 }
 
 export const MARKET_SECTION = `<section id="market" class="view market-view"><div class="market-grid game-grid">${marketItems.map(nftCard).join('')}</div></section>`;
