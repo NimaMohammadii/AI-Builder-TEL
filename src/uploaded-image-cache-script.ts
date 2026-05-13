@@ -35,6 +35,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url,source:'plinko-ball'}}))}catch(e){}
   }
   function load(){
+    if(document.hidden)return;
     fetch('/app/api/uploaded-images',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){
       if(data&&data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
       if(data&&data.tonIconUrl)applyTonIcon(data.tonIconUrl);
@@ -44,6 +45,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
   }
   installAccessCodeKeyboardCss();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  setInterval(load,20000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+  setInterval(load,600000);
 })();
 `;
