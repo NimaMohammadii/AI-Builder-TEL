@@ -1,6 +1,7 @@
 import type { Env } from './types';
 
 export type MarketAnimation = 'none' | 'spin' | 'glow' | 'shine' | 'pulse' | 'spin-glow';
+export type MarketMediaType = 'image' | 'video';
 
 export type MarketItem = {
   id: string;
@@ -9,18 +10,19 @@ export type MarketItem = {
   price: string;
   stock: string;
   animation: MarketAnimation;
+  mediaType: MarketMediaType;
   imageUrl: string | null;
 };
 
 type SavedMarketItem = Partial<Pick<MarketItem, 'title' | 'price' | 'stock' | 'animation'>>;
 
-type R2Head = { customMetadata?: Record<string, string> } | null;
+type R2Head = { customMetadata?: Record<string, string>; httpMetadata?: { contentType?: string } } | null;
 
-export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime']);
 export const MARKET_ITEMS_KEY = 'admin:market-items';
 export const MARKET_ANIMATIONS = new Set<MarketAnimation>(['none', 'spin', 'glow', 'shine', 'pulse', 'spin-glow']);
 
-export const DEFAULT_MARKET_ITEMS: Array<Omit<MarketItem, 'imageUrl'>> = [
+export const DEFAULT_MARKET_ITEMS: Array<Omit<MarketItem, 'imageUrl' | 'mediaType'>> = [
   { id: 'genesis', title: 'Genesis Vexa', badge: '1/100', price: '12.5', stock: '100', animation: 'none' },
   { id: 'ruby', title: 'Ruby Core', badge: 'Rare', price: '8.0', stock: '250', animation: 'none' },
   { id: 'nova', title: 'Nova Mask', badge: 'Epic', price: '15.75', stock: '120', animation: 'none' },
@@ -60,12 +62,14 @@ export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }>
     const custom = saved[item.id] || {};
     const head = await env.ASSETS.head(marketImageKey(item.id)).catch(() => null) as R2Head;
     const version = head?.customMetadata?.version || '1';
+    const contentType = head?.httpMetadata?.contentType || '';
     return {
       ...item,
       title: cleanText(custom.title, item.title, 80),
       price: cleanText(custom.price, item.price, 24),
       stock: cleanText(custom.stock, item.stock, 24),
       animation: normalizeMarketAnimation(custom.animation || item.animation),
+      mediaType: contentType.startsWith('video/') ? 'video' : 'image',
       imageUrl: head ? `/app/api/market-item-image/${item.id}.png?v=${version}` : null,
     };
   }));
