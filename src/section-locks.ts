@@ -9,6 +9,8 @@ export type SectionLock = {
   description: string;
   locked: boolean;
   mode: SectionLockMode;
+  expiresAt: string | null;
+  remainingMs: number | null;
   hasCode: boolean;
   hasImage: boolean;
   imageUrl: string | null;
@@ -22,6 +24,7 @@ type SavedSectionLock = {
   locked?: boolean;
   mode?: SectionLockMode;
   code?: string;
+  expiresAt?: string | null;
 };
 
 type AdminSettingRow = { value_json: string };
@@ -29,7 +32,7 @@ type AdminSettingRow = { value_json: string };
 const LOCKS_KEY = 'admin:section-locks';
 export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
-const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeImageUrl'>> = [
+const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeImageUrl'>> = [
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
@@ -62,9 +65,19 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'hasCode' | 
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
   const saved = await readLocks(env);
+  const now = Date.now();
+  let changed = false;
+  for (const [id, item] of Object.entries(saved)) {
+    if (item?.expiresAt && Date.parse(item.expiresAt) <= now) {
+      saved[id] = { ...item, locked: false, mode: 'open', expiresAt: null };
+      changed = true;
+    }
+  }
+  if (changed) await writeLocks(env, saved).catch(() => undefined);
   const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
+    const expiresAt = mode === 'open' ? null : normalizeExpiresAt(item?.expiresAt);
     const hasLockedImage = await hasStoredSectionImage(env, section.id, 'locked');
     const hasCodeImage = await hasStoredSectionImage(env, section.id, 'code');
     const legacyHasImage = Boolean(await env.BOT_CACHE.get(legacySectionImageTypeKey(section.id)).catch(() => null));
@@ -77,6 +90,8 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
       ...section,
       locked: mode !== 'open',
       mode,
+      expiresAt,
+      remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null,
       hasCode: Boolean(item?.code),
       hasImage: hasLockedImage || legacyHasImage,
       imageUrl: lockedImageUrl,
@@ -89,21 +104,21 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
   return { sections };
 }
 
-export async function setSectionLock(env: Env, sectionId: string, locked: boolean): Promise<{ sections: SectionLock[] }> {
+export async function setSectionLock(env: Env, sectionId: string, locked: boolean, expiresAtInput: unknown = null): Promise<{ sections: SectionLock[] }> {
   const normalized = ensureSection(sectionId);
   const current = await readLocks(env);
   const existing = current[normalized] ?? {};
-  current[normalized] = { ...existing, locked: Boolean(locked), mode: locked ? 'locked' : 'open' };
+  current[normalized] = { ...existing, locked: Boolean(locked), mode: locked ? 'locked' : 'open', expiresAt: locked ? normalizeExpiresAt(expiresAtInput) : null };
   await writeLocks(env, current);
   return getSectionLocks(env);
 }
 
-export async function setSectionCodeLock(env: Env, sectionId: string, code: string): Promise<{ sections: SectionLock[] }> {
+export async function setSectionCodeLock(env: Env, sectionId: string, code: string, expiresAtInput: unknown = null): Promise<{ sections: SectionLock[] }> {
   const normalized = ensureSection(sectionId);
   const cleaned = cleanCode(code);
   if (!cleaned) throw new Error('Enter an access code first');
   const current = await readLocks(env);
-  current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'code', code: cleaned };
+  current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'code', code: cleaned, expiresAt: normalizeExpiresAt(expiresAtInput) };
   await writeLocks(env, current);
   return getSectionLocks(env);
 }
@@ -204,13 +219,14 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
 function normalizeSavedLocks(raw: Record<string, boolean | SavedSectionLock>): Record<string, SavedSectionLock> {
   const out: Record<string, SavedSectionLock> = {};
   for (const [key, value] of Object.entries(raw)) {
-    if (typeof value === 'boolean') out[key] = { locked: value, mode: value ? 'locked' : 'open' };
-    else out[key] = value ?? {};
+    if (typeof value === 'boolean') out[key] = { locked: value, mode: value ? 'locked' : 'open', expiresAt: null };
+    else out[key] = { ...(value ?? {}), expiresAt: normalizeExpiresAt((value ?? {}).expiresAt) };
   }
   return out;
 }
 
 function normalizeMode(item: SavedSectionLock | undefined): SectionLockMode {
+  if (item?.expiresAt && Date.parse(item.expiresAt) <= Date.now()) return 'open';
   if (item?.mode === 'code') return 'code';
   if (item?.mode === 'locked') return 'locked';
   return item?.locked ? 'locked' : 'open';
@@ -228,4 +244,11 @@ function cleanSection(value: unknown): string {
 
 function cleanCode(value: unknown): string {
   return String(value ?? '').trim().slice(0, 80);
+}
+
+function normalizeExpiresAt(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
