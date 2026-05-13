@@ -1,28 +1,39 @@
 import type { Env } from './types';
 import { recordTonTransaction, type TonTransactionMeta } from './ton-transactions';
 
+export type UserSectionBlock = {
+  sectionId: string;
+  blocked: boolean;
+  expiresAt: string | null;
+  remainingMs: number | null;
+};
+
 export type UserControls = {
   userId: string;
   tonBalanceNano: number;
   blockedSections: string[];
+  sectionBlocks: UserSectionBlock[];
 };
 
-const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko', 'playzone', 'mines']);
+const VALID_SECTIONS = new Set(['home', 'connect', 'flow', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'limbo', 'tower', 'coinflip', 'hilo']);
 
 type StoredUserControls = {
   userId?: string;
   blockedSections?: unknown;
 };
 
+type StoredSectionBlock = { sectionId?: unknown; blocked?: unknown; expiresAt?: unknown };
 type UserControlRow = { blocked_sections_json: string };
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
   const saved = await readSectionControls(env, id);
+  const sectionBlocks = normalizeSectionBlocks(saved?.blockedSections);
   return {
     userId: id,
     tonBalanceNano: await readUserTonBalance(env, id),
-    blockedSections: normalizeBlockedSections(saved?.blockedSections),
+    blockedSections: sectionBlocks.filter((item) => item.blocked).map((item) => item.sectionId),
+    sectionBlocks,
   };
 }
 
@@ -51,20 +62,21 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
   return getUserControls(env, id);
 }
 
-export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean): Promise<UserControls> {
+export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean, expiresAtInput: unknown = null): Promise<UserControls> {
   const id = cleanUserId(userId);
   const section = cleanSection(sectionId);
   if (!VALID_SECTIONS.has(section)) throw new Error('Unknown section');
   const current = await getUserControls(env, id);
-  const set = new Set(current.blockedSections);
-  if (blocked) set.add(section); else set.delete(section);
-  await saveSectionControls(env, id, Array.from(set));
+  const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
+  const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
+  if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
+  await saveSectionControls(env, id, next);
   return getUserControls(env, id);
 }
 
-export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; blockedSections: string[] }> {
+export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
   const controls = await getUserControls(env, userId);
-  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, blockedSections: controls.blockedSections };
+  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
 }
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
@@ -78,14 +90,14 @@ async function readSectionControls(env: Env, userId: string): Promise<StoredUser
   return env.BOT_CACHE.get(key(userId), 'json').catch(() => null) as Promise<StoredUserControls | null>;
 }
 
-async function saveSectionControls(env: Env, userId: string, blockedSections: string[]): Promise<void> {
+async function saveSectionControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[]): Promise<void> {
   await ensureUserControlsTable(env);
   await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, updated_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(user_id) DO UPDATE SET
       blocked_sections_json = excluded.blocked_sections_json,
       updated_at = CURRENT_TIMESTAMP`)
-    .bind(userId, JSON.stringify(normalizeBlockedSections(blockedSections)))
+    .bind(userId, JSON.stringify(normalizeSectionBlocks(sectionBlocks)))
     .run();
 }
 
@@ -131,8 +143,28 @@ async function addUserTonBalance(env: Env, userId: string, deltaNano: number): P
     .run();
 }
 
-function normalizeBlockedSections(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((section): section is string => typeof section === 'string' && VALID_SECTIONS.has(section)) : [];
+function normalizeSectionBlocks(value: unknown): UserSectionBlock[] {
+  const now = Date.now();
+  const raw = Array.isArray(value) ? value : [];
+  const entries = raw.map((item): StoredSectionBlock => typeof item === 'string' ? { sectionId: item, blocked: true } : (item ?? {}) as StoredSectionBlock);
+  const map = new Map<string, UserSectionBlock>();
+  for (const item of entries) {
+    const sectionId = cleanSection(item.sectionId);
+    if (!VALID_SECTIONS.has(sectionId)) continue;
+    const expiresAt = normalizeExpiresAt(item.expiresAt);
+    if (expiresAt && Date.parse(expiresAt) <= now) continue;
+    const blocked = item.blocked !== false;
+    if (!blocked) continue;
+    map.set(sectionId, { sectionId, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null });
+  }
+  return Array.from(map.values()).sort((a, b) => a.sectionId.localeCompare(b.sectionId));
+}
+
+function normalizeExpiresAt(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 function normalizeNano(value: unknown): number {
