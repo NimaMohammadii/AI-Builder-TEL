@@ -4,6 +4,7 @@ export const ACTIVITY_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lastPayload='';
   var lastSent=0;
+  var lastSection='';
   var confirmedCredit=null;
   var pendingCredit=null;
   var creditQueue=Promise.resolve();
@@ -65,12 +66,14 @@ export const ACTIVITY_SCRIPT = `
 
   function sendActivity(force){
     if(document.hidden&&!force)return;
-    var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:activeSection()};
+    var section=activeSection();
+    var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:section};
     if(!body.userId)return;
     var encoded=JSON.stringify(body);
     var now=Date.now();
-    if(!force&&encoded===lastPayload&&now-lastSent<55000)return;
-    lastPayload=encoded;lastSent=now;
+    var sectionChanged=section!==lastSection;
+    if(!force&&!sectionChanged&&encoded===lastPayload&&now-lastSent<300000)return;
+    lastPayload=encoded;lastSent=now;lastSection=section;
     var requestCreditVersion=creditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
       .then(function(r){return r.json().catch(function(){return null})})
@@ -95,19 +98,19 @@ export const ACTIVITY_SCRIPT = `
       .then(function(){creditInFlight=Math.max(0,creditInFlight-1)});});
   }
 
+  function smartSync(){sendActivity(false)}
   window.addEventListener('vexa-credit-game-change',function(ev){if(ev&&ev.detail&&ev.detail.credit!==undefined)sendGameDelta(ev.detail.credit,ev.detail.delta)});
   document.addEventListener('click',function(ev){
     var b=ev.target&&ev.target.closest&&ev.target.closest('button');
     if(b){
       var action=b.getAttribute('data-action')||'';
       if(action==='generate-tts')setTimeout(function(){awardXp(10,'ai',{section:'flow',action:'generate-tts'},1500)},650);
+      if(action||b.getAttribute('data-tab')||b.closest('.tabs'))setTimeout(smartSync,120);
     }
-    setTimeout(function(){sendActivity(false)},80);
   },true);
-  document.addEventListener('visibilitychange',function(){sendActivity(true);if(!document.hidden)loadLevel()});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){sendActivity(false);loadLevel()}else sendActivity(true)});
   window.addEventListener('beforeunload',function(){sendActivity(true)});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadLevel();});else loadLevel();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadLevel();sendActivity(true)});else{loadLevel();sendActivity(true)}
   setTimeout(function(){sendActivity(true);loadLevel()},600);
-  setInterval(function(){sendActivity(false)},60000);
 })();
 `;
