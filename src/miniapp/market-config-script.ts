@@ -17,10 +17,7 @@ export const MARKET_CONFIG_SCRIPT = `
     }catch(e){}
   }
   function forceAllMarketVideos(){document.querySelectorAll('#market video.market-uploaded-video').forEach(forcePlay)}
-  function ensureVideoKeepAlive(){
-    if(keepAliveTimer)return;
-    keepAliveTimer=setInterval(function(){if(!document.hidden)forceAllMarketVideos()},900);
-  }
+  function ensureVideoKeepAlive(){if(keepAliveTimer)return;keepAliveTimer=setInterval(function(){if(!document.hidden)forceAllMarketVideos()},900)}
   function prepareMarketVideo(video){
     if(!video)return;
     try{
@@ -30,13 +27,8 @@ export const MARKET_CONFIG_SCRIPT = `
       var play=function(){forcePlay(video)};
       video.onpause=play;
       video.onended=function(){try{video.currentTime=0}catch(e){} play()};
-      video.addEventListener('pause',play);
-      video.addEventListener('ended',video.onended);
-      video.addEventListener('stalled',play);
-      video.addEventListener('suspend',play);
-      video.addEventListener('loadedmetadata',play,{once:true});
-      video.addEventListener('canplay',play,{once:true});
-      video.addEventListener('loadeddata',play,{once:true});
+      video.addEventListener('pause',play);video.addEventListener('ended',video.onended);video.addEventListener('stalled',play);video.addEventListener('suspend',play);
+      video.addEventListener('loadedmetadata',play,{once:true});video.addEventListener('canplay',play,{once:true});video.addEventListener('loadeddata',play,{once:true});
       setTimeout(play,40);setTimeout(play,160);setTimeout(play,420);setTimeout(play,900);setTimeout(play,1600);
       ensureVideoKeepAlive();
     }catch(e){}
@@ -85,7 +77,27 @@ export const MARKET_CONFIG_SCRIPT = `
       if(imgWrap&&item.imageUrl)renderMedia(imgWrap,item).catch(function(){});
     });
   }
-  async function loadMarket(){try{var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}}
+  function setMarketTab(tab){
+    var root=document.getElementById('market');
+    if(!root)return;
+    root.querySelectorAll('[data-market-tab]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-market-tab')===tab)});
+    root.querySelectorAll('[data-market-panel]').forEach(function(panel){panel.classList.toggle('active',panel.getAttribute('data-market-panel')===tab)});
+    if(tab==='store')setTimeout(forceAllMarketVideos,60);
+  }
+  function initMarketTabs(){
+    var root=document.getElementById('market');
+    if(!root||root.dataset.marketTabsReady==='1')return;
+    root.dataset.marketTabsReady='1';
+    root.addEventListener('click',function(event){
+      var target=event.target;
+      var btn=target&&target.closest?target.closest('[data-market-tab]'):null;
+      if(!btn)return;
+      event.preventDefault();
+      event.stopPropagation();
+      setMarketTab(btn.getAttribute('data-market-tab')||'store');
+    },true);
+  }
+  async function loadMarket(){try{initMarketTabs();var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}}
   document.addEventListener('visibilitychange',function(){if(!document.hidden)forceAllMarketVideos()});
   document.addEventListener('touchstart',forceAllMarketVideos,{capture:true,passive:true});
   document.addEventListener('click',forceAllMarketVideos,{capture:true,passive:true});
