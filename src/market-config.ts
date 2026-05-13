@@ -18,7 +18,8 @@ type SavedMarketItem = Partial<Pick<MarketItem, 'title' | 'price' | 'stock' | 'a
 
 type R2Head = { customMetadata?: Record<string, string>; httpMetadata?: { contentType?: string } } | null;
 
-export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime']);
+export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
+export const MARKET_MEDIA_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'm4v']);
 export const MARKET_ITEMS_KEY = 'admin:market-items';
 export const MARKET_ANIMATIONS = new Set<MarketAnimation>(['none', 'spin', 'glow', 'shine', 'pulse', 'spin-glow']);
 
@@ -54,6 +55,31 @@ export function normalizeMarketItemId(id: string): string {
 export function normalizeMarketAnimation(value: unknown): MarketAnimation {
   const animation = String(value || 'none') as MarketAnimation;
   return MARKET_ANIMATIONS.has(animation) ? animation : 'none';
+}
+
+export function marketMediaExtension(fileName: string): string {
+  return String(fileName || '').split('.').pop()?.toLowerCase() || '';
+}
+
+export function marketContentType(type: string, fileName: string): string {
+  const cleanType = String(type || '').toLowerCase();
+  if (MARKET_IMAGE_TYPES.has(cleanType)) return cleanType === 'image/jpg' ? 'image/jpeg' : cleanType;
+  const extension = marketMediaExtension(fileName);
+  if (extension === 'png') return 'image/png';
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'webp') return 'image/webp';
+  if (extension === 'gif') return 'image/gif';
+  if (extension === 'webm') return 'video/webm';
+  if (extension === 'mov') return 'video/quicktime';
+  if (extension === 'm4v') return 'video/x-m4v';
+  if (extension === 'mp4') return 'video/mp4';
+  return cleanType;
+}
+
+export function isAllowedMarketMedia(type: string, fileName: string): boolean {
+  const cleanType = String(type || '').toLowerCase();
+  if (MARKET_IMAGE_TYPES.has(cleanType)) return true;
+  return MARKET_MEDIA_EXTENSIONS.has(marketMediaExtension(fileName));
 }
 
 export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }> {
