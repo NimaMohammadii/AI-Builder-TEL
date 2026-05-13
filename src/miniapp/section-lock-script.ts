@@ -22,12 +22,12 @@ export const SECTION_LOCK_SCRIPT = `
   function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
   function visualUrl(item){if(!item)return '';return item.mode==='code'?(item.codeImageUrl||''):(item.lockedImageUrl||item.imageUrl||'')}
   function preload(url){if(!url||preloaded[url])return;preloaded[url]=true;var img=new Image();img.decoding='async';img.src=url}
-  function preloadLockImages(){Object.keys(locks).forEach(function(id){var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
+  function preloadLockImages(){Object.keys(locks).forEach(function(id){if(id==='connect-bot-card')return;var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
   function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
   function countdownHtml(item){return item&&item.expiresAt?'<p>Opens in <span data-section-lock-expires-at="'+item.expiresAt+'">'+formatLeft(item.remainingMs)+'</span></p>':''}
   function tickCountdowns(){document.querySelectorAll('[data-section-lock-expires-at]').forEach(function(el){el.textContent=formatLeft(Date.parse(el.getAttribute('data-section-lock-expires-at')||'')-Date.now())})}
   function lockVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}return lockSvg}
-  function botCardVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="connect-card-lock-image" src="'+url+'" alt="" decoding="async"/>'}return '<span class="connect-card-lock-icon">'+lockSvg+'</span>'}
+  function botCardVisual(item){return '<span class="connect-card-lock-icon">'+lockSvg+'</span>'}
   function setKeyboardMode(on){document.body.classList.toggle('section-code-keyboard-open',!!on);updateKeyboardInset()}
   function updateKeyboardInset(){var vv=window.visualViewport;var inset=0;if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px')}
   if(window.visualViewport){window.visualViewport.addEventListener('resize',updateKeyboardInset);window.visualViewport.addEventListener('scroll',updateKeyboardInset)}
