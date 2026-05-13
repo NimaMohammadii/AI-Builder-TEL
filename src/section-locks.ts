@@ -38,6 +38,7 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
   { id: 'playzone', label: 'Play Zone', description: 'Games hub section' },
+  { id: 'market', label: 'Market', description: 'NFT market section' },
   { id: 'playzone-row-ad-right', label: 'Play Zone Row Ad Right', description: 'Image shown between the first and second Play Zone rows' },
   { id: 'playzone-row-ad-left', label: 'Play Zone Row Ad Left', description: 'Image shown between the second and third Play Zone rows' },
   { id: 'playzone-row-ad-1', label: 'Play Zone Row Ad 1', description: 'Legacy image slot after the first Play Zone row' },
