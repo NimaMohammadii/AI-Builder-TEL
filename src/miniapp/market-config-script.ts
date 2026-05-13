@@ -1,8 +1,67 @@
 export const MARKET_CONFIG_SCRIPT = `
 (function(){
   var animationClasses=['market-anim-none','market-anim-spin','market-anim-glow','market-anim-shine','market-anim-pulse','market-anim-spin-glow'];
+  var mediaCacheName='vexa-market-media-v1';
+  var objectUrls={};
   function esc(v){return String(v==null?'':v)}
   function cleanAnim(v){v=String(v||'none');return ['none','spin','glow','shine','pulse','spin-glow'].indexOf(v)>=0?v:'none'}
+  function prepareMarketVideo(video){
+    if(!video)return;
+    try{
+      video.muted=true;video.defaultMuted=true;video.autoplay=true;video.loop=true;video.playsInline=true;video.controls=false;
+      video.setAttribute('muted','');video.setAttribute('autoplay','');video.setAttribute('loop','');video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
+      video.removeAttribute('controls');
+      var play=function(){try{video.muted=true;video.defaultMuted=true;video.play&&video.play().catch(function(){})}catch(e){}};
+      video.addEventListener('loadedmetadata',play,{once:true});video.addEventListener('canplay',play,{once:true});video.addEventListener('loadeddata',play,{once:true});
+      setTimeout(play,80);setTimeout(play,420);setTimeout(play,1100);
+    }catch(e){}
+  }
+  async function cachedMediaUrl(url){
+    if(!url)return url;
+    if(objectUrls[url])return objectUrls[url];
+    if(!('caches' in window)||!window.caches)return url;
+    try{
+      var cache=await caches.open(mediaCacheName);
+      var cached=await cache.match(url);
+      if(cached){
+        var cachedBlob=await cached.blob();
+        objectUrls[url]=URL.createObjectURL(cachedBlob);
+        return objectUrls[url];
+      }
+      var response=await fetch(url,{cache:'force-cache'});
+      if(response&&response.ok){
+        await cache.put(url,response.clone());
+        var blob=await response.blob();
+        objectUrls[url]=URL.createObjectURL(blob);
+        cleanupOldMarketMedia(cache,url).catch(function(){});
+        return objectUrls[url];
+      }
+    }catch(e){}
+    return url;
+  }
+  async function cleanupOldMarketMedia(cache,currentUrl){
+    try{
+      var currentPath=currentUrl.split('?')[0];
+      var keys=await cache.keys();
+      await Promise.all(keys.map(function(req){
+        var u=req.url||'';
+        if(u.indexOf('/app/api/market-item-media/')<0)return Promise.resolve();
+        if(u.split('?')[0]===currentPath&&u!==currentUrl)return cache.delete(req);
+        return Promise.resolve();
+      }));
+    }catch(e){}
+  }
+  async function renderMedia(imgWrap,item){
+    if(!imgWrap||!item.imageUrl)return;
+    var mediaUrl=await cachedMediaUrl(esc(item.imageUrl));
+    if(item.mediaType==='video'){
+      imgWrap.innerHTML='<video class="market-uploaded-video" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback"></video>';
+      var video=imgWrap.querySelector('video');
+      if(video){prepareMarketVideo(video);video.src=mediaUrl;video.load();prepareMarketVideo(video)}
+    }else{
+      imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async"/>';
+    }
+  }
   function apply(items){
     if(!Array.isArray(items))return;
     items.forEach(function(item){
@@ -20,15 +79,14 @@ export const MARKET_CONFIG_SCRIPT = `
       if(title&&item.title)title.textContent=esc(item.title);
       if(badge&&item.stock!==undefined&&item.stock!==null)badge.textContent='Stock '+esc(item.stock);
       if(price&&item.price)price.textContent=esc(item.price);
-      if(imgWrap&&item.imageUrl){
-        if(item.mediaType==='video')imgWrap.innerHTML='<video class="market-uploaded-video" src="'+esc(item.imageUrl)+'" autoplay muted loop playsinline preload="metadata"></video>';
-        else imgWrap.innerHTML='<img class="market-uploaded-image" src="'+esc(item.imageUrl)+'" alt="" decoding="async"/>';
-      }
+      if(imgWrap&&item.imageUrl)renderMedia(imgWrap,item).catch(function(){});
     });
   }
   async function loadMarket(){
     try{var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}
   }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)document.querySelectorAll('#market video.market-uploaded-video').forEach(prepareMarketVideo)});
+  document.addEventListener('click',function(){document.querySelectorAll('#market video.market-uploaded-video').forEach(prepareMarketVideo)},{capture:true,passive:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadMarket);else loadMarket();
   window.VexaMarketRefresh=loadMarket;
 })();
