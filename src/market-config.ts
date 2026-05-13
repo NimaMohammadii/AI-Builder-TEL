@@ -76,6 +76,10 @@ export function marketContentType(type: string, fileName: string): string {
   return cleanType;
 }
 
+export function marketMediaTypeFromContentType(contentType: string): MarketMediaType {
+  return String(contentType || '').toLowerCase().startsWith('video/') ? 'video' : 'image';
+}
+
 export function isAllowedMarketMedia(type: string, fileName: string): boolean {
   const cleanType = String(type || '').toLowerCase();
   if (MARKET_IMAGE_TYPES.has(cleanType)) return true;
@@ -88,15 +92,16 @@ export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }>
     const custom = saved[item.id] || {};
     const head = await env.ASSETS.head(marketImageKey(item.id)).catch(() => null) as R2Head;
     const version = head?.customMetadata?.version || '1';
-    const contentType = head?.httpMetadata?.contentType || '';
+    const contentType = head?.customMetadata?.contentType || head?.httpMetadata?.contentType || '';
+    const mediaType = (head?.customMetadata?.mediaType as MarketMediaType | undefined) || marketMediaTypeFromContentType(contentType);
     return {
       ...item,
       title: cleanText(custom.title, item.title, 80),
       price: cleanText(custom.price, item.price, 24),
       stock: cleanText(custom.stock, item.stock, 24),
       animation: normalizeMarketAnimation(custom.animation || item.animation),
-      mediaType: contentType.startsWith('video/') ? 'video' : 'image',
-      imageUrl: head ? `/app/api/market-item-image/${item.id}.png?v=${version}` : null,
+      mediaType,
+      imageUrl: head ? `/app/api/market-item-media/${item.id}?v=${version}` : null,
     };
   }));
   return { items };
