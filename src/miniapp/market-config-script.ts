@@ -1,41 +1,13 @@
 export const MARKET_CONFIG_SCRIPT = `
 (function(){
   var animationClasses=['market-anim-none','market-anim-spin','market-anim-glow','market-anim-shine','market-anim-pulse','market-anim-spin-glow'];
-  var mediaCacheName='vexa-market-media-v1';
+  var mediaCacheName='vexa-market-images-v1';
   var objectUrls={};
-  var keepAliveTimer=null;
   var marketItemsById={};
   var activeDetailItem=null;
   function esc(v){return String(v==null?'':v)}
   function cleanAnim(v){v=String(v||'none');return ['none','spin','glow','shine','pulse','spin-glow'].indexOf(v)>=0?v:'none'}
-  function forcePlay(video){
-    if(!video)return;
-    try{
-      video.muted=true;video.defaultMuted=true;video.autoplay=true;video.loop=true;video.playsInline=true;video.controls=false;
-      video.setAttribute('muted','');video.setAttribute('autoplay','');video.setAttribute('loop','');video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
-      video.removeAttribute('controls');
-      if(video.readyState>=2&&video.paused)video.play&&video.play().catch(function(){});
-      if(video.readyState>=2&&!video.paused&&video.currentTime>=Math.max(.1,video.duration-.08))video.currentTime=0;
-    }catch(e){}
-  }
-  function forceAllMarketVideos(){document.querySelectorAll('#market video.market-uploaded-video').forEach(forcePlay)}
-  function ensureVideoKeepAlive(){if(keepAliveTimer)return;keepAliveTimer=setInterval(function(){if(!document.hidden)forceAllMarketVideos()},900)}
-  function prepareMarketVideo(video){
-    if(!video)return;
-    try{
-      video.muted=true;video.defaultMuted=true;video.autoplay=true;video.loop=true;video.playsInline=true;video.controls=false;
-      video.setAttribute('muted','');video.setAttribute('autoplay','');video.setAttribute('loop','');video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
-      video.removeAttribute('controls');
-      var play=function(){forcePlay(video)};
-      video.onpause=play;
-      video.onended=function(){try{video.currentTime=0}catch(e){} play()};
-      video.addEventListener('pause',play);video.addEventListener('ended',video.onended);video.addEventListener('stalled',play);video.addEventListener('suspend',play);
-      video.addEventListener('loadedmetadata',play,{once:true});video.addEventListener('canplay',play,{once:true});video.addEventListener('loadeddata',play,{once:true});
-      setTimeout(play,40);setTimeout(play,160);setTimeout(play,420);setTimeout(play,900);setTimeout(play,1600);
-      ensureVideoKeepAlive();
-    }catch(e){}
-  }
-  async function cachedMediaUrl(url){
+  async function cachedImageUrl(url){
     if(!url)return url;
     if(objectUrls[url])return objectUrls[url];
     if(!('caches' in window)||!window.caches)return url;
@@ -44,22 +16,18 @@ export const MARKET_CONFIG_SCRIPT = `
       var cached=await cache.match(url);
       if(cached){var cachedBlob=await cached.blob();objectUrls[url]=URL.createObjectURL(cachedBlob);return objectUrls[url]}
       var response=await fetch(url,{cache:'force-cache'});
-      if(response&&response.ok){await cache.put(url,response.clone());var blob=await response.blob();objectUrls[url]=URL.createObjectURL(blob);cleanupOldMarketMedia(cache,url).catch(function(){});return objectUrls[url]}
+      if(response&&response.ok){await cache.put(url,response.clone());var blob=await response.blob();objectUrls[url]=URL.createObjectURL(blob);cleanupOldMarketImages(cache,url).catch(function(){});return objectUrls[url]}
     }catch(e){}
     return url;
   }
-  async function cleanupOldMarketMedia(cache,currentUrl){
+  async function cleanupOldMarketImages(cache,currentUrl){
     try{var currentPath=currentUrl.split('?')[0];var keys=await cache.keys();await Promise.all(keys.map(function(req){var u=req.url||'';if(u.indexOf('/app/api/market-item-media/')<0)return Promise.resolve();if(u.split('?')[0]===currentPath&&u!==currentUrl)return cache.delete(req);return Promise.resolve()}))}catch(e){}
   }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
     if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
-    var mediaUrl=await cachedMediaUrl(esc(item.imageUrl));
-    if(item.mediaType==='video'){
-      imgWrap.innerHTML='<video class="market-uploaded-video" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback"></video>';
-      var video=imgWrap.querySelector('video');
-      if(video){prepareMarketVideo(video);video.src=mediaUrl;video.load();prepareMarketVideo(video);forcePlay(video)}
-    }else imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async"/>';
+    var mediaUrl=await cachedImageUrl(esc(item.imageUrl));
+    imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
   }
   function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
   async function openDetail(item){
@@ -68,7 +36,7 @@ export const MARKET_CONFIG_SCRIPT = `
     if(title)title.textContent=esc(item.title||'NFT');if(desc)desc.textContent=esc(item.description||'Vexa internal collectible.');if(collection)collection.textContent=esc(item.collection||'Vexa Collectible');if(price)price.textContent=esc(item.price||'0');if(buy)buy.setAttribute('data-market-buy',esc(item.id));if(status)status.textContent='';
     if(specs)specs.innerHTML=spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
     if(media){media.innerHTML='';await renderMedia(media,item)}
-    sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');setTimeout(forceAllMarketVideos,80);
+    sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
   }
   function closeDetail(){var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');document.body.classList.remove('market-detail-open');activeDetailItem=null}
   function handleBuy(){var status=document.querySelector('[data-market-detail-status]');if(status)status.textContent='Buy will be connected in the next step.'}
@@ -96,7 +64,6 @@ export const MARKET_CONFIG_SCRIPT = `
     if(!root)return;
     root.querySelectorAll('[data-market-tab]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-market-tab')===tab)});
     root.querySelectorAll('[data-market-panel]').forEach(function(panel){panel.classList.toggle('active',panel.getAttribute('data-market-panel')===tab)});
-    if(tab==='store')setTimeout(forceAllMarketVideos,60);
   }
   function initMarketTabs(){
     var root=document.getElementById('market');
@@ -115,8 +82,7 @@ export const MARKET_CONFIG_SCRIPT = `
     },true);
   }
   async function loadMarket(){try{initMarketTabs();var r=await fetch('/app/api/market-items',{cache:'no-store'});var j=await r.json();apply(j.items||[])}catch(e){}}
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)forceAllMarketVideos()});document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
-  document.addEventListener('touchstart',forceAllMarketVideos,{capture:true,passive:true});document.addEventListener('click',forceAllMarketVideos,{capture:true,passive:true});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadMarket);else loadMarket();window.VexaMarketRefresh=loadMarket;
 })();
 `;
