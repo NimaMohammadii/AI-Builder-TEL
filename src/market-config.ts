@@ -16,7 +16,7 @@ type SavedMarketItem = Partial<Pick<MarketItem, 'title' | 'price' | 'stock' | 'a
 
 type R2Head = { customMetadata?: Record<string, string> } | null;
 
-export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 export const MARKET_ITEMS_KEY = 'admin:market-items';
 export const MARKET_ANIMATIONS = new Set<MarketAnimation>(['none', 'spin', 'glow', 'shine', 'pulse', 'spin-glow']);
 
