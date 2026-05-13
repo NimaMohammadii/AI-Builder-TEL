@@ -81,25 +81,28 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
   const hasCodeImage = await hasStoredSectionImage(env, SHARED_LOCK_IMAGE_ID, 'code');
   const lockedVersion = await sectionImageVersion(env, SHARED_LOCK_IMAGE_ID, 'locked');
   const codeVersion = await sectionImageVersion(env, SHARED_LOCK_IMAGE_ID, 'code');
-  const lockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/locked.png?v=${lockedVersion}` : null;
-  const codeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/code.png?v=${codeVersion}` : null;
+  const sharedLockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/locked.png?v=${lockedVersion}` : null;
+  const sharedCodeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/code.png?v=${codeVersion}` : null;
 
   const sections = DEFAULT_SECTIONS.map((section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
+    const isLocked = mode !== 'open';
     const expiresAt = mode === 'open' ? null : normalizeExpiresAt(item?.expiresAt);
+    const lockedImageUrl = isLocked ? sharedLockedImageUrl : null;
+    const codeImageUrl = isLocked ? sharedCodeImageUrl : null;
     return {
       ...section,
-      locked: mode !== 'open',
+      locked: isLocked,
       mode,
       expiresAt,
       remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null,
       hasCode: Boolean(item?.code),
-      hasImage: hasLockedImage,
+      hasImage: Boolean(lockedImageUrl),
       imageUrl: lockedImageUrl,
-      hasLockedImage,
+      hasLockedImage: Boolean(lockedImageUrl),
       lockedImageUrl,
-      hasCodeImage,
+      hasCodeImage: Boolean(codeImageUrl),
       codeImageUrl,
     };
   });
@@ -143,19 +146,19 @@ export function normalizeSectionImageKind(kind: string | null | undefined): Sect
 }
 
 export function sectionImageKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
-  return `admin:section-lock-image:${SHARED_LOCK_IMAGE_ID}:${normalizeSectionImageKind(kind)}`;
+  return `admin:section-lock-image:${cleanSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
 }
 
 export function sectionImageTypeKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
-  return `admin:section-lock-image-type:${SHARED_LOCK_IMAGE_ID}:${normalizeSectionImageKind(kind)}`;
+  return `admin:section-lock-image-type:${cleanSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
 }
 
 export function sectionImageVersionKey(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
-  return `admin:section-lock-image-version:${SHARED_LOCK_IMAGE_ID}:${normalizeSectionImageKind(kind)}`;
+  return `admin:section-lock-image-version:${cleanSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
 }
 
 export function sectionImageR2Key(sectionId: string, kind: SectionLockImageKind = 'locked'): string {
-  return `section-lock-image/${SHARED_LOCK_IMAGE_ID}/${normalizeSectionImageKind(kind)}`;
+  return `section-lock-image/${cleanSection(sectionId)}/${normalizeSectionImageKind(kind)}`;
 }
 
 export function legacySectionImageKey(sectionId: string): string {
