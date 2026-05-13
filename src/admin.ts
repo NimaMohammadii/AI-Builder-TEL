@@ -3,6 +3,7 @@ import { ADMIN_IMAGE_PANEL_SCRIPT } from './admin-image-panel';
 import { ADMIN_UPLOAD_CACHE_SCRIPT } from './admin-upload-cache-panel';
 import { ADMIN_PLINKO_CONTROL_SCRIPT } from './admin-plinko-control-panel';
 import { ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT } from './admin-play-zone-cards-panel';
+import { ADMIN_MARKET_PANEL_SCRIPT } from './admin-market-panel';
 import { ADMIN_TON_PANEL_SCRIPT } from './admin-ton-panel';
 import { ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT } from './admin-home-finance-image-panel';
 import { ADMIN_AUDIO_PANEL_SCRIPT } from './admin-audio-panel';
@@ -25,7 +26,7 @@ export function adminHtml(): string {
 }
 
 export function adminPanelHtml(): string {
-  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT + ADMIN_TON_PANEL_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
+  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT + ADMIN_TON_PANEL_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT + ADMIN_MARKET_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {
