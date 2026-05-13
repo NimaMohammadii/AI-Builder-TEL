@@ -85,7 +85,6 @@ export const ACTIVITY_SCRIPT = `
     var delta=Number.isFinite(Number(explicitDelta))?Math.floor(Number(explicitDelta)):nextCredit-previous;
     pendingCredit=Math.max(0,previous+delta);creditVersion++;
     var requestCreditVersion=creditVersion;
-    if(delta!==0)awardXp(delta>0?9:4,'game',{section:activeSection(),delta:delta},0);
     if(delta===0)return;
     creditInFlight++;
     creditQueue=creditQueue.then(function(){return fetch('/app/api/credit/game-delta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,delta:delta})})
@@ -96,15 +95,11 @@ export const ACTIVITY_SCRIPT = `
   }
 
   window.addEventListener('vexa-credit-game-change',function(ev){if(ev&&ev.detail&&ev.detail.credit!==undefined)sendGameDelta(ev.detail.credit,ev.detail.delta)});
-  window.addEventListener('vexa-award-xp',function(ev){if(ev&&ev.detail)awardXp(ev.detail.amount,ev.detail.source,ev.detail.metadata,0)});
   document.addEventListener('click',function(ev){
     var b=ev.target&&ev.target.closest&&ev.target.closest('button');
     if(b){
       var action=b.getAttribute('data-action')||'';
-      var view=b.getAttribute('data-view')||'';
       if(action==='generate-tts')setTimeout(function(){awardXp(10,'ai',{section:'flow',action:'generate-tts'},1500)},650);
-      if(view)awardXp(1,'activity',{section:view,action:'open-section'},8000);
-      if(action.indexOf('plinko')>=0||action.indexOf('mines')>=0||action.indexOf('crash')>=0)awardXp(3,'play',{section:activeSection(),action:action},500);
     }
     setTimeout(function(){sendActivity(false)},80);
   },true);
