@@ -64,11 +64,12 @@ export const ACTIVITY_SCRIPT = `
   function applyServerCredit(value){if(value===null||value===undefined)return;var credit=writeCreditToUi(value);confirmedCredit=credit;pendingCredit=credit;syncCreditToGames(credit)}
 
   function sendActivity(force){
+    if(document.hidden&&!force)return;
     var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:activeSection()};
     if(!body.userId)return;
     var encoded=JSON.stringify(body);
     var now=Date.now();
-    if(!force&&encoded===lastPayload&&now-lastSent<25000)return;
+    if(!force&&encoded===lastPayload&&now-lastSent<55000)return;
     lastPayload=encoded;lastSent=now;
     var requestCreditVersion=creditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
@@ -107,6 +108,6 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadLevel();});else loadLevel();
   setTimeout(function(){sendActivity(true);loadLevel()},600);
-  setInterval(function(){sendActivity(false)},20000);
+  setInterval(function(){sendActivity(false)},60000);
 })();
 `;
