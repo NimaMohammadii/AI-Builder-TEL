@@ -62,6 +62,23 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
   return getUserControls(env, id);
 }
 
+export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amountNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  const amount = normalizeNano(amountNano);
+  if (amount <= 0) throw new Error('Invalid purchase amount');
+  await ensureTonBalanceColumn(env);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
+    VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO NOTHING`).bind(id).run();
+  const result = await env.DB.prepare(`UPDATE app_users
+    SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP
+    WHERE telegram_user_id = ? AND ton_balance_nano >= ?`).bind(amount, id, amount).run();
+  if ((result.meta?.changes || 0) <= 0) throw new Error('Insufficient balance');
+  const after = await readUserTonBalance(env, id);
+  await recordTonTransaction(env, id, -amount, after, { kind: 'market', title: 'NFT purchase', ...meta });
+  return getUserControls(env, id);
+}
+
 export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean, expiresAtInput: unknown = null): Promise<UserControls> {
   const id = cleanUserId(userId);
   const section = cleanSection(sectionId);
