@@ -9,6 +9,29 @@ import { addUserXp, getUserLevel } from './levels';
 import type { Env } from './types';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+const TON_GIFT_NFT_CACHE_SECONDS = 120;
+
+type TonGiftEnv = Env & {
+  TONAPI_BASE_URL?: string;
+  TONAPI_KEY?: string;
+  TON_GIFT_COLLECTIONS?: string;
+};
+
+type TonGiftView = {
+  id: string;
+  title: string;
+  collection: string;
+  rarity: string;
+  supply: string;
+  utility: string;
+  description: string;
+  imageUrl: string | null;
+  badge: string;
+  source: 'telegram';
+  canTransfer: boolean;
+  nextTransferDate: number | null;
+  transferStars: number | null;
+};
 
 registerGroupPhotoEndpoint(app);
 registerHomeImageCacheEndpoint(app);
@@ -100,6 +123,15 @@ app.get('/app/api/ton/history', async (c) => {
   }
 });
 
+app.get('/app/api/ton-gift-market', async (c) => {
+  try {
+    const gifts = await loadTonGiftNfts(c.env as TonGiftEnv);
+    return c.json({ gifts }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not load TON Gift NFTs' }, 200, { 'cache-control': 'no-store' });
+  }
+});
+
 app.get('/app/api/home-finance-image-meta', async (c) => {
   try {
     const object = await c.env.ASSETS.head(HOME_FINANCE_IMAGE_KEY).catch(() => null);
@@ -113,6 +145,93 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
     });
   }
 });
+
+async function loadTonGiftNfts(env: TonGiftEnv): Promise<TonGiftView[]> {
+  const collections = splitCsv(env.TON_GIFT_COLLECTIONS);
+  if (!collections.length) throw new Error('TON_GIFT_COLLECTIONS is not configured');
+  const baseUrl = String(env.TONAPI_BASE_URL || 'https://tonapi.io').replace(/\/+$/, '');
+  const cacheKey = `tonapi:gifts:${await hashKey(`${baseUrl}:${collections.join(',')}`)}`;
+  const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TonGiftView[] | null;
+  if (Array.isArray(cached)) return cached;
+  const batches = await Promise.all(collections.map((collection) => loadTonApiCollectionItems(env, baseUrl, collection)));
+  const gifts = batches.flat().slice(0, 80);
+  await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_NFT_CACHE_SECONDS }).catch(() => undefined);
+  return gifts;
+}
+
+async function loadTonApiCollectionItems(env: TonGiftEnv, baseUrl: string, collection: string): Promise<TonGiftView[]> {
+  const url = `${baseUrl}/v2/nfts/collections/${encodeURIComponent(collection)}/items?limit=40&offset=0`;
+  const response = await fetch(url, {
+    headers: tonApiHeaders(env),
+    cf: { cacheTtl: TON_GIFT_NFT_CACHE_SECONDS, cacheEverything: true } as never,
+  });
+  if (!response.ok) throw new Error(`TonAPI collection load failed: ${response.status}`);
+  const json = await response.json().catch(() => null);
+  const rows = tonApiRows(json);
+  return rows.map((item, index) => normalizeTonApiNft(item, collection, index)).filter(Boolean) as TonGiftView[];
+}
+
+function tonApiHeaders(env: TonGiftEnv): HeadersInit {
+  const headers: Record<string, string> = { accept: 'application/json' };
+  if (env.TONAPI_KEY) headers.authorization = `Bearer ${env.TONAPI_KEY}`;
+  return headers;
+}
+
+function tonApiRows(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value.filter(isRecord) as Record<string, unknown>[];
+  const object = record(value);
+  for (const key of ['nft_items', 'items', 'results', 'data']) {
+    if (Array.isArray(object[key])) return object[key].filter(isRecord) as Record<string, unknown>[];
+  }
+  return [];
+}
+
+function normalizeTonApiNft(item: Record<string, unknown>, collection: string, index: number): TonGiftView | null {
+  const metadata = record(item.metadata);
+  const previews = Array.isArray(item.previews) ? item.previews.filter(isRecord) as Record<string, unknown>[] : [];
+  const preview = previews.find((entry) => String(entry.resolution || '').includes('500')) || previews[0] || {};
+  const address = text(item.address) || text(item.account_address) || `${collection}_${index}`;
+  const name = text(metadata.name) || text(item.dns) || `TON Gift #${index + 1}`;
+  const image = text(preview.url) || text(item.image) || text(metadata.image) || text(metadata.image_url) || null;
+  const collectionInfo = record(item.collection);
+  const collectionName = text(collectionInfo.name) || text(collectionInfo.title) || 'Telegram Gift NFTs';
+  return {
+    id: `tonapi_${address}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
+    title: name,
+    collection: collectionName,
+    rarity: text(metadata.model) || text(metadata.rarity) || 'TON NFT',
+    supply: text(metadata.number) || text(item.index) || 'NFT',
+    utility: 'TON NFT',
+    description: text(metadata.description) || 'Telegram Gift NFT on TON.',
+    imageUrl: image,
+    badge: 'TON NFT',
+    source: 'telegram',
+    canTransfer: true,
+    nextTransferDate: null,
+    transferStars: null,
+  };
+}
+
+function splitCsv(value: unknown): string[] {
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+async function hashKey(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function text(value: unknown): string {
+  return String(value ?? '').trim();
+}
 
 function adminCookieValue(cookie: string | undefined): string {
   const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
