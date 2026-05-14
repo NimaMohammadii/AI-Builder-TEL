@@ -6,7 +6,6 @@ const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 const TON_GIFT_MARKET_CACHE_SECONDS = 60;
-const TON_GIFT_MARKET_URL = 'https://portals-market.com/api/nfts/search?offset=0&limit=40&sort_by=price_asc&status=listed';
 
 type TelegramGiftView = {
   id: string;
@@ -138,19 +137,27 @@ app.post('/admin/api/market-item-image', async (c) => {
 });
 
 async function getTelegramGifts(env: Env): Promise<TelegramGiftView[]> {
-  const cacheKey = 'ton:gifts:market:portals:v1';
+  const providerUrl = String(env.TON_GIFT_MARKET_URL || '').trim();
+  if (!providerUrl) throw new Error('TON Gift market provider is not configured');
+  const cacheKey = `ton:gifts:market:${await marketProviderCacheKey(providerUrl)}`;
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TelegramGiftView[] | null;
   if (Array.isArray(cached)) return cached;
-  const response = await fetch(TON_GIFT_MARKET_URL, {
+  const response = await fetch(providerUrl, {
     headers: { accept: 'application/json', 'user-agent': 'VexaFLOW/1.0' },
     cf: { cacheTtl: TON_GIFT_MARKET_CACHE_SECONDS, cacheEverything: true } as never,
   });
-  if (!response.ok) throw new Error(`TON Gift market failed: ${response.status}`);
+  if (!response.ok) throw new Error(`TON Gift market provider failed: ${response.status}`);
   const json = await response.json().catch(() => null);
   const rows = marketRows(json);
   const gifts = rows.map((entry, index) => normalizeTonGiftMarketItem(entry, index)).filter(Boolean) as TelegramGiftView[];
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_MARKET_CACHE_SECONDS }).catch(() => undefined);
   return gifts;
+}
+
+async function marketProviderCacheKey(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
 
 async function callTelegram(token: string, method: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
