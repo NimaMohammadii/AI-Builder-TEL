@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { debitUserTonBalanceIfEnough, type UserControls } from './user-controls';
 
 export type MarketAnimation = 'none' | 'spin' | 'glow' | 'shine' | 'pulse' | 'spin-glow';
 export type MarketMediaType = 'image';
@@ -22,14 +23,32 @@ export type MarketItem = {
   description: string;
 };
 
+export type UserMarketNft = MarketItem & {
+  purchaseId: string;
+  purchasedAt: string;
+  status: 'owned' | 'listed';
+};
+
 type SavedMarketItem = Partial<Pick<MarketItem, 'title' | 'price' | 'stock' | 'animation' | 'symbol' | 'collection' | 'rarity' | 'tag' | 'supply' | 'edition' | 'utility' | 'description'>>;
 
 type R2Head = { customMetadata?: Record<string, string>; httpMetadata?: { contentType?: string } } | null;
+
+type PurchaseRow = { id: string; market_item_id: string; purchased_at: string; status: 'owned' | 'listed' };
+
+type MarketBuyResult = {
+  ok: true;
+  item: MarketItem;
+  purchase: UserMarketNft;
+  items: MarketItem[];
+  owned: UserMarketNft[];
+  tonBalanceNano: number;
+};
 
 export const MARKET_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
 export const MARKET_MEDIA_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 export const MARKET_ITEMS_KEY = 'admin:market-items';
 export const MARKET_ANIMATIONS = new Set<MarketAnimation>(['none', 'spin', 'glow', 'shine', 'pulse', 'spin-glow']);
+const NANO_PER_TON = 1_000_000_000;
 
 export const DEFAULT_MARKET_ITEMS: Array<Omit<MarketItem, 'imageUrl' | 'mediaType'>> = [
   { id: 'genesis', title: 'Genesis Vexa', badge: '1/100', price: '12.5', stock: '100', animation: 'none', symbol: 'VEX-GEN', collection: 'Vexa Genesis', rarity: 'Genesis', tag: 'Founders', supply: '100', edition: '1/100', utility: 'Early access badge and future Vexa perks.', description: 'The first internal Vexa collectible series. Ownership is stored inside Vexa and can later support marketplace actions.' },
@@ -92,29 +111,49 @@ export function isAllowedMarketMedia(type: string, fileName: string): boolean {
 
 export async function getMarketItems(env: Env): Promise<{ items: MarketItem[] }> {
   const saved = await readSavedItems(env);
-  const items = await Promise.all(DEFAULT_MARKET_ITEMS.map(async (item) => {
-    const custom = saved[item.id] || {};
-    const head = await env.ASSETS.head(marketImageKey(item.id)).catch(() => null) as R2Head;
-    const version = head?.customMetadata?.version || '1';
-    return {
-      ...item,
-      title: cleanText(custom.title, item.title, 80),
-      price: cleanText(custom.price, item.price, 24),
-      stock: cleanText(custom.stock, item.stock, 24),
-      animation: normalizeMarketAnimation(custom.animation || item.animation),
-      symbol: cleanText(custom.symbol, item.symbol, 24),
-      collection: cleanText(custom.collection, item.collection, 80),
-      rarity: cleanText(custom.rarity, item.rarity, 40),
-      tag: cleanText(custom.tag, item.tag, 40),
-      supply: cleanText(custom.supply, item.supply, 24),
-      edition: cleanText(custom.edition, item.edition, 40),
-      utility: cleanText(custom.utility, item.utility, 180),
-      description: cleanText(custom.description, item.description, 280),
-      mediaType: 'image',
-      imageUrl: head ? `/app/api/market-item-media/${item.id}?v=${version}` : null,
-    };
-  }));
+  const items = await Promise.all(DEFAULT_MARKET_ITEMS.map(async (item) => inflateMarketItem(env, saved, item)));
   return { items };
+}
+
+export async function getUserMarketNfts(env: Env, userId: string): Promise<{ owned: UserMarketNft[] }> {
+  const id = cleanUserId(userId);
+  await ensureMarketPurchasesTable(env);
+  const rows = await env.DB.prepare(`SELECT id, market_item_id, purchased_at, status FROM market_purchases WHERE user_id = ? ORDER BY purchased_at DESC`).bind(id).all<PurchaseRow>();
+  const saved = await readSavedItems(env);
+  const owned = await Promise.all((rows.results || []).map(async (row) => {
+    const base = DEFAULT_MARKET_ITEMS.find((item) => item.id === row.market_item_id) || DEFAULT_MARKET_ITEMS[0];
+    const item = await inflateMarketItem(env, saved, base);
+    return { ...item, purchaseId: row.id, purchasedAt: row.purchased_at, status: row.status === 'listed' ? 'listed' : 'owned' };
+  }));
+  return { owned };
+}
+
+export async function buyMarketItem(env: Env, userId: string, itemId: string): Promise<MarketBuyResult> {
+  const id = cleanUserId(userId);
+  const marketId = normalizeMarketItemId(itemId);
+  await ensureMarketPurchasesTable(env);
+  const { items } = await getMarketItems(env);
+  const item = items.find((entry) => entry.id === marketId);
+  if (!item) throw new Error('NFT not found');
+  const priceNano = parseTonToNano(item.price);
+  if (priceNano <= 0) throw new Error('Invalid NFT price');
+  const stock = Math.floor(Number(item.stock) || 0);
+  if (stock <= 0) throw new Error('Sold out');
+  const controls = await debitUserTonBalanceIfEnough(env, id, priceNano, { itemId: marketId, title: `Bought ${item.title}` } as never);
+  let purchaseId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    const updated = await decrementMarketStock(env, marketId);
+    if (updated < 0) throw new Error('Sold out');
+    await env.DB.prepare(`INSERT INTO market_purchases (id, user_id, market_item_id, price_nano, status, purchased_at)
+      VALUES (?, ?, ?, ?, 'owned', CURRENT_TIMESTAMP)`).bind(purchaseId, id, marketId, priceNano).run();
+  } catch (error) {
+    await refundFailedPurchase(env, id, priceNano, controls);
+    throw error;
+  }
+  const refreshed = await getMarketItems(env);
+  const owned = await getUserMarketNfts(env, id);
+  const purchase = owned.owned.find((entry) => entry.purchaseId === purchaseId) || owned.owned[0];
+  return { ok: true, item, purchase, items: refreshed.items, owned: owned.owned, tonBalanceNano: controls.tonBalanceNano };
 }
 
 export async function setMarketItem(env: Env, id: string, input: SavedMarketItem): Promise<{ items: MarketItem[] }> {
@@ -139,9 +178,66 @@ export async function setMarketItem(env: Env, id: string, input: SavedMarketItem
   return getMarketItems(env);
 }
 
+async function inflateMarketItem(env: Env, saved: Record<string, SavedMarketItem>, item: Omit<MarketItem, 'imageUrl' | 'mediaType'>): Promise<MarketItem> {
+  const custom = saved[item.id] || {};
+  const head = await env.ASSETS.head(marketImageKey(item.id)).catch(() => null) as R2Head;
+  const version = head?.customMetadata?.version || '1';
+  return {
+    ...item,
+    title: cleanText(custom.title, item.title, 80),
+    price: cleanText(custom.price, item.price, 24),
+    stock: cleanText(custom.stock, item.stock, 24),
+    animation: normalizeMarketAnimation(custom.animation || item.animation),
+    symbol: cleanText(custom.symbol, item.symbol, 24),
+    collection: cleanText(custom.collection, item.collection, 80),
+    rarity: cleanText(custom.rarity, item.rarity, 40),
+    tag: cleanText(custom.tag, item.tag, 40),
+    supply: cleanText(custom.supply, item.supply, 24),
+    edition: cleanText(custom.edition, item.edition, 40),
+    utility: cleanText(custom.utility, item.utility, 180),
+    description: cleanText(custom.description, item.description, 280),
+    mediaType: 'image',
+    imageUrl: head ? `/app/api/market-item-media/${item.id}?v=${version}` : null,
+  };
+}
+
+async function decrementMarketStock(env: Env, itemId: string): Promise<number> {
+  const saved = await readSavedItems(env);
+  const fallback = DEFAULT_MARKET_ITEMS.find((item) => item.id === itemId);
+  if (!fallback) return -1;
+  const current = Math.floor(Number(saved[itemId]?.stock ?? fallback.stock) || 0);
+  if (current <= 0) return -1;
+  saved[itemId] = { ...(saved[itemId] || {}), stock: String(current - 1) };
+  await env.BOT_CACHE.put(MARKET_ITEMS_KEY, JSON.stringify(saved));
+  return current - 1;
+}
+
+async function refundFailedPurchase(env: Env, userId: string, amountNano: number, _controls: UserControls): Promise<void> {
+  await import('./user-controls').then(({ adjustUserTonBalance }) => adjustUserTonBalance(env, userId, amountNano, { kind: 'market-refund', title: 'NFT purchase refund' } as never)).catch(() => undefined);
+}
+
+async function ensureMarketPurchasesTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS market_purchases (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    market_item_id TEXT NOT NULL,
+    price_nano INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'owned',
+    purchased_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS market_purchases_user_idx ON market_purchases(user_id, purchased_at)').run().catch(() => undefined);
+}
+
 async function readSavedItems(env: Env): Promise<Record<string, SavedMarketItem>> {
   const raw = await env.BOT_CACHE.get(MARKET_ITEMS_KEY, 'json').catch(() => null) as Record<string, SavedMarketItem> | null;
   return raw && typeof raw === 'object' ? raw : {};
+}
+
+function parseTonToNano(value: unknown): number {
+  const raw = String(value ?? '').trim().replace(/,/g, '');
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n * NANO_PER_TON) : 0;
 }
 
 function cleanOptional(value: unknown): string | undefined {
@@ -152,4 +248,10 @@ function cleanOptional(value: unknown): string | undefined {
 function cleanText(value: unknown, fallback: string, limit: number): string {
   const text = String(value ?? '').trim();
   return text ? text.slice(0, limit) : fallback;
+}
+
+function cleanUserId(value: unknown): string {
+  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!id) throw new Error('Missing user id');
+  return id;
 }
