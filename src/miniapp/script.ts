@@ -46,10 +46,11 @@ export const MINIAPP_SCRIPT = `
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
-      var b=target&&target.closest?target.closest('#playzone button[data-view]'):null;
+      var b=target&&target.closest?target.closest('#playzone button[data-game-view]'):null;
       if(!b)return;
-      var id=b.getAttribute('data-view')||'';
+      var id=b.getAttribute('data-game-view')||'';
       ev.preventDefault();
+      ev.stopPropagation();
       ev.stopImmediatePropagation();
       if(q(id)){show(id);return}
       toast('Coming soon');
@@ -97,6 +98,7 @@ export const MINIAPP_SCRIPT = `
     var target=ev.target;
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
+    if(b.hasAttribute('data-game-view'))return;
     var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(q(v))show(v);else toast('Coming soon');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
