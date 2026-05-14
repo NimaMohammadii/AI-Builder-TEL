@@ -32,7 +32,10 @@ export const MARKET_CONFIG_SCRIPT = `
   }
   function renderTelegramMarket(){
     var root=document.getElementById('market');if(!root)return;
+    var panel=root.querySelector('[data-market-panel="store"]');
     var grid=root.querySelector('[data-market-telegram-grid]');var empty=root.querySelector('[data-market-telegram-empty]');
+    if(panel&&grid&&grid.parentNode===panel&&panel.firstElementChild!==grid)panel.insertBefore(grid,panel.firstElementChild);
+    if(panel&&grid&&empty&&empty.parentNode===panel&&empty.previousElementSibling!==grid)panel.insertBefore(empty,grid.nextSibling);
     var gifts=Array.isArray(lastTelegramGifts)?lastTelegramGifts:[];
     gifts.forEach(function(item){if(item&&item.id)marketItemsById[String(item.id)]=item});
     if(grid)grid.innerHTML=gifts.map(function(item){return giftCard(item,false)}).join('');
