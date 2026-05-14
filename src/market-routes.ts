@@ -179,24 +179,19 @@ async function getTelegramFileUrl(env: Env, fileId: string): Promise<string | nu
 
 function normalizeTelegramGift(entry: unknown, index: number): TelegramGiftView | null {
   const owned = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
-  const unique = objectValue(owned.gift) || objectValue(owned.unique_gift) || owned;
-  const regularGift = objectValue(owned.regular_gift) || objectValue(owned.gift) || owned;
-  const id = String(owned.owned_gift_id || owned.id || unique.slug || unique.name || regularGift.id || `gift_${index}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+  const gift = firstObject(owned.gift, owned.unique_gift, owned.regular_gift, owned);
+  const unique = firstObject(owned.unique_gift, owned.type === 'unique' ? owned.gift : null, gift);
+  const regularGift = firstObject(owned.regular_gift, owned.type === 'regular' ? owned.gift : null, gift);
+  const id = String(owned.owned_gift_id || owned.id || unique.slug || unique.name || unique.gift_id || regularGift.id || `gift_${index}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
   const model = objectValue(unique.model);
   const symbol = objectValue(unique.symbol);
   const backdrop = objectValue(unique.backdrop);
-  const title = cleanGiftText(unique.name || unique.title || regularGift.title || regularGift.name || 'Telegram Gift', 80);
+  const title = cleanGiftText(unique.base_name || unique.name || unique.title || regularGift.title || regularGift.name || 'Telegram Gift', 80);
   const number = unique.number || unique.num || owned.number;
   const modelName = cleanGiftText(model.name || unique.model_name || 'Telegram Gift', 80);
   const symbolName = cleanGiftText(symbol.name || unique.symbol_name || 'Unique', 60);
   const backdropName = cleanGiftText(backdrop.name || unique.backdrop_name || 'Collectible', 60);
-  const imageFileId = firstText(
-    objectValue(unique.sticker).file_id,
-    objectValue(model.sticker).file_id,
-    objectValue(regularGift.sticker).file_id,
-    objectValue(objectValue(regularGift.sticker).thumbnail).file_id,
-    objectValue(objectValue(unique.sticker).thumbnail).file_id
-  );
+  const imageFileId = telegramGiftImageFileId(unique, model, regularGift);
   const supply = firstText(unique.total_count, regularGift.total_count, number ? `#${number}` : 'Telegram');
   const canTransfer = owned.can_be_transferred === true || unique.can_be_transferred === true;
   return {
@@ -214,6 +209,34 @@ function normalizeTelegramGift(entry: unknown, index: number): TelegramGiftView 
     nextTransferDate: numberOrNull(owned.next_transfer_date || unique.next_transfer_date),
     transferStars: numberOrNull(owned.transfer_star_count || unique.transfer_star_count),
   };
+}
+
+function telegramGiftImageFileId(unique: Record<string, unknown>, model: Record<string, unknown>, regularGift: Record<string, unknown>): string {
+  const uniqueSticker = objectValue(unique.sticker);
+  const modelSticker = objectValue(model.sticker);
+  const regularSticker = objectValue(regularGift.sticker);
+  return firstText(
+    stickerDisplayFileId(uniqueSticker),
+    stickerDisplayFileId(modelSticker),
+    stickerDisplayFileId(regularSticker),
+    objectValue(regularSticker.thumbnail).file_id,
+    objectValue(uniqueSticker.thumbnail).file_id
+  );
+}
+
+function stickerDisplayFileId(sticker: Record<string, unknown>): string {
+  const thumbnailId = firstText(objectValue(sticker.thumbnail).file_id);
+  const stickerId = firstText(sticker.file_id);
+  if ((sticker.is_animated === true || sticker.is_video === true) && thumbnailId) return thumbnailId;
+  return stickerId || thumbnailId;
+}
+
+function firstObject(...values: unknown[]): Record<string, unknown> {
+  for (const value of values) {
+    const object = objectValue(value);
+    if (Object.keys(object).length) return object;
+  }
+  return {};
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
