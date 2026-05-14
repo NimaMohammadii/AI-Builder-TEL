@@ -40,12 +40,12 @@ export const MARKET_CONFIG_SCRIPT = `
     gifts.forEach(function(item){if(item&&item.id)marketItemsById[String(item.id)]=item});
     if(grid)grid.innerHTML=gifts.map(function(item){return giftCard(item,false)}).join('');
     if(grid)grid.style.display=gifts.length?'grid':'none';
-    if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'Your Telegram Gifts will appear here.';empty.style.display=gifts.length?'none':'flex'}
+    if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'Telegram Gift catalog will appear here.';empty.style.display=gifts.length?'none':'flex'}
   }
   function renderOwned(){
     var root=document.getElementById('market');if(!root)return;
     var grid=root.querySelector('[data-market-owned-grid]');var empty=root.querySelector('[data-market-owned-empty]');
-    var combined=[].concat(Array.isArray(lastOwned)?lastOwned:[],Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]);
+    var combined=Array.isArray(lastOwned)?lastOwned:[];
     combined.forEach(function(item){if(item&&item.id)marketItemsById[String(item.id)]=item});
     if(grid)grid.innerHTML=combined.map(function(item){return giftCard(item,true)}).join('');
     if(grid)grid.style.display=combined.length?'grid':'none';
@@ -56,8 +56,8 @@ export const MARKET_CONFIG_SCRIPT = `
     var isTelegram=item.source==='telegram';
     sheet.classList.remove('is-success');
     var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
-    if(title)title.textContent=esc(item.title||'Gift');if(desc)desc.textContent=esc(item.description||'Telegram collectible gift.');if(collection)collection.textContent=esc(item.collection||'Telegram Gifts');if(price)price.textContent=isTelegram?'Telegram':esc(item.price||'0');if(buy){buy.setAttribute('data-market-buy',esc(item.id));buy.disabled=!!isTelegram;buy.classList.remove('loading');var s=buy.querySelector('span');if(s)s.textContent=isTelegram?'Telegram Gift':'Buy NFT'}if(status)status.textContent=isTelegram?'Display only. Transfer is not enabled in Vexa yet.':'';
-    if(specs)specs.innerHTML=isTelegram?spec('Type','Telegram Gift')+spec('Model',item.rarity)+spec('Status',item.canTransfer?'Transferable':'Display only'):spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
+    if(title)title.textContent=esc(item.title||'Gift');if(desc)desc.textContent=esc(item.description||'Telegram collectible gift.');if(collection)collection.textContent=esc(item.collection||'Telegram Gifts');if(price)price.textContent=isTelegram?esc(item.utility||'Telegram'):esc(item.price||'0');if(buy){buy.setAttribute('data-market-buy',esc(item.id));buy.disabled=!!isTelegram;buy.classList.remove('loading');var s=buy.querySelector('span');if(s)s.textContent=isTelegram?'Telegram Gift':'Buy NFT'}if(status)status.textContent=isTelegram?'Available in Telegram gift catalog. Direct purchase is not enabled in Vexa yet.':'';
+    if(specs)specs.innerHTML=isTelegram?spec('Type','Telegram Gift')+spec('Price',item.utility)+spec('Status','Catalog item'):spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
   }
@@ -93,7 +93,7 @@ export const MARKET_CONFIG_SCRIPT = `
     root.querySelectorAll('[data-market-tab]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-market-tab')===tab)});
     root.querySelectorAll('[data-market-panel]').forEach(function(panel){panel.classList.toggle('active',panel.getAttribute('data-market-panel')===tab)});
     if(tab==='store')loadTelegramGifts(false);
-    if(tab==='owned'){loadOwned(false);loadTelegramGifts(false)}
+    if(tab==='owned')loadOwned(false)
   }
   function initMarketTabs(){
     var root=document.getElementById('market');
@@ -124,16 +124,14 @@ export const MARKET_CONFIG_SCRIPT = `
     return ownedRequestInFlight;
   }
   async function loadTelegramGifts(force){
-    var u=user();
-    if(!u.id){telegramGiftsError='Open inside Telegram to load gifts.';lastTelegramGifts=[];renderTelegramMarket();renderOwned();return}
     var now=Date.now();
-    if(!force&&telegramGiftsLoadedAt&&now-telegramGiftsLoadedAt<TELEGRAM_GIFTS_REFRESH_TTL){renderTelegramMarket();renderOwned();return}
+    if(!force&&telegramGiftsLoadedAt&&now-telegramGiftsLoadedAt<TELEGRAM_GIFTS_REFRESH_TTL){renderTelegramMarket();return}
     if(telegramGiftsRequestInFlight)return telegramGiftsRequestInFlight;
     telegramGiftsError='';
-    telegramGiftsRequestInFlight=fetch('/app/api/telegram-gifts?userId='+encodeURIComponent(u.id),{cache:'default'})
+    telegramGiftsRequestInFlight=fetch('/app/api/telegram-gifts',{cache:'default'})
       .then(function(r){return r.json().catch(function(){return null}).then(function(j){if(!r.ok||!j||j.error)throw new Error((j&&j.error)||'Could not load Telegram Gifts');return j})})
-      .then(function(j){telegramGiftsLoadedAt=Date.now();lastTelegramGifts=Array.isArray(j.gifts)?j.gifts:[];renderTelegramMarket();renderOwned()})
-      .catch(function(e){telegramGiftsError=e&&e.message?e.message:'Could not load Telegram Gifts';lastTelegramGifts=[];renderTelegramMarket();renderOwned()})
+      .then(function(j){telegramGiftsLoadedAt=Date.now();lastTelegramGifts=Array.isArray(j.gifts)?j.gifts:[];renderTelegramMarket()})
+      .catch(function(e){telegramGiftsError=e&&e.message?e.message:'Could not load Telegram Gifts';lastTelegramGifts=[];renderTelegramMarket()})
       .finally(function(){telegramGiftsRequestInFlight=null});
     return telegramGiftsRequestInFlight;
   }
