@@ -4,8 +4,8 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
-  var KEY='vexaPlayZoneImageUrls:v8';
-  var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v8';
+  var KEY='vexaPlayZoneImageUrls:v7';
+  var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v7';
   function byId(id){return document.getElementById(id)}
   function flash(message){var box=byId('toast');if(!box)return;box.textContent=message;box.style.display='block';setTimeout(function(){box.style.display='none'},3000)}
   function openGame(id){
@@ -19,20 +19,12 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     if(title)title.textContent={mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'}[id]||title.textContent;
     document.body.classList.remove('header-glass-mode');
   }
-  function playCard(target){return target&&target.closest?target.closest('#playzone [data-game-view],#playzone .game-card[data-view]'):null}
+  function playButton(target){return target&&target.closest?target.closest('#playzone button'):null}
   document.addEventListener('click',function(event){
-    var card=playCard(event.target);if(!card)return;
-    var id=card.getAttribute('data-game-view')||card.getAttribute('data-view')||'';
+    var button=playButton(event.target);if(!button)return;
+    var id=button.getAttribute('data-game-view')||button.getAttribute('data-view')||'';
     if(!id)return;
-    event.preventDefault();event.stopPropagation();if(event.stopImmediatePropagation)event.stopImmediatePropagation();
-    openGame(id);
-  },true);
-  document.addEventListener('keydown',function(event){
-    if(event.key!=='Enter'&&event.key!==' ')return;
-    var card=playCard(event.target);if(!card)return;
-    var id=card.getAttribute('data-game-view')||card.getAttribute('data-view')||'';
-    if(!id)return;
-    event.preventDefault();event.stopPropagation();if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+    event.preventDefault();event.stopPropagation();
     openGame(id);
   },true);
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
