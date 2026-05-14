@@ -8,6 +8,7 @@ export const MARKET_CONFIG_SCRIPT = `
   var telegramGiftsLoadedAt=0;
   var lastOwned=[];
   var lastTelegramGifts=[];
+  var telegramGiftsError='';
   var buying=false;
   var OWNED_REFRESH_TTL=20000;
   var TELEGRAM_GIFTS_REFRESH_TTL=180000;
@@ -36,7 +37,7 @@ export const MARKET_CONFIG_SCRIPT = `
     gifts.forEach(function(item){if(item&&item.id)marketItemsById[String(item.id)]=item});
     if(grid)grid.innerHTML=gifts.map(function(item){return giftCard(item,false)}).join('');
     if(grid)grid.style.display=gifts.length?'grid':'none';
-    if(empty)empty.style.display=gifts.length?'none':'flex';
+    if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'Your Telegram Gifts will appear here.';empty.style.display=gifts.length?'none':'flex'}
   }
   function renderOwned(){
     var root=document.getElementById('market');if(!root)return;
@@ -121,14 +122,15 @@ export const MARKET_CONFIG_SCRIPT = `
   }
   async function loadTelegramGifts(force){
     var u=user();
-    if(!u.id){lastTelegramGifts=[];renderTelegramMarket();renderOwned();return}
+    if(!u.id){telegramGiftsError='Open inside Telegram to load gifts.';lastTelegramGifts=[];renderTelegramMarket();renderOwned();return}
     var now=Date.now();
     if(!force&&telegramGiftsLoadedAt&&now-telegramGiftsLoadedAt<TELEGRAM_GIFTS_REFRESH_TTL){renderTelegramMarket();renderOwned();return}
     if(telegramGiftsRequestInFlight)return telegramGiftsRequestInFlight;
+    telegramGiftsError='';
     telegramGiftsRequestInFlight=fetch('/app/api/telegram-gifts?userId='+encodeURIComponent(u.id),{cache:'default'})
-      .then(function(r){return r.json()})
+      .then(function(r){return r.json().catch(function(){return null}).then(function(j){if(!r.ok||!j||j.error)throw new Error((j&&j.error)||'Could not load Telegram Gifts');return j})})
       .then(function(j){telegramGiftsLoadedAt=Date.now();lastTelegramGifts=Array.isArray(j.gifts)?j.gifts:[];renderTelegramMarket();renderOwned()})
-      .catch(function(){lastTelegramGifts=[];renderTelegramMarket();renderOwned()})
+      .catch(function(e){telegramGiftsError=e&&e.message?e.message:'Could not load Telegram Gifts';lastTelegramGifts=[];renderTelegramMarket();renderOwned()})
       .finally(function(){telegramGiftsRequestInFlight=null});
     return telegramGiftsRequestInFlight;
   }
