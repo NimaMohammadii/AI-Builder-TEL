@@ -20,7 +20,8 @@ export const MARKET_CONFIG_SCRIPT = `
     if(!image&&!animation)return '<span class="market-nft-art"><b></b></span>';
     if(!animation)return '<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>';
     var poster=image||animation;
-    return '<video class="market-uploaded-image" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onerror="this.remove()"></video>'+(image?'<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>':'');
+    var fallback=image?'<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>':'';
+    return fallback+'<video class="market-uploaded-image" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onerror="this.remove()"></video>';
   }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
