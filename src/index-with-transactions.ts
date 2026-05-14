@@ -23,6 +23,7 @@ type TonGiftView = {
   utility: string;
   description: string;
   imageUrl: string | null;
+  animationUrl?: string | null;
   badge: string;
   source: 'telegram';
   canTransfer: boolean;
@@ -144,7 +145,7 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
 });
 
 async function loadFragmentGiftMarket(env: TonGiftEnv): Promise<TonGiftView[]> {
-  const cacheKey = 'fragment:gifts:for-sale:v1';
+  const cacheKey = 'fragment:gifts:for-sale:v2';
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TonGiftView[] | null;
   if (Array.isArray(cached)) return cached;
   const response = await fetch(FRAGMENT_GIFTS_URL, {
@@ -174,6 +175,7 @@ function parseFragmentGifts(html: string): TonGiftView[] {
     const number = fragmentGiftNumber(block, href);
     const price = fragmentGiftPrice(block);
     const image = fragmentGiftImage(block);
+    const animation = fragmentGiftAnimation(block);
     gifts.push({
       id: `fragment_${href.split('/').pop() || index}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
       title,
@@ -183,6 +185,7 @@ function parseFragmentGifts(html: string): TonGiftView[] {
       utility: price ? `${price} TON` : 'For sale on Fragment',
       description: [number, price ? `${price} TON` : '', 'For sale on Fragment'].filter(Boolean).join(' · '),
       imageUrl: image,
+      animationUrl: animation,
       badge: 'For sale',
       source: 'telegram',
       canTransfer: true,
@@ -220,10 +223,22 @@ function fragmentGiftPrice(block: string): string {
 function fragmentGiftImage(block: string): string | null {
   const src = firstMatch(block, [
     /<img\b[^>]*src=["']([^"']+)["']/i,
+    /poster=["']([^"']+)["']/i,
     /background-image\s*:\s*url\(([^)]+)\)/i,
     /data-src=["']([^"']+)["']/i,
   ]);
   return src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : null;
+}
+
+function fragmentGiftAnimation(block: string): string | null {
+  const src = firstMatch(block, [
+    /<video\b[^>]*src=["']([^"']+)["']/i,
+    /<source\b[^>]*src=["']([^"']+)["']/i,
+    /data-animation=["']([^"']+)["']/i,
+    /data-video=["']([^"']+)["']/i,
+  ]);
+  const value = src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : '';
+  return /\.(mp4|webm|mov)(\?|#|$)/i.test(value) ? value : null;
 }
 
 function dedupeGifts(gifts: TonGiftView[]): TonGiftView[] {
