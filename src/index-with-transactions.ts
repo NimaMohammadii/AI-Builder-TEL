@@ -10,12 +10,9 @@ import type { Env } from './types';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const TON_GIFT_NFT_CACHE_SECONDS = 120;
+const FRAGMENT_GIFTS_URL = 'https://fragment.com/gifts?sort=price_asc&filter=sale';
 
-type TonGiftEnv = Env & {
-  TONAPI_BASE_URL?: string;
-  TONAPI_KEY?: string;
-  TON_GIFT_COLLECTIONS?: string;
-};
+type TonGiftEnv = Env;
 
 type TonGiftView = {
   id: string;
@@ -125,10 +122,10 @@ app.get('/app/api/ton/history', async (c) => {
 
 app.get('/app/api/ton-gift-market', async (c) => {
   try {
-    const gifts = await loadTonGiftNfts(c.env as TonGiftEnv);
+    const gifts = await loadFragmentGiftMarket(c.env as TonGiftEnv);
     return c.json({ gifts }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not load TON Gift NFTs' }, 200, { 'cache-control': 'no-store' });
+    return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not load Fragment Gift market' }, 200, { 'cache-control': 'no-store' });
   }
 });
 
@@ -146,91 +143,131 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
   }
 });
 
-async function loadTonGiftNfts(env: TonGiftEnv): Promise<TonGiftView[]> {
-  const collections = splitCsv(env.TON_GIFT_COLLECTIONS);
-  if (!collections.length) throw new Error('TON_GIFT_COLLECTIONS is not configured');
-  const baseUrl = String(env.TONAPI_BASE_URL || 'https://tonapi.io').replace(/\/+$/, '');
-  const cacheKey = `tonapi:gifts:${await hashKey(`${baseUrl}:${collections.join(',')}`)}`;
+async function loadFragmentGiftMarket(env: TonGiftEnv): Promise<TonGiftView[]> {
+  const cacheKey = 'fragment:gifts:for-sale:v1';
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TonGiftView[] | null;
   if (Array.isArray(cached)) return cached;
-  const batches = await Promise.all(collections.map((collection) => loadTonApiCollectionItems(env, baseUrl, collection)));
-  const gifts = batches.flat().slice(0, 80);
+  const response = await fetch(FRAGMENT_GIFTS_URL, {
+    headers: {
+      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'accept-language': 'en-US,en;q=0.9',
+      'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    },
+    cf: { cacheTtl: TON_GIFT_NFT_CACHE_SECONDS, cacheEverything: true } as never,
+  });
+  if (!response.ok) throw new Error(`Fragment Gift market failed: ${response.status}`);
+  const html = await response.text();
+  const gifts = parseFragmentGifts(html).slice(0, 80);
+  if (!gifts.length) throw new Error('Fragment Gift market returned no parsable gifts');
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_NFT_CACHE_SECONDS }).catch(() => undefined);
   return gifts;
 }
 
-async function loadTonApiCollectionItems(env: TonGiftEnv, baseUrl: string, collection: string): Promise<TonGiftView[]> {
-  const url = `${baseUrl}/v2/nfts/collections/${encodeURIComponent(collection)}/items?limit=40&offset=0`;
-  const response = await fetch(url, {
-    headers: tonApiHeaders(env),
-    cf: { cacheTtl: TON_GIFT_NFT_CACHE_SECONDS, cacheEverything: true } as never,
-  });
-  if (!response.ok) throw new Error(`TonAPI collection load failed: ${response.status}`);
-  const json = await response.json().catch(() => null);
-  const rows = tonApiRows(json);
-  return rows.map((item, index) => normalizeTonApiNft(item, collection, index)).filter(Boolean) as TonGiftView[];
-}
-
-function tonApiHeaders(env: TonGiftEnv): HeadersInit {
-  const headers: Record<string, string> = { accept: 'application/json' };
-  if (env.TONAPI_KEY) headers.authorization = `Bearer ${env.TONAPI_KEY}`;
-  return headers;
-}
-
-function tonApiRows(value: unknown): Record<string, unknown>[] {
-  if (Array.isArray(value)) return value.filter(isRecord) as Record<string, unknown>[];
-  const object = record(value);
-  for (const key of ['nft_items', 'items', 'results', 'data']) {
-    if (Array.isArray(object[key])) return object[key].filter(isRecord) as Record<string, unknown>[];
+function parseFragmentGifts(html: string): TonGiftView[] {
+  const gifts: TonGiftView[] = [];
+  const anchors = [...html.matchAll(/<a\b[^>]*href=["']([^"']*\/gift\/[^"']+)["'][\s\S]*?<\/a>/gi)];
+  for (const [index, match] of anchors.entries()) {
+    const href = absoluteFragmentUrl(decodeHtml(match[1] || ''));
+    const block = match[0] || '';
+    if (!/for sale/i.test(block) && !/tm-icon-ton|icon-ton|ton-symbol/i.test(block)) continue;
+    const title = fragmentGiftTitle(block, href, index);
+    const number = fragmentGiftNumber(block, href);
+    const price = fragmentGiftPrice(block);
+    const image = fragmentGiftImage(block);
+    gifts.push({
+      id: `fragment_${href.split('/').pop() || index}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
+      title,
+      collection: 'Fragment Gifts',
+      rarity: 'For sale',
+      supply: number || 'For sale',
+      utility: price ? `${price} TON` : 'For sale on Fragment',
+      description: [number, price ? `${price} TON` : '', 'For sale on Fragment'].filter(Boolean).join(' · '),
+      imageUrl: image,
+      badge: 'For sale',
+      source: 'telegram',
+      canTransfer: true,
+      nextTransferDate: null,
+      transferStars: null,
+    });
   }
-  return [];
+  return dedupeGifts(gifts);
 }
 
-function normalizeTonApiNft(item: Record<string, unknown>, collection: string, index: number): TonGiftView | null {
-  const metadata = record(item.metadata);
-  const previews = Array.isArray(item.previews) ? item.previews.filter(isRecord) as Record<string, unknown>[] : [];
-  const preview = previews.find((entry) => String(entry.resolution || '').includes('500')) || previews[0] || {};
-  const address = text(item.address) || text(item.account_address) || `${collection}_${index}`;
-  const name = text(metadata.name) || text(item.dns) || `TON Gift #${index + 1}`;
-  const image = text(preview.url) || text(item.image) || text(metadata.image) || text(metadata.image_url) || null;
-  const collectionInfo = record(item.collection);
-  const collectionName = text(collectionInfo.name) || text(collectionInfo.title) || 'Telegram Gift NFTs';
-  return {
-    id: `tonapi_${address}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
-    title: name,
-    collection: collectionName,
-    rarity: text(metadata.model) || text(metadata.rarity) || 'TON NFT',
-    supply: text(metadata.number) || text(item.index) || 'NFT',
-    utility: 'TON NFT',
-    description: text(metadata.description) || 'Telegram Gift NFT on TON.',
-    imageUrl: image,
-    badge: 'TON NFT',
-    source: 'telegram',
-    canTransfer: true,
-    nextTransferDate: null,
-    transferStars: null,
-  };
+function fragmentGiftTitle(block: string, href: string, index: number): string {
+  const direct = firstMatch(block, [
+    /class=["'][^"']*(?:title|name)[^"']*["'][^>]*>([\s\S]*?)<\//i,
+    /alt=["']([^"']+)["']/i,
+    /aria-label=["']([^"']+)["']/i,
+  ]);
+  if (direct) return cleanText(direct.replace(/#\d+.*/, ''));
+  const slug = (href.split('/').pop() || '').replace(/[-_]?\d+$/, '').replace(/[-_]+/g, ' ');
+  return titleCase(slug || `Fragment Gift ${index + 1}`);
 }
 
-function splitCsv(value: unknown): string[] {
-  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+function fragmentGiftNumber(block: string, href: string): string {
+  return firstMatch(block, [/#\s*([0-9]{2,})/i]) ? `#${firstMatch(block, [/#\s*([0-9]{2,})/i])}` : (href.match(/(\d{2,})$/)?.[1] ? `#${href.match(/(\d{2,})$/)?.[1]}` : '');
 }
 
-async function hashKey(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 16);
+function fragmentGiftPrice(block: string): string {
+  const price = firstMatch(block, [
+    /(?:tm-icon-ton|icon-ton|ton-symbol)[\s\S]{0,180}?([0-9]+(?:\.[0-9]+)?)/i,
+    /([0-9]+(?:\.[0-9]+)?)\s*(?:TON|Ton)/i,
+    /class=["'][^"']*(?:price|value)[^"']*["'][^>]*>[\s\S]*?([0-9]+(?:\.[0-9]+)?)/i,
+  ]);
+  return price || '';
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+function fragmentGiftImage(block: string): string | null {
+  const src = firstMatch(block, [
+    /<img\b[^>]*src=["']([^"']+)["']/i,
+    /background-image\s*:\s*url\(([^)]+)\)/i,
+    /data-src=["']([^"']+)["']/i,
+  ]);
+  return src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : null;
 }
 
-function record(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {};
+function dedupeGifts(gifts: TonGiftView[]): TonGiftView[] {
+  const seen = new Set<string>();
+  const out: TonGiftView[] = [];
+  for (const gift of gifts) {
+    if (seen.has(gift.id)) continue;
+    seen.add(gift.id);
+    out.push(gift);
+  }
+  return out;
 }
 
-function text(value: unknown): string {
-  return String(value ?? '').trim();
+function absoluteFragmentUrl(value: string): string {
+  if (!value) return value;
+  if (value.startsWith('//')) return `https:${value}`;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('/')) return `https://fragment.com${value}`;
+  return value;
+}
+
+function firstMatch(value: string, patterns: RegExp[]): string {
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (match?.[1]) return cleanText(match[1]);
+  }
+  return '';
+}
+
+function cleanText(value: string): string {
+  return decodeHtml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+}
+
+function decodeHtml(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function titleCase(value: string): string {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase()).trim() || 'Fragment Gift';
 }
 
 function adminCookieValue(cookie: string | undefined): string {
