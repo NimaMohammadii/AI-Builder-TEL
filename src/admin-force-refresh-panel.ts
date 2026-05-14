@@ -3,14 +3,17 @@ export const ADMIN_FORCE_REFRESH_PANEL_SCRIPT = `
 (function(){
   function ensureForceRefreshPanel(){
     if(document.getElementById('vexaForceRefreshBlock'))return;
-    var section=document.getElementById('sectionImages')||document.querySelector('.page')||document.body;
-    if(!section)return;
+    var page=document.querySelector('.page')||document.body;
+    if(!page)return;
     var block=document.createElement('div');
     block.id='vexaForceRefreshBlock';
-    block.className='admin-section';
-    block.style.marginTop='12px';
-    block.innerHTML='<div class="row-title"><div><h2>Force update all users</h2><p class="muted small-text">After changing images/assets, press this to bump app cache version for all Mini App users.</p></div></div><button class="primary" id="vexaForceRefreshBtn" type="button">Force update all users</button><p id="vexaForceRefreshStatus" class="status"></p>';
-    section.insertBefore(block,section.firstChild);
+    block.style.cssText='display:block!important;margin:0 0 14px!important;padding:12px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:18px!important;background:rgba(255,255,255,.055)!important';
+    block.innerHTML='<div class="row-title"><div><h2 style="margin:0 0 4px">Force update all users</h2><p class="muted small-text">After changing images/assets, press this to refresh cached images for Mini App users.</p></div></div><button class="primary" id="vexaForceRefreshBtn" type="button">Force update all users</button><p id="vexaForceRefreshStatus" class="status"></p>';
+    var menu=document.getElementById('adminMenu');
+    var head=document.querySelector('.head');
+    if(menu&&menu.parentNode===page)page.insertBefore(block,menu);
+    else if(head&&head.parentNode===page)page.insertBefore(block,head.nextSibling);
+    else page.insertBefore(block,page.firstChild);
     var btn=document.getElementById('vexaForceRefreshBtn');
     var status=document.getElementById('vexaForceRefreshStatus');
     if(!btn)return;
