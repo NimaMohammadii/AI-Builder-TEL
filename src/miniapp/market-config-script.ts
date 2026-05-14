@@ -10,6 +10,7 @@ export const MARKET_CONFIG_SCRIPT = `
   var lastTelegramGifts=[];
   var telegramGiftsError='';
   var buying=false;
+  var tgsRuntimePromise=null;
   var OWNED_REFRESH_TTL=20000;
   var TELEGRAM_GIFTS_REFRESH_TTL=180000;
   function esc(v){return String(v==null?'':v)}
@@ -19,13 +20,53 @@ export const MARKET_CONFIG_SCRIPT = `
     var animation=esc(item&&item.animationUrl||'');
     if(!image&&!animation)return '<span class="market-nft-art"><b></b></span>';
     if(!animation)return '<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>';
-    var poster=image||animation;
+    var isTgs=/\.tgs(\?|#|$)/i.test(animation);
     var fallback=image?'<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>':'';
+    if(isTgs)return fallback+'<span class="market-uploaded-image market-tgs-player" data-tgs-url="'+animation+'" style="position:absolute;inset:0;z-index:3;width:100%;height:100%;display:block;overflow:hidden;background:transparent"></span>';
+    var poster=image||animation;
     return fallback+'<video class="market-uploaded-image" style="position:absolute;inset:0;z-index:3;width:100%;height:100%;object-fit:cover;display:block;background:#000" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onloadeddata="this.play&&this.play().catch(function(){})" onerror="this.remove()"></video>';
+  }
+  function loadScriptOnce(src,globalName){
+    if(globalName&&window[globalName])return Promise.resolve(window[globalName]);
+    return new Promise(function(resolve,reject){
+      var existing=document.querySelector('script[data-src="'+src+'"]');
+      if(existing){existing.addEventListener('load',function(){resolve(globalName?window[globalName]:true)});existing.addEventListener('error',reject);return}
+      var script=document.createElement('script');script.src=src;script.async=true;script.defer=true;script.setAttribute('data-src',src);script.onload=function(){resolve(globalName?window[globalName]:true)};script.onerror=reject;document.head.appendChild(script);
+    });
+  }
+  function ensureTgsRuntime(){
+    if(tgsRuntimePromise)return tgsRuntimePromise;
+    tgsRuntimePromise=Promise.all([
+      loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js','pako'),
+      loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js','lottie')
+    ]).then(function(){return {pako:window.pako,lottie:window.lottie||window.bodymovin}});
+    return tgsRuntimePromise;
+  }
+  async function mountTgsAnimations(root){
+    var scope=root||document;
+    var nodes=Array.prototype.slice.call(scope.querySelectorAll('[data-tgs-url]:not([data-tgs-ready])'));
+    if(!nodes.length)return;
+    try{
+      var runtime=await ensureTgsRuntime();
+      await Promise.all(nodes.map(async function(node){
+        try{
+          node.setAttribute('data-tgs-ready','1');
+          var url=node.getAttribute('data-tgs-url')||'';
+          var res=await fetch(url,{cache:'force-cache'});
+          if(!res.ok)throw new Error('tgs fetch failed');
+          var bytes=new Uint8Array(await res.arrayBuffer());
+          var json=runtime.pako.ungzip(bytes,{to:'string'});
+          var data=JSON.parse(json);
+          node.innerHTML='';
+          runtime.lottie.loadAnimation({container:node,renderer:'svg',loop:true,autoplay:true,animationData:data});
+        }catch(e){node.remove()}
+      }));
+    }catch(e){nodes.forEach(function(node){node.remove()})}
   }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
     imgWrap.innerHTML=giftMediaHtml(item);
+    mountTgsAnimations(imgWrap);
   }
   function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
   function giftCard(item,owned){
@@ -47,6 +88,7 @@ export const MARKET_CONFIG_SCRIPT = `
     if(grid)grid.innerHTML=gifts.map(function(item){return giftCard(item,false)}).join('');
     if(grid)grid.style.display=gifts.length?'grid':'none';
     if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'TON Gift NFTs will appear here.';empty.style.display=gifts.length?'none':'flex'}
+    mountTgsAnimations(grid||root);
   }
   function renderOwned(){
     var root=document.getElementById('market');if(!root)return;
@@ -56,6 +98,7 @@ export const MARKET_CONFIG_SCRIPT = `
     if(grid)grid.innerHTML=combined.map(function(item){return giftCard(item,true)}).join('');
     if(grid)grid.style.display=combined.length?'grid':'none';
     if(empty)empty.style.display=combined.length?'none':'flex';
+    mountTgsAnimations(grid||root);
   }
   async function openDetail(item){
     var sheet=document.getElementById('marketDetailSheet');if(!sheet||!item)return;activeDetailItem=item;
