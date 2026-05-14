@@ -4,16 +4,16 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
-  var KEY='vexaPlayZoneImageUrls:v8';
-  var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v8';
+  var KEY='vexaPlayZoneImageUrls:v9';
+  var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v9';
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
   function clean(url){var value=String(url||'');var marker=value.indexOf('?rt=');if(marker>=0)value=value.slice(0,marker);return value}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
-  function setImage(img,url){if(!img||!allowed(url))return;var next=clean(url);if(img.getAttribute('src')!==next)img.src=next;img.style.display='';img.loading='eager';img.decoding='async'}
+  function setImage(img,url){if(!img||!allowed(url))return;var next=clean(url);if(img.getAttribute('src')!==next)img.src=next;img.classList.remove('is-empty');img.style.display='';img.loading='eager';img.decoding='async'}
   function apply(map){
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
-    ads.forEach(function(id){var slot=document.querySelector('#playzone .play-zone-card-ad[data-play-zone-ad="'+id+'"]');if(!slot||!map[id])return;slot.classList.remove('is-empty');setImage(slot.querySelector('img'),map[id])});
+    setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko']);
   }
   async function refresh(force){
     var cached=readCache();apply(cached);
