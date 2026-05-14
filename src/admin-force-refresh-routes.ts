@@ -3,6 +3,8 @@ import type { Env } from './types';
 
 const APP_CACHE_VERSION_KEY = 'admin:app-cache-version';
 const FRAGMENT_GIFTS_URL = 'https://fragment.com/gifts?sort=price_asc&filter=sale';
+const DEFAULT_GIFT_LIMIT = 90;
+const MAX_GIFT_LIMIT = 180;
 
 type Gift = {
   id: string;
@@ -31,10 +33,20 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
   app.get('/app/api/ton-gift-market-fresh', async (c) => {
     try {
       const sort = c.req.query('sort') === 'price_desc' ? 'price_desc' : 'price_asc';
+      const limit = clampInt(c.req.query('limit'), 1, MAX_GIFT_LIMIT, DEFAULT_GIFT_LIMIT);
+      const offset = clampInt(c.req.query('offset'), 0, 100000, 0);
       const gifts = await loadFreshFragmentGifts(sort);
-      return c.json({ gifts, total: gifts.length }, 200, { 'cache-control': 'no-store' });
+      const page = gifts.slice(offset, offset + limit);
+      return c.json({
+        gifts: page,
+        total: gifts.length,
+        offset,
+        limit,
+        nextOffset: offset + page.length,
+        hasMore: offset + page.length < gifts.length,
+      }, 200, { 'cache-control': 'no-store' });
     } catch (error) {
-      return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not refresh Fragment gifts' }, 200, { 'cache-control': 'no-store' });
+      return c.json({ gifts: [], total: 0, offset: 0, limit: DEFAULT_GIFT_LIMIT, hasMore: false, error: error instanceof Error ? error.message : 'Could not refresh Fragment gifts' }, 200, { 'cache-control': 'no-store' });
     }
   });
 
@@ -200,6 +212,12 @@ function decodeHtml(value: string): string {
 
 function titleCase(value: string): string {
   return value.replace(/\b\w/g, (letter) => letter.toUpperCase()).trim() || 'Fragment Gift';
+}
+
+function clampInt(value: string | null | undefined, min: number, max: number, fallback: number): number {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 }
 
 async function getAppVersion(env: Env): Promise<string> {
