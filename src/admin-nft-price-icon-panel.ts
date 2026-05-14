@@ -3,14 +3,18 @@ export const ADMIN_NFT_PRICE_ICON_PANEL_SCRIPT = `
 (function(){
   function ensurePanel(){
     if(document.getElementById('nftPriceIconPanel'))return;
-    var imageSection=document.getElementById('sectionImages')||document.querySelector('.page')||document.body;
-    if(!imageSection)return;
+    var page=document.querySelector('.page')||document.body;
+    if(!page)return;
     var block=document.createElement('div');
     block.id='nftPriceIconPanel';
     block.className='admin-section';
-    block.style.marginTop='12px';
+    block.style.cssText='display:block!important;margin:0 0 14px!important;padding:12px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:18px!important;background:rgba(255,255,255,.055)!important';
     block.innerHTML='<div class="row-title"><div><h2>NFT price icon</h2><p class="muted small-text">Upload the icon used only next to NFT prices in the Market cards and details. This is separate from the main TON logo.</p></div></div><div class="image-current"><img id="nftPriceIconPreview" src="/app/api/nft-price-icon.png?v='+Date.now()+'" alt="NFT price icon"/><span class="muted small-text">Current NFT price icon</span></div><input id="nftPriceIconInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="primary" id="nftPriceIconUpload" type="button">Upload NFT price icon</button><p id="nftPriceIconStatus" class="status"></p>';
-    imageSection.insertBefore(block,imageSection.firstChild);
+    var menu=document.getElementById('adminMenu');
+    var head=document.querySelector('.head');
+    if(menu&&menu.parentNode===page)page.insertBefore(block,menu);
+    else if(head&&head.parentNode===page)page.insertBefore(block,head.nextSibling);
+    else page.insertBefore(block,page.firstChild);
     var input=document.getElementById('nftPriceIconInput');
     var btn=document.getElementById('nftPriceIconUpload');
     var status=document.getElementById('nftPriceIconStatus');
