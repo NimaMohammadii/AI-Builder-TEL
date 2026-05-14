@@ -32,7 +32,7 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
     try {
       const sort = c.req.query('sort') === 'price_desc' ? 'price_desc' : 'price_asc';
       const gifts = await loadFreshFragmentGifts(sort);
-      return c.json({ gifts }, 200, { 'cache-control': 'no-store' });
+      return c.json({ gifts, total: gifts.length }, 200, { 'cache-control': 'no-store' });
     } catch (error) {
       return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not refresh Fragment gifts' }, 200, { 'cache-control': 'no-store' });
     }
@@ -53,7 +53,7 @@ async function loadFreshFragmentGifts(sort: string): Promise<Gift[]> {
     cf: { cacheTtl: 0, cacheEverything: false } as never,
   });
   if (!response.ok) throw new Error(`Fragment refresh failed: ${response.status}`);
-  const gifts = parseFragmentGifts(await response.text()).slice(0, 90);
+  const gifts = parseFragmentGifts(await response.text());
   return sortGifts(gifts, sort);
 }
 
