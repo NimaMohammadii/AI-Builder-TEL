@@ -8,15 +8,38 @@ import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import type { Env } from './types';
 
-const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const HOME_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
+const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 
 registerAdminForceRefreshRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
+
+app.get('/app/api/nft-price-icon.png', async (c) => {
+  const object = await c.env.ASSETS.get(NFT_PRICE_ICON_KEY).catch(() => null);
+  if (!object) return new Response(defaultNftPriceIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': 'no-store, no-cache, must-revalidate, max-age=0' } });
+});
+
+app.post('/admin/api/upload-nft-price-icon', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    if (file.size > 1_200_000) return c.json({ error: 'Image must be under 1.2MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(NFT_PRICE_ICON_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, url: `/app/api/nft-price-icon.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload NFT price icon' }, 400);
+  }
+});
 
 app.get('/app/api/main-bot', async (c) => {
   try {
@@ -151,7 +174,7 @@ app.post('/admin/api/upload-home-finance-image', async (c) => {
     const form = await c.req.formData();
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(HOME_FINANCE_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
@@ -167,7 +190,7 @@ app.post('/admin/api/upload-crash-tip-image', async (c) => {
     const form = await c.req.formData();
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(CRASH_TIP_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
@@ -203,7 +226,7 @@ app.post('/admin/api/upload-mines-tile-image', async (c) => {
     const kind = String(form.get('kind') || '') === 'bomb' ? 'bomb' : 'safe';
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
     if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(`mines-tile/${kind}`, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
@@ -240,6 +263,10 @@ async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CON
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': cacheControl } });
+}
+
+function defaultNftPriceIconSvg(): string {
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="white" d="M12 16h40c4.2 0 6.7 4.8 4.2 8.2L36.2 52.4c-2 2.9-6.4 2.9-8.4 0L7.8 24.2C5.3 20.8 7.8 16 12 16Zm4.1 7 13.4 19.3V23H16.1Zm18.4 0v19.3L47.9 23H34.5ZM32 47.2 48.3 23H15.7L32 47.2Z"/></svg>';
 }
 
 async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
