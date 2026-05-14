@@ -20,13 +20,14 @@ const marketLayoutStyles = `<style id="marketRealOnlyLayoutStyles">
 #market .market-grid{padding-bottom:24px!important}
 #market .market-pull-refresh{height:0!important;display:flex!important;align-items:center!important;justify-content:center!important;color:rgba(255,255,255,.62)!important;font-size:12px!important;font-weight:800!important;overflow:hidden!important;transition:height .18s ease!important}.market-pull-refresh.ready{height:42px!important}.market-pull-refresh.loading{height:48px!important;color:#fff!important}
 #market .market-pull-spinner{width:17px!important;height:17px!important;border-radius:999px!important;border:2px solid rgba(255,255,255,.24)!important;border-top-color:#fff!important;margin-right:8px!important;animation:marketSpin .75s linear infinite!important;display:none!important}.market-pull-refresh.loading .market-pull-spinner{display:block!important}@keyframes marketSpin{to{transform:rotate(360deg)}}
-#market .market-price-icon{width:21px!important;height:21px!important;object-fit:contain!important;display:block!important;flex:0 0 auto!important;filter:none!important}
-#market .market-detail-price .market-price-icon{width:27px!important;height:27px!important}
+#market .market-price-button.vexa-fragment-price{display:flex!important;align-items:center!important;justify-content:center!important;gap:3px!important}
+#market .market-price-icon{width:24px!important;height:24px!important;object-fit:contain!important;display:block!important;flex:0 0 auto!important;filter:none!important;margin-right:0!important}
+#market .market-detail-price .market-price-icon{width:34px!important;height:34px!important;margin-right:0!important}
+#market .market-detail-price strong{gap:3px!important;align-items:center!important}
 #market .market-price-button img{filter:none!important;opacity:.98!important}
-#market .market-price-button.vexa-fragment-price{display:flex!important}
 #market .market-nft-card[data-market-source="telegram"] .market-price-button:not(.vexa-fragment-price){display:none!important}
 #market .market-nft-card[data-market-source="telegram"] .vexa-fragment-price + .vexa-fragment-price{display:none!important}
-#market .market-price-button b{letter-spacing:-.01em!important}
+#market .market-price-button b{letter-spacing:-.01em!important;line-height:1!important}
 </style>`;
 
 const detailSheet = `<div id="marketDetailSheet" class="market-detail-sheet" aria-hidden="true"><div class="market-detail-backdrop" data-market-detail-close="1"></div><div class="market-detail-card" role="dialog" aria-modal="true" aria-label="NFT details"><div class="market-detail-pad"><div class="market-detail-content" data-market-detail-content><div class="market-detail-titlebar"><div class="market-detail-title-main"><div class="market-detail-thumb" data-market-detail-media></div><div class="market-detail-heading"><span class="market-detail-kicker" data-market-detail-collection>Fragment Gifts</span><h3 data-market-detail-title>NFT</h3></div></div><button class="market-detail-close" type="button" data-market-detail-close="1" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div><p class="market-detail-description" data-market-detail-description></p><div class="market-detail-specs" data-market-detail-specs></div><div class="market-detail-price"><span>Price</span><strong><img class="market-price-icon" src="${nftPriceIconUrl}" alt="TON" decoding="async"/><b data-market-detail-price>0</b></strong></div></div></div></div></div>`;
