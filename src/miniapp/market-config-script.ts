@@ -25,10 +25,10 @@ export const MARKET_CONFIG_SCRIPT = `
     var src=esc(item&&item.imageUrl||'');
     var img=src?'<img class="market-uploaded-image" src="'+src+'" alt="" decoding="async" loading="lazy"/>':'<span class="market-nft-art"><b></b></span>';
     var source=item&&item.source==='telegram'?'telegram':'vexa';
-    var badge=source==='telegram'?'Telegram Gift':(owned?'Owned':'NFT');
-    var meta=source==='telegram'?esc(item.description||'Telegram collectible'):esc(item.rarity||'Collectible');
+    var badge=source==='telegram'?'TON NFT':(owned?'Owned':'NFT');
+    var meta=source==='telegram'?esc(item.description||'Telegram Gift NFT'):esc(item.rarity||'Collectible');
     var cls=owned?' market-owned-card':'';
-    return '<button class="market-nft-card game-card market-owned-card-'+source+cls+'" type="button" data-market-owned="'+esc(item.purchaseId||item.id||'')+'" data-market-source="'+source+'" data-market-item="'+esc(item.id||'')+'"><span class="market-nft-image game-image">'+img+'</span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>'+esc(item.title||'Gift')+'</strong><em>'+badge+'</em></span><span class="market-owned-meta">'+meta+'</span></span></button>';
+    return '<button class="market-nft-card game-card market-owned-card-'+source+cls+'" type="button" data-market-owned="'+esc(item.purchaseId||item.id||'')+'" data-market-source="'+source+'" data-market-item="'+esc(item.id||'')+'"><span class="market-nft-image game-image">'+img+'</span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>'+esc(item.title||'Gift NFT')+'</strong><em>'+badge+'</em></span><span class="market-owned-meta">'+meta+'</span></span></button>';
   }
   function renderTelegramMarket(){
     var root=document.getElementById('market');if(!root)return;
@@ -40,7 +40,7 @@ export const MARKET_CONFIG_SCRIPT = `
     gifts.forEach(function(item){if(item&&item.id)marketItemsById[String(item.id)]=item});
     if(grid)grid.innerHTML=gifts.map(function(item){return giftCard(item,false)}).join('');
     if(grid)grid.style.display=gifts.length?'grid':'none';
-    if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'Telegram Gift catalog will appear here.';empty.style.display=gifts.length?'none':'flex'}
+    if(empty){var msg=empty.querySelector('p');if(msg)msg.textContent=telegramGiftsError||'TON Gift NFTs will appear here.';empty.style.display=gifts.length?'none':'flex'}
   }
   function renderOwned(){
     var root=document.getElementById('market');if(!root)return;
@@ -56,8 +56,8 @@ export const MARKET_CONFIG_SCRIPT = `
     var isTelegram=item.source==='telegram';
     sheet.classList.remove('is-success');
     var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
-    if(title)title.textContent=esc(item.title||'Gift');if(desc)desc.textContent=esc(item.description||'Telegram collectible gift.');if(collection)collection.textContent=esc(item.collection||'Telegram Gifts');if(price)price.textContent=isTelegram?esc(item.utility||'Telegram'):esc(item.price||'0');if(buy){buy.setAttribute('data-market-buy',esc(item.id));buy.disabled=!!isTelegram;buy.classList.remove('loading');var s=buy.querySelector('span');if(s)s.textContent=isTelegram?'Telegram Gift':'Buy NFT'}if(status)status.textContent=isTelegram?'Available in Telegram gift catalog. Direct purchase is not enabled in Vexa yet.':'';
-    if(specs)specs.innerHTML=isTelegram?spec('Type','Telegram Gift')+spec('Price',item.utility)+spec('Status','Catalog item'):spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
+    if(title)title.textContent=esc(item.title||'Gift NFT');if(desc)desc.textContent=esc(item.description||'Telegram Gift NFT on TON.');if(collection)collection.textContent=esc(item.collection||'TON Gift NFTs');if(price)price.textContent=isTelegram?esc(item.utility||'TON NFT'):esc(item.price||'0');if(buy){buy.setAttribute('data-market-buy',esc(item.id));buy.disabled=!!isTelegram;buy.classList.remove('loading');var s=buy.querySelector('span');if(s)s.textContent=isTelegram?'TON NFT':'Buy NFT'}if(status)status.textContent=isTelegram?'Display only. Buying/listing will be added with TON Connect next.':'';
+    if(specs)specs.innerHTML=isTelegram?spec('Type','TON Gift NFT')+spec('Collection',item.collection)+spec('Status','On-chain NFT'):spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
   }
@@ -128,10 +128,10 @@ export const MARKET_CONFIG_SCRIPT = `
     if(!force&&telegramGiftsLoadedAt&&now-telegramGiftsLoadedAt<TELEGRAM_GIFTS_REFRESH_TTL){renderTelegramMarket();return}
     if(telegramGiftsRequestInFlight)return telegramGiftsRequestInFlight;
     telegramGiftsError='';
-    telegramGiftsRequestInFlight=fetch('/app/api/telegram-gifts',{cache:'default'})
-      .then(function(r){return r.json().catch(function(){return null}).then(function(j){if(!r.ok||!j||j.error)throw new Error((j&&j.error)||'Could not load Telegram Gifts');return j})})
+    telegramGiftsRequestInFlight=fetch('/app/api/ton-gift-market',{cache:'default'})
+      .then(function(r){return r.json().catch(function(){return null}).then(function(j){if(!r.ok||!j||j.error)throw new Error((j&&j.error)||'Could not load TON Gift NFTs');return j})})
       .then(function(j){telegramGiftsLoadedAt=Date.now();lastTelegramGifts=Array.isArray(j.gifts)?j.gifts:[];renderTelegramMarket()})
-      .catch(function(e){telegramGiftsError=e&&e.message?e.message:'Could not load Telegram Gifts';lastTelegramGifts=[];renderTelegramMarket()})
+      .catch(function(e){telegramGiftsError=e&&e.message?e.message:'Could not load TON Gift NFTs';lastTelegramGifts=[];renderTelegramMarket()})
       .finally(function(){telegramGiftsRequestInFlight=null});
     return telegramGiftsRequestInFlight;
   }
