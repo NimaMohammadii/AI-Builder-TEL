@@ -15,7 +15,7 @@ export const MARKET_CONFIG_SCRIPT = `
   var TON_ICON='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Cpath fill="white" d="M11.5 15.5h41c3.9 0 6.2 4.3 4 7.6L36.4 51.7c-2.1 3-6.7 3-8.8 0L7.5 23.1c-2.2-3.3.1-7.6 4-7.6Zm2.6 7 14.6 21.1V22.5H14.1Zm21.2 0v21.1l14.6-21.1H35.3Zm-3.3 24 16.1-24H15.9L32 46.5Z"/%3E%3C/svg%3E';
   function esc(v){return String(v==null?'':v)}
   function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var tgId=String((u&&u.id)||'').trim();var stored=String(localStorage.getItem('ownerId')||'').trim();var id=tgId||stored;return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
-  function telegramMeta(item){var raw=esc(item&&item.description||'')+' '+esc(item&&item.utility||'')+' '+esc(item&&item.supply||'');var num=(raw.match(/#\s*\d+/)||[])[0]||'';var price=(raw.match(/\d+(?:\.\d+)?\s*TON/i)||[])[0]||'';return {number:num.replace(/\s+/g,''),price:price.replace(/\s+/g,' ').trim()}}
+  function telegramMeta(item){var raw=esc(item&&item.description||'')+' '+esc(item&&item.utility||'')+' '+esc(item&&item.supply||'');var num=(raw.match(/#\s*\d+/)||[])[0]||'';var price=(raw.match(/\d+(?:\.\d+)?(?=\s*TON)/i)||[])[0]||'';return {number:num.replace(/\s+/g,''),price:price.trim()}}
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
     if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
@@ -60,30 +60,27 @@ export const MARKET_CONFIG_SCRIPT = `
     sheet.classList.remove('is-success');
     var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
     if(title)title.textContent=esc(item.title||'Gift NFT');
-    if(desc)desc.textContent=isTelegram?[tmeta.number,tmeta.price].filter(Boolean).join(' · '):esc(item.description||'Telegram Gift NFT on TON.');
+    if(desc)desc.textContent=isTelegram?tmeta.number:esc(item.description||'Telegram Gift NFT on TON.');
     if(collection)collection.textContent=isTelegram?'Telegram Gift':esc(item.collection||'TON Gift NFTs');
-    if(price)price.textContent=isTelegram?(tmeta.price||'TON NFT'):esc(item.price||'0');
+    if(price)price.textContent=isTelegram?(tmeta.price||'0'):esc(item.price||'0');
     if(isTelegram){var priceBox=sheet.querySelector('.market-detail-price');var priceImg=priceBox&&priceBox.querySelector('img');if(priceImg){priceImg.src=TON_ICON;priceImg.alt='TON'}}
-    if(buy){buy.setAttribute('data-market-buy',esc(item.id));buy.disabled=!!isTelegram;buy.classList.remove('loading');buy.style.display=isTelegram?'none':'';var s=buy.querySelector('span');if(s)s.textContent=isTelegram?'':'Buy NFT'}
-    if(status){status.textContent=isTelegram?'':'';status.style.display=isTelegram?'none':''}
+    if(buy){buy.remove()}
+    if(status){status.remove()}
     if(specs)specs.innerHTML=isTelegram?telegramSpecsLoading():spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
   }
   function showSuccess(){
     var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;
-    var buy=sheet.querySelector('[data-market-buy]');if(buy){buy.disabled=false;buy.classList.remove('loading')}
     sheet.classList.add('is-success');
     setTimeout(function(){closeDetail();setMarketTab('owned')},1450);
   }
   function closeDetail(){var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;sheet.classList.remove('open','is-success');sheet.setAttribute('aria-hidden','true');document.body.classList.remove('market-detail-open');activeDetailItem=null}
   async function handleBuy(){
     if(buying||!activeDetailItem||activeDetailItem.source==='telegram')return;
-    var u=user();var status=document.querySelector('[data-market-detail-status]');var buy=document.querySelector('[data-market-buy]');
-    if(!u.id){if(status)status.textContent='Open inside Telegram to buy.';return}
+    var u=user();
+    if(!u.id)return;
     buying=true;
-    if(status)status.textContent='Processing purchase...';
-    if(buy){buy.disabled=true;buy.classList.add('loading');var s=buy.querySelector('span');if(s)s.textContent='Buying...'}
     try{
       var r=await fetch('/app/api/market-buy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:u.id,itemId:activeDetailItem.id})});
       var j=await r.json().catch(function(){return null});
@@ -91,10 +88,7 @@ export const MARKET_CONFIG_SCRIPT = `
       if(Array.isArray(j.owned)){ownedLoadedAt=Date.now();lastOwned=j.owned;renderOwned()}
       if(Number.isFinite(Number(j.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write){window.VexaTonBalance.write(Number(j.tonBalanceNano),0,false)}
       showSuccess();
-    }catch(e){
-      if(status)status.textContent=e&&e.message?e.message:'Purchase failed';
-      if(buy){buy.disabled=false;buy.classList.remove('loading');var bs=buy.querySelector('span');if(bs)bs.textContent='Buy NFT'}
-    }finally{buying=false}
+    }catch(e){}finally{buying=false}
   }
   function setMarketTab(tab){
     var root=document.getElementById('market');
