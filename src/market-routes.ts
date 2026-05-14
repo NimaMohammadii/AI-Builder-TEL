@@ -1,5 +1,5 @@
 import app from './index';
-import { getMarketItems, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
+import { buyMarketItem, getMarketItems, getUserMarketNfts, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
 import type { Env } from './types';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
@@ -7,6 +7,26 @@ const CACHE_NONE = 'no-store';
 const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 
 app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/my-nfts', async (c) => {
+  try {
+    const userId = String(c.req.query('userId') || '');
+    return c.json(await getUserMarketNfts(c.env, userId), 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load NFTs' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
+
+app.post('/app/api/market-buy', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+    const userId = String(body.userId || '');
+    const itemId = String(body.itemId || '');
+    return c.json(await buyMarketItem(c.env, userId, itemId), 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not buy NFT' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
 
 app.get('/app/api/market-item-media/:item', async (c) => {
   try {
@@ -36,7 +56,20 @@ app.post('/admin/api/market-items', async (c) => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   try {
     const id = normalizeMarketItemId(String(body.id || ''));
-    return c.json(await setMarketItem(c.env, id, { title: String(body.title || ''), price: String(body.price || ''), stock: String(body.stock || ''), animation: String(body.animation || 'none') as never }));
+    return c.json(await setMarketItem(c.env, id, {
+      title: String(body.title || ''),
+      price: String(body.price || ''),
+      stock: String(body.stock || ''),
+      animation: String(body.animation || 'none') as never,
+      symbol: String(body.symbol || ''),
+      collection: String(body.collection || ''),
+      rarity: String(body.rarity || ''),
+      tag: String(body.tag || ''),
+      supply: String(body.supply || ''),
+      edition: String(body.edition || ''),
+      utility: String(body.utility || ''),
+      description: String(body.description || ''),
+    }));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not save market item' }, 400);
   }
@@ -48,16 +81,16 @@ app.post('/admin/api/market-item-image', async (c) => {
     const form = await c.req.formData();
     const id = normalizeMarketItemId(String(form.get('id') || ''));
     const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image or video file.' }, 400);
-    if (!isAllowedMarketMedia(file.type, file.name)) return c.json({ error: `Only PNG, JPG, JPEG, WebP, GIF, MP4, WebM, MOV or M4V files are allowed. Got ${file.type || 'unknown'} ${file.name || ''}` }, 400);
-    if (file.size > MARKET_UPLOAD_MAX_BYTES) return c.json({ error: 'Market media must be under 25MB.' }, 400);
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!isAllowedMarketMedia(file.type, file.name)) return c.json({ error: `Only PNG, JPG, JPEG, WebP or GIF files are allowed. Got ${file.type || 'unknown'} ${file.name || ''}` }, 400);
+    if (file.size > MARKET_UPLOAD_MAX_BYTES) return c.json({ error: 'Market image must be under 25MB.' }, 400);
     const version = String(Date.now());
     const contentType = marketContentType(file.type, file.name);
     const mediaType = marketMediaTypeFromContentType(contentType);
     await c.env.ASSETS.put(marketImageKey(id), file.stream(), { httpMetadata: { contentType }, customMetadata: { version, contentType, mediaType } });
     return c.json(await getMarketItems(c.env));
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload market media' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload market image' }, 400);
   }
 });
 
