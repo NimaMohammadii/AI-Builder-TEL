@@ -36,9 +36,7 @@ app.get('/app/api/my-nfts', async (c) => {
 
 app.get('/app/api/telegram-gifts', async (c) => {
   try {
-    const userId = String(c.req.query('userId') || '').replace(/[^0-9]/g, '').slice(0, 32);
-    if (!userId) return c.json({ gifts: [] }, 200, { 'cache-control': CACHE_NONE });
-    const gifts = await getTelegramGifts(c.env, userId);
+    const gifts = await getTelegramGifts(c.env);
     return c.json({ gifts }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ gifts: [], error: error instanceof Error ? error.message : 'Could not load Telegram Gifts' }, 200, { 'cache-control': CACHE_NONE });
@@ -138,14 +136,14 @@ app.post('/admin/api/market-item-image', async (c) => {
   }
 });
 
-async function getTelegramGifts(env: Env, userId: string): Promise<TelegramGiftView[]> {
-  const cacheKey = `telegram:gifts:${userId}`;
+async function getTelegramGifts(env: Env): Promise<TelegramGiftView[]> {
+  const cacheKey = 'telegram:gifts:available';
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TelegramGiftView[] | null;
   if (Array.isArray(cached)) return cached;
   const token = env.TELEGRAM_BOT_TOKEN;
   if (!token) return [];
-  const raw = await callTelegram(token, 'getUserGifts', { user_id: Number(userId), limit: 100 });
-  const giftsRaw = Array.isArray(raw?.gifts) ? raw.gifts : Array.isArray(raw?.owned_gifts) ? raw.owned_gifts : Array.isArray(raw?.items) ? raw.items : [];
+  const raw = await callTelegram(token, 'getAvailableGifts', {});
+  const giftsRaw = Array.isArray(raw?.gifts) ? raw.gifts : Array.isArray(raw?.items) ? raw.items : [];
   const gifts = giftsRaw.map((entry: unknown, index: number) => normalizeTelegramGift(entry, index)).filter(Boolean) as TelegramGiftView[];
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TELEGRAM_GIFTS_CACHE_SECONDS }).catch(() => undefined);
   return gifts;
@@ -186,13 +184,13 @@ function normalizeTelegramGift(entry: unknown, index: number): TelegramGiftView 
   const model = objectValue(unique.model);
   const symbol = objectValue(unique.symbol);
   const backdrop = objectValue(unique.backdrop);
-  const title = cleanGiftText(unique.base_name || unique.name || unique.title || regularGift.title || regularGift.name || 'Telegram Gift', 80);
+  const title = cleanGiftText(unique.base_name || unique.name || unique.title || regularGift.title || regularGift.name || `Telegram Gift ${index + 1}`, 80);
   const number = unique.number || unique.num || owned.number;
-  const modelName = cleanGiftText(model.name || unique.model_name || 'Telegram Gift', 80);
-  const symbolName = cleanGiftText(symbol.name || unique.symbol_name || 'Unique', 60);
-  const backdropName = cleanGiftText(backdrop.name || unique.backdrop_name || 'Collectible', 60);
+  const modelName = cleanGiftText(model.name || unique.model_name || firstText(regularGift.star_count, unique.star_count) && `${firstText(regularGift.star_count, unique.star_count)} Stars` || 'Telegram Gift', 80);
+  const symbolName = cleanGiftText(symbol.name || unique.symbol_name || 'Available', 60);
+  const backdropName = cleanGiftText(backdrop.name || unique.backdrop_name || 'Telegram', 60);
   const imageFileId = telegramGiftImageFileId(unique, model, regularGift);
-  const supply = firstText(unique.total_count, regularGift.total_count, number ? `#${number}` : 'Telegram');
+  const supply = firstText(unique.total_count, regularGift.total_count, regularGift.remaining_count, number ? `#${number}` : 'Telegram');
   const canTransfer = owned.can_be_transferred === true || unique.can_be_transferred === true;
   return {
     id: `telegram_${id}`,
@@ -200,14 +198,14 @@ function normalizeTelegramGift(entry: unknown, index: number): TelegramGiftView 
     collection: 'Telegram Gifts',
     rarity: modelName,
     supply,
-    utility: canTransfer ? 'Telegram collectible gift. Transfer may be available in Telegram.' : 'Telegram collectible gift. Display only inside Vexa.',
+    utility: firstText(regularGift.star_count, unique.star_count) ? `${firstText(regularGift.star_count, unique.star_count)} Telegram Stars` : 'Available Telegram gift.',
     description: `${modelName} · ${symbolName} · ${backdropName}`,
     imageUrl: imageFileId ? `/app/api/telegram-gift-file/${encodeURIComponent(imageFileId)}` : null,
     badge: 'Telegram Gift',
     source: 'telegram',
     canTransfer,
     nextTransferDate: numberOrNull(owned.next_transfer_date || unique.next_transfer_date),
-    transferStars: numberOrNull(owned.transfer_star_count || unique.transfer_star_count),
+    transferStars: numberOrNull(owned.transfer_star_count || unique.transfer_star_count || regularGift.star_count),
   };
 }
 
