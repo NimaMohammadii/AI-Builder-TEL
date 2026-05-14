@@ -21,7 +21,7 @@ export const MARKET_CONFIG_SCRIPT = `
     if(!animation)return '<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>';
     var poster=image||animation;
     var fallback=image?'<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>':'';
-    return fallback+'<video class="market-uploaded-image" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onerror="this.remove()"></video>';
+    return fallback+'<video class="market-uploaded-image" style="position:absolute;inset:0;z-index:3;width:100%;height:100%;object-fit:cover;display:block;background:#000" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onloadeddata="this.play&&this.play().catch(function(){})" onerror="this.remove()"></video>';
   }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
