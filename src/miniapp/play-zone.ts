@@ -12,7 +12,7 @@ const playZoneGames = [
 ] as const;
 
 function gameCard([id, label, description, action]: typeof playZoneGames[number], extraClass = ''): string {
-  return `<button class="game-card ${extraClass}" type="button" data-game-view="${id}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
+  return `<div class="game-card ${extraClass}" role="button" tabindex="0" data-game-view="${id}" aria-label="Open ${label}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></div>`;
 }
 
 const featuredGames = playZoneGames.slice(0, 3);
