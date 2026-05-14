@@ -36,7 +36,7 @@ app.get('/app/api/my-nfts', async (c) => {
 
 app.get('/app/api/telegram-gifts', async (c) => {
   try {
-    const userId = String(c.req.query('userId') || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80);
+    const userId = String(c.req.query('userId') || '').replace(/[^0-9]/g, '').slice(0, 32);
     if (!userId) return c.json({ gifts: [] }, 200, { 'cache-control': CACHE_NONE });
     const gifts = await getTelegramGifts(c.env, userId);
     return c.json({ gifts }, 200, { 'cache-control': CACHE_NONE });
@@ -144,7 +144,7 @@ async function getTelegramGifts(env: Env, userId: string): Promise<TelegramGiftV
   if (Array.isArray(cached)) return cached;
   const token = env.TELEGRAM_BOT_TOKEN;
   if (!token) return [];
-  const raw = await callTelegram(token, 'getUserGifts', { user_id: userId, limit: 100 });
+  const raw = await callTelegram(token, 'getUserGifts', { user_id: Number(userId), limit: 100 });
   const giftsRaw = Array.isArray(raw?.gifts) ? raw.gifts : Array.isArray(raw?.owned_gifts) ? raw.owned_gifts : Array.isArray(raw?.items) ? raw.items : [];
   const gifts = giftsRaw.map((entry: unknown, index: number) => normalizeTelegramGift(entry, index)).filter(Boolean) as TelegramGiftView[];
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TELEGRAM_GIFTS_CACHE_SECONDS }).catch(() => undefined);
