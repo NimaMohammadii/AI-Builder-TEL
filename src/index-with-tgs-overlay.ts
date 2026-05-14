@@ -12,7 +12,7 @@ const TGS_OVERLAY_SCRIPT = `
       if(document.getElementById('vexa-fragment-detail-style'))return;
       var style=document.createElement('style');
       style.id='vexa-fragment-detail-style';
-      style.textContent='#market .market-detail-backdrop{background:rgba(0,0,0,.12)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#market .market-detail-card{border:0!important;box-shadow:0 30px 92px rgba(0,0,0,.56),0 0 42px rgba(255,46,99,.09),inset 0 1px 0 rgba(255,255,255,.12)!important;background:rgba(255,255,255,.07)!important;-webkit-backdrop-filter:blur(14px) saturate(1.28)!important;backdrop-filter:blur(14px) saturate(1.28)!important}#market .market-detail-title-main{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:12px!important;width:100%!important}#market .market-detail-titlebar{align-items:flex-start!important}#market .market-detail-thumb{width:148px!important;height:148px!important;border-radius:28px!important;align-self:center!important;margin:0 auto 2px!important}#market .market-detail-heading{width:100%!important;text-align:left!important}#market .market-detail-kicker{max-width:220px!important}#market .market-detail-titlebar h3{max-width:235px!important;font-size:28px!important}.vexa-fragment-detail-number{display:block;margin-top:5px;color:rgba(255,255,255,.55);font-size:14px;font-weight:650;letter-spacing:-.02em}#market .market-detail-specs.vexa-fragment-specs{grid-template-columns:1fr!important;gap:0!important;border-radius:18px!important;overflow:hidden!important;background:rgba(0,0,0,.16)!important;box-shadow:none!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec{display:grid!important;grid-template-columns:96px 1fr auto!important;align-items:center!important;gap:8px!important;border-radius:0!important;min-height:42px!important;padding:9px 12px!important;background:transparent!important;border-bottom:1px solid rgba(255,255,255,.07)!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec:last-child{border-bottom:0!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec span{font-size:13px!important;text-transform:none!important;letter-spacing:0!important;color:rgba(255,255,255,.58)!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec b{margin:0!important;font-size:14px!important;color:#fff!important}.vexa-fragment-percent{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:22px;padding:0 8px;border-radius:999px;background:rgba(45,148,255,.20);color:#7ec8ff;font-size:12px;font-weight:800}@media(max-width:380px){#market .market-detail-thumb{width:132px!important;height:132px!important}#market .market-detail-titlebar h3{font-size:24px!important;max-width:210px!important}}';
+      style.textContent='#market .market-detail-backdrop{background:rgba(0,0,0,.12)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#market .market-detail-card{width:min(86vw,330px)!important;max-height:78vh!important;border:0!important;outline:0!important;box-shadow:0 30px 92px rgba(0,0,0,.54),0 0 42px rgba(255,46,99,.08),inset 0 1px 0 rgba(255,255,255,.10)!important;background:rgba(28,18,25,.58)!important;-webkit-backdrop-filter:blur(14px) saturate(1.26)!important;backdrop-filter:blur(14px) saturate(1.26)!important}#market .market-detail-pad{padding:16px!important}#market .market-detail-titlebar{align-items:flex-start!important;margin-bottom:10px!important}#market .market-detail-title-main{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;width:100%!important;min-width:0!important}#market .market-detail-close{position:absolute!important;right:16px!important;top:16px!important;z-index:8!important;background:rgba(255,255,255,.12)!important}#market .market-detail-thumb{width:142px!important;height:142px!important;border-radius:28px!important;align-self:center!important;margin:0 auto 0!important;box-shadow:0 18px 44px rgba(0,0,0,.30)!important}#market .market-detail-heading{width:100%!important;text-align:left!important;padding-right:52px!important;box-sizing:border-box!important}#market .market-detail-kicker{max-width:220px!important;color:rgba(255,255,255,.54)!important}#market .market-detail-titlebar h3{max-width:230px!important;font-size:28px!important;line-height:1.03!important}.vexa-fragment-detail-number{display:block;margin-top:5px;color:rgba(255,255,255,.55);font-size:14px;font-weight:650;letter-spacing:-.02em}.market-detail-description{margin:2px 0 10px!important;font-size:12px!important;color:rgba(255,255,255,.58)!important}#market .market-detail-specs.vexa-fragment-specs{display:flex!important;flex-direction:column!important;gap:0!important;margin:10px 0 12px!important;border-radius:18px!important;overflow:hidden!important;background:rgba(0,0,0,.20)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec{display:grid!important;grid-template-columns:86px minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;border-radius:0!important;min-height:44px!important;padding:9px 12px!important;background:transparent!important;border-bottom:1px solid rgba(255,255,255,.075)!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec:last-child{border-bottom:0!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec span{font-size:13px!important;text-transform:none!important;letter-spacing:0!important;color:rgba(255,255,255,.58)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec b{margin:0!important;font-size:14px!important;color:#fff!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.vexa-fragment-percent{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:22px;padding:0 8px;border-radius:999px;background:rgba(45,148,255,.20);color:#7ec8ff;font-size:12px;font-weight:800;font-style:normal}#market .market-detail-price{height:46px!important;margin:8px 0 10px!important}#market .market-detail-buy{height:46px!important}@media(max-width:380px){#market .market-detail-card{width:min(88vw,318px)!important}#market .market-detail-thumb{width:126px!important;height:126px!important}#market .market-detail-titlebar h3{font-size:24px!important;max-width:205px!important}#market .market-detail-specs.vexa-fragment-specs .market-detail-spec{grid-template-columns:78px minmax(0,1fr) auto!important;padding:8px 10px!important}}';
       document.head.appendChild(style);
     }
     function tgsUrlFromImage(src){
@@ -119,9 +119,9 @@ const TGS_OVERLAY_SCRIPT = `
     function specHtml(label,value,percent){return '<div class="market-detail-spec"><span>'+label+'</span><b>'+String(value||'-')+'</b>'+(percent?'<i class="vexa-fragment-percent">'+String(percent)+'</i>':'')+'</div>'}
     function applyGiftInfo(sheet,info){
       try{
-        if(!info||!info.ok)return;
+        if(!info||!info.ok||!info.model||!info.model.name||!info.backdrop||!info.backdrop.name||!info.symbol||!info.symbol.name)return;
         var specs=sheet.querySelector('[data-market-detail-specs]');
-        if(specs){specs.classList.add('vexa-fragment-specs');specs.innerHTML=specHtml('Model',info.model&&info.model.name,info.model&&info.model.percent)+specHtml('Backdrop',info.backdrop&&info.backdrop.name,info.backdrop&&info.backdrop.percent)+specHtml('Symbol',info.symbol&&info.symbol.name,info.symbol&&info.symbol.percent)}
+        if(specs){specs.classList.add('vexa-fragment-specs');specs.innerHTML=specHtml('Model',info.model.name,info.model.percent)+specHtml('Backdrop',info.backdrop.name,info.backdrop.percent)+specHtml('Symbol',info.symbol.name,info.symbol.percent)}
       }catch(e){}
     }
     window.VexaMountTgsDetail = scanDetailTgs;
@@ -198,20 +198,27 @@ function validateGiftKey(raw: string): string {
 }
 
 function parseFragmentGiftInfo(html: string): { model: { name: string; percent: string }; backdrop: { name: string; percent: string }; symbol: { name: string; percent: string } } {
+  const text = cleanText(html);
   return {
-    model: parseAttr(html, 'Model'),
-    backdrop: parseAttr(html, 'Backdrop'),
-    symbol: parseAttr(html, 'Symbol'),
+    model: parseBetween(text, 'Model', ['Backdrop', 'Symbol', 'Issued', 'Sell Price']),
+    backdrop: parseBetween(text, 'Backdrop', ['Symbol', 'Issued', 'Sell Price']),
+    symbol: parseBetween(text, 'Symbol', ['Issued', 'Sell Price', 'Owner', 'Model']),
   };
 }
 
-function parseAttr(html: string, label: string): { name: string; percent: string } {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const row = html.match(new RegExp(`<[^>]*>\\s*${escaped}\\s*<\\/[^>]+>[\\s\\S]{0,500}`, 'i'))?.[0] || '';
-  const text = cleanText(row);
-  const withoutLabel = text.replace(new RegExp(`^\\s*${escaped}\\s*`, 'i'), '').trim();
-  const percent = withoutLabel.match(/\d+(?:\.\d+)?%/)?.[0] || '';
-  const name = withoutLabel.replace(/\d+(?:\.\d+)?%/g, '').trim();
+function parseBetween(text: string, label: string, nextLabels: string[]): { name: string; percent: string } {
+  const start = text.search(new RegExp(`\\b${label}\\b`, 'i'));
+  if (start < 0) return { name: '', percent: '' };
+  let segment = text.slice(start + label.length);
+  let end = segment.length;
+  for (const next of nextLabels) {
+    const idx = segment.search(new RegExp(`\\b${next}\\b`, 'i'));
+    if (idx >= 0 && idx < end) end = idx;
+  }
+  segment = segment.slice(0, end).trim();
+  const percent = segment.match(/\d+(?:\.\d+)?%/)?.[0] || '';
+  let name = segment.replace(/\d+(?:\.\d+)?%/g, '').replace(/\s+/g, ' ').trim();
+  if (name.length > 38) name = name.slice(0, 38).trim();
   return { name, percent };
 }
 
