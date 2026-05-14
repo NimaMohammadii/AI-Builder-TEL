@@ -11,6 +11,7 @@ import type { Env } from './types';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const TON_GIFT_NFT_CACHE_SECONDS = 120;
 const FRAGMENT_GIFTS_URL = 'https://fragment.com/gifts?sort=price_asc&filter=sale';
+const FRAGMENT_DETAIL_ANIMATION_LIMIT = 18;
 
 type TonGiftEnv = Env;
 
@@ -24,6 +25,7 @@ type TonGiftView = {
   description: string;
   imageUrl: string | null;
   animationUrl?: string | null;
+  sourceUrl?: string | null;
   badge: string;
   source: 'telegram';
   canTransfer: boolean;
@@ -145,23 +147,47 @@ app.get('/app/api/home-finance-image-meta', async (c) => {
 });
 
 async function loadFragmentGiftMarket(env: TonGiftEnv): Promise<TonGiftView[]> {
-  const cacheKey = 'fragment:gifts:for-sale:v2';
+  const cacheKey = 'fragment:gifts:for-sale:v3';
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TonGiftView[] | null;
   if (Array.isArray(cached)) return cached;
   const response = await fetch(FRAGMENT_GIFTS_URL, {
-    headers: {
-      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'accept-language': 'en-US,en;q=0.9',
-      'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-    },
+    headers: fragmentHeaders(),
     cf: { cacheTtl: TON_GIFT_NFT_CACHE_SECONDS, cacheEverything: true } as never,
   });
   if (!response.ok) throw new Error(`Fragment Gift market failed: ${response.status}`);
   const html = await response.text();
-  const gifts = parseFragmentGifts(html).slice(0, 80);
-  if (!gifts.length) throw new Error('Fragment Gift market returned no parsable gifts');
-  await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_NFT_CACHE_SECONDS }).catch(() => undefined);
-  return gifts;
+  const baseGifts = parseFragmentGifts(html).slice(0, 80);
+  if (!baseGifts.length) throw new Error('Fragment Gift market returned no parsable gifts');
+  const animated = await attachFragmentDetailAnimations(baseGifts);
+  await env.BOT_CACHE.put(cacheKey, JSON.stringify(animated), { expirationTtl: TON_GIFT_NFT_CACHE_SECONDS }).catch(() => undefined);
+  return animated;
+}
+
+function fragmentHeaders(): HeadersInit {
+  return {
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'accept-language': 'en-US,en;q=0.9',
+    'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  };
+}
+
+async function attachFragmentDetailAnimations(gifts: TonGiftView[]): Promise<TonGiftView[]> {
+  const head = gifts.slice(0, FRAGMENT_DETAIL_ANIMATION_LIMIT);
+  const tail = gifts.slice(FRAGMENT_DETAIL_ANIMATION_LIMIT);
+  const enriched = await Promise.all(head.map(async (gift) => {
+    if (gift.animationUrl || !gift.sourceUrl) return gift;
+    try {
+      const response = await fetch(gift.sourceUrl, { headers: fragmentHeaders(), cf: { cacheTtl: TON_GIFT_NFT_CACHE_SECONDS, cacheEverything: true } as never });
+      if (!response.ok) return gift;
+      const html = await response.text();
+      const animation = fragmentGiftAnimation(html);
+      const image = gift.imageUrl || fragmentGiftImage(html);
+      return { ...gift, imageUrl: image, animationUrl: animation || gift.animationUrl || null };
+    } catch {
+      return gift;
+    }
+  }));
+  return [...enriched, ...tail];
 }
 
 function parseFragmentGifts(html: string): TonGiftView[] {
@@ -186,6 +212,7 @@ function parseFragmentGifts(html: string): TonGiftView[] {
       description: [number, price ? `${price} TON` : '', 'For sale on Fragment'].filter(Boolean).join(' · '),
       imageUrl: image,
       animationUrl: animation,
+      sourceUrl: href,
       badge: 'For sale',
       source: 'telegram',
       canTransfer: true,
@@ -226,6 +253,7 @@ function fragmentGiftImage(block: string): string | null {
     /poster=["']([^"']+)["']/i,
     /background-image\s*:\s*url\(([^)]+)\)/i,
     /data-src=["']([^"']+)["']/i,
+    /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
   ]);
   return src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : null;
 }
@@ -236,6 +264,9 @@ function fragmentGiftAnimation(block: string): string | null {
     /<source\b[^>]*src=["']([^"']+)["']/i,
     /data-animation=["']([^"']+)["']/i,
     /data-video=["']([^"']+)["']/i,
+    /property=["']og:video["'][^>]*content=["']([^"']+)["']/i,
+    /name=["']twitter:player:stream["'][^>]*content=["']([^"']+)["']/i,
+    /["']([^"']+\.(?:mp4|webm|mov)(?:\?[^"']*)?)["']/i,
   ]);
   const value = src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : '';
   return /\.(mp4|webm|mov)(\?|#|$)/i.test(value) ? value : null;
