@@ -14,16 +14,21 @@ export const MARKET_CONFIG_SCRIPT = `
   var TELEGRAM_GIFTS_REFRESH_TTL=180000;
   function esc(v){return String(v==null?'':v)}
   function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var tgId=String((u&&u.id)||'').trim();var stored=String(localStorage.getItem('ownerId')||'').trim();var id=tgId||stored;return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
+  function giftMediaHtml(item){
+    var image=esc(item&&item.imageUrl||'');
+    var animation=esc(item&&item.animationUrl||'');
+    if(!image&&!animation)return '<span class="market-nft-art"><b></b></span>';
+    if(!animation)return '<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>';
+    var poster=image||animation;
+    return '<video class="market-uploaded-image" src="'+animation+'" poster="'+poster+'" autoplay loop muted playsinline preload="metadata" onerror="this.remove()"></video>'+(image?'<img class="market-uploaded-image" src="'+image+'" alt="" decoding="async" loading="lazy"/>':'');
+  }
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
-    if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
-    var mediaUrl=esc(item.imageUrl);
-    imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
+    imgWrap.innerHTML=giftMediaHtml(item);
   }
   function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
   function giftCard(item,owned){
-    var src=esc(item&&item.imageUrl||'');
-    var img=src?'<img class="market-uploaded-image" src="'+src+'" alt="" decoding="async" loading="lazy"/>':'<span class="market-nft-art"><b></b></span>';
+    var img=giftMediaHtml(item);
     var source=item&&item.source==='telegram'?'telegram':'vexa';
     var badge=source==='telegram'?'TON NFT':(owned?'Owned':'NFT');
     var meta=source==='telegram'?esc(item.description||'Telegram Gift NFT'):esc(item.rarity||'Collectible');
