@@ -43,6 +43,19 @@ export const MINIAPP_SCRIPT = `
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
   }
 
+  function initPlayZoneGameNavigation(){
+    document.addEventListener('click',function(ev){
+      var target=ev.target;
+      var b=target&&target.closest?target.closest('#playzone button[data-view]'):null;
+      if(!b)return;
+      var id=b.getAttribute('data-view')||'';
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      if(q(id)){show(id);return}
+      toast('Coming soon');
+    },true);
+  }
+
   async function api(path,opt){
     opt=opt||{};
     var r=await fetch(path,Object.assign({},opt,{headers:Object.assign({'content-type':'application/json'},opt.headers||{})}));
@@ -84,7 +97,7 @@ export const MINIAPP_SCRIPT = `
     var target=ev.target;
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
-    var v=b.getAttribute('data-view');if(v){show(v);return}
+    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(q(v))show(v);else toast('Coming soon');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
@@ -104,6 +117,7 @@ export const MINIAPP_SCRIPT = `
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(q('ownerId'))q('ownerId').value=ownerId;
   initHomeGlassButton();
+  initPlayZoneGameNavigation();
   setText('brandTitle',sectionTitles.home);
   setHeaderGlassMode('home');
   userLine();
