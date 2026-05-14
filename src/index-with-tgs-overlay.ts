@@ -5,23 +5,19 @@ const LOTTIE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lott
 const TGS_OVERLAY_SCRIPT = `
 (function(){
   try {
-    var MAX_TGS_OVERLAYS = 24;
-    function escAttr(value){return String(value || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
     function tgsUrlFromImage(src){
       try {
         var url = new URL(String(src || ''), location.href);
         if (url.hostname !== 'nft.fragment.com') return '';
-        if (!url.pathname.indexOf('/gift/') === 0) return '';
+        if (url.pathname.indexOf('/gift/') !== 0) return '';
         var clean = url.origin + url.pathname;
         clean = clean.replace(/\.(large|medium|small|thumb)(?=\.(?:png|jpg|jpeg|webp)$)/i, '');
         if (!/\.(png|jpg|jpeg|webp)$/i.test(clean)) return '';
         return clean.replace(/\.(png|jpg|jpeg|webp)$/i, '.tgs');
       } catch (e) { return ''; }
     }
-    function addOverlay(box, tgsUrl){
+    function addDetailOverlay(box, tgsUrl){
       if (!box || !tgsUrl || box.querySelector('[data-vexa-tgs-frame]')) return;
-      var count = document.querySelectorAll('[data-vexa-tgs-frame]').length;
-      if (count >= MAX_TGS_OVERLAYS) return;
       box.style.position = 'relative';
       var frame = document.createElement('iframe');
       frame.setAttribute('data-vexa-tgs-frame', '1');
@@ -40,27 +36,20 @@ const TGS_OVERLAY_SCRIPT = `
       frame.onerror = function(){ try { frame.remove(); } catch(e) {} };
       box.appendChild(frame);
     }
-    function scanTgsGifts(){
+    function scanDetailTgs(){
       try {
-        var cards = document.querySelectorAll('.market-nft-card[data-market-source="telegram"] .market-nft-image');
-        for (var i = 0; i < cards.length; i++) {
-          var box = cards[i];
-          if (box.querySelector('[data-vexa-tgs-frame]')) continue;
-          var img = box.querySelector('img[src*="nft.fragment.com/gift/"]');
-          if (!img) continue;
-          var tgsUrl = tgsUrlFromImage(img.getAttribute('src') || img.src || '');
-          addOverlay(box, tgsUrl);
-        }
+        var sheet = document.getElementById('marketDetailSheet');
+        if (!sheet || !sheet.classList.contains('open')) return;
+        var box = sheet.querySelector('[data-market-detail-media]');
+        if (!box || box.querySelector('[data-vexa-tgs-frame]')) return;
+        var img = box.querySelector('img[src*="nft.fragment.com/gift/"]');
+        if (!img) return;
+        var tgsUrl = tgsUrlFromImage(img.getAttribute('src') || img.src || '');
+        addDetailOverlay(box, tgsUrl);
       } catch (e) {}
     }
-    window.VexaMountTgsGifts = scanTgsGifts;
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function(){ setTimeout(scanTgsGifts, 900); });
-    } else {
-      setTimeout(scanTgsGifts, 900);
-    }
-    document.addEventListener('click', function(){ setTimeout(scanTgsGifts, 450); }, true);
-    setInterval(scanTgsGifts, 3500);
+    window.VexaMountTgsDetail = scanDetailTgs;
+    document.addEventListener('click', function(){ setTimeout(scanDetailTgs, 160); }, true);
   } catch (e) {}
 })();
 `;
