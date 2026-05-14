@@ -5,6 +5,8 @@ const LOTTIE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lott
 const TGS_OVERLAY_SCRIPT = `
 (function(){
   try {
+    var creditLogo='/app/api/uploaded-image/credit-icon.png';
+    var fallbackCreditLogo='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Cdefs%3E%3CradialGradient id="g" cx="32%25" cy="24%25" r="70%25"%3E%3Cstop offset="0" stop-color="%23ffffff"/%3E%3Cstop offset=".34" stop-color="%23ffd7e4"/%3E%3Cstop offset=".72" stop-color="%23ff2e63"/%3E%3Cstop offset="1" stop-color="%235b0f24"/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx="32" cy="32" r="28" fill="url(%23g)"/%3E%3Ccircle cx="32" cy="32" r="21" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="3"/%3E%3Cpath d="M35 17 24 35h9l-4 12 13-20h-9l2-10Z" fill="white"/%3E%3C/svg%3E';
     function tgsUrlFromImage(src){
       try {
         var url = new URL(String(src || ''), location.href);
@@ -48,8 +50,47 @@ const TGS_OVERLAY_SCRIPT = `
         addDetailOverlay(box, tgsUrl);
       } catch (e) {}
     }
+    function parseTelegramMeta(text){
+      var raw=String(text||'');
+      var number=(raw.match(/#\s*\d+/)||[])[0]||'';
+      var price=(raw.match(/\d+(?:\.\d+)?\s*TON/i)||[])[0]||'';
+      return {number:number.replace(/\s+/g,''),price:price.replace(/\s+/g,' ').trim()};
+    }
+    function priceButton(price){
+      var span=document.createElement('span');
+      span.className='market-price-button vexa-fragment-price';
+      var img=document.createElement('img');
+      img.src=creditLogo;img.alt='';img.decoding='async';
+      img.onerror=function(){this.onerror=null;this.src=fallbackCreditLogo};
+      var b=document.createElement('b');b.textContent=price||'TON NFT';
+      span.appendChild(img);span.appendChild(b);
+      return span;
+    }
+    function polishFragmentCards(){
+      try{
+        var cards=document.querySelectorAll('.market-nft-card[data-market-source="telegram"]');
+        for(var i=0;i<cards.length;i++){
+          var card=cards[i];
+          if(card.getAttribute('data-fragment-polished')==='1')continue;
+          var info=card.querySelector('.market-nft-info');
+          var meta=card.querySelector('.market-owned-meta');
+          if(!info||!meta)continue;
+          var parsed=parseTelegramMeta(meta.textContent||'');
+          meta.textContent=parsed.number||'';
+          meta.style.fontSize='12px';
+          meta.style.opacity='.62';
+          meta.style.marginTop='-2px';
+          meta.style.display=parsed.number?'block':'none';
+          if(!card.querySelector('.vexa-fragment-price'))info.appendChild(priceButton(parsed.price));
+          card.setAttribute('data-fragment-polished','1');
+        }
+      }catch(e){}
+    }
     window.VexaMountTgsDetail = scanDetailTgs;
-    document.addEventListener('click', function(){ setTimeout(scanDetailTgs, 160); }, true);
+    window.VexaPolishFragmentCards = polishFragmentCards;
+    document.addEventListener('click', function(){ setTimeout(scanDetailTgs, 160); setTimeout(polishFragmentCards, 220); }, true);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(polishFragmentCards,900)});else setTimeout(polishFragmentCards,900);
+    setInterval(polishFragmentCards,2500);
   } catch (e) {}
 })();
 `;
