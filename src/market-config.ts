@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { debitUserTonBalanceIfEnough, type UserControls } from './user-controls';
+import { adjustUserTonBalance, debitUserTonBalanceIfEnough, type UserControls } from './user-controls';
 
 export type MarketAnimation = 'none' | 'spin' | 'glow' | 'shine' | 'pulse' | 'spin-glow';
 export type MarketMediaType = 'image';
@@ -139,8 +139,8 @@ export async function buyMarketItem(env: Env, userId: string, itemId: string): P
   if (priceNano <= 0) throw new Error('Invalid NFT price');
   const stock = Math.floor(Number(item.stock) || 0);
   if (stock <= 0) throw new Error('Sold out');
-  const controls = await debitUserTonBalanceIfEnough(env, id, priceNano, { itemId: marketId, title: `Bought ${item.title}` } as never);
-  let purchaseId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const controls = await debitUserTonBalanceIfEnough(env, id, priceNano, { kind: 'market', referenceId: marketId, referenceType: 'market_nft', title: `Bought ${item.title}` });
+  const purchaseId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   try {
     const updated = await decrementMarketStock(env, marketId);
     if (updated < 0) throw new Error('Sold out');
@@ -213,7 +213,7 @@ async function decrementMarketStock(env: Env, itemId: string): Promise<number> {
 }
 
 async function refundFailedPurchase(env: Env, userId: string, amountNano: number, _controls: UserControls): Promise<void> {
-  await import('./user-controls').then(({ adjustUserTonBalance }) => adjustUserTonBalance(env, userId, amountNano, { kind: 'market-refund', title: 'NFT purchase refund' } as never)).catch(() => undefined);
+  await adjustUserTonBalance(env, userId, amountNano, { kind: 'market_refund', title: 'NFT purchase refund' }).catch(() => undefined);
 }
 
 async function ensureMarketPurchasesTable(env: Env): Promise<void> {
