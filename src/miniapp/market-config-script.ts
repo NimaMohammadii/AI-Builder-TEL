@@ -43,7 +43,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var metaObj=telegramMeta(item);
     var img=src?'<img class="market-uploaded-image" src="'+src+'" alt="" decoding="async" loading="lazy"/>':'<span class="market-nft-art"><b></b></span>';
     var source=item&&item.source==='telegram'?'telegram':'vexa';
-    var badge=source==='telegram'?'TON NFT':(owned?'Owned':'NFT');
+    var badge=source==='telegram'?'Not for sale':(owned?'Owned':'Not for sale');
     var meta=source==='telegram'?metaObj.number:esc(item.rarity||'Collectible');
     var cls=owned?' market-owned-card':'';
     var footer=source==='telegram'?priceButton(metaObj.price):'<span class="market-owned-meta">'+meta+'</span>';
