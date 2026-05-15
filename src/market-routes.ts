@@ -1,5 +1,6 @@
 import app from './index';
 import { buyMarketItem, getMarketItems, getUserMarketNfts, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
+import { loadTonNftMarket, type TonNftMarketItem } from './ton-nft-market';
 import type { Env } from './types';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
@@ -7,21 +8,7 @@ const CACHE_NONE = 'no-store';
 const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 const TON_GIFT_MARKET_CACHE_SECONDS = 60;
 
-type TelegramGiftView = {
-  id: string;
-  title: string;
-  collection: string;
-  rarity: string;
-  supply: string;
-  utility: string;
-  description: string;
-  imageUrl: string | null;
-  badge: string;
-  source: 'telegram';
-  canTransfer: boolean;
-  nextTransferDate: number | null;
-  transferStars: number | null;
-};
+type TelegramGiftView = TonNftMarketItem;
 
 app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE }));
 
@@ -137,27 +124,13 @@ app.post('/admin/api/market-item-image', async (c) => {
 });
 
 async function getTelegramGifts(env: Env): Promise<TelegramGiftView[]> {
-  const providerUrl = String(env.TON_GIFT_MARKET_URL || '').trim();
-  if (!providerUrl) throw new Error('TON Gift market provider is not configured');
-  const cacheKey = `ton:gifts:market:${await marketProviderCacheKey(providerUrl)}`;
+  const sort = 'price_asc';
+  const cacheKey = `ton:gifts:market:getgems:${sort}`;
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TelegramGiftView[] | null;
   if (Array.isArray(cached)) return cached;
-  const response = await fetch(providerUrl, {
-    headers: { accept: 'application/json', 'user-agent': 'VexaFLOW/1.0' },
-    cf: { cacheTtl: TON_GIFT_MARKET_CACHE_SECONDS, cacheEverything: true } as never,
-  });
-  if (!response.ok) throw new Error(`TON Gift market provider failed: ${response.status}`);
-  const json = await response.json().catch(() => null);
-  const rows = marketRows(json);
-  const gifts = rows.map((entry, index) => normalizeTonGiftMarketItem(entry, index)).filter(Boolean) as TelegramGiftView[];
+  const gifts = await loadTonNftMarket(env, { sort, limit: 90 });
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_MARKET_CACHE_SECONDS }).catch(() => undefined);
   return gifts;
-}
-
-async function marketProviderCacheKey(value: string): Promise<string> {
-  const data = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
 
 async function callTelegram(token: string, method: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -184,106 +157,6 @@ async function getTelegramFileUrl(env: Env, fileId: string): Promise<string | nu
   const url = `https://api.telegram.org/file/bot${token}/${path}`;
   await env.BOT_CACHE.put(cacheKey, url, { expirationTtl: 3600 }).catch(() => undefined);
   return url;
-}
-
-function marketRows(value: unknown): Record<string, unknown>[] {
-  if (Array.isArray(value)) return value.filter(isObject) as Record<string, unknown>[];
-  const object = objectValue(value);
-  for (const key of ['results', 'nfts', 'items', 'data', 'list']) {
-    const rows = object[key];
-    if (Array.isArray(rows)) return rows.filter(isObject) as Record<string, unknown>[];
-  }
-  return [];
-}
-
-function normalizeTonGiftMarketItem(entry: Record<string, unknown>, index: number): TelegramGiftView | null {
-  const metadata = firstObject(entry.metadata, entry.meta, entry.nft_metadata);
-  const collection = firstObject(entry.collection, entry.collection_info, metadata.collection);
-  const sale = firstObject(entry.sale, entry.auction, entry.sale_data, entry.listing);
-  const rawId = firstText(entry.nft_address, entry.address, entry.item_address, entry.id, metadata.address, `ton_gift_${index}`);
-  const title = cleanGiftText(firstText(entry.name, entry.title, metadata.name, `TON Gift ${index + 1}`), 80);
-  const collectionName = cleanGiftText(firstText(collection.name, collection.title, entry.collection_name, metadata.collection_name, 'TON Gifts'), 80);
-  const imageUrl = firstText(entry.photo_url, entry.preview_url, entry.image_url, entry.image, metadata.image, metadata.image_url, metadata.preview_url);
-  const priceTon = normalizeTonPrice(firstText(entry.price, entry.price_ton, entry.priceTon, entry.price_nano, entry.priceNano, sale.price, sale.price_ton, sale.price_nano));
-  const model = cleanGiftText(firstText(metadata.model, entry.model, entry.rarity, collectionName), 60);
-  const description = cleanGiftText(firstText(metadata.description, entry.description, collectionName), 120);
-  return {
-    id: `ton_gift_${rawId}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
-    title,
-    collection: collectionName,
-    rarity: model,
-    supply: firstText(entry.number, metadata.number, entry.rank, 'Listed'),
-    utility: priceTon ? `${priceTon} TON` : 'Listed for TON',
-    description,
-    imageUrl: imageUrl || null,
-    badge: 'TON NFT',
-    source: 'telegram',
-    canTransfer: true,
-    nextTransferDate: null,
-    transferStars: null,
-  };
-}
-
-function normalizeTonPrice(value: unknown): string {
-  const raw = firstText(value).replace(/,/g, '').trim();
-  if (!raw) return '';
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return raw.replace(/\s*TON$/i, '').trim();
-  const ton = n > 1_000_000 ? n / 1_000_000_000 : n;
-  return ton.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-}
-
-function telegramGiftImageFileId(unique: Record<string, unknown>, model: Record<string, unknown>, regularGift: Record<string, unknown>): string {
-  const uniqueSticker = objectValue(unique.sticker);
-  const modelSticker = objectValue(model.sticker);
-  const regularSticker = objectValue(regularGift.sticker);
-  return firstText(
-    stickerDisplayFileId(uniqueSticker),
-    stickerDisplayFileId(modelSticker),
-    stickerDisplayFileId(regularSticker),
-    objectValue(regularSticker.thumbnail).file_id,
-    objectValue(uniqueSticker.thumbnail).file_id
-  );
-}
-
-function stickerDisplayFileId(sticker: Record<string, unknown>): string {
-  const thumbnailId = firstText(objectValue(sticker.thumbnail).file_id);
-  const stickerId = firstText(sticker.file_id);
-  if ((sticker.is_animated === true || sticker.is_video === true) && thumbnailId) return thumbnailId;
-  return stickerId || thumbnailId;
-}
-
-function firstObject(...values: unknown[]): Record<string, unknown> {
-  for (const value of values) {
-    const object = objectValue(value);
-    if (Object.keys(object).length) return object;
-  }
-  return {};
-}
-
-function isObject(value: unknown): boolean {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
-function objectValue(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function firstText(...values: unknown[]): string {
-  for (const value of values) {
-    const text = String(value ?? '').trim();
-    if (text) return text;
-  }
-  return '';
-}
-
-function cleanGiftText(value: unknown, limit: number): string {
-  return String(value ?? '').trim().slice(0, limit) || 'Telegram Gift';
-}
-
-function numberOrNull(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 async function getMarketAsset(env: Env, key: string, rangeHeader?: string): Promise<Response> {
