@@ -1,3 +1,5 @@
+import { VEXA_LEAGUE_SCRIPT } from './vexa-league-script';
+
 export const ACTIVITY_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
@@ -62,4 +64,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
-`;
+` + VEXA_LEAGUE_SCRIPT;
