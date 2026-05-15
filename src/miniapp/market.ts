@@ -20,6 +20,7 @@ const marketLayoutStyles = `<style id="marketRealOnlyLayoutStyles">
 #market .market-tab-panel.active{min-height:0!important;flex:1 1 auto!important;overflow:hidden!important;position:relative!important;display:flex!important;flex-direction:column!important}
 #market .market-grid-scroll{min-height:0!important;flex:1 1 auto!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;padding-bottom:calc(124px + env(safe-area-inset-bottom))!important}
 #market .market-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:7px!important;row-gap:10px!important;padding-bottom:24px!important}
+#market .market-nft-card,#market .market-owned-card{background-color:transparent!important;background-image:none!important}
 #market .market-nft-info{gap:2px!important;padding:7px 6px 4px!important}
 #market .market-nft-title-row{align-items:flex-start!important;margin:0!important;gap:3px!important}
 #market .market-nft-title-row strong{font-size:11px!important;line-height:1.03!important;letter-spacing:-.015em!important}
