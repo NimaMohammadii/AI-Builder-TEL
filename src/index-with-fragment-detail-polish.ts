@@ -13,7 +13,7 @@ const DETAIL_POLISH_SCRIPT = `
     }
     function isFragmentDetail(sheet){
       if(!sheet||!sheet.classList.contains('open'))return false;
-      return Boolean(sheet.querySelector('[data-market-detail-media] img[src*="nft.fragment.com/gift/"]'));
+      return Boolean(sheet.querySelector('[data-market-detail-media]'));
     }
     function polishDetail(){
       try {
