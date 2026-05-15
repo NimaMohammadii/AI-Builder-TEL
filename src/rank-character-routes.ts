@@ -10,10 +10,9 @@ export function registerRankCharacterRoutes(app: Hono<{ Bindings: Env }>): void 
   registerAdminLevelRoutes(app);
 
   app.get('/app/api/rank-character/:rank', async (c) => {
-    const rank = cleanRank(c.req.param('rank'));
-    if (!rank) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+    const rank = cleanRank(c.req.param('rank')) || 'Rookie';
     const object = await c.env.ASSETS.get(rankCharacterKey(rank)).catch(() => null);
-    if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+    if (!object) return fallbackRankImage(rank);
     return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': CACHE_CONTROL } });
   });
 
@@ -42,6 +41,13 @@ function rankCharacterKey(rank: string): string {
 function cleanRank(value: unknown): string {
   const raw = String(value || '').replace(/\.png$/i, '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 40);
   return RANKS.includes(raw) ? raw : '';
+}
+
+function fallbackRankImage(rank: string): Response {
+  const safeRank = cleanRank(rank) || 'Rookie';
+  const initial = safeRank.slice(0, 1).toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><radialGradient id="g" cx="35%" cy="20%" r="80%"><stop offset="0" stop-color="#ffffff" stop-opacity="0.42"/><stop offset="0.42" stop-color="#c03a5b" stop-opacity="0.32"/><stop offset="1" stop-color="#050507"/></radialGradient><filter id="s"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.55"/></filter></defs><rect width="128" height="128" rx="38" fill="url(#g)"/><circle cx="64" cy="56" r="31" fill="#07070a" filter="url(#s)"/><rect x="39" y="44" width="50" height="30" rx="15" fill="#0f1014" stroke="rgba(255,255,255,.42)"/><circle cx="54" cy="59" r="4" fill="#fff"/><circle cx="74" cy="59" r="4" fill="#fff"/><path d="M42 92c8-12 36-12 44 0" fill="none" stroke="#fff" stroke-opacity=".74" stroke-width="6" stroke-linecap="round"/><text x="64" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="900" fill="#fff">${initial}</text></svg>`;
+  return new Response(svg, { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': CACHE_CONTROL } });
 }
 
 function adminCookieValue(cookie: string | undefined): string {
