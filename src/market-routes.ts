@@ -7,7 +7,9 @@ const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const MARKET_UPLOAD_MAX_BYTES = 25_000_000;
 const TON_GIFT_MARKET_CACHE_SECONDS = 60;
+const MARKET_PROVIDER_SETTING_KEY = 'market_provider';
 
+type MarketProvider = 'getgems' | 'fragment';
 type TelegramGiftView = TonNftMarketItem;
 
 app.get('/app/api/market-items', async (c) => c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE }));
@@ -75,6 +77,28 @@ app.get('/app/api/market-item-image/:item', async (c) => {
   }
 });
 
+app.get('/admin/api/market-provider', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  return c.json({ provider: await getMarketProvider(c.env) }, 200, { 'cache-control': CACHE_NONE });
+});
+
+app.post('/admin/api/market-provider', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  try {
+    const body = await c.req.json().catch(() => ({})) as { provider?: unknown };
+    const provider = normalizeMarketProvider(body.provider);
+    if (!provider) return c.json({ error: 'Provider must be getgems or fragment' }, 400, { 'cache-control': CACHE_NONE });
+    await setMarketProvider(c.env, provider);
+    await Promise.all([
+      c.env.BOT_CACHE.delete('ton:gifts:market:getgems:price_asc').catch(() => undefined),
+      c.env.BOT_CACHE.delete('ton:gifts:market:fragment:price_asc').catch(() => undefined),
+    ]);
+    return c.json({ ok: true, provider }, 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save market provider' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
+
 app.get('/admin/api/market-items', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE });
@@ -125,12 +149,94 @@ app.post('/admin/api/market-item-image', async (c) => {
 
 async function getTelegramGifts(env: Env): Promise<TelegramGiftView[]> {
   const sort = 'price_asc';
-  const cacheKey = `ton:gifts:market:getgems:${sort}`;
+  const provider = await getMarketProvider(env);
+  const cacheKey = `ton:gifts:market:${provider}:${sort}`;
   const cached = await env.BOT_CACHE.get(cacheKey, 'json').catch(() => null) as TelegramGiftView[] | null;
   if (Array.isArray(cached)) return cached;
-  const gifts = await loadTonNftMarket(env, { sort, limit: 90 });
+  const gifts = provider === 'fragment' ? await getFragmentGifts(env) : await loadTonNftMarket(env, { sort, limit: 90 });
   await env.BOT_CACHE.put(cacheKey, JSON.stringify(gifts), { expirationTtl: TON_GIFT_MARKET_CACHE_SECONDS }).catch(() => undefined);
   return gifts;
+}
+
+async function ensureAppSettings(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)`).run();
+}
+
+async function getMarketProvider(env: Env): Promise<MarketProvider> {
+  await ensureAppSettings(env);
+  const row = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(MARKET_PROVIDER_SETTING_KEY).first<{ value: string }>().catch(() => null);
+  return normalizeMarketProvider(row?.value) || 'getgems';
+}
+
+async function setMarketProvider(env: Env, provider: MarketProvider): Promise<void> {
+  await ensureAppSettings(env);
+  await env.DB.prepare(`INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`).bind(MARKET_PROVIDER_SETTING_KEY, provider).run();
+}
+
+function normalizeMarketProvider(value: unknown): MarketProvider | null {
+  const provider = String(value || '').trim().toLowerCase();
+  return provider === 'getgems' || provider === 'fragment' ? provider : null;
+}
+
+async function getFragmentGifts(env: Env): Promise<TelegramGiftView[]> {
+  const providerUrl = String(env.TON_GIFT_MARKET_URL || '').trim();
+  if (!providerUrl) throw new Error('TON_GIFT_MARKET_URL is missing for Fragment provider');
+  const response = await fetch(providerUrl, {
+    headers: { accept: 'application/json', 'user-agent': 'VexaFLOW/1.0' },
+    cf: { cacheTtl: TON_GIFT_MARKET_CACHE_SECONDS, cacheEverything: true } as never,
+  });
+  if (!response.ok) throw new Error(`Fragment provider failed: ${response.status}`);
+  const json = await response.json().catch(() => null);
+  return marketRows(json).map((entry, index) => normalizeTonGiftMarketItem(entry, index)).filter(Boolean) as TelegramGiftView[];
+}
+
+function marketRows(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value.filter(isObject) as Record<string, unknown>[];
+  const object = objectValue(value);
+  for (const key of ['results', 'nfts', 'items', 'data', 'list']) {
+    const rows = object[key];
+    if (Array.isArray(rows)) return rows.filter(isObject) as Record<string, unknown>[];
+  }
+  return [];
+}
+
+function normalizeTonGiftMarketItem(entry: Record<string, unknown>, index: number): TelegramGiftView | null {
+  const metadata = firstObject(entry.metadata, entry.meta, entry.nft_metadata);
+  const collection = firstObject(entry.collection, entry.collection_info, metadata.collection);
+  const sale = firstObject(entry.sale, entry.auction, entry.sale_data, entry.listing);
+  const rawId = firstText(entry.nft_address, entry.address, entry.item_address, entry.id, metadata.address, `ton_gift_${index}`);
+  const title = cleanGiftText(firstText(entry.name, entry.title, metadata.name, `TON Gift ${index + 1}`), 80);
+  const collectionName = cleanGiftText(firstText(collection.name, collection.title, entry.collection_name, metadata.collection_name, 'TON Gifts'), 80);
+  const imageUrl = firstText(entry.photo_url, entry.preview_url, entry.image_url, entry.image, metadata.image, metadata.image_url, metadata.preview_url);
+  const priceTon = normalizeTonPrice(firstText(entry.price, entry.price_ton, entry.priceTon, entry.price_nano, entry.priceNano, sale.price, sale.price_ton, sale.price_nano));
+  const model = cleanGiftText(firstText(metadata.model, entry.model, entry.rarity, collectionName), 60);
+  const description = cleanGiftText(firstText(metadata.description, entry.description, collectionName), 120);
+  return {
+    id: `ton_gift_${rawId}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
+    title,
+    collection: collectionName,
+    rarity: model,
+    supply: firstText(entry.number, metadata.number, entry.rank, 'Listed'),
+    utility: priceTon ? `${priceTon} TON` : 'Listed for TON',
+    description,
+    imageUrl: imageUrl || null,
+    animationUrl: null,
+    sourceUrl: null,
+    badge: 'TON NFT',
+    source: 'telegram',
+    canTransfer: true,
+    nextTransferDate: null,
+    transferStars: null,
+  };
+}
+
+function normalizeTonPrice(value: unknown): string {
+  const raw = firstText(value).replace(/,/g, '').trim();
+  if (!raw) return '';
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return raw.replace(/\s*TON$/i, '').trim();
+  const ton = n > 1_000_000 ? n / 1_000_000_000 : n;
+  return ton.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
 }
 
 async function callTelegram(token: string, method: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -157,6 +263,34 @@ async function getTelegramFileUrl(env: Env, fileId: string): Promise<string | nu
   const url = `https://api.telegram.org/file/bot${token}/${path}`;
   await env.BOT_CACHE.put(cacheKey, url, { expirationTtl: 3600 }).catch(() => undefined);
   return url;
+}
+
+function firstObject(...values: unknown[]): Record<string, unknown> {
+  for (const value of values) {
+    const object = objectValue(value);
+    if (Object.keys(object).length) return object;
+  }
+  return {};
+}
+
+function isObject(value: unknown): boolean {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function cleanGiftText(value: unknown, limit: number): string {
+  return String(value ?? '').trim().slice(0, limit) || 'Telegram Gift';
 }
 
 async function getMarketAsset(env: Env, key: string, rangeHeader?: string): Promise<Response> {
