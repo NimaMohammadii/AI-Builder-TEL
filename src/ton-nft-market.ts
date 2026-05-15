@@ -2,7 +2,6 @@ import type { Env } from './types';
 
 const TONAPI_BASE_URL = 'https://tonapi.io/v2';
 const GETGEMS_HOME_URL = 'https://getgems.io/';
-const ACTIVE_MARKET_PROVIDER: { value: 'getgems' | 'fragment' } = { value: 'getgems' };
 const DEFAULT_LIMIT = 90;
 const DISCOVERY_LIMIT = 90;
 const COLLECTION_LIMIT = 10;
@@ -43,7 +42,6 @@ type TonApiCollection = {
 };
 
 export async function loadTonNftMarket(env: TonNftMarketEnv, options: { limit?: number; sort?: string } = {}): Promise<TonNftMarketItem[]> {
-  if (ACTIVE_MARKET_PROVIDER.value !== 'getgems') return [];
   if (!env.TONAPI_KEY) throw new Error('TONAPI_KEY is missing');
   const limit = clamp(options.limit ?? DEFAULT_LIMIT, 1, DISCOVERY_LIMIT);
   const sort = options.sort === 'price_desc' ? 'price_desc' : 'price_asc';
@@ -66,7 +64,7 @@ export async function loadTonNftMarket(env: TonNftMarketEnv, options: { limit?: 
     nfts = nfts.concat(groups.flat());
   }
 
-  return sortMarketItems(dedupe(nfts.map(toMarketItem).filter((item): item is TonNftMarketItem => Boolean(item))).slice(0, limit), sort);
+  return sortMarketItems(dedupe(nfts.map(toFragmentStyleMarketItem).filter((item): item is TonNftMarketItem => Boolean(item))).slice(0, limit), sort);
 }
 
 async function discoverGetgemsAddresses(): Promise<{ collections: string[]; nfts: string[] }> {
@@ -130,17 +128,18 @@ function tonApiFetch(env: TonNftMarketEnv, path: string): Promise<Response> {
   });
 }
 
-function toMarketItem(item: TonApiNft): TonNftMarketItem | null {
+function toFragmentStyleMarketItem(item: TonApiNft): TonNftMarketItem | null {
   const address = text(item.address);
   if (!address) return null;
   const metadata = objectValue(item.metadata);
   const collection = item.collection || null;
-  const collectionName = firstText(text(collection?.name), 'Getgems');
+  const collectionName = firstText(text(collection?.name), 'Telegram Gifts');
+  const index = item.index != null ? String(item.index) : '';
   const title = firstText(
     text(metadata.name),
     text(metadata.title),
-    item.index != null && collectionName ? `${collectionName} #${item.index}` : '',
-    `TON NFT ${address.slice(0, 6)}`
+    index ? `${collectionName} #${index}` : '',
+    'Telegram Gift'
   );
   const imageUrl = firstText(
     previewUrl(item.previews),
@@ -149,19 +148,19 @@ function toMarketItem(item: TonApiNft): TonNftMarketItem | null {
     text(metadata.content_url)
   );
   const price = salePriceTon(item.sale);
-  const number = item.index != null ? `#${String(item.index)}` : 'TON NFT';
+  const number = index ? `#${index}` : '';
   return {
-    id: `getgems_${address}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120),
+    id: `fragment_${address}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
     title,
-    collection: collectionName,
-    rarity: 'Getgems',
-    supply: number,
-    utility: price ? `${price} TON` : 'Listed for TON',
-    description: [collectionName, number, price ? `${price} TON` : 'Getgems NFT'].filter(Boolean).join(' · '),
+    collection: 'Fragment Gifts',
+    rarity: 'For sale',
+    supply: number || 'For sale',
+    utility: price ? `${price} TON` : 'For sale on Fragment',
+    description: [number, price ? `${price} TON` : '', 'For sale on Fragment'].filter(Boolean).join(' · '),
     imageUrl: imageUrl || null,
     animationUrl: null,
     sourceUrl: null,
-    badge: 'TON NFT',
+    badge: 'For sale',
     source: 'telegram',
     canTransfer: true,
     nextTransferDate: null,
