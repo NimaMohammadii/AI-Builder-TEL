@@ -91,12 +91,13 @@ function shapeLevel(userId: string, level: number, xp: number, totalXp: number):
 
 function rankName(levelInput: unknown): string {
   const level = Math.max(1, Math.floor(Number(levelInput) || 1));
-  if (level >= 50) return 'Legend';
-  if (level >= 35) return 'Elite';
-  if (level >= 20) return 'Pro';
-  if (level >= 10) return 'Builder';
-  if (level >= 5) return 'Explorer';
-  return 'Starter';
+  if (level >= 60) return 'Titan';
+  if (level >= 40) return 'Legend';
+  if (level >= 25) return 'Master';
+  if (level >= 15) return 'Elite';
+  if (level >= 8) return 'Pro';
+  if (level >= 4) return 'Explorer';
+  return 'Rookie';
 }
 
 function cleanUserId(value: unknown): string {
