@@ -27,6 +27,7 @@ export const LEVEL_SYNC_SCRIPT = `
     {name:'Legend',range:'Level 40-59',min:40,max:59,text:'Rare profile with prestige.'},
     {name:'Titan',range:'Level 60+',min:60,max:999,text:'Highest Vexa FLOW status.'}
   ];
+  window.VexaLevel={add:add,load:load,openRanks:openRankModal};
   function id(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function section(){var active=document.querySelector('.view.active');return active&&active.id?active.id:'home'}
   function isGameSection(name){return !!gameSections[String(name||section()).replace(/^view-/,'')]}
