@@ -14,6 +14,8 @@ export const LEVEL_SYNC_SCRIPT = `
   var dailyChecked=false;
   var rankImagesPreloaded=false;
   var rankImageCache={};
+  var rankImageVersion=String(window.__vexaAppVersion||Date.now());
+  var defaultRobotImage='https://t.me/i/userpic/320/VexaFlowBOT.jpg';
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,coinflip:1,hilo:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-3',min:1,max:3,text:'Start your Vexa journey.'},
@@ -30,7 +32,7 @@ export const LEVEL_SYNC_SCRIPT = `
   function todayKey(){return new Date().toISOString().slice(0,10)}
   function storageKey(){return 'vexa:play-xp-ms:'+id()}
   function dailyStorageKey(){return 'vexa:daily-xp:'+id()}
-  function rankVersion(){return String(window.__vexaAppVersion||localStorage.getItem('vexa:rank-image-version')||'1')}
+  function rankVersion(){return rankImageVersion}
   function loadPlayMs(){try{var v=Number(localStorage.getItem(storageKey())||0);playMs=Math.max(0,Math.min(PLAY_XP_INTERVAL_MS-1,Math.floor(v)||0))}catch(e){playMs=0}}
   function savePlayMs(){try{var userId=id();if(userId)localStorage.setItem(storageKey(),String(Math.max(0,Math.min(PLAY_XP_INTERVAL_MS-1,Math.floor(playMs)||0))))}catch(e){}}
   function markActivity(){lastActivityAt=Date.now()}
@@ -40,7 +42,8 @@ export const LEVEL_SYNC_SCRIPT = `
   function rankImageUrl(rankName){return '/app/api/rank-character/'+encodeURIComponent(rankKey(rankName))+'.png?v='+encodeURIComponent(rankVersion())}
   function preloadRankImage(rankName,callback){try{var key=rankKey(rankName),src=rankImageUrl(key);if(rankImageCache[key]===src){callback&&callback(src);return}var im=new Image();im.decoding='async';im.onload=function(){rankImageCache[key]=src;callback&&callback(src)};im.onerror=function(){callback&&callback('')};im.src=src}catch(e){callback&&callback('')}}
   function preloadAllRankImages(){if(rankImagesPreloaded)return;rankImagesPreloaded=true;setTimeout(function(){ranks.forEach(function(r){preloadRankImage(r.name)})},350)}
-  function setRankCharacter(rankName){try{var img=document.querySelector('.brand img.logo');if(!img)return;if(!img.dataset.defaultSrc)img.dataset.defaultSrc=img.getAttribute('src')||'https://t.me/i/userpic/320/VexaFlowBOT.jpg';bindRankModalTrigger(img);var src=rankImageUrl(rankName);img.loading='eager';img.decoding='async';img.onerror=function(){this.onerror=null;this.src=this.dataset.defaultSrc||'https://t.me/i/userpic/320/VexaFlowBOT.jpg'};if(img.getAttribute('src')!==src)img.src=src;preloadRankImage(rankName,function(){});preloadAllRankImages()}catch(e){}}
+  function safeDefaultSrc(img){var current=String(img&&img.getAttribute('src')||'');return current.indexOf('/app/api/rank-character/')>=0?defaultRobotImage:(current||defaultRobotImage)}
+  function setRankCharacter(rankName){try{var img=document.querySelector('.brand img.logo');if(!img)return;if(!img.dataset.defaultSrc)img.dataset.defaultSrc=safeDefaultSrc(img);bindRankModalTrigger(img);var src=rankImageUrl(rankName);img.loading='eager';img.decoding='async';img.onerror=function(){this.onerror=null;this.src=this.dataset.defaultSrc||defaultRobotImage};if(img.getAttribute('src')!==src)img.src=src;preloadRankImage(rankName,function(){});preloadAllRankImages()}catch(e){}}
   function need(level){level=Math.max(1,Math.floor(Number(level)||1));return Math.max(100,Math.floor(100*Math.pow(level,1.35)))}
   function clean(p){var level=Math.max(1,Math.floor(Number(p&&p.level)||1));var next=Math.max(1,Math.floor(Number(p&&p.nextLevelXp)||need(level)));var xp=Math.max(0,Math.min(next,Math.floor(Number(p&&p.xp)||0)));var percent=Math.max(0,Math.min(100,Math.floor(Number(p&&p.progressPercent)||((xp/next)*100))));return{level:level,xp:xp,totalXp:Math.max(0,Math.floor(Number(p&&p.totalXp)||0)),nextLevelXp:next,progressPercent:percent,xpLeft:Math.max(0,next-xp),rankName:String((p&&p.rankName)||rank(level))}}
   function rankIndex(name){for(var i=0;i<ranks.length;i++){if(ranks[i].name===name)return i}return 0}
