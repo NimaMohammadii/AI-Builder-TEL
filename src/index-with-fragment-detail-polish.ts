@@ -8,7 +8,7 @@ const DETAIL_POLISH_SCRIPT = `
       if(document.getElementById('vexa-fragment-detail-polish'))return;
       var style=document.createElement('style');
       style.id='vexa-fragment-detail-polish';
-      style.textContent='@keyframes vexaDetailPop{0%{opacity:0;transform:translateY(24px) scale(.94);filter:blur(10px)}58%{opacity:1;transform:translateY(-3px) scale(1.012);filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}#marketDetailSheet.vexa-fragment-detail .market-detail-card{animation:vexaDetailPop .42s cubic-bezier(.18,.9,.22,1) both!important;transform-origin:center 58%!important}#marketDetailSheet.vexa-fragment-detail .market-detail-buy{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-status{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price *{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important;filter:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price img.market-price-icon{width:34px!important;height:34px!important;object-fit:contain!important;filter:none!important;opacity:.98!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price b,#marketDetailSheet.vexa-fragment-detail .market-detail-price strong,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{font-weight:800!important;letter-spacing:-.02em!important}';
+      style.textContent='@keyframes vexaDetailPop{0%{opacity:0;transform:translateY(24px) scale(.94);filter:blur(10px)}58%{opacity:1;transform:translateY(-3px) scale(1.012);filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}#marketDetailSheet.vexa-fragment-detail .market-detail-card{animation:vexaDetailPop .42s cubic-bezier(.18,.9,.22,1) both!important;transform-origin:center 58%!important}#marketDetailSheet.vexa-fragment-detail .market-detail-buy{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-status{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price *{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important;filter:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price svg.market-price-icon{width:34px!important;height:34px!important;display:block!important;flex:0 0 auto!important;color:#fff!important;filter:none!important;opacity:.98!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price img.market-price-icon{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price b,#marketDetailSheet.vexa-fragment-detail .market-detail-price strong,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{font-weight:800!important;letter-spacing:-.02em!important}';
       document.head.appendChild(style);
     }
     function isFragmentDetail(sheet){
@@ -22,13 +22,7 @@ const DETAIL_POLISH_SCRIPT = `
         if(!isFragmentDetail(sheet))return;
         sheet.classList.add('vexa-fragment-detail');
         var priceRow=sheet.querySelector('.market-detail-price');
-        if(priceRow){
-          var img=priceRow.querySelector('img.market-price-icon');
-          if(img && img.getAttribute('src').indexOf('/app/api/nft-price-icon.png') === -1){
-            img.src='/app/api/nft-price-icon.png?v='+(window.__vexaNftPriceIconVersion||window.__vexaAppVersion||Date.now());
-            img.alt='TON';
-          }
-        }
+        if(priceRow){priceRow.querySelectorAll('img.market-price-icon').forEach(function(img){img.remove()})}
         var buy=sheet.querySelector('.market-detail-buy');
         if(buy)buy.style.display='none';
         var status=sheet.querySelector('.market-detail-status');
