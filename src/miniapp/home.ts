@@ -10,29 +10,35 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-rewards-head h3{margin:0;color:#fff;font-size:25px;line-height:.92;font-weight:1000;letter-spacing:-.07em}
     #home .home-rewards-head p{margin:7px 0 0;max-width:265px;color:rgba(255,255,255,.48);font-size:10.5px;line-height:1.32;font-weight:650;letter-spacing:-.02em}
     #home .home-rewards-streak{height:32px;min-width:66px;border-radius:999px;display:grid;place-items:center;padding:0 11px;background:#fff;color:#050505;font-size:10px;font-weight:1000;white-space:nowrap}
-    #home .home-reward-days{display:flex;gap:7px;overflow-x:auto;overflow-y:hidden;margin:0 -18px 16px;padding:0 18px 4px;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    #home .home-reward-days{display:flex;gap:7px;overflow-x:auto;overflow-y:hidden;margin:0 -18px 16px;padding:0 18px 6px;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     #home .home-reward-days::-webkit-scrollbar{display:none}
-    #home .home-reward-day{position:relative;flex:0 0 54px;height:66px;border:0;border-radius:19px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.09);color:#fff;padding:7px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;scroll-snap-align:center;opacity:.68}
+    #home .home-reward-day{position:relative;flex:0 0 54px;height:66px;border:0;border-radius:19px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.09);color:#fff;padding:8px 7px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;scroll-snap-align:center;opacity:.68;overflow:hidden}
     #home .home-reward-day.done{opacity:.86;background:rgba(255,255,255,.065)}
-    #home .home-reward-day.current{opacity:1;background:#fff;color:#050505;box-shadow:0 14px 26px rgba(255,255,255,.09)}
+    #home .home-reward-day.current{opacity:1;background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 14px 26px rgba(0,0,0,.12)}
     #home .home-reward-day svg{width:17px;height:17px;display:block;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;fill:none;opacity:.9}
     #home .home-reward-day small{font-size:7px;font-weight:1000;text-transform:uppercase;letter-spacing:.09em;opacity:.68;line-height:1}
     #home .home-reward-day strong{font-size:17px;font-weight:1000;letter-spacing:-.06em;line-height:1}
-    #home .home-reward-day.current:after{content:"Today";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);height:15px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.94);color:#050505;font-size:7px;font-weight:1000;display:grid;place-items:center;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+    #home .home-reward-day.current:after{content:"Today";position:absolute;top:5px;right:5px;height:13px;padding:0 5px;border-radius:999px;background:#fff;color:#050505;font-size:6.5px;font-weight:1000;display:grid;place-items:center;box-shadow:none}
     #home .home-daily-reward-card{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:11px;align-items:center;margin:0 0 14px;padding:0 0 15px;border-radius:0;background:transparent;box-shadow:none;border-bottom:1px solid rgba(255,255,255,.08)}
     #home .home-daily-reward-orb{width:44px;height:44px;border-radius:17px;display:grid;place-items:center;background:rgba(255,255,255,.065);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);filter:none;color:#fff}
     #home .home-daily-reward-orb svg{width:21px;height:21px;display:block;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #home .home-daily-reward-main{min-width:0}.home-daily-reward-main strong{display:block;color:#fff;font-size:15.5px;font-weight:950;line-height:1;letter-spacing:-.045em}.home-daily-reward-main span{display:block;margin-top:6px;color:rgba(255,255,255,.47);font-size:9.5px;font-weight:750;line-height:1.25}
     #home .home-daily-reward-action{border:0;border-radius:999px;padding:9px 12px;background:#fff;color:#050505;font-size:9.5px;font-weight:950;letter-spacing:-.02em;box-shadow:none;white-space:nowrap;opacity:.96}
-    #home .home-missions-list{position:relative;display:grid;gap:0;margin-top:0}
-    #home .home-missions-list:before{content:"";position:absolute;left:16px;top:19px;bottom:19px;width:1px;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.035))}
-    #home .home-mission-row{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:51px;padding:8px 0;border-radius:0;background:transparent;box-shadow:none;overflow:visible;border-bottom:1px solid rgba(255,255,255,.05)}
-    #home .home-mission-row:after{display:none}
+    #home .home-missions-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 6px;color:#fff}
+    #home .home-missions-title strong{font-size:13px;font-weight:1000;letter-spacing:-.04em;line-height:1}
+    #home .home-missions-title span{height:22px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.075);color:rgba(255,255,255,.62);font-size:8px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+    #home .home-missions-list{position:relative;display:grid;gap:7px;margin-top:0}
+    #home .home-missions-list:before{display:none}
+    #home .home-mission-row{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:52px;padding:8px 9px;border-radius:16px;background:rgba(255,255,255,.038);box-shadow:inset 0 1px 0 rgba(255,255,255,.075);overflow:hidden;border-bottom:0}
+    #home .home-mission-row.primary{background:rgba(255,255,255,.065);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+    #home .home-mission-row:after{content:"";position:absolute;right:-28px;top:-32px;width:70px;height:70px;border-radius:999px;background:rgba(255,255,255,.028);pointer-events:none}
     #home .home-mission-icon{position:relative;z-index:1;width:32px;height:32px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.065);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);color:#fff}
+    #home .home-mission-row.primary .home-mission-icon{background:#fff;color:#050505}
     #home .home-mission-icon svg{width:16px;height:16px;display:block;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;fill:none}
-    #home .home-mission-main{position:relative;min-width:0}.home-mission-main strong{display:block;color:#fff;font-size:12.5px;font-weight:950;line-height:1;letter-spacing:-.035em}.home-mission-main span{display:block;margin-top:5px;color:rgba(255,255,255,.43);font-size:8.6px;font-weight:750;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #home .home-mission-reward{position:relative;height:24px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.07);color:rgba(255,255,255,.74);font-size:8.5px;font-weight:950;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
-    @media(max-width:380px){#home .home-rewards-head h3{font-size:23px}#home .home-reward-day{flex-basis:50px;height:63px;border-radius:18px}.home-daily-reward-card{grid-template-columns:42px minmax(0,1fr);gap:9px}.home-daily-reward-action{grid-column:1 / -1;width:100%;height:36px}.home-daily-reward-orb{width:42px;height:42px;border-radius:16px}.home-mission-row{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;min-height:48px;padding:7px 0}.home-mission-icon{width:30px;height:30px;border-radius:11px}.home-mission-main strong{font-size:11.7px}.home-mission-main span{font-size:8px}.home-mission-reward{height:23px;font-size:8px;padding:0 7px}}
+    #home .home-mission-main{position:relative;z-index:1;min-width:0}.home-mission-main strong{display:block;color:#fff;font-size:12.5px;font-weight:950;line-height:1;letter-spacing:-.035em}.home-mission-main span{display:block;margin-top:5px;color:rgba(255,255,255,.43);font-size:8.6px;font-weight:750;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #home .home-mission-reward{position:relative;z-index:1;height:24px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.07);color:rgba(255,255,255,.74);font-size:8.5px;font-weight:950;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+    #home .home-mission-row.primary .home-mission-reward{background:#fff;color:#050505;box-shadow:none}
+    @media(max-width:380px){#home .home-rewards-head h3{font-size:23px}#home .home-reward-day{flex-basis:50px;height:63px;border-radius:18px}.home-daily-reward-card{grid-template-columns:42px minmax(0,1fr);gap:9px}.home-daily-reward-action{grid-column:1 / -1;width:100%;height:36px}.home-daily-reward-orb{width:42px;height:42px;border-radius:16px}.home-mission-row{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;min-height:49px;padding:7px 8px}.home-mission-icon{width:30px;height:30px;border-radius:11px}.home-mission-main strong{font-size:11.7px}.home-mission-main span{font-size:8px}.home-mission-reward{height:23px;font-size:8px;padding:0 7px}}
   </style>
   <section class="home-intro-card">
     <h2>Welcome to Vexa FLOW</h2>
@@ -83,8 +89,9 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </div>
       <button class="home-daily-reward-action" type="button" disabled>Preview</button>
     </div>
+    <div class="home-missions-title"><strong>Today missions</strong><span>0 / 6 done</span></div>
     <div class="home-missions-list">
-      <div class="home-mission-row"><div class="home-mission-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><div class="home-mission-main"><strong>Daily Check-in</strong><span>Open Vexa FLOW once today</span></div><div class="home-mission-reward">+50 XP</div></div>
+      <div class="home-mission-row primary"><div class="home-mission-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><div class="home-mission-main"><strong>Daily Check-in</strong><span>Open Vexa FLOW once today</span></div><div class="home-mission-reward">+50 XP</div></div>
       <div class="home-mission-row"><div class="home-mission-icon"><svg viewBox="0 0 24 24"><path d="M6 8h12v8H6z"/><path d="M8 12h3"/><path d="M9.5 10.5v3"/><path d="M15 11.5h.01"/><path d="M17 13.5h.01"/></svg></div><div class="home-mission-main"><strong>Play 3 Games</strong><span>Complete any three Play Zone rounds</span></div><div class="home-mission-reward">+90 XP</div></div>
       <div class="home-mission-row"><div class="home-mission-icon"><svg viewBox="0 0 24 24"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M7.8 7.8l2.1 2.1"/><path d="M14.1 14.1l2.1 2.1"/><path d="M16.2 7.8l-2.1 2.1"/><path d="M9.9 14.1l-2.1 2.1"/><circle cx="12" cy="12" r="3"/></svg></div><div class="home-mission-main"><strong>Use AI Builder</strong><span>Generate or test one AI action</span></div><div class="home-mission-reward">+40 XP</div></div>
       <div class="home-mission-row"><div class="home-mission-icon"><svg viewBox="0 0 24 24"><path d="M7 17L17 7"/><path d="M9 7h8v8"/></svg></div><div class="home-mission-main"><strong>Invite a Friend</strong><span>Bring one new player to Vexa</span></div><div class="home-mission-reward">Gift</div></div>
