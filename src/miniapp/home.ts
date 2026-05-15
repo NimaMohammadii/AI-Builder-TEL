@@ -14,11 +14,13 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-daily-reward-orb{width:54px;height:54px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,255,255,.20),rgba(255,255,255,.055));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 28px rgba(0,0,0,.18);font-size:26px;filter:none}
     #home .home-daily-reward-main{min-width:0}.home-daily-reward-main strong{display:block;color:#fff;font-size:16px;font-weight:950;line-height:1;letter-spacing:-.045em}.home-daily-reward-main span{display:block;margin-top:6px;color:rgba(255,255,255,.55);font-size:10px;font-weight:750;line-height:1.25}
     #home .home-daily-reward-action{border:0;border-radius:999px;padding:10px 13px;background:#fff;color:#050505;font-size:10px;font-weight:950;letter-spacing:-.02em;box-shadow:0 14px 28px rgba(255,255,255,.12);white-space:nowrap;opacity:.96}
-    #home .home-reward-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    #home .home-reward-mini{position:relative;min-height:78px;border-radius:21px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 12px 26px rgba(0,0,0,.13);padding:10px 9px;overflow:hidden}
-    #home .home-reward-mini:after{content:"";position:absolute;right:-20px;top:-24px;width:58px;height:58px;border-radius:999px;background:rgba(255,255,255,.055)}
-    #home .home-reward-mini i{position:relative;display:block;font-style:normal;font-size:20px;line-height:1;margin-bottom:8px}.home-reward-mini strong{position:relative;display:block;color:#fff;font-size:11px;font-weight:950;line-height:1.05;letter-spacing:-.035em}.home-reward-mini span{position:relative;display:block;margin-top:5px;color:rgba(255,255,255,.48);font-size:8.8px;font-weight:750;line-height:1.15}
-    @media(max-width:380px){#home .home-daily-reward-card{grid-template-columns:48px minmax(0,1fr);gap:9px}.home-daily-reward-action{grid-column:1 / -1;width:100%;height:38px}.home-reward-grid{gap:6px}.home-reward-mini{min-height:72px;padding:9px 8px}.home-reward-mini strong{font-size:10px}.home-reward-mini span{font-size:8px}}
+    #home .home-missions-list{display:grid;gap:7px;margin-top:10px}
+    #home .home-mission-row{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center;min-height:48px;padding:8px 9px;border-radius:17px;background:rgba(255,255,255,.043);box-shadow:inset 0 1px 0 rgba(255,255,255,.095),0 10px 22px rgba(0,0,0,.12);overflow:hidden}
+    #home .home-mission-row:after{content:"";position:absolute;right:-22px;top:-24px;width:62px;height:62px;border-radius:999px;background:rgba(255,255,255,.04);pointer-events:none}
+    #home .home-mission-icon{position:relative;width:34px;height:34px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.075);box-shadow:inset 0 1px 0 rgba(255,255,255,.13);font-size:16px}
+    #home .home-mission-main{position:relative;min-width:0}.home-mission-main strong{display:block;color:#fff;font-size:12.5px;font-weight:950;line-height:1;letter-spacing:-.035em}.home-mission-main span{display:block;margin-top:5px;color:rgba(255,255,255,.49);font-size:9px;font-weight:750;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #home .home-mission-reward{position:relative;height:26px;padding:0 9px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.085);color:rgba(255,255,255,.78);font-size:9px;font-weight:950;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+    @media(max-width:380px){#home .home-daily-reward-card{grid-template-columns:48px minmax(0,1fr);gap:9px}.home-daily-reward-action{grid-column:1 / -1;width:100%;height:38px}.home-mission-row{grid-template-columns:32px minmax(0,1fr) auto;gap:8px;min-height:45px;padding:7px 8px}.home-mission-icon{width:32px;height:32px;border-radius:12px}.home-mission-main strong{font-size:11.5px}.home-mission-main span{font-size:8.2px}.home-mission-reward{height:24px;font-size:8px;padding:0 7px}}
   </style>
   <section class="home-intro-card">
     <h2>Welcome to Vexa FLOW</h2>
@@ -48,7 +50,7 @@ export const HOME_SECTION = `<section id="home" class="view active">
       <div>
         <div class="home-rewards-kicker">Rewards Hub</div>
         <h3>Daily Prize</h3>
-        <p>Collect streak rewards, unlock mystery gifts, and build your Vexa status every day.</p>
+        <p>Complete daily missions, keep your streak alive, and unlock bigger prizes soon.</p>
       </div>
       <div class="home-rewards-streak">Day 1</div>
     </div>
@@ -60,10 +62,13 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </div>
       <button class="home-daily-reward-action" type="button" disabled>Preview</button>
     </div>
-    <div class="home-reward-grid">
-      <div class="home-reward-mini"><i>⚡</i><strong>XP Boost</strong><span>Daily activity bonus</span></div>
-      <div class="home-reward-mini"><i>💎</i><strong>Gift Box</strong><span>Mystery reward slot</span></div>
-      <div class="home-reward-mini"><i>🔥</i><strong>Streak</strong><span>Return every day</span></div>
+    <div class="home-missions-list">
+      <div class="home-mission-row"><div class="home-mission-icon">✓</div><div class="home-mission-main"><strong>Daily Check-in</strong><span>Open Vexa FLOW once today</span></div><div class="home-mission-reward">+50 XP</div></div>
+      <div class="home-mission-row"><div class="home-mission-icon">🎮</div><div class="home-mission-main"><strong>Play 3 Games</strong><span>Complete any three Play Zone rounds</span></div><div class="home-mission-reward">+90 XP</div></div>
+      <div class="home-mission-row"><div class="home-mission-icon">AI</div><div class="home-mission-main"><strong>Use AI Builder</strong><span>Generate or test one AI action</span></div><div class="home-mission-reward">+40 XP</div></div>
+      <div class="home-mission-row"><div class="home-mission-icon">↗</div><div class="home-mission-main"><strong>Invite a Friend</strong><span>Bring one new player to Vexa</span></div><div class="home-mission-reward">Gift</div></div>
+      <div class="home-mission-row"><div class="home-mission-icon">◇</div><div class="home-mission-main"><strong>Open Rewards Hub</strong><span>Check today’s reward missions</span></div><div class="home-mission-reward">+15 XP</div></div>
+      <div class="home-mission-row"><div class="home-mission-icon">🔥</div><div class="home-mission-main"><strong>Keep Streak Alive</strong><span>Return tomorrow for a higher streak</span></div><div class="home-mission-reward">Streak</div></div>
     </div>
   </section>
 
