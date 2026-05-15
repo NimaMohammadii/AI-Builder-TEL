@@ -6,7 +6,7 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg
 const CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 export function registerRankCharacterRoutes(app: Hono<{ Bindings: Env }>): void {
-  app.get('/app/api/rank-character/:rank.png', async (c) => {
+  app.get('/app/api/rank-character/:rank', async (c) => {
     const rank = cleanRank(c.req.param('rank'));
     if (!rank) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
     const object = await c.env.ASSETS.get(rankCharacterKey(rank)).catch(() => null);
@@ -37,7 +37,7 @@ function rankCharacterKey(rank: string): string {
 }
 
 function cleanRank(value: unknown): string {
-  const raw = String(value || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 40);
+  const raw = String(value || '').replace(/\.png$/i, '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 40);
   return RANKS.includes(raw) ? raw : '';
 }
 
