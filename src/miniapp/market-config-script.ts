@@ -26,16 +26,14 @@ export const MARKET_CONFIG_SCRIPT = `
   function itemPrice(item){var n=parseFloat(telegramMeta(item).price);return Number.isFinite(n)?n:999999999}
   function collectionName(item){return esc(item&&item.title||'Other').replace(/\s+#?\d+$/,'').trim()||'Other'}
   function collectionKey(name){return esc(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'other'}
-  function filteredSortedGifts(){var all=(Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]).slice();var gifts=all.slice();if(currentCollection!=='all'){gifts=gifts.filter(function(item){return collectionKey(collectionName(item))===currentCollection});if(!gifts.length&&all.length){currentCollection='all';try{localStorage.setItem('vexa-market-collection','all')}catch(e){}gifts=all.slice()}}gifts.sort(function(a,b){var pa=itemPrice(a);var pb=itemPrice(b);return currentSort==='price_desc'?pb-pa:pa-pb});return gifts}
+  function filteredSortedGifts(){var gifts=(Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]).slice();if(currentCollection!=='all'){gifts=gifts.filter(function(item){return collectionKey(collectionName(item))===currentCollection})}gifts.sort(function(a,b){var pa=itemPrice(a);var pb=itemPrice(b);return currentSort==='price_desc'?pb-pa:pa-pb});return gifts}
   function mergeGifts(existing,incoming){var map={};var out=[];(Array.isArray(existing)?existing:[]).forEach(function(item){if(item&&item.id&&!map[item.id]){map[item.id]=1;out.push(item)}});(Array.isArray(incoming)?incoming:[]).forEach(function(item){if(item&&item.id&&!map[item.id]){map[item.id]=1;out.push(item)}});return out}
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
-    if(!item||(!item.imageUrl&&!item.animationUrl)){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
-    var mediaUrl=esc(item.animationUrl||item.imageUrl);
-    if(/\.(mp4|webm|mov)(\?|#|$)/i.test(mediaUrl)){imgWrap.innerHTML='<video class="market-uploaded-image" src="'+mediaUrl+'" autoplay loop muted playsinline></video>';return}
+    if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
+    var mediaUrl=esc(item.imageUrl);
     imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
   }
-  function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
   function priceIcon(){return '<img class="market-price-icon" src="'+NFT_PRICE_ICON_URL+'?v='+iconVersion()+'" alt="TON" decoding="async"/>'}
   function priceButton(value){return '<span class="market-price-button vexa-fragment-price">'+priceIcon()+'<b>'+esc(value||'0')+'</b></span>'}
   function giftCard(item,owned){
@@ -47,7 +45,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var footer=priceButton(metaObj.price);
     return '<button class="market-nft-card game-card market-owned-card-telegram'+cls+'" type="button" data-fragment-polished="1" data-market-owned="'+esc(item.purchaseId||item.id||'')+'" data-market-source="telegram" data-market-item="'+esc(item.id||'')+'"><span class="market-nft-image game-image">'+img+'</span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>'+esc(item.title||'Gift NFT')+'</strong></span><span class="market-owned-meta">'+esc(meta)+'</span>'+footer+'</span></button>';
   }
-  function renderCollectionMenu(){var root=document.getElementById('market');if(!root)return;var menu=root.querySelector('[data-market-collection-menu]');if(!menu)return;var map={};(Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]).forEach(function(item){var name=collectionName(item);map[collectionKey(name)]=name});if(currentCollection!=='all'&&!map[currentCollection]){currentCollection='all';try{localStorage.setItem('vexa-market-collection','all')}catch(e){}}var keys=Object.keys(map).sort(function(a,b){return map[a].localeCompare(map[b])});var html='<button class="market-collection-option '+(currentCollection==='all'?'active':'')+'" type="button" data-market-collection="all"><span>All collections</span><i>✓</i></button>';keys.forEach(function(k){html+='<button class="market-collection-option '+(currentCollection===k?'active':'')+'" type="button" data-market-collection="'+esc(k)+'"><span>'+esc(map[k])+'</span><i>✓</i></button>'});menu.innerHTML=html;var label=root.querySelector('[data-market-collection-label]');if(label)label.textContent=currentCollection==='all'?'Collections':(map[currentCollection]||'Collections')}
+  function renderCollectionMenu(){var root=document.getElementById('market');if(!root)return;var menu=root.querySelector('[data-market-collection-menu]');if(!menu)return;var map={};(Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]).forEach(function(item){var name=collectionName(item);map[collectionKey(name)]=name});var keys=Object.keys(map).sort(function(a,b){return map[a].localeCompare(map[b])});var html='<button class="market-collection-option '+(currentCollection==='all'?'active':'')+'" type="button" data-market-collection="all"><span>All collections</span><i>✓</i></button>';keys.forEach(function(k){html+='<button class="market-collection-option '+(currentCollection===k?'active':'')+'" type="button" data-market-collection="'+esc(k)+'"><span>'+esc(map[k])+'</span><i>✓</i></button>'});menu.innerHTML=html;var label=root.querySelector('[data-market-collection-label]');if(label)label.textContent=currentCollection==='all'?'Collections':(map[currentCollection]||'Collections')}
   function renderTelegramMarket(){
     var root=document.getElementById('market');if(!root)return;
     var grid=root.querySelector('[data-market-telegram-grid]');var empty=root.querySelector('[data-market-telegram-empty]');
@@ -81,7 +79,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var priceBox=sheet.querySelector('.market-detail-price strong');if(priceBox){var old=priceBox.querySelector('.market-price-icon');if(!old)priceBox.insertAdjacentHTML('afterbegin',priceIcon());else old.src=NFT_PRICE_ICON_URL+'?v='+iconVersion()}
     if(buy){buy.remove()}
     if(status){status.remove()}
-    if(specs)specs.innerHTML=spec('Model',item.rarity||'Unknown')+spec('Backdrop',item.supply||'Unknown')+spec('Symbol',item.utility||'Unknown');
+    if(specs)specs.innerHTML='';
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
     try{window.VexaPolishFragmentDetail&&window.VexaPolishFragmentDetail()}catch(e){}
