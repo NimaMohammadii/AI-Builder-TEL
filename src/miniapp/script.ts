@@ -14,6 +14,7 @@ export const MINIAPP_SCRIPT = `
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function setDepositSheet(open){var s=q('depositSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function setRewardsPage(open){var s=q('rewardsPage');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
   function setHeaderGlassMode(id){document.body.classList.toggle('header-glass-mode',id==='playzone'||id==='market')}
 
@@ -103,6 +104,8 @@ export const MINIAPP_SCRIPT = `
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
+    if(a==='open-rewards'){setRewardsPage(true);return}
+    if(a==='close-rewards'){setRewardsPage(false);return}
     if(a==='open-deposit'){setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
     if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
