@@ -1,6 +1,8 @@
 export const HOME_SECTION = `<section id="home" class="view active">
   <style>
-    #home .home-rewards-showcase{position:relative;margin:0 0 12px;padding:14px;border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026));box-shadow:0 22px 60px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(10px) saturate(1.18);-webkit-backdrop-filter:blur(10px) saturate(1.18);overflow:hidden;color:#fff}
+    #home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    #home::-webkit-scrollbar{display:none}
+    #home .home-rewards-showcase{position:relative;margin:16px 0 12px;padding:14px;border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026));box-shadow:0 22px 60px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(10px) saturate(1.18);-webkit-backdrop-filter:blur(10px) saturate(1.18);overflow:hidden;color:#fff}
     #home .home-rewards-showcase:before{content:"";position:absolute;inset:-80px -70px auto auto;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle,rgba(255,211,98,.24),rgba(192,58,91,.13) 42%,rgba(255,255,255,0) 70%);pointer-events:none}
     #home .home-rewards-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 12px}
     #home .home-rewards-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 5px;color:rgba(255,255,255,.52);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.16em}
