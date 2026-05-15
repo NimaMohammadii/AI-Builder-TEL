@@ -1,4 +1,5 @@
 import app from './index';
+import './vexa-league';
 import { buyMarketItem, getMarketItems, getUserMarketNfts, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
 import { loadTonNftMarket, type TonNftMarketItem } from './ton-nft-market';
 import type { Env } from './types';
