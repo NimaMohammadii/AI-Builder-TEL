@@ -13,7 +13,11 @@ export const MINIAPP_SCRIPT = `
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
-  function setDepositSheet(open){var s=q('depositSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function setHomeSheetLock(open){var h=q('home');if(!h)return;if(open)h.style.setProperty('overflow-y','hidden','important');else h.style.removeProperty('overflow-y')}
+  function setSheetOpen(id,bodyClass,open){var s=q(id);if(!s)return;document.body.classList.toggle(bodyClass,!!open);setHomeSheetLock(!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function setDepositSheet(open){setSheetOpen('depositSheet','deposit-open',open)}
+  function setWithdrawSheet(open){setSheetOpen('withdrawSheet','withdraw-open',open)}
+  function setTransactionsSheet(open){setSheetOpen('transactionsSheet','transactions-open',open)}
 
   function ensureOverlayStyles(){
     if(q('vexaOverlayStyles'))return;
@@ -164,6 +168,10 @@ export const MINIAPP_SCRIPT = `
     if(a==='close-leaderboard'){setLeaderboardPage(false);return}
     if(a==='open-deposit'){setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
+    if(a==='open-withdraw'){setWithdrawSheet(true);return}
+    if(a==='close-withdraw'){setWithdrawSheet(false);return}
+    if(a==='open-transactions'){setTransactionsSheet(true);return}
+    if(a==='close-transactions'){setTransactionsSheet(false);return}
     if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
     if(a==='deposit-custom-stars-sheet'){depositStars(q('starsAmountSheet')&&q('starsAmountSheet').value);return}
     if(a==='open-char-limit'){setLimitSheet(true);return}
