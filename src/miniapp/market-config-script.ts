@@ -34,19 +34,16 @@ export const MARKET_CONFIG_SCRIPT = `
     var mediaUrl=esc(item.imageUrl);
     imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
   }
-  function spec(label,value){return '<div class="market-detail-spec"><span>'+esc(label)+'</span><b>'+esc(value||'-')+'</b></div>'}
-  function telegramSpecsLoading(){return spec('Model','Loading...')+spec('Backdrop','Loading...')+spec('Symbol','Loading...')}
   function priceIcon(){return '<img class="market-price-icon" src="'+NFT_PRICE_ICON_URL+'?v='+iconVersion()+'" alt="TON" decoding="async"/>'}
   function priceButton(value){return '<span class="market-price-button vexa-fragment-price">'+priceIcon()+'<b>'+esc(value||'0')+'</b></span>'}
   function giftCard(item,owned){
     var src=esc(item&&item.imageUrl||'');
     var metaObj=telegramMeta(item);
     var img=src?'<img class="market-uploaded-image" src="'+src+'" alt="" decoding="async" loading="lazy"/>':'<span class="market-nft-art"><b></b></span>';
-    var source=item&&item.source==='telegram'?'telegram':'vexa';
-    var meta=source==='telegram'?metaObj.number:esc(item.rarity||'Collectible');
+    var meta=metaObj.number;
     var cls=owned?' market-owned-card':'';
-    var footer=source==='telegram'?priceButton(metaObj.price):'<span class="market-owned-meta">'+meta+'</span>';
-    return '<button class="market-nft-card game-card market-owned-card-'+source+cls+'" type="button" data-fragment-polished="1" data-market-owned="'+esc(item.purchaseId||item.id||'')+'" data-market-source="'+source+'" data-market-item="'+esc(item.id||'')+'"><span class="market-nft-image game-image">'+img+'</span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>'+esc(item.title||'Gift NFT')+'</strong></span><span class="market-owned-meta">'+esc(meta)+'</span>'+footer+'</span></button>';
+    var footer=priceButton(metaObj.price);
+    return '<button class="market-nft-card game-card market-owned-card-telegram'+cls+'" type="button" data-fragment-polished="1" data-market-owned="'+esc(item.purchaseId||item.id||'')+'" data-market-source="telegram" data-market-item="'+esc(item.id||'')+'"><span class="market-nft-image game-image">'+img+'</span><span class="market-nft-info game-info"><span class="market-nft-title-row"><strong>'+esc(item.title||'Gift NFT')+'</strong></span><span class="market-owned-meta">'+esc(meta)+'</span>'+footer+'</span></button>';
   }
   function renderCollectionMenu(){var root=document.getElementById('market');if(!root)return;var menu=root.querySelector('[data-market-collection-menu]');if(!menu)return;var map={};(Array.isArray(lastTelegramGifts)?lastTelegramGifts:[]).forEach(function(item){var name=collectionName(item);map[collectionKey(name)]=name});var keys=Object.keys(map).sort(function(a,b){return map[a].localeCompare(map[b])});var html='<button class="market-collection-option '+(currentCollection==='all'?'active':'')+'" type="button" data-market-collection="all"><span>All collections</span><i>✓</i></button>';keys.forEach(function(k){html+='<button class="market-collection-option '+(currentCollection===k?'active':'')+'" type="button" data-market-collection="'+esc(k)+'"><span>'+esc(map[k])+'</span><i>✓</i></button>'});menu.innerHTML=html;var label=root.querySelector('[data-market-collection-label]');if(label)label.textContent=currentCollection==='all'?'Collections':(map[currentCollection]||'Collections')}
   function renderTelegramMarket(){
@@ -71,19 +68,21 @@ export const MARKET_CONFIG_SCRIPT = `
   }
   async function openDetail(item){
     var sheet=document.getElementById('marketDetailSheet');if(!sheet||!item)return;activeDetailItem=item;
-    var isTelegram=item.source==='telegram';var tmeta=telegramMeta(item);
+    var tmeta=telegramMeta(item);
     sheet.classList.remove('is-success');
+    sheet.classList.add('vexa-fragment-detail');
     var title=sheet.querySelector('[data-market-detail-title]');var desc=sheet.querySelector('[data-market-detail-description]');var collection=sheet.querySelector('[data-market-detail-collection]');var price=sheet.querySelector('[data-market-detail-price]');var specs=sheet.querySelector('[data-market-detail-specs]');var media=sheet.querySelector('[data-market-detail-media]');var buy=sheet.querySelector('[data-market-buy]');var status=sheet.querySelector('[data-market-detail-status]');
     if(title)title.textContent=esc(item.title||'Gift NFT');
-    if(desc)desc.textContent=isTelegram?tmeta.number:esc(item.description||'Telegram Gift NFT on TON.');
-    if(collection)collection.textContent=isTelegram?'Telegram Gift':esc(item.collection||'TON Gift NFTs');
-    if(price)price.textContent=isTelegram?(tmeta.price||'0'):esc(item.price||'0');
-    if(isTelegram){var priceBox=sheet.querySelector('.market-detail-price strong');if(priceBox){var old=priceBox.querySelector('.market-price-icon');if(!old)priceBox.insertAdjacentHTML('afterbegin',priceIcon());else old.src=NFT_PRICE_ICON_URL+'?v='+iconVersion()}}
+    if(desc)desc.textContent=tmeta.number||'';
+    if(collection)collection.textContent='Telegram Gift';
+    if(price)price.textContent=tmeta.price||'0';
+    var priceBox=sheet.querySelector('.market-detail-price strong');if(priceBox){var old=priceBox.querySelector('.market-price-icon');if(!old)priceBox.insertAdjacentHTML('afterbegin',priceIcon());else old.src=NFT_PRICE_ICON_URL+'?v='+iconVersion()}
     if(buy){buy.remove()}
     if(status){status.remove()}
-    if(specs)specs.innerHTML=isTelegram?telegramSpecsLoading():spec('Rarity',item.rarity)+spec('Total Supply',item.supply)+spec('Benefit',item.utility);
+    if(specs)specs.innerHTML='';
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
+    try{window.VexaPolishFragmentDetail&&window.VexaPolishFragmentDetail()}catch(e){}
   }
   function showSuccess(){var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;sheet.classList.add('is-success');setTimeout(function(){closeDetail();setMarketTab('owned')},1450)}
   function closeDetail(){var sheet=document.getElementById('marketDetailSheet');if(!sheet)return;sheet.classList.remove('open','is-success');sheet.setAttribute('aria-hidden','true');document.body.classList.remove('market-detail-open');activeDetailItem=null}
