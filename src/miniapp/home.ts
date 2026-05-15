@@ -1,4 +1,23 @@
 export const HOME_SECTION = `<section id="home" class="view active">
+  <style>
+    #home .home-rewards-showcase{position:relative;margin:0 0 12px;padding:14px;border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026));box-shadow:0 22px 60px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(10px) saturate(1.18);-webkit-backdrop-filter:blur(10px) saturate(1.18);overflow:hidden;color:#fff}
+    #home .home-rewards-showcase:before{content:"";position:absolute;inset:-80px -70px auto auto;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle,rgba(255,211,98,.24),rgba(192,58,91,.13) 42%,rgba(255,255,255,0) 70%);pointer-events:none}
+    #home .home-rewards-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 12px}
+    #home .home-rewards-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 5px;color:rgba(255,255,255,.52);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.16em}
+    #home .home-rewards-kicker:before{content:"";width:7px;height:7px;border-radius:999px;background:#fff;box-shadow:0 0 18px rgba(255,255,255,.8)}
+    #home .home-rewards-head h3{margin:0;color:#fff;font-size:22px;line-height:.96;font-weight:950;letter-spacing:-.06em}
+    #home .home-rewards-head p{margin:6px 0 0;max-width:250px;color:rgba(255,255,255,.58);font-size:10.5px;line-height:1.28;font-weight:650;letter-spacing:-.02em}
+    #home .home-rewards-streak{height:34px;min-width:74px;border-radius:999px;display:grid;place-items:center;padding:0 12px;background:rgba(255,255,255,.075);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 24px rgba(0,0,0,.16);color:#fff;font-size:11px;font-weight:950;white-space:nowrap}
+    #home .home-daily-reward-card{position:relative;display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:11px;align-items:center;margin:0 0 10px;padding:12px;border-radius:24px;background:radial-gradient(circle at 18% 0,rgba(255,213,91,.18),rgba(255,255,255,.055) 44%,rgba(255,255,255,.026));box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 18px 42px rgba(0,0,0,.18)}
+    #home .home-daily-reward-orb{width:54px;height:54px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,255,255,.20),rgba(255,255,255,.055));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 28px rgba(0,0,0,.18);font-size:26px;filter:drop-shadow(0 10px 20px rgba(255,211,98,.14))}
+    #home .home-daily-reward-main{min-width:0}.home-daily-reward-main strong{display:block;color:#fff;font-size:16px;font-weight:950;line-height:1;letter-spacing:-.045em}.home-daily-reward-main span{display:block;margin-top:6px;color:rgba(255,255,255,.55);font-size:10px;font-weight:750;line-height:1.25}
+    #home .home-daily-reward-action{border:0;border-radius:999px;padding:10px 13px;background:#fff;color:#050505;font-size:10px;font-weight:950;letter-spacing:-.02em;box-shadow:0 14px 28px rgba(255,255,255,.12);white-space:nowrap;opacity:.96}
+    #home .home-reward-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    #home .home-reward-mini{position:relative;min-height:78px;border-radius:21px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 12px 26px rgba(0,0,0,.13);padding:10px 9px;overflow:hidden}
+    #home .home-reward-mini:after{content:"";position:absolute;right:-20px;top:-24px;width:58px;height:58px;border-radius:999px;background:rgba(255,255,255,.055)}
+    #home .home-reward-mini i{position:relative;display:block;font-style:normal;font-size:20px;line-height:1;margin-bottom:8px}.home-reward-mini strong{position:relative;display:block;color:#fff;font-size:11px;font-weight:950;line-height:1.05;letter-spacing:-.035em}.home-reward-mini span{position:relative;display:block;margin-top:5px;color:rgba(255,255,255,.48);font-size:8.8px;font-weight:750;line-height:1.15}
+    @media(max-width:380px){#home .home-daily-reward-card{grid-template-columns:48px minmax(0,1fr);gap:9px}.home-daily-reward-action{grid-column:1 / -1;width:100%;height:38px}.home-reward-grid{gap:6px}.home-reward-mini{min-height:72px;padding:9px 8px}.home-reward-mini strong{font-size:10px}.home-reward-mini span{font-size:8px}}
+  </style>
   <section class="home-intro-card">
     <h2>Welcome to Vexa FLOW</h2>
     <p>Vexa FLOW is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
@@ -19,6 +38,30 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
     <div class="home-finance-visual">
       <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+    </div>
+  </section>
+
+  <section class="home-rewards-showcase" aria-label="Daily rewards preview">
+    <div class="home-rewards-head">
+      <div>
+        <div class="home-rewards-kicker">Rewards Hub</div>
+        <h3>Daily Prize</h3>
+        <p>Collect streak rewards, unlock mystery gifts, and build your Vexa status every day.</p>
+      </div>
+      <div class="home-rewards-streak">Day 1</div>
+    </div>
+    <div class="home-daily-reward-card">
+      <div class="home-daily-reward-orb" aria-hidden="true">🎁</div>
+      <div class="home-daily-reward-main">
+        <strong>Today Reward</strong>
+        <span>+50 XP · Bonus chest preview · Claim system coming soon</span>
+      </div>
+      <button class="home-daily-reward-action" type="button" disabled>Preview</button>
+    </div>
+    <div class="home-reward-grid">
+      <div class="home-reward-mini"><i>⚡</i><strong>XP Boost</strong><span>Daily activity bonus</span></div>
+      <div class="home-reward-mini"><i>💎</i><strong>Gift Box</strong><span>Mystery reward slot</span></div>
+      <div class="home-reward-mini"><i>🔥</i><strong>Streak</strong><span>Return every day</span></div>
     </div>
   </section>
 
