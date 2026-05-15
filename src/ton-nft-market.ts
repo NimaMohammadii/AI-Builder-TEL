@@ -135,30 +135,24 @@ function toFragmentStyleMarketItem(item: TonApiNft): TonNftMarketItem | null {
   const collection = item.collection || null;
   const collectionName = firstText(text(collection?.name), 'Telegram Gifts');
   const index = item.index != null ? String(item.index) : '';
-  const title = firstText(
-    text(metadata.name),
-    text(metadata.title),
-    index ? `${collectionName} #${index}` : '',
-    'Telegram Gift'
-  );
-  const imageUrl = firstText(
-    previewUrl(item.previews),
-    text(metadata.image),
-    text(metadata.image_url),
-    text(metadata.content_url)
-  );
+  const title = firstText(text(metadata.name), text(metadata.title), index ? `${collectionName} #${index}` : '', 'Telegram Gift');
+  const imageUrl = firstText(previewUrl(item.previews), text(metadata.image), text(metadata.image_url), text(metadata.content_url));
+  const motionUrl = firstText(text(metadata.animation_url), text(metadata.animation), imageUrl);
   const price = salePriceTon(item.sale);
   const number = index ? `#${index}` : '';
+  const model = metadataTrait(metadata, ['model', 'type', 'rarity']) || collectionName || 'Unknown';
+  const backdrop = metadataTrait(metadata, ['backdrop', 'background']) || 'Unknown';
+  const symbol = metadataTrait(metadata, ['symbol', 'emoji', 'icon']) || 'Unknown';
   return {
     id: `fragment_${address}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90),
     title,
     collection: 'Fragment Gifts',
-    rarity: 'For sale',
-    supply: number || 'For sale',
-    utility: price ? `${price} TON` : 'For sale on Fragment',
-    description: [number, price ? `${price} TON` : '', 'For sale on Fragment'].filter(Boolean).join(' · '),
+    rarity: model,
+    supply: backdrop,
+    utility: symbol,
+    description: [number, price ? `${price} TON` : '', `Model: ${model}`, `Backdrop: ${backdrop}`, `Symbol: ${symbol}`].filter(Boolean).join(' · '),
     imageUrl: imageUrl || null,
-    animationUrl: null,
+    animationUrl: motionUrl || imageUrl || null,
     sourceUrl: null,
     badge: 'For sale',
     source: 'telegram',
@@ -168,13 +162,26 @@ function toFragmentStyleMarketItem(item: TonApiNft): TonNftMarketItem | null {
   };
 }
 
+function metadataTrait(metadata: Record<string, unknown>, names: string[]): string {
+  for (const name of names) {
+    const direct = firstText(metadata[name], metadata[name.toLowerCase()]);
+    if (direct) return direct;
+  }
+  const attrs = arrayValue(metadata.attributes) || arrayValue(metadata.traits) || [];
+  for (const raw of attrs) {
+    const attr = objectValue(raw);
+    const key = firstText(attr.trait_type, attr.type, attr.name, attr.key).toLowerCase();
+    if (!key) continue;
+    if (names.some((name) => key === name || key.includes(name))) {
+      const value = firstText(attr.value, attr.display_value);
+      if (value) return value;
+    }
+  }
+  return '';
+}
+
 function salePriceTon(sale: unknown): string {
-  const raw = firstText(
-    deepText(sale, ['price', 'value']),
-    deepText(sale, ['price', 'amount']),
-    deepText(sale, ['full_price']),
-    deepText(sale, ['amount'])
-  ).replace(/,/g, '.');
+  const raw = firstText(deepText(sale, ['price', 'value']), deepText(sale, ['price', 'amount']), deepText(sale, ['full_price']), deepText(sale, ['amount'])).replace(/,/g, '.');
   const value = Number(raw);
   if (!Number.isFinite(value) || value <= 0) return '';
   const ton = value > 1_000_000 ? value / 1_000_000_000 : value;
