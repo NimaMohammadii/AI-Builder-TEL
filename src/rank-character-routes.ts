@@ -23,7 +23,6 @@ export function registerRankCharacterRoutes(app: Hono<{ Bindings: Env }>): void 
       if (!rank) return c.json({ error: 'Invalid rank.' }, 400);
       if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
       if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-      if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
       const version = String(Date.now());
       await c.env.ASSETS.put(rankCharacterKey(rank), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
       return c.json({ ok: true, rank, url: `/app/api/rank-character/${rank}.png?v=${version}` });
