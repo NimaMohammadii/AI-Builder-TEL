@@ -21,8 +21,8 @@ app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.
 
 app.get('/app/api/nft-price-icon.png', async (c) => {
   const object = await c.env.ASSETS.get(NFT_PRICE_ICON_KEY).catch(() => null);
-  if (!object) return new Response(defaultNftPriceIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': 'no-store, no-cache, must-revalidate, max-age=0' } });
+  if (!object) return new Response(defaultNftPriceIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': IMAGE_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
 });
 
 app.post('/admin/api/upload-nft-price-icon', async (c) => {
