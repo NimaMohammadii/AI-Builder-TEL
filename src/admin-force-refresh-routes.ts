@@ -1,10 +1,14 @@
 import type { Hono } from 'hono';
+import { loadTonNftMarket } from './ton-nft-market';
 import type { Env } from './types';
 
 const APP_CACHE_VERSION_KEY = 'admin:app-cache-version';
+const MARKET_PROVIDER_SETTING_KEY = 'market_provider';
 const FRAGMENT_GIFTS_URL = 'https://fragment.com/gifts?sort=price_asc&filter=sale';
 const DEFAULT_GIFT_LIMIT = 90;
 const MAX_GIFT_LIMIT = 180;
+
+type MarketProvider = 'getgems' | 'fragment';
 
 type Gift = {
   id: string;
@@ -35,9 +39,11 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
       const sort = c.req.query('sort') === 'price_desc' ? 'price_desc' : 'price_asc';
       const limit = clampInt(c.req.query('limit'), 1, MAX_GIFT_LIMIT, DEFAULT_GIFT_LIMIT);
       const offset = clampInt(c.req.query('offset'), 0, 100000, 0);
-      const gifts = await loadFreshFragmentGifts(sort);
+      const provider = await getMarketProvider(c.env);
+      const gifts = provider === 'getgems' ? await loadTonNftMarket(c.env, { sort, limit: MAX_GIFT_LIMIT }) as Gift[] : await loadFreshFragmentGifts(sort);
       const page = gifts.slice(offset, offset + limit);
       return c.json({
+        provider,
         gifts: page,
         total: gifts.length,
         offset,
@@ -46,7 +52,7 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
         hasMore: offset + page.length < gifts.length,
       }, 200, { 'cache-control': 'no-store' });
     } catch (error) {
-      return c.json({ gifts: [], total: 0, offset: 0, limit: DEFAULT_GIFT_LIMIT, hasMore: false, error: error instanceof Error ? error.message : 'Could not refresh Fragment gifts' }, 200, { 'cache-control': 'no-store' });
+      return c.json({ gifts: [], total: 0, offset: 0, limit: DEFAULT_GIFT_LIMIT, hasMore: false, error: error instanceof Error ? error.message : 'Could not refresh TON NFT market' }, 200, { 'cache-control': 'no-store' });
     }
   });
 
@@ -56,6 +62,17 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
     await c.env.BOT_CACHE.put(APP_CACHE_VERSION_KEY, version);
     return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });
   });
+}
+
+async function ensureAppSettings(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)`).run();
+}
+
+async function getMarketProvider(env: Env): Promise<MarketProvider> {
+  await ensureAppSettings(env);
+  const row = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(MARKET_PROVIDER_SETTING_KEY).first<{ value: string }>().catch(() => null);
+  const value = String(row?.value || '').trim().toLowerCase();
+  return value === 'fragment' ? 'fragment' : 'getgems';
 }
 
 async function loadFreshFragmentGifts(sort: string): Promise<Gift[]> {
