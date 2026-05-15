@@ -30,9 +30,8 @@ export const MARKET_CONFIG_SCRIPT = `
   function mergeGifts(existing,incoming){var map={};var out=[];(Array.isArray(existing)?existing:[]).forEach(function(item){if(item&&item.id&&!map[item.id]){map[item.id]=1;out.push(item)}});(Array.isArray(incoming)?incoming:[]).forEach(function(item){if(item&&item.id&&!map[item.id]){map[item.id]=1;out.push(item)}});return out}
   async function renderMedia(imgWrap,item){
     if(!imgWrap)return;
-    if(!item||(!item.imageUrl&&!item.animationUrl)){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
-    var mediaUrl=esc(item.animationUrl||item.imageUrl);
-    if(/\.(mp4|webm|mov)(\?|#|$)/i.test(mediaUrl)){imgWrap.innerHTML='<video class="market-uploaded-image" src="'+mediaUrl+'" autoplay loop muted playsinline></video>';return}
+    if(!item||!item.imageUrl){imgWrap.innerHTML='<span class="market-nft-art"><b></b></span>';return}
+    var mediaUrl=esc(item.imageUrl);
     imgWrap.innerHTML='<img class="market-uploaded-image" src="'+mediaUrl+'" alt="" decoding="async" loading="lazy"/>';
   }
   function priceIcon(){return '<img class="market-price-icon" src="'+NFT_PRICE_ICON_URL+'?v='+iconVersion()+'" alt="TON" decoding="async"/>'}
@@ -80,7 +79,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var priceBox=sheet.querySelector('.market-detail-price strong');if(priceBox){var old=priceBox.querySelector('.market-price-icon');if(!old)priceBox.insertAdjacentHTML('afterbegin',priceIcon());else old.src=NFT_PRICE_ICON_URL+'?v='+iconVersion()}
     if(buy){buy.remove()}
     if(status){status.remove()}
-    if(specs)specs.innerHTML='<div><span>Model</span><b>'+esc(item.rarity||'Unknown')+'</b></div><div><span>Backdrop</span><b>'+esc(item.supply||'Unknown')+'</b></div><div><span>Symbol</span><b>'+esc(item.utility||'Unknown')+'</b></div>';
+    if(specs)specs.innerHTML='';
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
     try{window.VexaPolishFragmentDetail&&window.VexaPolishFragmentDetail()}catch(e){}
