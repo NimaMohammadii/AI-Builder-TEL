@@ -79,7 +79,7 @@ export const MARKET_CONFIG_SCRIPT = `
     var priceBox=sheet.querySelector('.market-detail-price strong');if(priceBox){var old=priceBox.querySelector('.market-price-icon');if(!old)priceBox.insertAdjacentHTML('afterbegin',priceIcon());else old.src=NFT_PRICE_ICON_URL+'?v='+iconVersion()}
     if(buy){buy.remove()}
     if(status){status.remove()}
-    if(specs)specs.innerHTML='';
+    if(specs)specs.innerHTML='<div class="market-detail-spec"><span>Model</span><b>'+esc(item.rarity||'Unknown')+'</b></div><div class="market-detail-spec"><span>Backdrop</span><b>'+esc(item.supply||'Unknown')+'</b></div><div class="market-detail-spec"><span>Symbol</span><b>'+esc(item.utility||'Unknown')+'</b></div>';
     if(media){media.innerHTML='';await renderMedia(media,item)}
     sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('market-detail-open');
     try{window.VexaPolishFragmentDetail&&window.VexaPolishFragmentDetail()}catch(e){}
