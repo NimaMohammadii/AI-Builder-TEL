@@ -6,6 +6,7 @@ import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageVersionKey } from './section-locks';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
+import { registerRankCharacterRoutes } from './rank-character-routes';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -16,6 +17,7 @@ const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 
 registerAdminForceRefreshRoutes(app);
+registerRankCharacterRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
 
