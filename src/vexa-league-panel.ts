@@ -2,15 +2,35 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
 (function(){
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
   function q(s){return document.querySelector(s)}
+  function showLeague(){
+    document.querySelectorAll('.menu-item').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-section')==='league')});
+    document.querySelectorAll('.admin-section').forEach(function(section){section.classList.toggle('active',section.id==='sectionLeague')});
+    var title=document.getElementById('adminTitle');if(title)title.textContent='Vexa League';
+    var sub=document.getElementById('adminSubtitle');if(sub)sub.textContent='Weekly Vex race, missions, prizes and seed users.';
+    var menu=document.getElementById('adminMenu');if(menu)menu.hidden=true;
+    window.scrollTo({top:0,behavior:'smooth'});
+    load();
+  }
+  function addMenuItem(){
+    var menu=document.getElementById('adminMenu');if(!menu||menu.querySelector('[data-section="league"]'))return;
+    var btn=document.createElement('button');
+    btn.className='menu-item';btn.type='button';btn.setAttribute('data-section','league');
+    btn.innerHTML='<strong>Vexa League</strong><span>Vex missions, prizes and seed users</span>';
+    btn.onclick=showLeague;
+    menu.appendChild(btn);
+  }
   function mount(){
-    if(document.querySelector('[data-vexa-league-admin]'))return;
+    if(document.querySelector('[data-vexa-league-admin]')){addMenuItem();return;}
+    addMenuItem();
     var page=document.querySelector('.page')||document.body;
     var section=document.createElement('section');
-    section.className='admin-section';
+    section.className='section admin-section';
+    section.id='sectionLeague';
+    section.setAttribute('data-title','Vexa League');
+    section.setAttribute('data-subtitle','Weekly Vex race, missions, prizes and seed users.');
     section.setAttribute('data-vexa-league-admin','1');
     section.innerHTML='<div class="row-title"><div><h2>Vexa League</h2><p class="small-text">Weekly Vex race, missions, prizes and seed users.</p></div><button class="manage-btn" type="button" data-vl-refresh>Refresh</button></div><div class="mini-status" data-vl-status>Loading League...</div><div data-vl-root></div>';
-    var first=page.querySelector('.admin-section');
-    if(first&&first.parentNode)first.parentNode.insertBefore(section,first);else page.appendChild(section);
+    page.appendChild(section);
     section.querySelector('[data-vl-refresh]').onclick=load;
     load();
   }
