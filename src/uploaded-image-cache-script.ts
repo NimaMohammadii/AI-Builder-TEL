@@ -1,6 +1,10 @@
 export const UPLOADED_IMAGE_CACHE_SCRIPT = `
 (function(){
+  var KEY='vexaUploadedImages:v1';
+  var META_KEY='vexaUploadedImagesUpdatedAt:v1';
+  var TTL=900000;
   var preloaded={};
+  var inFlight=null;
   function installAccessCodeKeyboardCss(){
     if(document.getElementById('accessCodeKeyboardCss'))return;
     var style=document.createElement('style');
@@ -34,16 +38,33 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     preload(url);
     try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url,source:'plinko-ball'}}))}catch(e){}
   }
-  function load(){
-    fetch('/app/api/uploaded-images',{cache:'default'}).then(function(r){return r.json()}).then(function(data){
-      if(data&&data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
-      if(data&&data.tonIconUrl)applyTonIcon(data.tonIconUrl);
-      if(data&&data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
-      (data&&data.preload||[]).forEach(preload);
-    }).catch(function(){});
+  function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
+  function write(data){try{localStorage.setItem(KEY,JSON.stringify(data||{}));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
+  function apply(data,withPreload){
+    if(!data)return;
+    if(data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
+    if(data.tonIconUrl)applyTonIcon(data.tonIconUrl);
+    if(data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
+    if(withPreload)(data.preload||[]).forEach(preload);
   }
-  window.VexaUploadedImages={reload:load};
+  function needsImages(){
+    if(document.querySelector('.view.active#playzone,.view.active#market,.view.active#connect,.view.active#mines,.view.active#plinko'))return true;
+    if(document.querySelector('img[src^="/app/api/credit-icon"],img[src^="/app/api/uploaded-image/credit-icon"],img[data-ton-icon]'))return true;
+    return false;
+  }
+  function load(force){
+    var cached=read();
+    if(cached)apply(cached,false);
+    var last=Number(localStorage.getItem(META_KEY)||0);
+    if(!force&&cached&&last&&Date.now()-last<TTL)return Promise.resolve(cached);
+    if(!force&&!needsImages())return Promise.resolve(cached);
+    if(inFlight)return inFlight;
+    inFlight=fetch('/app/api/uploaded-images',{cache:'default'}).then(function(r){return r.json()}).then(function(data){write(data);apply(data,true);return data}).catch(function(){return cached}).finally(function(){inFlight=null});
+    return inFlight;
+  }
+  window.VexaUploadedImages={reload:function(){return load(true)},load:function(){return load(false)}};
   installAccessCodeKeyboardCss();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+  apply(read(),false);
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-view="market"],[data-view="connect"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);
 })();
 `;
