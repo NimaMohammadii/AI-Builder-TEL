@@ -44,13 +44,13 @@ export const HOME_SECTION = `<section id="home" class="view active">
 
   <button class="home-rewards-entry" type="button" data-action="open-rewards">
     <span class="home-rewards-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8"/><path d="M2.5 7h19v5h-19z"/><path d="M12 7v13"/><path d="M12 7H8.4A2.2 2.2 0 1 1 12 4.8V7z"/><path d="M12 7h3.6A2.2 2.2 0 1 0 12 4.8V7z"/></svg></span>
-    <span class="home-rewards-entry-main"><span>Rewards Hub</span><strong>Daily Prize</strong><small>Day 3 active · 6 missions available</small></span>
+    <span class="home-rewards-entry-main"><span>Rewards Hub</span><strong>Daily Prize</strong><small>Loading missions</small></span>
     <span class="home-rewards-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
   </button>
 
   <div id="rewardsPage" class="rewards-page" aria-hidden="true">
     <div class="rewards-page-top"><div><p class="rewards-page-kicker">Vexa Rewards</p><h2 class="rewards-page-title">Daily Prize</h2><p class="rewards-page-sub">Complete daily missions, keep your streak active, and unlock bigger prizes soon.</p></div><button class="rewards-page-back" type="button" data-action="close-rewards" aria-label="Back">‹</button></div>
-    <div class="rewards-status-strip"><div class="rewards-status-icon"><svg viewBox="0 0 24 24"><path d="M12 3s6 5.2 6 10.5A6 6 0 0 1 6 13.5C6 8.2 12 3 12 3z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 5 0c0-1.8-2.5-4.5-2.5-4.5s-2.5 2.7-2.5 4.5z"/></svg></div><div class="rewards-status-main"><strong>Day 3 Streak</strong><span>Current day · reward preview only</span></div><div class="rewards-status-pill">0 / 6</div></div>
+    <div class="rewards-status-strip"><div class="rewards-status-icon"><svg viewBox="0 0 24 24"><path d="M12 3s6 5.2 6 10.5A6 6 0 0 1 6 13.5C6 8.2 12 3 12 3z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 5 0c0-1.8-2.5-4.5-2.5-4.5s-2.5 2.7-2.5 4.5z"/></svg></div><div class="rewards-status-main"><strong>Day 3 Streak</strong><span>Loading daily missions</span></div><div class="rewards-status-pill">0 / 0</div></div>
     <div class="reward-days" aria-label="Weekly reward days">
       <button class="reward-day done" type="button"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><small>Day</small><strong>1</strong></button>
       <button class="reward-day done" type="button"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><small>Day</small><strong>2</strong></button>
@@ -60,15 +60,10 @@ export const HOME_SECTION = `<section id="home" class="view active">
       <button class="reward-day" type="button"><svg viewBox="0 0 24 24"><path d="M12 3s6 5.2 6 10.5A6 6 0 0 1 6 13.5C6 8.2 12 3 12 3z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 5 0c0-1.8-2.5-4.5-2.5-4.5s-2.5 2.7-2.5 4.5z"/></svg><small>Day</small><strong>6</strong></button>
       <button class="reward-day" type="button"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M5 18l1.5-10 4 4 1.5-7 1.5 7 4-4L19 18"/></svg><small>Day</small><strong>7</strong></button>
     </div>
-    <div class="reward-today"><div class="reward-today-icon"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8"/><path d="M2.5 7h19v5h-19z"/><path d="M12 7v13"/><path d="M12 7H8.4A2.2 2.2 0 1 1 12 4.8V7z"/><path d="M12 7h3.6A2.2 2.2 0 1 0 12 4.8V7z"/></svg></div><div class="reward-today-main"><strong>Day 3 Reward</strong><span>+90 XP · bonus chest preview</span></div><button class="reward-today-button" type="button" disabled>Preview</button></div>
-    <div class="missions-title"><strong>Today missions</strong><span>0 / 6 done</span></div>
+    <div class="reward-today"><div class="reward-today-icon"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8"/><path d="M2.5 7h19v5h-19z"/><path d="M12 7v13"/><path d="M12 7H8.4A2.2 2.2 0 1 1 12 4.8V7z"/><path d="M12 7h3.6A2.2 2.2 0 1 0 12 4.8V7z"/></svg></div><div class="reward-today-main"><strong>Day 3 Reward</strong><span>Loading today reward</span></div><button class="reward-today-button" type="button" disabled>Loading</button></div>
+    <div class="missions-title"><strong>Today missions</strong><span>0 / 0 done</span></div>
     <div class="missions-list">
-      <div class="mission-row primary"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><div class="mission-main"><strong>Daily Check-in</strong><span>Open Vexa once today</span></div><div class="mission-reward">+50 XP</div></div>
-      <div class="mission-row"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M6 8h12v8H6z"/><path d="M8 12h3"/><path d="M9.5 10.5v3"/><path d="M15 11.5h.01"/><path d="M17 13.5h.01"/></svg></div><div class="mission-main"><strong>Play 3 Games</strong><span>Complete any three Play Zone rounds</span></div><div class="mission-reward">+90 XP</div></div>
-      <div class="mission-row"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M7.8 7.8l2.1 2.1"/><path d="M14.1 14.1l2.1 2.1"/><path d="M16.2 7.8l-2.1 2.1"/><path d="M9.9 14.1l-2.1 2.1"/><circle cx="12" cy="12" r="3"/></svg></div><div class="mission-main"><strong>Use AI Builder</strong><span>Generate or test one AI action</span></div><div class="mission-reward">+40 XP</div></div>
-      <div class="mission-row"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M7 17L17 7"/><path d="M9 7h8v8"/></svg></div><div class="mission-main"><strong>Invite a Friend</strong><span>Bring one new player to Vexa</span></div><div class="mission-reward">Gift</div></div>
-      <div class="mission-row"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 8-8 10-8-10 8-8z"/><path d="M4 11h16"/></svg></div><div class="mission-main"><strong>Open Rewards Hub</strong><span>Check today’s reward missions</span></div><div class="mission-reward">+15 XP</div></div>
-      <div class="mission-row"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M12 3s6 5.2 6 10.5A6 6 0 0 1 6 13.5C6 8.2 12 3 12 3z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 5 0c0-1.8-2.5-4.5-2.5-4.5s-2.5 2.7-2.5 4.5z"/></svg></div><div class="mission-main"><strong>Keep Streak Alive</strong><span>Return tomorrow for a higher streak</span></div><div class="mission-reward">Streak</div></div>
+      <div class="mission-row primary"><div class="mission-icon"><svg viewBox="0 0 24 24"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="3"/></svg></div><div class="mission-main"><strong>Loading missions</strong><span>Daily missions will appear here</span></div><div class="mission-reward">Vex</div></div>
     </div>
   </div>
 
