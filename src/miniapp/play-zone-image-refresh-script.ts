@@ -6,6 +6,8 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var all=games.concat(ads).concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v9';
   var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v9';
+  var TTL=300000;
+  var inFlight=null;
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
   function clean(url){var value=String(url||'');var marker=value.indexOf('?rt=');if(marker>=0)value=value.slice(0,marker);return value}
@@ -15,12 +17,20 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
     setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko']);
   }
+  function playZoneActive(){var p=document.getElementById('playzone');return Boolean(p&&p.classList.contains('active'))}
   async function refresh(force){
     var cached=readCache();apply(cached);
-    var last=Number(localStorage.getItem(META_KEY)||0);if(!force&&last&&Date.now()-last<300000)return;
-    try{var response=await fetch('/app/api/section-locks',{cache:'no-store'});var data=await response.json();if(!data||!Array.isArray(data.sections))return;var next={};data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});writeCache(next);apply(next)}catch(e){}
+    var last=Number(localStorage.getItem(META_KEY)||0);
+    if(!force&&last&&Date.now()-last<TTL)return cached;
+    if(!force&&!playZoneActive())return cached;
+    if(inFlight)return inFlight;
+    inFlight=(async function(){
+      try{var response=await fetch('/app/api/section-locks',{cache:'no-store'});var data=await response.json();if(!data||!Array.isArray(data.sections))return cached;var next={};data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});writeCache(next);apply(next);return next}catch(e){return cached}
+    })().finally(function(){inFlight=null});
+    return inFlight;
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){refresh(true)});else refresh(true);
-  window.VexaRefreshPlayZoneImages=function(){refresh(true)};
+  apply(readCache());
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(function(){refresh(false)},120)},true);
+  window.VexaRefreshPlayZoneImages=function(){return refresh(true)};
 })();
 `;
