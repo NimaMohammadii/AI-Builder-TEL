@@ -26,20 +26,6 @@ const TOP_PLAYERS_LABEL_FIX = `
 })();
 `;
 
-const REWARD_VISUAL_OVERRIDE = `
-(function(){
-  function inject(){
-    if(document.getElementById('vexaRewardVisualOverride'))return;
-    var style=document.createElement('style');
-    style.id='vexaRewardVisualOverride';
-    style.textContent='body.rewards-open .rewards-page{isolation:isolate!important;background:radial-gradient(circle at 16% -4%,rgba(128,18,46,.34),rgba(128,18,46,0) 36%),radial-gradient(circle at 92% 18%,rgba(128,18,46,.24),rgba(128,18,46,0) 29%),radial-gradient(circle at 50% 108%,rgba(255,255,255,.06),rgba(255,255,255,0) 34%),#050507!important}body.rewards-open .rewards-page>*{position:relative!important;z-index:2!important}body.rewards-open .rewards-page:before{content:""!important;position:fixed!important;inset:0!important;z-index:0!important;pointer-events:none!important;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 390 844\'%3E%3Cg fill=\'none\' stroke=\'%23ffffff\' stroke-opacity=\'.12\' stroke-width=\'1.35\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M300 96l25 12 25-12-25-12-25 12z\'/%3E%3Cpath d=\'M325 84v24\'/%3E%3Cpath d=\'M313 96h24\'/%3E%3Cpath d=\'M42 205c20-24 20-48 0-72-20 24-20 48 0 72z\'/%3E%3Cpath d=\'M34 176c6 10 12 14 18 0\'/%3E%3Ccircle cx=\'64\' cy=\'668\' r=\'29\'/%3E%3Cpath d=\'M45 668h38M64 649v38\'/%3E%3Cpath d=\'M309 607l35 17 35-17-35-17-35 17z\'/%3E%3Cpath d=\'M318 320h30M333 305v30\'/%3E%3Cpath d=\'M74 430l20 20 20-20\'/%3E%3Cpath d=\'M266 456c13-18 13-36 0-54-13 18-13 36 0 54z\'/%3E%3Cpath d=\'M36 548h22M47 537v22\'/%3E%3C/g%3E%3C/svg%3E")!important;background-size:100% 100%!important;background-position:center!important;background-repeat:no-repeat!important;opacity:1!important}body.rewards-open .rewards-page:after{content:""!important;position:fixed!important;inset:0!important;z-index:1!important;pointer-events:none!important;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 390 844\'%3E%3Cg fill=\'none\' stroke=\'%238a1737\' stroke-opacity=\'.28\' stroke-width=\'1.15\'%3E%3Cpath d=\'M18 92h120\'/%3E%3Cpath d=\'M252 148h96\'/%3E%3Cpath d=\'M28 520h76\'/%3E%3Cpath d=\'M244 742h100\'/%3E%3Ccircle cx=\'318\' cy=\'246\' r=\'62\'/%3E%3Ccircle cx=\'72\' cy=\'766\' r=\'74\'/%3E%3Cpath d=\'M278 42c28 38 28 76 0 114\'/%3E%3Cpath d=\'M112 286c-24 32-24 64 0 96\'/%3E%3C/g%3E%3C/svg%3E")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;opacity:.7!important}body.rewards-open .rewards-page-top:after{content:""!important;position:absolute!important;right:24px!important;top:92px!important;width:108px!important;height:108px!important;border-radius:32px!important;background:linear-gradient(135deg,rgba(126,20,48,.16),rgba(255,255,255,.025))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)!important;transform:rotate(18deg)!important;z-index:-1!important}body.rewards-open .rewards-status-strip,body.rewards-open .reward-today{background:linear-gradient(90deg,rgba(126,20,48,.075),rgba(255,255,255,0))!important;border-radius:24px!important}body.rewards-open .mission-row{backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 18px 34px rgba(0,0,0,.14)!important}body.rewards-open .mission-row:after{content:""!important;position:absolute!important;right:-38px!important;top:-46px!important;width:116px!important;height:116px!important;border-radius:999px!important;background:radial-gradient(circle,rgba(126,20,48,.16),rgba(126,20,48,0) 68%)!important;pointer-events:none!important}body.rewards-open .reward-day.current{outline:1px solid rgba(126,20,48,.36)!important}body.rewards-open .reward-today-button,body.rewards-open .mission-reward{transition:transform .18s ease,background .18s ease!important}body.rewards-open .reward-today-button:active,body.rewards-open .mission-reward:active{transform:scale(.96)!important}';
-    document.head.appendChild(style);
-  }
-  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-rewards"]');if(b)setTimeout(inject,10)},true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inject);else inject();
-})();
-`;
-
 export const ACTIVITY_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
@@ -104,4 +90,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
-` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT + REWARD_VISUAL_OVERRIDE;
+` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT;
