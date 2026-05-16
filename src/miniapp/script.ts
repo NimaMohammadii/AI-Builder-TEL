@@ -39,7 +39,7 @@ export const MINIAPP_SCRIPT = `
       entry.className='home-leaderboard-entry';
       entry.type='button';
       entry.setAttribute('data-action','open-leaderboard');
-      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Weekly Vex</span><strong>Top 50 Players</strong><small>Weekly users, ranks, Vex and TON balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
+      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Weekly Prize</span><strong>Top 50 Players</strong><small>Weekly users, ranks, Vex and TON balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
       if(rewards&&rewards.parentNode)rewards.parentNode.insertBefore(entry,rewards.nextSibling);
       else{var home=q('home');if(home)home.appendChild(entry)}
     }
@@ -48,7 +48,7 @@ export const MINIAPP_SCRIPT = `
     page.id='leaderboardPage';
     page.className='leaderboard-page';
     page.setAttribute('aria-hidden','true');
-    page.innerHTML='<div class="leaderboard-top"><div><p class="leaderboard-kicker">Weekly Vex</p><h2 class="leaderboard-title">Top 50 Players</h2><p class="leaderboard-sub">Loading weekly players...</p></div><button class="leaderboard-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></div><div class="leaderboard-list"></div>';
+    page.innerHTML='<div class="leaderboard-top"><div><p class="leaderboard-kicker">Weekly Prize</p><h2 class="leaderboard-title">Top 50 Players</h2><p class="leaderboard-sub">Loading weekly players...</p></div><button class="leaderboard-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></div><div class="leaderboard-list"></div>';
     document.body.appendChild(page);
   }
 
