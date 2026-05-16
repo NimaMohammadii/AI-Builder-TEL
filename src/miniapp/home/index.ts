@@ -1,3 +1,0 @@
-export { HOME_SECTION } from './design';
-export { HOME_OVERRIDES } from './styles';
-export { HOME_IMAGE_VERSION_SCRIPT } from './script';
