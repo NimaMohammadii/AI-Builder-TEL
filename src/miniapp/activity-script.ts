@@ -1,6 +1,31 @@
 import { VEXA_LEAGUE_SCRIPT } from './vexa-league-script';
 import { VEXA_REWARDS_SCRIPT } from './vexa-rewards-script';
 
+const TOP_PLAYERS_LABEL_FIX = `
+(function(){
+  function apply(){
+    var entry=document.getElementById('leaderboardEntry');
+    if(entry){
+      var main=entry.querySelector('.home-leaderboard-main');
+      if(main)main.innerHTML='<span>Top Players</span><strong>Top 50 Players</strong><small>Players, ranks, Vex and TON balance</small>';
+    }
+    var page=document.getElementById('leaderboardPage');
+    if(page){
+      page.querySelectorAll('*').forEach(function(el){
+        if(el.childNodes&&el.childNodes.length===1&&el.childNodes[0].nodeType===3){
+          var t=el.textContent||'';
+          if(t.indexOf('Weekly Prize')>-1||t.indexOf('Weekly Vex')>-1||t.indexOf('Weekly users')>-1||t.indexOf('Loading weekly players')>-1){
+            el.textContent=t.replace(/Weekly Prize/g,'Top Players').replace(/Weekly Vex/g,'Top Players').replace(/Weekly users/g,'Players').replace(/Loading weekly players/g,'Loading players');
+          }
+        }
+      });
+    }
+  }
+  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-leaderboard"]');if(b)setTimeout(apply,20)},true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(apply,20);setTimeout(apply,700)});else{setTimeout(apply,20);setTimeout(apply,700)}
+})();
+`;
+
 export const ACTIVITY_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
@@ -65,4 +90,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
-` + VEXA_LEAGUE_SCRIPT + VEXA_REWARDS_SCRIPT;
+` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT;
