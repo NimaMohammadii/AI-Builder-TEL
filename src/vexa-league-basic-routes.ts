@@ -3,9 +3,34 @@ import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from './vexa-league-library'
 import type { Env } from './types';
 
 const CACHE_NONE = 'no-store';
+const HERO_IMAGE_KEY = 'top-players-hero-image';
+const HERO_IMAGE_CACHE = 'public, max-age=31536000, immutable';
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const SEED_NAMES = ['NexaWolf','AriaFlow','VexaKing','MoonPilot','BlackNova','SilverVex','CryptoRay','Axion','EliteLuna','OrionAI','ProMiner','ZaraTon','NeonBot','PlinkoStar','AIHunter','VexRunner','TowerFox','DiceWave','ExplorerX','RookieOne','NovaByte','TonWizard','LuckyKai','BotSmith','RankFox','AuraNode','MinesAce','CrashLord','WheelBee','PromptFox','VoiceRex','ImageZen','GroupHero','QuestPilot','LeagueCat','VexTiger','NftScout','FlowMaster','SparkTon','LunaQuest','BotCrafter','VexBlade','NovaMint','KaiRunner','EchoVex','PrizeBear','TonKnight','ZetaPlay','CloudVex','OmegaAI'];
 
 type WeekRow = Record<string, unknown> & { id: string };
+
+app.get('/app/api/top-players-hero-image', async (c) => {
+  const object = await c.env.ASSETS.get(HERO_IMAGE_KEY).catch(() => null);
+  if (!object) return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  headers.set('cache-control', HERO_IMAGE_CACHE);
+  if (!headers.get('content-type')) headers.set('content-type', object.customMetadata?.contentType || 'image/png');
+  return new Response(object.body, { headers });
+});
+
+app.post('/admin/upload-top-players-hero-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  const form = await c.req.formData();
+  const file = form.get('image');
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
+  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, WebP or GIF images are allowed.' }, 400, { 'cache-control': CACHE_NONE });
+  if (file.size > 8_000_000) return c.json({ error: 'Image must be under 8MB.' }, 400, { 'cache-control': CACHE_NONE });
+  await c.env.ASSETS.put(HERO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { contentType: file.type, version: String(Date.now()), filename: file.name || 'top-players-hero' } });
+  return c.json({ ok: true, imageUrl: `/app/api/top-players-hero-image?v=${Date.now()}` }, 200, { 'cache-control': CACHE_NONE });
+});
 
 app.get('/admin/api/vexa-league', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
@@ -13,7 +38,7 @@ app.get('/admin/api/vexa-league', async (c) => {
   const week = await currentWeek(c.env);
   const today = new Date().toISOString().slice(0, 10);
   const [dailyMissions, weeklyPrizes, seedUsers] = await Promise.all([daily(c.env, week.id, today), prizes(c.env, week.id), seeds(c.env, week.id)]);
-  return c.json({ ok: true, missionLibrary: VEXA_LEAGUE_MISSIONS, prizeLibrary: VEXA_LEAGUE_PRIZES, currentWeek: week, dailyMissions, weeklyPrizes, seedUsers }, 200, { 'cache-control': CACHE_NONE });
+  return c.json({ ok: true, missionLibrary: VEXA_LEAGUE_MISSIONS, prizeLibrary: VEXA_LEAGUE_PRIZES, currentWeek: week, dailyMissions, weeklyPrizes, seedUsers, topPlayersHeroImageUrl: `/app/api/top-players-hero-image?v=${Date.now()}` }, 200, { 'cache-control': CACHE_NONE });
 });
 
 app.get('/app/api/vexa-league', async (c) => {
@@ -22,7 +47,7 @@ app.get('/app/api/vexa-league', async (c) => {
   const week = await currentWeek(c.env);
   const today = new Date().toISOString().slice(0, 10);
   const [todayMissions, weeklyPrizes, seedUsers, userState] = await Promise.all([daily(c.env, week.id, today), prizes(c.env, week.id), leaderboard(c.env, week.id), userLeague(c.env, week.id, userId)]);
-  return c.json({ ok: true, currentWeek: week, todayMissions, weeklyPrizes, seedUsers, userState }, 200, { 'cache-control': CACHE_NONE });
+  return c.json({ ok: true, currentWeek: week, todayMissions, weeklyPrizes, seedUsers, userState, topPlayersHeroImageUrl: `/app/api/top-players-hero-image?v=${Date.now()}` }, 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/vexa-league/week', async (c) => {
