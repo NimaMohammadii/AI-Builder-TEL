@@ -55,8 +55,8 @@ app.get('/app/api/credit-icon.png', async (c) => {
 app.post('/admin/upload-credit-icon', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
-  const file = form.get('icon');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  const file = form.get('icon') as unknown as { type: string; size: number; stream: () => ReadableStream } | null;
+  if (!file || typeof file.stream !== 'function') return c.json({ error: 'Choose an image file.' }, 400);
   if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
   if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const version = String(Date.now());
