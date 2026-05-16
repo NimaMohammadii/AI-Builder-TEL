@@ -1,1 +1,1 @@
-export { CONNECT_SECTION } from './connect';
+export { CONNECT_SECTION } from './connect/index';
