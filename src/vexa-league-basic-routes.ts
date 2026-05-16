@@ -1,5 +1,5 @@
 import app from './index';
-import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from './vexa-league';
+import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from './vexa-league-library';
 import type { Env } from './types';
 
 const CACHE_NONE = 'no-store';
@@ -12,11 +12,7 @@ app.get('/admin/api/vexa-league', async (c) => {
   await ensureTables(c.env);
   const week = await currentWeek(c.env);
   const today = new Date().toISOString().slice(0, 10);
-  const [dailyMissions, weeklyPrizes, seedUsers] = await Promise.all([
-    daily(c.env, week.id, today),
-    prizes(c.env, week.id),
-    seeds(c.env, week.id),
-  ]);
+  const [dailyMissions, weeklyPrizes, seedUsers] = await Promise.all([daily(c.env, week.id, today), prizes(c.env, week.id), seeds(c.env, week.id)]);
   return c.json({ ok: true, missionLibrary: VEXA_LEAGUE_MISSIONS, prizeLibrary: VEXA_LEAGUE_PRIZES, currentWeek: week, dailyMissions, weeklyPrizes, seedUsers }, 200, { 'cache-control': CACHE_NONE });
 });
 
@@ -25,12 +21,7 @@ app.get('/app/api/vexa-league', async (c) => {
   const userId = cleanUserId(c.req.query('userId'));
   const week = await currentWeek(c.env);
   const today = new Date().toISOString().slice(0, 10);
-  const [todayMissions, weeklyPrizes, seedUsers, userState] = await Promise.all([
-    daily(c.env, week.id, today),
-    prizes(c.env, week.id),
-    leaderboard(c.env, week.id),
-    userLeague(c.env, week.id, userId),
-  ]);
+  const [todayMissions, weeklyPrizes, seedUsers, userState] = await Promise.all([daily(c.env, week.id, today), prizes(c.env, week.id), leaderboard(c.env, week.id), userLeague(c.env, week.id, userId)]);
   return c.json({ ok: true, currentWeek: week, todayMissions, weeklyPrizes, seedUsers, userState }, 200, { 'cache-control': CACHE_NONE });
 });
 
@@ -38,8 +29,7 @@ app.post('/admin/api/vexa-league/week', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   await ensureTables(c.env);
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-  const row = await upsertWeek(c.env, body);
-  return c.json({ ok: true, currentWeek: row }, 200, { 'cache-control': CACHE_NONE });
+  return c.json({ ok: true, currentWeek: await upsertWeek(c.env, body) }, 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/vexa-league/daily-missions', async (c) => {
@@ -93,25 +83,9 @@ async function ensureTables(env: Env): Promise<void> {
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS vexa_league_weekly_prizes (id TEXT PRIMARY KEY, week_id TEXT NOT NULL, prize_template_id TEXT NOT NULL, rank_from INTEGER NOT NULL DEFAULT 1, rank_to INTEGER NOT NULL DEFAULT 1, enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP)').run();
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS vexa_league_seed_users (id TEXT PRIMARY KEY, week_id TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 999, name TEXT NOT NULL, username TEXT NOT NULL, avatar_initials TEXT NOT NULL, level INTEGER NOT NULL DEFAULT 1, rank_name TEXT NOT NULL DEFAULT \'Rookie\', vex INTEGER NOT NULL DEFAULT 0, balance_ton REAL NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP)').run();
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS vexa_league_scores (user_id TEXT NOT NULL, week_id TEXT NOT NULL, vex INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, banned INTEGER NOT NULL DEFAULT 0, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id, week_id))').run();
-  await env.DB.prepare('CREATE TABLE IF NOT EXISTS vexa_league_claims (id TEXT PRIMARY KEY, week_id TEXT NOT NULL, user_id TEXT NOT NULL, mission_id TEXT NOT NULL, active_date TEXT NOT NULL, vex_amount INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)').run();
 }
-
-async function currentWeek(env: Env): Promise<WeekRow> {
-  const row = await env.DB.prepare('SELECT id, title, starts_at AS startsAt, ends_at AS endsAt, status, rewards_enabled AS rewardsEnabled, seed_users_enabled AS seedUsersEnabled, show_prizes AS showPrizes, winner_count AS winnerCount, announcement FROM vexa_league_weeks ORDER BY created_at DESC LIMIT 1').first<WeekRow>();
-  if (row) return { ...row, rewardsEnabled: Boolean(row.rewardsEnabled), seedUsersEnabled: Boolean(row.seedUsersEnabled), showPrizes: Boolean(row.showPrizes) };
-  const now = new Date();
-  const end = new Date(now.getTime() + 7 * 86400000);
-  const newWeek = { id: id('vlw'), title: 'Vexa Weekly Race', startsAt: now.toISOString(), endsAt: end.toISOString(), status: 'hidden', rewardsEnabled: false, seedUsersEnabled: true, showPrizes: true, winnerCount: 50, announcement: 'Top players win weekly rewards.' } as WeekRow;
-  await env.DB.prepare('INSERT INTO vexa_league_weeks (id, title, starts_at, ends_at, status, rewards_enabled, seed_users_enabled, show_prizes, winner_count, announcement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 1, 1, 50, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)').bind(newWeek.id, newWeek.title, newWeek.startsAt, newWeek.endsAt, newWeek.status, newWeek.announcement).run();
-  return newWeek;
-}
-
-async function upsertWeek(env: Env, body: Record<string, unknown>): Promise<WeekRow> {
-  const week = await currentWeek(env);
-  await env.DB.prepare('UPDATE vexa_league_weeks SET title = ?, starts_at = ?, ends_at = ?, status = ?, rewards_enabled = ?, seed_users_enabled = ?, show_prizes = ?, winner_count = ?, announcement = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(cleanText(body.title, 90, 'Vexa Weekly Race'), cleanIso(body.startsAt) || week.startsAt, cleanIso(body.endsAt) || week.endsAt, cleanText(body.status, 20, 'hidden'), truthy(body.rewardsEnabled) ? 1 : 0, truthy(body.seedUsersEnabled) ? 1 : 0, body.showPrizes === false ? 0 : 1, cleanInt(body.winnerCount, 0, 500, 50), cleanText(body.announcement, 240, 'Top players win weekly rewards.'), week.id).run();
-  return currentWeek(env);
-}
-
+async function currentWeek(env: Env): Promise<WeekRow> { const row = await env.DB.prepare('SELECT id, title, starts_at AS startsAt, ends_at AS endsAt, status, rewards_enabled AS rewardsEnabled, seed_users_enabled AS seedUsersEnabled, show_prizes AS showPrizes, winner_count AS winnerCount, announcement FROM vexa_league_weeks ORDER BY created_at DESC LIMIT 1').first<WeekRow>(); if (row) return { ...row, rewardsEnabled: Boolean(row.rewardsEnabled), seedUsersEnabled: Boolean(row.seedUsersEnabled), showPrizes: Boolean(row.showPrizes) }; const now = new Date(); const end = new Date(now.getTime() + 7 * 86400000); const newWeek = { id: id('vlw'), title: 'Vexa Weekly Race', startsAt: now.toISOString(), endsAt: end.toISOString(), status: 'hidden', rewardsEnabled: false, seedUsersEnabled: true, showPrizes: true, winnerCount: 50, announcement: 'Top players win weekly rewards.' } as WeekRow; await env.DB.prepare('INSERT INTO vexa_league_weeks (id, title, starts_at, ends_at, status, rewards_enabled, seed_users_enabled, show_prizes, winner_count, announcement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 1, 1, 50, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)').bind(newWeek.id, newWeek.title, newWeek.startsAt, newWeek.endsAt, newWeek.status, newWeek.announcement).run(); return newWeek; }
+async function upsertWeek(env: Env, body: Record<string, unknown>): Promise<WeekRow> { const week = await currentWeek(env); await env.DB.prepare('UPDATE vexa_league_weeks SET title = ?, starts_at = ?, ends_at = ?, status = ?, rewards_enabled = ?, seed_users_enabled = ?, show_prizes = ?, winner_count = ?, announcement = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(cleanText(body.title, 90, 'Vexa Weekly Race'), cleanIso(body.startsAt) || week.startsAt, cleanIso(body.endsAt) || week.endsAt, cleanText(body.status, 20, 'hidden'), truthy(body.rewardsEnabled) ? 1 : 0, truthy(body.seedUsersEnabled) ? 1 : 0, body.showPrizes === false ? 0 : 1, cleanInt(body.winnerCount, 0, 500, 50), cleanText(body.announcement, 240, 'Top players win weekly rewards.'), week.id).run(); return currentWeek(env); }
 async function daily(env: Env, weekId: string, activeDate: string) { const rows = await env.DB.prepare('SELECT id, template_id AS templateId, vex_amount AS vexAmount, enabled FROM vexa_league_daily_missions WHERE week_id = ? AND active_date = ? AND enabled = 1 ORDER BY created_at ASC LIMIT 20').bind(weekId, activeDate).all<Record<string, unknown>>(); return rows.results.map((r) => ({ ...r, title: titleFor(String(r.templateId)), description: 'Complete this mission to earn Vex.' })); }
 async function prizes(env: Env, weekId: string) { const rows = await env.DB.prepare('SELECT id, prize_template_id AS prizeTemplateId, rank_from AS rankFrom, rank_to AS rankTo, enabled FROM vexa_league_weekly_prizes WHERE week_id = ? ORDER BY rank_from ASC LIMIT 50').bind(weekId).all<Record<string, unknown>>(); return rows.results.map((r) => ({ ...r, title: titleFor(String(r.prizeTemplateId)), description: 'Weekly reward.' })); }
 async function seeds(env: Env, weekId: string) { const rows = await env.DB.prepare('SELECT id, position, name, username, avatar_initials AS avatarInitials, level, rank_name AS rankName, vex, balance_ton AS balanceTon, is_active AS isActive FROM vexa_league_seed_users WHERE week_id = ? AND is_active = 1 ORDER BY position ASC LIMIT 50').bind(weekId).all<Record<string, unknown>>(); return rows.results.map((r) => ({ ...r, isActive: Boolean(r.isActive) })); }
