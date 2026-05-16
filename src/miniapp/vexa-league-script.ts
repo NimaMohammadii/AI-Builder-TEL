@@ -1,5 +1,6 @@
 export const VEXA_LEAGUE_SCRIPT = `
 (function(){
+  var refreshToken=0;
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
   function q(id){return document.getElementById(id)}
   function userId(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
@@ -9,6 +10,7 @@ export const VEXA_LEAGUE_SCRIPT = `
       {position:1,name:'NexaWolf',username:'nxwolf',avatarInitials:'NX',level:68,rankName:'Titan',vex:2600,balanceTon:420},{position:2,name:'AriaFlow',username:'ariaflow',avatarInitials:'AR',level:61,rankName:'Titan',vex:2540,balanceTon:392},{position:3,name:'VexaKing',username:'vexaking',avatarInitials:'VK',level:56,rankName:'Legend',vex:2480,balanceTon:354},{position:4,name:'MoonPilot',username:'moonpilot',avatarInitials:'MP',level:49,rankName:'Legend',vex:2390,balanceTon:318},{position:5,name:'BlackNova',username:'blacknova',avatarInitials:'BN',level:44,rankName:'Legend',vex:2310,balanceTon:286},{position:6,name:'SilverVex',username:'silvervex',avatarInitials:'SV',level:39,rankName:'Master',vex:2240,balanceTon:260},{position:7,name:'CryptoRay',username:'cryptoray',avatarInitials:'CR',level:36,rankName:'Master',vex:2180,balanceTon:231},{position:8,name:'Axion',username:'axion',avatarInitials:'AX',level:33,rankName:'Master',vex:2090,balanceTon:204},{position:9,name:'EliteLuna',username:'eliteluna',avatarInitials:'EL',level:29,rankName:'Master',vex:2010,balanceTon:188},{position:10,name:'OrionAI',username:'orionai',avatarInitials:'OR',level:25,rankName:'Master',vex:1940,balanceTon:166}
     ],topPlayersHeroImageUrl:'/app/api/top-players-hero-image?v=fallback'};
   }
+  function withTimeout(promise,ms){return new Promise(function(resolve,reject){var done=false;var timer=setTimeout(function(){if(done)return;done=true;reject(new Error('timeout'))},ms);promise.then(function(v){if(done)return;done=true;clearTimeout(timer);resolve(v)},function(e){if(done)return;done=true;clearTimeout(timer);reject(e)})})}
   function vexaData(){
     var data=window.VexaData=window.VexaData||{};
     if(!data.loadLeague){
@@ -19,7 +21,7 @@ export const VEXA_LEAGUE_SCRIPT = `
         if(!force&&data.league)return Promise.resolve(data.league);
         if(data.leagueInFlight)return data.leagueInFlight;
         data.leagueInFlight=(async function(){
-          try{var id=userId();var url='/app/api/vexa-league'+(id?'?userId='+encodeURIComponent(id):'');var r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'});var j=await r.json().catch(function(){return null});if(r.ok&&j&&j.ok){data.league=j;return j}}
+          try{var id=userId();var url='/app/api/vexa-league'+(id?'?userId='+encodeURIComponent(id):'');var r=await withTimeout(fetch(url,{headers:{accept:'application/json'},cache:'no-store'}),3500);var j=await r.json().catch(function(){return null});if(r.ok&&j&&j.ok){data.league=j;return j}}
           catch(e){}
           data.league=fallbackLeague();return data.league;
         })().finally(function(){data.leagueInFlight=null});
@@ -49,9 +51,9 @@ export const VEXA_LEAGUE_SCRIPT = `
     if(window.VexaTopPlayersHero&&window.VexaTopPlayersHero.refresh)try{window.VexaTopPlayersHero.refresh()}catch(e){}
   }
   function renderLoading(){var page=q('leaderboardPage');if(!page)return;page.innerHTML='<section class="top-players-hero-card"><p class="top-players-hero-kicker">Top Players</p><h2 class="top-players-hero-title">Top 50 Players</h2><p class="top-players-hero-sub">Loading players...</p><div class="top-players-hero-art"><div class="top-players-hero-placeholder">#</div></div><button class="leaderboard-back top-players-hero-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></section><div class="missions-title" style="margin-top:18px"><strong>Top Players</strong><span>Loading</span></div><div class="leaderboard-list"><div class="mission-row"><span class="mission-icon">#</span><span class="mission-main"><strong>Loading players</strong><span>Preparing Top 50 list</span></span><span class="mission-reward">...</span></div></div>';if(window.VexaTopPlayersHero&&window.VexaTopPlayersHero.refresh)try{window.VexaTopPlayersHero.refresh()}catch(e){}}
-  async function refresh(force){updateHomeCard();renderLoading();try{var d=await loadLeague(Boolean(force));renderLeague(d)}catch(e){renderLeague(fallbackLeague())}}
+  async function refresh(force){var token=++refreshToken;updateHomeCard();renderLoading();setTimeout(function(){if(token===refreshToken){renderLeague(fallbackLeague())}},1200);try{var d=await loadLeague(Boolean(force));if(token===refreshToken)renderLeague(d)}catch(e){if(token===refreshToken)renderLeague(fallbackLeague())}}
   window.VexaLeague={refresh:refresh,load:loadLeague,render:renderLeague};
   document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-leaderboard"]');if(b)setTimeout(function(){refresh(false)},80)},true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){updateHomeCard()});else updateHomeCard();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){updateHomeCard();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)});else{updateHomeCard();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)}
 })();
 `;
