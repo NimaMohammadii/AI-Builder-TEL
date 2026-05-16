@@ -92,6 +92,6 @@ export const PLINKO_SCRIPT = `
   document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='plinkoBet')getBet()});
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&isPlinkoActive())smartLoadPlinkoControl(true)});
   window.plinkoReloadControl=function(){smartLoadPlinkoControl(true)};
-  loadPlinkoControl();if(q('plinkoCanvasV2'))init();
+  if(q('plinkoCanvasV2'))init();if(isPlinkoActive())smartLoadPlinkoControl(true);
 })();
 `;
