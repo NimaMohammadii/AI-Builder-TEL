@@ -49,7 +49,7 @@ export const ACTIVITY_SCRIPT = `
   function applyServerTonBalance(value){var balance=Math.max(0,Math.floor(Number(value)||0));if(!Number.isFinite(balance))return;try{window.dispatchEvent(new CustomEvent('vexa-ton-balance-sync',{detail:{tonBalanceNano:balance}}))}catch(e){}}
 
   function sendActivity(force){
-    if(document.hidden&&!force)return;
+    if(document.hidden)return;
     var section=activeSection();
     var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:section};
     if(!body.userId)return;
@@ -88,8 +88,7 @@ export const ACTIVITY_SCRIPT = `
     var b=ev.target&&ev.target.closest&&ev.target.closest('button');
     if(b&&(b.getAttribute('data-action')||b.getAttribute('data-tab')||b.closest('.tabs')))setTimeout(smartSync,120);
   },true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)sendActivity(false);else sendActivity(true)});
-  window.addEventListener('beforeunload',function(){sendActivity(true)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)sendActivity(false)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
 ` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT + TOP_PLAYERS_HERO_SCRIPT;
