@@ -1,5 +1,5 @@
-import app from '../../index';
-import type { Env } from '../../types';
+import app from './index';
+import type { Env } from './types';
 
 app.get('/admin/api/vexa-league/winners', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);

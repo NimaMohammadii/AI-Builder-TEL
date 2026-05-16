@@ -1,1 +1,0 @@
-export const DAILY_PRIZE_DESIGN = '';
