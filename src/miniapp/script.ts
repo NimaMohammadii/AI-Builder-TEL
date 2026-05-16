@@ -30,7 +30,6 @@ export const MINIAPP_SCRIPT = `
   function setRewardsPage(open){var s=q('rewardsPage');if(!s)return;ensureOverlayStyles();if(open&&s.parentNode!==document.body)document.body.appendChild(s);document.body.classList.toggle('rewards-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');if(open)try{s.scrollTop=0}catch(e){}}
   function setLeaderboardPage(open){ensureLeaderboard();var s=q('leaderboardPage');if(!s)return;ensureOverlayStyles();if(open&&s.parentNode!==document.body)document.body.appendChild(s);document.body.classList.toggle('leaderboard-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');if(open)try{s.scrollTop=0}catch(e){}}
 
-  function playerRow(p){return '<div class="leaderboard-row '+(p.i<=3?'top':'')+'"><div class="leaderboard-place">#'+p.i+'</div><div class="leaderboard-avatar">'+p.av+'</div><div class="leaderboard-user"><strong>'+p.name+'</strong><span class="leaderboard-username">@'+p.user+'</span><span>Level '+p.level+' · '+p.xp+' XP</span><span class="leaderboard-rank">'+p.rank+'</span></div><div class="leaderboard-meta"><strong>'+p.balance+' TON</strong><span>Score '+p.score+'</span></div></div>'}
   function ensureLeaderboard(){
     ensureOverlayStyles();
     if(!q('leaderboardEntry')){
@@ -40,38 +39,16 @@ export const MINIAPP_SCRIPT = `
       entry.className='home-leaderboard-entry';
       entry.type='button';
       entry.setAttribute('data-action','open-leaderboard');
-      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Leaderboard</span><strong>Top Players</strong><small>Top 50 users · name, level, rank and balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
+      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Weekly Vex</span><strong>Top 50 Players</strong><small>Weekly users, ranks, Vex and TON balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
       if(rewards&&rewards.parentNode)rewards.parentNode.insertBefore(entry,rewards.nextSibling);
       else{var home=q('home');if(home)home.appendChild(entry)}
     }
     if(q('leaderboardPage'))return;
-    var players=[
-      {i:1,av:'NX',name:'NexaWolf',user:'nxwolf',level:68,rank:'Titan',balance:'412.8',xp:'92,450',score:'9.8k'},
-      {i:2,av:'AR',name:'AriaFlow',user:'ariaflow',level:61,rank:'Titan',balance:'285.4',xp:'81,220',score:'8.9k'},
-      {i:3,av:'VK',name:'VexaKing',user:'vexaking',level:56,rank:'Legend',balance:'241.9',xp:'73,100',score:'8.1k'},
-      {i:4,av:'MO',name:'MoonPilot',user:'moonpilot',level:49,rank:'Legend',balance:'198.2',xp:'59,870',score:'7.4k'},
-      {i:5,av:'BL',name:'BlackNova',user:'blacknova',level:44,rank:'Legend',balance:'176.0',xp:'52,600',score:'6.8k'},
-      {i:6,av:'SV',name:'SilverVex',user:'silvervex',level:39,rank:'Master',balance:'142.5',xp:'45,300',score:'6.1k'},
-      {i:7,av:'CR',name:'CryptoRay',user:'cryptoray',level:36,rank:'Master',balance:'119.7',xp:'41,920',score:'5.7k'},
-      {i:8,av:'AX',name:'Axion',user:'axion',level:33,rank:'Master',balance:'98.3',xp:'37,460',score:'5.2k'},
-      {i:9,av:'EL',name:'EliteLuna',user:'eliteluna',level:29,rank:'Master',balance:'86.4',xp:'31,870',score:'4.8k'},
-      {i:10,av:'OR',name:'OrionAI',user:'orionai',level:25,rank:'Master',balance:'74.9',xp:'26,610',score:'4.3k'},
-      {i:11,av:'PR',name:'ProMiner',user:'prominer',level:22,rank:'Elite',balance:'63.2',xp:'21,900',score:'3.9k'},
-      {i:12,av:'ZA',name:'ZaraTon',user:'zaraton',level:20,rank:'Elite',balance:'58.7',xp:'19,440',score:'3.6k'},
-      {i:13,av:'NE',name:'NeonBot',user:'neonbot',level:18,rank:'Elite',balance:'44.1',xp:'16,800',score:'3.1k'},
-      {i:14,av:'PL',name:'PlinkoStar',user:'plinkostar',level:16,rank:'Elite',balance:'39.8',xp:'14,250',score:'2.8k'},
-      {i:15,av:'AI',name:'AIHunter',user:'aihunter',level:14,rank:'Pro',balance:'31.2',xp:'11,770',score:'2.5k'},
-      {i:16,av:'VX',name:'VexRunner',user:'vexrunner',level:12,rank:'Pro',balance:'24.5',xp:'9,980',score:'2.1k'},
-      {i:17,av:'TO',name:'TowerFox',user:'towerfox',level:10,rank:'Pro',balance:'18.6',xp:'7,650',score:'1.7k'},
-      {i:18,av:'DI',name:'DiceWave',user:'dicewave',level:8,rank:'Pro',balance:'12.4',xp:'5,880',score:'1.3k'},
-      {i:19,av:'EX',name:'ExplorerX',user:'explorerx',level:6,rank:'Explorer',balance:'8.9',xp:'3,640',score:'940'},
-      {i:20,av:'RO',name:'RookieOne',user:'rookieone',level:3,rank:'Rookie',balance:'2.7',xp:'1,240',score:'310'}
-    ];
     var page=document.createElement('div');
     page.id='leaderboardPage';
     page.className='leaderboard-page';
     page.setAttribute('aria-hidden','true');
-    page.innerHTML='<div class="leaderboard-top"><div><p class="leaderboard-kicker">Vexa Leaderboard</p><h2 class="leaderboard-title">Top Players</h2><p class="leaderboard-sub">A visual preview of the top users by name, username, level, rank, balance and total XP.</p></div><button class="leaderboard-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></div><div class="leaderboard-summary"><div class="leaderboard-stat"><span>Players</span><strong>Top 50</strong></div><div class="leaderboard-stat"><span>Highest</span><strong>Lv 68</strong></div><div class="leaderboard-stat"><span>Total TON</span><strong>1,842</strong></div></div><div class="leaderboard-list">'+players.map(playerRow).join('')+'</div>';
+    page.innerHTML='<div class="leaderboard-top"><div><p class="leaderboard-kicker">Weekly Vex</p><h2 class="leaderboard-title">Top 50 Players</h2><p class="leaderboard-sub">Loading weekly players...</p></div><button class="leaderboard-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></div><div class="leaderboard-list"></div>';
     document.body.appendChild(page);
   }
 
