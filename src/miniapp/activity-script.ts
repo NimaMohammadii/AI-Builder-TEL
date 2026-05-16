@@ -1,5 +1,6 @@
 import { VEXA_LEAGUE_SCRIPT } from './vexa-league-script';
 import { VEXA_REWARDS_SCRIPT } from './vexa-rewards-script';
+import { TOP_PLAYERS_HERO_SCRIPT } from './top-players-hero-script';
 
 const TOP_PLAYERS_LABEL_FIX = `
 (function(){
@@ -90,4 +91,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
-` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT;
+` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT + TOP_PLAYERS_HERO_SCRIPT;
