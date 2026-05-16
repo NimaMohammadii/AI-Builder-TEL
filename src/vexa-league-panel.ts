@@ -1,7 +1,3 @@
-import './vexa-league-admin-user-routes';
-import './vexa-league-winners-routes';
-import './vexa-league-week-routes';
-
 export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
 (function(){
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
