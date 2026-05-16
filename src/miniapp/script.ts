@@ -28,7 +28,7 @@ export const MINIAPP_SCRIPT = `
   }
 
   function setRewardsPage(open){var s=q('rewardsPage');if(!s)return;ensureOverlayStyles();if(open&&s.parentNode!==document.body)document.body.appendChild(s);document.body.classList.toggle('rewards-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');if(open)try{s.scrollTop=0}catch(e){}}
-  function setLeaderboardPage(open){ensureLeaderboard();var s=q('leaderboardPage');if(!s)return;ensureOverlayStyles();if(open&&s.parentNode!==document.body)document.body.appendChild(s);document.body.classList.toggle('leaderboard-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');if(open)try{s.scrollTop=0}catch(e){}}
+  function setLeaderboardPage(open){ensureLeaderboard();var s=q('leaderboardPage');if(!s)return;ensureOverlayStyles();if(open&&s.parentNode!==document.body)document.body.appendChild(s);document.body.classList.toggle('leaderboard-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');if(open){try{s.scrollTop=0}catch(e){} if(window.VexaLeague&&window.VexaLeague.refresh)setTimeout(function(){window.VexaLeague.refresh(false)},0)}}
 
   function ensureLeaderboard(){
     ensureOverlayStyles();
@@ -39,7 +39,7 @@ export const MINIAPP_SCRIPT = `
       entry.className='home-leaderboard-entry';
       entry.type='button';
       entry.setAttribute('data-action','open-leaderboard');
-      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Weekly Prize</span><strong>Top 50 Players</strong><small>Weekly users, ranks, Vex and TON balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
+      entry.innerHTML='<span class="home-leaderboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M7 18V9"/><path d="M12 18V5"/><path d="M17 18v-6"/><path d="M8.5 5h7l-3.5-3-3.5 3z"/></svg></span><span class="home-leaderboard-main"><span>Top Players</span><strong>Top 50 Players</strong><small>Players, ranks, Vex and TON balance</small></span><span class="home-leaderboard-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>';
       if(rewards&&rewards.parentNode)rewards.parentNode.insertBefore(entry,rewards.nextSibling);
       else{var home=q('home');if(home)home.appendChild(entry)}
     }
@@ -48,7 +48,7 @@ export const MINIAPP_SCRIPT = `
     page.id='leaderboardPage';
     page.className='leaderboard-page';
     page.setAttribute('aria-hidden','true');
-    page.innerHTML='<div class="leaderboard-top"><div><p class="leaderboard-kicker">Weekly Prize</p><h2 class="leaderboard-title">Top 50 Players</h2><p class="leaderboard-sub">Loading weekly players...</p></div><button class="leaderboard-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></div><div class="leaderboard-list"></div>';
+    page.innerHTML='<section class="top-players-hero-card"><p class="top-players-hero-kicker">Top Players</p><h2 class="top-players-hero-title">Top 50 Players</h2><p class="top-players-hero-sub">Players, ranks, Vex and TON balance.</p><div class="top-players-hero-art"><div class="top-players-hero-placeholder">#</div></div><button class="leaderboard-back top-players-hero-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></section><div class="missions-title" style="margin-top:18px"><strong>Top Players</strong><span>Top 50</span></div><div class="leaderboard-list"><div class="mission-row"><span class="mission-icon">#</span><span class="mission-main"><strong>Open Top Players</strong><span>Preparing player list</span></span><span class="mission-reward">Top 50</span></div></div>';
     document.body.appendChild(page);
   }
 
