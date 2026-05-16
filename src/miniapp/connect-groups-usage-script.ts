@@ -1,5 +1,7 @@
 export const CONNECT_GROUPS_USAGE_SCRIPT = `
 (function(){
+  var loaded=false;
+  var inFlight=null;
   function q(id){return document.getElementById(id)}
   function tgUser(){return window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe&&window.Telegram.WebApp.initDataUnsafe.user||{}}
   function ownerId(){return localStorage.getItem('ownerId')||String(tgUser().id||'')}
@@ -18,10 +20,45 @@ export const CONNECT_GROUPS_USAGE_SCRIPT = `
   function shouldClaim(){return Number(sessionStorage.getItem('vexaGroupClaimPendingUntil')||0)>Date.now()}
   function clearClaimPending(){sessionStorage.removeItem('vexaGroupClaimPendingUntil')}
   async function claimGroups(groups){if(!shouldClaim())return;var uid=ownerId();if(!uid)return;var user=tgUser();var claimed=0;await Promise.all((groups||[]).map(function(g){if(!g||!g.chatId)return Promise.resolve();return api('/app/api/groups/'+encodeURIComponent(g.chatId)+'/payer',{method:'POST',body:JSON.stringify({userId:uid,username:user.username||'',firstName:user.first_name||''})}).then(function(r){if(r&&r.claimed)claimed++}).catch(function(){return null})}));if(claimed>0)clearClaimPending()}
-  async function loadGroups(){var box=q('homeGroups');if(!box)return;var uid=ownerId();if(!uid){box.innerHTML=empty();var no=q('groupsStatus');if(no)no.textContent='Login required';return}try{var data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(uid)+(shouldClaim()?'&claim=1':''));var groups=data.groups||[];await claimGroups(groups);if(shouldClaim()){data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(uid));groups=data.groups||[]}box.innerHTML=groups.length?groups.map(row).join(''):empty();attachPhotos();var st=q('groupsStatus');if(st)st.textContent=groups.length?String(groups.length)+' groups':'Auto-detected'}catch(e){box.innerHTML=empty();var er=q('groupsStatus');if(er)er.textContent='Could not load'}}
-  function refreshSoon(){[250,1000,2500,5000,8000].forEach(function(d){setTimeout(loadGroups,d)})}
-  window.VexaLoadGroups=loadGroups;document.addEventListener('DOMContentLoaded',function(){setTimeout(loadGroups,50)});document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshSoon()});window.addEventListener('focus',refreshSoon);window.addEventListener('pageshow',refreshSoon);
-  document.addEventListener('click',function(e){var refresh=e.target&&e.target.closest&&e.target.closest('[data-action="refresh"]');if(refresh){refreshSoon();return}var add=e.target&&e.target.closest&&e.target.closest('[data-action="add-main-group"]');if(add){markClaimPending();refreshSoon();return}var leave=e.target&&e.target.closest&&e.target.closest('[data-action="leave-main-group"]');if(leave){var chatId=leave.getAttribute('data-chat-id'),uid=ownerId();if(!chatId||!uid)return;api('/app/api/groups/'+encodeURIComponent(chatId)+'/leave',{method:'DELETE',body:JSON.stringify({userId:uid})}).then(loadGroups).catch(loadGroups)}},true);
-  setTimeout(loadGroups,1000);
+  async function loadGroups(force){
+    var box=q('homeGroups');
+    if(!box)return;
+    if(inFlight)return inFlight;
+    if(loaded&&!force){attachPhotos();return}
+    var uid=ownerId();
+    if(!uid){box.innerHTML=empty();var no=q('groupsStatus');if(no)no.textContent='Login required';return}
+    inFlight=(async function(){
+      try{
+        var data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(uid)+(shouldClaim()?'&claim=1':''));
+        var groups=data.groups||[];
+        await claimGroups(groups);
+        if(shouldClaim()){
+          data=await api('/app/api/bots/main/groups?userId='+encodeURIComponent(uid));
+          groups=data.groups||[];
+        }
+        box.innerHTML=groups.length?groups.map(row).join(''):empty();
+        attachPhotos();
+        var st=q('groupsStatus');if(st)st.textContent=groups.length?String(groups.length)+' groups':'Auto-detected';
+        loaded=true;
+      }catch(e){
+        box.innerHTML=empty();
+        var er=q('groupsStatus');if(er)er.textContent='Could not load';
+      }finally{
+        inFlight=null;
+      }
+    })();
+    return inFlight;
+  }
+  window.VexaLoadGroups=function(force){return loadGroups(Boolean(force))};
+  document.addEventListener('click',function(e){
+    var openConnect=e.target&&e.target.closest&&e.target.closest('[data-view="connect"]');
+    if(openConnect){setTimeout(function(){loadGroups(false)},120);return}
+    var refresh=e.target&&e.target.closest&&e.target.closest('[data-action="refresh"]');
+    if(refresh){loaded=false;setTimeout(function(){loadGroups(true)},120);return}
+    var add=e.target&&e.target.closest&&e.target.closest('[data-action="add-main-group"]');
+    if(add){markClaimPending();return}
+    var leave=e.target&&e.target.closest&&e.target.closest('[data-action="leave-main-group"]');
+    if(leave){var chatId=leave.getAttribute('data-chat-id'),uid=ownerId();if(!chatId||!uid)return;api('/app/api/groups/'+encodeURIComponent(chatId)+'/leave',{method:'DELETE',body:JSON.stringify({userId:uid})}).then(function(){loaded=false;return loadGroups(true)}).catch(function(){loaded=false;return loadGroups(true)})}
+  },true);
 })();
 `;
