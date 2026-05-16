@@ -38,6 +38,14 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     preload(url);
     try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:url,source:'plinko-ball'}}))}catch(e){}
   }
+  function applyMinesImages(data){
+    if(!data)return;
+    if(data.minesSafeUrl)preload(data.minesSafeUrl);
+    if(data.minesBombUrl)preload(data.minesBombUrl);
+    if(data.minesSafeUrl||data.minesBombUrl){
+      try{window.dispatchEvent(new CustomEvent('vexa-mines-images-sync',{detail:{safeUrl:data.minesSafeUrl||'',bombUrl:data.minesBombUrl||''}}))}catch(e){}
+    }
+  }
   function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
   function write(data){try{localStorage.setItem(KEY,JSON.stringify(data||{}));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
   function apply(data,withPreload){
@@ -45,6 +53,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     if(data.creditIconUrl)applyCreditIcon(data.creditIconUrl);
     if(data.tonIconUrl)applyTonIcon(data.tonIconUrl);
     if(data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
+    applyMinesImages(data);
     if(withPreload)(data.preload||[]).forEach(preload);
   }
   function needsImages(){
@@ -62,7 +71,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     inFlight=fetch('/app/api/uploaded-images',{cache:'default'}).then(function(r){return r.json()}).then(function(data){write(data);apply(data,true);return data}).catch(function(){return cached}).finally(function(){inFlight=null});
     return inFlight;
   }
-  window.VexaUploadedImages={reload:function(){return load(true)},load:function(){return load(false)}};
+  window.VexaUploadedImages={reload:function(){return load(true)},load:function(){return load(false)},read:read};
   installAccessCodeKeyboardCss();
   apply(read(),false);
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-view="market"],[data-view="connect"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);

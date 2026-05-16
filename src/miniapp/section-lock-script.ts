@@ -11,6 +11,8 @@ export const SECTION_LOCK_SCRIPT = `
   var lastUserLoadAt=0;
   var FULL_RELOAD_COOLDOWN_MS=300000;
   var USER_RELOAD_COOLDOWN_MS=60000;
+  var GLOBAL_CACHE_KEY='vexaSectionLocks:v1';
+  var USER_CACHE_PREFIX='vexaUserControls:';
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';
@@ -18,6 +20,9 @@ export const SECTION_LOCK_SCRIPT = `
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function storageKey(id){return 'sectionUnlocked:'+id}
+  function cacheUserKey(){var id=userId();return id?USER_CACHE_PREFIX+id:''}
+  function readJson(key){try{return key?JSON.parse(localStorage.getItem(key)||'null'):null}catch(e){return null}}
+  function writeJson(key,value){try{if(key)localStorage.setItem(key,JSON.stringify(value||{}))}catch(e){}}
   function isUnlocked(id){return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
   function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
   function visualUrl(item){if(!item)return '';return item.mode==='code'?(item.codeImageUrl||''):(item.lockedImageUrl||item.imageUrl||'')}
@@ -121,26 +126,36 @@ export const SECTION_LOCK_SCRIPT = `
     });
   }
 
-  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){locks={};(data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}).catch(function(){})}
-  function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){userBlocked={};if(Array.isArray(data.sectionBlocks)){data.sectionBlocks.forEach(function(item){if(item&&item.blocked)userBlocked[item.sectionId]={expiresAt:item.expiresAt||null,remainingMs:item.remainingMs==null?null:Number(item.remainingMs)}})}else{(data.blockedSections||[]).forEach(function(section){userBlocked[section]={expiresAt:null,remainingMs:null}})}userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}).catch(function(){})}
+  function applyGlobalData(data){locks={};(data&&data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}
+  function applyUserData(data){userBlocked={};if(!data)return;if(Array.isArray(data.sectionBlocks)){data.sectionBlocks.forEach(function(item){if(item&&item.blocked)userBlocked[item.sectionId]={expiresAt:item.expiresAt||null,remainingMs:item.remainingMs==null?null:Number(item.remainingMs)}})}else{(data.blockedSections||[]).forEach(function(section){userBlocked[section]={expiresAt:null,remainingMs:null}})}userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}
+  function applyCachedLocks(){var global=readJson(GLOBAL_CACHE_KEY);if(global)applyGlobalData(global);var userCache=readJson(cacheUserKey());if(userCache)applyUserData(userCache);applyLocks()}
+  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){writeJson(GLOBAL_CACHE_KEY,data);applyGlobalData(data)}).catch(function(){})}
+  function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){writeJson(cacheUserKey(),data);applyUserData(data)}).catch(function(){})}
   function loadLocks(force){
     var now=Date.now();
-    if(!force&&lastFullLoadAt&&now-lastFullLoadAt<FULL_RELOAD_COOLDOWN_MS){applyLocks();return}
+    if(!force&&lastFullLoadAt&&now-lastFullLoadAt<FULL_RELOAD_COOLDOWN_MS){applyLocks();return Promise.resolve()}
     lastFullLoadAt=now;
     lastUserLoadAt=now;
-    Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks)
+    return Promise.all([loadGlobalLocks(),loadUserControls()]).then(applyLocks)
   }
   function syncUserControls(force){
-    if(document.hidden&&!force)return;
+    if(document.hidden&&!force)return Promise.resolve();
     var now=Date.now();
-    if(!force&&lastUserLoadAt&&now-lastUserLoadAt<USER_RELOAD_COOLDOWN_MS){applyLocks();return}
+    if(!force&&lastUserLoadAt&&now-lastUserLoadAt<USER_RELOAD_COOLDOWN_MS){applyLocks();return Promise.resolve()}
     lastUserLoadAt=now;
-    loadUserControls().then(applyLocks)
+    return loadUserControls().then(applyLocks)
+  }
+  function isNavigationEvent(ev){
+    var t=ev.target&&ev.target.closest?ev.target.closest('[data-view],[data-game-view]'):null;
+    if(t)return true;
+    var a=ev.target&&ev.target.closest?ev.target.closest('[data-action]'):null;
+    if(!a)return false;
+    return ['open-deposit','open-withdraw','open-transactions','open-rewards','open-leaderboard'].indexOf(a.getAttribute('data-action'))>=0;
   }
 
-  window.VexaSectionLocks={reload:function(){loadLocks(true)},syncUser:function(){syncUserControls(true)},apply:applyLocks};
-  document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;setTimeout(function(){syncUserControls(false)},40)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLocks(false);syncUserControls(false);updateKeyboardInset()}});
-  loadLocks(true);setInterval(tickCountdowns,1000);
+  window.VexaSectionLocks={reload:function(){return loadLocks(true)},syncUser:function(){return syncUserControls(true)},apply:applyLocks};
+  document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;if(isNavigationEvent(ev))setTimeout(function(){loadLocks(false)},40)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(lastFullLoadAt)loadLocks(false);if(lastUserLoadAt)syncUserControls(false);updateKeyboardInset()}});
+  applyCachedLocks();setInterval(tickCountdowns,1000);
 })();
 `;
