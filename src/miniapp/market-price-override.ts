@@ -1,1 +1,0 @@
-export const MARKET_PRICE_OVERRIDE = `#market .market-price-button{border:0!important;background:rgba(255,46,99,.025)!important;-webkit-backdrop-filter:blur(1px)!important;backdrop-filter:blur(1px)!important;box-shadow:none!important}#market .market-price-button img,#market .market-price-button b{opacity:1!important;visibility:visible!important}`;
