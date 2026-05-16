@@ -1,6 +1,7 @@
 export const VEXA_LEAGUE_SCRIPT = `
 (function(){
   var refreshToken=0;
+  var autoRenderTimer=0;
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
   function q(id){return document.getElementById(id)}
   function userId(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
@@ -57,10 +58,18 @@ export const VEXA_LEAGUE_SCRIPT = `
     var w=d.currentWeek||{};var users=d.seedUsers||[];var yourVex=Number(d.userState&&d.userState.vex||0)||0;
     page.innerHTML=heroCard(d,w,yourVex)+'<div class="missions-title" style="margin-top:18px"><strong>Top Players</strong><span>Top 50</span></div><div class="leaderboard-list">'+(users.length?users.slice(0,50).map(playerRow).join(''):'<div class="mission-row"><span class="mission-icon">#</span><span class="mission-main"><strong>No players yet</strong><span>Generate seed users from admin panel.</span></span><span class="mission-reward">Top 50</span></div>')+'</div>';
   }
-  function renderLoading(){ensureHeroStyle();var page=q('leaderboardPage');if(!page)return;page.innerHTML='<section class="top-players-hero-card"><p class="top-players-hero-kicker">Top Players</p><h2 class="top-players-hero-title">Top 50 Players</h2><p class="top-players-hero-sub">Loading players...</p><div class="top-players-hero-art"><div class="top-players-hero-placeholder">#</div></div><button class="leaderboard-back top-players-hero-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></section><div class="missions-title" style="margin-top:18px"><strong>Top Players</strong><span>Loading</span></div><div class="leaderboard-list"><div class="mission-row"><span class="mission-icon">#</span><span class="mission-main"><strong>Loading players</strong><span>Preparing Top 50 list</span></span><span class="mission-reward">...</span></div></div>';}
+  function renderLoading(){ensureHeroStyle();var page=q('leaderboardPage');if(!page)return;page.innerHTML='<section class="top-players-hero-card"><p class="top-players-hero-kicker">Top Players</p><h2 class="top-players-hero-title">Top 50 Players</h2><p class="top-players-hero-sub">Loading players...</p><div class="top-players-hero-art"><img src="/app/api/top-players-hero-image?v=loading" alt="" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'<div class=&quot;top-players-hero-placeholder&quot;>#</div>\'"/></div><button class="leaderboard-back top-players-hero-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button></section><div class="missions-title" style="margin-top:18px"><strong>Top Players</strong><span>Loading</span></div><div class="leaderboard-list"><div class="mission-row"><span class="mission-icon">#</span><span class="mission-main"><strong>Loading players</strong><span>Preparing Top 50 list</span></span><span class="mission-reward">...</span></div></div>';}
+  function needsAutoRender(){var page=q('leaderboardPage');if(!page||!page.classList.contains('open'))return false;var t=page.textContent||'';return t.indexOf('Open Top Players')>-1||t.indexOf('Preparing player list')>-1||!page.querySelector('.top-players-hero-stats')}
+  function ensureRendered(){ensureHeroStyle();if(needsAutoRender())refresh(false)}
+  function startAutoRenderWatch(){
+    if(autoRenderTimer)clearInterval(autoRenderTimer);
+    var count=0;
+    autoRenderTimer=setInterval(function(){count++;ensureRendered();if(count>30){clearInterval(autoRenderTimer);autoRenderTimer=0}},300);
+    try{new MutationObserver(function(){setTimeout(ensureRendered,50)}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}
+  }
   async function refresh(force){var token=++refreshToken;updateHomeCard();renderLoading();setTimeout(function(){if(token===refreshToken){renderLeague(fallbackLeague())}},1200);try{var d=await loadLeague(Boolean(force));if(token===refreshToken)renderLeague(d)}catch(e){if(token===refreshToken)renderLeague(fallbackLeague())}}
   window.VexaLeague={refresh:refresh,load:loadLeague,render:renderLeague};
-  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-leaderboard"]');if(b)setTimeout(function(){refresh(false)},80)},true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){ensureHeroStyle();updateHomeCard();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)});else{ensureHeroStyle();updateHomeCard();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)}
+  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-leaderboard"]');if(b){setTimeout(function(){refresh(false)},80);setTimeout(ensureRendered,500);setTimeout(ensureRendered,1400)}},true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){ensureHeroStyle();updateHomeCard();startAutoRenderWatch();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)});else{ensureHeroStyle();updateHomeCard();startAutoRenderWatch();var page=q('leaderboardPage');if(page&&page.classList.contains('open'))refresh(false)}
 })();
 `;
