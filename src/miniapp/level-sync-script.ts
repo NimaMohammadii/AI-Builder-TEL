@@ -4,8 +4,8 @@ export const LEVEL_SYNC_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var queue=Promise.resolve();
   var profile=null;
-  var PLAY_XP_INTERVAL_MS=60000;
-  var PLAY_XP_AMOUNT=10;
+  var PLAY_XP_INTERVAL_MS=3600000;
+  var PLAY_XP_AMOUNT=600;
   var DAILY_XP_AMOUNT=50;
   var ACTIVE_WINDOW_MS=90000;
   var lastActivityAt=Date.now();
@@ -96,7 +96,7 @@ export const LEVEL_SYNC_SCRIPT = `
     playMs+=elapsed;
     while(playMs>=PLAY_XP_INTERVAL_MS){
       playMs-=PLAY_XP_INTERVAL_MS;
-      add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:1});
+      add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});
       xpToast(PLAY_XP_AMOUNT);
     }
     savePlayMs();
