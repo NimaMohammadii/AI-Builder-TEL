@@ -6,6 +6,7 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
 (function(){
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
   function q(s){return document.querySelector(s)}
+  function winnerCount(){return Math.max(1,Math.min(500,Number(q('[data-vl-winners-count]')&&q('[data-vl-winners-count]').value||50)))}
   function showLeague(){
     document.querySelectorAll('.menu-item').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-section')==='league')});
     document.querySelectorAll('.admin-section').forEach(function(section){section.classList.toggle('active',section.id==='sectionLeague')});
@@ -53,7 +54,7 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
   function render(d){
     var root=q('[data-vl-root]');if(!root)return;
     var w=d.currentWeek||{};
-    root.innerHTML='<div class="section-block" style="height:auto!important"><h3>Current Week</h3><label class="small-text">Title</label><input data-vl-title value="'+esc(w.title||'Vexa Weekly Race')+'"/><label class="small-text">Start</label><input data-vl-start type="datetime-local" value="'+esc(toLocal(w.startsAt))+'"/><label class="small-text">End</label><input data-vl-end type="datetime-local" value="'+esc(toLocal(w.endsAt))+'"/><div class="credit-tools"><button type="button" data-vl-toggle-league>'+(w.status==='active'?'League ON':'League OFF')+'</button><button type="button" data-vl-toggle-rewards>'+(w.rewardsEnabled?'Rewards ON':'Rewards OFF')+'</button><button type="button" data-vl-toggle-seeds>'+(w.seedUsersEnabled?'Seeds ON':'Seeds OFF')+'</button></div><label class="small-text">Winner Count</label><input data-vl-winners type="number" min="0" max="500" value="'+esc(w.winnerCount||50)+'"/><label class="small-text">Announcement</label><input data-vl-announcement value="'+esc(w.announcement||'Top players win weekly rewards.')+'"/><button class="save-credit" type="button" data-vl-save-week>Save Week</button><button class="save-credit" type="button" data-vl-new-week>Start New Week</button></div><div class="section-block" style="height:auto!important"><h3>Mission Library</h3><p class="small-text">Select missions for active day and set Vex amount.</p><label class="small-text">Active Date</label><input data-vl-date type="date" value="'+today()+'"/><div data-vl-missions></div><button class="save-credit" type="button" data-vl-save-missions>Save Selected Missions</button></div><div class="section-block" style="height:auto!important"><h3>Weekly Prizes</h3><p class="small-text">Choose prizes or keep rewards disabled.</p><div data-vl-prizes></div><button class="save-credit" type="button" data-vl-save-prizes>Save Prizes</button></div><div class="section-block" style="height:auto!important"><h3>Finalize Week</h3><p class="small-text">Save current real users as winners. Seed users never become real winners.</p><button class="save-credit" type="button" data-vl-finalize>Finalize Current Week</button><div data-vl-winners><p class="mini-status">Loading winners...</p></div></div><div class="section-block" style="height:auto!important"><h3>Seed Users</h3><p class="small-text">Create 50 demo users so leaderboard is not empty.</p><button class="save-credit" type="button" data-vl-generate-seeds>Generate / Reset 50 Seed Users</button><div data-vl-seeds></div></div><div class="section-block" style="height:auto!important"><h3>League Users</h3><p class="small-text">Manual control for real weekly Vex scores.</p><button class="save-credit" type="button" data-vl-refresh-users>Refresh League Users</button><div data-vl-users><p class="mini-status">Loading users...</p></div></div>';
+    root.innerHTML='<div class="section-block" style="height:auto!important"><h3>Current Week</h3><label class="small-text">Title</label><input data-vl-title value="'+esc(w.title||'Vexa Weekly Race')+'"/><label class="small-text">Start</label><input data-vl-start type="datetime-local" value="'+esc(toLocal(w.startsAt))+'"/><label class="small-text">End</label><input data-vl-end type="datetime-local" value="'+esc(toLocal(w.endsAt))+'"/><div class="credit-tools"><button type="button" data-vl-toggle-league>'+(w.status==='active'?'League ON':'League OFF')+'</button><button type="button" data-vl-toggle-rewards>'+(w.rewardsEnabled?'Rewards ON':'Rewards OFF')+'</button><button type="button" data-vl-toggle-seeds>'+(w.seedUsersEnabled?'Seeds ON':'Seeds OFF')+'</button></div><label class="small-text">Winner Count</label><input data-vl-winners-count type="number" min="1" max="500" value="'+esc(w.winnerCount||50)+'"/><label class="small-text">Announcement</label><input data-vl-announcement value="'+esc(w.announcement||'Top players win weekly rewards.')+'"/><button class="save-credit" type="button" data-vl-save-week>Save Week</button><button class="save-credit" type="button" data-vl-new-week>Start New Week</button></div><div class="section-block" style="height:auto!important"><h3>Mission Library</h3><p class="small-text">Select missions for active day and set Vex amount.</p><label class="small-text">Active Date</label><input data-vl-date type="date" value="'+today()+'"/><div data-vl-missions></div><button class="save-credit" type="button" data-vl-save-missions>Save Selected Missions</button></div><div class="section-block" style="height:auto!important"><h3>Weekly Prizes</h3><p class="small-text">Choose prizes or keep rewards disabled.</p><div data-vl-prizes></div><button class="save-credit" type="button" data-vl-save-prizes>Save Prizes</button></div><div class="section-block" style="height:auto!important"><h3>Finalize Week</h3><p class="small-text">Save current real users as winners. Seed users never become real winners.</p><button class="save-credit" type="button" data-vl-finalize>Finalize Current Week</button><div data-vl-winners-list><p class="mini-status">Loading winners...</p></div></div><div class="section-block" style="height:auto!important"><h3>Seed Users</h3><p class="small-text">Create 50 demo users so leaderboard is not empty.</p><button class="save-credit" type="button" data-vl-generate-seeds>Generate / Reset 50 Seed Users</button><div data-vl-seeds></div></div><div class="section-block" style="height:auto!important"><h3>League Users</h3><p class="small-text">Manual control for real weekly Vex scores.</p><button class="save-credit" type="button" data-vl-refresh-users>Refresh League Users</button><div data-vl-users><p class="mini-status">Loading users...</p></div></div>';
     root.querySelector('[data-vl-toggle-league]').onclick=function(){w.status=w.status==='active'?'hidden':'active';render(Object.assign({},d,{currentWeek:w}))};
     root.querySelector('[data-vl-toggle-rewards]').onclick=function(){w.rewardsEnabled=!w.rewardsEnabled;render(Object.assign({},d,{currentWeek:w}))};
     root.querySelector('[data-vl-toggle-seeds]').onclick=function(){w.seedUsersEnabled=!w.seedUsersEnabled;render(Object.assign({},d,{currentWeek:w}))};
@@ -81,13 +82,13 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
     wrap.innerHTML=(d.seedUsers||[]).slice(0,12).map(function(u){return '<div class="mini-status">#'+esc(u.position)+' '+esc(u.name)+' @'+esc(u.username)+' · '+esc(u.vex)+' Vex · Lv '+esc(u.level)+' · '+esc(u.rankName)+' · '+esc(u.balanceTon)+' TON</div>'}).join('')+'<p class="small-text">Showing first 12 of '+esc((d.seedUsers||[]).length)+' seed users.</p>'
   }
   async function loadWinners(){
-    var wrap=q('[data-vl-winners]');if(!wrap)return;
+    var wrap=q('[data-vl-winners-list]');if(!wrap)return;
     wrap.innerHTML='<p class="mini-status">Loading winners...</p>';
     try{var d=await api('/admin/api/vexa-league/winners');renderWinners(d.winners||[],d.previousWinners||[])}
     catch(e){wrap.innerHTML='<p class="mini-status">'+esc(e.message||'Could not load winners')+'</p>'}
   }
   function renderWinners(winners,previous){
-    var wrap=q('[data-vl-winners]');if(!wrap)return;
+    var wrap=q('[data-vl-winners-list]');if(!wrap)return;
     var current=winners.length?winners.slice(0,20).map(function(w){return '<div class="mini-status">#'+esc(w.position)+' '+esc(w.name)+' · '+esc(w.vex)+' Vex '+(w.prizeLabel?'· '+esc(w.prizeLabel):'')+'</div>'}).join(''):'<p class="mini-status">No finalized winners for current week yet.</p>';
     var prev=previous.length?'<p class="small-text">Previous Winners</p>'+previous.slice(0,12).map(function(w){return '<div class="mini-status">#'+esc(w.position)+' '+esc(w.name)+' · '+esc(w.vex)+' Vex · '+esc(w.weekTitle||'Week')+'</div>'}).join(''):'';
     wrap.innerHTML=current+prev;
@@ -95,8 +96,7 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
   async function finalizeWeek(){
     var ok=confirm('Finalize current week winners? This will end the current League week.');
     if(!ok)return;
-    var count=Number(q('[data-vl-winners]').value||q('[data-vl-winners]')&&document.querySelector('[data-vl-winners]').closest('[data-vexa-league-admin]')&&document.querySelector('[data-vl-winners]')?50:50);
-    await api('/admin/api/vexa-league/finalize',{method:'POST',body:JSON.stringify({winnerCount:count})});
+    await api('/admin/api/vexa-league/finalize',{method:'POST',body:JSON.stringify({winnerCount:winnerCount()})});
     load();
   }
   async function startNewWeek(){
@@ -104,8 +104,7 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
     if(!ok)return;
     var title=q('[data-vl-title]').value||'Vexa Weekly Race';
     var announcement=q('[data-vl-announcement]').value||'Complete missions, earn Vex and climb the weekly race.';
-    var count=Number(q('[data-vl-winners]').value||50);
-    await api('/admin/api/vexa-league/new-week',{method:'POST',body:JSON.stringify({title:title,announcement:announcement,winnerCount:count,rewardsEnabled:q('[data-vl-toggle-rewards]').textContent.indexOf('ON')>-1,seedUsersEnabled:q('[data-vl-toggle-seeds]').textContent.indexOf('ON')>-1,showPrizes:true})});
+    await api('/admin/api/vexa-league/new-week',{method:'POST',body:JSON.stringify({title:title,announcement:announcement,winnerCount:winnerCount(),rewardsEnabled:q('[data-vl-toggle-rewards]').textContent.indexOf('ON')>-1,seedUsersEnabled:q('[data-vl-toggle-seeds]').textContent.indexOf('ON')>-1,showPrizes:true})});
     load();
   }
   async function loadLeagueUsers(){
@@ -130,7 +129,7 @@ export const ADMIN_VEXA_LEAGUE_PANEL_SCRIPT = `<script>
     loadLeagueUsers();
   }
   async function saveWeek(){
-    var body={title:q('[data-vl-title]').value,startsAt:fromLocal(q('[data-vl-start]').value),endsAt:fromLocal(q('[data-vl-end]').value),status:q('[data-vl-toggle-league]').textContent.indexOf('ON')>-1?'active':'hidden',rewardsEnabled:q('[data-vl-toggle-rewards]').textContent.indexOf('ON')>-1,seedUsersEnabled:q('[data-vl-toggle-seeds]').textContent.indexOf('ON')>-1,winnerCount:Number(q('[data-vl-winners]').value||50),announcement:q('[data-vl-announcement]').value};
+    var body={title:q('[data-vl-title]').value,startsAt:fromLocal(q('[data-vl-start]').value),endsAt:fromLocal(q('[data-vl-end]').value),status:q('[data-vl-toggle-league]').textContent.indexOf('ON')>-1?'active':'hidden',rewardsEnabled:q('[data-vl-toggle-rewards]').textContent.indexOf('ON')>-1,seedUsersEnabled:q('[data-vl-toggle-seeds]').textContent.indexOf('ON')>-1,winnerCount:winnerCount(),announcement:q('[data-vl-announcement]').value};
     await api('/admin/api/vexa-league/week',{method:'POST',body:JSON.stringify(body)});load();
   }
   async function saveMissions(){
