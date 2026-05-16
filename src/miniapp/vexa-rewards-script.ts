@@ -2,7 +2,7 @@ export const VEXA_REWARDS_SCRIPT = `
 (function(){
   var state=null;
   function q(id){return document.getElementById(id)}
-  function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&gt;','>':'&gt;'}[s]||s})}
+  function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
   function userId(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function claimedIds(){var ids=state&&state.userState&&Array.isArray(state.userState.claimedMissionIds)?state.userState.claimedMissionIds:[];return ids.map(String)}
   function missionId(m,i){return String(m.id||m.templateId||m.title||('reward-mission-'+i)).replace(/[^0-9A-Za-z_-]/g,'_')}
