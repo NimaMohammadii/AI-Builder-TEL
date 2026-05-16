@@ -1,6 +1,6 @@
-import app from './index';
-import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from './vexa-league-library';
-import type { Env } from './types';
+import app from '../../index';
+import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from '../../vexa-league-library';
+import type { Env } from '../../types';
 
 const CACHE_NONE = 'no-store';
 const HERO_IMAGE_KEY = 'top-players-hero-image';

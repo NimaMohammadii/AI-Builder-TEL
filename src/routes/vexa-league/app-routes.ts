@@ -1,5 +1,5 @@
-import app from './index';
-import type { Env } from './types';
+import app from '../../index';
+import type { Env } from '../../types';
 
 app.get('/app/api/vexa-league', async (c) => {
   await ensurePublicLeagueTables(c.env);

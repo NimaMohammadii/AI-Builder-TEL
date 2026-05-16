@@ -1,7 +1,7 @@
 import app from './index';
-import './vexa-league-admin-user-routes';
-import './vexa-league-winners-routes';
-import './vexa-league-week-routes';
+import './routes/vexa-league/admin-routes';
+import './routes/vexa-league/winners-routes';
+import './routes/vexa-league/week-routes';
 import type { Env } from './types';
 
 export type LeagueMissionTemplate = { id: string; title: string; description: string; type: string; defaultVex: number; difficulty: 'Easy' | 'Medium' | 'Hard' | 'Special'; icon: string };

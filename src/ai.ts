@@ -38,6 +38,7 @@ export type BotFlow = {
   start: string;
   nodes: Record<string, BotFlowNode>;
   variables: string[];
+  revision?: string;
 };
 
 export type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string };
