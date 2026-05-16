@@ -10,9 +10,9 @@ export const LEVEL_SYNC_SCRIPT = `
   var ACTIVE_WINDOW_MS=90000;
   var lastActivityAt=Date.now();
   var lastTickAt=Date.now();
+  var lastSmartTickAt=0;
   var playMs=0;
   var dailyChecked=false;
-  var rankModalReady=false;
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,coinflip:1,hilo:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-3',min:1,max:3,text:'Start your Vexa journey.'},
@@ -101,11 +101,17 @@ export const LEVEL_SYNC_SCRIPT = `
     }
     savePlayMs();
   }
-  window.VexaLevel={add:add,load:load,openRanks:openRankModal};
-  ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section()))markActivity()},true)});
-  document.addEventListener('visibilitychange',function(){lastTickAt=Date.now();if(!document.hidden){markActivity();awardDailyOpen()}});
-  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
-  setInterval(tickPlayXp,15000);
+  function smartTick(force){
+    var now=Date.now();
+    if(!force&&now-lastSmartTickAt<5000)return;
+    lastSmartTickAt=now;
+    tickPlayXp();
+  }
+  window.VexaLevel={add:add,load:load,openRanks:openRankModal,flushPlayXp:function(){smartTick(true)}};
+  ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section())){markActivity();smartTick(false)}},true)});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs()}else{lastTickAt=Date.now();markActivity();awardDailyOpen();smartTick(true)}});
+  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){markActivity();smartTick(true)},80)}if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
+  window.addEventListener('beforeunload',function(){smartTick(true);savePlayMs()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();markActivity();lastTickAt=Date.now()});else{load();markActivity();lastTickAt=Date.now()}
 })();
 `;
