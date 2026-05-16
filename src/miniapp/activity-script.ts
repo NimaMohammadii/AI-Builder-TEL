@@ -46,6 +46,7 @@ export const ACTIVITY_SCRIPT = `
   function writeCreditToUi(value){var credit=Math.max(0,Math.floor(Number(value)||0));['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=String(credit)});return credit}
   function syncCreditToGames(value){var credit=Math.max(0,Math.floor(Number(value)||0));try{window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:credit}}))}catch(e){}return credit}
   function applyServerCredit(value){if(value===null||value===undefined)return;var credit=writeCreditToUi(value);confirmedCredit=credit;pendingCredit=credit;syncCreditToGames(credit)}
+  function applyServerTonBalance(value){var balance=Math.max(0,Math.floor(Number(value)||0));if(!Number.isFinite(balance))return;try{window.dispatchEvent(new CustomEvent('vexa-ton-balance-sync',{detail:{tonBalanceNano:balance}}))}catch(e){}}
 
   function sendActivity(force){
     if(document.hidden&&!force)return;
@@ -60,7 +61,7 @@ export const ACTIVITY_SCRIPT = `
     var requestCreditVersion=creditVersion;
     fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true})
       .then(function(r){return r.json().catch(function(){return null})})
-      .then(function(j){if(j&&j.ok&&j.credit!==undefined&&creditInFlight===0&&requestCreditVersion===creditVersion)applyServerCredit(j.credit)})
+      .then(function(j){if(j&&j.ok){if(j.tonBalanceNano!==undefined)applyServerTonBalance(j.tonBalanceNano);if(j.credit!==undefined&&creditInFlight===0&&requestCreditVersion===creditVersion)applyServerCredit(j.credit)}})
       .catch(function(){});
   }
 
