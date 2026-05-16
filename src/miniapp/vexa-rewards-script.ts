@@ -2,11 +2,11 @@ export const VEXA_REWARDS_SCRIPT = `
 (function(){
   var state=null;
   function q(id){return document.getElementById(id)}
-  function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
+  function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&gt;','>':'&gt;'}[s]||s})}
   function userId(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function claimedIds(){var ids=state&&state.userState&&Array.isArray(state.userState.claimedMissionIds)?state.userState.claimedMissionIds:[];return ids.map(String)}
   function missionId(m,i){return String(m.id||m.templateId||m.title||('reward-mission-'+i)).replace(/[^0-9A-Za-z_-]/g,'_')}
-  function fallback(){return {todayMissions:[{id:'daily-checkin',title:'Daily Check-in',description:'Open Vexa once today',vexAmount:20},{id:'play-3-games',title:'Play 3 Games',description:'Complete any three Play Zone rounds',vexAmount:70},{id:'use-ai-chat',title:'Use AI Chat',description:'Send one message to Vexa AI',vexAmount:40},{id:'open-leaderboard',title:'Open Weekly Vex',description:'View the weekly leaderboard',vexAmount:15}],userState:{vex:0,claimedMissionIds:[]}}}
+  function fallback(){return {todayMissions:[{id:'daily-checkin',title:'Daily Check-in',description:'Open Vexa once today',vexAmount:20},{id:'play-3-games',title:'Play 3 Games',description:'Complete any three Play Zone rounds',vexAmount:70},{id:'use-ai-chat',title:'Use AI Chat',description:'Send one message to Vexa AI',vexAmount:40},{id:'open-leaderboard',title:'Open Weekly Prize',description:'View the weekly Top 50 players',vexAmount:15}],userState:{vex:0,claimedMissionIds:[]}}}
   async function load(){try{var id=userId();var r=await fetch('/app/api/vexa-league'+(id?'?userId='+encodeURIComponent(id):''),{headers:{accept:'application/json'},cache:'no-store'});var j=await r.json().catch(function(){return null});if(r.ok&&j&&j.ok){state=j;return j}}catch(e){}state=fallback();return state}
   function icon(){return '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg>'}
   function row(m,i){var id=missionId(m,i);var done=claimedIds().indexOf(id)>-1;return '<div class="mission-row '+(i===0?'primary':'')+'"><div class="mission-icon">'+icon()+'</div><div class="mission-main"><strong>'+esc(m.title||'Daily Mission')+'</strong><span>'+esc(m.description||'Complete this mission')+'</span></div><button class="mission-reward" type="button" data-vexa-reward-claim="'+esc(id)+'" data-vexa-reward-vex="'+esc(m.vexAmount||0)+'" '+(done?'disabled':'')+'>'+(done?'Claimed':'+'+esc(m.vexAmount||0)+' Vex')+'</button></div>'}
