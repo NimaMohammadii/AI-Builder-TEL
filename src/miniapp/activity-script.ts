@@ -1,4 +1,5 @@
 import { VEXA_LEAGUE_SCRIPT } from './vexa-league-script';
+import { VEXA_REWARDS_SCRIPT } from './vexa-rewards-script';
 
 export const ACTIVITY_SCRIPT = `
 (function(){
@@ -64,4 +65,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){sendActivity(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true);
 })();
-` + VEXA_LEAGUE_SCRIPT;
+` + VEXA_LEAGUE_SCRIPT + VEXA_REWARDS_SCRIPT;
