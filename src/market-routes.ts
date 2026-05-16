@@ -1,5 +1,5 @@
 import app from './index';
-import './vexa-league';
+import './vexa-league-basic-routes';
 import { buyMarketItem, getMarketItems, getUserMarketNfts, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
 import { loadTonNftMarket, type TonNftMarketItem } from './ton-nft-market';
 import type { Env } from './types';
@@ -266,67 +266,36 @@ async function getTelegramFileUrl(env: Env, fileId: string): Promise<string | nu
   return url;
 }
 
-function firstObject(...values: unknown[]): Record<string, unknown> {
-  for (const value of values) {
-    const object = objectValue(value);
-    if (Object.keys(object).length) return object;
-  }
-  return {};
-}
-
-function isObject(value: unknown): boolean {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
-function objectValue(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function firstText(...values: unknown[]): string {
-  for (const value of values) {
-    const text = String(value ?? '').trim();
-    if (text) return text;
-  }
-  return '';
-}
-
-function cleanGiftText(value: unknown, limit: number): string {
-  return String(value ?? '').trim().slice(0, limit) || 'Telegram Gift';
-}
-
-async function getMarketAsset(env: Env, key: string, rangeHeader?: string): Promise<Response> {
-  const head = await env.ASSETS.head(key).catch(() => null);
-  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  const contentType = head.httpMetadata?.contentType || head.customMetadata?.contentType || 'application/octet-stream';
-  const size = head.size || 0;
-  const range = parseByteRange(rangeHeader, size);
-  const object = await env.ASSETS.get(key, range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined).catch(() => null);
-  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  const headers = new Headers({
-    'content-type': object.httpMetadata?.contentType || object.customMetadata?.contentType || contentType,
-    'cache-control': CACHE_LONG,
-    'accept-ranges': 'bytes',
-    'content-length': String(range ? range.end - range.start + 1 : size),
+function getMarketAsset(env: Env, key: string, rangeHeader?: string): Promise<Response> | Response {
+  return env.ASSETS.get(key, rangeHeader ? { range: parseRange(rangeHeader) } : undefined).then((object) => {
+    if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('etag', object.httpEtag);
+    headers.set('cache-control', CACHE_LONG);
+    if (!headers.get('content-type')) headers.set('content-type', object.customMetadata?.contentType || 'image/png');
+    if ('range' in object && object.range) {
+      headers.set('content-range', `bytes ${object.range.offset}-${object.range.end ?? object.size - 1}/${object.size}`);
+      return new Response(object.body, { status: 206, headers });
+    }
+    return new Response(object.body, { headers });
   });
-  if (range) headers.set('content-range', `bytes ${range.start}-${range.end}/${size}`);
-  return new Response(object.body, { status: range ? 206 : 200, headers });
 }
 
-function parseByteRange(header: string | undefined, size: number): { start: number; end: number } | null {
-  if (!header || !Number.isFinite(size) || size <= 0) return null;
-  const match = header.match(/^bytes=(\d*)-(\d*)$/);
-  if (!match || (!match[1] && !match[2])) return null;
-  let start = match[1] ? Number(match[1]) : size - Number(match[2]);
-  let end = match[2] ? Number(match[2]) : size - 1;
-  if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
-  start = Math.max(0, start);
-  end = Math.min(size - 1, end);
-  return start <= end ? { start, end } : null;
+function parseRange(header: string): { offset: number; length?: number } | undefined {
+  const match = header.match(/bytes=(\d+)-(\d*)/);
+  if (!match) return undefined;
+  const offset = Number(match[1]);
+  const end = match[2] ? Number(match[2]) : undefined;
+  if (!Number.isFinite(offset)) return undefined;
+  return end && end >= offset ? { offset, length: end - offset + 1 } : { offset };
 }
 
-function adminCookieValue(cookie: string | undefined): string {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
+function firstObject(...values: unknown[]): Record<string, unknown> { for (const value of values) { if (isObject(value)) return value as Record<string, unknown>; } return {}; }
+function objectValue(value: unknown): Record<string, unknown> { return isObject(value) ? value as Record<string, unknown> : {}; }
+function firstText(...values: unknown[]): string { for (const value of values) { if (value === null || value === undefined) continue; const text = String(value).trim(); if (text) return text; } return ''; }
+function cleanGiftText(value: string, max: number): string { return value.replace(/[<>]/g, '').slice(0, max); }
+function isObject(value: unknown): value is Record<string, unknown> { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
+function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
 function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
