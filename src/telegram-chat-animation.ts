@@ -22,18 +22,48 @@ const THINKING_FRAMES = [
   'Thinking',
 ];
 const LIGHT_THINKING_FRAMES = [
+  '<b>T</b>',
+  '<b>Th</b>',
+  '<b>Thi</b>',
+  '<b>Thin</b>',
+  '<b>Think</b>',
+  '<b>Thinki</b>',
+  '<b>Thinkin</b>',
+  '<b>Thinking</b>',
+  '<b>Thinking.</b>',
+  '<b>Thinking..</b>',
   '<b>Thinking...</b>',
-  '<b>Thinking...</b>\n<b>Thinking...</b>',
-  '<b>Thinking...</b>\n<b>Thinking...</b>\n<b>Thinking...</b>',
-  '<b>Thinking...</b>\n<b>Thinking...</b>',
+  '<b></b>',
+  '<b>T</b>',
+  '<b>Th</b>',
+  '<b>Thi</b>',
+  '<b>Thin</b>',
+  '<b>Think</b>',
+  '<b>Thinki</b>',
+  '<b>Thinkin</b>',
+  '<b>Thinking</b>',
+  '<b>Thinking.</b>',
+  '<b>Thinking..</b>',
+  '<b>Thinking...</b>',
+  '<b></b>',
+  '<b>T</b>',
+  '<b>Th</b>',
+  '<b>Thi</b>',
+  '<b>Thin</b>',
+  '<b>Think</b>',
+  '<b>Thinki</b>',
+  '<b>Thinkin</b>',
+  '<b>Thinking</b>',
+  '<b>Thinking.</b>',
+  '<b>Thinking..</b>',
   '<b>Thinking...</b>',
 ];
 const THINKING_FRAME_DELAY_MS = 180;
-const LIGHT_THINKING_FRAME_DELAY_MS = 520;
+const LIGHT_THINKING_FRAME_DELAY_MS = 170;
 const MIN_THINKING_MS = 1800;
-const LIGHT_MIN_THINKING_MS = 1700;
-const ANSWER_MOTION_DELAY_MS = 45;
-const MAX_ANSWER_MOTION_STEPS = 18;
+const LIGHT_MIN_THINKING_MS = 2200;
+const ANSWER_MOTION_DELAY_MS = 80;
+const MAX_ANSWER_MOTION_STEPS = 16;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<TelegramSentMessage> {
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
@@ -118,7 +148,7 @@ function buildAnswerMotionSteps(text: string): string[] {
   if (!finalText) return [];
 
   const chars = Array.from(finalText);
-  const stepSize = Math.max(3, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
+  const stepSize = Math.max(4, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
   const steps: string[] = [];
 
   for (let index = stepSize; index < chars.length; index += stepSize) {
