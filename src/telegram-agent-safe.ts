@@ -5,6 +5,7 @@ import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-de
 import { selectedGroupReply } from './group-ai-provider';
 import { isGroupAiDisabled } from './group-ai-access';
 import { awardGroupReplyXp } from './xp-rewards';
+import { animatedTelegramAiReply } from './telegram-chat-animation';
 import type { BotRecord, Env, TelegramChat, TelegramMessage, TelegramUpdate, TelegramUser } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, decryptUserToken, safeParseJson } from './utils';
 
@@ -89,8 +90,19 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
     console.warn('group context prompt skipped', error);
     return prompt;
   });
-  const reply = await selectedGroupReply(env, contextPrompt);
-  await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((error) => console.warn('main bot group reply failed', error));
+  await animatedTelegramAiReply(
+    telegram,
+    token,
+    message.chat.id,
+    () => selectedGroupReply(env, contextPrompt),
+    'الان نتوانستم جواب گروه را بسازم. لطفاً دوباره صدام کن.',
+    undefined,
+    { reply_to_message_id: message.message_id },
+  ).catch(async (error) => {
+    console.warn('main bot animated group reply failed', error);
+    const reply = await selectedGroupReply(env, contextPrompt);
+    await telegram(token, 'sendMessage', { chat_id: message.chat.id, text: reply, reply_to_message_id: message.message_id }).catch((sendError) => console.warn('main bot group reply failed', sendError));
+  });
   await awardGroupReplyXp(env, message.chat).catch((error) => console.warn('group reply XP milestone skipped', error));
   return true;
 }
