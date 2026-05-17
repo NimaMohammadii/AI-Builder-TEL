@@ -1,6 +1,5 @@
 export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predict-zone-view">
   <div class="predict-zone-simple-shell">
-    <button class="predict-zone-back" type="button" data-view="playzone" aria-label="Back to Play Zone">‹</button>
     <article class="predict-zone-glass-card">
       <div class="predict-zone-card-top">
         <span>Prediction</span>
@@ -8,11 +7,11 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       </div>
       <h2>Will BTC close above $100K today?</h2>
       <div class="predict-zone-percent-row" aria-label="Current prediction percentages">
-        <div>
+        <div class="predict-zone-percent-card predict-zone-percent-yes">
           <span>Yes</span>
           <strong>72%</strong>
         </div>
-        <div>
+        <div class="predict-zone-percent-card predict-zone-percent-no">
           <span>No</span>
           <strong>28%</strong>
         </div>
