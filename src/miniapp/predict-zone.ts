@@ -14,7 +14,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <span>BTC Preview</span>
         <small>05:00</small>
       </div>
-      <h2>Will Bitcoin go Up or Down in 5 minutes?</h2>
+      <h2>Will Bitcoin go Up or Down?</h2>
       <div class="predict-zone-live-meta" aria-label="Bitcoin preview price">
         <div><span>Start</span><strong>$102,400</strong></div>
         <div><span>Live</span><strong class="predict-zone-live-price">$102,618</strong></div>
