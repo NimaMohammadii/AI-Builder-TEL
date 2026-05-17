@@ -14,6 +14,6 @@ export const PREDICT_ZONE_CARD = `<section class="play-zone-predict-card" aria-l
       <img src="/app/api/section-lock-image/predict-zone-card/locked.png" alt="Predict Zone" decoding="async" onerror="this.style.display='none';this.parentElement.classList.add('is-empty')"/>
       <span class="play-zone-predict-image-placeholder">Upload<br/>Image</span>
     </span>
-    <button class="play-zone-predict-button" type="button" disabled>Coming Soon</button>
+    <button class="play-zone-predict-button" type="button" data-game-view="predictzone">Open</button>
   </div>
 </section>`;
