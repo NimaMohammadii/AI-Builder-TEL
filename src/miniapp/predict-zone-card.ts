@@ -10,7 +10,10 @@ export const PREDICT_ZONE_CARD = `<section class="play-zone-predict-card" aria-l
     </ul>
   </div>
   <div class="play-zone-predict-side">
-    <span class="play-zone-predict-orb" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M14 42c5.4-9.8 11.6-14.7 18.5-14.7 5.5 0 10.4 3.1 14.7 9.2"/><path d="M17 42h30"/><path d="M20 47h20"/><path d="M26 52h8"/><circle cx="32" cy="27.5" r="5.8"/><path d="M32 12v5.5"/><path d="M47.5 18.5l-4 4"/><path d="M16.5 18.5l4 4"/><path d="M46 37.5l6 2.5"/><path d="M18 37.5l-6 2.5"/></svg></span>
+    <span class="play-zone-predict-image-slot" data-admin-image-slot="predict-zone-card" aria-label="Predict Zone image upload slot">
+      <img src="/app/api/section-lock-image/predict-zone-card/locked.png" alt="Predict Zone" decoding="async" onerror="this.style.display='none';this.parentElement.classList.add('is-empty')"/>
+      <span class="play-zone-predict-image-placeholder">Upload<br/>Image</span>
+    </span>
     <button class="play-zone-predict-button" type="button" disabled>Coming Soon</button>
   </div>
 </section>`;
