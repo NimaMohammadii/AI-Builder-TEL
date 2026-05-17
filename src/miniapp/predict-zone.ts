@@ -1,5 +1,12 @@
 export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predict-zone-view">
   <div class="predict-zone-simple-shell">
+    <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
+      <button type="button" class="predict-zone-category-card active"><span>Politics</span><small>Events</small></button>
+      <button type="button" class="predict-zone-category-card"><span>Sports</span><small>Live</small></button>
+      <button type="button" class="predict-zone-category-card"><span>Fun</span><small>Social</small></button>
+      <button type="button" class="predict-zone-category-card"><span>Live</span><small>Fast</small></button>
+      <button type="button" class="predict-zone-category-card"><span>Crypto</span><small>Charts</small></button>
+    </nav>
     <article class="predict-zone-glass-card">
       <div class="predict-zone-card-top">
         <span>Prediction</span>
