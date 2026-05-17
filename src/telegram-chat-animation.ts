@@ -22,6 +22,7 @@ const THINKING_FRAMES = [
   'Thinking',
 ];
 const GROUP_THINKING_FRAMES = [
+  '<b>Thinking...</b>',
   '<b>T</b>',
   '<b>Th</b>',
   '<b>Thi</b>',
@@ -32,6 +33,7 @@ const GROUP_THINKING_FRAMES = [
   '<b>Thinking</b>',
   '<b>Thinking.</b>',
   '<b>Thinking..</b>',
+  '<b>Thinking...</b>',
   '<b>Thinking...</b>',
   '<b>·</b>',
   '<b>T</b>',
@@ -45,23 +47,12 @@ const GROUP_THINKING_FRAMES = [
   '<b>Thinking.</b>',
   '<b>Thinking..</b>',
   '<b>Thinking...</b>',
-  '<b>·</b>',
-  '<b>T</b>',
-  '<b>Th</b>',
-  '<b>Thi</b>',
-  '<b>Thin</b>',
-  '<b>Think</b>',
-  '<b>Thinki</b>',
-  '<b>Thinkin</b>',
-  '<b>Thinking</b>',
-  '<b>Thinking.</b>',
-  '<b>Thinking..</b>',
   '<b>Thinking...</b>',
 ];
 const THINKING_FRAME_DELAY_MS = 180;
-const GROUP_THINKING_FRAME_DELAY_MS = 190;
+const GROUP_THINKING_FRAME_DELAY_MS = 220;
 const MIN_THINKING_MS = 1800;
-const GROUP_MIN_THINKING_MS = 2300;
+const GROUP_MIN_THINKING_MS = 5600;
 const ANSWER_MOTION_DELAY_MS = 80;
 const GROUP_ANSWER_MOTION_DELAY_MS = 140;
 const MAX_ANSWER_MOTION_STEPS = 16;
