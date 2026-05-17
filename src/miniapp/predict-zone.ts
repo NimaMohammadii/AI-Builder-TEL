@@ -47,28 +47,28 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       </div>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="ton">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="gold">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="oil">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="football">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="politics">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
     <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="fun">
-      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
-      <p>Nothing here yet</p>
+      <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="35"/><path d="M33 39h.1M63 39h.1"/><path d="M34 62c8-9 20-9 28 0"/><path d="M25 24l6 6M71 24l-6 6"/></svg>
+      <h3>No predictions yet</h3><p>New markets will appear here soon</p>
     </div>
   </div>
   <script>(function(){function setupPredictTabs(){var root=document.getElementById('predictzone');if(!root)return;var tabs=root.querySelectorAll('[data-predict-category]');var panels=root.querySelectorAll('[data-predict-panel]');tabs.forEach(function(tab){tab.addEventListener('click',function(){var key=tab.getAttribute('data-predict-category');tabs.forEach(function(t){t.classList.toggle('active',t===tab)});panels.forEach(function(panel){panel.classList.toggle('active',panel.getAttribute('data-predict-panel')===key)});});});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictTabs);else setupPredictTabs();var tg=window.Telegram&&window.Telegram.WebApp;if(!tg||!tg.BackButton)return;var back=tg.BackButton;function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}try{back.onClick(goPlayZone)}catch(e){}function sync(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}document.addEventListener('click',function(){setTimeout(sync,30)},true);document.addEventListener('DOMContentLoaded',sync);setTimeout(sync,200)})();</script>
