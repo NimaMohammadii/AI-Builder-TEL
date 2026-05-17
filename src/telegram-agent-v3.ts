@@ -1,7 +1,7 @@
 import { aiReply, defaultFlow, improveFlow, type BotFlow, type ChatHistoryMessage } from './ai';
 import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision-fixed';
 import { handleExpandedFlowCallback, handleExpandedFlowMessage, handleExpandedPreCheckoutQuery } from './telegram-flow-runtime-fixed';
-import { animatedTelegramSend, safeTelegramAiReply } from './telegram-chat-animation';
+import { animatedTelegramAiReply, animatedTelegramSend, safeTelegramAiReply } from './telegram-chat-animation';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 
@@ -92,8 +92,7 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   if (q.data === 'builder:chat') {
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: CHAT_TTL }).catch(() => undefined);
     const bots = await dashboard(env, userId);
-    const reply = await safeTelegramAiReply(() => aiReply(env, 'The user opened AI chat. Reply in the user language. Use only these real connected bots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []), 'Chat with AI روشن شد. پیام بعدی‌ات را بفرست.');
-    await animatedTelegramSend(tg, key, chatId, reply, { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false });
+    await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'The user opened AI chat. Reply in the user language. Use only these real connected bots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []), 'Chat with AI روشن شد. پیام بعدی‌ات را بفرست.', { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false });
     return;
   }
 
@@ -121,17 +120,15 @@ async function agent(env: Env, key: string, chatId: number, userId: string, text
   const target = decision.targetBotId ? bots.find((b) => b.id === decision.targetBotId) ?? null : bots[0] ?? null;
 
   if (isRealAction(decision.action)) {
-    const proposal = await safeTelegramAiReply(() => aiReply(env, 'Create a short proposal in the user language. Explain exactly what will change. Ask for confirmation. Do not claim it is applied yet.', JSON.stringify({ action: decision.action, target_bot: target ? botSnapshot(target) : null, request: text }), history), 'درخواستت را گرفتم، اما نتوانستم پیشنهاد دقیق بسازم. لطفاً کمی واضح‌تر بگو چه تغییری می‌خواهی.');
-    const sent = await animatedTelegramSend(tg, key, chatId, proposal, { inline_keyboard: [[{ text: 'Confirm', callback_data: 'builder:confirm' }, { text: 'Reject', callback_data: 'builder:reject' }]] });
-    const pending: PendingAction = { action: decision.action, targetBotId: target?.id ?? null, originalRequest: text, proposalText: proposal, createdAt: Date.now(), proposalMessageId: sent.result?.message_id, proposalChatId: chatId };
+    const result = await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'Create a short proposal in the user language. Explain exactly what will change. Ask for confirmation. Do not claim it is applied yet.', JSON.stringify({ action: decision.action, target_bot: target ? botSnapshot(target) : null, request: text }), history), 'درخواستت را گرفتم، اما نتوانستم پیشنهاد دقیق بسازم. لطفاً کمی واضح‌تر بگو چه تغییری می‌خواهی.', { inline_keyboard: [[{ text: 'Confirm', callback_data: 'builder:confirm' }, { text: 'Reject', callback_data: 'builder:reject' }]] });
+    const pending: PendingAction = { action: decision.action, targetBotId: target?.id ?? null, originalRequest: text, proposalText: result.text, createdAt: Date.now(), proposalMessageId: result.sent.result?.message_id, proposalChatId: chatId };
     await env.BOT_CACHE.put(pendingKey(userId), JSON.stringify(pending), { expirationTtl: PENDING_TTL }).catch(() => undefined);
-    await saveHistory(env, historyKey, history, text, proposal);
+    await saveHistory(env, historyKey, history, text, result.text);
     return;
   }
 
-  const reply = await safeTelegramAiReply(() => aiReply(env, 'Reply in the user language. Use only the real dashboard/flow data provided. Do not invent menus or buttons. Never claim a real bot change was applied.', JSON.stringify({ request: text, bots: bots.map(botSnapshot) }), history), 'الان نتوانستم جواب هوش مصنوعی را بسازم. لطفاً دوباره امتحان کن.');
-  await saveHistory(env, historyKey, history, text, reply);
-  await send(key, chatId, reply);
+  const result = await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'Reply in the user language. Use only the real dashboard/flow data provided. Do not invent menus or buttons. Never claim a real bot change was applied.', JSON.stringify({ request: text, bots: bots.map(botSnapshot) }), history), 'الان نتوانستم جواب هوش مصنوعی را بسازم. لطفاً دوباره امتحان کن.');
+  await saveHistory(env, historyKey, history, text, result.text);
 }
 
 async function executePending(env: Env, key: string, chatId: number, userId: string, pending: PendingAction, callback: TelegramCallbackQuery | null, confirmationText: string): Promise<void> {
