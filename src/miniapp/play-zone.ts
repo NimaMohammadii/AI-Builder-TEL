@@ -1,3 +1,5 @@
+import { PREDICT_ZONE_CARD } from './predict-zone-card';
+
 const cardImageVersion = Date.now();
 const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
@@ -18,4 +20,4 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
 const featuredGames = playZoneGames.slice(0, 3);
 const triangleGames = playZoneGames.slice(3);
 
-export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="play-zone-stage"><div class="play-zone-featured-row">${featuredGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div><img class="play-zone-center-image" data-play-zone-ad="playzone-card-ad-plinko" src="/app/api/section-lock-image/playzone-card-ad-plinko/locked.png?v=${cardImageVersion}" alt="Plinko showcase" decoding="async" onerror="this.classList.add('is-empty')"/><div class="play-zone-triangle"><div class="play-zone-triangle-row play-zone-triangle-row-3">${triangleGames.slice(0, 3).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-2">${triangleGames.slice(3, 5).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-1">${triangleGames.slice(5, 6).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div></div></div></section>`;
+export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="play-zone-stage"><div class="play-zone-featured-row">${featuredGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div>${PREDICT_ZONE_CARD}<div class="play-zone-triangle"><div class="play-zone-triangle-row play-zone-triangle-row-3">${triangleGames.slice(0, 3).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-2">${triangleGames.slice(3, 5).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div><div class="play-zone-triangle-row play-zone-triangle-row-1">${triangleGames.slice(5, 6).map((game) => gameCard(game, 'play-zone-triangle-card')).join('')}</div></div></div></section>`;
