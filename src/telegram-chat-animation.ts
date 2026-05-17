@@ -20,14 +20,14 @@ const THINKING_FRAMES = [
   'Thinking.',
   'Thinking',
 ];
-const THINKING_FRAME_DELAY_MS = 360;
-const MIN_THINKING_MS = 3000;
-const ANSWER_MOTION_DELAY_MS = 95;
-const MAX_ANSWER_MOTION_STEPS = 14;
+const THINKING_FRAME_DELAY_MS = 180;
+const MIN_THINKING_MS = 1800;
+const ANSWER_MOTION_DELAY_MS = 45;
+const MAX_ANSWER_MOTION_STEPS = 18;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions): Promise<TelegramSentMessage> {
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
-  await sleep(80);
+  await sleep(60);
 
   const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: THINKING_FRAMES[7], ...(sendOptions ?? {}) }).catch(() => null);
   const messageId = sent?.result?.message_id;
@@ -103,7 +103,7 @@ function buildAnswerMotionSteps(text: string): string[] {
   if (!finalText) return [];
 
   const chars = Array.from(finalText);
-  const stepSize = Math.max(4, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
+  const stepSize = Math.max(3, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
   const steps: string[] = [];
 
   for (let index = stepSize; index < chars.length; index += stepSize) {
