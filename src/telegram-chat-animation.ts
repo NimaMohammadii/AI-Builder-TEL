@@ -1,7 +1,7 @@
 type TelegramReplyMarkup = Record<string, unknown>;
 type TelegramSentMessage = { ok: boolean; result?: { message_id: number } };
 type TelegramSendOptions = Record<string, unknown>;
-type TelegramAnimationMode = 'full' | 'group';
+type TelegramAnimationMode = 'full' | 'group' | 'light';
 
 type TelegramCall = <T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown) => Promise<T>;
 
@@ -87,8 +87,9 @@ export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId
 
 export async function animatedTelegramAiReply(tg: TelegramCall, key: string, chatId: number, replyFactory: () => Promise<string>, fallback: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<{ text: string; sent: TelegramSentMessage }> {
   const startedAt = Date.now();
-  const thinkingDelay = mode === 'group' ? GROUP_THINKING_FRAME_DELAY_MS : THINKING_FRAME_DELAY_MS;
-  const minThinking = mode === 'group' ? GROUP_MIN_THINKING_MS : MIN_THINKING_MS;
+  const groupMode = isGroupMode(mode);
+  const thinkingDelay = groupMode ? GROUP_THINKING_FRAME_DELAY_MS : THINKING_FRAME_DELAY_MS;
+  const minThinking = groupMode ? GROUP_MIN_THINKING_MS : MIN_THINKING_MS;
 
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: firstThinkingFrame(mode), ...(thinkingParseMode(mode)), ...(sendOptions ?? {}) }).catch(() => null);
@@ -115,7 +116,7 @@ export async function animatedTelegramAiReply(tg: TelegramCall, key: string, cha
 }
 
 async function animateThinking(tg: TelegramCall, key: string, chatId: number, messageId: number, isActive: () => boolean, delayMs: number, mode: TelegramAnimationMode): Promise<void> {
-  const frames = mode === 'group' ? GROUP_THINKING_FRAMES : THINKING_FRAMES;
+  const frames = isGroupMode(mode) ? GROUP_THINKING_FRAMES : THINKING_FRAMES;
   let index = 1;
   while (isActive()) {
     await sleep(delayMs);
@@ -129,7 +130,7 @@ async function animateThinking(tg: TelegramCall, key: string, chatId: number, me
 async function animateAnswerMotion(tg: TelegramCall, key: string, chatId: number, messageId: number, finalText: string, replyMarkup: TelegramReplyMarkup | undefined, mode: TelegramAnimationMode): Promise<boolean> {
   const steps = buildAnswerMotionSteps(finalText, mode);
   if (!steps.length) return false;
-  const delayMs = mode === 'group' ? GROUP_ANSWER_MOTION_DELAY_MS : ANSWER_MOTION_DELAY_MS;
+  const delayMs = isGroupMode(mode) ? GROUP_ANSWER_MOTION_DELAY_MS : ANSWER_MOTION_DELAY_MS;
 
   for (let index = 0; index < steps.length; index += 1) {
     const isLast = index === steps.length - 1;
@@ -151,8 +152,9 @@ function buildAnswerMotionSteps(text: string, mode: TelegramAnimationMode): stri
   if (!finalText) return [];
 
   const chars = Array.from(finalText);
-  const maxSteps = mode === 'group' ? GROUP_MAX_ANSWER_MOTION_STEPS : MAX_ANSWER_MOTION_STEPS;
-  const minStepSize = mode === 'group' ? 8 : 4;
+  const groupMode = isGroupMode(mode);
+  const maxSteps = groupMode ? GROUP_MAX_ANSWER_MOTION_STEPS : MAX_ANSWER_MOTION_STEPS;
+  const minStepSize = groupMode ? 8 : 4;
   const stepSize = Math.max(minStepSize, Math.ceil(chars.length / maxSteps));
   const steps: string[] = [];
 
@@ -166,11 +168,15 @@ function buildAnswerMotionSteps(text: string, mode: TelegramAnimationMode): stri
 }
 
 function firstThinkingFrame(mode: TelegramAnimationMode): string {
-  return mode === 'group' ? GROUP_THINKING_FRAMES[0] : THINKING_FRAMES[0];
+  return isGroupMode(mode) ? GROUP_THINKING_FRAMES[0] : THINKING_FRAMES[0];
 }
 
 function thinkingParseMode(mode: TelegramAnimationMode): TelegramSendOptions {
-  return mode === 'group' ? { parse_mode: 'HTML' } : {};
+  return isGroupMode(mode) ? { parse_mode: 'HTML' } : {};
+}
+
+function isGroupMode(mode: TelegramAnimationMode): boolean {
+  return mode === 'group' || mode === 'light';
 }
 
 async function editFinalMessage(tg: TelegramCall, key: string, chatId: number, messageId: number, text: string, replyMarkup?: TelegramReplyMarkup): Promise<TelegramSentMessage | null> {
