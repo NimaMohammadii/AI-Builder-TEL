@@ -1,7 +1,7 @@
 type TelegramReplyMarkup = Record<string, unknown>;
 type TelegramSentMessage = { ok: boolean; result?: { message_id: number } };
 type TelegramSendOptions = Record<string, unknown>;
-type TelegramAnimationMode = 'full' | 'light';
+type TelegramAnimationMode = 'full' | 'group';
 
 type TelegramCall = <T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown) => Promise<T>;
 
@@ -21,7 +21,7 @@ const THINKING_FRAMES = [
   'Thinking.',
   'Thinking',
 ];
-const LIGHT_THINKING_FRAMES = [
+const GROUP_THINKING_FRAMES = [
   '<b>T</b>',
   '<b>Th</b>',
   '<b>Thi</b>',
@@ -33,7 +33,7 @@ const LIGHT_THINKING_FRAMES = [
   '<b>Thinking.</b>',
   '<b>Thinking..</b>',
   '<b>Thinking...</b>',
-  '<b></b>',
+  '<b>·</b>',
   '<b>T</b>',
   '<b>Th</b>',
   '<b>Thi</b>',
@@ -45,7 +45,7 @@ const LIGHT_THINKING_FRAMES = [
   '<b>Thinking.</b>',
   '<b>Thinking..</b>',
   '<b>Thinking...</b>',
-  '<b></b>',
+  '<b>·</b>',
   '<b>T</b>',
   '<b>Th</b>',
   '<b>Thi</b>',
@@ -59,11 +59,13 @@ const LIGHT_THINKING_FRAMES = [
   '<b>Thinking...</b>',
 ];
 const THINKING_FRAME_DELAY_MS = 180;
-const LIGHT_THINKING_FRAME_DELAY_MS = 170;
+const GROUP_THINKING_FRAME_DELAY_MS = 190;
 const MIN_THINKING_MS = 1800;
-const LIGHT_MIN_THINKING_MS = 2200;
+const GROUP_MIN_THINKING_MS = 2300;
 const ANSWER_MOTION_DELAY_MS = 80;
+const GROUP_ANSWER_MOTION_DELAY_MS = 140;
 const MAX_ANSWER_MOTION_STEPS = 16;
+const GROUP_MAX_ANSWER_MOTION_STEPS = 10;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<TelegramSentMessage> {
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
@@ -74,7 +76,7 @@ export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId
   const messageId = sent?.result?.message_id;
   if (!messageId) return tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
 
-  const animated = mode === 'full' ? await animateAnswerMotion(tg, key, chatId, messageId, text, replyMarkup) : null;
+  const animated = await animateAnswerMotion(tg, key, chatId, messageId, text, replyMarkup, mode);
   if (animated) return { ok: true, result: { message_id: messageId } };
 
   const edited = await editFinalMessage(tg, key, chatId, messageId, text, replyMarkup);
@@ -85,8 +87,8 @@ export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId
 
 export async function animatedTelegramAiReply(tg: TelegramCall, key: string, chatId: number, replyFactory: () => Promise<string>, fallback: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<{ text: string; sent: TelegramSentMessage }> {
   const startedAt = Date.now();
-  const thinkingDelay = mode === 'light' ? LIGHT_THINKING_FRAME_DELAY_MS : THINKING_FRAME_DELAY_MS;
-  const minThinking = mode === 'light' ? LIGHT_MIN_THINKING_MS : MIN_THINKING_MS;
+  const thinkingDelay = mode === 'group' ? GROUP_THINKING_FRAME_DELAY_MS : THINKING_FRAME_DELAY_MS;
+  const minThinking = mode === 'group' ? GROUP_MIN_THINKING_MS : MIN_THINKING_MS;
 
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: firstThinkingFrame(mode), ...(thinkingParseMode(mode)), ...(sendOptions ?? {}) }).catch(() => null);
@@ -103,7 +105,7 @@ export async function animatedTelegramAiReply(tg: TelegramCall, key: string, cha
 
   if (!messageId) return { text, sent: await animatedTelegramSend(tg, key, chatId, text, replyMarkup, sendOptions, mode) };
 
-  const animated = mode === 'full' ? await animateAnswerMotion(tg, key, chatId, messageId, text, replyMarkup) : null;
+  const animated = await animateAnswerMotion(tg, key, chatId, messageId, text, replyMarkup, mode);
   if (animated) return { text, sent: { ok: true, result: { message_id: messageId } } };
 
   const edited = await editFinalMessage(tg, key, chatId, messageId, text, replyMarkup);
@@ -113,7 +115,7 @@ export async function animatedTelegramAiReply(tg: TelegramCall, key: string, cha
 }
 
 async function animateThinking(tg: TelegramCall, key: string, chatId: number, messageId: number, isActive: () => boolean, delayMs: number, mode: TelegramAnimationMode): Promise<void> {
-  const frames = mode === 'light' ? LIGHT_THINKING_FRAMES : THINKING_FRAMES;
+  const frames = mode === 'group' ? GROUP_THINKING_FRAMES : THINKING_FRAMES;
   let index = 1;
   while (isActive()) {
     await sleep(delayMs);
@@ -124,9 +126,10 @@ async function animateThinking(tg: TelegramCall, key: string, chatId: number, me
   }
 }
 
-async function animateAnswerMotion(tg: TelegramCall, key: string, chatId: number, messageId: number, finalText: string, replyMarkup?: TelegramReplyMarkup): Promise<boolean> {
-  const steps = buildAnswerMotionSteps(finalText);
+async function animateAnswerMotion(tg: TelegramCall, key: string, chatId: number, messageId: number, finalText: string, replyMarkup: TelegramReplyMarkup | undefined, mode: TelegramAnimationMode): Promise<boolean> {
+  const steps = buildAnswerMotionSteps(finalText, mode);
   if (!steps.length) return false;
+  const delayMs = mode === 'group' ? GROUP_ANSWER_MOTION_DELAY_MS : ANSWER_MOTION_DELAY_MS;
 
   for (let index = 0; index < steps.length; index += 1) {
     const isLast = index === steps.length - 1;
@@ -137,18 +140,20 @@ async function animateAnswerMotion(tg: TelegramCall, key: string, chatId: number
       ...(isLast && replyMarkup ? { reply_markup: replyMarkup } : {}),
     }).catch(() => null);
     if (!edited) return false;
-    if (!isLast) await sleep(ANSWER_MOTION_DELAY_MS);
+    if (!isLast) await sleep(delayMs);
   }
 
   return true;
 }
 
-function buildAnswerMotionSteps(text: string): string[] {
+function buildAnswerMotionSteps(text: string, mode: TelegramAnimationMode): string[] {
   const finalText = String(text || '').trim();
   if (!finalText) return [];
 
   const chars = Array.from(finalText);
-  const stepSize = Math.max(4, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
+  const maxSteps = mode === 'group' ? GROUP_MAX_ANSWER_MOTION_STEPS : MAX_ANSWER_MOTION_STEPS;
+  const minStepSize = mode === 'group' ? 8 : 4;
+  const stepSize = Math.max(minStepSize, Math.ceil(chars.length / maxSteps));
   const steps: string[] = [];
 
   for (let index = stepSize; index < chars.length; index += stepSize) {
@@ -161,11 +166,11 @@ function buildAnswerMotionSteps(text: string): string[] {
 }
 
 function firstThinkingFrame(mode: TelegramAnimationMode): string {
-  return mode === 'light' ? LIGHT_THINKING_FRAMES[0] : THINKING_FRAMES[0];
+  return mode === 'group' ? GROUP_THINKING_FRAMES[0] : THINKING_FRAMES[0];
 }
 
 function thinkingParseMode(mode: TelegramAnimationMode): TelegramSendOptions {
-  return mode === 'light' ? { parse_mode: 'HTML' } : {};
+  return mode === 'group' ? { parse_mode: 'HTML' } : {};
 }
 
 async function editFinalMessage(tg: TelegramCall, key: string, chatId: number, messageId: number, text: string, replyMarkup?: TelegramReplyMarkup): Promise<TelegramSentMessage | null> {
