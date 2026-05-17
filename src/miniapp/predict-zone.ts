@@ -2,16 +2,16 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
   <div class="predict-zone-simple-shell">
     <div class="predict-zone-menu-wrap">
       <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
-        <button type="button" class="predict-zone-category-card active"><span>Politics</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Sports</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Fun</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Live</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Crypto</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Weather</span></button>
-        <button type="button" class="predict-zone-category-card"><span>Finance</span></button>
+        <button type="button" class="predict-zone-category-card active" data-predict-category="bitcoin"><span>Bitcoin</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="ton"><span>TON</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="gold"><span>Gold</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="oil"><span>Oil</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="football"><span>Football</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="politics"><span>Politics</span></button>
+        <button type="button" class="predict-zone-category-card" data-predict-category="fun"><span>Fun</span></button>
       </nav>
     </div>
-    <div class="predict-zone-page-content">
+    <div class="predict-zone-page-content active" data-predict-panel="bitcoin">
       <div class="predict-zone-card-top">
         <span></span>
         <small>05:00</small>
@@ -46,6 +46,30 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <button type="button" class="predict-zone-choice predict-zone-choice-down">Down</button>
       </div>
     </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="ton">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="gold">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="oil">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="football">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="politics">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
+    <div class="predict-zone-page-content predict-zone-empty-panel" data-predict-panel="fun">
+      <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="30"/><circle cx="30" cy="34" r="3"/><circle cx="50" cy="34" r="3"/><path d="M28 55c7-8 17-8 24 0"/></svg>
+      <p>فعلاً چیزی نیست</p>
+    </div>
   </div>
-  <script>(function(){var tg=window.Telegram&&window.Telegram.WebApp;if(!tg||!tg.BackButton)return;var back=tg.BackButton;function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}try{back.onClick(goPlayZone)}catch(e){}function sync(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}document.addEventListener('click',function(){setTimeout(sync,30)},true);document.addEventListener('DOMContentLoaded',sync);setTimeout(sync,200)})();</script>
+  <script>(function(){function setupPredictTabs(){var root=document.getElementById('predictzone');if(!root)return;var tabs=root.querySelectorAll('[data-predict-category]');var panels=root.querySelectorAll('[data-predict-panel]');tabs.forEach(function(tab){tab.addEventListener('click',function(){var key=tab.getAttribute('data-predict-category');tabs.forEach(function(t){t.classList.toggle('active',t===tab)});panels.forEach(function(panel){panel.classList.toggle('active',panel.getAttribute('data-predict-panel')===key)});});});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictTabs);else setupPredictTabs();var tg=window.Telegram&&window.Telegram.WebApp;if(!tg||!tg.BackButton)return;var back=tg.BackButton;function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}try{back.onClick(goPlayZone)}catch(e){}function sync(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}document.addEventListener('click',function(){setTimeout(sync,30)},true);document.addEventListener('DOMContentLoaded',sync);setTimeout(sync,200)})();</script>
 </section>`;
