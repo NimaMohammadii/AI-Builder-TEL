@@ -1,17 +1,17 @@
 export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predict-zone-view">
   <div class="predict-zone-simple-shell">
-    <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
-      <button type="button" class="predict-zone-category-card active"><span>Politics</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Sports</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Fun</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Live</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Crypto</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Weather</span></button>
-      <button type="button" class="predict-zone-category-card"><span>Finance</span></button>
-    </nav>
-    <article class="predict-zone-glass-card predict-zone-btc-preview-card">
+    <div class="predict-zone-menu-wrap">
+      <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
+        <button type="button" class="predict-zone-category-card active"><span>Politics</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Sports</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Fun</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Live</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Crypto</span></button>
+      </nav>
+    </div>
+    <div class="predict-zone-page-content">
       <div class="predict-zone-card-top">
-        <span>BTC Preview</span>
+        <span></span>
         <small>05:00</small>
       </div>
       <h2>Will Bitcoin go Up or Down?</h2>
@@ -43,7 +43,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <button type="button" class="predict-zone-choice predict-zone-choice-up">Up</button>
         <button type="button" class="predict-zone-choice predict-zone-choice-down">Down</button>
       </div>
-    </article>
+    </div>
   </div>
   <script>(function(){var tg=window.Telegram&&window.Telegram.WebApp;if(!tg||!tg.BackButton)return;var back=tg.BackButton;function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}try{back.onClick(goPlayZone)}catch(e){}function sync(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}document.addEventListener('click',function(){setTimeout(sync,30)},true);document.addEventListener('DOMContentLoaded',sync);setTimeout(sync,200)})();</script>
 </section>`;
