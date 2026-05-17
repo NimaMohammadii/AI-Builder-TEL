@@ -98,6 +98,7 @@ async function handleMainBotGroupMessage(env: Env, bot: BotRecord, update: Teleg
     'الان نتوانستم جواب گروه را بسازم. لطفاً دوباره صدام کن.',
     undefined,
     { reply_to_message_id: message.message_id },
+    'light',
   ).catch(async (error) => {
     console.warn('main bot animated group reply failed', error);
     const reply = await selectedGroupReply(env, contextPrompt);
