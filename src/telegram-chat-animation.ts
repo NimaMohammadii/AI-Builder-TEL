@@ -3,17 +3,32 @@ type TelegramSentMessage = { ok: boolean; result?: { message_id: number } };
 
 type TelegramCall = <T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown) => Promise<T>;
 
-const THINKING_FRAMES = ['Thinking', 'Thinking.', 'Thinking..', 'Thinking...', 'Thinking..', 'Thinking.'];
-const THINKING_FRAME_DELAY_MS = 240;
+const THINKING_FRAMES = [
+  'T',
+  'Th',
+  'Thi',
+  'Thin',
+  'Think',
+  'Thinki',
+  'Thinkin',
+  'Thinking',
+  'Thinking.',
+  'Thinking..',
+  'Thinking...',
+  'Thinking..',
+  'Thinking.',
+  'Thinking',
+];
+const THINKING_FRAME_DELAY_MS = 360;
 const MIN_THINKING_MS = 3000;
-const ANSWER_MOTION_DELAY_MS = 180;
-const MAX_ANSWER_MOTION_STEPS = 6;
+const ANSWER_MOTION_DELAY_MS = 120;
+const MAX_ANSWER_MOTION_STEPS = 10;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup): Promise<TelegramSentMessage> {
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   await sleep(80);
 
-  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: THINKING_FRAMES[3] }).catch(() => null);
+  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: THINKING_FRAMES[7] }).catch(() => null);
   const messageId = sent?.result?.message_id;
   if (!messageId) return tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
 
@@ -87,7 +102,7 @@ function buildAnswerMotionSteps(text: string): string[] {
   if (!finalText) return [];
 
   const chars = Array.from(finalText);
-  const stepSize = Math.max(8, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
+  const stepSize = Math.max(6, Math.ceil(chars.length / MAX_ANSWER_MOTION_STEPS));
   const steps: string[] = [];
 
   for (let index = stepSize; index < chars.length; index += stepSize) {
