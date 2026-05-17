@@ -7,6 +7,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <button type="button" class="predict-zone-category-card"><span>Fun</span></button>
         <button type="button" class="predict-zone-category-card"><span>Live</span></button>
         <button type="button" class="predict-zone-category-card"><span>Crypto</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Weather</span></button>
+        <button type="button" class="predict-zone-category-card"><span>Finance</span></button>
       </nav>
     </div>
     <div class="predict-zone-page-content">
