@@ -67,7 +67,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var fill=chart.querySelector('.predict-zone-chart-fill');
       var dot=chart.querySelector('.predict-zone-chart-dot');
       var live=root.querySelector('.predict-zone-live-price');
-      var prices=[102400,102446,102421,102516,102485,102571,102534,102618,102584,102733,102641,102704];
+      var prices=[102400,102418,102406,102436,102425,102452,102441,102468,102456,102486,102472,102492];
       var currentPrice=prices[prices.length-1];
       var targetPrice=currentPrice;
       var targetFramesLeft=0;
@@ -81,7 +81,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function pointList(values){
         var min=Math.min.apply(null,values);
         var max=Math.max.apply(null,values);
-        var range=Math.max(90,max-min);
+        var range=Math.max(70,max-min);
         var mid=(min+max)/2;
         min=mid-range/2;
         max=mid+range/2;
@@ -114,23 +114,23 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(live){live.textContent=formatPrice(last.value);}
       }
       function chooseTarget(){
-        if(Math.random()>.62){direction*=-1;}
-        var move=(28+Math.random()*76)*direction;
+        if(Math.random()>.78){direction*=-1;}
+        var move=(12+Math.random()*34)*direction;
         targetPrice=clamp(currentPrice+move,101850,103150);
-        targetFramesLeft=10+Math.floor(Math.random()*8);
+        targetFramesLeft=22+Math.floor(Math.random()*18);
       }
       function tick(){
         if(targetFramesLeft<=0){chooseTarget();}
-        var ease=.18+Math.random()*.08;
+        var ease=.045+Math.random()*.018;
         currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
-        currentPrice+=Math.sin(Date.now()/420)*2.4;
+        currentPrice+=Math.sin(Date.now()/1500)*.55;
         targetFramesLeft-=1;
         prices.push(currentPrice);
-        if(prices.length>22)prices.shift();
+        if(prices.length>24)prices.shift();
         render();
       }
       render();
-      setInterval(tick,180);
+      setInterval(tick,320);
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictChart);else setupPredictChart();
   })();</script>
