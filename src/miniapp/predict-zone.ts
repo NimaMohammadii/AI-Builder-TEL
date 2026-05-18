@@ -148,7 +148,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         return history;
       }
       function clipPoints(points){
-        var leftEdge=padLeft;
+        var leftEdge=0;
         var rightEdge=width-padRight;
         var clipped=[];
         for(var i=0;i<points.length;i++){
