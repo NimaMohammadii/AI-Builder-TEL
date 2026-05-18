@@ -68,15 +68,23 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var dot=chart.querySelector('.predict-zone-chart-dot');
       var live=root.querySelector('.predict-zone-live-price');
       var prices=[102400,102446,102421,102516,102485,102571,102534,102618,102584,102733,102641,102704];
+      var currentPrice=prices[prices.length-1];
+      var targetPrice=currentPrice;
+      var targetFramesLeft=0;
+      var direction=1;
       var width=360;
       var height=220;
       var padX=14;
       var padY=24;
       function formatPrice(value){return '$'+Math.round(value).toLocaleString('en-US');}
+      function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
       function pointList(values){
         var min=Math.min.apply(null,values);
         var max=Math.max.apply(null,values);
-        if(max===min){max=min+1;}
+        var range=Math.max(90,max-min);
+        var mid=(min+max)/2;
+        min=mid-range/2;
+        max=mid+range/2;
         return values.map(function(value,index){
           var x=padX+(index/(values.length-1))*(width-padX*2);
           var y=padY+((max-value)/(max-min))*(height-padY*2);
@@ -105,15 +113,24 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         dot.style.top=(last.y/height*100)+'%';
         if(live){live.textContent=formatPrice(last.value);}
       }
+      function chooseTarget(){
+        if(Math.random()>.62){direction*=-1;}
+        var move=(28+Math.random()*76)*direction;
+        targetPrice=clamp(currentPrice+move,101850,103150);
+        targetFramesLeft=10+Math.floor(Math.random()*8);
+      }
       function tick(){
-        var last=prices[prices.length-1];
-        var drift=(Math.random()-.47)*95;
-        prices.push(Math.max(100,last+drift));
-        if(prices.length>18)prices.shift();
+        if(targetFramesLeft<=0){chooseTarget();}
+        var ease=.18+Math.random()*.08;
+        currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
+        currentPrice+=Math.sin(Date.now()/420)*2.4;
+        targetFramesLeft-=1;
+        prices.push(currentPrice);
+        if(prices.length>22)prices.shift();
         render();
       }
       render();
-      setInterval(tick,1500);
+      setInterval(tick,180);
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictChart);else setupPredictChart();
   })();</script>
