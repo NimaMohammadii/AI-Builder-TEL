@@ -25,7 +25,6 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           <span data-price-axis="2"></span>
           <span data-price-axis="3"></span>
           <span data-price-axis="4"></span>
-          <span data-price-axis="5"></span>
         </div>
         <svg viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -80,8 +79,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var live=root.querySelector('.predict-zone-live-price');
       var start=root.querySelector('.predict-zone-start-price');
       var markets={
-        bitcoin:{label:'Bitcoin',question:'Will Bitcoin go up or down?',symbol:'BTCUSDT',stream:'btcusdt@miniTicker',seed:102400,min:101850,max:103150,decimals:0,axisStep:10,axisRange:50},
-        ton:{label:'TON',question:'Will TON go up or down?',symbol:'TONUSDT',stream:'tonusdt@miniTicker',seed:2.85,min:.5,max:12,decimals:4,axisStep:.01,axisRange:.05}
+        bitcoin:{label:'Bitcoin',question:'Will Bitcoin go up or down?',symbol:'BTCUSDT',stream:'btcusdt@miniTicker',seed:102400,min:101850,max:103150,decimals:0,axisStep:5,axisRange:20},
+        ton:{label:'TON',question:'Will TON go up or down?',symbol:'TONUSDT',stream:'tonusdt@miniTicker',seed:2.85,min:.5,max:12,decimals:4,axisStep:.005,axisRange:.02}
       };
       var activeMarket='bitcoin';
       var ws=null;
