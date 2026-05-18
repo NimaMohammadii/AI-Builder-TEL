@@ -311,6 +311,13 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           else{questionImage.style.backgroundImage='';questionImage.classList.remove('has-image');}
         }
       }
+      function loadPredictMarketImages(){
+        fetch('/app/api/predict-markets',{cache:'no-store'}).then(function(response){return response.json()}).then(function(data){
+          var loaded=data&&data.markets?data.markets:{};
+          Object.keys(loaded).forEach(function(key){if(markets[key]&&loaded[key]&&loaded[key].imageUrl)markets[key].imageUrl=loaded[key].imageUrl;});
+          applyMarketQuestion(market());
+        }).catch(function(){});
+      }
       function setMarket(key){
         var m=markets[key];
         activeMarket=m?key:'bitcoin';
@@ -327,6 +334,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       }
       tabs.forEach(function(tab){tab.addEventListener('click',function(){setMarket(tab.getAttribute('data-predict-market'))})});
       setMarket('bitcoin');
+      loadPredictMarketImages();
       document.addEventListener('visibilitychange',syncEngine);
       document.addEventListener('click',function(){setTimeout(syncEngine,60)},true);
       if(window.MutationObserver){
