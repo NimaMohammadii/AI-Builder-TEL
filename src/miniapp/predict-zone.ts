@@ -35,6 +35,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           <path class="predict-zone-chart-line" d=""/>
         </svg>
         <span class="predict-zone-chart-dot"></span>
+        <span class="predict-zone-price-guide"></span>
+        <strong class="predict-zone-price-label">$102,618</strong>
         <div class="predict-zone-chart-timer"><span></span></div>
       </div>
       <div class="predict-zone-actions">
@@ -67,6 +69,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var line=chart.querySelector('.predict-zone-chart-line');
       var fill=chart.querySelector('.predict-zone-chart-fill');
       var dot=chart.querySelector('.predict-zone-chart-dot');
+      var priceGuide=chart.querySelector('.predict-zone-price-guide');
+      var priceLabel=chart.querySelector('.predict-zone-price-label');
       var live=root.querySelector('.predict-zone-live-price');
       var start=root.querySelector('.predict-zone-start-price');
       var markets={
@@ -139,10 +143,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         var lineD=smoothPath(points);
         var first=points[0];
         var last=points[points.length-1];
+        var xPercent=last.x/width*100;
+        var yPercent=last.y/height*100;
         line.setAttribute('d',lineD);
         fill.setAttribute('d',lineD+' L '+last.x.toFixed(1)+' '+height+' L '+first.x.toFixed(1)+' '+height+' Z');
-        dot.style.left=(last.x/width*100)+'%';
-        dot.style.top=(last.y/height*100)+'%';
+        dot.style.left=xPercent+'%';
+        dot.style.top=yPercent+'%';
+        if(priceGuide){priceGuide.style.left=xPercent+'%';priceGuide.style.top=yPercent+'%';}
+        if(priceLabel){priceLabel.style.top=yPercent+'%';priceLabel.textContent=formatPrice(last.value);}
         if(live)live.textContent=formatPrice(last.value);
       }
       function chooseFallbackTarget(){
