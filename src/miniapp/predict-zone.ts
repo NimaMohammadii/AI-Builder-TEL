@@ -78,8 +78,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var live=root.querySelector('.predict-zone-live-price');
       var start=root.querySelector('.predict-zone-start-price');
       var markets={
-        bitcoin:{label:'Bitcoin',question:'Will Bitcoin go up or down?',symbol:'BTCUSDT',stream:'btcusdt@miniTicker',seed:102400,min:101850,max:103150,decimals:0},
-        ton:{label:'TON',question:'Will TON go up or down?',symbol:'TONUSDT',stream:'tonusdt@miniTicker',seed:2.85,min:.5,max:12,decimals:4}
+        bitcoin:{label:'Bitcoin',question:'Will Bitcoin go up or down?',symbol:'BTCUSDT',stream:'btcusdt@miniTicker',seed:102400,min:101850,max:103150,decimals:0,axisStep:10,axisRange:50},
+        ton:{label:'TON',question:'Will TON go up or down?',symbol:'TONUSDT',stream:'tonusdt@miniTicker',seed:2.85,min:.5,max:12,decimals:4,axisStep:.01,axisRange:.05}
       };
       var activeMarket='bitcoin';
       var ws=null;
@@ -93,6 +93,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var forwardFrames=0;
       var realFeedReady=false;
       var lastRealPrice=0;
+      var axisCenter=0;
       var width=360;
       var height=220;
       var padLeft=14;
@@ -102,6 +103,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function isPredictActive(){return root.classList.contains('active')&&document.visibilityState!=='hidden';}
       function formatPrice(value){var m=market();return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});}
       function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+      function roundToStep(value,step){return Math.round(value/step)*step;}
+      function resetAxis(price){var m=market();axisCenter=roundToStep(price,m.axisStep||1);}
       function fallbackSeries(seed){
         prices=[];
         var step=seed>1000?1.8:.006;
@@ -109,18 +112,18 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<18;i++)prices.push(seed-step*9+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=prices[prices.length-1];
         targetPrice=currentPrice;
+        resetAxis(currentPrice);
       }
-      function scaleInfo(values){
-        var min=Math.min.apply(null,values);
-        var max=Math.max.apply(null,values);
-        var base=market().seed;
-        var minRange=realFeedReady?(base>1000?45:.035):(base>1000?70:.06);
-        var range=Math.max(minRange,max-min);
-        var mid=(min+max)/2;
-        return {min:mid-range/2,max:mid+range/2};
+      function scaleInfo(){
+        var m=market();
+        var range=m.axisRange||50;
+        if(!axisCenter)resetAxis(currentPrice||m.seed);
+        if(currentPrice>axisCenter+range*.42||currentPrice<axisCenter-range*.42)resetAxis(currentPrice);
+        return {min:axisCenter-range/2,max:axisCenter+range/2};
       }
       function priceToY(value,scale){
-        return padY+((scale.max-value)/(scale.max-scale.min))*(height-padY*2);
+        var y=padY+((scale.max-value)/(scale.max-scale.min))*(height-padY*2);
+        return clamp(y,padY,height-padY);
       }
       function pointList(values,scale){
         return values.map(function(value,index){
@@ -147,11 +150,12 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<18;i++)prices.push(price-step*9+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=price;
         targetPrice=price;
+        resetAxis(price);
         if(start)start.textContent=formatPrice(price);
       }
       function render(){
         if(!prices.length)return;
-        var scale=scaleInfo(prices);
+        var scale=scaleInfo();
         var points=pointList(prices,scale);
         var lineD=smoothPath(points);
         var first=points[0];
@@ -164,9 +168,9 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         dot.style.top=yPercent+'%';
         if(priceGuide){priceGuide.style.top=yPercent+'%';}
         axisLabels.forEach(function(label,index){
-          var ratio=(index+1)/(axisLabels.length+1);
-          var y=padY+ratio*(height-padY*2);
-          var price=scale.max-ratio*(scale.max-scale.min);
+          var count=axisLabels.length;
+          var price=scale.max-((index+1)/(count+1))*(scale.max-scale.min);
+          var y=priceToY(price,scale);
           label.style.top=(y/height*100)+'%';
           label.textContent=formatPrice(price);
         });
@@ -243,7 +247,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(question)question.textContent=m.question;
         if(card)card.style.display=m.stream?'':'none';
         stopEngine();
-        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;
+        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;axisCenter=0;
         fallbackSeries(m.seed);
         if(start)start.textContent=formatPrice(m.seed);
         render();
