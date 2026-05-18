@@ -147,7 +147,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         history.push({x:rightEdge,y:priceToY(currentPrice,scale),value:currentPrice,live:true});
         return history;
       }
-      function clipPoints(points){
+      function pinTailToLeft(points){
         var leftEdge=0;
         var rightEdge=width-padRight;
         var clipped=[];
@@ -163,7 +163,9 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         }
         var last=points[points.length-1];
         if(last&&last.x===rightEdge&&(!clipped.length||clipped[clipped.length-1]!==last))clipped.push(last);
-        return clipped.length>1?clipped:points;
+        if(clipped.length>1){clipped[0]={x:leftEdge,y:clipped[0].y,value:clipped[0].value};return clipped;}
+        if(points.length>1){points[0]={x:leftEdge,y:points[0].y,value:points[0].value};}
+        return points;
       }
       function smoothPath(points){
         if(!points.length)return '';
@@ -191,7 +193,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(!prices.length)return;
         var scale=scaleInfo(delta);
         var points=pointList(prices,scale,progress||0);
-        var visible=clipPoints(points);
+        var visible=pinTailToLeft(points);
         var lineD=smoothPath(visible);
         var first=visible[0];
         var last=visible[visible.length-1];
