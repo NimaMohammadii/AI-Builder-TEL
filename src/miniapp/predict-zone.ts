@@ -24,6 +24,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           <span data-price-axis="1"></span>
           <span data-price-axis="2"></span>
           <span data-price-axis="3"></span>
+          <span data-price-axis="4"></span>
+          <span data-price-axis="5"></span>
         </div>
         <svg viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -169,7 +171,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(priceGuide){priceGuide.style.top=yPercent+'%';}
         axisLabels.forEach(function(label,index){
           var count=axisLabels.length;
-          var price=scale.max-((index+1)/(count+1))*(scale.max-scale.min);
+          var ratio=count>1?index/(count-1):0;
+          var price=scale.max-ratio*(scale.max-scale.min);
           var y=priceToY(price,scale);
           label.style.top=(y/height*100)+'%';
           label.textContent=formatPrice(price);
