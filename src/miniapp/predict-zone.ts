@@ -51,10 +51,10 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var back=tg.BackButton;
       function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}
       try{back.onClick(goPlayZone)}catch(e){}
-      function sync(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}
-      document.addEventListener('click',function(){setTimeout(sync,30)},true);
-      document.addEventListener('DOMContentLoaded',sync);
-      setTimeout(sync,200);
+      function syncBack(){var page=document.getElementById('predictzone');try{if(page&&page.classList.contains('active'))back.show();else back.hide()}catch(e){}}
+      document.addEventListener('click',function(){setTimeout(syncBack,30)},true);
+      document.addEventListener('DOMContentLoaded',syncBack);
+      setTimeout(syncBack,200);
     }
 
     function setupPredictChart(){
@@ -79,6 +79,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       };
       var activeMarket='bitcoin';
       var ws=null;
+      var tickTimer=null;
+      var reconnectTimer=null;
       var prices=[];
       var currentPrice=0;
       var targetPrice=0;
@@ -92,6 +94,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var padX=14;
       var padY=24;
       function market(){return markets[activeMarket]||markets.bitcoin;}
+      function isPredictActive(){return root.classList.contains('active')&&document.visibilityState!=='hidden';}
       function formatPrice(value){var m=market();return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});}
       function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
       function fallbackSeries(seed){
@@ -129,7 +132,6 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         return d;
       }
       function seedWithRealPrice(price){
-        var m=market();
         prices=[];
         var step=price>1000?1.8:.006;
         var waveSize=price>1000?5:.018;
@@ -139,6 +141,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(start)start.textContent=formatPrice(price);
       }
       function render(){
+        if(!prices.length)return;
         var points=pointList(prices);
         var lineD=smoothPath(points);
         var first=points[0];
@@ -161,27 +164,31 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         targetFramesLeft=22+Math.floor(Math.random()*18);
       }
       function tick(){
+        if(!isPredictActive())return;
         if(realFeedReady&&lastRealPrice>0)targetPrice=lastRealPrice;
         else if(targetFramesLeft<=0)chooseFallbackTarget();
-        var ease=realFeedReady?.055:.045+Math.random()*.018;
+        var ease=realFeedReady?.075:.055+Math.random()*.015;
         currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
         if(!realFeedReady){
-          currentPrice+=Math.sin(Date.now()/1500)*(market().seed>1000?.55:.0012);
+          currentPrice+=Math.sin(Date.now()/1800)*(market().seed>1000?.38:.0009);
           targetFramesLeft-=1;
         }
         forwardFrames+=1;
-        if(forwardFrames>=4){
+        if(forwardFrames>=3){
           prices.push(currentPrice);
-          if(prices.length>24)prices.shift();
+          if(prices.length>22)prices.shift();
           forwardFrames=0;
         }else prices[prices.length-1]=currentPrice;
         render();
       }
-      function closeSocket(){if(ws){try{ws.onclose=null;ws.close()}catch(e){}ws=null;}}
+      function closeSocket(){
+        if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+        if(ws){try{ws.onclose=null;ws.onerror=null;ws.onmessage=null;ws.close()}catch(e){}ws=null;}
+      }
       function connectBinance(){
         closeSocket();
         var m=market();
-        if(!('WebSocket' in window)||!m.stream)return;
+        if(!isPredictActive()||!('WebSocket' in window)||!m.stream)return;
         try{
           ws=new WebSocket('wss://stream.binance.com:9443/ws/'+m.stream);
           ws.onmessage=function(event){
@@ -193,9 +200,24 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
               if(!realFeedReady){realFeedReady=true;seedWithRealPrice(price);render();}
             }catch(e){}
           };
-          ws.onclose=function(){setTimeout(function(){if(markets[activeMarket]&&markets[activeMarket].stream)connectBinance()},4000)};
+          ws.onclose=function(){
+            if(isPredictActive())reconnectTimer=setTimeout(connectBinance,6000);
+          };
           ws.onerror=function(){try{ws.close()}catch(e){}};
         }catch(e){}
+      }
+      function startEngine(){
+        var m=market();
+        if(!m.stream||!isPredictActive())return;
+        if(!tickTimer)tickTimer=setInterval(tick,1000);
+        if(!ws)connectBinance();
+      }
+      function stopEngine(){
+        if(tickTimer){clearInterval(tickTimer);tickTimer=null;}
+        closeSocket();
+      }
+      function syncEngine(){
+        if(isPredictActive())startEngine();else stopEngine();
       }
       function setMarket(key){
         var m=markets[key];
@@ -204,15 +226,20 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         tabs.forEach(function(tab){tab.classList.toggle('active',tab.getAttribute('data-predict-market')===activeMarket)});
         if(question)question.textContent=m.question;
         if(card)card.style.display=m.stream?'':'none';
+        stopEngine();
         realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;
         fallbackSeries(m.seed);
         if(start)start.textContent=formatPrice(m.seed);
         render();
-        if(m.stream)connectBinance();else closeSocket();
+        syncEngine();
       }
       tabs.forEach(function(tab){tab.addEventListener('click',function(){setMarket(tab.getAttribute('data-predict-market'))})});
       setMarket('bitcoin');
-      setInterval(tick,320);
+      document.addEventListener('visibilitychange',syncEngine);
+      document.addEventListener('click',function(){setTimeout(syncEngine,60)},true);
+      if(window.MutationObserver){
+        new MutationObserver(syncEngine).observe(root,{attributes:true,attributeFilter:['class']});
+      }
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictChart);else setupPredictChart();
   })();</script>
