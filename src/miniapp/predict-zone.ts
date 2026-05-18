@@ -1,4 +1,25 @@
 export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predict-zone-view">
+  <style>
+    #predictzone .predict-zone-countdown{opacity:.48!important;color:rgba(255,255,255,.66)!important;text-shadow:none!important}
+    #predictzone .predict-zone-price-axis span{font-size:12.6px!important;font-weight:720!important;color:rgba(255,255,255,.48)!important}
+    #predictzone .predict-zone-bet-sheet{position:fixed;inset:0;z-index:80;display:grid;align-items:end;padding:0 18px calc(18px + env(safe-area-inset-bottom));background:rgba(0,0,0,.16);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .22s ease}
+    #predictzone .predict-zone-bet-sheet.open{opacity:1;pointer-events:auto}
+    #predictzone .predict-zone-bet-panel{width:100%;max-width:430px;margin:0 auto;border-radius:32px;background:rgba(18,18,18,.28);border:1px solid rgba(255,255,255,.11);box-shadow:0 28px 80px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.12);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);padding:18px;transform:translateY(24px) scale(.98);opacity:.6;transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .22s ease;color:#fff}
+    #predictzone .predict-zone-bet-sheet.open .predict-zone-bet-panel{transform:translateY(0) scale(1);opacity:1}
+    #predictzone .predict-zone-bet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    #predictzone .predict-zone-bet-head span{display:block;color:rgba(255,255,255,.46);font-size:10px;font-weight:760;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+    #predictzone .predict-zone-bet-head strong{display:block;font-size:24px;font-weight:820;letter-spacing:-.055em;line-height:1.05}
+    #predictzone .predict-zone-bet-close{width:38px;height:38px;border:0;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;font-size:22px;line-height:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+    #predictzone .predict-zone-bet-question{font-size:13px;font-weight:720;color:rgba(255,255,255,.68);letter-spacing:-.02em;margin:0 0 14px}
+    #predictzone .predict-zone-bet-input-wrap{display:grid;grid-template-columns:1fr auto;align-items:center;height:58px;border-radius:22px;background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);padding:0 14px;margin-bottom:10px}
+    #predictzone .predict-zone-bet-input{width:100%;border:0;outline:0;background:transparent;color:#fff;font-size:24px;font-weight:820;letter-spacing:-.04em;appearance:textfield}.predict-zone-bet-input::-webkit-outer-spin-button,.predict-zone-bet-input::-webkit-inner-spin-button{appearance:none;margin:0}
+    #predictzone .predict-zone-bet-token{font-size:13px;font-weight:820;color:rgba(255,255,255,.58)}
+    #predictzone .predict-zone-bet-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:11px 0 14px}
+    #predictzone .predict-zone-bet-preset{height:36px;border:0;border-radius:999px;background:rgba(255,255,255,.055);color:#fff;font-size:12px;font-weight:760;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+    #predictzone .predict-zone-bet-submit{width:100%;height:48px;border:0;border-radius:999px;background:rgba(255,255,255,.10);color:#fff;font-size:15px;font-weight:820;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 18px 34px rgba(0,0,0,.24)}
+    #predictzone .predict-zone-bet-note{margin:10px 0 0;text-align:center;color:rgba(255,255,255,.42);font-size:10.5px;font-weight:650;letter-spacing:-.01em}
+    @media(max-width:380px){#predictzone .predict-zone-price-axis span{font-size:11.4px!important}#predictzone .predict-zone-bet-panel{border-radius:28px;padding:16px}#predictzone .predict-zone-bet-head strong{font-size:22px}}
+  </style>
   <div class="predict-zone-simple-shell">
     <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
       <button type="button" class="predict-zone-category-card active" data-predict-market="bitcoin"><span>Bitcoin</span></button>
@@ -10,7 +31,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
     <article class="predict-zone-glass-card predict-zone-btc-preview-card" data-predict-card>
       <div class="predict-zone-card-top">
         <span></span>
-        <small class="predict-zone-countdown">05:00</small>
+        <small class="predict-zone-countdown" data-predict-countdown>05:00</small>
       </div>
       <h2 class="predict-zone-question-row">
         <span class="predict-zone-question-image" data-predict-question-image aria-label="Prediction image upload slot"></span>
@@ -54,10 +75,31 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <span class="predict-zone-price-guide"></span>
       </div>
       <div class="predict-zone-actions">
-        <button type="button" class="predict-zone-choice predict-zone-choice-up">Up</button>
-        <button type="button" class="predict-zone-choice predict-zone-choice-down">Down</button>
+        <button type="button" class="predict-zone-choice predict-zone-choice-up" data-predict-choice="up">Up</button>
+        <button type="button" class="predict-zone-choice predict-zone-choice-down" data-predict-choice="down">Down</button>
       </div>
     </article>
+  </div>
+  <div class="predict-zone-bet-sheet" data-predict-bet-sheet aria-hidden="true">
+    <div class="predict-zone-bet-panel" role="dialog" aria-modal="true" aria-label="Place prediction">
+      <div class="predict-zone-bet-head">
+        <div><span>Prediction</span><strong data-predict-bet-title>Up</strong></div>
+        <button type="button" class="predict-zone-bet-close" data-predict-bet-close aria-label="Close">×</button>
+      </div>
+      <p class="predict-zone-bet-question" data-predict-bet-question>Bitcoin go up or down?</p>
+      <label class="predict-zone-bet-input-wrap">
+        <input class="predict-zone-bet-input" data-predict-bet-input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+        <span class="predict-zone-bet-token">TON</span>
+      </label>
+      <div class="predict-zone-bet-presets">
+        <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="1">1</button>
+        <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="5">5</button>
+        <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="10">10</button>
+        <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="25">25</button>
+      </div>
+      <button type="button" class="predict-zone-bet-submit" data-predict-bet-submit>Continue</button>
+      <p class="predict-zone-bet-note">The real balance lock and result settlement will be connected next.</p>
+    </div>
   </div>
   <script>(function(){
     var tg=window.Telegram&&window.Telegram.WebApp;
@@ -81,6 +123,13 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var card=root.querySelector('[data-predict-card]');
       var question=root.querySelector('[data-predict-question]');
       var questionImage=root.querySelector('[data-predict-question-image]');
+      var countdown=root.querySelector('[data-predict-countdown]');
+      var betSheet=root.querySelector('[data-predict-bet-sheet]');
+      var betTitle=root.querySelector('[data-predict-bet-title]');
+      var betQuestion=root.querySelector('[data-predict-bet-question]');
+      var betInput=root.querySelector('[data-predict-bet-input]');
+      var betClose=root.querySelector('[data-predict-bet-close]');
+      var betSubmit=root.querySelector('[data-predict-bet-submit]');
       var line=chart.querySelector('.predict-zone-chart-line');
       var fill=chart.querySelector('.predict-zone-chart-fill');
       var dot=chart.querySelector('.predict-zone-chart-dot');
@@ -110,6 +159,9 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var lastFrameTime=0;
       var lastPointTime=0;
       var pointInterval=3000;
+      var roundDuration=300000;
+      var roundStartedAt=Date.now();
+      var timerId=0;
       var width=360;
       var height=220;
       var padLeft=14;
@@ -120,6 +172,10 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function formatPrice(value){var m=market();return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});}
       function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
       function roundToStep(value,step){return Math.round(value/step)*step;}
+      function formatTime(ms){var s=Math.max(0,Math.ceil(ms/1000));var m=Math.floor(s/60);var r=s%60;return String(m).padStart(2,'0')+':'+String(r).padStart(2,'0');}
+      function resetRoundTimer(){roundStartedAt=Date.now();updateCountdown();}
+      function updateCountdown(){if(!countdown)return;var elapsed=(Date.now()-roundStartedAt)%roundDuration;countdown.textContent=formatTime(roundDuration-elapsed);}
+      function startCountdown(){if(timerId)return;updateCountdown();timerId=window.setInterval(updateCountdown,1000);}
       function setAxisInstant(price){var m=market();axisCenter=roundToStep(price,m.axisStep||1);axisTarget=axisCenter;}
       function setAxisTarget(price){var m=market();axisTarget=roundToStep(price,m.axisStep||1);if(!axisCenter)axisCenter=axisTarget;}
       function easeAxis(delta){var speed=Math.min(.26,delta/900);axisCenter=axisCenter+(axisTarget-axisCenter)*speed;if(Math.abs(axisTarget-axisCenter)<(market().axisStep||1)*.02)axisCenter=axisTarget;}
@@ -303,6 +359,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function startEngine(){
         var m=market();
         if(!m.stream||!isPredictActive())return;
+        startCountdown();
         if(!rafId){lastFrameTime=0;lastPointTime=lastPointTime||performance.now();rafId=requestAnimationFrame(frame);}
         if(!ws)connectBinance();
       }
@@ -319,7 +376,17 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           if(m.imageUrl){questionImage.style.backgroundImage='url("'+m.imageUrl.replace(/"/g,'')+'")';questionImage.classList.add('has-image');}
           else{questionImage.style.backgroundImage='';questionImage.classList.remove('has-image');}
         }
+        if(betQuestion)betQuestion.textContent=m.question;
       }
+      function openBetSheet(choice){
+        var m=market();
+        if(betTitle)betTitle.textContent=(choice==='down'?'Down':'Up')+' on '+m.label;
+        if(betQuestion)betQuestion.textContent=m.question;
+        if(betInput)betInput.value='';
+        if(betSheet){betSheet.classList.add('open');betSheet.setAttribute('aria-hidden','false');}
+        setTimeout(function(){try{if(betInput)betInput.focus()}catch(e){}},180);
+      }
+      function closeBetSheet(){if(betSheet){betSheet.classList.remove('open');betSheet.setAttribute('aria-hidden','true');}}
       function loadPredictMarketImages(){
         fetch('/app/api/predict-markets',{cache:'no-store'}).then(function(response){return response.json()}).then(function(data){
           var loaded=data&&data.markets?data.markets:{};
@@ -333,6 +400,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         m=market();
         tabs.forEach(function(tab){tab.classList.toggle('active',tab.getAttribute('data-predict-market')===activeMarket)});
         applyMarketQuestion(m);
+        closeBetSheet();
+        resetRoundTimer();
         if(card)card.style.display=m.stream?'':'none';
         stopEngine();
         realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;direction=1;axisCenter=0;axisTarget=0;tailY=null;lastFrameTime=0;lastPointTime=performance.now();
@@ -342,8 +411,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         syncEngine();
       }
       tabs.forEach(function(tab){tab.addEventListener('click',function(){setMarket(tab.getAttribute('data-predict-market'))})});
+      root.querySelectorAll('[data-predict-choice]').forEach(function(button){button.addEventListener('click',function(){openBetSheet(button.getAttribute('data-predict-choice'))})});
+      root.querySelectorAll('[data-predict-bet-preset]').forEach(function(button){button.addEventListener('click',function(){if(betInput)betInput.value=button.getAttribute('data-predict-bet-preset')||''})});
+      if(betClose)betClose.addEventListener('click',closeBetSheet);
+      if(betSheet)betSheet.addEventListener('click',function(event){if(event.target===betSheet)closeBetSheet()});
+      if(betSubmit)betSubmit.addEventListener('click',function(){var value=betInput?Number(betInput.value):0;if(!value||value<=0){if(betInput)betInput.focus();return;}closeBetSheet();});
       setMarket('bitcoin');
       loadPredictMarketImages();
+      startCountdown();
       document.addEventListener('visibilitychange',syncEngine);
       document.addEventListener('click',function(){setTimeout(syncEngine,60)},true);
       if(window.MutationObserver){
