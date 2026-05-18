@@ -28,26 +28,35 @@ app.get('/app/api/predict-round', async (c) => {
   }
 });
 app.post('/app/api/predict-bet', async (c) => {
+  let betId = '';
+  let userId = '';
+  let stakeNano = 0;
   try {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const market = normalizePredictMarket(String(body.market || 'bitcoin'));
     const side = normalizeSide(body.side);
-    const userId = cleanUserId(body.userId);
-    const stakeNano = tonToNano(body.stakeTon);
+    userId = cleanUserId(body.userId);
+    stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanPrice(body.tonUsdSnapshot || await fetchPrice('ton'));
     if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     if (Date.now() >= Date.parse(round.ends_at) - LOCK_MS) throw new Error('This round is locked. Wait for the next round.');
-    const betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
-    await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId: round.id } });
+    betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
     await ensurePredictTables(c.env);
     await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, CURRENT_TIMESTAMP)`)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP)`)
       .bind(betId, round.id, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd)
       .run();
+    await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId: round.id } });
+    const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
+    if ((active.meta?.changes || 0) <= 0) {
+      await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake rollback', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId: round.id, status: 'rollback' } });
+      throw new Error('Could not activate prediction');
+    }
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
+    if (betId) await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => undefined);
     return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not place prediction' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
@@ -107,9 +116,10 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
   const pools = await poolJson(env, round.id);
   const userBets = cleanedUserId ? await userBetsJson(env, round.id, cleanedUserId) : [];
   const recentUserBets = cleanedUserId ? await recentUserBetsJson(env, round.market, cleanedUserId) : [];
+  const userControls = cleanedUserId ? await getUserControls(env, cleanedUserId) : null;
   const now = Date.now();
   const ends = Date.parse(round.ends_at);
-  return { ok: true, round: { id: round.id, market: round.market, startsAt: round.starts_at, endsAt: round.ends_at, startPrice: Number(round.start_price), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : round.status, result: round.result, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
+  return { ok: true, userControls, round: { id: round.id, market: round.market, startsAt: round.starts_at, endsAt: round.ends_at, startPrice: Number(round.start_price), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : round.status, result: round.result, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
 }
 async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (
@@ -159,7 +169,7 @@ async function getOrCreateCurrentRound(env: Env, market: PredictMarket): Promise
 }
 async function settleDueRounds(env: Env, market: PredictMarket, force = false): Promise<number> {
   await ensurePredictTables(env);
-  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status = 'active')) AND (datetime(ends_at) <= datetime('now') OR ? = 1) ORDER BY datetime(ends_at) ASC LIMIT 10`).bind(market, force ? 1 : 0).all<RoundRow>();
+  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) AND (datetime(ends_at) <= datetime('now') OR ? = 1) ORDER BY datetime(ends_at) ASC LIMIT 10`).bind(market, force ? 1 : 0).all<RoundRow>();
   let settled = 0;
   for (const round of rows.results || []) {
     if (!force && Date.parse(round.ends_at) > Date.now()) continue;
@@ -171,7 +181,7 @@ async function settleDueRounds(env: Env, market: PredictMarket, force = false): 
 async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const fresh = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(round.id).first<RoundRow>();
   if (!fresh) return;
-  const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status = 'active'").bind(fresh.id).first<{ count: number }>();
+  const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(fresh.id).first<{ count: number }>();
   if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
   const endPrice = fresh.end_price == null ? await fetchPrice(normalizePredictMarket(fresh.market)) : Number(fresh.end_price);
   const result: Exclude<RoundResult, null> = (fresh.result === 'up' || fresh.result === 'down' || fresh.result === 'draw') ? fresh.result : endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
@@ -179,7 +189,7 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
   const bets = await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(fresh.id).all<BetRow>();
   const all = bets.results || [];
-  const active = all.filter((b) => b.status === 'active');
+  const active = all.filter((b) => b.status === 'active' || b.status === 'settling_payment');
   const upPool = all.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
   const downPool = all.filter((b) => b.side === 'down').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
   const winnerPool = result === 'up' ? upPool : result === 'down' ? downPool : 0;
@@ -199,14 +209,21 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
       await env.DB.prepare(`UPDATE predict_bets SET status = 'lost', payout_nano = 0 WHERE id = ? AND status = 'active'`).bind(bet.id).run();
     }
   }
-  const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status = 'active'").bind(fresh.id).first<{ count: number }>();
+  const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(fresh.id).first<{ count: number }>();
   if (Number(remaining?.count || 0) <= 0) {
     await env.DB.prepare(`UPDATE predict_rounds SET status = 'settled', end_price = ?, result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP) WHERE id = ?`).bind(endPrice, result, fresh.id).run();
   }
 }
 async function payBet(env: Env, bet: BetRow, payoutNano: number, status: 'won' | 'refunded'): Promise<void> {
-  await adjustUserTonBalance(env, bet.user_id, payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: bet.id, referenceType: 'predict_bet', metadata: { roundId: bet.round_id, market: bet.market, side: bet.side, status } });
-  await env.DB.prepare(`UPDATE predict_bets SET status = ?, payout_nano = ? WHERE id = ? AND status = 'active'`).bind(status, payoutNano, bet.id).run();
+  const lock = bet.status === 'settling_payment'
+    ? { meta: { changes: 1 } }
+    : await env.DB.prepare(`UPDATE predict_bets SET status = 'settling_payment', payout_nano = ? WHERE id = ? AND status = 'active'`).bind(payoutNano, bet.id).run();
+  if ((lock.meta?.changes || 0) <= 0) return;
+  const alreadyPaid = await env.DB.prepare(`SELECT id FROM ton_transactions WHERE reference_type = 'predict_bet' AND reference_id = ? AND amount_nano = ? LIMIT 1`).bind(bet.id, payoutNano).first<{ id: string }>().catch(() => null);
+  if (!alreadyPaid) {
+    await adjustUserTonBalance(env, bet.user_id, payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: bet.id, referenceType: 'predict_bet', metadata: { roundId: bet.round_id, market: bet.market, side: bet.side, status } });
+  }
+  await env.DB.prepare(`UPDATE predict_bets SET status = ?, payout_nano = ? WHERE id = ? AND status = 'settling_payment'`).bind(status, payoutNano, bet.id).run();
 }
 async function poolJson(env: Env, roundId: string) {
   const rows = await env.DB.prepare(`SELECT side, SUM(stake_nano) AS stakeNano, COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status = 'active' GROUP BY side`).bind(roundId).all<{ side: string; stakeNano: number; count: number }>();
