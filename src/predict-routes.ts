@@ -12,7 +12,6 @@ const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
 type PredictSide = 'up' | 'down';
-type RoundStatus = 'open' | 'locked' | 'settled';
 type RoundResult = 'up' | 'down' | 'draw' | null;
 type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
@@ -173,7 +172,7 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const endPrice = await fetchPrice(normalizePredictMarket(fresh.market));
   const result: Exclude<RoundResult, null> = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
   await env.DB.prepare(`UPDATE predict_rounds SET status = 'settled', end_price = ?, result = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'settled'`).bind(endPrice, result, fresh.id).run();
-  const bets = await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ? AND status = \'active\'').bind(fresh.id).all<BetRow>();
+  const bets = await env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND status = 'active'").bind(fresh.id).all<BetRow>();
   const active = bets.results || [];
   if (!active.length) return;
   const upPool = active.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
@@ -221,7 +220,7 @@ async function getBet(env: Env, id: string) {
 }
 async function fetchPrice(market: PredictMarket): Promise<number> {
   const symbol = market === 'ton' ? 'TONUSDT' : 'BTCUSDT';
-  const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } as RequestInit['cf'] });
+  const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error('Price feed is unavailable');
   const data = await res.json() as { price?: string };
   return cleanPrice(data.price);
