@@ -1,4 +1,5 @@
 import app from './index-with-tgs-overlay';
+import './predict-routes';
 import type { Env } from './types';
 
 const DETAIL_POLISH_SCRIPT = `
