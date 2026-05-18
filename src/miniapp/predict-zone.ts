@@ -96,6 +96,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var realFeedReady=false;
       var lastRealPrice=0;
       var axisCenter=0;
+      var axisTarget=0;
       var width=360;
       var height=220;
       var padLeft=14;
@@ -106,7 +107,9 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function formatPrice(value){var m=market();return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});}
       function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
       function roundToStep(value,step){return Math.round(value/step)*step;}
-      function resetAxis(price){var m=market();axisCenter=roundToStep(price,m.axisStep||1);}
+      function setAxisInstant(price){var m=market();axisCenter=roundToStep(price,m.axisStep||1);axisTarget=axisCenter;}
+      function setAxisTarget(price){var m=market();axisTarget=roundToStep(price,m.axisStep||1);if(!axisCenter)axisCenter=axisTarget;}
+      function easeAxis(){axisCenter=axisCenter+(axisTarget-axisCenter)*.22;if(Math.abs(axisTarget-axisCenter)<(market().axisStep||1)*.02)axisCenter=axisTarget;}
       function fallbackSeries(seed){
         prices=[];
         var step=seed>1000?1.8:.006;
@@ -114,13 +117,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<18;i++)prices.push(seed-step*9+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=prices[prices.length-1];
         targetPrice=currentPrice;
-        resetAxis(currentPrice);
+        setAxisInstant(currentPrice);
       }
       function scaleInfo(){
         var m=market();
         var range=m.axisRange||50;
-        if(!axisCenter)resetAxis(currentPrice||m.seed);
-        if(currentPrice>axisCenter+range*.42||currentPrice<axisCenter-range*.42)resetAxis(currentPrice);
+        if(!axisCenter)setAxisInstant(currentPrice||m.seed);
+        if(currentPrice>axisTarget+range*.42||currentPrice<axisTarget-range*.42)setAxisTarget(currentPrice);
+        easeAxis();
         return {min:axisCenter-range/2,max:axisCenter+range/2};
       }
       function priceToY(value,scale){
@@ -152,7 +156,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<18;i++)prices.push(price-step*9+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=price;
         targetPrice=price;
-        resetAxis(price);
+        setAxisInstant(price);
         if(start)start.textContent=formatPrice(price);
       }
       function render(){
@@ -250,7 +254,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(question)question.textContent=m.question;
         if(card)card.style.display=m.stream?'':'none';
         stopEngine();
-        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;axisCenter=0;
+        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;axisCenter=0;axisTarget=0;
         fallbackSeries(m.seed);
         if(start)start.textContent=formatPrice(m.seed);
         render();
