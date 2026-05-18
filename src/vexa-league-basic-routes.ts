@@ -1,4 +1,5 @@
 import app from './index';
+import './predict-routes';
 import { VEXA_LEAGUE_MISSIONS, VEXA_LEAGUE_PRIZES } from './vexa-league-library';
 import type { Env } from './types';
 
