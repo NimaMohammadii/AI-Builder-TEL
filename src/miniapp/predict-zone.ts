@@ -22,7 +22,11 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
     #predictzone .predict-zone-bet-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:11px 0 14px}
     #predictzone .predict-zone-bet-preset{height:36px;border:0;border-radius:999px;background:rgba(255,255,255,.055);color:#fff;font-size:12px;font-weight:760;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
     #predictzone .predict-zone-bet-submit{width:100%;height:48px;border:0;border-radius:999px;background:rgba(255,255,255,.10);color:#fff;font-size:15px;font-weight:820;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 18px 34px rgba(0,0,0,.24)}
+    #predictzone .predict-zone-bet-submit:disabled{opacity:.55}
     #predictzone .predict-zone-bet-note{margin:10px 0 0;text-align:center;color:rgba(255,255,255,.42);font-size:10.5px;font-weight:650;letter-spacing:-.01em}
+    #predictzone .predict-zone-bet-status{min-height:15px;margin:9px 0 0;text-align:center;color:rgba(255,255,255,.58);font-size:11px;font-weight:720;letter-spacing:-.01em}
+    #predictzone .predict-zone-bet-status.bad{color:rgba(255,160,160,.9)}
+    #predictzone .predict-zone-bet-status.good{color:rgba(185,255,210,.9)}
     @media(max-width:380px){#predictzone .predict-zone-price-axis span{font-size:11.4px!important}#predictzone .predict-zone-bet-panel{max-width:340px;border-radius:28px;padding:16px}#predictzone .predict-zone-bet-head strong{font-size:22px}#predictzone .predict-zone-bet-input{font-size:24px}}
   </style>
   <div class="predict-zone-simple-shell">
@@ -103,12 +107,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="10">10</button>
         <button type="button" class="predict-zone-bet-preset" data-predict-bet-preset="25">25</button>
       </div>
-      <button type="button" class="predict-zone-bet-submit" data-predict-bet-submit>Continue</button>
-      <p class="predict-zone-bet-note">The real balance lock and result settlement will be connected next.</p>
+      <button type="button" class="predict-zone-bet-submit" data-predict-bet-submit>Place prediction</button>
+      <p class="predict-zone-bet-status" data-predict-bet-status></p>
+      <p class="predict-zone-bet-note">Pool-based prediction. Stake is locked from your TON balance.</p>
     </div>
   </div>
   <script>(function(){
     var tg=window.Telegram&&window.Telegram.WebApp;
+    var tgUser=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
     if(tg&&tg.BackButton){
       var back=tg.BackButton;
       function goPlayZone(){var btn=document.querySelector('[data-view="playzone"]');if(btn)btn.click();try{back.hide()}catch(e){}}
@@ -135,6 +141,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var betQuestion=root.querySelector('[data-predict-bet-question]');
       var betInput=root.querySelector('[data-predict-bet-input]');
       var betUsd=root.querySelector('[data-predict-bet-usd]');
+      var betStatus=root.querySelector('[data-predict-bet-status]');
       var tonRateText=root.querySelector('[data-predict-ton-rate]');
       var betClose=root.querySelector('[data-predict-bet-close]');
       var betSubmit=root.querySelector('[data-predict-bet-submit]');
@@ -151,6 +158,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         ton:{label:'TON',question:'TON go up or down?',symbol:'TONUSDT',stream:'tonusdt@miniTicker',seed:2.85,min:.5,max:12,decimals:4,axisStep:.005,axisRange:.02,imageUrl:''}
       };
       var activeMarket='bitcoin';
+      var currentBetSide='up';
+      var betBusy=false;
       var ws=null;
       var tonWs=null;
       var rafId=0;
@@ -179,6 +188,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var padRight=78;
       var padY=24;
       function market(){return markets[activeMarket]||markets.bitcoin;}
+      function miniUserId(){return String((tgUser&&tgUser.id)||localStorage.getItem('ownerId')||'').trim();}
       function isPredictActive(){return root.classList.contains('active')&&document.visibilityState!=='hidden';}
       function formatPrice(value){var m=market();return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});}
       function formatUsd(value){return '$'+Number(value||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -189,6 +199,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function resetRoundTimer(){roundStartedAt=Date.now();updateCountdown();}
       function updateCountdown(){if(!countdown)return;var elapsed=(Date.now()-roundStartedAt)%roundDuration;countdown.textContent=formatTime(roundDuration-elapsed);}
       function startCountdown(){if(timerId)return;updateCountdown();timerId=window.setInterval(updateCountdown,1000);}
+      function setBetStatus(text,type){if(!betStatus)return;betStatus.textContent=text||'';betStatus.classList.toggle('bad',type==='bad');betStatus.classList.toggle('good',type==='good');}
       function updateStakeValue(){var amount=betInput?Number(betInput.value||0):0;var usd=amount*(tonUsdPrice||0);if(betUsd)betUsd.textContent='≈ '+formatUsd(usd);if(tonRateText)tonRateText.textContent=tonUsdPrice?formatTonUsd(tonUsdPrice):'Loading...';}
       function setTonUsdPrice(price){if(!price||!isFinite(price))return;tonUsdPrice=price;updateStakeValue();}
       function connectTonStakeTicker(){
@@ -409,16 +420,40 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(betQuestion)betQuestion.textContent=m.question;
       }
       function openBetSheet(choice){
+        currentBetSide=choice==='down'?'down':'up';
         var m=market();
-        if(betTitle)betTitle.textContent=(choice==='down'?'Down':'Up')+' on '+m.label;
+        if(betTitle)betTitle.textContent=(currentBetSide==='down'?'Down':'Up')+' on '+m.label;
         if(betQuestion)betQuestion.textContent=m.question;
         if(betInput)betInput.value='';
+        setBetStatus('', '');
         updateStakeValue();
         connectTonStakeTicker();
         if(betSheet){betSheet.classList.add('open');betSheet.setAttribute('aria-hidden','false');}
         setTimeout(function(){try{if(betInput)betInput.focus()}catch(e){}},180);
       }
       function closeBetSheet(){if(betSheet){betSheet.classList.remove('open');betSheet.setAttribute('aria-hidden','true');}}
+      function syncUserBalance(){try{if(window.VexaSectionLocks&&window.VexaSectionLocks.syncUser)window.VexaSectionLocks.syncUser(true)}catch(e){}}
+      function placePredictBet(){
+        if(betBusy)return;
+        var value=betInput?Number(betInput.value):0;
+        var id=miniUserId();
+        if(!id){setBetStatus('Telegram user was not detected.', 'bad');return;}
+        if(!value||value<=0){setBetStatus('Enter a valid TON amount.', 'bad');if(betInput)betInput.focus();return;}
+        betBusy=true;
+        if(betSubmit){betSubmit.disabled=true;betSubmit.textContent='Placing...';}
+        setBetStatus('Checking balance...', '');
+        fetch('/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,market:activeMarket,side:currentBetSide,stakeTon:value,tonUsdSnapshot:tonUsdPrice||0})})
+          .then(function(response){return response.json().then(function(json){return {ok:response.ok,json:json}})})
+          .then(function(result){
+            if(!result.ok||!result.json||result.json.ok===false)throw new Error((result.json&&result.json.error)||'Could not place prediction');
+            setBetStatus('Prediction placed.', 'good');
+            syncUserBalance();
+            try{window.dispatchEvent(new CustomEvent('vexa-predict-bet',{detail:result.json}))}catch(e){}
+            setTimeout(closeBetSheet,450);
+          })
+          .catch(function(error){setBetStatus(error&&error.message?error.message:'Could not place prediction.', 'bad')})
+          .finally(function(){betBusy=false;if(betSubmit){betSubmit.disabled=false;betSubmit.textContent='Place prediction';}});
+      }
       function loadPredictMarketImages(){
         fetch('/app/api/predict-markets',{cache:'no-store'}).then(function(response){return response.json()}).then(function(data){
           var loaded=data&&data.markets?data.markets:{};
@@ -448,7 +483,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       if(betInput)betInput.addEventListener('input',updateStakeValue);
       if(betClose)betClose.addEventListener('click',closeBetSheet);
       if(betSheet)betSheet.addEventListener('click',function(event){if(event.target===betSheet)closeBetSheet()});
-      if(betSubmit)betSubmit.addEventListener('click',function(){var value=betInput?Number(betInput.value):0;if(!value||value<=0){if(betInput)betInput.focus();return;}closeBetSheet();});
+      if(betSubmit)betSubmit.addEventListener('click',placePredictBet);
       setMarket('bitcoin');
       loadPredictMarketImages();
       startCountdown();
