@@ -84,18 +84,20 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       };
       var activeMarket='bitcoin';
       var ws=null;
-      var tickTimer=null;
+      var rafId=0;
       var reconnectTimer=null;
       var prices=[];
       var currentPrice=0;
       var targetPrice=0;
       var targetFramesLeft=0;
       var direction=1;
-      var forwardFrames=0;
       var realFeedReady=false;
       var lastRealPrice=0;
       var axisCenter=0;
       var axisTarget=0;
+      var lastFrameTime=0;
+      var lastPointTime=0;
+      var pointInterval=3000;
       var width=360;
       var height=220;
       var padLeft=14;
@@ -108,31 +110,34 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function roundToStep(value,step){return Math.round(value/step)*step;}
       function setAxisInstant(price){var m=market();axisCenter=roundToStep(price,m.axisStep||1);axisTarget=axisCenter;}
       function setAxisTarget(price){var m=market();axisTarget=roundToStep(price,m.axisStep||1);if(!axisCenter)axisCenter=axisTarget;}
-      function easeAxis(){axisCenter=axisCenter+(axisTarget-axisCenter)*.22;if(Math.abs(axisTarget-axisCenter)<(market().axisStep||1)*.02)axisCenter=axisTarget;}
+      function easeAxis(delta){var speed=Math.min(.26,delta/900);axisCenter=axisCenter+(axisTarget-axisCenter)*speed;if(Math.abs(axisTarget-axisCenter)<(market().axisStep||1)*.02)axisCenter=axisTarget;}
       function fallbackSeries(seed){
         prices=[];
         var step=seed>1000?1.8:.006;
         var waveSize=seed>1000?5:.018;
-        for(var i=0;i<18;i++)prices.push(seed-step*9+i*step+Math.sin(i/2.8)*waveSize);
+        for(var i=0;i<22;i++)prices.push(seed-step*11+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=prices[prices.length-1];
         targetPrice=currentPrice;
         setAxisInstant(currentPrice);
       }
-      function scaleInfo(){
+      function scaleInfo(delta){
         var m=market();
         var range=m.axisRange||50;
         if(!axisCenter)setAxisInstant(currentPrice||m.seed);
         if(currentPrice>axisTarget+range*.42||currentPrice<axisTarget-range*.42)setAxisTarget(currentPrice);
-        easeAxis();
+        easeAxis(delta||16);
         return {min:axisCenter-range/2,max:axisCenter+range/2};
       }
       function priceToY(value,scale){
         var y=padY+((scale.max-value)/(scale.max-scale.min))*(height-padY*2);
         return clamp(y,padY,height-padY);
       }
-      function pointList(values,scale){
+      function pointList(values,scale,progress){
+        var count=values.length;
+        var plotWidth=width-padLeft-padRight;
+        var step=count>1?plotWidth/(count-1):plotWidth;
         return values.map(function(value,index){
-          var x=padLeft+(index/(values.length-1))*(width-padLeft-padRight);
+          var x=padLeft+(index*step)-(progress*step);
           var y=priceToY(value,scale);
           return {x:x,y:y,value:value};
         });
@@ -152,19 +157,22 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         prices=[];
         var step=price>1000?1.8:.006;
         var waveSize=price>1000?5:.018;
-        for(var i=0;i<18;i++)prices.push(price-step*9+i*step+Math.sin(i/2.8)*waveSize);
+        for(var i=0;i<22;i++)prices.push(price-step*11+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=price;
         targetPrice=price;
+        lastPointTime=performance.now();
         setAxisInstant(price);
         if(start)start.textContent=formatPrice(price);
       }
-      function render(){
+      function render(progress,delta){
         if(!prices.length)return;
-        var scale=scaleInfo();
-        var points=pointList(prices,scale);
-        var lineD=smoothPath(points);
-        var first=points[0];
-        var last=points[points.length-1];
+        var scale=scaleInfo(delta);
+        var points=pointList(prices,scale,progress||0);
+        var visible=points.filter(function(point){return point.x>=-24&&point.x<=width-padRight+24});
+        if(visible.length<2)visible=points;
+        var lineD=smoothPath(visible);
+        var first=visible[0];
+        var last=visible[visible.length-1];
         var xPercent=last.x/width*100;
         var yPercent=last.y/height*100;
         line.setAttribute('d',lineD);
@@ -189,23 +197,37 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         targetPrice=clamp(currentPrice+move,m.min,m.max);
         targetFramesLeft=22+Math.floor(Math.random()*18);
       }
-      function tick(){
-        if(!isPredictActive())return;
+      function advancePrice(delta){
         if(realFeedReady&&lastRealPrice>0)targetPrice=lastRealPrice;
         else if(targetFramesLeft<=0)chooseFallbackTarget();
-        var ease=realFeedReady?.075:.055+Math.random()*.015;
-        currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
+        var ease=realFeedReady?.055:.045;
+        currentPrice=currentPrice+(targetPrice-currentPrice)*(1-Math.pow(1-ease,delta/100));
         if(!realFeedReady){
-          currentPrice+=Math.sin(Date.now()/1800)*(market().seed>1000?.38:.0009);
-          targetFramesLeft-=1;
+          currentPrice+=Math.sin(Date.now()/1800)*(market().seed>1000?.16:.00038)*(delta/16);
+          targetFramesLeft-=delta/120;
         }
-        forwardFrames+=1;
-        if(forwardFrames>=3){
-          prices.push(currentPrice);
-          if(prices.length>22)prices.shift();
-          forwardFrames=0;
-        }else prices[prices.length-1]=currentPrice;
-        render();
+      }
+      function addPoint(){
+        prices.push(currentPrice);
+        if(prices.length>24)prices.shift();
+      }
+      function frame(now){
+        if(!isPredictActive()){stopEngine();return;}
+        if(!lastFrameTime)lastFrameTime=now;
+        if(!lastPointTime)lastPointTime=now;
+        var delta=Math.min(80,now-lastFrameTime);
+        lastFrameTime=now;
+        advancePrice(delta);
+        var elapsed=now-lastPointTime;
+        while(elapsed>=pointInterval){
+          addPoint();
+          lastPointTime+=pointInterval;
+          elapsed=now-lastPointTime;
+        }
+        var progress=clamp(elapsed/pointInterval,0,1);
+        if(prices.length){prices[prices.length-1]=currentPrice;}
+        render(progress,delta);
+        rafId=requestAnimationFrame(frame);
       }
       function closeSocket(){
         if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
@@ -223,7 +245,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
               var price=Number(data.c);
               if(!price||!isFinite(price))return;
               lastRealPrice=price;
-              if(!realFeedReady){realFeedReady=true;seedWithRealPrice(price);render();}
+              if(!realFeedReady){realFeedReady=true;seedWithRealPrice(price);render(0,16);}
             }catch(e){}
           };
           ws.onclose=function(){
@@ -235,11 +257,11 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function startEngine(){
         var m=market();
         if(!m.stream||!isPredictActive())return;
-        if(!tickTimer)tickTimer=setInterval(tick,1000);
+        if(!rafId){lastFrameTime=0;lastPointTime=lastPointTime||performance.now();rafId=requestAnimationFrame(frame);}
         if(!ws)connectBinance();
       }
       function stopEngine(){
-        if(tickTimer){clearInterval(tickTimer);tickTimer=null;}
+        if(rafId){cancelAnimationFrame(rafId);rafId=0;}
         closeSocket();
       }
       function syncEngine(){
@@ -253,10 +275,10 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(question)question.textContent=m.question;
         if(card)card.style.display=m.stream?'':'none';
         stopEngine();
-        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;forwardFrames=0;direction=1;axisCenter=0;axisTarget=0;
+        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;direction=1;axisCenter=0;axisTarget=0;lastFrameTime=0;lastPointTime=performance.now();
         fallbackSeries(m.seed);
         if(start)start.textContent=formatPrice(m.seed);
-        render();
+        render(0,16);
         syncEngine();
       }
       tabs.forEach(function(tab){tab.addEventListener('click',function(){setMarket(tab.getAttribute('data-predict-market'))})});
