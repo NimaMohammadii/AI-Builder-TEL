@@ -16,7 +16,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       </div>
       <h2>Will Bitcoin go up or down?</h2>
       <div class="predict-zone-live-meta" aria-label="Bitcoin preview price">
-        <div><span>Start</span><strong>$102,400</strong></div>
+        <div><span>Start</span><strong class="predict-zone-start-price">$102,400</strong></div>
         <div><span>Live</span><strong class="predict-zone-live-price">$102,618</strong></div>
       </div>
       <div class="predict-zone-chart-preview" data-predict-chart aria-label="Bitcoin live chart preview">
@@ -67,12 +67,15 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var fill=chart.querySelector('.predict-zone-chart-fill');
       var dot=chart.querySelector('.predict-zone-chart-dot');
       var live=root.querySelector('.predict-zone-live-price');
+      var start=root.querySelector('.predict-zone-start-price');
       var prices=[102400,102418,102406,102436,102425,102452,102441,102468,102456,102486,102472,102492];
       var currentPrice=prices[prices.length-1];
       var targetPrice=currentPrice;
       var targetFramesLeft=0;
       var direction=1;
       var forwardFrames=0;
+      var realFeedReady=false;
+      var lastRealPrice=0;
       var width=360;
       var height=220;
       var padX=14;
@@ -82,7 +85,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function pointList(values){
         var min=Math.min.apply(null,values);
         var max=Math.max.apply(null,values);
-        var range=Math.max(70,max-min);
+        var range=Math.max(realFeedReady?45:70,max-min);
         var mid=(min+max)/2;
         min=mid-range/2;
         max=mid+range/2;
@@ -103,6 +106,16 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         }
         return d;
       }
+      function seedWithRealPrice(price){
+        prices=[];
+        for(var i=0;i<18;i++){
+          var wave=Math.sin(i/2.8)*5;
+          prices.push(price-18+i*1.8+wave);
+        }
+        currentPrice=price;
+        targetPrice=price;
+        if(start){start.textContent=formatPrice(price);}
+      }
       function render(){
         var points=pointList(prices);
         var lineD=smoothPath(points);
@@ -114,18 +127,24 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         dot.style.top=(last.y/height*100)+'%';
         if(live){live.textContent=formatPrice(last.value);}
       }
-      function chooseTarget(){
+      function chooseFallbackTarget(){
         if(Math.random()>.78){direction*=-1;}
         var move=(12+Math.random()*34)*direction;
         targetPrice=clamp(currentPrice+move,101850,103150);
         targetFramesLeft=22+Math.floor(Math.random()*18);
       }
       function tick(){
-        if(targetFramesLeft<=0){chooseTarget();}
-        var ease=.045+Math.random()*.018;
+        if(realFeedReady&&lastRealPrice>0){
+          targetPrice=lastRealPrice;
+        }else if(targetFramesLeft<=0){
+          chooseFallbackTarget();
+        }
+        var ease=realFeedReady?.055:.045+Math.random()*.018;
         currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
-        currentPrice+=Math.sin(Date.now()/1500)*.55;
-        targetFramesLeft-=1;
+        if(!realFeedReady){
+          currentPrice+=Math.sin(Date.now()/1500)*.55;
+          targetFramesLeft-=1;
+        }
         forwardFrames+=1;
         if(forwardFrames>=4){
           prices.push(currentPrice);
@@ -136,7 +155,29 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         }
         render();
       }
+      function connectBinance(){
+        if(!('WebSocket' in window))return;
+        try{
+          var ws=new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@miniTicker');
+          ws.onmessage=function(event){
+            try{
+              var data=JSON.parse(event.data);
+              var price=Number(data.c);
+              if(!price||!isFinite(price))return;
+              lastRealPrice=price;
+              if(!realFeedReady){
+                realFeedReady=true;
+                seedWithRealPrice(price);
+                render();
+              }
+            }catch(e){}
+          };
+          ws.onclose=function(){setTimeout(connectBinance,4000)};
+          ws.onerror=function(){try{ws.close()}catch(e){}};
+        }catch(e){}
+      }
       render();
+      connectBinance();
       setInterval(tick,320);
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPredictChart);else setupPredictChart();
