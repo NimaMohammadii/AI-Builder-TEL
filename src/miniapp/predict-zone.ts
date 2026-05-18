@@ -21,7 +21,13 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         <div><span>Live</span><strong class="predict-zone-live-price">$102,618</strong></div>
       </div>
       <div class="predict-zone-chart-preview" data-predict-chart aria-label="Live chart preview">
-        <div class="predict-zone-chart-grid"></div>
+        <div class="predict-zone-chart-grid">
+          <span data-chart-grid-line="0"></span>
+          <span data-chart-grid-line="1"></span>
+          <span data-chart-grid-line="2"></span>
+          <span data-chart-grid-line="3"></span>
+          <span data-chart-grid-line="4"></span>
+        </div>
         <div class="predict-zone-price-axis" aria-hidden="true">
           <span data-price-axis="0"></span>
           <span data-price-axis="1"></span>
@@ -80,6 +86,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var dot=chart.querySelector('.predict-zone-chart-dot');
       var priceGuide=chart.querySelector('.predict-zone-price-guide');
       var axisLabels=chart.querySelectorAll('[data-price-axis]');
+      var gridLines=chart.querySelectorAll('[data-chart-grid-line]');
       var live=root.querySelector('.predict-zone-live-price');
       var start=root.querySelector('.predict-zone-start-price');
       var markets={
@@ -223,8 +230,10 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           var ratio=count>1?index/(count-1):0;
           var price=scale.max-ratio*(scale.max-scale.min);
           var y=priceToY(price,scale);
-          label.style.top=(y/height*100)+'%';
+          var top=(y/height*100)+'%';
+          label.style.top=top;
           label.textContent=formatPrice(price);
+          if(gridLines[index])gridLines[index].style.top=top;
         });
         if(live)live.textContent=formatPrice(last.value);
       }
