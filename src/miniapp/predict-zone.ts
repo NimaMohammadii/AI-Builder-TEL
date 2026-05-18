@@ -115,8 +115,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         prices=[];
         var step=seed>1000?1.8:.006;
         var waveSize=seed>1000?5:.018;
-        for(var i=0;i<22;i++)prices.push(seed-step*11+i*step+Math.sin(i/2.8)*waveSize);
-        currentPrice=prices[prices.length-1];
+        for(var i=0;i<22;i++)prices.push(seed-step*12+i*step+Math.sin(i/2.8)*waveSize);
+        currentPrice=seed+Math.sin(22/2.8)*waveSize;
         targetPrice=currentPrice;
         setAxisInstant(currentPrice);
       }
@@ -135,15 +135,17 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       function pointList(values,scale,progress){
         var count=values.length;
         var plotWidth=width-padLeft-padRight;
-        var step=count>1?plotWidth/(count-1):plotWidth;
+        var totalSlots=Math.max(22,count+1);
+        var step=plotWidth/(totalSlots-1);
         var rightEdge=width-padRight;
-        return values.map(function(value,index){
-          var distanceFromHead=(count-1-index)+progress;
-          if(index===count-1)distanceFromHead=0;
+        var history=values.map(function(value,index){
+          var distanceFromHead=(count-index)+progress;
           var x=rightEdge-(distanceFromHead*step);
           var y=priceToY(value,scale);
           return {x:x,y:y,value:value};
         });
+        history.push({x:rightEdge,y:priceToY(currentPrice,scale),value:currentPrice,live:true});
+        return history;
       }
       function smoothPath(points){
         if(!points.length)return '';
@@ -160,7 +162,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         prices=[];
         var step=price>1000?1.8:.006;
         var waveSize=price>1000?5:.018;
-        for(var i=0;i<22;i++)prices.push(price-step*11+i*step+Math.sin(i/2.8)*waveSize);
+        for(var i=0;i<22;i++)prices.push(price-step*12+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=price;
         targetPrice=price;
         lastPointTime=performance.now();
@@ -212,7 +214,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       }
       function addPoint(){
         prices.push(currentPrice);
-        if(prices.length>24)prices.shift();
+        if(prices.length>23)prices.shift();
       }
       function frame(now){
         if(!isPredictActive()){stopEngine();return;}
@@ -228,7 +230,6 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
           elapsed=now-lastPointTime;
         }
         var progress=clamp(elapsed/pointInterval,0,1);
-        if(prices.length){prices[prices.length-1]=currentPrice;}
         render(progress,delta);
         rafId=requestAnimationFrame(frame);
       }
