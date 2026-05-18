@@ -147,6 +147,24 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         history.push({x:rightEdge,y:priceToY(currentPrice,scale),value:currentPrice,live:true});
         return history;
       }
+      function clipPoints(points){
+        var leftEdge=padLeft;
+        var rightEdge=width-padRight;
+        var clipped=[];
+        for(var i=0;i<points.length;i++){
+          var current=points[i];
+          var previous=points[i-1];
+          if(current.x<leftEdge)continue;
+          if(previous&&previous.x<leftEdge&&current.x>=leftEdge){
+            var ratio=(leftEdge-previous.x)/(current.x-previous.x||1);
+            clipped.push({x:leftEdge,y:previous.y+(current.y-previous.y)*ratio,value:previous.value+(current.value-previous.value)*ratio});
+          }
+          if(current.x<=rightEdge)clipped.push(current);
+        }
+        var last=points[points.length-1];
+        if(last&&last.x===rightEdge&&(!clipped.length||clipped[clipped.length-1]!==last))clipped.push(last);
+        return clipped.length>1?clipped:points;
+      }
       function smoothPath(points){
         if(!points.length)return '';
         var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);
@@ -173,8 +191,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(!prices.length)return;
         var scale=scaleInfo(delta);
         var points=pointList(prices,scale,progress||0);
-        var visible=points.filter(function(point){return point.x>=-24&&point.x<=width-padRight+24});
-        if(visible.length<2)visible=points;
+        var visible=clipPoints(points);
         var lineD=smoothPath(visible);
         var first=visible[0];
         var last=visible[visible.length-1];
