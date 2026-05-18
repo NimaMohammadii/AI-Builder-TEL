@@ -136,8 +136,11 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         var count=values.length;
         var plotWidth=width-padLeft-padRight;
         var step=count>1?plotWidth/(count-1):plotWidth;
+        var rightEdge=width-padRight;
         return values.map(function(value,index){
-          var x=padLeft+(index*step)-(progress*step);
+          var distanceFromHead=(count-1-index)+progress;
+          if(index===count-1)distanceFromHead=0;
+          var x=rightEdge-(distanceFromHead*step);
           var y=priceToY(value,scale);
           return {x:x,y:y,value:value};
         });
