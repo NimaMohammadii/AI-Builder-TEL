@@ -103,11 +103,13 @@ async function getPredictMarkets(env: Env): Promise<{ markets: Record<PredictMar
 }
 async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
   await ensurePredictTables(env);
+  const cleanedUserId = cleanUserIdOptional(userId);
   const pools = await poolJson(env, round.id);
-  const userBets = userId ? await userBetsJson(env, round.id, cleanUserIdOptional(userId)) : [];
+  const userBets = cleanedUserId ? await userBetsJson(env, round.id, cleanedUserId) : [];
+  const recentUserBets = cleanedUserId ? await recentUserBetsJson(env, round.market, cleanedUserId) : [];
   const now = Date.now();
   const ends = Date.parse(round.ends_at);
-  return { ok: true, round: { id: round.id, market: round.market, startsAt: round.starts_at, endsAt: round.ends_at, startPrice: Number(round.start_price), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : round.status, result: round.result, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets } };
+  return { ok: true, round: { id: round.id, market: round.market, startsAt: round.starts_at, endsAt: round.ends_at, startPrice: Number(round.start_price), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : round.status, result: round.result, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
 }
 async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (
@@ -208,15 +210,22 @@ async function poolJson(env: Env, roundId: string) {
   }
   return base;
 }
+function betJson(b: BetRow) {
+  return { id: b.id, roundId: b.round_id, market: b.market, side: b.side, stakeNano: Number(b.stake_nano || 0), stakeTon: nanoToTon(Number(b.stake_nano || 0)), status: b.status, payoutNano: Number(b.payout_nano || 0), payoutTon: nanoToTon(Number(b.payout_nano || 0)), createdAt: b.created_at };
+}
 async function userBetsJson(env: Env, roundId: string, userId: string) {
   if (!userId) return [];
   const rows = await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(roundId, userId).all<BetRow>();
-  return (rows.results || []).map((b) => ({ id: b.id, side: b.side, stakeNano: Number(b.stake_nano || 0), stakeTon: nanoToTon(Number(b.stake_nano || 0)), status: b.status, payoutNano: Number(b.payout_nano || 0), payoutTon: nanoToTon(Number(b.payout_nano || 0)), createdAt: b.created_at }));
+  return (rows.results || []).map(betJson);
+}
+async function recentUserBetsJson(env: Env, market: string, userId: string) {
+  if (!userId) return [];
+  const rows = await env.DB.prepare('SELECT * FROM predict_bets WHERE market = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 6').bind(market, userId).all<BetRow>();
+  return (rows.results || []).map(betJson);
 }
 async function getBet(env: Env, id: string) {
   const b = await env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(id).first<BetRow>();
-  if (!b) return null;
-  return { id: b.id, roundId: b.round_id, market: b.market, userId: b.user_id, side: b.side, stakeNano: Number(b.stake_nano || 0), stakeTon: nanoToTon(Number(b.stake_nano || 0)), status: b.status, payoutNano: Number(b.payout_nano || 0), payoutTon: nanoToTon(Number(b.payout_nano || 0)), createdAt: b.created_at };
+  return b ? betJson(b) : null;
 }
 async function fetchPrice(market: PredictMarket): Promise<number> {
   const symbol = market === 'ton' ? 'TONUSDT' : 'BTCUSDT';
