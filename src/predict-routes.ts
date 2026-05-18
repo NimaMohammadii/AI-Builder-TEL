@@ -220,7 +220,7 @@ async function userBetsJson(env: Env, roundId: string, userId: string) {
 }
 async function recentUserBetsJson(env: Env, market: string, userId: string) {
   if (!userId) return [];
-  const rows = await env.DB.prepare('SELECT * FROM predict_bets WHERE market = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 6').bind(market, userId).all<BetRow>();
+  const rows = await env.DB.prepare('SELECT * FROM predict_bets WHERE market = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(market, userId).all<BetRow>();
   return (rows.results || []).map(betJson);
 }
 async function getBet(env: Env, id: string) {
