@@ -95,6 +95,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var lastRealPrice=0;
       var axisCenter=0;
       var axisTarget=0;
+      var tailY=null;
       var lastFrameTime=0;
       var lastPointTime=0;
       var pointInterval=3000;
@@ -118,6 +119,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<22;i++)prices.push(seed-step*12+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=seed+Math.sin(22/2.8)*waveSize;
         targetPrice=currentPrice;
+        tailY=null;
         setAxisInstant(currentPrice);
       }
       function scaleInfo(delta){
@@ -147,7 +149,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         history.push({x:rightEdge,y:priceToY(currentPrice,scale),value:currentPrice,live:true});
         return history;
       }
-      function pinTailToLeft(points){
+      function pinTailToLeft(points,delta){
         var leftEdge=0;
         var rightEdge=width-padRight;
         var clipped=[];
@@ -163,7 +165,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         }
         var last=points[points.length-1];
         if(last&&last.x===rightEdge&&(!clipped.length||clipped[clipped.length-1]!==last))clipped.push(last);
-        if(clipped.length>1){clipped[0]={x:leftEdge,y:clipped[0].y,value:clipped[0].value};return clipped;}
+        if(clipped.length>1){
+          var targetY=clipped[0].y;
+          if(tailY===null)tailY=targetY;
+          var speed=Math.min(.2,(delta||16)/700);
+          tailY=tailY+(targetY-tailY)*speed;
+          clipped[0]={x:leftEdge,y:tailY,value:clipped[0].value};
+          return clipped;
+        }
         if(points.length>1){points[0]={x:leftEdge,y:points[0].y,value:points[0].value};}
         return points;
       }
@@ -185,6 +194,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         for(var i=0;i<22;i++)prices.push(price-step*12+i*step+Math.sin(i/2.8)*waveSize);
         currentPrice=price;
         targetPrice=price;
+        tailY=null;
         lastPointTime=performance.now();
         setAxisInstant(price);
         if(start)start.textContent=formatPrice(price);
@@ -193,7 +203,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(!prices.length)return;
         var scale=scaleInfo(delta);
         var points=pointList(prices,scale,progress||0);
-        var visible=pinTailToLeft(points);
+        var visible=pinTailToLeft(points,delta);
         var lineD=smoothPath(visible);
         var first=visible[0];
         var last=visible[visible.length-1];
@@ -298,7 +308,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         if(question)question.textContent=m.question;
         if(card)card.style.display=m.stream?'':'none';
         stopEngine();
-        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;direction=1;axisCenter=0;axisTarget=0;lastFrameTime=0;lastPointTime=performance.now();
+        realFeedReady=false;lastRealPrice=0;targetFramesLeft=0;direction=1;axisCenter=0;axisTarget=0;tailY=null;lastFrameTime=0;lastPointTime=performance.now();
         fallbackSeries(m.seed);
         if(start)start.textContent=formatPrice(m.seed);
         render(0,16);
