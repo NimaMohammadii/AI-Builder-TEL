@@ -19,6 +19,12 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       </div>
       <div class="predict-zone-chart-preview" data-predict-chart aria-label="Live chart preview">
         <div class="predict-zone-chart-grid"></div>
+        <div class="predict-zone-price-axis" aria-hidden="true">
+          <span data-price-axis="0"></span>
+          <span data-price-axis="1"></span>
+          <span data-price-axis="2"></span>
+          <span data-price-axis="3"></span>
+        </div>
         <svg viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="predictBtcLine" x1="0" x2="1" y1="0" y2="0">
@@ -68,6 +74,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var fill=chart.querySelector('.predict-zone-chart-fill');
       var dot=chart.querySelector('.predict-zone-chart-dot');
       var priceGuide=chart.querySelector('.predict-zone-price-guide');
+      var axisLabels=chart.querySelectorAll('[data-price-axis]');
       var live=root.querySelector('.predict-zone-live-price');
       var start=root.querySelector('.predict-zone-start-price');
       var markets={
@@ -88,7 +95,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var lastRealPrice=0;
       var width=360;
       var height=220;
-      var padX=14;
+      var padLeft=14;
+      var padRight=78;
       var padY=24;
       function market(){return markets[activeMarket]||markets.bitcoin;}
       function isPredictActive(){return root.classList.contains('active')&&document.visibilityState!=='hidden';}
@@ -102,18 +110,22 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         currentPrice=prices[prices.length-1];
         targetPrice=currentPrice;
       }
-      function pointList(values){
+      function scaleInfo(values){
         var min=Math.min.apply(null,values);
         var max=Math.max.apply(null,values);
         var base=market().seed;
         var minRange=realFeedReady?(base>1000?45:.035):(base>1000?70:.06);
         var range=Math.max(minRange,max-min);
         var mid=(min+max)/2;
-        min=mid-range/2;
-        max=mid+range/2;
+        return {min:mid-range/2,max:mid+range/2};
+      }
+      function priceToY(value,scale){
+        return padY+((scale.max-value)/(scale.max-scale.min))*(height-padY*2);
+      }
+      function pointList(values,scale){
         return values.map(function(value,index){
-          var x=padX+(index/(values.length-1))*(width-padX*2);
-          var y=padY+((max-value)/(max-min))*(height-padY*2);
+          var x=padLeft+(index/(values.length-1))*(width-padLeft-padRight);
+          var y=priceToY(value,scale);
           return {x:x,y:y,value:value};
         });
       }
@@ -139,7 +151,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       }
       function render(){
         if(!prices.length)return;
-        var points=pointList(prices);
+        var scale=scaleInfo(prices);
+        var points=pointList(prices,scale);
         var lineD=smoothPath(points);
         var first=points[0];
         var last=points[points.length-1];
@@ -150,6 +163,13 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         dot.style.left=xPercent+'%';
         dot.style.top=yPercent+'%';
         if(priceGuide){priceGuide.style.top=yPercent+'%';}
+        axisLabels.forEach(function(label,index){
+          var ratio=(index+1)/(axisLabels.length+1);
+          var y=padY+ratio*(height-padY*2);
+          var price=scale.max-ratio*(scale.max-scale.min);
+          label.style.top=(y/height*100)+'%';
+          label.textContent=formatPrice(price);
+        });
         if(live)live.textContent=formatPrice(last.value);
       }
       function chooseFallbackTarget(){
