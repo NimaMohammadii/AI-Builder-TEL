@@ -11,18 +11,17 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
     </nav>
     <article class="predict-zone-glass-card predict-zone-btc-preview-card">
       <div class="predict-zone-card-top">
-        <span>BTC Preview</span>
+        <span></span>
         <small class="predict-zone-countdown">05:00</small>
       </div>
-      <h2>Up or Down?</h2>
+      <h2>بیتکوین بالا میره یا پایین</h2>
       <div class="predict-zone-live-meta" aria-label="Bitcoin preview price">
         <div><span>Start</span><strong>$102,400</strong></div>
         <div><span>Live</span><strong class="predict-zone-live-price">$102,618</strong></div>
       </div>
       <div class="predict-zone-chart-preview" aria-label="Bitcoin live chart preview">
         <div class="predict-zone-chart-grid"></div>
-        <div class="predict-zone-chart-price"><span>BTC</span><strong>$102,618</strong></div>
-        <svg viewBox="0 0 360 150" preserveAspectRatio="none" aria-hidden="true">
+        <svg viewBox="0 0 360 360" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="predictBtcLine" x1="0" x2="1" y1="0" y2="0">
               <stop offset="0%" stop-color="rgba(255,255,255,.22)"/>
@@ -34,8 +33,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
               <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
             </linearGradient>
           </defs>
-          <path class="predict-zone-chart-fill" d="M0 100 C30 84 52 108 82 86 S132 50 164 66 S214 128 246 94 S292 42 326 56 S350 82 360 52 L360 150 L0 150 Z"/>
-          <path class="predict-zone-chart-line" d="M0 100 C30 84 52 108 82 86 S132 50 164 66 S214 128 246 94 S292 42 326 56 S350 82 360 52"/>
+          <path class="predict-zone-chart-fill" d="M0 245 C34 214 62 262 96 215 S151 130 184 164 S240 294 276 210 S318 105 360 140 L360 360 L0 360 Z"/>
+          <path class="predict-zone-chart-line" d="M0 245 C34 214 62 262 96 215 S151 130 184 164 S240 294 276 210 S318 105 360 140"/>
         </svg>
         <span class="predict-zone-chart-dot"></span>
         <div class="predict-zone-chart-timer"><span></span></div>
