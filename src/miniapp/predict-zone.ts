@@ -19,14 +19,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
     #predictzone .predict-zone-bet-usd{font-size:12px;font-weight:760;color:rgba(255,255,255,.50);white-space:nowrap;letter-spacing:-.02em}
     #predictzone .predict-zone-bet-estimate{display:inline-flex;align-items:center;justify-content:center;min-width:42px;max-width:104px;padding:0 4px;color:#35ff96;font-size:13px;font-weight:950;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 12px rgba(53,255,150,.22);background:transparent;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
     #predictzone .predict-zone-bet-estimate:empty{display:none}
-    #predictzone .predict-zone-result-strip{position:relative;margin:12px -2px 0;display:none;overflow:hidden;border-radius:24px}
+    #predictzone .predict-zone-result-strip{position:relative;margin:10px -2px 0;display:none;overflow:hidden;border-radius:20px}
     #predictzone .predict-zone-result-strip.show{display:block}
-    #predictzone .predict-zone-result-strip::before,#predictzone .predict-zone-result-strip::after{content:"";position:absolute;top:0;bottom:0;width:34px;z-index:2;pointer-events:none}
-    #predictzone .predict-zone-result-strip::before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.84),rgba(10,3,5,0))}
-    #predictzone .predict-zone-result-strip::after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.84),rgba(10,3,5,0))}
-    #predictzone .predict-zone-history-track{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:0 30px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    #predictzone .predict-zone-result-strip::before,#predictzone .predict-zone-result-strip::after{content:"";position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}
+    #predictzone .predict-zone-result-strip::before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.86),rgba(10,3,5,0))}
+    #predictzone .predict-zone-result-strip::after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.86),rgba(10,3,5,0))}
+    #predictzone .predict-zone-history-track{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:0 24px 1px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     #predictzone .predict-zone-history-track::-webkit-scrollbar{display:none}
-    #predictzone .predict-zone-history-card{flex:0 0 auto;min-width:112px;height:44px;border:0;outline:0;border-radius:999px;background:rgba(255,255,255,.07);box-shadow:0 14px 32px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.11);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:0 14px;color:rgba(255,255,255,.74);font-size:12.5px;font-weight:850;letter-spacing:-.025em;white-space:nowrap}
+    #predictzone .predict-zone-history-card{flex:0 0 auto;min-width:92px;height:34px;border:0;outline:0;border-radius:999px;background:rgba(255,255,255,.065);box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.10);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:0 10px;color:rgba(255,255,255,.74);font-size:11.2px;font-weight:850;letter-spacing:-.025em;white-space:nowrap}
     #predictzone .predict-zone-history-card.win{color:rgba(70,255,150,.96)}
     #predictzone .predict-zone-history-card.loss{color:rgba(255,135,150,.94)}
     #predictzone .predict-zone-history-card.refund{color:rgba(255,255,255,.66)}
@@ -38,7 +38,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
     #predictzone .predict-zone-bet-status{min-height:15px;margin:9px 0 0;text-align:center;color:rgba(255,255,255,.58);font-size:11px;font-weight:720;letter-spacing:-.01em}
     #predictzone .predict-zone-bet-status.bad{color:rgba(255,160,160,.9)}
     #predictzone .predict-zone-bet-status.good{color:rgba(185,255,210,.9)}
-    @media(max-width:380px){#predictzone .predict-zone-price-axis span{font-size:11.4px!important}#predictzone .predict-zone-bet-panel{max-width:340px;border-radius:28px;padding:16px}#predictzone .predict-zone-bet-head strong{font-size:22px}#predictzone .predict-zone-bet-input{font-size:25px}#predictzone .predict-zone-bet-estimate{min-width:38px;max-width:86px;font-size:12px;padding:0 2px}#predictzone .predict-zone-history-card{min-width:102px;height:40px;font-size:11.6px}}
+    @media(max-width:380px){#predictzone .predict-zone-price-axis span{font-size:11.4px!important}#predictzone .predict-zone-bet-panel{max-width:340px;border-radius:28px;padding:16px}#predictzone .predict-zone-bet-head strong{font-size:22px}#predictzone .predict-zone-bet-input{font-size:25px}#predictzone .predict-zone-bet-estimate{min-width:38px;max-width:86px;font-size:12px;padding:0 2px}#predictzone .predict-zone-history-card{min-width:84px;height:31px;font-size:10.5px;padding:0 8px}}
   </style>
   <div class="predict-zone-simple-shell">
     <nav class="predict-zone-category-menu" aria-label="Predict Zone categories">
