@@ -1,0 +1,21 @@
+name: Keep Predict Rounds Active
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick-predict-rounds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tick due predict rounds
+        env:
+          PUBLIC_BASE_URL: https://builder-tel.vexaagent.workers.dev
+        run: |
+          set -euo pipefail
+          for market in bitcoin ton; do
+            curl --fail --show-error --silent \
+              "${PUBLIC_BASE_URL}/app/api/predict-round?market=${market}" \
+              >/dev/null
+          done
