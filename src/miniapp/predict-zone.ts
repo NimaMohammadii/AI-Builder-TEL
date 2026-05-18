@@ -72,6 +72,7 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       var targetPrice=currentPrice;
       var targetFramesLeft=0;
       var direction=1;
+      var forwardFrames=0;
       var width=360;
       var height=220;
       var padX=14;
@@ -125,8 +126,14 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         currentPrice=currentPrice+(targetPrice-currentPrice)*ease;
         currentPrice+=Math.sin(Date.now()/1500)*.55;
         targetFramesLeft-=1;
-        prices.push(currentPrice);
-        if(prices.length>24)prices.shift();
+        forwardFrames+=1;
+        if(forwardFrames>=4){
+          prices.push(currentPrice);
+          if(prices.length>24)prices.shift();
+          forwardFrames=0;
+        }else{
+          prices[prices.length-1]=currentPrice;
+        }
         render();
       }
       render();
