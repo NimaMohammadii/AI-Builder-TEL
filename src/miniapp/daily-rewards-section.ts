@@ -11,7 +11,7 @@ export const DAILY_REWARDS_SECTION = `
       <h2 class="daily-rewards-title">Daily Prize</h2>
       <p class="daily-rewards-sub">Complete daily missions, earn XP, level up, and climb the weekly Top Players board.</p>
     </div>
-    <div class="daily-rewards-art"><div class="daily-rewards-art-placeholder">Upload Image</div></div>
+    <div class="daily-rewards-art"><img src="/app/api/daily-rewards-hero-image.png?v=1" alt="" onerror="this.style.display='none'"/></div>
   </section>
   <div id="dailyRewardsDays" class="daily-rewards-days" aria-label="Daily reward days"></div>
   <div class="daily-rewards-missions-title"><strong id="dailyRewardsMissionTitle">Today missions</strong><span id="dailyRewardsMissionCount">6 missions</span></div>
