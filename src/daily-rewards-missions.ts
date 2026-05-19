@@ -22,6 +22,15 @@ export type DailyRewardsSettings = {
   days: DailyRewardsDayConfig[];
 };
 
+export type DailyRewardsPublicMission = DailyMissionDefinition & {
+  xp: number;
+};
+
+export type DailyRewardsPublicDay = {
+  day: number;
+  missions: DailyRewardsPublicMission[];
+};
+
 const SETTINGS_KEY = 'daily_rewards_settings_v1';
 const DAY_COUNT = 7;
 const MISSIONS_PER_DAY = 6;
@@ -71,6 +80,19 @@ const DEFAULT_DAY_MISSION_IDS = [
 
 export async function getDailyRewardsAdminPayload(env: Env): Promise<{ definitions: DailyMissionDefinition[]; settings: DailyRewardsSettings }> {
   return { definitions: DAILY_REWARD_MISSION_DEFINITIONS, settings: await getDailyRewardsSettings(env) };
+}
+
+export async function getDailyRewardsPublicPayload(env: Env): Promise<{ days: DailyRewardsPublicDay[] }> {
+  const settings = await getDailyRewardsSettings(env);
+  return {
+    days: settings.days.map((day) => ({
+      day: day.day,
+      missions: day.missions.map((slot) => {
+        const definition = definitionById(slot.missionId) || DAILY_REWARD_MISSION_DEFINITIONS[0];
+        return { ...definition, xp: slot.xp };
+      }),
+    })),
+  };
 }
 
 export async function getDailyRewardsSettings(env: Env): Promise<DailyRewardsSettings> {
