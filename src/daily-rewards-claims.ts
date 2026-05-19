@@ -31,18 +31,19 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
   };
 }
 
-export async function recordDailyRewardEvent(env: Env, input: { userId?: unknown; eventType?: unknown; section?: unknown; amount?: unknown }): Promise<void> {
+export async function recordDailyRewardEvent(env: Env, input: { userId?: unknown; eventType?: unknown; section?: unknown; side?: unknown; amount?: unknown; volumeNano?: unknown }): Promise<void> {
   const userId = cleanUserId(input.userId);
   const eventType = cleanEventType(input.eventType);
   const section = cleanSection(input.section);
+  const side = cleanSide(input.side);
   const amount = Math.max(1, Math.floor(Number(input.amount) || 1));
+  const volumeNano = Math.max(0, Math.floor(Number(input.volumeNano) || 0));
   await ensureDailyRewardClaimTables(env);
   const weekStart = currentWeekStart();
   const day = currentMondayDay();
-  const keys = progressKeysForEvent(eventType, section);
-  for (const key of keys) {
-    await incrementProgress(env, userId, weekStart, day, key, amount);
-  }
+  const keys = progressKeysForEvent(eventType, section, side);
+  for (const key of keys) await incrementProgress(env, userId, weekStart, day, key, amount);
+  if (volumeNano > 0) await incrementProgress(env, userId, weekStart, day, 'bet_volume_nano', volumeNano);
 }
 
 export async function claimDailyRewardMission(env: Env, input: { userId?: unknown; missionId?: unknown; day?: unknown }): Promise<Record<string, unknown>> {
@@ -164,6 +165,7 @@ function isMissionComplete(mission: { id: string; type: string }, progress: Prog
 }
 
 function targetForMission(missionId: string): { key: string; amount: number; kind: 'ok' | 'blocked' } {
+  const nano = 1_000_000_000;
   const table: Record<string, { key: string; amount: number; kind: 'ok' | 'blocked' }> = {
     open_app: { key: 'open_app', amount: 1, kind: 'ok' },
     daily_streak: { key: 'open_app', amount: 1, kind: 'ok' },
@@ -171,16 +173,36 @@ function targetForMission(missionId: string): { key: string; amount: number; kin
     open_market: { key: 'open_section:market', amount: 1, kind: 'ok' },
     check_top_players: { key: 'open_section:topplayers', amount: 1, kind: 'ok' },
     check_level_progress: { key: 'open_section:profile', amount: 1, kind: 'ok' },
+    play_predict_1: { key: 'play_predict_rounds', amount: 1, kind: 'ok' },
+    play_predict_3: { key: 'play_predict_rounds', amount: 3, kind: 'ok' },
+    play_predict_5: { key: 'play_predict_rounds', amount: 5, kind: 'ok' },
+    play_predict_7: { key: 'play_predict_rounds', amount: 7, kind: 'ok' },
+    win_predict_1: { key: 'win_predict_rounds', amount: 1, kind: 'ok' },
+    win_predict_2: { key: 'win_predict_rounds', amount: 2, kind: 'ok' },
+    win_predict_3: { key: 'win_predict_rounds', amount: 3, kind: 'ok' },
+    place_bets_3: { key: 'place_bets', amount: 3, kind: 'ok' },
+    place_bets_5: { key: 'place_bets', amount: 5, kind: 'ok' },
+    place_bets_10: { key: 'place_bets', amount: 10, kind: 'ok' },
+    use_up_down: { key: 'used_both_directions', amount: 1, kind: 'ok' },
+    bet_10_ton: { key: 'bet_volume_nano', amount: 10 * nano, kind: 'ok' },
+    bet_20_ton: { key: 'bet_volume_nano', amount: 20 * nano, kind: 'ok' },
+    bet_30_ton: { key: 'bet_volume_nano', amount: 30 * nano, kind: 'ok' },
+    win_any_game: { key: 'win_any_game', amount: 1, kind: 'ok' },
   };
   return table[missionId] || { key: missionId, amount: 1, kind: 'blocked' };
 }
 
-function progressKeysForEvent(eventType: string, section: string): string[] {
+function progressKeysForEvent(eventType: string, section: string, side: string): string[] {
   const keys: string[] = [];
   if (eventType === 'open_app') keys.push('open_app');
-  if (eventType === 'open_section' && section) {
-    keys.push(`open_section:${sectionAlias(section)}`);
+  if (eventType === 'open_section' && section) keys.push(`open_section:${sectionAlias(section)}`);
+  if (eventType === 'predict_bet') {
+    keys.push('play_predict_rounds', 'place_bets');
+    if (side === 'up') keys.push('used_side_up');
+    if (side === 'down') keys.push('used_side_down');
+    if (side) keys.push('used_both_directions');
   }
+  if (eventType === 'predict_win') keys.push('win_predict_rounds', 'win_any_game');
   return keys;
 }
 
@@ -228,6 +250,11 @@ function cleanEventType(value: unknown): string {
 
 function cleanSection(value: unknown): string {
   return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 64);
+}
+
+function cleanSide(value: unknown): string {
+  const side = String(value ?? '').toLowerCase();
+  return side === 'up' || side === 'down' ? side : '';
 }
 
 function clampDay(value: unknown): number {
