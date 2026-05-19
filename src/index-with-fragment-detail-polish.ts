@@ -1,6 +1,9 @@
 import app from './index-with-tgs-overlay';
 import './predict-routes';
+import { registerDailyRewardsImageRoutes } from './daily-rewards-image-routes';
 import type { Env } from './types';
+
+registerDailyRewardsImageRoutes(app);
 
 const DETAIL_POLISH_SCRIPT = `
 (function(){
