@@ -1,7 +1,8 @@
 export const TOP_PLAYERS_HERO_SCRIPT = `
 (function(){
   function ensureStyle(){
-    if(document.getElementById('topPlayersHeroStyle'))return;
+    var old=document.getElementById('topPlayersHeroStyle');
+    if(old){try{old.remove()}catch(e){}}
     var style=document.createElement('style');
     style.id='topPlayersHeroStyle';
     style.textContent=[
