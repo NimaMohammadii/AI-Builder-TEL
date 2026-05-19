@@ -109,9 +109,10 @@ export async function getDailyRewardsSettings(env: Env): Promise<DailyRewardsSet
 export async function saveDailyRewardsSettings(env: Env, input: unknown): Promise<DailyRewardsSettings> {
   await ensureDailyRewardsTables(env);
   const settings = normalizeSettings(input);
-  await env.DB.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+  const json = JSON.stringify(settings);
+  await env.DB.prepare(`INSERT INTO app_settings (key, value, value_json, updated_at) VALUES (?, '', ?, CURRENT_TIMESTAMP)
     ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`)
-    .bind(SETTINGS_KEY, JSON.stringify(settings))
+    .bind(SETTINGS_KEY, json)
     .run();
   return settings;
 }
@@ -119,7 +120,7 @@ export async function saveDailyRewardsSettings(env: Env, input: unknown): Promis
 async function ensureDailyRewardsTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
-    value TEXT,
+    value TEXT NOT NULL DEFAULT '',
     value_json TEXT,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
