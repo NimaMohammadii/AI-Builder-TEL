@@ -6,7 +6,7 @@ export const CRASH_STYLES = `
 #crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
 #crash .crash-chart-square{display:none!important}
 #crash .crash-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000!important;z-index:2}
-#crash .crash-multiplier{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);text-align:center;font-size:clamp(52px,16vw,72px);font-weight:930;letter-spacing:-.085em;color:#fff!important;text-shadow:0 16px 38px rgba(0,0,0,.42);z-index:4;pointer-events:none}
+#crash .crash-multiplier{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);text-align:center;font-size:clamp(38px,12vw,52px);font-weight:930;letter-spacing:-.075em;color:#fff!important;text-shadow:0 14px 30px rgba(0,0,0,.42);z-index:4;pointer-events:none}
 #crash .crash-hidden-state,#crash .crash-starting,#crash .crash-network{display:none!important}
 #crash .crash-controls{border:0!important;outline:0!important;border-radius:32px;background:transparent!important;padding:15px;box-shadow:0 20px 52px rgba(0,0,0,.16)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #crash .crash-field{display:grid;gap:9px}#crash .crash-label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.52);font-weight:860}#crash .crash-amount{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:8px}
