@@ -29,7 +29,12 @@ export const DAILY_REWARDS_SCRIPT = `
   function ensurePageOnBody(){var p=q('dailyRewardsPage');if(p&&p.parentNode!==document.body)document.body.appendChild(p);return p}
   function daysData(){return rewardsData&&Array.isArray(rewardsData.days)?rewardsData.days:fallbackDays.days}
   function missionList(day){var d=daysData().find(function(item){return Number(item.day)===Number(day)});return d&&Array.isArray(d.missions)?d.missions.slice(0,6):[]}
-  function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active':'')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small><strong>'+d.getDate()+'</strong><span>Day '+(i+1)+'</span></button>'}).join('')}
+  function dayIconHtml(i,today){
+    if(i<today)return '<strong class="daily-rewards-day-check" aria-label="Completed">✓</strong>';
+    var src=i===today?'/app/api/daily-rewards-day-today-image.png?v=1':'/app/api/daily-rewards-day-future-image.png?v=1';
+    return '<span class="daily-rewards-day-image"><img src="'+src+'" alt="" onerror="this.parentNode.textContent=\''+(i+1)+'\'"/></span>';
+  }
+  function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date()),today=mondayIndex(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active ':'')+(i<today?'past ':i===today?'today ':'future ')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small>'+dayIconHtml(i,today)+'<span>Day '+(i+1)+'</span></button>'}).join('')}
   function renderMissions(day){
     activeDay=Number(day)||0;
     var list=missionList(activeDay),claimed=setFrom('claimed'),claimable=setFrom('claimable');
