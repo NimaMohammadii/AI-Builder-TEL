@@ -31,11 +31,11 @@ export const DAILY_REWARDS_SCRIPT = `
   function missionList(day){var d=daysData().find(function(item){return Number(item.day)===Number(day)});return d&&Array.isArray(d.missions)?d.missions.slice(0,6):[]}
   function dayImageVersion(){return String(Math.floor(Date.now()/60000))}
   function dayIconHtml(i,today,dateNumber){
-    if(i<today)return '<span class="daily-rewards-day-mark"><strong class="daily-rewards-day-check" aria-label="Completed">✓</strong></span>';
+    if(i<today)return '<strong class="daily-rewards-day-check" aria-label="Completed">✓</strong>';
     var src=(i===today?'/app/api/daily-rewards-day-today-image.png':'/app/api/daily-rewards-day-future-image.png')+'?v='+dayImageVersion();
-    return '<span class="daily-rewards-day-mark daily-rewards-day-image" data-fallback="'+dateNumber+'"><img class="daily-rewards-day-img" src="'+src+'" alt=""/></span>';
+    return '<span class="daily-rewards-day-image" data-fallback="'+dateNumber+'"><img class="daily-rewards-day-img" src="'+src+'" alt=""/></span>';
   }
-  function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image')){parent.classList.remove('daily-rewards-day-image');parent.innerHTML='<strong>'+esc(parent.getAttribute('data-fallback')||'')+'</strong>'}}
+  function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image'))parent.outerHTML='<strong>'+esc(parent.getAttribute('data-fallback')||'')+'</strong>'}
   function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date()),today=mondayIndex(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active ':'')+(i<today?'past ':i===today?'today ':'future ')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small>'+dayIconHtml(i,today,d.getDate())+'<span>Day '+(i+1)+'</span></button>'}).join('')}
   function renderMissions(day){
     activeDay=Number(day)||0;
