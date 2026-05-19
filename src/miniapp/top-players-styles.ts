@@ -1,17 +1,42 @@
 export const TOP_PLAYERS_STYLES = `
-.leaderboard-page .leaderboard-back,
-.leaderboard-page .top-players-hero-back{
+.leaderboard-page .leaderboard-back{
   display:none!important;
   visibility:hidden!important;
   opacity:0!important;
   pointer-events:none!important;
+}
+.leaderboard-page .top-players-hero-back{
+  position:absolute!important;
+  left:14px!important;
+  top:14px!important;
+  z-index:3!important;
+  width:30px!important;
+  height:30px!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0!important;
+  background:rgba(255,255,255,.06)!important;
+  color:#fff!important;
+  font-size:21px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(3px)!important;
+  -webkit-backdrop-filter:blur(3px)!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
 }
 .leaderboard-page .top-players-hero-card{
   position:relative!important;
   margin:0 0 16px!important;
   min-height:132px!important;
   border-radius:28px!important;
-  padding:17px 112px 15px 17px!important;
+  padding:17px 112px 15px 50px!important;
   overflow:visible!important;
   background:rgba(255,255,255,.026)!important;
   border:0!important;
@@ -106,7 +131,7 @@ export const TOP_PLAYERS_STYLES = `
   font-size:0!important;
 }
 @media(max-width:380px){
-  .leaderboard-page .top-players-hero-card{min-height:128px!important;padding:16px 98px 14px 16px!important}
+  .leaderboard-page .top-players-hero-card{min-height:128px!important;padding:16px 98px 14px 48px!important}
   .leaderboard-page .top-players-hero-title{font-size:24px!important}
   .leaderboard-page .top-players-hero-sub{max-width:152px!important;font-size:9.5px!important}
   .leaderboard-page .top-players-hero-art{right:2px;width:94px!important;height:128px!important}
