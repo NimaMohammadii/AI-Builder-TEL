@@ -50,6 +50,8 @@ export async function claimDailyRewardMission(env: Env, input: { userId?: unknow
   const userId = cleanUserId(input.userId);
   const missionId = cleanMissionId(input.missionId);
   const day = clampDay(input.day);
+  const today = currentMondayDay();
+  if (day !== today) throw new Error('Only today missions can be claimed');
   await ensureDailyRewardClaimTables(env);
 
   const payload = await getDailyRewardsPublicPayload(env);
@@ -148,11 +150,11 @@ async function listClaimedKeys(env: Env, userId: string, weekStart: string): Pro
 
 function claimableKeys(days: Array<{ day: number; missions: Array<{ id: string; type: string }> }>, progress: ProgressMap, claimed: Set<string>): string[] {
   const out: string[] = [];
-  for (const day of days) {
-    for (const mission of day.missions) {
-      const key = claimKey(day.day, mission.id);
-      if (!claimed.has(key) && isMissionComplete(mission, progress)) out.push(key);
-    }
+  const today = currentMondayDay();
+  const todayConfig = days.find((item) => Number(item.day) === today);
+  for (const mission of todayConfig?.missions ?? []) {
+    const key = claimKey(today, mission.id);
+    if (!claimed.has(key) && isMissionComplete(mission, progress)) out.push(key);
   }
   return out;
 }
