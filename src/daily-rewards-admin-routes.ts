@@ -1,8 +1,12 @@
 import type { Hono } from 'hono';
-import { getDailyRewardsAdminPayload, saveDailyRewardsSettings } from './daily-rewards-missions';
+import { getDailyRewardsAdminPayload, getDailyRewardsPublicPayload, saveDailyRewardsSettings } from './daily-rewards-missions';
 import type { Env } from './types';
 
 export function registerDailyRewardsAdminRoutes(app: Hono<{ Bindings: Env }>): void {
+  app.get('/app/api/daily-rewards', async (c) => {
+    return c.json(await getDailyRewardsPublicPayload(c.env), 200, { 'cache-control': 'no-store' });
+  });
+
   app.get('/admin/api/daily-rewards/missions', async (c) => {
     if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     return c.json(await getDailyRewardsAdminPayload(c.env), 200, { 'cache-control': 'no-store' });
