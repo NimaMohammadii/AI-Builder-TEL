@@ -20,9 +20,16 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     section.hidden=true;
     section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Choose 6 missions for each day and set custom XP.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
     sections.appendChild(section);
-    btn.addEventListener('click',function(){setTimeout(load,40)});
+    btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);
     q('dailyRewardsSave').addEventListener('click',save);
     injectStyle();
+  }
+  function showPanel(btn){
+    document.querySelectorAll('.admin-section').forEach(function(section){section.hidden=true;section.classList.remove('active')});
+    var panel=q('sectionDailyRewards');
+    if(panel){panel.hidden=false;panel.classList.add('active')}
+    document.querySelectorAll('.menu-item').forEach(function(item){item.classList.remove('active')});
+    if(btn)btn.classList.add('active');
   }
   function injectStyle(){
     if(q('dailyRewardsAdminStyle'))return;
@@ -113,12 +120,13 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     }catch(error){if(status)status.textContent=error.message||'Could not save Daily Rewards'}
   }
   function normalizeBeforeSave(){
+    var currentDay=state.day;
     for(var day=0;day<7;day++){
       state.day=day;
       var cfg=dayConfig();
       cfg.missions=cfg.missions.slice(0,6).map(function(slot){var def=definition(slot.missionId)||state.definitions[0];return{missionId:def.id,xp:Math.max(1,Math.min(5000,Math.floor(Number(slot.xp)||def.defaultXp||50)))}});
     }
-    state.day=Math.min(6,Math.max(0,state.day));
+    state.day=currentDay;
   }
   function escapeHtml(value){return String(value||'').replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]||ch})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel);else ensurePanel();
