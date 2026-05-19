@@ -16,6 +16,7 @@ export const DAILY_REWARDS_SCRIPT = `
   function mondayIndex(date){var js=date.getDay();return js===0?6:js-1}
   function startOfWeek(date){var d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-mondayIndex(d));return d}
   function syncBack(open){if(!tg||!tg.BackButton)return;if(!backBound){backBound=true;try{tg.BackButton.onClick(function(){var p=q('dailyRewardsPage');if(p&&p.classList.contains('open'))close()})}catch(e){}}try{if(open)tg.BackButton.show();else tg.BackButton.hide()}catch(e){}}
+  function ensurePageOnBody(){var p=q('dailyRewardsPage');if(p&&p.parentNode!==document.body)document.body.appendChild(p);return p}
   function renderDays(active){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
     var start=startOfWeek(new Date());
@@ -29,12 +30,14 @@ export const DAILY_REWARDS_SCRIPT = `
     var box=q('dailyRewardsMissions');if(!box)return;
     box.innerHTML=list.map(function(m,i){return '<div class="daily-rewards-mission"><div class="daily-rewards-mission-icon">'+(i+1)+'</div><div class="daily-rewards-mission-main"><strong>'+m[0]+'</strong><span>'+m[1]+'</span></div><div class="daily-rewards-xp">'+m[2]+'</div></div>'}).join('');
   }
-  function open(){var p=q('dailyRewardsPage');if(!p)return;var active=mondayIndex(new Date());renderDays(active);renderMissions(active);document.body.classList.add('daily-rewards-open');p.classList.add('open');p.setAttribute('aria-hidden','false');syncBack(true);try{p.scrollTop=0}catch(e){}}
+  function open(){var p=ensurePageOnBody();if(!p)return;var active=mondayIndex(new Date());renderDays(active);renderMissions(active);document.body.classList.add('daily-rewards-open');p.classList.add('open');p.setAttribute('aria-hidden','false');syncBack(true);try{p.scrollTop=0}catch(e){}}
   function close(){var p=q('dailyRewardsPage');if(!p)return;document.body.classList.remove('daily-rewards-open');p.classList.remove('open');p.setAttribute('aria-hidden','true');syncBack(false)}
   function mount(){
     var old=document.getElementById('dailyRewardsMount');if(old)return;
     var home=document.getElementById('home');if(!home)return;
     var mount=document.createElement('div');mount.id='dailyRewardsMount';mount.innerHTML=window.DAILY_REWARDS_SECTION||'';
+    var page=mount.querySelector('#dailyRewardsPage');
+    if(page)document.body.appendChild(page);
     var finance=home.querySelector('.home-finance-split');
     if(finance&&finance.parentNode)finance.parentNode.insertBefore(mount,finance.nextSibling);else home.appendChild(mount);
     renderDays(mondayIndex(new Date()));renderMissions(mondayIndex(new Date()));
