@@ -16,5 +16,6 @@ export const DAILY_REWARDS_SECTION = `
   <div id="dailyRewardsDays" class="daily-rewards-days" aria-label="Daily reward days"></div>
   <div class="daily-rewards-missions-title"><strong id="dailyRewardsMissionTitle">Today missions</strong><span id="dailyRewardsMissionCount">6 missions</span></div>
   <div id="dailyRewardsMissions" class="daily-rewards-missions"></div>
+  <div class="daily-rewards-bottom-art"><img src="/app/api/daily-rewards-bottom-image.png?v=1" alt="" onerror="this.style.display='none'"/></div>
 </div>
 `;
