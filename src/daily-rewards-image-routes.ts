@@ -6,28 +6,31 @@ const DAILY_REWARDS_BOTTOM_IMAGE_KEY = 'daily-rewards/bottom-image';
 const DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY = 'daily-rewards/day-future-image';
 const DAILY_REWARDS_DAY_TODAY_IMAGE_KEY = 'daily-rewards/day-today-image';
 const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'no-store';
 const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
 const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
   app.get('/app/api/daily-rewards-hero-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_HERO_IMAGE_KEY));
   app.get('/app/api/daily-rewards-bottom-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_BOTTOM_IMAGE_KEY));
-  app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY));
-  app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY));
+  app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
+  app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
 
   app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
   app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
   app.post('/admin/api/upload-daily-rewards-day-future-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, '/app/api/daily-rewards-day-future-image.png', 'Daily Rewards future day image'));
   app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
+  app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, 'Daily Rewards future day image'));
+  app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, 'Daily Rewards today image'));
 }
 
-async function imageFromR2(env: Env, key: string): Promise<Response> {
+async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_IMAGE_CACHE_CONTROL): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
-  if (!object) return new Response('', { status: 204, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': cacheControl === DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL ? DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL : DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
   return new Response(object.body, {
     headers: {
       'content-type': object.httpMetadata?.contentType || 'image/png',
-      'cache-control': DAILY_REWARDS_IMAGE_CACHE_CONTROL,
+      'cache-control': cacheControl,
     },
   });
 }
@@ -47,6 +50,16 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
     return c.json({ ok: true, url: `${publicUrl}?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400);
+  }
+}
+
+async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number) => Response }, key: string, label: string): Promise<Response> {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    await c.env.ASSETS.delete(key);
+    return c.json({ ok: true, deleted: true });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : `Could not delete ${label}` }, 400);
   }
 }
 
