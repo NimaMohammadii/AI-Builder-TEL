@@ -97,7 +97,7 @@ export async function getDailyRewardsPublicPayload(env: Env): Promise<{ days: Da
 
 export async function getDailyRewardsSettings(env: Env): Promise<DailyRewardsSettings> {
   await ensureDailyRewardsTables(env);
-  const row = await env.DB.prepare('SELECT value_json FROM app_settings WHERE key = ?').bind(SETTINGS_KEY).first<{ value_json: string }>().catch(() => null);
+  const row = await env.DB.prepare('SELECT value_json FROM app_settings WHERE key = ?').bind(SETTINGS_KEY).first<{ value_json: string | null }>().catch(() => null);
   if (!row?.value_json) return defaultSettings();
   try {
     return normalizeSettings(JSON.parse(row.value_json));
@@ -119,9 +119,11 @@ export async function saveDailyRewardsSettings(env: Env, input: unknown): Promis
 async function ensureDailyRewardsTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
-    value_json TEXT NOT NULL,
+    value TEXT,
+    value_json TEXT,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
+  await env.DB.prepare('ALTER TABLE app_settings ADD COLUMN value_json TEXT').run().catch(() => undefined);
 }
 
 function defaultSettings(): DailyRewardsSettings {
