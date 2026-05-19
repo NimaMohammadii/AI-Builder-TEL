@@ -1,5 +1,3 @@
-import { TOP_PLAYERS_STYLES } from './top-players-styles';
-
 export const GLASS_COMPONENTS_OVERRIDES = `
 button:not(.tab):not(.section-keyboard-dismiss),
 .primary,.secondary,.ghost,.danger,
@@ -42,4 +40,4 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   backdrop-filter:blur(10px) saturate(1.18)!important;
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
-` + TOP_PLAYERS_STYLES;
+`;
