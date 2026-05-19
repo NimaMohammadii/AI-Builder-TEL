@@ -5,7 +5,6 @@ export const DAILY_REWARDS_SECTION = `
   <span class="home-daily-rewards-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
 </button>
 <div id="dailyRewardsPage" class="daily-rewards-page" aria-hidden="true">
-  <button class="daily-rewards-icon-back" type="button" data-action="close-daily-rewards" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
   <section class="daily-rewards-hero">
     <div class="daily-rewards-hero-text">
       <p class="daily-rewards-kicker">Daily Rewards</p>
