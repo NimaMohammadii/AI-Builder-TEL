@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import { loadTonNftMarket } from './ton-nft-market';
+import { registerDailyRewardsImageRoutes } from './daily-rewards-image-routes';
 import type { Env } from './types';
 
 const APP_CACHE_VERSION_KEY = 'admin:app-cache-version';
@@ -29,6 +30,8 @@ type Gift = {
 };
 
 export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): void {
+  registerDailyRewardsImageRoutes(app);
+
   app.get('/app/api/app-version', async (c) => {
     const version = await getAppVersion(c.env);
     return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });
