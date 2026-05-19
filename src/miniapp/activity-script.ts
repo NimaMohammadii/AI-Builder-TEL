@@ -1,6 +1,7 @@
 import { ACTIVITY_CORE_SCRIPT } from './activity-core-script';
 import { DAILY_REWARDS_SECTION } from './daily-rewards-section';
 import { DAILY_REWARDS_STYLES } from './daily-rewards-styles';
+import { DAILY_REWARDS_POLISH_STYLES } from './daily-rewards-polish-styles';
 import { DAILY_REWARDS_SCRIPT } from './daily-rewards-script';
 
 const DAILY_REWARDS_BOOTSTRAP = `
@@ -9,7 +10,7 @@ const DAILY_REWARDS_BOOTSTRAP = `
   if(!document.getElementById('dailyRewardsStyles')){
     var style=document.createElement('style');
     style.id='dailyRewardsStyles';
-    style.textContent=${JSON.stringify(DAILY_REWARDS_STYLES)};
+    style.textContent=${JSON.stringify(DAILY_REWARDS_STYLES + '\n' + DAILY_REWARDS_POLISH_STYLES)};
     document.head.appendChild(style);
   }
 })();
