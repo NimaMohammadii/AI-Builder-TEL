@@ -6,7 +6,6 @@ export const DAILY_REWARDS_SECTION = `
 </button>
 <div id="dailyRewardsPage" class="daily-rewards-page" aria-hidden="true">
   <section class="daily-rewards-hero">
-    <button class="daily-rewards-close" type="button" data-action="close-daily-rewards" aria-label="Back">‹</button>
     <div class="daily-rewards-hero-text">
       <p class="daily-rewards-kicker">Daily Rewards</p>
       <h2 class="daily-rewards-title">Daily Prize</h2>
