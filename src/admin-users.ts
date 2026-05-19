@@ -1,5 +1,6 @@
 import type { Env, TelegramUpdate } from './types';
 import { getUserLevel } from './levels';
+import { recordDailyRewardEvent } from './daily-rewards-claims';
 import { ensureTonBalanceColumn, getUserControls } from './user-controls';
 
 export type AppUserActivityPayload = {
@@ -61,6 +62,8 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, section, tonBalanceNano)
       .run();
+    await recordDailyRewardEvent(env, { userId, eventType: 'open_app' }).catch((error) => console.warn('daily rewards open_app progress failed', error));
+    await recordDailyRewardEvent(env, { userId, eventType: 'open_section', section }).catch((error) => console.warn('daily rewards open_section progress failed', error));
     return { ok: true, tonBalanceNano };
   } catch (error) {
     console.error('track app user failed', error);
