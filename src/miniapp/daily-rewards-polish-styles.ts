@@ -7,9 +7,12 @@ export const DAILY_REWARDS_POLISH_STYLES = `
 .daily-rewards-mission-main strong{font-weight:820!important;letter-spacing:-.018em!important}.daily-rewards-mission-main span{color:rgba(255,255,255,.56)!important}
 .daily-rewards-xp,.daily-rewards-xp-static,.daily-rewards-claim,.daily-rewards-claimed{width:96px!important;min-width:96px!important;max-width:96px!important;height:30px!important;padding:0!important;border-radius:999px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;font-size:9px!important;line-height:1!important;font-weight:900!important;white-space:nowrap!important;box-sizing:border-box!important;letter-spacing:-.01em!important}
 .daily-rewards-xp-static{background:rgba(92,10,31,.16)!important;color:rgba(255,255,255,.80)!important;border:1px solid rgba(128,22,48,.28)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.065)!important}
-.daily-rewards-claim{border:0!important;background:linear-gradient(180deg,#fff,rgba(255,255,255,.88))!important;color:#14040a!important;box-shadow:0 12px 30px rgba(92,10,31,.18),0 10px 26px rgba(0,0,0,.23)!important;cursor:pointer}
-.daily-rewards-claim b{font-weight:950!important;margin-left:3px!important}
-.daily-rewards-claim:disabled{opacity:1!important;cursor:default!important}
-.daily-rewards-claimed{background:rgba(92,10,31,.18)!important;color:rgba(255,255,255,.76)!important;border:1px solid rgba(128,22,48,.30)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)!important}
+.daily-rewards-claim{border:1px solid rgba(255,255,255,.18)!important;background:rgba(255,255,255,.075)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 10px 26px rgba(0,0,0,.18)!important;cursor:pointer}
+.daily-rewards-claim:disabled{opacity:.82!important;cursor:default!important}
+.daily-rewards-claimed{gap:5px;background:rgba(36,151,86,.15)!important;color:rgba(255,255,255,.78)!important;border:1px solid rgba(55,210,122,.26)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)!important}
+.daily-rewards-claimed i{width:15px;height:15px;border-radius:999px;display:grid;place-items:center;background:#23d26d;color:#05150b;font-style:normal;font-size:10px;font-weight:950;animation:dailyClaimCheck .52s cubic-bezier(.2,1.25,.2,1) both}.daily-rewards-claimed em{font-style:normal;animation:dailyClaimText .38s ease .22s both}
+.daily-rewards-claimed.claim-success{color:#fff!important}
+@keyframes dailyClaimCheck{0%{opacity:0;transform:scale(.35) rotate(-18deg)}62%{opacity:1;transform:scale(1.18) rotate(0)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes dailyClaimText{0%{opacity:0;transform:translateX(-3px)}100%{opacity:1;transform:translateX(0)}}
 @media(max-width:380px){.daily-rewards-xp,.daily-rewards-xp-static,.daily-rewards-claim,.daily-rewards-claimed{width:86px!important;min-width:86px!important;max-width:86px!important;font-size:8.5px!important}.daily-rewards-mission,.daily-rewards-mission.ready,.daily-rewards-mission.claimed{border-radius:22px}}
 `;
