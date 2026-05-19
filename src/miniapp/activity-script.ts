@@ -1,6 +1,7 @@
 import { VEXA_LEAGUE_SCRIPT } from './vexa-league-script';
 import { VEXA_REWARDS_SCRIPT } from './vexa-rewards-script';
 import { TOP_PLAYERS_HERO_SCRIPT } from './top-players-hero-script';
+import { TOP_PLAYERS_ROOT_FIX_SCRIPT } from './top-players-root-fix-script';
 
 const TOP_PLAYERS_LABEL_FIX = `
 (function(){
@@ -129,4 +130,4 @@ export const ACTIVITY_SCRIPT = `
   window.addEventListener('beforeunload',function(){flushGameDelta(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){loadPendingGameDelta();if(hasPendingGameDelta())scheduleCreditFlush(CREDIT_FLUSH_MS);sendActivity(true)});else{loadPendingGameDelta();if(hasPendingGameDelta())scheduleCreditFlush(CREDIT_FLUSH_MS);sendActivity(true)}
 })();
-` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT + TOP_PLAYERS_HERO_SCRIPT;
+` + VEXA_LEAGUE_SCRIPT + TOP_PLAYERS_LABEL_FIX + VEXA_REWARDS_SCRIPT + TOP_PLAYERS_HERO_SCRIPT + TOP_PLAYERS_ROOT_FIX_SCRIPT;
