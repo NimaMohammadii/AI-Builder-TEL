@@ -3,6 +3,8 @@ import type { Env } from './types';
 
 const DAILY_REWARDS_HERO_IMAGE_KEY = 'daily-rewards/hero-image';
 const DAILY_REWARDS_BOTTOM_IMAGE_KEY = 'daily-rewards/bottom-image';
+const DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY = 'daily-rewards/day-future-image';
+const DAILY_REWARDS_DAY_TODAY_IMAGE_KEY = 'daily-rewards/day-today-image';
 const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
 const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -10,9 +12,13 @@ const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/web
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
   app.get('/app/api/daily-rewards-hero-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_HERO_IMAGE_KEY));
   app.get('/app/api/daily-rewards-bottom-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_BOTTOM_IMAGE_KEY));
+  app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY));
+  app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY));
 
   app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
   app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
+  app.post('/admin/api/upload-daily-rewards-day-future-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, '/app/api/daily-rewards-day-future-image.png', 'Daily Rewards future day image'));
+  app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
 }
 
 async function imageFromR2(env: Env, key: string): Promise<Response> {
