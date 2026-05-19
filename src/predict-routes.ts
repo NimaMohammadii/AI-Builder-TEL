@@ -1,5 +1,6 @@
 import app from './index';
 import type { Env } from './types';
+import { recordDailyRewardEvent } from './daily-rewards-claims';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
@@ -54,6 +55,7 @@ app.post('/app/api/predict-bet', async (c) => {
       await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake rollback', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId: round.id, status: 'rollback' } });
       throw new Error('Could not activate prediction');
     }
+    await recordDailyRewardEvent(c.env, { userId, eventType: 'predict_bet', side, volumeNano: stakeNano }).catch((error) => console.warn('daily rewards predict bet progress failed', error));
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     if (betId) await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => undefined);
@@ -223,6 +225,7 @@ async function payBet(env: Env, bet: BetRow, payoutNano: number, status: 'won' |
   if (!alreadyPaid) {
     await adjustUserTonBalance(env, bet.user_id, payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: bet.id, referenceType: 'predict_bet', metadata: { roundId: bet.round_id, market: bet.market, side: bet.side, status } });
   }
+  if (status === 'won') await recordDailyRewardEvent(env, { userId: bet.user_id, eventType: 'predict_win' }).catch((error) => console.warn('daily rewards predict win progress failed', error));
   await env.DB.prepare(`UPDATE predict_bets SET status = ?, payout_nano = ? WHERE id = ? AND status = 'settling_payment'`).bind(status, payoutNano, bet.id).run();
 }
 async function poolJson(env: Env, roundId: string) {
