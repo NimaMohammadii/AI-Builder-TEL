@@ -18,10 +18,12 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     section.id='sectionDailyRewards';
     section.className='admin-section';
     section.hidden=true;
-    section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Choose 6 missions for each day and set custom XP.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
+    section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Choose 6 missions for each day and set custom XP.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div class="daily-rewards-admin-images"><form id="dailyRewardsFutureImageForm"><label>Future days image</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button></form><form id="dailyRewardsTodayImageForm"><label>Today image</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button></form></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
     sections.appendChild(section);
     btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);
     q('dailyRewardsSave').addEventListener('click',save);
+    q('dailyRewardsFutureImageForm').addEventListener('submit',function(ev){ev.preventDefault();uploadDayImage(this,'/admin/api/upload-daily-rewards-day-future-image','Future days image')});
+    q('dailyRewardsTodayImageForm').addEventListener('submit',function(ev){ev.preventDefault();uploadDayImage(this,'/admin/api/upload-daily-rewards-day-today-image','Today image')});
     injectStyle();
   }
   function showPanel(btn){
@@ -35,8 +37,20 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     if(q('dailyRewardsAdminStyle'))return;
     var style=document.createElement('style');
     style.id='dailyRewardsAdminStyle';
-    style.textContent='.daily-rewards-admin-tabs{display:flex;gap:6px;overflow-x:auto;margin:8px 0 14px;padding-bottom:8px;scrollbar-width:none}.daily-rewards-admin-tabs::-webkit-scrollbar{display:none}.daily-rewards-admin-tabs button{flex:0 0 auto;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:#080808;color:#fff;padding:0 11px;font-size:11px;font-weight:800}.daily-rewards-admin-tabs button.active{background:#fff;color:#050505;border-color:#fff}.daily-rewards-admin-editor{display:grid;gap:9px}.daily-rewards-admin-slot{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-slot label{display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.daily-rewards-admin-slot select,.daily-rewards-admin-slot input{width:100%;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:#050505;color:#fff;padding:0 10px;font-size:12px;font-weight:700}.daily-rewards-admin-help{grid-column:1/-1;margin:-1px 0 0;color:rgba(255,255,255,.48);font-size:10px;line-height:1.25}.daily-rewards-admin-help b{color:rgba(255,255,255,.75)}';
+    style.textContent='.daily-rewards-admin-images{display:grid;gap:8px;margin:8px 0 14px}.daily-rewards-admin-images form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-images label{grid-column:1/-1;display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}.daily-rewards-admin-images input{min-width:0}.daily-rewards-admin-images button{height:36px!important;font-size:11px!important}.daily-rewards-admin-tabs{display:flex;gap:6px;overflow-x:auto;margin:8px 0 14px;padding-bottom:8px;scrollbar-width:none}.daily-rewards-admin-tabs::-webkit-scrollbar{display:none}.daily-rewards-admin-tabs button{flex:0 0 auto;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:#080808;color:#fff;padding:0 11px;font-size:11px;font-weight:800}.daily-rewards-admin-tabs button.active{background:#fff;color:#050505;border-color:#fff}.daily-rewards-admin-editor{display:grid;gap:9px}.daily-rewards-admin-slot{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-slot label{display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.daily-rewards-admin-slot select,.daily-rewards-admin-slot input{width:100%;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:#050505;color:#fff;padding:0 10px;font-size:12px;font-weight:700}.daily-rewards-admin-help{grid-column:1/-1;margin:-1px 0 0;color:rgba(255,255,255,.48);font-size:10px;line-height:1.25}.daily-rewards-admin-help b{color:rgba(255,255,255,.75)}';
     document.head.appendChild(style);
+  }
+  async function uploadDayImage(form,url,label){
+    var status=q('dailyRewardsAdminStatus');
+    if(status)status.textContent='Uploading '+label+'...';
+    try{
+      var data=new FormData(form);
+      var res=await fetch(url,{method:'POST',credentials:'same-origin',body:data});
+      var json=await res.json();
+      if(!res.ok)throw new Error(json.error||'Could not upload '+label);
+      if(status)status.textContent=label+' uploaded.';
+      form.reset();
+    }catch(error){if(status)status.textContent=error.message||'Could not upload '+label}
   }
   async function load(){
     var status=q('dailyRewardsAdminStatus');
