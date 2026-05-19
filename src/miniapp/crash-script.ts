@@ -53,27 +53,24 @@ export const CRASH_SCRIPT = `
     var ctx=getCanvas();if(!ctx)return;var w=ctx.__w,h=ctx.__h;ctx.clearRect(0,0,w,h);drawGrid(ctx,w,h);
     var visual=ended?chartCurrent:current;
     var left=4,bottom=h-8,right=w-16,top=8;
-    var maxM=Math.max(2.65,visual,Math.min(stopAt||2.65,4.2));
+    var maxM=Math.max(3.25,visual,Math.min(stopAt||3.25,4.8));
     var p=Math.min(1,Math.max(0,progress));lastProgress=p;
-    var easeP=1-Math.pow(1-Math.min(.995,p),1.18);
+    var easeP=1-Math.pow(1-Math.min(.995,p),1.08);
     var tipX=left+(right-left)*easeP;
-    var normalized=Math.min(1,(Math.max(1,visual)-1)/(Math.max(2.65,maxM)-1));
-    var tipY=bottom-(bottom-top)*Math.max(.035,normalized);
+    var normalized=Math.min(1,(Math.max(1,visual)-1)/(Math.max(3.25,maxM)-1));
+    var visualY=Math.pow(Math.max(.02,normalized),1.42);
+    var tipY=bottom-(bottom-top)*Math.max(.022,visualY);
     var points=[];
-    for(var i=0;i<=110;i++){var t=i/110;var px=left+(tipX-left)*t;var py=bottom-(bottom-tipY)*Math.pow(t,1.68);points.push([px,py])}
+    for(var i=0;i<=110;i++){var t=i/110;var px=left+(tipX-left)*t;var py=bottom-(bottom-tipY)*Math.pow(t,1.95);points.push([px,py])}
     ctx.save();
     ctx.beginPath();ctx.moveTo(left,bottom);for(var a=0;a<points.length;a++)ctx.lineTo(points[a][0],points[a][1]);ctx.lineTo(tipX,h);ctx.lineTo(left,h);ctx.closePath();
-    var shadow=ctx.createLinearGradient(0,top,0,h);shadow.addColorStop(0,ended?'rgba(255,125,145,.24)':'rgba(255,255,255,.24)');shadow.addColorStop(.42,ended?'rgba(255,125,145,.10)':'rgba(255,255,255,.105)');shadow.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=shadow;ctx.globalAlpha=.78;ctx.fill();
-    ctx.restore();
+    var shadow=ctx.createLinearGradient(0,top,0,h);shadow.addColorStop(0,ended?'rgba(255,125,145,.34)':'rgba(255,255,255,.36)');shadow.addColorStop(.36,ended?'rgba(255,125,145,.19)':'rgba(255,255,255,.22)');shadow.addColorStop(.72,ended?'rgba(255,125,145,.06)':'rgba(255,255,255,.075)');shadow.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=shadow;ctx.globalAlpha=.96;ctx.fill();ctx.restore();
     ctx.save();
-    ctx.beginPath();ctx.moveTo(left,bottom);for(var b=0;b<points.length;b++)ctx.lineTo(points[b][0],points[b][1]);
-    ctx.strokeStyle=ended?'rgba(255,125,145,.16)':'rgba(255,255,255,.15)';ctx.lineWidth=10;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=ended?'rgba(255,125,145,.20)':'rgba(255,255,255,.18)';ctx.shadowBlur=20;ctx.stroke();
-    ctx.restore();
-    ctx.save();
-    var line=ctx.createLinearGradient(left,bottom,tipX,tipY);line.addColorStop(0,'rgba(255,255,255,.32)');line.addColorStop(.55,'rgba(255,255,255,1)');line.addColorStop(1,ended?'rgba(255,125,145,.72)':'rgba(255,255,255,.64)');
-    ctx.strokeStyle=line;ctx.lineWidth=4.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=ended?'rgba(255,125,145,.24)':'rgba(255,255,255,.22)';ctx.shadowBlur=12;
-    ctx.beginPath();ctx.moveTo(left,bottom);for(var c=0;c<points.length;c++)ctx.lineTo(points[c][0],points[c][1]);ctx.stroke();ctx.restore();
+    ctx.beginPath();ctx.moveTo(left,bottom);for(var s=0;s<points.length;s++)ctx.lineTo(points[s][0],points[s][1]);ctx.lineTo(tipX,h);ctx.lineTo(left,h);ctx.closePath();
+    var baseGlow=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,Math.max(w,h)*.58);baseGlow.addColorStop(0,ended?'rgba(255,125,145,.20)':'rgba(255,255,255,.18)');baseGlow.addColorStop(.48,ended?'rgba(255,125,145,.075)':'rgba(255,255,255,.075)');baseGlow.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=baseGlow;ctx.globalAlpha=.86;ctx.fill();ctx.restore();
+    ctx.save();ctx.beginPath();ctx.moveTo(left,bottom);for(var b=0;b<points.length;b++)ctx.lineTo(points[b][0],points[b][1]);ctx.strokeStyle=ended?'rgba(255,125,145,.25)':'rgba(255,255,255,.26)';ctx.lineWidth=16;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=ended?'rgba(255,125,145,.34)':'rgba(255,255,255,.34)';ctx.shadowBlur=32;ctx.stroke();ctx.restore();
+    ctx.save();var line=ctx.createLinearGradient(left,bottom,tipX,tipY);line.addColorStop(0,'rgba(255,255,255,.32)');line.addColorStop(.55,'rgba(255,255,255,1)');line.addColorStop(1,ended?'rgba(255,125,145,.72)':'rgba(255,255,255,.64)');ctx.strokeStyle=line;ctx.lineWidth=4.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=ended?'rgba(255,125,145,.24)':'rgba(255,255,255,.22)';ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(left,bottom);for(var c=0;c<points.length;c++)ctx.lineTo(points[c][0],points[c][1]);ctx.stroke();ctx.restore();
     drawTip(ctx,tipX,tipY,ended);
     if(!ended)chartCurrent=visual;
   }
@@ -83,10 +80,10 @@ export const CRASH_SCRIPT = `
   function countdownTick(now){if(phase!=='countdown')return;var left=Math.max(0,COUNTDOWN_MS-(now-countdownStart));setCountdown((left/1000).toFixed(1)+'s',false);drawGraph(0,true);if(left<=0){phase='running';running=true;startTime=performance.now();status('Running');setCountdown('',true);buttons();requestAnimationFrame(tick);return}requestAnimationFrame(countdownTick)}
   function cashout(){if(phase!=='running'||cashed)return;cashed=true;var back=Math.max(0,Math.floor(amountNano*current));change(back);status('Cashed +' + toTon(back) + ' TON');buttons();show('Cashed at '+fmt(current))}
   function finish(){running=false;phase='crashed';history.unshift(stopAt);history=history.slice(0,12);renderHistory();status(cashed?'Round ended':'Crashed');setCountdown('Crashed',false);buttons();drawGraph(lastProgress,true);setTimeout(function(){if(phase==='crashed'){phase='ready';setCountdown('Ready',false);buttons();current=1;chartCurrent=1;drawGraph(0,true)}},1800)}
-  function tick(now){if(phase!=='running')return;var elapsed=(now-startTime)/1000;setTotal(elapsed);var next=1+elapsed*.22+elapsed*elapsed*.055;if(next>=stopAt){current=stopAt;mult(current);finish();return}current=next;chartCurrent=current;mult(current);drawGraph(Math.min(.995,elapsed/6.15),false);requestAnimationFrame(tick)}
+  function tick(now){if(phase!=='running')return;var elapsed=(now-startTime)/1000;setTotal(elapsed);var next=1+elapsed*.155+elapsed*elapsed*.036;if(next>=stopAt){current=stopAt;mult(current);finish();return}current=next;chartCurrent=current;mult(current);drawGraph(Math.min(.995,elapsed/8.4),false);requestAnimationFrame(tick)}
   function half(){var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(1,Math.floor(value/2)))}
   function doubleAmount(){var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(1,Math.min(balance(),value*2)))}
-  function bind(){mult(1);status('Ready');setCountdown('Ready',false);setTotal(0);drawGraph(0,true);buttons();var s=q('crashStart'),c=q('crashCashout'),input=q('crashAmount');if(s)s.onclick=start;if(c)c.onclick=cashout;if(input)input.addEventListener('change',normalizeAmount);document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action');if(a==='crash-half'){ev.preventDefault();half()}if(a==='crash-double'){ev.preventDefault();doubleAmount()}});window.addEventListener('resize',function(){drawGraph(phase==='running'?Math.min(.995,(performance.now()-startTime)/6150):0,true)})}
+  function bind(){mult(1);status('Ready');setCountdown('Ready',false);setTotal(0);drawGraph(0,true);buttons();var s=q('crashStart'),c=q('crashCashout'),input=q('crashAmount');if(s)s.onclick=start;if(c)c.onclick=cashout;if(input)input.addEventListener('change',normalizeAmount);document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action');if(a==='crash-half'){ev.preventDefault();half()}if(a==='crash-double'){ev.preventDefault();doubleAmount()}});window.addEventListener('resize',function(){drawGraph(phase==='running'?Math.min(.995,(performance.now()-startTime)/8400):0,true)})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
