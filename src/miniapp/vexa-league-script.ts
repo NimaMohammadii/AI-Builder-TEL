@@ -9,7 +9,14 @@ export const VEXA_LEAGUE_SCRIPT = `
   function userId(){var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function closeLeaderboard(){var page=q('leaderboardPage');if(page){document.body.classList.remove('leaderboard-open');page.classList.remove('open');page.setAttribute('aria-hidden','true')}try{if(tg&&tg.BackButton)tg.BackButton.hide()}catch(e){}}
   function syncNativeBack(){var page=q('leaderboardPage');if(page){page.querySelectorAll('.leaderboard-back').forEach(function(n){try{n.remove()}catch(e){}})}var isOpen=!!(page&&page.classList.contains('open'));if(!tg||!tg.BackButton)return;if(!nativeBackBound){nativeBackBound=true;try{tg.BackButton.onClick(closeLeaderboard)}catch(e){}}try{if(isOpen)tg.BackButton.show();else tg.BackButton.hide()}catch(e){}}
-  function ensureHeroStyle(){}
+  function ensureHeroStyle(){
+    var old=document.getElementById('topPlayersRuntimeFixStyle');
+    if(old){try{old.remove()}catch(e){}}
+    var style=document.createElement('style');
+    style.id='topPlayersRuntimeFixStyle';
+    style.textContent='.leaderboard-page .top-players-hero-back{display:grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}.leaderboard-page .leaderboard-back{display:none!important}.leaderboard-page .top-players-hero-art img{display:block!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important}';
+    document.head.appendChild(style);
+  }
   function fallbackLeague(){
     var now=new Date();var end=new Date(now.getTime()+4*86400000+12*3600000);
     return {currentWeek:{title:'Top Players',status:'preview',winnerCount:50,startsAt:now.toISOString(),endsAt:end.toISOString(),announcement:'Top 50 players.'},userState:{vex:0,claimedMissionIds:[]},seedUsers:[
@@ -46,7 +53,7 @@ export const VEXA_LEAGUE_SCRIPT = `
   }
   function playerRow(p){var pos=p.position||p.i||1;return '<div class="leaderboard-row '+(pos<=3?'top':'')+'"><div class="leaderboard-place">#'+esc(pos)+'</div><div class="leaderboard-avatar">'+esc(p.avatarInitials||String(p.name||'VX').slice(0,2).toUpperCase())+'</div><div class="leaderboard-user"><strong>'+esc(p.name||'Vexa Player')+'</strong><span class="leaderboard-username">@'+esc(p.username||'player')+'</span><span>Level '+esc(p.level||1)+' · '+esc(p.rankName||'Rookie')+'</span><span class="leaderboard-rank">'+esc(p.vex||0)+' Vex</span></div><div class="leaderboard-meta"><strong>'+esc(p.balanceTon||0)+' TON</strong><span>Balance</span></div></div>'}
   function heroImage(){return '/app/api/top-players-hero-image?v='+String(Date.now())}
-  function heroImgHtml(){return '<img src="'+heroImage()+'" alt="" data-retry="0" onerror="var r=Number(this.dataset.retry||0);if(r<6){this.dataset.retry=String(r+1);var img=this;setTimeout(function(){img.style.display=\'block\';img.src=\'/app/api/top-players-hero-image?v=\'+Date.now()},650)}else{this.style.display=\'none\'}"/>'}
+  function heroImgHtml(){return '<img src="'+heroImage()+'" alt="" data-retry="0" onerror="var r=Number(this.dataset.retry||0);if(r<10){this.dataset.retry=String(r+1);var img=this;setTimeout(function(){img.style.display=\'block\';img.src=\'/app/api/top-players-hero-image?v=\'+Date.now()},900)}else{this.style.display=\'none\'}"/>'}
   function backButtonHtml(){return '<button class="top-players-hero-back" type="button" data-action="close-leaderboard" aria-label="Back">‹</button>'}
   function heroCard(d,w,yourVex){
     return '<section class="top-players-hero-card">'+backButtonHtml()+'<p class="top-players-hero-kicker">Top Players</p><h2 class="top-players-hero-title">Top 50 Players</h2><p class="top-players-hero-sub">'+esc(w.announcement||'Climb the weekly race, earn Vex, and claim your place.')+'</p><div class="top-players-hero-stats"><span><b>'+esc(yourVex)+'</b><small>Your Vex</small></span><span><b>'+esc(remaining(w.endsAt))+'</b><small>Ends In</small></span><span><b>Top '+esc(w.winnerCount||50)+'</b><small>Players</small></span></div><div class="top-players-hero-art">'+heroImgHtml()+'</div></section>'
