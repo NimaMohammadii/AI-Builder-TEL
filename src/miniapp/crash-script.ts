@@ -4,7 +4,7 @@ export const CRASH_SCRIPT = `
   var HOUSE_EDGE=.04;
   var WAIT_BETWEEN_MS=5000;
   var MAX_RUN_MS=15000;
-  var SCHEDULE_EPOCH=1704067200000;
+  var DAY_MS=86400000;
   var activeBet=null;
   var settledRoundId=null;
   var currentRoundId=-1;
@@ -15,6 +15,7 @@ export const CRASH_SCRIPT = `
   var lastHistoryId=null;
   var canvasCache=null;
   var ctxCache=null;
+  var scheduleCache=null;
   function q(id){return document.getElementById(id)}
   function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
   function balance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
@@ -33,8 +34,19 @@ export const CRASH_SCRIPT = `
   function multAt(seconds){return 1+seconds*.105+seconds*seconds*.024}
   function stopTime(stop){var target=Math.max(1,Number(stop)||1);var lo=0,hi=MAX_RUN_MS;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
   function cycleFor(id){var stop=roundStop(id);var runMs=Math.max(900,Math.min(MAX_RUN_MS,stopTime(stop)));return{id:id,stop:stop,runMs:runMs,cycleMs:runMs+WAIT_BETWEEN_MS}}
-  function locateRound(now){var elapsed=Math.max(0,now-SCHEDULE_EPOCH);var approx=Math.max(0,Math.floor(elapsed/(WAIT_BETWEEN_MS+5200))-40);var t=SCHEDULE_EPOCH;for(var i=0;i<approx;i++){t+=cycleFor(i).cycleMs}var id=approx;while(true){var c=cycleFor(id);if(now<t+c.cycleMs){var local=now-t;var running=local<c.runMs;var waitElapsed=running?0:local-c.runMs;var nextIn=running?0:Math.max(0,WAIT_BETWEEN_MS-waitElapsed);return{id:id,start:t,local:local,runElapsed:Math.min(local,c.runMs),waitElapsed:waitElapsed,stop:c.stop,runMs:c.runMs,running:running,waiting:!running,nextIn:nextIn}}t+=c.cycleMs;id++}}
-  function previousRoundIds(state,count){var ids=[];for(var id=state.id-(state.waiting?0:1);ids.length<count&&id>=0;id--)ids.push(id);return ids}
+  function locateRound(now){
+    var dayStart=Math.floor(now/DAY_MS)*DAY_MS;
+    var baseId=Math.floor(dayStart/1000);
+    if(!scheduleCache||scheduleCache.dayStart!==dayStart||now<scheduleCache.start){scheduleCache={dayStart:dayStart,baseId:baseId,localId:0,start:dayStart,cycle:cycleFor(baseId)}}
+    while(now>=scheduleCache.start+scheduleCache.cycle.cycleMs){scheduleCache.start+=scheduleCache.cycle.cycleMs;scheduleCache.localId++;scheduleCache.cycle=cycleFor(scheduleCache.baseId+scheduleCache.localId)}
+    var c=scheduleCache.cycle;
+    var local=now-scheduleCache.start;
+    var running=local<c.runMs;
+    var waitElapsed=running?0:local-c.runMs;
+    var nextIn=running?0:Math.max(0,WAIT_BETWEEN_MS-waitElapsed);
+    return{id:c.id,start:scheduleCache.start,local:local,runElapsed:Math.min(local,c.runMs),waitElapsed:waitElapsed,stop:c.stop,runMs:c.runMs,running:running,waiting:!running,nextIn:nextIn}
+  }
+  function previousRoundIds(state,count){var ids=[];for(var id=state.id-(state.waiting?0:1);ids.length<count;id--)ids.push(id);return ids}
   function progressAt(runElapsed){return Math.min(.995,runElapsed/11200)}
   function getCanvas(){var canvas=q('crashCanvas');if(!canvas)return null;var dpr=Math.min(window.devicePixelRatio||1,2);var rect=canvas.getBoundingClientRect();var w=Math.max(320,Math.floor(rect.width||360));var h=Math.max(260,Math.floor(rect.height||320));if(canvasCache!==canvas||canvas.width!==w*dpr||canvas.height!==h*dpr){canvas.width=w*dpr;canvas.height=h*dpr;canvasCache=canvas;ctxCache=canvas.getContext('2d')}ctxCache.setTransform(dpr,0,0,dpr,0,0);ctxCache.__w=w;ctxCache.__h=h;return ctxCache}
   function drawGrid(ctx,w,h){ctx.save();var bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#050506');bg.addColorStop(.58,'#000');bg.addColorStop(1,'#070405');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);var glow=ctx.createRadialGradient(w*.50,h*.10,0,w*.50,h*.10,Math.max(w,h)*.78);glow.addColorStop(0,'rgba(92,10,31,.18)');glow.addColorStop(.42,'rgba(92,10,31,.045)');glow.addColorStop(1,'rgba(92,10,31,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.055)';ctx.lineWidth=1;for(var y=36;y<h;y+=42){ctx.beginPath();ctx.moveTo(0,Math.round(y)+.5);ctx.lineTo(w,Math.round(y)+.5);ctx.stroke()}ctx.strokeStyle='rgba(255,255,255,.034)';for(var x=-h;x<w+h;x+=46){ctx.beginPath();ctx.moveTo(x,h);ctx.lineTo(x+h,0);ctx.stroke()}ctx.strokeStyle='rgba(255,255,255,.018)';for(var x2=0;x2<w;x2+=58){ctx.beginPath();ctx.moveTo(Math.round(x2)+.5,0);ctx.lineTo(Math.round(x2)+.5,h);ctx.stroke()}ctx.restore()}
