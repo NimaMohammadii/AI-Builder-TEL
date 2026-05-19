@@ -29,12 +29,13 @@ export const DAILY_REWARDS_SCRIPT = `
   function ensurePageOnBody(){var p=q('dailyRewardsPage');if(p&&p.parentNode!==document.body)document.body.appendChild(p);return p}
   function daysData(){return rewardsData&&Array.isArray(rewardsData.days)?rewardsData.days:fallbackDays.days}
   function missionList(day){var d=daysData().find(function(item){return Number(item.day)===Number(day)});return d&&Array.isArray(d.missions)?d.missions.slice(0,6):[]}
-  function dayIconHtml(i,today){
+  function dayIconHtml(i,today,dateNumber){
     if(i<today)return '<strong class="daily-rewards-day-check" aria-label="Completed">✓</strong>';
     var src=i===today?'/app/api/daily-rewards-day-today-image.png?v=1':'/app/api/daily-rewards-day-future-image.png?v=1';
-    return '<span class="daily-rewards-day-image"><img src="'+src+'" alt=""/></span>';
+    return '<span class="daily-rewards-day-image" data-fallback="'+dateNumber+'"><img class="daily-rewards-day-img" src="'+src+'" alt=""/></span>';
   }
-  function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date()),today=mondayIndex(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active ':'')+(i<today?'past ':i===today?'today ':'future ')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small>'+dayIconHtml(i,today)+'<span>Day '+(i+1)+'</span></button>'}).join('')}
+  function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image'))parent.textContent=parent.getAttribute('data-fallback')||''}
+  function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date()),today=mondayIndex(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active ':'')+(i<today?'past ':i===today?'today ':'future ')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small>'+dayIconHtml(i,today,d.getDate())+'<span>Day '+(i+1)+'</span></button>'}).join('')}
   function renderMissions(day){
     activeDay=Number(day)||0;
     var list=missionList(activeDay),claimed=setFrom('claimed'),claimable=setFrom('claimable');
@@ -55,6 +56,7 @@ export const DAILY_REWARDS_SCRIPT = `
   function open(){var p=ensurePageOnBody();if(!p)return;var day=mondayIndex(new Date());activeDay=day;renderDays(day);renderMissions(day);refresh(day,true);document.body.classList.add('daily-rewards-open');p.classList.add('open');p.setAttribute('aria-hidden','false');syncBack(true);try{p.scrollTop=0}catch(e){}setTimeout(clamp,180)}
   function close(){var p=q('dailyRewardsPage');if(!p)return;document.body.classList.remove('daily-rewards-open');p.classList.remove('open');p.setAttribute('aria-hidden','true');syncBack(false)}
   function mount(){var old=q('dailyRewardsMount');if(old)return;var home=q('home');if(!home)return;var mount=document.createElement('div');mount.id='dailyRewardsMount';mount.innerHTML=window.DAILY_REWARDS_SECTION||'';var page=mount.querySelector('#dailyRewardsPage');if(page)document.body.appendChild(page);var finance=home.querySelector('.home-finance-split');if(finance&&finance.parentNode)finance.parentNode.insertBefore(mount,finance.nextSibling);else home.appendChild(mount);activeDay=mondayIndex(new Date());renderDays(activeDay);renderMissions(activeDay);loadRewards(true).then(function(){renderDays(activeDay);renderMissions(activeDay)})}
+  document.addEventListener('error',function(ev){var target=ev.target;if(target&&target.classList&&target.classList.contains('daily-rewards-day-img'))showDayImageFallback(target)},true);
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-action], [data-daily-rewards-day]'):null;if(!target)return;var day=target.getAttribute('data-daily-rewards-day');if(day!==null){activeDay=Number(day);renderDays(activeDay);renderMissions(activeDay);return}var action=target.getAttribute('data-action');if(action==='open-daily-rewards'){open();return}if(action==='close-daily-rewards'){close();return}if(action==='claim-daily-reward'){ev.preventDefault();claim(Number(target.getAttribute('data-day')),target.getAttribute('data-mission-id'));return}},true);
   window.addEventListener('focus',function(){if(isOpen())keepBack()});
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&isOpen()){keepBack();refresh(activeDay,true)}});
