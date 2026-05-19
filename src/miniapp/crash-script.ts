@@ -30,12 +30,23 @@ export const CRASH_SCRIPT = `
   function setTotal(seconds){var n=q('crashTotalTime');if(n)n.textContent='Total '+Math.max(0,Math.floor(seconds))+'s'}
   function nextStop(){var u=Math.max(.000001,Math.random());var raw=(1-HOUSE_EDGE)/u;if(Math.random()<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
   function getCanvas(){var canvas=q('crashCanvas');if(!canvas)return null;var dpr=Math.min(window.devicePixelRatio||1,2);var rect=canvas.getBoundingClientRect();var w=Math.max(320,Math.floor(rect.width||360));var h=Math.max(260,Math.floor(rect.height||320));if(canvasCache!==canvas||canvas.width!==w*dpr||canvas.height!==h*dpr){canvas.width=w*dpr;canvas.height=h*dpr;canvasCache=canvas;ctxCache=canvas.getContext('2d')}ctxCache.setTransform(dpr,0,0,dpr,0,0);ctxCache.__w=w;ctxCache.__h=h;return ctxCache}
+  function drawGrid(ctx,w,h){
+    ctx.save();
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle='rgba(255,255,255,.13)';
+    ctx.lineWidth=1;
+    var cols=5,rows=5;
+    for(var i=1;i<cols;i++){var x=Math.round(w*i/cols)+.5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+    for(var j=1;j<rows;j++){var y=Math.round(h*j/rows)+.5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+    ctx.restore();
+  }
   function drawTip(ctx,x,y,ended){
     ctx.save();ctx.shadowColor=ended?'rgba(255,125,145,.30)':'rgba(255,255,255,.38)';ctx.shadowBlur=14;ctx.fillStyle=ended?'rgba(255,125,145,.96)':'#fff';ctx.beginPath();ctx.arc(x,y,6.5,0,Math.PI*2);ctx.fill();ctx.restore();
   }
   function drawGraph(progress,ended){
     var now=performance.now();if(!ended&&now-lastDraw<24)return;lastDraw=now;
-    var ctx=getCanvas();if(!ctx)return;var w=ctx.__w,h=ctx.__h;ctx.clearRect(0,0,w,h);
+    var ctx=getCanvas();if(!ctx)return;var w=ctx.__w,h=ctx.__h;ctx.clearRect(0,0,w,h);drawGrid(ctx,w,h);
     var left=10,bottom=h-18,right=w-34,top=14;
     var maxM=Math.max(3.2,current,stopAt||3.2);
     var p=Math.min(1,Math.max(0,progress));lastProgress=p;
