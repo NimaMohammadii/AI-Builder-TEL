@@ -2,10 +2,10 @@ export const CRASH_STYLES = `
 #crash.crash-view{height:100%;overflow:hidden}
 #crash .crash-page{height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;padding:4px 0 128px}
 #crash .crash-stage{position:relative;height:min(43vh,356px);min-height:322px;border-radius:34px;overflow:hidden;background:#000!important;border:0!important;outline:0!important;box-shadow:0 22px 56px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-#crash .crash-stage:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(180deg,rgba(255,255,255,.12) 1px,transparent 1px)!important;background-size:20% 20%!important;pointer-events:none;z-index:1;opacity:.86}
+#crash .crash-stage:before{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
 #crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
 #crash .crash-chart-square{display:none!important}
-#crash .crash-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:transparent!important;z-index:2}
+#crash .crash-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000!important;z-index:2}
 #crash .crash-multiplier{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);text-align:center;font-size:clamp(52px,16vw,72px);font-weight:930;letter-spacing:-.085em;color:#fff!important;text-shadow:0 16px 38px rgba(0,0,0,.42);z-index:4;pointer-events:none}
 #crash .crash-hidden-state,#crash .crash-starting,#crash .crash-network{display:none!important}
 #crash .crash-controls{border:0!important;outline:0!important;border-radius:32px;background:transparent!important;padding:15px;box-shadow:0 20px 52px rgba(0,0,0,.16)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
