@@ -3,7 +3,8 @@ import type { Env } from './types';
 
 const DAILY_REWARDS_HERO_IMAGE_KEY = 'daily-rewards/hero-image';
 const DAILY_REWARDS_BOTTOM_IMAGE_KEY = 'daily-rewards/bottom-image';
-const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
+const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
 const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
@@ -16,7 +17,7 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
 
 async function imageFromR2(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
-  if (!object) return new Response('', { status: 204, headers: { 'cache-control': DAILY_REWARDS_IMAGE_CACHE_CONTROL } });
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
   return new Response(object.body, {
     headers: {
       'content-type': object.httpMetadata?.contentType || 'image/png',
