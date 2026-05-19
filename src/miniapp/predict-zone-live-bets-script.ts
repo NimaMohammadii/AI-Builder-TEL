@@ -1,5 +1,4 @@
 export const PREDICT_ZONE_LIVE_BETS_SCRIPT = `
-<script>
 (function(){
   var values = [
     '+12','+18','+23','+27','+31','+34','+38','+41','+44','+47',
@@ -31,4 +30,4 @@ export const PREDICT_ZONE_LIVE_BETS_SCRIPT = `
   if(window.MutationObserver){var root=document.getElementById('predictzone');if(root)new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['class']});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync);else sync();
 })();
-</script>`;
+`;
