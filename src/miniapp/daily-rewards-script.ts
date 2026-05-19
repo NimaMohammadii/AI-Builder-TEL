@@ -29,9 +29,10 @@ export const DAILY_REWARDS_SCRIPT = `
   function ensurePageOnBody(){var p=q('dailyRewardsPage');if(p&&p.parentNode!==document.body)document.body.appendChild(p);return p}
   function daysData(){return rewardsData&&Array.isArray(rewardsData.days)?rewardsData.days:fallbackDays.days}
   function missionList(day){var d=daysData().find(function(item){return Number(item.day)===Number(day)});return d&&Array.isArray(d.missions)?d.missions.slice(0,6):[]}
+  function dayImageVersion(){return String(Math.floor(Date.now()/60000))}
   function dayIconHtml(i,today,dateNumber){
     if(i<today)return '<strong class="daily-rewards-day-check" aria-label="Completed">✓</strong>';
-    var src=i===today?'/app/api/daily-rewards-day-today-image.png?v=1':'/app/api/daily-rewards-day-future-image.png?v=1';
+    var src=(i===today?'/app/api/daily-rewards-day-today-image.png':'/app/api/daily-rewards-day-future-image.png')+'?v='+dayImageVersion();
     return '<span class="daily-rewards-day-image" data-fallback="'+dateNumber+'"><img class="daily-rewards-day-img" src="'+src+'" alt=""/></span>';
   }
   function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image'))parent.outerHTML='<strong>'+esc(parent.getAttribute('data-fallback')||'')+'</strong>'}
