@@ -43,12 +43,14 @@ app.post('/app/api/predict-bet', async (c) => {
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     if (Date.now() >= Date.parse(round.ends_at) - LOCK_MS) throw new Error('This round is locked. Wait for the next round.');
-    betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
     await ensurePredictTables(c.env);
-    await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP)`)
-      .bind(betId, round.id, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd)
+    betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+    const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
+      WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')`)
+      .bind(betId, round.id, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, round.id, userId)
       .run();
+    if ((inserted.meta?.changes || 0) <= 0) throw new Error('You already placed a prediction in this round. Wait for the next round.');
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId: round.id } });
     const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
     if ((active.meta?.changes || 0) <= 0) {
