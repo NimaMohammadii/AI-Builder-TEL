@@ -34,7 +34,7 @@ export const DAILY_REWARDS_SCRIPT = `
     var src=i===today?'/app/api/daily-rewards-day-today-image.png?v=1':'/app/api/daily-rewards-day-future-image.png?v=1';
     return '<span class="daily-rewards-day-image" data-fallback="'+dateNumber+'"><img class="daily-rewards-day-img" src="'+src+'" alt=""/></span>';
   }
-  function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image'))parent.textContent=parent.getAttribute('data-fallback')||''}
+  function showDayImageFallback(img){var parent=img&&img.parentNode;if(parent&&parent.classList&&parent.classList.contains('daily-rewards-day-image'))parent.outerHTML='<strong>'+esc(parent.getAttribute('data-fallback')||'')+'</strong>'}
   function renderDays(active){var wrap=q('dailyRewardsDays');if(!wrap)return;var start=startOfWeek(new Date()),today=mondayIndex(new Date());wrap.innerHTML=dayNames.map(function(name,i){var d=new Date(start);d.setDate(start.getDate()+i);return '<button class="daily-rewards-day '+(i===active?'active ':'')+(i<today?'past ':i===today?'today ':'future ')+'" type="button" data-daily-rewards-day="'+i+'"><small>'+name.slice(0,3)+'</small>'+dayIconHtml(i,today,d.getDate())+'<span>Day '+(i+1)+'</span></button>'}).join('')}
   function renderMissions(day){
     activeDay=Number(day)||0;
