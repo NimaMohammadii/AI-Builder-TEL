@@ -1,6 +1,9 @@
 export const CRASH_STYLES = `
-#crash.crash-view{height:100%;overflow:hidden}
-#crash .crash-page{height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:4px 0 112px}
+#crash.crash-view{height:100%;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:22px}
+#crash.crash-view::-webkit-scrollbar{display:none}
+body:has(#crash.active) .tabs{display:none!important}
+body:has(#crash.active) .content{padding-bottom:0!important}
+#crash .crash-page{min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:4px 0 max(34px,env(safe-area-inset-bottom))}
 #crash .crash-stage{position:relative;height:min(43vh,356px);min-height:322px;border-radius:34px;overflow:hidden;background:#000!important;border:0!important;outline:0!important;box-shadow:0 22px 56px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #crash .crash-stage:before,#crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
 #crash .crash-chart-square{display:none!important}
@@ -32,10 +35,10 @@ export const CRASH_STYLES = `
 #crash .crash-history{display:flex!important;gap:6px;overflow-x:auto;overflow-y:hidden;margin-top:10px;min-height:30px;padding:2px 1px 1px;scrollbar-width:none;visibility:visible!important;opacity:1!important}
 #crash .crash-history::-webkit-scrollbar{display:none}
 #crash .crash-history span{flex:0 0 auto;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:890;color:rgba(255,255,255,.94)!important}
-#crash .crash-live{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:28px;padding:10px 12px 4px;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}
+#crash .crash-live{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:28px;padding:10px 12px 24px;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}
 #crash .crash-live-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
 #crash .crash-live-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none}
-#crash .crash-live-list{display:grid;gap:6px;max-height:118px;overflow:auto;scrollbar-width:none}
+#crash .crash-live-list{display:grid;gap:6px;max-height:none;overflow:visible;scrollbar-width:none}
 #crash .crash-live-list::-webkit-scrollbar{display:none}
 #crash .crash-live-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}
 #crash .crash-live-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;min-height:32px;border-radius:999px;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;color:#fff;padding:0 2px}
