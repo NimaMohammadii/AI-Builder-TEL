@@ -28,8 +28,9 @@ body:has(#predictzone.active) #predictzone .predict-zone-live-meta span{font-siz
 body:has(#predictzone.active) #predictzone .predict-zone-live-meta strong{font-size:25px!important;font-weight:700!important;line-height:1!important;letter-spacing:-.045em!important;color:#fff!important;font-family:var(--font-num)!important}
 body:has(#predictzone.active) #predictzone .predict-zone-chart-preview{height:285px!important;width:calc(100% + 12px)!important;margin:0 -6px 17px!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important}
 body:has(#predictzone.active) #predictzone .predict-zone-chart-grid{inset:0 72px 0 0!important;background-size:50px 100%!important;opacity:.54!important}
-body:has(#predictzone.active) #predictzone .predict-zone-chart-preview svg{overflow:visible!important;filter:drop-shadow(0 10px 16px rgba(255,255,255,.08))!important}
+body:has(#predictzone.active) #predictzone .predict-zone-chart-preview svg{width:calc(100% + 78px)!important;max-width:none!important;overflow:visible!important;filter:drop-shadow(0 10px 16px rgba(255,255,255,.08))!important}
 body:has(#predictzone.active) #predictzone .predict-zone-chart-line{stroke-width:3.2!important}
+body:has(#predictzone.active) #predictzone .predict-zone-chart-dot,body:has(#predictzone.active) #predictzone .predict-zone-price-guide{left:calc(100% - 4px)!important}
 body:has(#predictzone.active) #predictzone .predict-zone-price-axis span{font-size:13px!important;font-weight:620!important;color:rgba(255,255,255,.42)!important}
 body:has(#predictzone.active) #predictzone .predict-zone-actions{gap:11px!important;margin:0 0 12px!important}
 body:has(#predictzone.active) #predictzone .predict-zone-choice{height:49px!important;font-size:15px!important;font-weight:700!important;background:rgba(255,255,255,.04)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 14px 26px rgba(0,0,0,.12)!important}
