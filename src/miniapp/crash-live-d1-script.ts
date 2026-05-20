@@ -1,0 +1,12 @@
+export const CRASH_LIVE_D1_SCRIPT = `
+(function(){
+  var UNIT=1000000000;
+  function ton(n){var v=Math.max(0,Math.floor(Number(n)||0))/UNIT;return v.toFixed(4).replace(/\\.0+$/,'').replace(/(\\.\\d*?)0+$/,'$1')}
+  function tgUser(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=String((u&&u.id)||localStorage.getItem('ownerId')||'local').trim();var name=u?(u.username?'@'+u.username:((u.first_name||'User')+(u.last_name?' '+u.last_name:''))):'You';return{id:id||'local',name:name||'User'}}
+  function cleanText(v){return String(v==null?'':v).replace(/[&<>\"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]})}
+  async function post(path,body){try{return await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),keepalive:true}).then(function(r){return r.json().catch(function(){return null})})}catch(e){return null}}
+  async function get(roundId){try{return await fetch('/app/api/crash-live?roundId='+encodeURIComponent(String(roundId)),{cache:'no-store'}).then(function(r){return r.json().catch(function(){return null})})}catch(e){return null}}
+  function render(j){var list=document.getElementById('crashLiveList'),total=document.getElementById('crashLiveTotal');if(!list||!j||!j.ok)return;if(total)total.textContent=ton(j.totalNano)+' TON';var bets=j.bets||[];if(!bets.length){list.innerHTML='<div class="crash-live-empty">No bets yet</div>';return}list.innerHTML=bets.map(function(b){var cash=b.status==='cashout';var crash=b.status==='crashed';var status=cash?(ton(b.payoutNano)+' TON'):(crash?'Crashed':'Bet');var cls=cash?'cashout':(crash?'crashed':'');return '<div class="crash-live-row '+cls+'"><span class="crash-live-user">'+cleanText(b.user)+'</span><span class="crash-live-amount">'+ton(b.amountNano)+' TON</span><span class="crash-live-status">'+cleanText(status)+'</span></div>'}).join('')}
+  window.VexaCrashLiveD1={user:tgUser,postBet:function(roundId,amountNano){var u=tgUser();return post('/app/api/crash-live/bet',{roundId:roundId,userId:u.id,username:u.name,amountNano:amountNano})},postCashout:function(roundId,multiplier){var u=tgUser();return post('/app/api/crash-live/cashout',{roundId:roundId,userId:u.id,multiplier:multiplier})},postCrash:function(roundId){var u=tgUser();return post('/app/api/crash-live/crash',{roundId:roundId,userId:u.id})},load:function(roundId){return get(roundId).then(render)}};
+})();
+`;
