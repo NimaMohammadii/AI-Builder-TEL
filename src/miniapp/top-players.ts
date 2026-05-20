@@ -9,8 +9,8 @@ export const TOP_PLAYERS_SECTION = `<section id="topplayers" class="view top-pla
       <div class="top-players-hero-image" aria-hidden="true"><img src="/app/api/top-players-hero-image.png?v=1" alt="" loading="lazy" decoding="async"/></div>
     </div>
     <div class="top-players-filters" aria-label="Top players filters">
-      <label class="top-filter-card"><span>Show</span><select id="topPlayersLimit" aria-label="Top players count"><option value="10">Top 10</option><option value="25">Top 25</option><option value="50">Top 50</option><option value="100">Top 100</option></select></label>
-      <label class="top-filter-card"><span>Rank</span><select id="topPlayersRankBy" aria-label="Top players ranking type"><option value="level">Level</option><option value="weekly_xp">Weekly XP</option></select></label>
+      <button class="top-filter-card" type="button" aria-label="Top players count"><b>Top 10</b><i aria-hidden="true">⌄</i></button>
+      <button class="top-filter-card" type="button" aria-label="Top players ranking type"><b>Level</b><i aria-hidden="true">⌄</i></button>
     </div>
     <div class="top-players-list" aria-label="Top players list">
       <div class="top-player-row top-one"><span class="top-player-rank">1</span><span class="top-player-avatar">A</span><span class="top-player-main"><strong>Arman</strong><small>Crash Master</small></span><span class="top-player-score">128.4 TON</span></div>
