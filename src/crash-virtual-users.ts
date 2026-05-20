@@ -3,7 +3,8 @@ const HOUSE_EDGE = .04;
 const WAIT_BETWEEN_MS = 9000;
 const MAX_RUN_MS = 18000;
 const DAY_MS = 86400000;
-const NAMES = ['Arman','Nika','Kian','Rayan','Luna','Sina','Daria','Mahan','Nova','Ava','Leo','Mira','Aria','Tara','Nolan','Maya','Kourosh','Lia','Ryan','Sara','Arian','Nora','Milan','Elia','Dena','Kara','Sam','Raha','Shayan','Yara','Vian','Radin','Mina','Roya','Aylin','Zara','Parsa','Nila','Evan','Rima','Tina','Alan','Navi','Negin','Dion','Taha','Avin','Sepehr','Lara','Ilya','Anita','Rad','Nelly'];
+const HOUR_MS = 3600000;
+const NAMES = ['Amir','Ali','Reza','Arman','Arya','Arvin','Arian','Kian','Sina','Saman','Sam','Radin','Rayan','Shayan','Mahan','Parsa','Navid','Nima','Nikan','Kaveh','Sepehr','Taha','Erfan','Amin','Alan','Ilya','Elia','Evan','Nolan','Milan','Matin','Bardia','Hirad','Dani','Omid','Pouya','Kasra','Arad','Mehrad','Nika','Ava','Mira','Luna','Daria','Aria','Tara','Maya','Lia','Nora','Elina','Lina','Dena','Raha','Yara','Vian','Mina','Roya','Aylin','Zara','Nila','Rima','Tina','Negin','Avin','Lara','Anita','Rosha','Kimia','Dorsa','Hana','Shadi','Nahal','Helia','Niki','Emma','Mia','Lena','Sofia','Ella','Nina','Ayla','Clara','Diana','Kira','Mona','Yana','Alex','Max','Nick','Ben','Ethan','Adam','Liam','Noah','Owen','Mason','Lucas','Logan','Dylan','Carter','Jason','Finn','Theo','Milo','Levi','Ezra','Simon','Victor','Oscar'];
 
 export async function ensureCrashVirtualColumns(db:D1Database){
   await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
@@ -13,16 +14,17 @@ export async function ensureCrashVirtualColumns(db:D1Database){
 export async function seedCrashVirtualUsers(db:D1Database, roundId:number){
   const found = await db.prepare('SELECT COUNT(*) AS n FROM crash_live_bets WHERE round_id=? AND is_virtual=1').bind(roundId).first<{n:number}>();
   if(Number(found?.n||0)>0)return;
-  const count = 40 + Math.floor(rand(roundId,1)*51);
+  const count = 60 + Math.floor(rand(roundId,1)*41);
   const stop = roundStop(roundId);
+  const hourSlot = Math.floor(Date.now()/HOUR_MS);
   const stmt = db.prepare("INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,target_cashout_multiplier,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
   const batch=[];
   for(let i=0;i<count;i++){
     const risk = rand(roundId,100+i);
     const amount = amountNano(roundId,i,risk);
     const target = targetCashout(roundId,i,risk,stop);
-    const username = NAMES[Math.floor(rand(roundId,300+i)*NAMES.length)] + (rand(roundId,400+i)>.86 ? String(10+Math.floor(rand(roundId,500+i)*89)) : '');
-    batch.push(stmt.bind(roundId,'virtual_'+roundId+'_'+i,username,amount,target));
+    const username = scheduledName(roundId,hourSlot,i);
+    batch.push(stmt.bind(roundId,'virtual_'+hourSlot+'_'+roundId+'_'+i,username,amount,target));
   }
   if(batch.length)await db.batch(batch);
 }
@@ -42,6 +44,15 @@ export async function revealCrashVirtualCashouts(db:D1Database, roundId:number){
 }
 
 function rand(a:number,b:number){const x=Math.sin(a*9301.777+b*49297.31)*233280;return x-Math.floor(x)}
+function scheduledName(roundId:number,hourSlot:number,i:number){
+  const base=Math.floor(rand(hourSlot,17)*NAMES.length);
+  const jump=7+Math.floor(rand(hourSlot,23)*19);
+  const idx=(base+i*jump+Math.floor(rand(roundId,300+i)*NAMES.length))%NAMES.length;
+  const roll=rand(roundId,400+i);
+  if(roll>.95)return NAMES[idx]+String(10+Math.floor(rand(roundId,500+i)*89));
+  if(roll>.91)return NAMES[idx]+String(Math.floor(rand(roundId,501+i)*9));
+  return NAMES[idx];
+}
 function amountNano(roundId:number,i:number,risk:number){
   const r=rand(roundId,700+i);
   const whale=rand(roundId,1700+i);
@@ -54,7 +65,16 @@ function amountNano(roundId:number,i:number,risk:number){
   if(whale>.987){min=120;max=320}
   if(whale>.997){min=280;max=650}
   const shaped=Math.pow(r,.66);
-  return Math.floor((min+(max-min)*shaped)*NANO);
+  const tonAmount=min+(max-min)*shaped;
+  return roundBotAmount(tonAmount,rand(roundId,2600+i));
+}
+function roundBotAmount(value:number,roll:number){
+  let rounded:number;
+  if(roll>.90) rounded=Math.round(value*100)/100;
+  else if(roll>.72) rounded=Math.round(value*10)/10;
+  else rounded=Math.round(value);
+  if(rounded<.1) rounded=Math.round(value*10)/10;
+  return Math.max(1,Math.floor(rounded*NANO));
 }
 function targetCashout(roundId:number,i:number,risk:number,stop:number){const r=rand(roundId,900+i);let min=1.15,max=1.8;if(risk>.45&&risk<=.80){min=1.8;max=3}else if(risk>.80&&risk<=.95){min=3;max=7}else if(risk>.95){min=7;max=15}let t=Math.floor((min+(max-min)*r)*100)/100;if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));return t}
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
