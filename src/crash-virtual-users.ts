@@ -42,7 +42,18 @@ export async function revealCrashVirtualCashouts(db:D1Database, roundId:number){
 }
 
 function rand(a:number,b:number){const x=Math.sin(a*9301.777+b*49297.31)*233280;return x-Math.floor(x)}
-function amountNano(roundId:number,i:number,risk:number){const r=rand(roundId,700+i);let min=.01,max=.2;if(risk>.70&&risk<=.92){min=.2;max=1}else if(risk>.92){min=1;max=5}return Math.floor((min+(max-min)*r)*NANO)}
+function amountNano(roundId:number,i:number,risk:number){
+  const r=rand(roundId,700+i);
+  const whale=rand(roundId,1700+i);
+  let min=.03,max=.45;
+  if(risk>.55&&risk<=.78){min=.25;max=1.8}
+  else if(risk>.78&&risk<=.92){min=1;max=6.5}
+  else if(risk>.92&&risk<=.985){min=4;max=18}
+  else if(risk>.985){min=12;max=38}
+  if(whale>.992){min=35;max=90}
+  const shaped=Math.pow(r,.72);
+  return Math.floor((min+(max-min)*shaped)*NANO);
+}
 function targetCashout(roundId:number,i:number,risk:number,stop:number){const r=rand(roundId,900+i);let min=1.15,max=1.8;if(risk>.45&&risk<=.80){min=1.8;max=3}else if(risk>.80&&risk<=.95){min=3;max=7}else if(risk>.95){min=7;max=15}let t=Math.floor((min+(max-min)*r)*100)/100;if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));return t}
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
 function roundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
