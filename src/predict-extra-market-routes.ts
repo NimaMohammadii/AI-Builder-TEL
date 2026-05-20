@@ -4,7 +4,7 @@ import { recordDailyRewardEvent } from './daily-rewards-claims';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 
 const CACHE_NONE = 'no-store';
-const EXTRA_MARKETS = ['ethereum', 'solana', 'gold'] as const;
+const EXTRA_MARKETS = ['ethereum', 'solana', 'gold', 'oil'] as const;
 const ROUND_MS = 5 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
@@ -180,14 +180,16 @@ async function userBetsJson(env: Env, roundId: string, userId: string) { return 
 async function recentUserBetsJson(env: Env, market: string, userId: string) { return ((await env.DB.prepare('SELECT * FROM predict_bets WHERE market = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(cleanDbText(market, 'Prediction market is not ready'), userId).all<BetRow>()).results || []).map(betJson); }
 async function getBet(env: Env, id: string) { const b = await env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(cleanDbText(id, 'Prediction bet is not ready')).first<BetRow>(); return b ? betJson(b) : null; }
 async function fetchPrice(market: ExtraMarket | 'ton'): Promise<number> {
-  const symbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'TONUSDT';
-  const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  const spotSymbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'TONUSDT';
+  const oil = market === 'oil';
+  const url = oil ? 'https://fapi.binance.com/fapi/v1/ticker/price?symbol=CLUSDT' : `https://api.binance.com/api/v3/ticker/price?symbol=${spotSymbol}`;
+  const res = await fetch(url, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error('Price feed is unavailable');
   const data = await res.json() as { price?: string };
   return cleanPrice(data.price);
 }
-function isExtraMarket(value: string): boolean { const market = value.trim().toLowerCase(); return market === 'ethereum' || market === 'eth' || market === 'solana' || market === 'sol' || market === 'gold' || market === 'paxg'; }
-function normalizeExtraMarket(value: string): ExtraMarket { const market = value.trim().toLowerCase(); if (market === 'ethereum' || market === 'eth') return 'ethereum'; if (market === 'solana' || market === 'sol') return 'solana'; if (market === 'gold' || market === 'paxg') return 'gold'; throw new Error('Invalid predict market'); }
+function isExtraMarket(value: string): boolean { const market = value.trim().toLowerCase(); return market === 'ethereum' || market === 'eth' || market === 'solana' || market === 'sol' || market === 'gold' || market === 'paxg' || market === 'oil' || market === 'cl' || market === 'clusdt'; }
+function normalizeExtraMarket(value: string): ExtraMarket { const market = value.trim().toLowerCase(); if (market === 'ethereum' || market === 'eth') return 'ethereum'; if (market === 'solana' || market === 'sol') return 'solana'; if (market === 'gold' || market === 'paxg') return 'gold'; if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil'; throw new Error('Invalid predict market'); }
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
