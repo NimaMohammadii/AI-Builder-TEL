@@ -5,7 +5,7 @@ export const MINIAPP_SCRIPT = `
 
   var ownerId=localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Home',connect:'Connect',results:'Bot Control',playzone:'Play Zone',market:'Market',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
+  var sectionTitles={home:'Home',connect:'Connect',results:'Bot Control',playzone:'Play Zone',market:'Market',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -18,12 +18,21 @@ export const MINIAPP_SCRIPT = `
   function setDepositSheet(open){setSheetOpen('depositSheet','deposit-open',open)}
   function setWithdrawSheet(open){setSheetOpen('withdrawSheet','withdraw-open',open)}
   function setTransactionsSheet(open){setSheetOpen('transactionsSheet','transactions-open',open)}
+  function handleBackButton(){show('home')}
+  function syncTelegramBackButton(id){
+    if(!tg||!tg.BackButton)return;
+    try{tg.BackButton.offClick(handleBackButton)}catch(e){}
+    if(id==='topplayers'){
+      try{tg.BackButton.onClick(handleBackButton);tg.BackButton.show()}catch(e){}
+    }else{
+      try{tg.BackButton.hide()}catch(e){}
+    }
+  }
 
   function removeLegacyLeagueAndRewards(){
     ['leaderboardEntry','leaderboardPage','rewardsPage'].forEach(function(id){var n=q(id);if(n&&n.parentNode)n.parentNode.removeChild(n)});
     document.querySelectorAll('.home-leaderboard-entry,.home-rewards-entry,[data-action="open-leaderboard"],[data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}});
     document.body.classList.remove('leaderboard-open','rewards-open');
-    try{if(tg&&tg.BackButton)tg.BackButton.hide()}catch(e){}
   }
 
   function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
@@ -52,6 +61,7 @@ export const MINIAPP_SCRIPT = `
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa');
     setHeaderGlassMode(id);
+    syncTelegramBackButton(id);
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     removeLegacyLeagueAndRewards();
   }
@@ -141,6 +151,7 @@ export const MINIAPP_SCRIPT = `
   initPlayZoneGameNavigation();
   setText('brandTitle',sectionTitles.home);
   setHeaderGlassMode('home');
+  syncTelegramBackButton('home');
   userLine();
   updateTtsCharCount();
 })();
