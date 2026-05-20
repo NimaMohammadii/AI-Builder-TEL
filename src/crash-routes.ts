@@ -12,7 +12,7 @@ app.get('/app/api/crash-live', async (c) => {
   await seedCrashVirtualUsers(c.env.DB, roundId);
   await revealCrashVirtualCashouts(c.env.DB, roundId);
   await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
-  const rows = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY is_virtual ASC, datetime(created_at) ASC LIMIT 120').bind(roundId).all<Row>();
+  const rows = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY amount_nano DESC, datetime(created_at) ASC LIMIT 120').bind(roundId).all<Row>();
   const bets = (rows.results || []).map(json);
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
   return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),bets},200,{'cache-control':CACHE_NONE});
