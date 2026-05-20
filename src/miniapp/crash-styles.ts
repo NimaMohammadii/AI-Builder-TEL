@@ -32,4 +32,16 @@ export const CRASH_STYLES = `
 #crash .crash-history{display:flex!important;gap:6px;overflow-x:auto;overflow-y:hidden;margin-top:10px;min-height:30px;padding:2px 1px 1px;scrollbar-width:none;visibility:visible!important;opacity:1!important}
 #crash .crash-history::-webkit-scrollbar{display:none}
 #crash .crash-history span{flex:0 0 auto;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:890;color:rgba(255,255,255,.94)!important}
+#crash .crash-live{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:28px;padding:10px 12px 4px;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}
+#crash .crash-live-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+#crash .crash-live-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none}
+#crash .crash-live-list{display:grid;gap:6px;max-height:118px;overflow:auto;scrollbar-width:none}
+#crash .crash-live-list::-webkit-scrollbar{display:none}
+#crash .crash-live-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}
+#crash .crash-live-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;min-height:32px;border-radius:999px;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;color:#fff;padding:0 2px}
+#crash .crash-live-user{min-width:0;font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.92)}
+#crash .crash-live-amount{font-size:11px;font-weight:900;color:rgba(255,255,255,.70)}
+#crash .crash-live-status{font-size:11px;font-weight:930;color:rgba(255,255,255,.84)}
+#crash .crash-live-row.cashout .crash-live-status{color:#78ffb3}
+#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,140,160,.86)}
 `;
