@@ -16,7 +16,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
 </style>
 <script>
 (function(){
-  var markets=[{id:'bitcoin',title:'Bitcoin'},{id:'ton',title:'TON'}];
+  var markets=[{id:'bitcoin',title:'Bitcoin'},{id:'ethereum',title:'Ethereum'},{id:'solana',title:'Solana'},{id:'gold',title:'Gold'},{id:'ton',title:'TON'},{id:'football',title:'Football'},{id:'politics',title:'Politics'},{id:'fun',title:'Fun'}];
   var settings={},displaySettings={liveBetsEnabled:true};
   function esc(value){return String(value==null?'':value).replace(/[&<>]/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[char]||char})}
   function withVersion(url){return url ? url + (url.indexOf('?')>=0 ? '&' : '?') + 't=' + Date.now() : ''}
