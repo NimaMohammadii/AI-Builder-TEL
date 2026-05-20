@@ -7,7 +7,7 @@ import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } fr
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'ton', 'football', 'politics', 'fun'] as const;
+const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ton'] as const;
 const ROUND_MS = 5 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -238,7 +238,7 @@ function normalizePredictMarket(value: string): PredictMarket {
   if (market === 'ethereum' || market === 'eth') return 'ethereum';
   if (market === 'solana' || market === 'sol') return 'solana';
   if (market === 'gold' || market === 'paxg') return 'gold';
-  if (market === 'ton') return 'ton';
+  if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
   if (market === 'football') return 'football';
   if (market === 'politics') return 'politics';
   if (market === 'fun') return 'fun';
