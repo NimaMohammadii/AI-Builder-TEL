@@ -1,4 +1,5 @@
 import app from './index-with-tgs-overlay';
+import './predict-extra-market-routes';
 import './predict-routes';
 import './crash-routes';
 import type { Env } from './types';
