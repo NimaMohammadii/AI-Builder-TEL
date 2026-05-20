@@ -21,6 +21,8 @@ export const TOP_PLAYERS_SECTION = `<section id="topplayers" class="view top-pla
       <div class="top-player-row"><span class="top-player-rank">6</span><span class="top-player-avatar">L</span><span class="top-player-main"><strong>Luna</strong><small>Risk Hunter</small></span><span class="top-player-score">54.3 TON</span></div>
       <div class="top-player-row"><span class="top-player-rank">7</span><span class="top-player-avatar">R</span><span class="top-player-main"><strong>Radin</strong><small>Steady Player</small></span><span class="top-player-score">48.9 TON</span></div>
       <div class="top-player-row"><span class="top-player-rank">8</span><span class="top-player-avatar">D</span><span class="top-player-main"><strong>Daria</strong><small>Hot Streak</small></span><span class="top-player-score">43.6 TON</span></div>
+      <div class="top-player-row"><span class="top-player-rank">9</span><span class="top-player-avatar">E</span><span class="top-player-main"><strong>Elin</strong><small>Smart Builder</small></span><span class="top-player-score">39.4 TON</span></div>
+      <div class="top-player-row"><span class="top-player-rank">10</span><span class="top-player-avatar">V</span><span class="top-player-main"><strong>Vana</strong><small>Weekly Climber</small></span><span class="top-player-score">35.8 TON</span></div>
     </div>
   </div>
 </section>`;
