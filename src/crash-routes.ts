@@ -3,6 +3,7 @@ import { ensureCrashVirtualColumns, revealCrashVirtualCashouts, seedCrashVirtual
 
 const CACHE_NONE = 'no-store';
 const NANO = 1000000000;
+const MIN_BET_NANO = 10000000;
 
 type Row = { round_id:number; user_id:string; username:string; amount_nano:number; status:string; cashout_multiplier:number|null; payout_nano:number; is_virtual?:number; created_at:string; updated_at:string };
 
@@ -53,6 +54,6 @@ function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.u
 function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
 function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
 function name(v:unknown,f:string){let s=String(v||f||'User').replace(/[<>]/g,'').trim();if(s.startsWith('@'))s=s.slice(1);if(s.includes(' '))s=s.split(' ')[0];return s.slice(0,80)||'User'}
-function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<NANO)throw new Error('Minimum bet is 1 TON');return n}
+function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<MIN_BET_NANO)throw new Error('Minimum bet is 0.01 TON');return n}
 function mult(v:unknown){const n=Number(v);if(!Number.isFinite(n)||n<1)throw new Error('Invalid multiplier');return Math.floor(n*100)/100}
 function ton(v:unknown){return (Math.max(0,Math.floor(Number(v)||0))/NANO).toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
