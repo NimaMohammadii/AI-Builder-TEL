@@ -12,7 +12,7 @@ app.get('/app/api/crash-live', async (c) => {
   await seedCrashVirtualUsers(c.env.DB, roundId);
   await revealCrashVirtualCashouts(c.env.DB, roundId);
   await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
-  const rows = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY amount_nano DESC, datetime(created_at) ASC LIMIT 120').bind(roundId).all<Row>();
+  const rows = await c.env.DB.prepare("SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY CASE WHEN status='cashout' THEN 0 ELSE 1 END ASC, amount_nano DESC, datetime(created_at) ASC LIMIT 120").bind(roundId).all<Row>();
   const bets = (rows.results || []).map(json);
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
   return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),bets},200,{'cache-control':CACHE_NONE});
@@ -53,6 +53,6 @@ function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.u
 function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
 function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
 function name(v:unknown,f:string){let s=String(v||f||'User').replace(/[<>]/g,'').trim();if(s.startsWith('@'))s=s.slice(1);if(s.includes(' '))s=s.split(' ')[0];return s.slice(0,80)||'User'}
-function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<=0)throw new Error('Invalid amount');return n}
+function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<NANO)throw new Error('Minimum bet is 1 TON');return n}
 function mult(v:unknown){const n=Number(v);if(!Number.isFinite(n)||n<1)throw new Error('Invalid multiplier');return Math.floor(n*100)/100}
 function ton(v:unknown){return (Math.max(0,Math.floor(Number(v)||0))/NANO).toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
