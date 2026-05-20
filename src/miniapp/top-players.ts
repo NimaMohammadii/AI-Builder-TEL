@@ -2,9 +2,12 @@ export const TOP_PLAYERS_SECTION = `<section id="topplayers" class="view top-pla
   <div class="top-players-page">
     <button class="top-players-back" type="button" data-view="home" aria-label="Back">‹</button>
     <div class="top-players-hero">
-      <span class="top-players-kicker">Vexa League</span>
-      <h2>Top Players</h2>
-      <p>Weekly ranking of the strongest players in Vexa. Live data will be connected soon.</p>
+      <div class="top-players-copy">
+        <span class="top-players-kicker">Vexa League</span>
+        <h2>Top Players</h2>
+        <p>Weekly ranking of the strongest players in Vexa. Live data will be connected soon.</p>
+      </div>
+      <div class="top-players-hero-image" aria-hidden="true"><img src="/app/api/top-players-hero-image.png?v=1" alt="" loading="lazy" decoding="async"/></div>
       <div class="top-players-stats">
         <span><b>100</b><small>Players</small></span>
         <span><b>24h</b><small>Season</small></span>
