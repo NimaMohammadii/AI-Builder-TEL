@@ -1,7 +1,7 @@
 const NANO = 1000000000;
 const HOUSE_EDGE = .04;
 const WAIT_BETWEEN_MS = 9000;
-const MAX_RUN_MS = 18000;
+const MAX_RUN_MS = 28000;
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const NAMES = ['Amir','Ali','Reza','Arman','Arya','Arvin','Arian','Kian','Sina','Saman','Sam','Radin','Rayan','Shayan','Mahan','Parsa','Navid','Nima','Nikan','Kaveh','Sepehr','Taha','Erfan','Amin','Alan','Ilya','Elia','Evan','Nolan','Milan','Matin','Bardia','Hirad','Dani','Omid','Pouya','Kasra','Arad','Mehrad','Nika','Ava','Mira','Luna','Daria','Aria','Tara','Maya','Lia','Nora','Elina','Lina','Dena','Raha','Yara','Vian','Mina','Roya','Aylin','Zara','Nila','Rima','Tina','Negin','Avin','Lara','Anita','Rosha','Kimia','Dorsa','Hana','Shadi','Nahal','Helia','Niki','Emma','Mia','Lena','Sofia','Ella','Nina','Ayla','Clara','Diana','Kira','Mona','Yana','Alex','Max','Nick','Ben','Ethan','Adam','Liam','Noah','Owen','Mason','Lucas','Logan','Dylan','Carter','Jason','Finn','Theo','Milo','Levi','Ezra','Simon','Victor','Oscar'];
@@ -78,8 +78,10 @@ function roundBotAmount(value:number,roll:number){
 }
 function targetCashout(roundId:number,i:number,risk:number,stop:number){const r=rand(roundId,900+i);let min=1.15,max=1.8;if(risk>.45&&risk<=.80){min=1.8;max=3}else if(risk>.80&&risk<=.95){min=3;max=7}else if(risk>.95){min=7;max=15}let t=Math.floor((min+(max-min)*r)*100)/100;if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));return t}
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
-function roundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
-function multAt(seconds:number){return 1+seconds*.045+seconds*seconds*.0108}
+function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
+function multAt(seconds:number){return 1+seconds*.026+seconds*seconds*.0068}
+function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
+function roundStop(roundId:number){return Math.min(rawRoundStop(roundId),maxReachableStop())}
 function stopTime(stop:number){let lo=0,hi=MAX_RUN_MS;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(multAt(mid/1000)>=stop)hi=mid;else lo=mid}return hi}
-function cycleFor(id:number){const stop=roundStop(id),runMs=Math.max(1100,Math.min(MAX_RUN_MS,stopTime(stop)));return{id,runMs,cycleMs:runMs+WAIT_BETWEEN_MS}}
+function cycleFor(id:number){const stop=roundStop(id),runMs=Math.max(1100,stopTime(stop));return{id,runMs,cycleMs:runMs+WAIT_BETWEEN_MS}}
 function locateRound(now:number){const dayStart=Math.floor(now/DAY_MS)*DAY_MS,baseId=Math.floor(dayStart/1000);let start=dayStart,localId=0,cycle=cycleFor(baseId);while(now>=start+cycle.cycleMs){start+=cycle.cycleMs;localId++;cycle=cycleFor(baseId+localId)}const local=now-start,running=local<cycle.runMs;return{id:cycle.id,running,current:running?multAt(local/1000):roundStop(cycle.id)}}
