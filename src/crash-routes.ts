@@ -1,4 +1,4 @@
-import app from './index-with-tgs-overlay';
+import app from './index';
 import { ensureCrashVirtualColumns, revealCrashVirtualCashouts, seedCrashVirtualUsers } from './crash-virtual-users';
 
 const CACHE_NONE = 'no-store';
