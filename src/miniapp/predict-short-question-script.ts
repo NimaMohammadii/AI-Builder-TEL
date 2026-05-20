@@ -1,1 +1,0 @@
-export const PREDICT_SHORT_QUESTION_SCRIPT = ``;
