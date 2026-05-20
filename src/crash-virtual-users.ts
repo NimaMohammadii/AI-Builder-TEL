@@ -45,13 +45,15 @@ function rand(a:number,b:number){const x=Math.sin(a*9301.777+b*49297.31)*233280;
 function amountNano(roundId:number,i:number,risk:number){
   const r=rand(roundId,700+i);
   const whale=rand(roundId,1700+i);
-  let min=.03,max=.45;
-  if(risk>.55&&risk<=.78){min=.25;max=1.8}
-  else if(risk>.78&&risk<=.92){min=1;max=6.5}
-  else if(risk>.92&&risk<=.985){min=4;max=18}
-  else if(risk>.985){min=12;max=38}
-  if(whale>.992){min=35;max=90}
-  const shaped=Math.pow(r,.72);
+  let min=.08,max=1.2;
+  if(risk>.48&&risk<=.70){min=.75;max=4.5}
+  else if(risk>.70&&risk<=.86){min=3;max=14}
+  else if(risk>.86&&risk<=.96){min=10;max=38}
+  else if(risk>.96&&risk<=.992){min=28;max=95}
+  else if(risk>.992){min=80;max=180}
+  if(whale>.987){min=120;max=320}
+  if(whale>.997){min=280;max=650}
+  const shaped=Math.pow(r,.66);
   return Math.floor((min+(max-min)*shaped)*NANO);
 }
 function targetCashout(roundId:number,i:number,risk:number,stop:number){const r=rand(roundId,900+i);let min=1.15,max=1.8;if(risk>.45&&risk<=.80){min=1.8;max=3}else if(risk>.80&&risk<=.95){min=3;max=7}else if(risk>.95){min=7;max=15}let t=Math.floor((min+(max-min)*r)*100)/100;if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));return t}
