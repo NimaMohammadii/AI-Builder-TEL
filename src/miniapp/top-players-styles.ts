@@ -1,9 +1,13 @@
 export const TOP_PLAYERS_STYLES = `
-.top-players-view{height:100%;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:110px}
+body:has(#topplayers.active) .top,body:has(#topplayers.active) .tabs{display:none!important}
+body:has(#topplayers.active) .content{height:100vh!important;padding:0!important;overflow:hidden!important}
+body:has(#topplayers.active) .app{padding:0!important;height:100vh!important;max-height:100vh!important}
+.top-players-view{position:fixed!important;inset:0!important;z-index:10040;height:100vh!important;width:100vw!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))!important;background:radial-gradient(circle at 18% -10%,rgba(126,20,48,.34),rgba(126,20,48,0) 36%),radial-gradient(circle at 92% 14%,rgba(126,20,48,.22),rgba(126,20,48,0) 30%),#050507;box-sizing:border-box}
+.top-players-view:not(.active){display:none!important}
 .top-players-view::-webkit-scrollbar{display:none}
-.top-players-page{position:relative;min-height:100%;padding:8px 0 28px;display:grid;gap:14px}
-.top-players-back{width:38px;height:38px;border:0;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;font-size:24px;font-weight:850;box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 12px 28px rgba(0,0,0,.18);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-.top-players-hero{position:relative;border-radius:34px;padding:22px 18px 18px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026));box-shadow:0 22px 60px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.13);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);overflow:hidden}
+.top-players-page{position:relative;min-height:100%;padding:0;display:grid;gap:14px;align-content:start}
+.top-players-back{display:none!important}
+.top-players-hero{position:relative;border-radius:34px;padding:24px 18px 18px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026));box-shadow:0 22px 60px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.13);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);overflow:hidden}
 .top-players-hero:before{content:"";position:absolute;right:-44px;top:-58px;width:150px;height:150px;border-radius:999px;background:radial-gradient(circle,rgba(126,20,48,.38),rgba(126,20,48,.10) 52%,rgba(126,20,48,0) 72%);pointer-events:none}
 .top-players-kicker{position:relative;z-index:1;display:block;margin-bottom:8px;color:rgba(255,255,255,.52);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.17em}
 .top-players-hero h2{position:relative;z-index:1;margin:0;color:#fff;font-size:34px;line-height:.94;font-weight:930;letter-spacing:-.065em;text-shadow:0 18px 34px rgba(0,0,0,.28)}
@@ -11,7 +15,7 @@ export const TOP_PLAYERS_STYLES = `
 .top-players-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:17px}
 .top-players-stats span{height:58px;border-radius:20px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);display:grid;place-items:center;align-content:center;gap:4px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .top-players-stats b{color:#fff;font-size:16px;font-weight:930;letter-spacing:-.04em}.top-players-stats small{color:rgba(255,255,255,.48);font-size:8px;font-weight:850;text-transform:uppercase;letter-spacing:.12em}
-.top-players-list{display:grid;gap:8px}
+.top-players-list{display:grid;gap:8px;padding-bottom:10px}
 .top-player-row{display:grid;grid-template-columns:34px 42px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:62px;padding:10px 11px;border-radius:24px;background:rgba(255,255,255,.04);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 28px rgba(0,0,0,.12);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .top-player-row.top-one{background:linear-gradient(135deg,rgba(126,20,48,.24),rgba(255,255,255,.065));box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 16px 34px rgba(126,20,48,.10)}
 .top-player-rank{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.06);color:rgba(255,255,255,.74);font-size:12px;font-weight:930}.top-one .top-player-rank{background:#fff;color:#23050d}
