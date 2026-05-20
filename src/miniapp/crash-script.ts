@@ -17,10 +17,12 @@ export const CRASH_SCRIPT = `
   function setCountdown(text,hide){var box=q('crashStarting'),n=q('crashCountdown');if(n)n.textContent=text;if(box)box.classList.toggle('hidden',!!hide)}
   function setTotal(seconds){var n=q('crashTotalTime');if(n)n.textContent='Total '+Math.max(0,Math.floor(seconds))+'s'}
   function seeded(seed){var x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
-  function roundStop(roundId){var u=Math.max(.000001,seeded(roundId));var raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
+  function rawRoundStop(roundId){var u=Math.max(.000001,seeded(roundId));var raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
   function multAt(seconds){return 1+seconds*.045+seconds*seconds*.0108}
+  function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
+  function roundStop(roundId){return Math.min(rawRoundStop(roundId),maxReachableStop())}
   function stopTime(stop){var target=Math.max(1,Number(stop)||1),lo=0,hi=MAX_RUN_MS;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
-  function cycleFor(id){var stop=roundStop(id);var runMs=Math.max(1100,Math.min(MAX_RUN_MS,stopTime(stop)));return{id:id,stop:stop,runMs:runMs,cycleMs:runMs+WAIT_BETWEEN_MS}}
+  function cycleFor(id){var stop=roundStop(id);var runMs=Math.max(1100,stopTime(stop));return{id:id,stop:stop,runMs:runMs,cycleMs:runMs+WAIT_BETWEEN_MS}}
   function locateRound(now){var dayStart=Math.floor(now/DAY_MS)*DAY_MS,baseId=Math.floor(dayStart/1000);if(!scheduleCache||scheduleCache.dayStart!==dayStart||now<scheduleCache.start){scheduleCache={dayStart:dayStart,baseId:baseId,localId:0,start:dayStart,cycle:cycleFor(baseId)}}while(now>=scheduleCache.start+scheduleCache.cycle.cycleMs){scheduleCache.start+=scheduleCache.cycle.cycleMs;scheduleCache.localId++;scheduleCache.cycle=cycleFor(scheduleCache.baseId+scheduleCache.localId)}var c=scheduleCache.cycle,local=now-scheduleCache.start,running=local<c.runMs,waitElapsed=running?0:local-c.runMs,nextIn=running?0:Math.max(0,WAIT_BETWEEN_MS-waitElapsed),inCrashHold=!running&&waitElapsed<CRASH_HOLD_MS;return{id:c.id,start:scheduleCache.start,local:local,runElapsed:Math.min(local,c.runMs),waitElapsed:waitElapsed,stop:c.stop,runMs:c.runMs,running:running,waiting:!running,inCrashHold:inCrashHold,nextIn:nextIn}}
   function previousRoundIds(state,count){var ids=[];for(var id=state.id-(state.waiting?0:1);ids.length<count;id--)ids.push(id);return ids}
   function targetBetRoundId(state){return state.waiting?state.id+1:state.id}
