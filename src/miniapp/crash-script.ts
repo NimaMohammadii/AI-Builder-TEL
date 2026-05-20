@@ -1,6 +1,6 @@
 export const CRASH_SCRIPT = `
 (function(){
-  var UNIT=1000000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=5000, CRASH_HOLD_MS=2200, MAX_RUN_MS=15000, DAY_MS=86400000;
+  var UNIT=1000000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=9000, CRASH_HOLD_MS=2200, MAX_RUN_MS=15000, DAY_MS=86400000;
   var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, chartCurrent=1, lastDraw=0, lastProgress=0, lastHistoryId=null, canvasCache=null, ctxCache=null, scheduleCache=null;
   function q(id){return document.getElementById(id)}
   function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
