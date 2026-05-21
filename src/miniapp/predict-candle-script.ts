@@ -44,10 +44,32 @@ export const PREDICT_CANDLE_SCRIPT = `
       fetch('https://api.binance.com/api/v3/klines?symbol='+sym.toUpperCase()+'&interval=1h&limit=18',{cache:'default'}).then(function(r){return r.json()}).then(function(d){if(Array.isArray(d)){candles=d.map(function(k){return{o:+k[1],h:+k[2],l:+k[3],c:+k[4]}}).filter(function(x){return x.o&&x.h&&x.l&&x.c});render()}}).catch(function(){});
       try{ws=new WebSocket('wss://stream.binance.com:9443/ws/'+sym+'@kline_1h');ws.onmessage=function(e){try{var j=JSON.parse(e.data),k=j.k;if(!k)return;var item={o:+k.o,h:+k.h,l:+k.l,c:+k.c};if(!item.o||!item.h||!item.l||!item.c)return;if(k.x&&candles.length)candles.push(item);else if(candles.length)candles[candles.length-1]=item;else candles=[item];if(candles.length>18)candles=candles.slice(-18);render()}catch(_){}}}catch(e){}
     }
-    function setMode(mode){addStyles();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');if(mode==='candle')start();else close()}
+    function paintButtons(mode){
+      var up=root.querySelector('[data-predict-choice="up"]'),down=root.querySelector('[data-predict-choice="down"]'),title=root.querySelector('[data-predict-bet-title]');
+      if(up)up.textContent=mode==='candle'?'Green':'Up';
+      if(down)down.textContent=mode==='candle'?'Red':'Down';
+      if(title){if(mode==='candle'&&title.textContent==='Up')title.textContent='Green';else if(mode==='candle'&&title.textContent==='Down')title.textContent='Red'}
+    }
+    function installFetchPatch(){
+      if(window.__vexaPredictCandleFetchPatch)return;window.__vexaPredictCandleFetchPatch=1;
+      var nativeFetch=window.fetch&&window.fetch.bind(window);if(!nativeFetch)return;
+      window.fetch=function(input,init){
+        try{
+          var url=String((input&&input.url)||input||''),isPredict=url.indexOf('/app/api/predict-')>=0,mode=root.dataset.predictMode;
+          if(isPredict&&mode==='candle'){
+            if(url.indexOf('/app/api/predict-round')>=0||url.indexOf('/app/api/predict-settle')>=0){var u=new URL(url,location.href);u.searchParams.set('mode','candle');input=u.pathname+u.search}
+            if(url.indexOf('/app/api/predict-bet')>=0&&init&&init.body){var body=JSON.parse(String(init.body));body.mode='candle';if(body.side==='up')body.side='green';if(body.side==='down')body.side='red';init=Object.assign({},init,{body:JSON.stringify(body)})}
+          }
+        }catch(e){}
+        return nativeFetch(input,init)
+      }
+    }
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle')start();else close()}
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
+      var choice=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-choice]'):null;
+      if(choice&&root.dataset.predictMode==='candle')setTimeout(function(){var t=root.querySelector('[data-predict-bet-title]');if(t)t.textContent=choice.getAttribute('data-predict-choice')==='up'?'Green':'Red'},20);
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(start,160);
     },true);
