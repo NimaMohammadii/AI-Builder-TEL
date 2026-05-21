@@ -5,7 +5,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],timerRaf=0;
+    var ws=null,market='',candles=[],timerRaf=0,timerObserver=null,lastTimerHtml='';
     function addStyles(){
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
@@ -36,17 +36,32 @@ export const PREDICT_CANDLE_SCRIPT = `
       svg.innerHTML=html;
     }
     function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}}
+    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}if(timerObserver){try{timerObserver.disconnect()}catch(e){}timerObserver=null}lastTimerHtml=''}
     function candleStartMs(){return Math.floor(Date.now()/3600000)*3600000}
     function candleEndMs(){return candleStartMs()+3600000}
     function candleLockMs(){return candleStartMs()+1800000}
     function lockSvg(){return '<svg class="predict-candle-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.5 10V8.2C7.5 5.8 9.4 4 12 4s4.5 1.8 4.5 4.2V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="3" stroke="currentColor" stroke-width="2"/><path d="M12 14v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}
     function setLocked(locked){root.classList.toggle('predict-candle-locked',!!locked);root.querySelectorAll('[data-predict-choice]').forEach(function(b){b.disabled=!!locked})}
+    function candleTimerHtml(){var now=Date.now(),locked=now>=candleLockMs();setLocked(locked);return (locked?lockSvg():'')+fmt(candleEndMs()-now)}
+    function writeCandleTimer(){
+      if(root.dataset.predictMode!=='candle')return;
+      var cd=root.querySelector('[data-predict-countdown]');if(!cd)return;
+      var html=candleTimerHtml();lastTimerHtml=html;
+      if(cd.innerHTML!==html)cd.innerHTML=html;
+    }
+    function observeTimer(){
+      if(timerObserver)return;
+      var cd=root.querySelector('[data-predict-countdown]');if(!cd||!window.MutationObserver)return;
+      timerObserver=new MutationObserver(function(){
+        if(root.dataset.predictMode==='candle'&&cd.innerHTML!==lastTimerHtml)requestAnimationFrame(writeCandleTimer);
+      });
+      timerObserver.observe(cd,{childList:true,characterData:true,subtree:true});
+    }
     function timerLoop(){
       if(root.dataset.predictMode!=='candle'){setLocked(false);stopTimer();return}
-      var now=Date.now(),locked=now>=candleLockMs(),cd=root.querySelector('[data-predict-countdown]');
-      setLocked(locked);
-      if(cd)cd.innerHTML=(locked?lockSvg():'')+fmt(candleEndMs()-now);
+      writeCandleTimer();
+      setTimeout(writeCandleTimer,0);
+      observeTimer();
       timerRaf=requestAnimationFrame(timerLoop);
     }
     function startTimer(){stopTimer();timerRaf=requestAnimationFrame(timerLoop)}
