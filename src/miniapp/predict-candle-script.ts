@@ -10,7 +10,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
       s.id='predictCandleStyles';
-      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:none;width:17px;height:17px;margin-right:7px;vertical-align:-4px;opacity:1;filter:drop-shadow(0 1px 7px rgba(255,255,255,.18)) drop-shadow(0 3px 10px rgba(0,0,0,.38))}#predictzone.predict-candle-locked .predict-candle-lock-icon{display:inline-block}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.48!important;filter:saturate(.65)!important}';
+      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets,#predictzone.predict-candle-mode [data-predict-result]{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:none;width:17px;height:17px;margin-right:7px;vertical-align:-4px;opacity:1;filter:drop-shadow(0 1px 7px rgba(255,255,255,.18)) drop-shadow(0 3px 10px rgba(0,0,0,.38))}#predictzone.predict-candle-locked .predict-candle-lock-icon{display:inline-block}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.48!important;filter:saturate(.65)!important}#predictzone .predict-candle-history{position:relative;margin:10px -2px 0;display:none;overflow:hidden;border-radius:20px}#predictzone.predict-candle-mode .predict-candle-history.show{display:block}#predictzone .predict-candle-history::before,#predictzone .predict-candle-history::after{content:"";position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}#predictzone .predict-candle-history::before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.86),rgba(10,3,5,0))}#predictzone .predict-candle-history::after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.86),rgba(10,3,5,0))}#predictzone .predict-candle-history-track{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:0 24px 1px;scrollbar-width:none;-webkit-overflow-scrolling:touch}#predictzone .predict-candle-history-track::-webkit-scrollbar{display:none}#predictzone .predict-candle-history-card{flex:0 0 auto;min-width:92px;height:34px;border:0;border-radius:999px;background:rgba(255,255,255,.065);box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.10);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:0 10px;color:rgba(255,255,255,.74);font-size:11.2px;font-weight:850;letter-spacing:-.025em;white-space:nowrap}#predictzone .predict-candle-history-card.green{color:rgba(70,255,150,.96)}#predictzone .predict-candle-history-card.red{color:rgba(255,135,150,.94)}';
       document.head.appendChild(s);
     }
     function activeMarket(){
@@ -29,6 +29,17 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(!l){l=document.createElement('div');l.className='predict-candle-layer';l.innerHTML='<span class="predict-candle-caption">1H candle • guess close</span><svg viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true"></svg>';c.appendChild(l)}
       return l;
     }
+    function ensureHistory(){
+      var box=root.querySelector('.predict-candle-history');
+      if(box)return box;
+      var anchor=root.querySelector('[data-predict-result]');
+      if(!anchor)return null;
+      box=document.createElement('div');
+      box.className='predict-candle-history';
+      box.setAttribute('data-predict-candle-history','1');
+      anchor.insertAdjacentElement('afterend',box);
+      return box;
+    }
     function applyCandleHeader(){
       if(root.dataset.predictMode!=='candle')return;
       var m=activeMarket(),latest=candles.length?candles[candles.length-1]:null;
@@ -37,28 +48,18 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(latest){var start=root.querySelector('.predict-zone-start-price'),live=root.querySelector('.predict-zone-live-price');if(start)start.textContent=priceText(latest.o);if(live)live.textContent=priceText(latest.c)}
       renderCandleHistory();
     }
-    function translateCandleHistory(){
-      root.querySelectorAll('.predict-zone-history-card').forEach(function(card){
-        var text=card.textContent||'';
-        if(text.indexOf('Up ')===0)card.textContent=text.replace(/^Up\s+/,'Green ');
-        else if(text.indexOf('Down ')===0)card.textContent=text.replace(/^Down\s+/,'Red ');
-      });
-    }
     function renderCandleHistory(){
       if(root.dataset.predictMode!=='candle')return;
-      var box=root.querySelector('[data-predict-result]');if(!box)return;
-      var cards=Array.prototype.slice.call(box.querySelectorAll('.predict-zone-history-card'));
-      var hasUserHistory=cards.some(function(card){return !card.hasAttribute('data-candle-color')});
-      if(hasUserHistory){delete box.dataset.candleAuto;translateCandleHistory();box.classList.add('show');return}
+      var box=ensureHistory();if(!box)return;
       var closed=candles.length>1?candles.slice(-13,-1):[];
-      if(!closed.length){box.className='predict-zone-result-strip';box.innerHTML='';delete box.dataset.candleAuto;return}
-      var html='<div class="predict-zone-history-track">';
-      closed.forEach(function(c){var green=Number(c.c)>=Number(c.o);html+='<span class="predict-zone-history-card '+(green?'win':'loss')+'" data-candle-color="'+(green?'green':'red')+'">'+(green?'Green':'Red')+'</span>'});
+      if(!closed.length){box.className='predict-candle-history';box.innerHTML='';return}
+      var html='<div class="predict-candle-history-track">';
+      closed.forEach(function(c){var green=Number(c.c)>=Number(c.o);html+='<span class="predict-candle-history-card '+(green?'green':'red')+'">'+(green?'Green':'Red')+'</span>'});
       html+='</div>';
-      if(box.dataset.candleAuto!=='1'||box.innerHTML!==html){box.innerHTML=html;box.dataset.candleAuto='1'}
-      box.className='predict-zone-result-strip show';
+      if(box.innerHTML!==html)box.innerHTML=html;
+      box.className='predict-candle-history show';
     }
-    function clearCandleAutoHistory(){var box=root.querySelector('[data-predict-result]');if(box&&box.dataset.candleAuto==='1'){box.className='predict-zone-result-strip';box.innerHTML='';delete box.dataset.candleAuto}}
+    function clearCandleAutoHistory(){var box=root.querySelector('.predict-candle-history');if(box){box.className='predict-candle-history';box.innerHTML=''}}
     function startUiLoop(){if(uiRaf)return;function loop(){if(root.dataset.predictMode!=='candle'){uiRaf=0;return}applyCandleHeader();uiRaf=requestAnimationFrame(loop)}uiRaf=requestAnimationFrame(loop)}
     function yy(v,min,max){return 24+((max-v)/(max-min||1))*172}
     function render(){
