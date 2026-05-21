@@ -1,6 +1,7 @@
 export const ADMIN_SECTION_LOADING_PANEL_SCRIPT = `<script>
 (function(){
   var observer=null,patching=false,stateTimer=0;
+  var loadingSections={home:1,connect:1,playzone:1,predict:1,market:1,flow:1,mines:1,plinko:1,crash:1};
   function minutes(row){var i=row&&row.querySelector('[data-loading-minutes]');return Math.max(0,Number(i&&i.value||0))}
   function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
   function patchLoadingStates(){
@@ -26,6 +27,7 @@ export const ADMIN_SECTION_LOADING_PANEL_SCRIPT = `<script>
     list.querySelectorAll('.lock-row').forEach(function(row){
       var base=row.querySelector('[data-lock-section]');if(!base)return;
       var id=base.getAttribute('data-lock-section');var actions=row.querySelector('.lock-actions');if(!actions)return;
+      if(!loadingSections[id]){var old=row.querySelector('[data-loading-lock]');if(old)old.remove();var oldInput=row.querySelector('[data-loading-minutes]');if(oldInput)oldInput.remove();return;}
       actions.style.gridTemplateColumns='1fr 1fr 1fr';
       if(!row.querySelector('[data-loading-minutes]')){
         var input=document.createElement('input');input.type='number';input.min='0';input.step='1';input.placeholder='loading minutes';input.setAttribute('data-loading-minutes',id);input.style.marginTop='0';row.insertBefore(input,actions);
