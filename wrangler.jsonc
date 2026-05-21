@@ -7,20 +7,6 @@
   "observability": {
     "enabled": true
   },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "SECTION_LOCK_EVENTS",
-        "class_name": "SectionLockEvents"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["SectionLockEvents"]
-    }
-  ],
   "d1_databases": [
     {
       "binding": "DB",
