@@ -12,7 +12,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     if(document.getElementById('slmcss'))return;
     var s=document.createElement('style');
     s.id='slmcss';
-    s.textContent='body.section-loading-active .top{display:none!important}body.section-loading-active .app{padding-top:0!important;padding-left:0!important;padding-right:0!important;background:#000!important}body.section-loading-active .content{height:calc(100dvh - 94px - env(safe-area-inset-bottom))!important;background:#000!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;margin:0!important;padding:0!important}body.section-loading-active .tabs{left:16px!important;right:16px!important}.view.active.is-section-loading-active,.view.is-section-loading-pending{height:100%!important;min-height:100%!important;width:100%!important;background:#000!important;display:grid!important;align-items:stretch!important;overflow:hidden!important;margin:0!important;padding:0!important}.view.active.is-section-loading-active>*:not(.section-loading-mode),.view.is-section-loading-pending>*:not(.section-loading-mode){display:none!important}.view.active.is-section-loading-active>.section-loading-mode,.view.is-section-loading-pending>.section-loading-mode{position:relative!important;width:100%!important;height:100%!important;min-height:100%!important;display:grid!important;place-items:center!important;background:#000!important;color:#fff!important;opacity:0;transform:translateY(12px);animation:slmEnter .42s cubic-bezier(.2,.9,.2,1) forwards}.section-loading-mode-box{width:min(74vw,320px);display:grid;gap:16px;justify-items:center;transform:translateY(10vh);animation:slmRise .52s cubic-bezier(.2,.9,.2,1) both}.section-loading-mode-title{margin:0;color:#fff;font-size:13px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}.section-loading-mode-progress{width:100%;display:grid;grid-template-columns:1fr;align-items:center;justify-items:center;gap:12px}.section-loading-mode-line{width:100%;height:4px;background:rgba(255,255,255,.13);overflow:hidden;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.035),0 18px 44px rgba(0,0,0,.45)}.section-loading-mode-line i{display:block;height:100%;width:0;background:#fff;border-radius:999px;box-shadow:0 0 22px rgba(255,255,255,.58);transition:width .35s linear}.section-loading-mode-percent{display:block;color:rgba(255,255,255,.74);font-size:12px;font-weight:850;text-align:center;font-variant-numeric:tabular-nums}@keyframes slmEnter{to{opacity:1;transform:translateY(0)}}@keyframes slmRise{from{opacity:.62;transform:translateY(calc(10vh + 18px))}to{opacity:1;transform:translateY(10vh)}}';
+    s.textContent='body.section-loading-active .top{display:none!important}body.section-loading-active .app{padding-top:0!important;padding-left:0!important;padding-right:0!important;background:#000!important}body.section-loading-active .content{height:calc(100dvh - 94px - env(safe-area-inset-bottom))!important;background:#000!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;margin:0!important;padding:0!important}body.section-loading-active .tabs{left:16px!important;right:16px!important}.view.active.is-section-loading-active,.view.is-section-loading-pending{height:100%!important;min-height:100%!important;width:100%!important;background:#000!important;display:block!important;overflow:hidden!important;margin:0!important;padding:0!important}.view.active.is-section-loading-active>*:not(.section-loading-mode),.view.is-section-loading-pending>*:not(.section-loading-mode){display:none!important}.view.active.is-section-loading-active>.section-loading-mode,.view.is-section-loading-pending>.section-loading-mode{position:relative!important;width:100%!important;height:100%!important;min-height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#000!important;color:#fff!important;opacity:0;transform:translateY(10px);animation:slmEnter .42s cubic-bezier(.2,.9,.2,1) forwards}.section-loading-mode-box{width:min(74vw,320px);display:grid;gap:16px;justify-items:center;transform:translateY(8vh);animation:slmRise .52s cubic-bezier(.2,.9,.2,1) both}.section-loading-mode-title{margin:0;color:#fff;font-size:13px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}.section-loading-mode-progress{width:100%;display:grid;grid-template-columns:1fr;align-items:center;justify-items:center;gap:12px}.section-loading-mode-line{width:100%;height:4px;background:rgba(255,255,255,.13);overflow:hidden;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.035),0 18px 44px rgba(0,0,0,.45)}.section-loading-mode-line i{display:block;height:100%;width:0;background:#fff;border-radius:999px;box-shadow:0 0 22px rgba(255,255,255,.58);transition:width .35s linear}.section-loading-mode-percent{display:block;color:rgba(255,255,255,.74);font-size:12px;font-weight:850;text-align:center;font-variant-numeric:tabular-nums}@keyframes slmEnter{to{opacity:1;transform:translateY(0)}}@keyframes slmRise{from{opacity:.62;transform:translateY(calc(8vh + 18px))}to{opacity:1;transform:translateY(8vh)}}';
     document.head.appendChild(s);
   }
   function sectionId(id){return id==='predict'?'predictzone':id}
@@ -20,7 +20,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   function activeViewId(){var sec=document.querySelector('.view.active');return sec?sec.id:'home'}
   function isGlobalLoading(){return !!modes['global-loading']}
   function metaFor(id,item){return loadingMeta[id]||loadingMeta[sectionId(id)]||{startedAt:null,expiresAt:item&&item.expiresAt||null,durationMs:null}}
-  function sigFor(id,item){var meta=metaFor(id,item);return String(id)+'|'+String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
+  function sigFor(id,item,targetId){var meta=metaFor(id,item);return String(id)+'|'+String(targetId||'')+'|'+String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
   function activeLoadingVisible(){return !!document.querySelector('.view.active .section-loading-mode')}
   function updateBodyState(){document.body.classList.toggle('section-loading-active',activeLoadingVisible());document.querySelectorAll('.view').forEach(function(sec){var active=!!(sec.classList.contains('active')&&sec.querySelector(':scope > .section-loading-mode'));sec.classList.toggle('is-section-loading-active',active);if(active)sec.classList.remove('is-section-loading-pending')});}
   function pctFor(id,item){
@@ -55,9 +55,10 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     tick();progressTimers[key]=setInterval(tick,1000);
   }
   function ensureLoadingView(id,item,pending,targetViewId){
-    var sec=document.getElementById(targetViewId||sectionId(id));if(!sec)return;
+    var viewId=targetViewId||sectionId(id);
+    var sec=document.getElementById(viewId);if(!sec)return;
     style();
-    var sig=sigFor(id,item);
+    var sig=sigFor(id,item,viewId);
     var current=sec.querySelector(':scope > .section-loading-mode');
     if(current&&signatures[sec.id]!==sig){current.remove();current=null;Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0||k===id){clearInterval(progressTimers[k]);progressTimers[k]=0}})}
     if(!current){var old=sec.querySelector(':scope > .section-locked-view');if(old)old.remove();var v=document.createElement('div');v.className='section-locked-view section-loading-mode';v.innerHTML=html(id,item);sec.appendChild(v);current=v;startPercent(id,v.querySelector('.section-loading-mode-box'),item,sec.id)}
@@ -84,7 +85,10 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     style();
     clearOld();
     if(isGlobalLoading()){
-      ensureLoadingView('global-loading',modes['global-loading'],false,activeViewId());
+      document.querySelectorAll('.view').forEach(function(sec){
+        if(sec.classList.contains('active'))ensureLoadingView('global-loading',modes['global-loading'],false,sec.id);
+        else{var old=sec.querySelector(':scope > .section-loading-mode');if(old)old.remove();sec.classList.remove('is-section-loading-active');sec.classList.remove('is-section-loading-pending')}
+      });
     }else{
       Object.keys(modes).forEach(function(id){if(id!=='global-loading')ensureLoadingView(id,modes[id],false)});
     }
