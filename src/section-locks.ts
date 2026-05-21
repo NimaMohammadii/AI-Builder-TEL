@@ -36,7 +36,8 @@ const LOCKS_KEY = 'admin:section-locks';
 const SHARED_LOCK_IMAGE_ID = 'shared';
 export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
-const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeImageUrl'>> = [
+const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeUrl'>> = [
+  { id: 'global-loading', label: 'Global Mini App Loading', description: 'Put the entire mini app into loading mode' },
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
@@ -299,7 +300,7 @@ app.post('/admin/api/section-locks/code-timed', async (c) => {
   }
 });
 
-function adminCookieValue(cookie: string | undefined): string {
+function adminCookieValue(cookie: string | undefined) {
   const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 }
