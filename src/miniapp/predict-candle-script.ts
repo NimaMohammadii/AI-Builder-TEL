@@ -5,12 +5,12 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],timerRaf=0,timerObserver=null,lastTimerValue='';
+    var ws=null,market='',candles=[],timerRaf=0,timerObserver=null,lastTimerHtml='';
     function addStyles(){
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
       s.id='predictCandleStyles';
-      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone.predict-candle-mode [data-predict-countdown]{font-size:0!important;color:transparent!important;display:inline-flex!important;align-items:center!important}#predictzone.predict-candle-mode [data-predict-countdown]::after{content:attr(data-candle-countdown);font-size:11px!important;color:rgba(255,255,255,.66)!important;font-weight:720!important;line-height:1!important}#predictzone.predict-candle-locked [data-predict-countdown]::before{content:"";width:12px;height:12px;margin-right:5px;display:inline-block;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\'%3E%3Cpath d=\'M7.5 10V8.2C7.5 5.8 9.4 4 12 4s4.5 1.8 4.5 4.2V10\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Crect x=\'5\' y=\'10\' width=\'14\' height=\'10\' rx=\'3\' stroke=\'white\' stroke-width=\'2\'/%3E%3Cpath d=\'M12 14v2\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3C/svg%3E");opacity:.92}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.48!important;filter:saturate(.65)!important}';
+      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:none;width:12px;height:12px;margin-right:5px;vertical-align:-1px;opacity:.92}#predictzone.predict-candle-locked .predict-candle-lock-icon{display:inline-block}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.48!important;filter:saturate(.65)!important}';
       document.head.appendChild(s);
     }
     function activeMarket(){
@@ -36,29 +36,31 @@ export const PREDICT_CANDLE_SCRIPT = `
       svg.innerHTML=html;
     }
     function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}if(timerObserver){try{timerObserver.disconnect()}catch(e){}timerObserver=null}lastTimerValue='';var cd=root.querySelector('[data-predict-countdown]');if(cd)cd.removeAttribute('data-candle-countdown')}
+    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}if(timerObserver){try{timerObserver.disconnect()}catch(e){}timerObserver=null}lastTimerHtml=''}
     function candleStartMs(){return Math.floor(Date.now()/3600000)*3600000}
     function candleEndMs(){return candleStartMs()+3600000}
     function candleLockMs(){return candleStartMs()+1800000}
+    function lockSvg(){return '<svg class="predict-candle-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.5 10V8.2C7.5 5.8 9.4 4 12 4s4.5 1.8 4.5 4.2V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="3" stroke="currentColor" stroke-width="2"/><path d="M12 14v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}
     function setLocked(locked){root.classList.toggle('predict-candle-locked',!!locked);root.querySelectorAll('[data-predict-choice]').forEach(function(b){b.disabled=!!locked})}
-    function candleTimerValue(){var now=Date.now(),locked=now>=candleLockMs();setLocked(locked);return fmt(candleEndMs()-now)}
+    function candleTimerHtml(){var now=Date.now(),locked=now>=candleLockMs();setLocked(locked);return (locked?lockSvg():'')+fmt(candleEndMs()-now)}
     function writeCandleTimer(){
       if(root.dataset.predictMode!=='candle')return;
       var cd=root.querySelector('[data-predict-countdown]');if(!cd)return;
-      var value=candleTimerValue();lastTimerValue=value;
-      if(cd.getAttribute('data-candle-countdown')!==value)cd.setAttribute('data-candle-countdown',value);
+      var html=candleTimerHtml();lastTimerHtml=html;
+      if(cd.innerHTML!==html)cd.innerHTML=html;
     }
     function observeTimer(){
       if(timerObserver)return;
       var cd=root.querySelector('[data-predict-countdown]');if(!cd||!window.MutationObserver)return;
       timerObserver=new MutationObserver(function(){
-        if(root.dataset.predictMode==='candle')requestAnimationFrame(writeCandleTimer);
+        if(root.dataset.predictMode==='candle'&&cd.innerHTML!==lastTimerHtml)requestAnimationFrame(writeCandleTimer);
       });
-      timerObserver.observe(cd,{childList:true,characterData:true,subtree:true,attributes:true});
+      timerObserver.observe(cd,{childList:true,characterData:true,subtree:true});
     }
     function timerLoop(){
       if(root.dataset.predictMode!=='candle'){setLocked(false);stopTimer();return}
       writeCandleTimer();
+      setTimeout(writeCandleTimer,0);
       observeTimer();
       timerRaf=requestAnimationFrame(timerLoop);
     }
