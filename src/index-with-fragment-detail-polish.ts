@@ -15,6 +15,11 @@ const DETAIL_POLISH_SCRIPT = `
       style.textContent='#marketDetailSheet.vexa-fragment-detail .market-detail-buy{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-status{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price *{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important;filter:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price img.market-price-icon{width:34px!important;height:34px!important;object-fit:contain!important;filter:none!important;opacity:.98!important}';
       document.head.appendChild(style);
     }
+    function isMarketActive(){
+      var market=document.getElementById('market');
+      var sheet=document.getElementById('marketDetailSheet');
+      return !!((market&&market.classList.contains('active'))||(sheet&&sheet.classList.contains('open')));
+    }
     function isFragmentDetail(sheet){
       if(!sheet||!sheet.classList.contains('open'))return false;
       return Boolean(sheet.querySelector('[data-market-detail-media]'));
@@ -46,7 +51,7 @@ const DETAIL_POLISH_SCRIPT = `
     document.addEventListener('click',function(){setTimeout(polishDetail,120);setTimeout(cleanup,500)},true);
     document.addEventListener('keydown',function(){setTimeout(cleanup,120)},true);
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){addStyle();setTimeout(polishDetail,600)});else{addStyle();setTimeout(polishDetail,600)}
-    setInterval(function(){polishDetail();cleanup()},1200);
+    setInterval(function(){if(!isMarketActive())return;polishDetail();cleanup()},1200);
   }catch(e){}
 })();
 `;
