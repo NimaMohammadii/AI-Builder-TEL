@@ -35,16 +35,30 @@ export const PREDICT_CANDLE_SCRIPT = `
       var q=root.querySelector('[data-predict-question]');
       if(q)q.textContent=marketLabel(m)+' candle close?';
       if(latest){var start=root.querySelector('.predict-zone-start-price'),live=root.querySelector('.predict-zone-live-price');if(start)start.textContent=priceText(latest.o);if(live)live.textContent=priceText(latest.c)}
-      translateCandleHistory();
+      renderCandleHistory();
     }
     function translateCandleHistory(){
-      if(root.dataset.predictMode!=='candle')return;
       root.querySelectorAll('.predict-zone-history-card').forEach(function(card){
         var text=card.textContent||'';
         if(text.indexOf('Up ')===0)card.textContent=text.replace(/^Up\s+/,'Green ');
         else if(text.indexOf('Down ')===0)card.textContent=text.replace(/^Down\s+/,'Red ');
       });
     }
+    function renderCandleHistory(){
+      if(root.dataset.predictMode!=='candle')return;
+      var box=root.querySelector('[data-predict-result]');if(!box)return;
+      var cards=Array.prototype.slice.call(box.querySelectorAll('.predict-zone-history-card'));
+      var hasUserHistory=cards.some(function(card){return !card.hasAttribute('data-candle-color')});
+      if(hasUserHistory){delete box.dataset.candleAuto;translateCandleHistory();box.classList.add('show');return}
+      var closed=candles.length>1?candles.slice(-13,-1):[];
+      if(!closed.length){box.className='predict-zone-result-strip';box.innerHTML='';delete box.dataset.candleAuto;return}
+      var html='<div class="predict-zone-history-track">';
+      closed.forEach(function(c){var green=Number(c.c)>=Number(c.o);html+='<span class="predict-zone-history-card '+(green?'win':'loss')+'" data-candle-color="'+(green?'green':'red')+'">'+(green?'Green':'Red')+'</span>'});
+      html+='</div>';
+      if(box.dataset.candleAuto!=='1'||box.innerHTML!==html){box.innerHTML=html;box.dataset.candleAuto='1'}
+      box.className='predict-zone-result-strip show';
+    }
+    function clearCandleAutoHistory(){var box=root.querySelector('[data-predict-result]');if(box&&box.dataset.candleAuto==='1'){box.className='predict-zone-result-strip';box.innerHTML='';delete box.dataset.candleAuto}}
     function startUiLoop(){if(uiRaf)return;function loop(){if(root.dataset.predictMode!=='candle'){uiRaf=0;return}applyCandleHeader();uiRaf=requestAnimationFrame(loop)}uiRaf=requestAnimationFrame(loop)}
     function yy(v,min,max){return 24+((max-v)/(max-min||1))*172}
     function render(){
@@ -114,7 +128,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop()}else{close();setLocked(false);stopTimer()}}
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop()}else{close();setLocked(false);stopTimer();clearCandleAutoHistory()}}
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
