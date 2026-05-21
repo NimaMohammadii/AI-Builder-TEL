@@ -1,3 +1,5 @@
+import { PREDICT_OIL_HOTFIX_SCRIPT } from './predict-oil-hotfix-script';
+
 export const PREDICT_EXTRA_MARKETS_SCRIPT = `
 (function(){
 function R(f){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',f):f()}
@@ -32,4 +34,5 @@ menu.addEventListener('click',e=>{var b=e.target.closest&&e.target.closest('[dat
 document.addEventListener('visibilitychange',()=>{document.visibilityState==='visible'?go(k):stop()});document.addEventListener('click',()=>setTimeout(()=>{if(!raf)go(k)},70),true);go('bitcoin');
 });
 })();
+${PREDICT_OIL_HOTFIX_SCRIPT}
 `;
