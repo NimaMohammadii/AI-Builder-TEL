@@ -3,6 +3,7 @@ export const PREDICT_OIL_HOTFIX_SCRIPT = `
   var timer=0;
   var startValue=0;
   var busy=false;
+  var loaded=false;
   function rootEl(){return document.getElementById('predictzone')}
   function active(root){return !!(root&&root.classList.contains('active')&&document.visibilityState!=='hidden')}
   function isOil(root){return !!(active(root)&&root.querySelector('[data-vexa-predict-market="oil"].active'))}
@@ -52,13 +53,13 @@ export const PREDICT_OIL_HOTFIX_SCRIPT = `
   function tick(){
     var root=rootEl();
     close();
-    if(!isOil(root))return;
+    if(!isOil(root)||loaded)return;
     busy=true;
-    fetch('/app/api/predict-oil-price',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){var p=Number(data&&data.price);var current=rootEl();if(p&&isOil(current))setPrice(current,p)}).catch(function(){}).finally(function(){busy=false;var current=rootEl();if(isOil(current))timer=setTimeout(tick,15000)});
+    fetch('/app/api/predict-oil-price',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){var p=Number(data&&data.price);var current=rootEl();if(p&&isOil(current)){loaded=true;setPrice(current,p)}}).catch(function(){}).finally(function(){busy=false});
   }
   function run(){
     var root=rootEl();
-    if(isOil(root)){if(!timer&&!busy)tick()}else{startValue=0;close()}
+    if(isOil(root)){if(!busy&&!loaded)tick()}else{loaded=false;startValue=0;close()}
   }
   document.addEventListener('click',function(){setTimeout(run,160)},true);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')setTimeout(run,160);else close()});
