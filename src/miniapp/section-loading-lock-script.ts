@@ -6,6 +6,8 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   var progressTimers={};
   var signatures={};
   var loadInFlight=0;
+  var eventSource=null;
+  var pendingEventLoad=0;
   function style(){
     if(document.getElementById('slmcss'))return;
     var s=document.createElement('style');
@@ -77,9 +79,22 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
       fetch('/app/api/section-loading-meta',{cache:'no-store'}).then(function(r){return r.json()}).catch(function(){return {items:{}}})
     ]).then(function(res){var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){loadInFlight=0});
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+  function handleLockEvent(){
+    if(document.hidden){pendingEventLoad=1;return}
+    if(window.VexaSectionLocks&&typeof window.VexaSectionLocks.reload==='function')window.VexaSectionLocks.reload();
+    load();
+  }
+  function connectEvents(){
+    if(eventSource||typeof EventSource==='undefined')return;
+    try{
+      eventSource=new EventSource('/app/api/section-lock-events');
+      eventSource.addEventListener('locks',handleLockEvent);
+      eventSource.onerror=function(){try{eventSource.close()}catch(e){}eventSource=null;setTimeout(connectEvents,5000)};
+    }catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();connectEvents()});else{load();connectEvents()}
   document.addEventListener('click',function(){setTimeout(load,80);setTimeout(paint,220)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
-  window.addEventListener('vexa-section-locks-updated',function(){load()});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(pendingEventLoad){pendingEventLoad=0;handleLockEvent()}else load();connectEvents()}});
+  window.addEventListener('vexa-section-locks-updated',function(){handleLockEvent()});
 })();
 `;
