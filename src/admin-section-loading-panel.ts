@@ -2,6 +2,7 @@ export const ADMIN_SECTION_LOADING_PANEL_SCRIPT = `<script>
 (function(){
   var observer=null,patching=false;
   function minutes(row){var i=row&&row.querySelector('[data-loading-minutes]');return Math.max(0,Number(i&&i.value||0))}
+  function expiresFromMinutes(row){var n=minutes(row);return n>0?new Date(Date.now()+n*60000).toISOString():null}
   function patch(){
     if(patching)return;patching=true;
     var list=document.getElementById('locksList');if(!list){patching=false;return}
@@ -14,7 +15,7 @@ export const ADMIN_SECTION_LOADING_PANEL_SCRIPT = `<script>
       }
       if(row.querySelector('[data-loading-lock]'))return;
       var b=document.createElement('button');b.type='button';b.className='lock-toggle loading';b.textContent='Loading';b.setAttribute('data-loading-lock',id);actions.appendChild(b);
-      b.onclick=function(){var st=document.getElementById('locksStatus');if(st)st.textContent='Saving loading...';fetch('/admin/api/section-loading-mode',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:id,minutes:minutes(row)})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){if(!res.ok)throw new Error(res.json&&res.json.error||'Could not save');if(st)st.textContent='Saved';if(typeof loadLocks==='function')loadLocks();setTimeout(patch,120);setTimeout(patch,500)}).catch(function(e){if(st)st.textContent=e.message||'Could not save'});};
+      b.onclick=function(){var st=document.getElementById('locksStatus');if(st)st.textContent='Saving loading...';fetch('/admin/api/section-locks/loading-timed',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:id,expiresAt:expiresFromMinutes(row)})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){if(!res.ok)throw new Error(res.json&&res.json.error||'Could not save');if(st)st.textContent='Loading saved';if(typeof loadLocks==='function')loadLocks();setTimeout(patch,120);setTimeout(patch,500)}).catch(function(e){if(st)st.textContent=e.message||'Could not save'});};
     });
     patching=false;
   }
