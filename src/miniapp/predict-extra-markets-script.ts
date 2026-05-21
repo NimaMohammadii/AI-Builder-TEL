@@ -30,8 +30,9 @@ function tick(){if(cd)cd.textContent=t(300000-((Date.now()-slot)%300000))}functi
 function stop(){save();close();if(raf)cancelAnimationFrame(raf),raf=0}
 function reset(){a=[];cur=0;last=0;cen=0;ok=0;entry=0;retry=0;lastSync=0;if(dot){dot.style.left='';dot.style.top=''}if(pg)pg.style.top='';if(sg)sg.classList.remove('show');showPrices(false);loadingChart()}
 function go(n){if(!M[n])return;save();stop();k=n;menu.querySelectorAll('[data-vexa-predict-market]').forEach(b=>b.classList.toggle('active',b.getAttribute('data-vexa-predict-market')===n));if(q)q.textContent=m()[1];img();if(res)res.innerHTML='';if(lb)lb.innerHTML='';slot=Math.floor(Date.now()/300000)*300000;reset();con();if(!raf)raf=requestAnimationFrame(loop);sync()}
+function boot(){if(on()&&!raf)go(k)}
 menu.addEventListener('click',e=>{var b=e.target.closest&&e.target.closest('[data-vexa-predict-market]');if(!b)return;var n=b.getAttribute('data-vexa-predict-market');if(!M[n])return;e.preventDefault();e.stopPropagation();go(n)},true);
-document.addEventListener('visibilitychange',()=>{document.visibilityState==='visible'?go(k):stop()});document.addEventListener('click',()=>setTimeout(()=>{if(!raf)go(k)},70),true);go('bitcoin');
+document.addEventListener('visibilitychange',()=>{document.visibilityState==='visible'?go(k):stop()});document.addEventListener('click',()=>{setTimeout(boot,70);setTimeout(boot,180);setTimeout(boot,420)},true);if(window.MutationObserver)new MutationObserver(boot).observe(root,{attributes:true,attributeFilter:['class']});go('bitcoin');setTimeout(boot,120);setTimeout(boot,420);
 });
 })();
 ${PREDICT_OIL_HOTFIX_SCRIPT}
