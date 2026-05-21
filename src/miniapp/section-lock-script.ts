@@ -19,12 +19,13 @@ export const SECTION_LOCK_SCRIPT = `
   var dismissSvg='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
-  function storageKey(id){return 'sectionUnlocked:'+id}
+  function lockId(id){return id==='predictzone'?'predict':id}
+  function storageKey(id){return 'sectionUnlocked:'+lockId(id)}
   function cacheUserKey(){var id=userId();return id?USER_CACHE_PREFIX+id:''}
   function readJson(key){try{return key?JSON.parse(localStorage.getItem(key)||'null'):null}catch(e){return null}}
   function writeJson(key,value){try{if(key)localStorage.setItem(key,JSON.stringify(value||{}))}catch(e){}}
-  function isUnlocked(id){return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
-  function setUnlocked(id){unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
+  function isUnlocked(id){id=lockId(id);return unlocked[id]||sessionStorage.getItem(storageKey(id))==='1'}
+  function setUnlocked(id){id=lockId(id);unlocked[id]=true;sessionStorage.setItem(storageKey(id),'1')}
   function visualUrl(item){if(!item)return '';return item.mode==='code'?(item.codeImageUrl||''):(item.lockedImageUrl||item.imageUrl||'')}
   function preload(url){if(!url||preloaded[url])return;preloaded[url]=true;var img=new Image();img.decoding='async';img.src=url}
   function preloadLockImages(){Object.keys(locks).forEach(function(id){if(id==='connect-bot-card')return;var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
@@ -100,7 +101,7 @@ export const SECTION_LOCK_SCRIPT = `
         var code=(input&&input.value||'').trim();
         if(!code){status.textContent='Enter the access code.';focusCodeInput(input,view);return}
         status.textContent='Checking...';
-        fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:section.id,code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
+        fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:lockId(section.id),code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){
           if(res.ok&&res.json&&res.json.ok){setKeyboardMode(false);setUnlocked(section.id);applyLocks();return}
           status.textContent=(res.json&&res.json.error)||'Wrong access code.';focusCodeInput(input,view);
         }).catch(function(){status.textContent='Could not verify code.';focusCodeInput(input,view)});
@@ -119,10 +120,10 @@ export const SECTION_LOCK_SCRIPT = `
     var cardLocked=!!cardItem&&cardItem.mode!=='open'&&!isUnlocked('connect-bot-card');
     if(cardLocked)ensureBotCardOverlay(cardItem);else clearBotCardOverlay();
     document.querySelectorAll('.view').forEach(function(section){
-      var id=section.id;var globalItem=locks[id];var item=(userBlocked[id])?Object.assign({},globalItem||{}, userBlocked[id], {mode:'locked',locked:true,userBlocked:true}):globalItem;
-      var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(id);
+      var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
+      var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
       section.classList.toggle('is-section-locked',isLocked);
-      if(isLocked)ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view');if(old)old.remove()}
+      if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
     });
   }
 
