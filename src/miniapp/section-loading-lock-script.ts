@@ -80,6 +80,6 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
   document.addEventListener('click',function(){setTimeout(load,80);setTimeout(paint,220)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
-  setInterval(function(){if(!document.hidden)load()},4000);
+  window.addEventListener('vexa-section-locks-updated',function(){load()});
 })();
 `;
