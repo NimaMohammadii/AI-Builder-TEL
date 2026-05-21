@@ -2,6 +2,7 @@ import app from './index-with-tgs-overlay';
 import './predict-candle-routes';
 import './predict-extra-market-routes';
 import './predict-routes';
+import './predict-entry-loader-routes';
 import './crash-routes';
 import type { Env } from './types';
 
