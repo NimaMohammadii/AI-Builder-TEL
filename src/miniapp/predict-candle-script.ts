@@ -5,7 +5,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],timerRaf=0,timerObserver=null,lastTimerHtml='',uiRaf=0;
+    var ws=null,market='',candles=[],timerRaf=0,timerObserver=null,lastTimerHtml='',uiRaf=0,historyObserver=null,lastUserHistoryHtml='';
     function addStyles(){
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
@@ -36,6 +36,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(q)q.textContent=marketLabel(m)+' candle close?';
       if(latest){var start=root.querySelector('.predict-zone-start-price'),live=root.querySelector('.predict-zone-live-price');if(start)start.textContent=priceText(latest.o);if(live)live.textContent=priceText(latest.c)}
       translateCandleHistory();
+      restoreCandleUserHistory();
     }
     function translateCandleHistory(){
       if(root.dataset.predictMode!=='candle')return;
@@ -44,8 +45,31 @@ export const PREDICT_CANDLE_SCRIPT = `
         if(text.indexOf('Up ')===0)card.textContent=text.replace(/^Up\s+/,'Green ');
         else if(text.indexOf('Down ')===0)card.textContent=text.replace(/^Down\s+/,'Red ');
       });
+      saveCandleUserHistory();
     }
-    function startUiLoop(){if(uiRaf)return;function loop(){if(root.dataset.predictMode!=='candle'){uiRaf=0;return}applyCandleHeader();uiRaf=requestAnimationFrame(loop)}uiRaf=requestAnimationFrame(loop)}
+    function resultBox(){return root.querySelector('[data-predict-result]')}
+    function saveCandleUserHistory(){
+      if(root.dataset.predictMode!=='candle')return;
+      var box=resultBox();if(!box)return;
+      if(box.querySelector('.predict-zone-history-card'))lastUserHistoryHtml=box.innerHTML;
+    }
+    function restoreCandleUserHistory(){
+      if(root.dataset.predictMode!=='candle'||!lastUserHistoryHtml)return;
+      var box=resultBox();if(!box||box.querySelector('.predict-zone-history-card'))return;
+      box.innerHTML=lastUserHistoryHtml;
+      box.classList.add('show');
+    }
+    function installHistoryGuard(){
+      if(historyObserver)return;
+      var box=resultBox();if(!box||!window.MutationObserver)return;
+      historyObserver=new MutationObserver(function(){
+        if(root.dataset.predictMode!=='candle')return;
+        if(box.querySelector('.predict-zone-history-card')){translateCandleHistory();saveCandleUserHistory();return}
+        if(lastUserHistoryHtml)requestAnimationFrame(restoreCandleUserHistory);
+      });
+      historyObserver.observe(box,{childList:true,subtree:true});
+    }
+    function startUiLoop(){if(uiRaf)return;function loop(){if(root.dataset.predictMode!=='candle'){uiRaf=0;return}applyCandleHeader();installHistoryGuard();uiRaf=requestAnimationFrame(loop)}uiRaf=requestAnimationFrame(loop)}
     function yy(v,min,max){return 24+((max-v)/(max-min||1))*172}
     function render(){
       var l=ensureLayer();if(!l)return;var svg=l.querySelector('svg');if(!svg)return;
@@ -114,7 +138,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop()}else{close();setLocked(false);stopTimer()}}
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();lastUserHistoryHtml=''}}
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
@@ -123,7 +147,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(function(){start();applyCandleHeader()},160);
     },true);
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopTimer()}else if(root.dataset.predictMode==='candle'){setTimeout(start,160);startTimer();startUiLoop()}});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopTimer()}else if(root.dataset.predictMode==='candle'){setTimeout(start,160);startTimer();startUiLoop();installHistoryGuard()}});
     setMode('updown');
   });
 })();
