@@ -17,8 +17,10 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   }
   function sectionId(id){return id==='predict'?'predictzone':id}
   function modeKeyFromView(id){return id==='predictzone'?'predict':id}
+  function activeViewId(){var sec=document.querySelector('.view.active');return sec?sec.id:'home'}
+  function isGlobalLoading(){return !!modes['global-loading']}
   function metaFor(id,item){return loadingMeta[id]||loadingMeta[sectionId(id)]||{startedAt:null,expiresAt:item&&item.expiresAt||null,durationMs:null}}
-  function sigFor(id,item){var meta=metaFor(id,item);return String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
+  function sigFor(id,item){var meta=metaFor(id,item);return String(id)+'|'+String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
   function activeLoadingVisible(){return !!document.querySelector('.view.active .section-loading-mode')}
   function updateBodyState(){document.body.classList.toggle('section-loading-active',activeLoadingVisible());document.querySelectorAll('.view').forEach(function(sec){var active=!!(sec.classList.contains('active')&&sec.querySelector('.section-loading-mode'));sec.classList.toggle('is-section-loading-active',active);if(active)sec.classList.remove('is-section-loading-pending')});}
   function pctFor(id,item){
@@ -42,43 +44,50 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     var el=box&&box.querySelector('.section-loading-mode-percent');if(el)el.textContent=pct+'%';
     var bar=box&&box.querySelector('.section-loading-mode-line i');if(bar)bar.style.width=pct+'%';
   }
-  function startPercent(id,box,item){
-    if(progressTimers[id])clearInterval(progressTimers[id]);
+  function timerKey(id,targetId){return id==='global-loading'?'global-loading:'+targetId:id}
+  function startPercent(id,box,item,targetId){
+    var key=timerKey(id,targetId||'');
+    if(progressTimers[key])clearInterval(progressTimers[key]);
     function tick(){
-      if(!box||!box.isConnected){clearInterval(progressTimers[id]);progressTimers[id]=0;updateBodyState();return}
+      if(!box||!box.isConnected){clearInterval(progressTimers[key]);progressTimers[key]=0;updateBodyState();return}
       updatePercent(id,box,item);
     }
-    tick();progressTimers[id]=setInterval(tick,1000);
+    tick();progressTimers[key]=setInterval(tick,1000);
   }
-  function ensureLoadingView(id,item,pending){
-    var sec=document.getElementById(sectionId(id));if(!sec)return;
+  function ensureLoadingView(id,item,pending,targetViewId){
+    var sec=document.getElementById(targetViewId||sectionId(id));if(!sec)return;
     style();
     var sig=sigFor(id,item);
     var current=sec.querySelector('.section-loading-mode');
-    if(current&&signatures[id]!==sig){current.remove();current=null;if(progressTimers[id]){clearInterval(progressTimers[id]);progressTimers[id]=0}}
-    if(!current){var old=sec.querySelector('.section-locked-view');if(old)old.remove();var v=document.createElement('div');v.className='section-locked-view section-loading-mode';v.innerHTML=html(id,item);sec.appendChild(v);current=v;startPercent(id,v.querySelector('.section-loading-mode-box'),item)}
-    painted[id]=1;signatures[id]=sig;sec.classList.add('is-section-locked');
+    if(current&&signatures[sec.id]!==sig){current.remove();current=null;Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0||k===id){clearInterval(progressTimers[k]);progressTimers[k]=0}})}
+    if(!current){var old=sec.querySelector('.section-locked-view');if(old)old.remove();var v=document.createElement('div');v.className='section-locked-view section-loading-mode';v.innerHTML=html(id,item);sec.appendChild(v);current=v;startPercent(id,v.querySelector('.section-loading-mode-box'),item,sec.id)}
+    painted[sec.id]=1;signatures[sec.id]=sig;sec.classList.add('is-section-locked');
     if(pending)sec.classList.add('is-section-loading-pending');
-    var box=current.querySelector('.section-loading-mode-box');if(box){updatePercent(id,box,item);if(!progressTimers[id])startPercent(id,box,item)}
+    var box=current.querySelector('.section-loading-mode-box');if(box){updatePercent(id,box,item);if(!progressTimers[timerKey(id,sec.id)])startPercent(id,box,item,sec.id)}
   }
   function prepareTargetLoading(viewId){
-    var id=modeKeyFromView(viewId);var item=modes[id];
+    var item=isGlobalLoading()?modes['global-loading']:modes[modeKeyFromView(viewId)];
     if(!item)return;
-    ensureLoadingView(id,item,true);
+    ensureLoadingView(isGlobalLoading()?'global-loading':modeKeyFromView(viewId),item,true,viewId);
   }
   function clearOld(){
-    Object.keys(painted).forEach(function(id){
-      if(modes[id])return;
-      var sec=document.getElementById(sectionId(id));if(!sec)return;
+    document.querySelectorAll('.view').forEach(function(sec){
+      var viewLock=modes[modeKeyFromView(sec.id)];
+      var shouldKeep=!!(isGlobalLoading()||viewLock);
+      if(shouldKeep)return;
       var v=sec.querySelector('.section-loading-mode');if(v)v.remove();
       sec.classList.remove('is-section-loading-active');sec.classList.remove('is-section-loading-pending');
-      painted[id]=0;signatures[id]='';if(progressTimers[id]){clearInterval(progressTimers[id]);progressTimers[id]=0}
+      painted[sec.id]=0;signatures[sec.id]='';
     });
   }
   function paint(){
     style();
     clearOld();
-    Object.keys(modes).forEach(function(id){ensureLoadingView(id,modes[id],false)});
+    if(isGlobalLoading()){
+      ensureLoadingView('global-loading',modes['global-loading'],false,activeViewId());
+    }else{
+      Object.keys(modes).forEach(function(id){if(id!=='global-loading')ensureLoadingView(id,modes[id],false)});
+    }
     updateBodyState();
   }
   function load(){
