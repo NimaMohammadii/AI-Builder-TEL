@@ -30,9 +30,9 @@ function tick(){if(!cd)return;var now=Date.now(),nextSlot=Math.floor(now/300000)
 function stop(){save();close();if(raf)cancelAnimationFrame(raf),raf=0}
 function reset(){a=[];cur=0;last=0;cen=0;ok=0;entry=0;retry=0;lastSync=0;lastDraw=0;if(dot){dot.style.left='';dot.style.top=''}if(pg)pg.style.top='';if(sg)sg.classList.remove('show');if(st){st.classList.remove('show','above','below');st.textContent=''}showPrices(false);loadingChart()}
 function go(n){if(!M[n])return;save();stop();k=n;menu.querySelectorAll('[data-vexa-predict-market]').forEach(b=>b.classList.toggle('active',b.getAttribute('data-vexa-predict-market')===n));if(q)q.textContent=m()[1];img();if(res)res.innerHTML='';if(lb)lb.innerHTML='';slot=Math.floor(Date.now()/300000)*300000;reset();con();if(!raf)raf=requestAnimationFrame(loop);sync()}
-function boot(){if(on()&&!raf)go(k)}
+function boot(){if(on()&&!raf)go(k)}function resume(){if(!on())return;var needsStream=!!m()[2];if(!raf||!ok||(needsStream&&!ws))go(k)}
 menu.addEventListener('click',e=>{var b=e.target.closest&&e.target.closest('[data-vexa-predict-market]');if(!b)return;var n=b.getAttribute('data-vexa-predict-market');if(!M[n])return;e.preventDefault();e.stopPropagation();go(n)},true);
-document.addEventListener('visibilitychange',()=>{document.visibilityState==='visible'?go(k):stop()});document.addEventListener('click',()=>setTimeout(boot,120),true);if(window.MutationObserver)new MutationObserver(boot).observe(root,{attributes:true,attributeFilter:['class']});go('bitcoin');setTimeout(boot,160);
+document.addEventListener('visibilitychange',()=>{document.visibilityState==='visible'?resume():stop()});window.addEventListener('focus',()=>setTimeout(resume,120));window.addEventListener('pageshow',()=>setTimeout(resume,120));document.addEventListener('click',()=>setTimeout(boot,120),true);if(window.MutationObserver)new MutationObserver(boot).observe(root,{attributes:true,attributeFilter:['class']});go('bitcoin');setTimeout(boot,160);
 });
 })();
 ${PREDICT_OIL_HOTFIX_SCRIPT}
