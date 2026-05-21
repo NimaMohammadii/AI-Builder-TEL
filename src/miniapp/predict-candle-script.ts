@@ -5,7 +5,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[];
+    var ws=null,market='',candles=[],timerRaf=0;
     function addStyles(){
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
@@ -35,6 +35,16 @@ export const PREDICT_CANDLE_SCRIPT = `
       data.forEach(function(d,i){var x=left+i*step+step*.5,yo=yy(d.o,lo,hi),yc=yy(d.c,lo,hi),yh=yy(d.h,lo,hi),yl=yy(d.l,lo,hi),up=d.c>=d.o,cls=up?'predict-candle-up':'predict-candle-down',top=Math.min(yo,yc),h=Math.max(2,Math.abs(yc-yo));html+='<line class="predict-candle-wick '+cls+'" x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+yh.toFixed(1)+'" y2="'+yl.toFixed(1)+'"/>';html+='<rect class="'+cls+'" x="'+(x-body/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+body.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2"/>'});
       svg.innerHTML=html;
     }
+    function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}}
+    function candleEndMs(){return Math.floor(Date.now()/3600000)*3600000+3600000}
+    function timerLoop(){
+      if(root.dataset.predictMode!=='candle'){stopTimer();return}
+      var cd=root.querySelector('[data-predict-countdown]');
+      if(cd)cd.textContent=fmt(candleEndMs()-Date.now());
+      timerRaf=requestAnimationFrame(timerLoop);
+    }
+    function startTimer(){stopTimer();timerRaf=requestAnimationFrame(timerLoop)}
     function close(){if(ws){try{ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function start(){
       var sym=symbolFor(activeMarket());
@@ -64,7 +74,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle')start();else close()}
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer()}else{close();stopTimer()}}
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
@@ -73,7 +83,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(start,160);
     },true);
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')close();else if(root.dataset.predictMode==='candle')setTimeout(start,160)});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopTimer()}else if(root.dataset.predictMode==='candle'){setTimeout(start,160);startTimer()}});
     setMode('updown');
   });
 })();
