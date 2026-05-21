@@ -10,7 +10,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(document.getElementById('predictCandleStyles'))return;
       var s=document.createElement('style');
       s.id='predictCandleStyles';
-      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}';
+      s.textContent='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:none;width:12px;height:12px;margin-right:5px;vertical-align:-1px;opacity:.92}#predictzone.predict-candle-locked .predict-candle-lock-icon{display:inline-block}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.48!important;filter:saturate(.65)!important}';
       document.head.appendChild(s);
     }
     function activeMarket(){
@@ -37,11 +37,16 @@ export const PREDICT_CANDLE_SCRIPT = `
     }
     function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
     function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}}
-    function candleEndMs(){return Math.floor(Date.now()/3600000)*3600000+3600000}
+    function candleStartMs(){return Math.floor(Date.now()/3600000)*3600000}
+    function candleEndMs(){return candleStartMs()+3600000}
+    function candleLockMs(){return candleStartMs()+1800000}
+    function lockSvg(){return '<svg class="predict-candle-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.5 10V8.2C7.5 5.8 9.4 4 12 4s4.5 1.8 4.5 4.2V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="3" stroke="currentColor" stroke-width="2"/><path d="M12 14v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}
+    function setLocked(locked){root.classList.toggle('predict-candle-locked',!!locked);root.querySelectorAll('[data-predict-choice]').forEach(function(b){b.disabled=!!locked})}
     function timerLoop(){
-      if(root.dataset.predictMode!=='candle'){stopTimer();return}
-      var cd=root.querySelector('[data-predict-countdown]');
-      if(cd)cd.textContent=fmt(candleEndMs()-Date.now());
+      if(root.dataset.predictMode!=='candle'){setLocked(false);stopTimer();return}
+      var now=Date.now(),locked=now>=candleLockMs(),cd=root.querySelector('[data-predict-countdown]');
+      setLocked(locked);
+      if(cd)cd.innerHTML=(locked?lockSvg():'')+fmt(candleEndMs()-now);
       timerRaf=requestAnimationFrame(timerLoop);
     }
     function startTimer(){stopTimer();timerRaf=requestAnimationFrame(timerLoop)}
@@ -74,7 +79,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer()}else{close();stopTimer()}}
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer()}else{close();setLocked(false);stopTimer()}}
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
