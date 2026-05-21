@@ -1,5 +1,5 @@
 import app from './index';
-import './user-lock-bypass-routes';
+import './user-access-override-routes';
 import type { Env } from './types';
 
 export type SectionLockMode = 'open' | 'locked' | 'code' | 'loading';
