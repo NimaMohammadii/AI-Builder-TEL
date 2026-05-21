@@ -1,7 +1,7 @@
 import app from './index';
 import type { Env } from './types';
 
-export type SectionLockMode = 'open' | 'locked' | 'code';
+export type SectionLockMode = 'open' | 'locked' | 'code' | 'loading';
 export type SectionLockImageKind = 'locked' | 'code';
 
 export type SectionLock = {
@@ -85,8 +85,8 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
     const mode = normalizeMode(item);
     const isLocked = mode !== 'open';
     const expiresAt = mode === 'open' ? null : normalizeExpiresAt(item?.expiresAt);
-    const lockedImageUrl = isLocked ? sharedLockedImageUrl : null;
-    const codeImageUrl = isLocked ? sharedCodeImageUrl : null;
+    const lockedImageUrl = isLocked && mode !== 'loading' ? sharedLockedImageUrl : null;
+    const codeImageUrl = isLocked && mode !== 'loading' ? sharedCodeImageUrl : null;
     return {
       ...section,
       locked: isLocked,
@@ -110,6 +110,14 @@ export async function setSectionLock(env: Env, sectionId: string, locked: boolea
   const current = await readLocks(env);
   const existing = current[normalized] ?? {};
   current[normalized] = { ...existing, locked: Boolean(locked), mode: locked ? 'locked' : 'open', expiresAt: locked ? normalizeExpiresAt(expiresAtInput) : null };
+  await writeLocks(env, current);
+  return getSectionLocks(env);
+}
+
+export async function setSectionLoadingLock(env: Env, sectionId: string, expiresAtInput: unknown = null): Promise<{ sections: SectionLock[] }> {
+  const normalized = ensureSection(sectionId);
+  const current = await readLocks(env);
+  current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'loading', expiresAt: normalizeExpiresAt(expiresAtInput) };
   await writeLocks(env, current);
   return getSectionLocks(env);
 }
@@ -226,6 +234,7 @@ function normalizeSavedLocks(raw: Record<string, boolean | SavedSectionLock>): R
 function normalizeMode(item: SavedSectionLock | undefined): SectionLockMode {
   if (item?.expiresAt && Date.parse(item.expiresAt) <= Date.now()) return 'open';
   if (item?.mode === 'code') return 'code';
+  if (item?.mode === 'loading') return 'loading';
   if (item?.mode === 'locked') return 'locked';
   return item?.locked ? 'locked' : 'open';
 }
@@ -265,6 +274,16 @@ app.post('/admin/api/section-locks-timed', async (c) => {
     return c.json(await setSectionLock(c.env, String(body.sectionId ?? ''), Boolean(body.locked), body.expiresAt ?? null));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400);
+  }
+});
+
+app.post('/admin/api/section-locks/loading-timed', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
+  try {
+    return c.json(await setSectionLoadingLock(c.env, String(body.sectionId ?? ''), body.expiresAt ?? null));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save loading lock' }, 400);
   }
 });
 
