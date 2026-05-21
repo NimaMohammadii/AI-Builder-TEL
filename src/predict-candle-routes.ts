@@ -5,7 +5,7 @@ import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } fr
 
 const CACHE_NONE = 'no-store';
 const HOUR_MS = 60 * 60 * 1000;
-const LOCK_MS = 15 * 1000;
+const LOCK_MS = 30 * 60 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type CandleMarket = 'bitcoin' | 'ethereum' | 'solana' | 'gold' | 'ton';
