@@ -1,11 +1,14 @@
 export const ADMIN_TRUSTED_ACCESS_PANEL_SCRIPT = `<script>
 (function(){
   function userIdFromBox(box){
-    var input=box&&box.querySelector('[data-user-id],input[name="userId"]');
+    if(!box)return '';
+    var panelId=box.getAttribute('data-manage-panel');
+    if(panelId)return panelId;
+    var input=box.querySelector('[data-user-id],input[name="userId"]');
     if(input&&input.value)return input.value;
-    var btn=box&&box.querySelector('[data-user-section-block]');
+    var btn=box.querySelector('[data-user-section-block]');
     if(btn)return btn.getAttribute('data-user-section-block')||'';
-    var root=box&&box.closest('[data-user-id]');
+    var root=box.closest('[data-user-id]');
     return root?root.getAttribute('data-user-id')||'':'';
   }
   function addControls(){
