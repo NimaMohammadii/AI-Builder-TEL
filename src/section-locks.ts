@@ -1,3 +1,4 @@
+import app from './index';
 import type { Env } from './types';
 
 export type SectionLockMode = 'open' | 'locked' | 'code';
@@ -248,4 +249,44 @@ function normalizeExpiresAt(value: unknown): string | null {
   if (!raw) return null;
   const date = new Date(raw);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+type AdminTimedLockBody = {
+  sectionId?: unknown;
+  locked?: unknown;
+  code?: unknown;
+  expiresAt?: unknown;
+};
+
+app.post('/admin/api/section-locks-timed', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
+  try {
+    return c.json(await setSectionLock(c.env, String(body.sectionId ?? ''), Boolean(body.locked), body.expiresAt ?? null));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400);
+  }
+});
+
+app.post('/admin/api/section-locks/code-timed', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
+  try {
+    return c.json(await setSectionCodeLock(c.env, String(body.sectionId ?? ''), String(body.code ?? ''), body.expiresAt ?? null));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400);
+  }
+});
+
+function adminCookieValue(cookie: string | undefined): string {
+  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function isAdmin(env: Env, key: string): boolean {
+  return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
+}
+
+function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
+  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
