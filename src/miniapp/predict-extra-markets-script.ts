@@ -2,6 +2,7 @@ import { PREDICT_OIL_HOTFIX_SCRIPT } from './predict-oil-hotfix-script';
 
 export const PREDICT_EXTRA_MARKETS_SCRIPT = `
 (function(){
+if(!window.__vexaPredictFetchGuard){window.__vexaPredictFetchGuard=1;(function(){var nativeFetch=window.fetch&&window.fetch.bind(window),cache={};if(!nativeFetch)return;function keyOf(input){var url=String((input&&input.url)||input||'');if(url.indexOf('/app/api/predict-markets')>=0)return 'markets';if(url.indexOf('/app/api/predict-oil-price')>=0)return 'oil:'+Math.floor(Date.now()/300000);if(url.indexOf('/app/api/predict-round')>=0){try{var u=new URL(url,location.href),m=u.searchParams.get('market')||'';return 'round:'+m+':'+Math.floor(Date.now()/300000)}catch(e){return 'round:'+Math.floor(Date.now()/300000)}}return ''}window.fetch=function(input,init){var k=keyOf(input);if(!k)return nativeFetch(input,init);var now=Date.now(),hit=cache[k],ttl=k.indexOf('markets')===0?300000:k.indexOf('oil:')===0?300000:1500;if(hit&&now-hit.t<ttl)return hit.p.then(function(r){return r.clone()});var p=nativeFetch(input,init).then(function(r){cache[k]={t:Date.now(),p:Promise.resolve(r.clone())};return r});cache[k]={t:now,p:p.then(function(r){return r.clone()})};return p}})()}
 function R(f){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',f):f()}
 R(function(){
 var root=document.getElementById('predictzone');if(!root||root.dataset.extraMarketsReady==='1')return;root.dataset.extraMarketsReady='1';
