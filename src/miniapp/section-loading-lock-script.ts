@@ -12,14 +12,14 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     if(document.getElementById('slmcss'))return;
     var s=document.createElement('style');
     s.id='slmcss';
-    s.textContent='body.section-loading-active .top{display:none!important}.section-loading-mode{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#000!important;color:#fff;opacity:0;transform:scale(1.018);animation:slmEnter .45s cubic-bezier(.2,.9,.2,1) forwards}.section-loading-mode-box{width:min(74vw,320px);display:grid;gap:16px;justify-items:center;animation:slmRise .52s cubic-bezier(.2,.9,.2,1) both}.section-loading-mode-title{margin:0;color:#fff;font-size:13px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}.section-loading-mode-progress{width:100%;display:grid;grid-template-columns:1fr;align-items:center;justify-items:center;gap:12px}.section-loading-mode-line{width:100%;height:4px;background:rgba(255,255,255,.13);overflow:hidden;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.035),0 18px 44px rgba(0,0,0,.45)}.section-loading-mode-line i{display:block;height:100%;width:0;background:#fff;border-radius:999px;box-shadow:0 0 22px rgba(255,255,255,.58);transition:width .35s linear}.section-loading-mode-percent{display:block;color:rgba(255,255,255,.74);font-size:12px;font-weight:850;text-align:center;font-variant-numeric:tabular-nums}@keyframes slmEnter{to{opacity:1;transform:scale(1)}}@keyframes slmRise{from{transform:translateY(18px);opacity:.62}to{transform:translateY(0);opacity:1}}';
+    s.textContent='body.section-loading-active .top{display:none!important}.view.is-section-loading-active{background:#000!important}.view.is-section-loading-active>*:not(.section-loading-mode){visibility:hidden!important;pointer-events:none!important}.section-loading-mode{position:absolute;inset:0;z-index:120;display:grid;place-items:center;background:#000!important;color:#fff;opacity:0;transform:scale(1.018);animation:slmEnter .45s cubic-bezier(.2,.9,.2,1) forwards}.section-loading-mode-box{width:min(74vw,320px);display:grid;gap:16px;justify-items:center;margin-top:12vh;animation:slmRise .52s cubic-bezier(.2,.9,.2,1) both}.section-loading-mode-title{margin:0;color:#fff;font-size:13px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}.section-loading-mode-progress{width:100%;display:grid;grid-template-columns:1fr;align-items:center;justify-items:center;gap:12px}.section-loading-mode-line{width:100%;height:4px;background:rgba(255,255,255,.13);overflow:hidden;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.035),0 18px 44px rgba(0,0,0,.45)}.section-loading-mode-line i{display:block;height:100%;width:0;background:#fff;border-radius:999px;box-shadow:0 0 22px rgba(255,255,255,.58);transition:width .35s linear}.section-loading-mode-percent{display:block;color:rgba(255,255,255,.74);font-size:12px;font-weight:850;text-align:center;font-variant-numeric:tabular-nums}@keyframes slmEnter{to{opacity:1;transform:scale(1)}}@keyframes slmRise{from{transform:translateY(18px);opacity:.62}to{transform:translateY(0);opacity:1}}';
     document.head.appendChild(s);
   }
   function sectionId(id){return id==='predict'?'predictzone':id}
   function metaFor(id,item){return loadingMeta[id]||loadingMeta[sectionId(id)]||{startedAt:null,expiresAt:item&&item.expiresAt||null,durationMs:null}}
   function sigFor(id,item){var meta=metaFor(id,item);return String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
   function activeLoadingVisible(){return !!document.querySelector('.view.active .section-loading-mode')}
-  function updateBodyState(){document.body.classList.toggle('section-loading-active',activeLoadingVisible())}
+  function updateBodyState(){document.body.classList.toggle('section-loading-active',activeLoadingVisible());document.querySelectorAll('.view').forEach(function(sec){sec.classList.toggle('is-section-loading-active',!!(sec.classList.contains('active')&&sec.querySelector('.section-loading-mode')))});}
   function pctFor(id,item){
     var meta=metaFor(id,item);
     var end=meta.expiresAt||item&&item.expiresAt||'';
@@ -54,6 +54,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
       if(modes[id])return;
       var sec=document.getElementById(sectionId(id));if(!sec)return;
       var v=sec.querySelector('.section-loading-mode');if(v)v.remove();
+      sec.classList.remove('is-section-loading-active');
       painted[id]=0;signatures[id]='';if(progressTimers[id]){clearInterval(progressTimers[id]);progressTimers[id]=0}
     });
   }
