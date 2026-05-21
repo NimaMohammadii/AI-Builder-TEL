@@ -3,8 +3,11 @@ import './predict-candle-routes';
 import './predict-extra-market-routes';
 import './predict-routes';
 import './predict-entry-loader-routes';
+import './section-lock-event-routes';
 import './crash-routes';
 import type { Env } from './types';
+
+export { SectionLockEvents } from './section-lock-events';
 
 const DETAIL_POLISH_SCRIPT = `
 (function(){
