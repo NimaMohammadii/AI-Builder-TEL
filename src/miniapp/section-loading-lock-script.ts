@@ -4,6 +4,9 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   var loadingMeta={};
   var painted={};
   var progressTimers={};
+  var lastLoadAt=0;
+  var loadInFlight=null;
+  var LOAD_COOLDOWN_MS=15000;
   function style(){
     if(document.getElementById('slmcss'))return;
     var s=document.createElement('style');
@@ -62,14 +65,28 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
       var v=document.createElement('div');v.className='section-locked-view section-loading-mode';v.innerHTML=html(id,item);sec.appendChild(v);sec.classList.add('is-section-locked');painted[id]=1;startPercent(id,v.querySelector('.section-loading-mode-box'),item);
     });
   }
-  function load(){
-    Promise.all([
+  function load(force){
+    var now=Date.now();
+    if(loadInFlight)return loadInFlight;
+    if(!force&&lastLoadAt&&now-lastLoadAt<LOAD_COOLDOWN_MS){paint();return Promise.resolve();}
+    lastLoadAt=now;
+    loadInFlight=Promise.all([
       fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}),
       fetch('/app/api/section-loading-meta',{cache:'no-store'}).then(function(r){return r.json()}).catch(function(){return {items:{}}})
-    ]).then(function(res){var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){});
+    ]).then(function(res){var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){loadInFlight=null});
+    return loadInFlight;
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  document.addEventListener('click',function(){setTimeout(load,80);setTimeout(paint,220)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+  function isNavigationEvent(ev){
+    var target=ev&&ev.target;
+    if(!target||!target.closest)return false;
+    if(target.closest('.section-loading-mode'))return false;
+    if(target.closest('[data-view],[data-game-view]'))return true;
+    var action=target.closest('[data-action]');
+    if(!action)return false;
+    return ['open-deposit','open-withdraw','open-transactions','open-rewards','open-leaderboard'].indexOf(action.getAttribute('data-action'))>=0;
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(true)});else load(true);
+  document.addEventListener('click',function(ev){if(!isNavigationEvent(ev))return;setTimeout(function(){load(false)},80);setTimeout(paint,220)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)load(true)});
 })();
 `;
