@@ -1,4 +1,6 @@
-export const PREDICT_ZONE_SETTINGS_SCRIPT = `
+import { PREDICT_TOOLBAR_SCRIPT } from './predict-toolbar-script';
+
+const PREDICT_SETTINGS_SCRIPT = `
 (function(){
   function apply(settings){
     var root=document.getElementById('predictzone');
@@ -19,3 +21,5 @@ export const PREDICT_ZONE_SETTINGS_SCRIPT = `
   window.addEventListener('focus',load);
 })();
 `;
+
+export const PREDICT_ZONE_SETTINGS_SCRIPT = PREDICT_SETTINGS_SCRIPT + PREDICT_TOOLBAR_SCRIPT;
