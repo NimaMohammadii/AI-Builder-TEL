@@ -1,5 +1,6 @@
 import app from './index';
 import './user-access-override-routes';
+import './section-loading-meta-routes';
 import type { Env } from './types';
 
 export type SectionLockMode = 'open' | 'locked' | 'code' | 'loading';
