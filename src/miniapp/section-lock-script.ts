@@ -19,7 +19,7 @@ export const SECTION_LOCK_SCRIPT = `
   var dismissSvg='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
-  function lockId(id){return id==='predictzone'?'predict':id}
+  function lockId(id){return id==='predictzone'?'predict':id==='market'?'connect':id}
   function storageKey(id){return 'sectionUnlocked:'+lockId(id)}
   function cacheUserKey(){var id=userId();return id?USER_CACHE_PREFIX+id:''}
   function readJson(key){try{return key?JSON.parse(localStorage.getItem(key)||'null'):null}catch(e){return null}}
