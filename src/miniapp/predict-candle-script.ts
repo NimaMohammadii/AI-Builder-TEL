@@ -132,20 +132,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(down)down.textContent=mode==='candle'?'Red':'Down';
       if(title){if(mode==='candle'&&title.textContent==='Up')title.textContent='Green';else if(mode==='candle'&&title.textContent==='Down')title.textContent='Red'}
     }
-    function installFetchPatch(){
-      if(window.__vexaPredictCandleFetchPatch)return;window.__vexaPredictCandleFetchPatch=1;
-      var nativeFetch=window.fetch&&window.fetch.bind(window);if(!nativeFetch)return;
-      window.fetch=function(input,init){
-        try{
-          var url=String((input&&input.url)||input||''),isPredict=url.indexOf('/app/api/predict-')>=0,mode=root.dataset.predictMode;
-          if(isPredict&&mode==='candle'){
-            if(url.indexOf('/app/api/predict-round')>=0||url.indexOf('/app/api/predict-settle')>=0){var u=new URL(url,location.href);u.searchParams.set('mode','candle');input=u.pathname+u.search}
-            if(url.indexOf('/app/api/predict-bet')>=0&&init&&init.body){var body=JSON.parse(String(init.body));body.mode='candle';if(body.side==='up')body.side='green';if(body.side==='down')body.side='red';init=Object.assign({},init,{body:JSON.stringify(body)})}
-          }
-        }catch(e){}
-        return nativeFetch(input,init)
-      }
-    }
+    function installFetchPatch(){return}
     function setMode(mode){
       mode=mode==='candle'?'candle':'updown';
       if(root.dataset.predictMode===mode)return;
