@@ -5,10 +5,11 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0,uiTimer=0;
+    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0,uiTimer=0,lastCandleSlot=0;
+    var HOUR_MS=60*60*1000,LOCK_MS=30*60*1000;
 
     function addStyles(){
-      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:7px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone .predict-candle-countdown{display:none}#predictzone.predict-candle-mode [data-predict-countdown]{display:none!important}#predictzone.predict-candle-mode .predict-candle-countdown{display:inline-flex!important;align-items:center!important;gap:2px!important}#predictzone .predict-candle-result-strip{display:none;position:relative;margin:10px -2px 0;overflow:hidden;border-radius:20px}#predictzone.predict-candle-mode [data-predict-result]{display:none!important}#predictzone.predict-candle-mode .predict-candle-result-strip.show{display:block}#predictzone .predict-candle-result-strip:before,#predictzone .predict-candle-result-strip:after{content:"";position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}#predictzone .predict-candle-result-strip:before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.86),rgba(10,3,5,0))}#predictzone .predict-candle-result-strip:after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.86),rgba(10,3,5,0))}';
+      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:1px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone .predict-candle-countdown{display:none}#predictzone.predict-candle-mode [data-predict-countdown]{display:none!important}#predictzone.predict-candle-mode .predict-candle-countdown{display:inline-flex!important;align-items:center!important;gap:0!important}#predictzone .predict-candle-result-strip{display:none;position:relative;margin:10px -2px 0;overflow:hidden;border-radius:20px}#predictzone.predict-candle-mode [data-predict-result]{display:none!important}#predictzone.predict-candle-mode .predict-candle-result-strip.show{display:block}#predictzone .predict-candle-result-strip:before,#predictzone .predict-candle-result-strip:after{content:"";position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}#predictzone .predict-candle-result-strip:before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.86),rgba(10,3,5,0))}#predictzone .predict-candle-result-strip:after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.86),rgba(10,3,5,0))}';
       var s=document.getElementById('predictCandleStyles');
       if(!s){s=document.createElement('style');s.id='predictCandleStyles';document.head.appendChild(s)}
       if(s.textContent!==css)s.textContent=css;
@@ -61,15 +62,10 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(window.VexaTonBalance&&window.VexaTonBalance.write){window.VexaTonBalance.write(balance,0,false);return}
       try{window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{tonBalanceNano:balance}}))}catch(e){}
     }
+    function candleSlot(now){now=Number(now||Date.now());var start=Math.floor(now/HOUR_MS)*HOUR_MS;return {start:start,lock:start+LOCK_MS,end:start+HOUR_MS}}
     function formatTime(ms){var s=Math.max(0,Math.ceil(Number(ms||0)/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
     function lockSvg(){return '<svg class="predict-candle-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.5 10V8.1C7.5 5.7 9.4 4 12 4s4.5 1.7 4.5 4.1V10" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="3" stroke="currentColor" stroke-width="2.25"/><path d="M12 14.1v2.2" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/></svg>'}
-    function isCandleLocked(){
-      if(!candleRound)return false;
-      if(String(candleRound.status||'')==='locked')return true;
-      var ends=Date.parse(String(candleRound.endsAt||''));
-      if(Number.isFinite(ends))return Date.now()>=ends-30*60*1000;
-      return Number(candleRound.lockRemainingMs||0)<=0;
-    }
+    function isCandleLocked(){var slot=candleSlot(Date.now());return Date.now()>=slot.lock&&Date.now()<slot.end}
     function setCandleLocked(locked){
       root.classList.toggle('predict-candle-locked',!!locked);
       root.querySelectorAll('[data-predict-choice]').forEach(function(btn){btn.disabled=!!locked});
@@ -79,17 +75,16 @@ export const PREDICT_CANDLE_SCRIPT = `
     function updateCandleTimer(){
       if(root.dataset.predictMode!=='candle')return;
       var cd=countdownEl();if(!cd)return;
-      var remaining=0;
-      if(candleRound&&candleRound.endsAt){var endMs=Date.parse(String(candleRound.endsAt));if(Number.isFinite(endMs))remaining=Math.max(0,endMs-Date.now())}
-      else if(candleRound&&candleRound.remainingMs!==undefined)remaining=Number(candleRound.remainingMs||0);
-      var locked=isCandleLocked();
+      var now=Date.now(),slot=candleSlot(now),remaining=Math.max(0,slot.end-now),locked=now>=slot.lock&&now<slot.end;
+      if(lastCandleSlot&&lastCandleSlot!==slot.start){candleRound=null;loadCandleRound();start()}
+      lastCandleSlot=slot.start;
       cd.innerHTML=(locked?lockSvg():'')+formatTime(remaining);
       setCandleLocked(locked);
     }
     function startCandleTimer(){
       if(candleTimer)clearInterval(candleTimer);
       updateCandleTimer();
-      candleTimer=setInterval(function(){updateCandleTimer();if(root.dataset.predictMode==='candle'&&candleRound&&Number(candleRound.lockRemainingMs||0)>0&&Number(candleRound.lockRemainingMs||0)<1500)loadCandleRound()},1000);
+      candleTimer=setInterval(updateCandleTimer,1000);
     }
     function stopCandleTimer(){if(candleTimer){clearInterval(candleTimer);candleTimer=0}}
 
@@ -160,7 +155,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(root.dataset.predictMode!=='candle')return Promise.resolve(null);
       return fetch('/app/api/predict-round?mode=candle&market='+encodeURIComponent(activeMarket())+'&userId='+encodeURIComponent(userId()),{cache:'no-store'})
         .then(function(r){return r.json()})
-        .then(function(data){updateVisibleBalance(data);candleRound=data&&data.round;if(candleRound){renderCandleResult(candleRound);startCandleTimer()}return data})
+        .then(function(data){updateVisibleBalance(data);candleRound=data&&data.round;if(candleRound)renderCandleResult(candleRound);return data})
         .catch(function(){return null});
     }
 
@@ -186,7 +181,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       fetch('/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'candle',market:activeMarket(),side:candleSide==='down'?'red':'green',userId:userId(),stakeTon:amount})})
         .then(function(r){return r.json().then(function(d){if(!r.ok||d.ok===false)throw new Error(d.error||'Could not place candle guess');return d})})
         .then(function(data){
-          updateVisibleBalance(data);if(data&&data.round){candleRound=data.round;renderCandleResult(data.round);startCandleTimer()}
+          updateVisibleBalance(data);if(data&&data.round){candleRound=data.round;renderCandleResult(data.round)}
           setStatus('Candle guess placed','good');
           var sheet=root.querySelector('[data-predict-bet-sheet]');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}
           if(input)input.value='';
@@ -204,7 +199,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       root.classList.toggle('predict-candle-mode',mode==='candle');
       root.classList.remove('predict-candle-locked');
       paintButtons(mode);
-      if(mode==='candle'){start();startCandleTimer();startUiLoop()}else{close();stopCandleTimer();stopUiLoop();setCandleLocked(false)}
+      if(mode==='candle'){lastCandleSlot=0;start();startCandleTimer();startUiLoop()}else{close();stopCandleTimer();stopUiLoop();setCandleLocked(false)}
     }
 
     function stopUiLoop(){if(uiTimer){clearInterval(uiTimer);uiTimer=0}}
