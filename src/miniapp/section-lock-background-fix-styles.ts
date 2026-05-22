@@ -1,0 +1,22 @@
+export const SECTION_LOCK_BACKGROUND_FIX_STYLES = `
+.view.is-section-locked{
+  background:#000!important;
+  overflow:hidden!important;
+}
+.view.is-section-locked>.section-locked-view{
+  position:absolute!important;
+  inset:0!important;
+  min-height:100%!important;
+  width:100%!important;
+  background:#000!important;
+  background-color:#000!important;
+  z-index:999!important;
+}
+.view.is-section-locked>.section-locked-view::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:#000;
+  z-index:-1;
+}
+`;
