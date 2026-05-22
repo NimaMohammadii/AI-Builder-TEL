@@ -81,16 +81,20 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     if(!item)return;
     ensureLoadingView(isGlobalLoading()?'global-loading':modeKeyFromView(viewId),item,true,viewId);
   }
+  function restoreView(sec){
+    var v=sec.querySelector(':scope > .section-loading-mode');if(v)v.remove();
+    sec.classList.remove('is-section-loading-active');
+    sec.classList.remove('is-section-loading-pending');
+    sec.classList.remove('is-section-locked');
+    painted[sec.id]=0;signatures[sec.id]='';
+    Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearInterval(progressTimers[k]);progressTimers[k]=0}});
+    Object.keys(expireTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearTimeout(expireTimers[k]);expireTimers[k]=0}});
+  }
   function clearOld(){
     document.querySelectorAll('.view').forEach(function(sec){
       var viewLock=modes[modeKeyFromView(sec.id)];
       var shouldKeep=!!(isGlobalLoading()||viewLock);
-      if(shouldKeep)return;
-      var v=sec.querySelector(':scope > .section-loading-mode');if(v)v.remove();
-      sec.classList.remove('is-section-loading-active');sec.classList.remove('is-section-loading-pending');
-      painted[sec.id]=0;signatures[sec.id]='';
-      Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearInterval(progressTimers[k]);progressTimers[k]=0}});
-      Object.keys(expireTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearTimeout(expireTimers[k]);expireTimers[k]=0}});
+      if(!shouldKeep)restoreView(sec);
     });
   }
   function paint(){
@@ -102,6 +106,10 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
       Object.keys(modes).forEach(function(id){if(id!=='global-loading')ensureLoadingView(id,modes[id],false)});
     }
     updateBodyState();
+    if(!activeLoadingVisible()){
+      document.body.classList.remove('section-loading-active');
+      document.querySelectorAll('.view').forEach(function(sec){if(!modes[modeKeyFromView(sec.id)]&&!isGlobalLoading())restoreView(sec)});
+    }
   }
   function load(){
     if(loadInFlight)return;
