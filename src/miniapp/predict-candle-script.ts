@@ -146,11 +146,16 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();stopUiLoop();lastUserHistoryHtml=''}}
+    function setMode(mode){
+      mode=mode==='candle'?'candle':'updown';
+      if(root.dataset.predictMode===mode)return;
+      addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);
+      if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();stopUiLoop();lastUserHistoryHtml=''}
+    }
     window.addEventListener('vexa-predict-mode-change',function(ev){var mode=(ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown';setMode(mode)});
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
-      if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
+      if(opt){return}
       var choice=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-choice]'):null;
       if(choice&&root.dataset.predictMode==='candle')setTimeout(function(){var t=root.querySelector('[data-predict-bet-title]');if(t)t.textContent=choice.getAttribute('data-predict-choice')==='up'?'Green':'Red'},20);
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
