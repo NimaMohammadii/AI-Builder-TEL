@@ -69,7 +69,17 @@ export const PREDICT_CANDLE_SCRIPT = `
       });
       historyObserver.observe(box,{childList:true,subtree:true});
     }
-    function startUiLoop(){if(uiRaf)return;function loop(){if(root.dataset.predictMode!=='candle'){uiRaf=0;return}applyCandleHeader();installHistoryGuard();uiRaf=requestAnimationFrame(loop)}uiRaf=requestAnimationFrame(loop)}
+    function stopUiLoop(){if(uiRaf){clearInterval(uiRaf);uiRaf=0}}
+    function startUiLoop(){
+      if(uiRaf)return;
+      function tick(){
+        if(root.dataset.predictMode!=='candle'){stopUiLoop();return}
+        applyCandleHeader();
+        installHistoryGuard();
+      }
+      tick();
+      uiRaf=setInterval(tick,1000);
+    }
     function yy(v,min,max){return 24+((max-v)/(max-min||1))*172}
     function render(){
       var l=ensureLayer();if(!l)return;var svg=l.querySelector('svg');if(!svg)return;
@@ -80,7 +90,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       svg.innerHTML=html;applyCandleHeader();
     }
     function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-    function stopTimer(){if(timerRaf){cancelAnimationFrame(timerRaf);timerRaf=0}if(timerObserver){try{timerObserver.disconnect()}catch(e){}timerObserver=null}lastTimerHtml=''}
+    function stopTimer(){if(timerRaf){clearInterval(timerRaf);timerRaf=0}if(timerObserver){try{timerObserver.disconnect()}catch(e){}timerObserver=null}lastTimerHtml=''}
     function candleStartMs(){return Math.floor(Date.now()/3600000)*3600000}
     function candleEndMs(){return candleStartMs()+3600000}
     function candleLockMs(){return candleStartMs()+1800000}
@@ -97,18 +107,16 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(timerObserver)return;
       var cd=root.querySelector('[data-predict-countdown]');if(!cd||!window.MutationObserver)return;
       timerObserver=new MutationObserver(function(){
-        if(root.dataset.predictMode==='candle'&&cd.innerHTML!==lastTimerHtml)requestAnimationFrame(writeCandleTimer);
+        if(root.dataset.predictMode==='candle'&&cd.innerHTML!==lastTimerHtml)setTimeout(writeCandleTimer,0);
       });
       timerObserver.observe(cd,{childList:true,characterData:true,subtree:true});
     }
     function timerLoop(){
       if(root.dataset.predictMode!=='candle'){setLocked(false);stopTimer();return}
       writeCandleTimer();
-      setTimeout(writeCandleTimer,0);
       observeTimer();
-      timerRaf=requestAnimationFrame(timerLoop);
     }
-    function startTimer(){stopTimer();timerRaf=requestAnimationFrame(timerLoop)}
+    function startTimer(){stopTimer();timerLoop();timerRaf=setInterval(timerLoop,1000)}
     function close(){if(ws){try{ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function start(){
       var sym=symbolFor(activeMarket());
@@ -138,7 +146,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         return nativeFetch(input,init)
       }
     }
-    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();lastUserHistoryHtml=''}}
+    function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();stopUiLoop();lastUserHistoryHtml=''}}
     window.addEventListener('vexa-predict-mode-change',function(ev){var mode=(ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown';setMode(mode)});
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
@@ -148,7 +156,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(function(){start();applyCandleHeader()},160);
     },true);
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopTimer()}else if(root.dataset.predictMode==='candle'){setTimeout(start,160);startTimer();startUiLoop();installHistoryGuard()}});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopTimer();stopUiLoop()}else if(root.dataset.predictMode==='candle'){setTimeout(start,160);startTimer();startUiLoop();installHistoryGuard()}});
     setMode('updown');
   });
 })();
