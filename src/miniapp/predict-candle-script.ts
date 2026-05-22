@@ -139,6 +139,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       }
     }
     function setMode(mode){addStyles();installFetchPatch();root.dataset.predictMode=mode;root.classList.toggle('predict-candle-mode',mode==='candle');paintButtons(mode);if(mode==='candle'){start();startTimer();startUiLoop();installHistoryGuard()}else{close();setLocked(false);stopTimer();lastUserHistoryHtml=''}}
+    window.addEventListener('vexa-predict-mode-change',function(ev){var mode=(ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown';setMode(mode)});
     document.addEventListener('click',function(ev){
       var opt=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-mode]'):null;
       if(opt){setTimeout(function(){setMode(opt.getAttribute('data-predict-mode')==='candle'?'candle':'updown')},0);return}
