@@ -49,7 +49,11 @@ export const PLINKO_SCRIPT = `
   function chooseWeightedIndex(){var weights=currentWeights();var sum=weights.reduce(function(a,b){return a+b},0);if(sum<=0)return Math.floor(weights.length/2);var r=Math.random()*sum;for(var i=0;i<weights.length;i++){r-=weights[i];if(r<=0&&weights[i]>0)return i}for(var j=weights.length-1;j>=0;j--){if(weights[j]>0)return j}return Math.floor(weights.length/2)}
   function resolveLandingIndex(index){if(!isControlled())return index;var weights=currentWeights();var idx=clamp(Math.floor(Number(index)||0),0,weights.length-1);if(weights[idx]>0)return idx;var best=-1,bestDistance=Infinity;for(var i=0;i<weights.length;i++){if(weights[i]>0){var d=Math.abs(i-idx);if(d<bestDistance){best=i;bestDistance=d}}}return best>=0?best:Math.floor(weights.length/2)}
   function retargetControlledBalls(force){if(!state||!state.balls||!isControlled())return;state.balls.forEach(function(ball){if(!ball||ball.sinking)return;ball.targetIndex=force?chooseWeightedIndex():resolveLandingIndex(Number.isFinite(ball.targetIndex)?ball.targetIndex:chooseWeightedIndex())})}
-  function landingIndexForBall(ball,physicalIndex){return physicalIndex}
+  function landingIndexForBall(ball, physicalIndex) {
+  if (!isControlled()) return physicalIndex;
+  if (ball && Number.isFinite(ball.targetIndex)) return resolveLandingIndex(ball.targetIndex);
+  return physicalIndex;
+}
   function targetCenterX(index,bins,left,right){var idx=resolveLandingIndex(index);return left+(idx+.5)*((right-left)/bins.length)}
   function controlledPathX(ball,bins,left,right){if(!Number.isFinite(ball.targetIndex)||!bins||!bins.length)return 160;var target=targetCenterX(ball.targetIndex,bins,left,right);var binTop=bins[0].y;var progress=clamp((ball.y+8)/Math.max(1,binTop+8),0,1);var earlyCurve=Math.pow(progress,.68);var lane=160+(target-160)*earlyCurve;var slotW=(right-left)/bins.length;var phase=Number.isFinite(ball.pathPhase)?ball.pathPhase:0;var weave=Math.sin((progress*(rows+1.35)+phase)*Math.PI)*Math.max(0,1-progress)*Math.min(7,slotW*.18);return clamp(lane+weave,left+ball.r,right-ball.r)}
   function guideControlledBall(ball,bins,left,right,dt){if(!isControlled()||!Number.isFinite(ball.targetIndex)||!bins||!bins.length)return;ball.targetIndex=resolveLandingIndex(ball.targetIndex);var binTop=bins[0].y;var progress=clamp((ball.y+8)/Math.max(1,binTop+8),0,1);if(progress>.9)return;var desired=controlledPathX(ball,bins,left,right);var delta=desired-ball.x;var steering=.0038*(1-progress)+.00075;ball.vx+=clamp(delta*steering,-.085,.085)*dt;ball.vx=clamp(ball.vx,-.92,.92)}
