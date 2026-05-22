@@ -3,7 +3,7 @@ const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
   ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
-  ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Soon'],
+  ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
   ['dice', 'Dice', 'Roll the dice and beat the target', 'Soon'],
   ['limbo', 'Limbo', 'Escape the dark forest', 'Play'],
   ['tower', 'Tower', 'Climb higher and raise the payout', 'Soon'],
