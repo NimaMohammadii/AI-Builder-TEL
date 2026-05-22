@@ -8,7 +8,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0,uiTimer=0;
 
     function addStyles(){
-      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:7px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone.predict-candle-mode .predict-zone-countdown{display:inline-flex!important;align-items:center!important;gap:2px!important}';
+      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:7px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone .predict-candle-countdown{display:none;opacity:.48!important;color:rgba(255,255,255,.66)!important;text-shadow:none!important}#predictzone.predict-candle-mode [data-predict-countdown]{display:none!important}#predictzone.predict-candle-mode .predict-candle-countdown{display:inline-flex!important;align-items:center!important;gap:2px!important}#predictzone .predict-candle-result-strip{display:none;position:relative;margin:10px -2px 0;overflow:hidden;border-radius:20px}#predictzone.predict-candle-mode [data-predict-result]{display:none!important}#predictzone.predict-candle-mode .predict-candle-result-strip.show{display:block}#predictzone .predict-candle-result-strip:before,#predictzone .predict-candle-result-strip:after{content:"";position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}#predictzone .predict-candle-result-strip:before{left:0;background:linear-gradient(90deg,rgba(10,3,5,.86),rgba(10,3,5,0))}#predictzone .predict-candle-result-strip:after{right:0;background:linear-gradient(270deg,rgba(10,3,5,.86),rgba(10,3,5,0))}';
       var s=document.getElementById('predictCandleStyles');
       if(!s){s=document.createElement('style');s.id='predictCandleStyles';document.head.appendChild(s)}
       if(s.textContent!==css)s.textContent=css;
@@ -31,8 +31,21 @@ export const PREDICT_CANDLE_SCRIPT = `
     function symbolFor(m){return m==='bitcoin'?'btcusdt':m==='ethereum'?'ethusdt':m==='solana'?'solusdt':m==='gold'?'paxgusdt':m==='ton'?'tonusdt':''}
     function chart(){return root.querySelector('[data-predict-chart]')}
     function statusEl(){return root.querySelector('[data-predict-bet-status]')}
-    function resultBox(){return root.querySelector('[data-predict-result]')}
-    function countdownEl(){return root.querySelector('[data-predict-countdown]')}
+    function countdownEl(){return ensureCandleCountdown()}
+    function resultBox(){return ensureCandleResultBox()}
+
+    function ensureCandleCountdown(){
+      var old=root.querySelector('[data-predict-countdown]');if(!old)return null;
+      var el=root.querySelector('.predict-candle-countdown');
+      if(!el){el=document.createElement('small');el.className='predict-candle-countdown';old.insertAdjacentElement('afterend',el)}
+      return el;
+    }
+    function ensureCandleResultBox(){
+      var old=root.querySelector('[data-predict-result]');if(!old)return null;
+      var el=root.querySelector('.predict-candle-result-strip');
+      if(!el){el=document.createElement('div');el.className='predict-candle-result-strip';old.insertAdjacentElement('afterend',el)}
+      return el;
+    }
 
     function setStatus(text,type){
       var el=statusEl();if(!el)return;
@@ -131,7 +144,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       var box=resultBox();if(!box||!round)return;
       var all=[];(round.userBets||[]).forEach(function(b){all.push(b)});(round.recentUserBets||[]).forEach(function(b){if(!all.some(function(x){return x.id===b.id}))all.push(b)});
       var done=all.filter(function(b){return b&&b.status}).slice(0,20);
-      box.className='predict-zone-result-strip';
+      box.className='predict-candle-result-strip';
       if(!done.length){box.innerHTML='';return}
       var html='<div class="predict-zone-history-track">';
       done.forEach(function(b){
@@ -141,7 +154,7 @@ export const PREDICT_CANDLE_SCRIPT = `
         html+='<span class="predict-zone-history-card '+kind+'">'+side+' '+amount+'</span>';
       });
       html+='</div>';
-      box.className='predict-zone-result-strip show';
+      box.className='predict-candle-result-strip show';
       box.innerHTML=html;
     }
 
@@ -188,7 +201,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     function setMode(mode){
       mode=mode==='candle'?'candle':'updown';
       if(root.dataset.predictMode===mode)return;
-      addStyles();
+      addStyles();ensureCandleCountdown();ensureCandleResultBox();
       root.dataset.predictMode=mode;
       root.classList.toggle('predict-candle-mode',mode==='candle');
       root.classList.remove('predict-candle-locked');
