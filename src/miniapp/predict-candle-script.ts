@@ -5,10 +5,10 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null;
+    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0;
 
     function addStyles(){
-      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}';
+      var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:7px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone.predict-candle-mode .predict-zone-countdown{display:inline-flex!important;align-items:center!important;gap:2px!important}';
       var s=document.getElementById('predictCandleStyles');
       if(!s){s=document.createElement('style');s.id='predictCandleStyles';document.head.appendChild(s)}
       if(s.textContent!==css)s.textContent=css;
@@ -32,6 +32,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     function chart(){return root.querySelector('[data-predict-chart]')}
     function statusEl(){return root.querySelector('[data-predict-bet-status]')}
     function resultBox(){return root.querySelector('[data-predict-result]')}
+    function countdownEl(){return root.querySelector('[data-predict-countdown]')}
 
     function setStatus(text,type){
       var el=statusEl();if(!el)return;
@@ -47,6 +48,39 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(window.VexaTonBalance&&window.VexaTonBalance.write){window.VexaTonBalance.write(balance,0,false);return}
       try{window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{tonBalanceNano:balance}}))}catch(e){}
     }
+    function formatTime(ms){var s=Math.max(0,Math.ceil(Number(ms||0)/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+    function lockSvg(){return '<svg class="predict-candle-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.5 10V8.1C7.5 5.7 9.4 4 12 4s4.5 1.7 4.5 4.1V10" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="3" stroke="currentColor" stroke-width="2.25"/><path d="M12 14.1v2.2" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/></svg>'}
+    function isCandleLocked(){
+      if(!candleRound)return false;
+      if(String(candleRound.status||'')==='locked')return true;
+      var lockMs=Number(candleRound.lockRemainingMs||0);
+      if(lockMs>0)return false;
+      var ends=Date.parse(String(candleRound.endsAt||''));
+      if(Number.isFinite(ends))return Date.now()>=ends-30*60*1000;
+      return false;
+    }
+    function setCandleLocked(locked){
+      root.classList.toggle('predict-candle-locked',!!locked);
+      root.querySelectorAll('[data-predict-choice]').forEach(function(btn){btn.disabled=!!locked});
+      var submit=root.querySelector('[data-predict-bet-submit]');
+      if(submit&&root.dataset.predictMode==='candle')submit.disabled=!!locked||candleBusy;
+    }
+    function updateCandleTimer(){
+      if(root.dataset.predictMode!=='candle')return;
+      var cd=countdownEl();if(!cd)return;
+      var remaining=0;
+      if(candleRound&&candleRound.endsAt){var endMs=Date.parse(String(candleRound.endsAt));if(Number.isFinite(endMs))remaining=Math.max(0,endMs-Date.now())}
+      else if(candleRound&&candleRound.remainingMs!==undefined)remaining=Number(candleRound.remainingMs||0);
+      var locked=isCandleLocked();
+      cd.innerHTML=(locked?lockSvg():'')+formatTime(remaining);
+      setCandleLocked(locked);
+    }
+    function startCandleTimer(){
+      if(candleTimer)clearInterval(candleTimer);
+      updateCandleTimer();
+      candleTimer=setInterval(function(){updateCandleTimer();if(root.dataset.predictMode==='candle'&&candleRound&&Number(candleRound.lockRemainingMs||0)>0&&Number(candleRound.lockRemainingMs||0)<1500)loadCandleRound()},1000);
+    }
+    function stopCandleTimer(){if(candleTimer){clearInterval(candleTimer);candleTimer=0}}
 
     function ensureLayer(){
       var c=chart();if(!c)return null;
@@ -114,14 +148,14 @@ export const PREDICT_CANDLE_SCRIPT = `
       if(root.dataset.predictMode!=='candle')return Promise.resolve(null);
       return fetch('/app/api/predict-round?mode=candle&market='+encodeURIComponent(activeMarket())+'&userId='+encodeURIComponent(userId()),{cache:'no-store'})
         .then(function(r){return r.json()})
-        .then(function(data){updateVisibleBalance(data);candleRound=data&&data.round;if(candleRound)renderCandleResult(candleRound);return data})
+        .then(function(data){updateVisibleBalance(data);candleRound=data&&data.round;if(candleRound){renderCandleResult(candleRound);startCandleTimer()}return data})
         .catch(function(){return null});
     }
 
     function paintButtons(mode){
       var up=root.querySelector('[data-predict-choice="up"]'),down=root.querySelector('[data-predict-choice="down"]'),title=root.querySelector('[data-predict-bet-title]'),q=root.querySelector('[data-predict-bet-question]');
-      if(up){up.textContent=mode==='candle'?'Green':'Up';up.disabled=false}
-      if(down){down.textContent=mode==='candle'?'Red':'Down';down.disabled=false}
+      if(up){up.textContent=mode==='candle'?'Green':'Up';up.disabled=mode==='candle'&&isCandleLocked()}
+      if(down){down.textContent=mode==='candle'?'Red':'Down';down.disabled=mode==='candle'&&isCandleLocked()}
       if(title){
         if(mode==='candle')title.textContent=candleSide==='down'?'Red':'Green';
         else if(title.textContent==='Green')title.textContent='Up';
@@ -132,6 +166,7 @@ export const PREDICT_CANDLE_SCRIPT = `
 
     function submitCandleBet(){
       if(candleBusy)return;
+      if(isCandleLocked()){setStatus('This candle is locked. Wait for the next candle.','bad');return}
       var input=root.querySelector('[data-predict-bet-input]'),submit=root.querySelector('[data-predict-bet-submit]');
       var amount=Number(input&&input.value||0);
       if(!amount||!isFinite(amount)||amount<=0){setStatus('Enter a valid TON amount','bad');return}
@@ -139,14 +174,14 @@ export const PREDICT_CANDLE_SCRIPT = `
       fetch('/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'candle',market:activeMarket(),side:candleSide==='down'?'red':'green',userId:userId(),stakeTon:amount})})
         .then(function(r){return r.json().then(function(d){if(!r.ok||d.ok===false)throw new Error(d.error||'Could not place candle guess');return d})})
         .then(function(data){
-          updateVisibleBalance(data);if(data&&data.round)renderCandleResult(data.round);
+          updateVisibleBalance(data);if(data&&data.round){candleRound=data.round;renderCandleResult(data.round);startCandleTimer()}
           setStatus('Candle guess placed','good');
           var sheet=root.querySelector('[data-predict-bet-sheet]');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}
           if(input)input.value='';
           return loadCandleRound();
         })
-        .catch(function(error){setStatus(error&&error.message?error.message:'Could not place candle guess','bad')})
-        .finally(function(){candleBusy=false;if(submit)submit.disabled=false});
+        .catch(function(error){setStatus(error&&error.message?error.message:'Could not place candle guess','bad');loadCandleRound()})
+        .finally(function(){candleBusy=false;setCandleLocked(isCandleLocked())});
     }
 
     function setMode(mode){
@@ -157,7 +192,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       root.classList.toggle('predict-candle-mode',mode==='candle');
       root.classList.remove('predict-candle-locked');
       paintButtons(mode);
-      if(mode==='candle')start();else close();
+      if(mode==='candle'){start();startCandleTimer()}else{close();stopCandleTimer();setCandleLocked(false)}
     }
 
     window.addEventListener('vexa-predict-mode-change',function(ev){setMode((ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown')});
@@ -168,13 +203,14 @@ export const PREDICT_CANDLE_SCRIPT = `
       }
       var choice=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-choice]'):null;
       if(choice&&root.dataset.predictMode==='candle'){
+        if(isCandleLocked()){ev.preventDefault();ev.stopPropagation();setStatus('This candle is locked. Wait for the next candle.','bad');return}
         candleSide=choice.getAttribute('data-predict-choice')==='down'?'down':'up';
         setTimeout(function(){paintButtons('candle')},20);
       }
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(function(){start();applyCandleHeader()},160);
     },true);
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')close();else if(root.dataset.predictMode==='candle')setTimeout(start,160)});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopCandleTimer()}else if(root.dataset.predictMode==='candle')setTimeout(function(){start();startCandleTimer()},160)});
     setMode('updown');
   });
 })();
