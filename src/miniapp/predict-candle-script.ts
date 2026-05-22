@@ -5,7 +5,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[];
+    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null;
 
     function addStyles(){
       var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}';
@@ -19,11 +19,34 @@ export const PREDICT_CANDLE_SCRIPT = `
       var b=menu&&menu.querySelector('[data-vexa-predict-market].active,[data-predict-market].active');
       return b?(b.getAttribute('data-vexa-predict-market')||b.getAttribute('data-predict-market')||'bitcoin'):'bitcoin';
     }
+    function userId(){
+      var tg=window.Telegram&&window.Telegram.WebApp;
+      var u=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+      return String(u.id||localStorage.getItem('ownerId')||'').trim();
+    }
     function marketLabel(m){return m==='bitcoin'?'Bitcoin':m==='ethereum'?'Ethereum':m==='solana'?'Solana':m==='gold'?'Gold':m==='ton'?'TON':m.charAt(0).toUpperCase()+m.slice(1)}
     function decimalsFor(m){return m==='bitcoin'?0:m==='ton'?4:2}
     function priceText(v){var n=Number(v);if(!isFinite(n)||n<=0)return 'Loading';var d=decimalsFor(activeMarket());return '$'+n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
+    function tonText(v){return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:4})}
     function symbolFor(m){return m==='bitcoin'?'btcusdt':m==='ethereum'?'ethusdt':m==='solana'?'solusdt':m==='gold'?'paxgusdt':m==='ton'?'tonusdt':''}
     function chart(){return root.querySelector('[data-predict-chart]')}
+    function statusEl(){return root.querySelector('[data-predict-bet-status]')}
+    function resultBox(){return root.querySelector('[data-predict-result]')}
+
+    function setStatus(text,type){
+      var el=statusEl();if(!el)return;
+      el.textContent=text||'';
+      el.classList.toggle('bad',type==='bad');
+      el.classList.toggle('good',type==='good');
+    }
+    function updateVisibleBalance(payload){
+      var controls=payload&&payload.userControls;
+      if(!controls||controls.tonBalanceNano===undefined)return;
+      var balance=Number(controls.tonBalanceNano);
+      if(!Number.isFinite(balance))return;
+      if(window.VexaTonBalance&&window.VexaTonBalance.write){window.VexaTonBalance.write(balance,0,false);return}
+      try{window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{tonBalanceNano:balance}}))}catch(e){}
+    }
 
     function ensureLayer(){
       var c=chart();if(!c)return null;
@@ -62,24 +85,68 @@ export const PREDICT_CANDLE_SCRIPT = `
     function start(){
       var sym=symbolFor(activeMarket());
       if(!sym){close();candles=[];render();return}
-      if(market===sym&&ws&&ws.readyState===1){applyCandleHeader();return}
-      market=sym;close();candles=[];render();
+      if(market===sym&&ws&&ws.readyState===1){applyCandleHeader();loadCandleRound();return}
+      market=sym;close();candles=[];render();loadCandleRound();
       fetch('https://api.binance.com/api/v3/klines?symbol='+sym.toUpperCase()+'&interval=1h&limit=18',{cache:'default'}).then(function(r){return r.json()}).then(function(d){
         if(Array.isArray(d)){candles=d.map(function(k){return{o:+k[1],h:+k[2],l:+k[3],c:+k[4]}}).filter(function(x){return x.o&&x.h&&x.l&&x.c});render()}
       }).catch(function(){});
       try{ws=new WebSocket('wss://stream.binance.com:9443/ws/'+sym+'@kline_1h');ws.onmessage=function(e){try{var j=JSON.parse(e.data),k=j.k;if(!k)return;var item={o:+k.o,h:+k.h,l:+k.l,c:+k.c};if(!item.o||!item.h||!item.l||!item.c)return;if(k.x&&candles.length)candles.push(item);else if(candles.length)candles[candles.length-1]=item;else candles=[item];if(candles.length>18)candles=candles.slice(-18);render()}catch(_){}}}catch(e){}
     }
 
+    function renderCandleResult(round){
+      var box=resultBox();if(!box||!round)return;
+      var all=[];(round.userBets||[]).forEach(function(b){all.push(b)});(round.recentUserBets||[]).forEach(function(b){if(!all.some(function(x){return x.id===b.id}))all.push(b)});
+      var done=all.filter(function(b){return b&&b.status}).slice(0,20);
+      if(!done.length)return;
+      var html='<div class="predict-zone-history-track">';
+      done.forEach(function(b){
+        var side=String(b.side||'').toLowerCase()==='down'?'Red':'Green';
+        var stake=Number(b.stakeTon||0),payout=Number(b.payoutTon||0),status=String(b.status||''),kind=status==='won'?'win':status==='lost'?'loss':status==='refunded'?'refund':'active';
+        var amount=status==='won'?('+'+tonText(payout)):status==='lost'?('-'+tonText(stake)):tonText(payout||stake);
+        html+='<span class="predict-zone-history-card '+kind+'">'+side+' '+amount+'</span>';
+      });
+      html+='</div>';
+      box.className='predict-zone-result-strip show';
+      box.innerHTML=html;
+    }
+
+    function loadCandleRound(){
+      if(root.dataset.predictMode!=='candle')return Promise.resolve(null);
+      return fetch('/app/api/predict-round?mode=candle&market='+encodeURIComponent(activeMarket())+'&userId='+encodeURIComponent(userId()),{cache:'no-store'})
+        .then(function(r){return r.json()})
+        .then(function(data){updateVisibleBalance(data);candleRound=data&&data.round;if(candleRound)renderCandleResult(candleRound);return data})
+        .catch(function(){return null});
+    }
+
     function paintButtons(mode){
-      var up=root.querySelector('[data-predict-choice="up"]'),down=root.querySelector('[data-predict-choice="down"]'),title=root.querySelector('[data-predict-bet-title]');
+      var up=root.querySelector('[data-predict-choice="up"]'),down=root.querySelector('[data-predict-choice="down"]'),title=root.querySelector('[data-predict-bet-title]'),q=root.querySelector('[data-predict-bet-question]');
       if(up){up.textContent=mode==='candle'?'Green':'Up';up.disabled=false}
       if(down){down.textContent=mode==='candle'?'Red':'Down';down.disabled=false}
       if(title){
-        if(mode==='candle'&&title.textContent==='Up')title.textContent='Green';
-        else if(mode==='candle'&&title.textContent==='Down')title.textContent='Red';
-        else if(mode!=='candle'&&title.textContent==='Green')title.textContent='Up';
-        else if(mode!=='candle'&&title.textContent==='Red')title.textContent='Down';
+        if(mode==='candle')title.textContent=candleSide==='down'?'Red':'Green';
+        else if(title.textContent==='Green')title.textContent='Up';
+        else if(title.textContent==='Red')title.textContent='Down';
       }
+      if(q&&mode==='candle')q.textContent=marketLabel(activeMarket())+' candle close?';
+    }
+
+    function submitCandleBet(){
+      if(candleBusy)return;
+      var input=root.querySelector('[data-predict-bet-input]'),submit=root.querySelector('[data-predict-bet-submit]');
+      var amount=Number(input&&input.value||0);
+      if(!amount||!isFinite(amount)||amount<=0){setStatus('Enter a valid TON amount','bad');return}
+      candleBusy=true;if(submit)submit.disabled=true;setStatus('Placing candle guess...','');
+      fetch('/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'candle',market:activeMarket(),side:candleSide==='down'?'red':'green',userId:userId(),stakeTon:amount})})
+        .then(function(r){return r.json().then(function(d){if(!r.ok||d.ok===false)throw new Error(d.error||'Could not place candle guess');return d})})
+        .then(function(data){
+          updateVisibleBalance(data);if(data&&data.round)renderCandleResult(data.round);
+          setStatus('Candle guess placed','good');
+          var sheet=root.querySelector('[data-predict-bet-sheet]');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}
+          if(input)input.value='';
+          return loadCandleRound();
+        })
+        .catch(function(error){setStatus(error&&error.message?error.message:'Could not place candle guess','bad')})
+        .finally(function(){candleBusy=false;if(submit)submit.disabled=false});
     }
 
     function setMode(mode){
@@ -95,8 +162,15 @@ export const PREDICT_CANDLE_SCRIPT = `
 
     window.addEventListener('vexa-predict-mode-change',function(ev){setMode((ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown')});
     document.addEventListener('click',function(ev){
+      var submit=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-bet-submit]'):null;
+      if(submit&&root.dataset.predictMode==='candle'){
+        ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();submitCandleBet();return;
+      }
       var choice=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-predict-choice]'):null;
-      if(choice&&root.dataset.predictMode==='candle')setTimeout(function(){var t=root.querySelector('[data-predict-bet-title]');if(t)t.textContent=choice.getAttribute('data-predict-choice')==='up'?'Green':'Red'},20);
+      if(choice&&root.dataset.predictMode==='candle'){
+        candleSide=choice.getAttribute('data-predict-choice')==='down'?'down':'up';
+        setTimeout(function(){paintButtons('candle')},20);
+      }
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(function(){start();applyCandleHeader()},160);
     },true);
