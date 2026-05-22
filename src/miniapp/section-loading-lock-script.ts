@@ -4,6 +4,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   var loadingMeta={};
   var painted={};
   var progressTimers={};
+  var expireTimers={};
   var signatures={};
   var loadInFlight=0;
   var eventSource=null;
@@ -16,7 +17,6 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   }
   function sectionId(id){return id==='predict'?'predictzone':id}
   function modeKeyFromView(id){return id==='predictzone'?'predict':id}
-  function activeViewId(){var sec=document.querySelector('.view.active');return sec?sec.id:'home'}
   function isGlobalLoading(){return !!modes['global-loading']}
   function metaFor(id,item){return loadingMeta[id]||loadingMeta[sectionId(id)]||{startedAt:null,expiresAt:item&&item.expiresAt||null,durationMs:null}}
   function sigFor(id,item,targetId){var meta=metaFor(id,item);return String(id)+'|'+String(targetId||'')+'|'+String(meta.startedAt||'')+'|'+String(meta.expiresAt||item&&item.expiresAt||'')+'|'+String(meta.durationMs||'')}
@@ -53,6 +53,16 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     }
     tick();progressTimers[key]=setInterval(tick,1000);
   }
+  function scheduleExpireCheck(id,item,targetId){
+    var key=timerKey(id,targetId||'');
+    if(expireTimers[key])clearTimeout(expireTimers[key]);
+    var meta=metaFor(id,item);
+    var expiresAt=meta.expiresAt||item&&item.expiresAt||'';
+    var endMs=Date.parse(expiresAt);
+    if(!Number.isFinite(endMs))return;
+    var delay=Math.max(0,endMs-Date.now()+450);
+    expireTimers[key]=setTimeout(function(){expireTimers[key]=0;load()},delay);
+  }
   function ensureLoadingView(id,item,pending,targetViewId){
     var viewId=targetViewId||sectionId(id);
     var sec=document.getElementById(viewId);if(!sec)return;
@@ -64,6 +74,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     painted[sec.id]=1;signatures[sec.id]=sig;sec.classList.add('is-section-locked');
     if(pending)sec.classList.add('is-section-loading-pending');
     var box=current.querySelector('.section-loading-mode-box');if(box){updatePercent(id,box,item);if(!progressTimers[timerKey(id,sec.id)])startPercent(id,box,item,sec.id)}
+    scheduleExpireCheck(id,item,sec.id);
   }
   function prepareTargetLoading(viewId){
     var item=isGlobalLoading()?modes['global-loading']:modes[modeKeyFromView(viewId)];
@@ -78,6 +89,8 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
       var v=sec.querySelector(':scope > .section-loading-mode');if(v)v.remove();
       sec.classList.remove('is-section-loading-active');sec.classList.remove('is-section-loading-pending');
       painted[sec.id]=0;signatures[sec.id]='';
+      Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearInterval(progressTimers[k]);progressTimers[k]=0}});
+      Object.keys(expireTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearTimeout(expireTimers[k]);expireTimers[k]=0}});
     });
   }
   function paint(){
