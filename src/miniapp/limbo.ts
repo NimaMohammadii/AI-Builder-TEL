@@ -15,101 +15,36 @@ var inv=section.querySelector('[data-limbo-inventory]');
 var stateEl=section.querySelector('[data-limbo-state]');
 var renderer,scene,camera,player,lanternMesh,gateMesh,lanternLight,compassArrow;
 var trees=[],rocks=[],pressed={},hasLantern=false,won=false,yaw=0,targetYaw=0,last=performance.now(),walkTime=0,blockedCooldown=0;
-var seed=1337;
+var seed=2419;
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 function say(t){if(msg)msg.textContent=t}
 function sync(){if(inv)inv.textContent=hasLantern?'Lantern on':'No lantern';if(stateEl)stateEl.textContent=won?'Escaped':'Forest'}
-function mat(color,rough,emissive,ei){return new THREE.MeshStandardMaterial({color:color,roughness:rough||1,emissive:emissive||0x000000,emissiveIntensity:ei||0})}
+function tex(kind){var c=document.createElement('canvas'),x,y; c.width=c.height=128; var g=c.getContext('2d'); if(!g)return null; if(kind==='ground'){g.fillStyle='#132516';g.fillRect(0,0,128,128);for(x=0;x<900;x++){g.fillStyle=x%4?'rgba(78,96,49,.18)':'rgba(26,13,7,.2)';g.fillRect(rnd()*128,rnd()*128,1+rnd()*3,1+rnd()*4)}} if(kind==='path'){g.fillStyle='#5b4325';g.fillRect(0,0,128,128);for(x=0;x<520;x++){g.fillStyle=x%3?'rgba(145,113,69,.18)':'rgba(35,22,11,.22)';g.fillRect(rnd()*128,rnd()*128,1+rnd()*4,1+rnd()*3)}} if(kind==='bark'){g.fillStyle='#3a2416';g.fillRect(0,0,128,128);for(x=0;x<36;x++){g.strokeStyle=x%2?'rgba(98,62,35,.45)':'rgba(16,9,5,.38)';g.lineWidth=1+rnd()*3;g.beginPath();g.moveTo(rnd()*128,0);for(y=0;y<128;y+=12)g.lineTo(rnd()*128,y);g.stroke()}} if(kind==='leaf'){g.fillStyle='#0b3e23';g.fillRect(0,0,128,128);for(x=0;x<650;x++){g.fillStyle=x%3?'rgba(36,112,59,.22)':'rgba(2,18,9,.22)';g.beginPath();g.arc(rnd()*128,rnd()*128,1+rnd()*4,0,Math.PI*2);g.fill()}} if(kind==='skin'){g.fillStyle='#5b3a2f';g.fillRect(0,0,128,128);for(x=0;x<160;x++){g.fillStyle='rgba(255,200,160,.08)';g.fillRect(rnd()*128,rnd()*128,1+rnd()*3,1+rnd()*3)}} var t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(kind==='bark'?1:8,kind==='bark'?3:8); t.colorSpace=THREE.SRGBColorSpace; return t}
+var groundTex=tex('ground'),pathTex=tex('path'),barkTex=tex('bark'),leafTex=tex('leaf'),skinTex=tex('skin');
+function mat(color,rough,map,emissive,ei){return new THREE.MeshStandardMaterial({color:color,roughness:rough||1,map:map||null,emissive:emissive||0x000000,emissiveIntensity:ei||0})}
 function init(){
   if(!stage)return;
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x06100b);
-  scene.fog=new THREE.FogExp2(0x06100b,0.043);
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x06100b);scene.fog=new THREE.FogExp2(0x06100b,0.039);
   camera=new THREE.PerspectiveCamera(74,1,0.08,95);
-  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-  renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  stage.appendChild(renderer.domElement);
-  var hemi=new THREE.HemisphereLight(0xb8ffd0,0x071007,0.62);scene.add(hemi);
-  var moon=new THREE.DirectionalLight(0xdcffe8,1.05);moon.position.set(-6,11,5);moon.castShadow=true;moon.shadow.mapSize.set(1024,1024);scene.add(moon);
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;stage.appendChild(renderer.domElement);
+  var hemi=new THREE.HemisphereLight(0xb8ffd0,0x071007,0.58);scene.add(hemi);var moon=new THREE.DirectionalLight(0xdcffe8,1.08);moon.position.set(-6,11,5);moon.castShadow=true;moon.shadow.mapSize.set(1024,1024);scene.add(moon);
   lanternLight=new THREE.PointLight(0xffd27a,0,8,1.7);scene.add(lanternLight);
-  var ground=new THREE.Mesh(new THREE.PlaneGeometry(82,82,28,28),mat(0x0d2315,1));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-  var pathMat=mat(0x5b4424,1);
-  for(var p=0;p<18;p++){var seg=new THREE.Mesh(new THREE.PlaneGeometry(7.8+rnd()*1.2,4.4),pathMat);seg.rotation.x=-Math.PI/2;seg.position.set(Math.sin(p*.55)*1.5,.018,5-p*2.05);seg.rotation.z=Math.sin(p*.6)*.09;seg.receiveShadow=true;scene.add(seg)}
-  makeForest();makeDetails();makeLantern();makeGate();makePlayer();
-  bind();resize();say('You are inside a real forest. Move forward, find the lantern, then reach the glowing gate.');sync();requestAnimationFrame(loop);
+  var ground=new THREE.Mesh(new THREE.PlaneGeometry(82,82,34,34),mat(0x0f2415,1,groundTex));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+  var pathMaterial=mat(0x6a4c2a,1,pathTex);for(var p=0;p<20;p++){var seg=new THREE.Mesh(new THREE.PlaneGeometry(7.8+rnd()*1.4,4.2),pathMaterial);seg.rotation.x=-Math.PI/2;seg.position.set(Math.sin(p*.55)*1.5,.02,5-p*2.05);seg.rotation.z=Math.sin(p*.6)*.09;seg.receiveShadow=true;scene.add(seg)}
+  makeForest();makeDetails();makeLantern();makeGate();makePlayer();bind();resize();say('Move through the realistic forest. Find the lantern, then reach the glowing gate.');sync();requestAnimationFrame(loop)
 }
-function makePlayer(){
-  player=new THREE.Object3D();player.position.set(0,1.55,4);scene.add(player);player.add(camera);camera.position.set(0,0,0);
-  var handMat=mat(0x2b1d19,.75);
-  var leftHand=new THREE.Mesh(new THREE.BoxGeometry(.18,.18,.58),handMat);leftHand.position.set(-.38,-.43,-.86);leftHand.rotation.z=.25;leftHand.castShadow=true;camera.add(leftHand);
-  var rightHand=leftHand.clone();rightHand.position.x=.38;rightHand.rotation.z=-.25;camera.add(rightHand);
-  compassArrow=new THREE.Mesh(new THREE.ConeGeometry(.055,.22,16),mat(0xffd27a,.5,0xffb13d,.8));compassArrow.position.set(0,-.28,-.72);compassArrow.rotation.x=-Math.PI/2;camera.add(compassArrow);
-}
-function makeTree(x,z,s,type){
-  var trunkMat=mat(type?0x4b2d18:0x3b2415,1);
-  var leafMat=mat(type?0x0f5e31:0x0a4325,1);
-  var trunk=new THREE.Mesh(new THREE.CylinderGeometry(.11*s,.2*s,1.6*s,8),trunkMat);trunk.position.set(x,.8*s,z);trunk.castShadow=true;scene.add(trunk);
-  var crown1=new THREE.Mesh(new THREE.ConeGeometry(.75*s,2.1*s,10),leafMat);crown1.position.set(x,2.2*s,z);crown1.castShadow=true;scene.add(crown1);
-  var crown2=new THREE.Mesh(new THREE.ConeGeometry(.58*s,1.7*s,10),leafMat);crown2.position.set(x,3.05*s,z);crown2.castShadow=true;scene.add(crown2);
-  trees.push({x:x,z:z,r:.62*s});
-}
-function makeForest(){
-  for(var i=0;i<150;i++){var side=i%2===0?-1:1;var x=side*(5+rnd()*28);var z=9-rnd()*54;makeTree(x,z,.65+rnd()*1.05,i%5===0)}
-  for(var j=0;j<40;j++){makeTree(-3.8-rnd()*1.8,7-j*1.05,.48+rnd()*.5,j%4===0);makeTree(3.8+rnd()*1.8,7-j*1.05,.48+rnd()*.5,j%3===0)}
-}
-function makeDetails(){
-  var rockMat=mat(0x263028,1);var grassMat=mat(0x1b6a38,1);
-  for(var i=0;i<34;i++){var side=rnd()>.5?-1:1;var x=side*(2.5+rnd()*3.3);var z=6-rnd()*38;var rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.18+rnd()*.22,0),rockMat);rock.position.set(x,.14,z);rock.rotation.set(rnd()*2,rnd()*3,rnd()*2);rock.castShadow=true;scene.add(rock);rocks.push({x:x,z:z,r:.32})}
-  for(var g=0;g<90;g++){var gx=(rnd()-.5)*11,gz=7-rnd()*42;var blade=new THREE.Mesh(new THREE.ConeGeometry(.035,.42,5),grassMat);blade.position.set(gx,.21,gz);blade.rotation.z=(rnd()-.5)*.45;scene.add(blade)}
-  for(var f=0;f<16;f++){var bug=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),mat(0xb8ff9a,.4,0xaaff6a,1.2));bug.position.set((rnd()-.5)*7,1.2+rnd()*2,4-rnd()*28);bug.userData.base=bug.position.clone();bug.userData.phase=rnd()*6;scene.add(bug)}
-}
-function makeLantern(){
-  lanternMesh=new THREE.Group();
-  var body=new THREE.Mesh(new THREE.CylinderGeometry(.18,.2,.52,16),mat(0xffd77b,.5,0xffb13d,1.35));body.castShadow=true;
-  var ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.025,8,18),mat(0xffd77b,.45,0xffb13d,.75));ring.position.y=.34;ring.rotation.x=Math.PI/2;
-  var glow=new THREE.PointLight(0xffbd67,1.2,4,1.4);glow.position.y=.16;
-  lanternMesh.add(body,ring,glow);lanternMesh.position.set(-2,.42,-14);scene.add(lanternMesh);
-}
-function makeGate(){
-  gateMesh=new THREE.Group();
-  var gateMat=mat(0x85ffc1,.35,0x2cff9b,1.1);
-  var a=new THREE.Mesh(new THREE.BoxGeometry(.38,3.4,.38),gateMat);a.position.set(-1.25,1.7,-27);a.castShadow=true;
-  var b=a.clone();b.position.x=1.25;
-  var top=new THREE.Mesh(new THREE.BoxGeometry(3,.38,.38),gateMat);top.position.set(0,3.25,-27);top.castShadow=true;
-  var gateLight=new THREE.PointLight(0x4cffb2,1.4,8,1.2);gateLight.position.set(0,1.7,-26.4);
-  gateMesh.add(a,b,top,gateLight);scene.add(gateMesh);
-}
-function bind(){
-  section.querySelectorAll('[data-limbo-action]').forEach(function(b){
-    var a=b.getAttribute('data-limbo-action');
-    if(a==='reset'){b.addEventListener('click',function(e){e.preventDefault();reset()});return}
-    b.addEventListener('touchstart',function(e){e.preventDefault();pressed[a]=true},{passive:false});
-    b.addEventListener('touchend',function(e){e.preventDefault();pressed[a]=false},{passive:false});
-    b.addEventListener('mousedown',function(){pressed[a]=true});
-    b.addEventListener('mouseup',function(){pressed[a]=false});
-    b.addEventListener('mouseleave',function(){pressed[a]=false});
-    b.addEventListener('click',function(e){e.preventDefault();tap(a)});
-  });
-}
+function makePlayer(){player=new THREE.Object3D();player.position.set(0,1.55,4);scene.add(player);player.add(camera);camera.position.set(0,0,0);var skin=mat(0x6b493a,.72,skinTex);var sleeve=mat(0x171211,.75,null);function arm(side){var group=new THREE.Group();var fore=new THREE.Mesh(new THREE.CylinderGeometry(.085,.105,.58,14),sleeve);fore.rotation.x=1.12;fore.rotation.z=side*.25;fore.position.set(side*.37,-.38,-.74);fore.castShadow=true;var hand=new THREE.Mesh(new THREE.SphereGeometry(.12,16,10),skin);hand.scale.set(.88,.55,1.18);hand.position.set(side*.42,-.43,-1.03);hand.castShadow=true;group.add(fore,hand);camera.add(group)}arm(-1);arm(1);compassArrow=new THREE.Mesh(new THREE.ConeGeometry(.055,.22,16),mat(0xffd27a,.5,null,0xffb13d,.8));compassArrow.position.set(0,-.28,-.72);compassArrow.rotation.x=-Math.PI/2;camera.add(compassArrow)}
+function makeTree(x,z,s,type){var trunkMat=mat(type?0x4b2d18:0x3b2415,1,barkTex);var leafMat=mat(type?0x0f5e31:0x0a4325,1,leafTex);var trunk=new THREE.Mesh(new THREE.CylinderGeometry(.11*s,.22*s,1.7*s,9),trunkMat);trunk.position.set(x,.85*s,z);trunk.rotation.z=(rnd()-.5)*.12;trunk.castShadow=true;scene.add(trunk);var crown1=new THREE.Mesh(new THREE.ConeGeometry(.78*s,2.15*s,12),leafMat);crown1.position.set(x,2.24*s,z);crown1.rotation.y=rnd()*6.28;crown1.castShadow=true;scene.add(crown1);var crown2=new THREE.Mesh(new THREE.ConeGeometry(.6*s,1.75*s,12),leafMat);crown2.position.set(x,3.08*s,z);crown2.rotation.y=rnd()*6.28;crown2.castShadow=true;scene.add(crown2);trees.push({x:x,z:z,r:.62*s})}
+function makeForest(){for(var i=0;i<165;i++){var side=i%2===0?-1:1;makeTree(side*(5+rnd()*28),9-rnd()*55,.65+rnd()*1.08,i%5===0)}for(var j=0;j<44;j++){makeTree(-3.8-rnd()*1.8,7-j*1.05,.48+rnd()*.5,j%4===0);makeTree(3.8+rnd()*1.8,7-j*1.05,.48+rnd()*.5,j%3===0)}}
+function makeDetails(){var rockMat=mat(0x263028,1,null);var grassMat=mat(0x1b6a38,1,null);for(var i=0;i<42;i++){var side=rnd()>.5?-1:1;var rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.18+rnd()*.24,0),rockMat);rock.position.set(side*(2.5+rnd()*3.4),.14,6-rnd()*40);rock.rotation.set(rnd()*2,rnd()*3,rnd()*2);rock.castShadow=true;scene.add(rock);rocks.push({x:rock.position.x,z:rock.position.z,r:.34})}for(var g=0;g<130;g++){var blade=new THREE.Mesh(new THREE.ConeGeometry(.035,.42,5),grassMat);blade.position.set((rnd()-.5)*11,.21,7-rnd()*44);blade.rotation.z=(rnd()-.5)*.45;scene.add(blade)}for(var f=0;f<20;f++){var bug=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),mat(0xb8ff9a,.4,null,0xaaff6a,1.2));bug.position.set((rnd()-.5)*7,1.2+rnd()*2,4-rnd()*30);bug.userData.base=bug.position.clone();bug.userData.phase=rnd()*6;scene.add(bug)}}
+function makeLantern(){lanternMesh=new THREE.Group();var body=new THREE.Mesh(new THREE.CylinderGeometry(.18,.2,.52,16),mat(0xffd77b,.5,null,0xffb13d,1.35));body.castShadow=true;var ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.025,8,18),mat(0xffd77b,.45,null,0xffb13d,.75));ring.position.y=.34;ring.rotation.x=Math.PI/2;var glass=new THREE.Mesh(new THREE.SphereGeometry(.19,16,12),mat(0xffe3a0,.18,null,0xffbd67,.55));glass.scale.y=.72;var glow=new THREE.PointLight(0xffbd67,1.2,4,1.4);glow.position.y=.16;lanternMesh.add(body,ring,glass,glow);lanternMesh.position.set(-2,.42,-14);scene.add(lanternMesh)}
+function makeGate(){gateMesh=new THREE.Group();var gateMat=mat(0x85ffc1,.35,null,0x2cff9b,1.1);var a=new THREE.Mesh(new THREE.BoxGeometry(.38,3.4,.38),gateMat);a.position.set(-1.25,1.7,-27);a.castShadow=true;var b=a.clone();b.position.x=1.25;var top=new THREE.Mesh(new THREE.BoxGeometry(3,.38,.38),gateMat);top.position.set(0,3.25,-27);top.castShadow=true;var gateLight=new THREE.PointLight(0x4cffb2,1.4,8,1.2);gateLight.position.set(0,1.7,-26.4);gateMesh.add(a,b,top,gateLight);scene.add(gateMesh)}
+function bind(){section.querySelectorAll('[data-limbo-action]').forEach(function(b){var a=b.getAttribute('data-limbo-action');if(a==='reset'){b.addEventListener('click',function(e){e.preventDefault();reset()});return}b.addEventListener('touchstart',function(e){e.preventDefault();pressed[a]=true},{passive:false});b.addEventListener('touchend',function(e){e.preventDefault();pressed[a]=false},{passive:false});b.addEventListener('mousedown',function(){pressed[a]=true});b.addEventListener('mouseup',function(){pressed[a]=false});b.addEventListener('mouseleave',function(){pressed[a]=false});b.addEventListener('click',function(e){e.preventDefault();tap(a)})})}
 function tap(a){pressed[a]=true;setTimeout(function(){pressed[a]=false},120)}
-function reset(){hasLantern=false;won=false;yaw=0;targetYaw=0;player.position.set(0,1.55,4);player.rotation.y=0;lanternMesh.visible=true;lanternLight.intensity=0;scene.fog.density=.043;say('You are inside a real forest. Move forward, find the lantern, then reach the glowing gate.');sync()}
+function reset(){hasLantern=false;won=false;yaw=0;targetYaw=0;player.position.set(0,1.55,4);player.rotation.y=0;lanternMesh.visible=true;lanternLight.intensity=0;scene.fog.density=.039;say('Move through the realistic forest. Find the lantern, then reach the glowing gate.');sync()}
 function collides(nx,nz){if(Math.abs(nx)>32||nz>8||nz<-33)return true;var i,t,dx,dz;for(i=0;i<trees.length;i++){t=trees[i];dx=nx-t.x;dz=nz-t.z;if(dx*dx+dz*dz<(t.r+.36)*(t.r+.36))return true}for(i=0;i<rocks.length;i++){t=rocks[i];dx=nx-t.x;dz=nz-t.z;if(dx*dx+dz*dz<(t.r+.22)*(t.r+.22))return true}return false}
 function move(dx,dz){var nx=player.position.x+dx,nz=player.position.z+dz;if(!collides(nx,nz)){player.position.x=nx;player.position.z=nz}else if(blockedCooldown<=0){say('A tree blocks your way.');blockedCooldown=.8}}
-function update(dt,now){
-  if(blockedCooldown>0)blockedCooldown-=dt;
-  if(won)return;
-  if(pressed.left)targetYaw+=dt*2.45;if(pressed.right)targetYaw-=dt*2.45;yaw+=(targetYaw-yaw)*Math.min(1,dt*12);player.rotation.y=yaw;
-  var walking=pressed.forward||pressed.back;var speed=walking?4.0:0;var dir=pressed.back?1:-1;
-  if(speed){move(Math.sin(yaw)*speed*dt*dir,Math.cos(yaw)*speed*dt*dir);walkTime+=dt*9;camera.position.y=Math.sin(walkTime)*.045}else{camera.position.y*=.86}
-  if(lanternMesh.visible){lanternMesh.rotation.y+=dt*1.7;lanternMesh.position.y=.42+Math.sin(now*.002)*.06;if(player.position.distanceTo(lanternMesh.position)<1.35){hasLantern=true;lanternMesh.visible=false;lanternLight.intensity=2.1;scene.fog.density=.027;say('Lantern found. The forest opens. Find the glowing gate.');sync()}}
-  if(hasLantern){lanternLight.position.copy(player.position);lanternLight.position.y=1.25}
-  if(compassArrow){var target=hasLantern?new THREE.Vector3(0,0,-27):lanternMesh.position;var angle=Math.atan2(target.x-player.position.x,target.z-player.position.z)-yaw;compassArrow.rotation.z=angle}
-  scene.children.forEach(function(o){if(o.userData&&o.userData.base){o.position.x=o.userData.base.x+Math.sin(now*.0015+o.userData.phase)*.35;o.position.y=o.userData.base.y+Math.sin(now*.002+o.userData.phase)*.18}});
-  if(player.position.distanceTo(new THREE.Vector3(0,1.5,-27))<2.2){if(hasLantern){won=true;say('You escaped the forest.')}else say('The gate is locked by fog. Find the lantern first.');sync()}
-}
+function update(dt,now){if(blockedCooldown>0)blockedCooldown-=dt;if(won)return;if(pressed.left)targetYaw+=dt*2.45;if(pressed.right)targetYaw-=dt*2.45;yaw+=(targetYaw-yaw)*Math.min(1,dt*12);player.rotation.y=yaw;var walking=pressed.forward||pressed.back;var speed=walking?4.0:0;var dir=pressed.back?1:-1;if(speed){move(Math.sin(yaw)*speed*dt*dir,Math.cos(yaw)*speed*dt*dir);walkTime+=dt*9;camera.position.y=Math.sin(walkTime)*.045}else{camera.position.y*=.86}if(lanternMesh.visible){lanternMesh.rotation.y+=dt*1.7;lanternMesh.position.y=.42+Math.sin(now*.002)*.06;if(player.position.distanceTo(lanternMesh.position)<1.35){hasLantern=true;lanternMesh.visible=false;lanternLight.intensity=2.1;scene.fog.density=.025;say('Lantern found. The forest opens. Find the glowing gate.');sync()}}if(hasLantern){lanternLight.position.copy(player.position);lanternLight.position.y=1.25}if(compassArrow){var target=hasLantern?new THREE.Vector3(0,0,-27):lanternMesh.position;var angle=Math.atan2(target.x-player.position.x,target.z-player.position.z)-yaw;compassArrow.rotation.z=angle}scene.children.forEach(function(o){if(o.userData&&o.userData.base){o.position.x=o.userData.base.x+Math.sin(now*.0015+o.userData.phase)*.35;o.position.y=o.userData.base.y+Math.sin(now*.002+o.userData.phase)*.18}});if(player.position.distanceTo(new THREE.Vector3(0,1.5,-27))<2.2){if(hasLantern){won=true;say('You escaped the forest.')}else say('The gate is locked by fog. Find the lantern first.');sync()}}
 function resize(){if(!stage||!renderer||!camera)return;var w=stage.clientWidth||300,h=stage.clientHeight||500;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 function loop(now){var dt=Math.min(.05,(now-last)/1000);last=now;resize();update(dt,now);if(gateMesh)gateMesh.rotation.y=Math.sin(now*.001)*.035;renderer.render(scene,camera);requestAnimationFrame(loop)}
 try{init()}catch(e){say('3D engine could not start.')}
