@@ -24,7 +24,7 @@ export const PREDICT_TOOLBAR_SCRIPT = `
       var toggle=ev.target&&ev.target.closest?ev.target.closest('[data-predict-mode-toggle]'):null;
       var option=ev.target&&ev.target.closest?ev.target.closest('[data-predict-mode]'):null;
       if(toggle){ev.preventDefault();ev.stopPropagation();wrap.classList.toggle('open');return}
-      if(option){ev.preventDefault();ev.stopPropagation();row.querySelectorAll('[data-predict-mode]').forEach(function(n){n.classList.toggle('active',n===option)});if(label)label.textContent=option.getAttribute('data-predict-mode')==='candle'?'Candle Guess':'Up or Down';wrap.classList.remove('open')}
+      if(option){ev.preventDefault();ev.stopPropagation();var mode=option.getAttribute('data-predict-mode')==='candle'?'candle':'updown';row.querySelectorAll('[data-predict-mode]').forEach(function(n){n.classList.toggle('active',n===option)});if(label)label.textContent=mode==='candle'?'Candle Guess':'Up or Down';wrap.classList.remove('open');try{window.dispatchEvent(new CustomEvent('vexa-predict-mode-change',{detail:{mode:mode}}))}catch(e){}}
     });
     document.addEventListener('click',function(ev){if(!row.contains(ev.target))wrap.classList.remove('open')},true);
     if(window.VexaUploadedImages&&window.VexaUploadedImages.load){try{window.VexaUploadedImages.load()}catch(e){}}
