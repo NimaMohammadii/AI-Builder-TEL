@@ -5,7 +5,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     var root=document.getElementById('predictzone');
     if(!root||root.dataset.predictCandleReady==='1')return;
     root.dataset.predictCandleReady='1';
-    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0;
+    var ws=null,market='',candles=[],candleSide='up',candleBusy=false,candleRound=null,candleTimer=0,uiTimer=0,historyObserver=null,lastUserHistoryHtml='';
 
     function addStyles(){
       var css='#predictzone.predict-candle-mode .predict-zone-chart-line,#predictzone.predict-candle-mode .predict-zone-chart-fill,#predictzone.predict-candle-mode .predict-zone-chart-dot,#predictzone.predict-candle-mode .predict-zone-price-guide,#predictzone.predict-candle-mode .predict-zone-start-guide,#predictzone.predict-candle-mode .predict-zone-start-target,#predictzone.predict-candle-mode .predict-zone-live-bets{display:none!important}#predictzone .predict-candle-layer{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .18s ease}#predictzone.predict-candle-mode .predict-candle-layer{opacity:1}#predictzone .predict-candle-layer svg{width:100%;height:100%;display:block;overflow:visible}#predictzone .predict-candle-up{fill:rgba(58,255,150,.82);stroke:rgba(58,255,150,.95)}#predictzone .predict-candle-down{fill:rgba(255,92,118,.82);stroke:rgba(255,92,118,.95)}#predictzone .predict-candle-wick{stroke-width:1.4;stroke-linecap:round}#predictzone .predict-candle-caption{position:absolute;left:12px;top:10px;z-index:5;height:24px;display:none;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);color:rgba(255,255,255,.74);font-size:10px;font-weight:850;letter-spacing:.04em}#predictzone.predict-candle-mode .predict-candle-caption{display:inline-flex}#predictzone .predict-candle-lock-icon{display:inline-block;width:22px;height:22px;margin-right:7px;vertical-align:-5px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(255,255,255,.18)) drop-shadow(0 6px 12px rgba(0,0,0,.38))}#predictzone.predict-candle-locked [data-predict-choice]{opacity:.46!important;filter:saturate(.7)!important}#predictzone.predict-candle-mode .predict-zone-countdown{display:inline-flex!important;align-items:center!important;gap:2px!important}';
@@ -99,6 +99,50 @@ export const PREDICT_CANDLE_SCRIPT = `
         if(start)start.textContent=priceText(latest.o);
         if(live)live.textContent=priceText(latest.c);
       }
+      translateCandleHistory();
+      restoreCandleUserHistory();
+    }
+
+    function translateCandleHistory(){
+      if(root.dataset.predictMode!=='candle')return;
+      root.querySelectorAll('[data-predict-result] .predict-zone-history-card').forEach(function(card){
+        var text=card.textContent||'';
+        if(text.indexOf('Up ')===0)card.textContent=text.replace(/^Up\s+/,'Green ');
+        else if(text.indexOf('Down ')===0)card.textContent=text.replace(/^Down\s+/,'Red ');
+      });
+      saveCandleUserHistory();
+    }
+    function saveCandleUserHistory(){
+      if(root.dataset.predictMode!=='candle')return;
+      var box=resultBox();if(!box)return;
+      if(box.querySelector('.predict-zone-history-card'))lastUserHistoryHtml=box.innerHTML;
+    }
+    function restoreCandleUserHistory(){
+      if(root.dataset.predictMode!=='candle'||!lastUserHistoryHtml)return;
+      var box=resultBox();if(!box||box.querySelector('.predict-zone-history-card'))return;
+      box.innerHTML=lastUserHistoryHtml;
+      box.classList.add('show');
+    }
+    function installHistoryGuard(){
+      if(historyObserver)return;
+      var box=resultBox();if(!box||!window.MutationObserver)return;
+      historyObserver=new MutationObserver(function(){
+        if(root.dataset.predictMode!=='candle')return;
+        if(box.querySelector('.predict-zone-history-card')){translateCandleHistory();saveCandleUserHistory();return}
+        if(lastUserHistoryHtml)requestAnimationFrame(restoreCandleUserHistory);
+      });
+      historyObserver.observe(box,{childList:true,subtree:true});
+    }
+    function stopUiLoop(){if(uiTimer){clearInterval(uiTimer);uiTimer=0}}
+    function startUiLoop(){
+      if(uiTimer)return;
+      function tick(){
+        if(root.dataset.predictMode!=='candle'){stopUiLoop();return}
+        applyCandleHeader();
+        installHistoryGuard();
+      }
+      tick();
+      uiTimer=setInterval(tick,1000);
     }
 
     function yy(v,min,max){return 24+((max-v)/(max-min||1))*172}
@@ -142,6 +186,8 @@ export const PREDICT_CANDLE_SCRIPT = `
       html+='</div>';
       box.className='predict-zone-result-strip show';
       box.innerHTML=html;
+      translateCandleHistory();
+      saveCandleUserHistory();
     }
 
     function loadCandleRound(){
@@ -192,7 +238,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       root.classList.toggle('predict-candle-mode',mode==='candle');
       root.classList.remove('predict-candle-locked');
       paintButtons(mode);
-      if(mode==='candle'){start();startCandleTimer()}else{close();stopCandleTimer();setCandleLocked(false)}
+      if(mode==='candle'){start();startCandleTimer();startUiLoop();installHistoryGuard()}else{close();stopCandleTimer();stopUiLoop();setCandleLocked(false);lastUserHistoryHtml=''}
     }
 
     window.addEventListener('vexa-predict-mode-change',function(ev){setMode((ev&&ev.detail&&ev.detail.mode)==='candle'?'candle':'updown')});
@@ -210,7 +256,7 @@ export const PREDICT_CANDLE_SCRIPT = `
       var marketBtn=ev.target&&ev.target.closest?ev.target.closest('#predictzone [data-vexa-predict-market],#predictzone [data-predict-market]'):null;
       if(marketBtn&&root.dataset.predictMode==='candle')setTimeout(function(){start();applyCandleHeader()},160);
     },true);
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopCandleTimer()}else if(root.dataset.predictMode==='candle')setTimeout(function(){start();startCandleTimer()},160)});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){close();stopCandleTimer();stopUiLoop()}else if(root.dataset.predictMode==='candle')setTimeout(function(){start();startCandleTimer();startUiLoop();installHistoryGuard()},160)});
     setMode('updown');
   });
 })();
