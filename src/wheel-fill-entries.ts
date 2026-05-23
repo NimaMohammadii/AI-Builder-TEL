@@ -1,4 +1,4 @@
-export const WHEEL_FILL_DELAY_MS = 12_000;
+export const WHEEL_FILL_DELAY_MS = 15_000;
 export const WHEEL_FILL_ENTRY_COUNT = 60;
 
 export type WheelFillEntry = {
