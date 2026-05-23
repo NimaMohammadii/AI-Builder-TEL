@@ -27,4 +27,5 @@ export const PLINKO_CONTROLS_MODERN_STYLES = `
 #plinko .autoplay-toggle.active{background:#8a173a!important;border-color:#a8264f!important}
 #plinko .autoplay-toggle span{box-shadow:0 4px 12px rgba(0,0,0,.42)!important}
 @media(max-width:420px){#plinko .plinko-controls{width:min(94%,374px)!important;border-radius:30px!important;gap:12px!important;padding:14px!important}#plinko .plinko-control-row{gap:7px!important;grid-template-columns:minmax(0,1fr) 108px!important}#plinko .plinko-label{font-size:12px!important}#plinko .rows-select strong{font-size:19px!important}#plinko .bet-amount{grid-template-columns:.68fr 1.64fr .68fr!important;gap:8px!important}}
+/* dice-aligned-plinko-controls */
 `;
