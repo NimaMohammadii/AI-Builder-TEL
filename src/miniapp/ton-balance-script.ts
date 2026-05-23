@@ -36,7 +36,24 @@ export const TON_BALANCE_SCRIPT = `
   function render(value){var balance=clean(value);var units=plinkoUnits(balance);localStorage.setItem(KEY,String(balance));document.querySelectorAll('[data-ton-balance-display],#topTonBalance').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=formatTonNumber(balance)});document.querySelectorAll('#plinkoTonBalance,#minesTonBalance').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=String(balance)});document.querySelectorAll('#plinkoCredit,#creditCount,#plinkoCreditHeader').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=String(units)});return balance}
   function emit(balance,delta){try{var units=plinkoUnits(balance);var unitDelta=Math.trunc((Number(delta)||0)/PLINKO_UNIT_NANO);window.dispatchEvent(new CustomEvent('vexa-ton-balance-sync',{detail:{tonBalanceNano:balance,deltaNano:Math.floor(Number(delta)||0),display:formatTonNumber(balance),rate:NANO_PER_TON}}));window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:units,delta:unitDelta,tonBalanceNano:balance,display:formatTonNumber(balance),rate:PLINKO_UNIT_NANO}}))}catch(e){}}
   function write(value,delta,silent){var balance=render(value);if(!silent)emit(balance,delta);return balance}
-  async function load(){loadPending();if(hasPending())scheduleFlush(FLUSH_MS);return write(read(),0,false)}
+  async function fetchServerBalance(){
+    var u=user();
+    if(!u.id)return NaN;
+    var r=await fetch('/app/api/user-controls?userId='+encodeURIComponent(u.id),{headers:{'accept':'application/json'},cache:'no-store'});
+    var j=await r.json().catch(function(){return null});
+    if(!r.ok)throw new Error(j&&j.error?j.error:'Could not load TON balance');
+    var server=Number(j&&j.tonBalanceNano);
+    return Number.isFinite(server)?server:NaN;
+  }
+  async function load(){
+    loadPending();
+    if(hasPending()){scheduleFlush(FLUSH_MS);return write(read(),0,false)}
+    try{
+      var server=await fetchServerBalance();
+      if(Number.isFinite(server))return write(server,0,false);
+    }catch(e){}
+    return write(read(),0,false);
+  }
   function scheduleFlush(delay){
     if(flushTimer)return;
     flushTimer=setTimeout(function(){flushTimer=0;flushPending(false)},Math.max(1000,Math.floor(Number(delay)||FLUSH_MS)));
@@ -85,7 +102,7 @@ export const TON_BALANCE_SCRIPT = `
   window.addEventListener('vexa-ton-balance-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.deltaNano!==undefined?ev.detail.deltaNano:ev.detail.delta);if(Number.isFinite(delta)&&delta!==0){pushDelta(delta);return}var balance=Number(ev.detail.tonBalanceNano);if(Number.isFinite(balance))write(balance,0,true)});
   window.addEventListener('vexa-credit-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.delta);if(Number.isFinite(delta)&&delta!==0)pushDelta(Math.trunc(delta*PLINKO_UNIT_NANO))});
   window.addEventListener('vexa-ton-balance-sync',function(ev){if(!ev||!ev.detail)return;var balance=Number(ev.detail.tonBalanceNano);if(Number.isFinite(balance)&&!hasPending())render(balance)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden)flushPending(true);else if(hasPending())scheduleFlush(FLUSH_MS)});
+  document.addEventListener('visibilitychange',function(){if(document.hidden)flushPending(true);else if(hasPending())scheduleFlush(FLUSH_MS);else load()});
   window.addEventListener('beforeunload',function(){flushPending(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
 })();
