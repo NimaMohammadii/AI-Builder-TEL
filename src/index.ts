@@ -8,6 +8,7 @@ import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
+import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
@@ -248,7 +249,7 @@ app.post('/api/bots/:id/publish', async (c) => {
 app.get('/app/api/wheel-round', async (c) => {
   try {
     await ensureWheelTables(c.env);
-    const round = await currentWheelRound(c.env);
+    const round = await fillWheelRoundIfReady(c.env, await currentWheelRound(c.env));
     return c.json(await wheelState(c.env, round), 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load wheel round' }, 400, { 'cache-control': 'no-store' });
@@ -283,6 +284,7 @@ app.post('/app/api/wheel-round/join', async (c) => {
       throw error;
     }
     round = await getWheelRound(c.env, round.id) ?? round;
+    round = await fillWheelRoundIfReady(c.env, round);
     entries = await wheelEntries(c.env, round.id);
     if (entries.length >= WHEEL_MAX_PLAYERS && round.status === 'open') round = await closeWheelRound(c.env, round, entries);
     return c.json(await wheelState(c.env, round), 200, { 'cache-control': 'no-store' });
@@ -390,6 +392,33 @@ async function getWheelRound(env: Env, roundId: string): Promise<WheelRoundRow |
 async function wheelEntries(env: Env, roundId: string): Promise<WheelEntryRow[]> {
   const rows = await env.DB.prepare('SELECT * FROM wheel_entries WHERE round_id = ? ORDER BY ticket_start ASC').bind(roundId).all<WheelEntryRow>();
   return rows.results ?? [];
+}
+
+async function fillWheelRoundIfReady(env: Env, round: WheelRoundRow): Promise<WheelRoundRow> {
+  if (round.status !== 'open') return round;
+  let entries = await wheelEntries(env, round.id);
+  if (entries.length >= WHEEL_MAX_PLAYERS) return closeWheelRound(env, round, entries);
+  if (!isWheelFillReady(round.created_at)) return round;
+  const needed = WHEEL_MAX_PLAYERS - entries.length;
+  let ticketStart = entries.reduce((max, entry) => Math.max(max, Number(entry.ticket_end || 0)), 0) + 1;
+  let addedTotal = 0;
+  for (const fillEntry of pickWheelFillEntries(round.id, entries.map((entry) => entry.user_id), needed)) {
+    const amountNano = fillEntry.amountTon * 1_000_000_000;
+    const ticketEnd = ticketStart + amountNano - 1;
+    const result = await env.DB.prepare(`INSERT OR IGNORE INTO wheel_entries (id, round_id, user_id, username, first_name, amount_nano, ticket_start, ticket_end, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
+      .bind(id('whent'), round.id, fillEntry.userId, fillEntry.name, fillEntry.name, amountNano, ticketStart, ticketEnd)
+      .run();
+    if ((result.meta?.changes ?? 0) > 0) {
+      ticketStart = ticketEnd + 1;
+      addedTotal += amountNano;
+    }
+  }
+  if (addedTotal > 0) {
+    await env.DB.prepare('UPDATE wheel_rounds SET total_amount_nano = total_amount_nano + ? WHERE id = ? AND status = ?').bind(addedTotal, round.id, 'open').run();
+  }
+  const nextRound = await getWheelRound(env, round.id) ?? round;
+  entries = await wheelEntries(env, round.id);
+  return entries.length >= WHEEL_MAX_PLAYERS ? closeWheelRound(env, nextRound, entries) : nextRound;
 }
 
 async function closeWheelRound(env: Env, round: WheelRoundRow, entries: WheelEntryRow[]): Promise<WheelRoundRow> {
