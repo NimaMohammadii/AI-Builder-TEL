@@ -1,4 +1,4 @@
-export const WHEEL_FILL_DELAY_MS = 15_000;
+export const WHEEL_FILL_DELAY_MS = 12_000;
 export const WHEEL_FILL_ENTRY_COUNT = 60;
 
 export type WheelFillEntry = {
@@ -19,19 +19,19 @@ export function pickWheelFillEntries(roundId: string, usedIds: string[], needed:
   for (let attempts = 0; entries.length < needed && attempts < WHEEL_FILL_ENTRY_COUNT * 3; attempts += 1) {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     const index = seed % WHEEL_FILL_ENTRY_COUNT;
-    const userId = `wheel_fill_${index + 1}`;
+    const userId = `wheel_seat_${index + 1}`;
     if (used.has(userId)) continue;
     used.add(userId);
-    entries.push({ userId, name: wheelFillName(index), amountTon: wheelFillAmountTon(index) });
+    entries.push({ userId, name: wheelSeatName(index), amountTon: wheelSeatAmountTon(index) });
   }
   return entries;
 }
 
-function wheelFillName(index: number): string {
-  return `Fill Entry ${String(index + 1).padStart(2, '0')}`;
+function wheelSeatName(index: number): string {
+  return `Round Seat ${String(index + 1).padStart(2, '0')}`;
 }
 
-function wheelFillAmountTon(index: number): number {
+function wheelSeatAmountTon(index: number): number {
   if (index <= 0) return 4;
   if (index >= WHEEL_FILL_ENTRY_COUNT - 1) return 100;
   return 5 + ((index * 7) % 95);
