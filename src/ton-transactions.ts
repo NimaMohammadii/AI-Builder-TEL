@@ -8,6 +8,7 @@ export type TonTransactionMeta = {
   description?: string;
   referenceId?: string;
   referenceType?: string;
+  roundId?: string;
   status?: string;
   metadata?: Record<string, unknown>;
 };
@@ -69,7 +70,7 @@ export async function recordTonTransaction(env: Env, userId: string, amountNano:
   const title = cleanText(meta.title || titleForKind(kind, value), 90);
   const description = cleanNullable(meta.description, 180);
   const status = cleanText(meta.status || 'completed', 40);
-  const referenceId = cleanNullable(meta.referenceId, 120);
+  const referenceId = cleanNullable(meta.referenceId || meta.roundId, 120);
   const referenceType = cleanNullable(meta.referenceType || kind, 60);
   const metadataJson = meta.metadata ? JSON.stringify(meta.metadata).slice(0, 2000) : null;
   const id = 'txn_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
@@ -130,7 +131,7 @@ function emptyTransaction(userId: string, balanceAfterNano: number, meta: TonTra
     amountNano: 0,
     balanceAfterNano: Math.max(0, Math.floor(Number(balanceAfterNano) || 0)),
     status: cleanText(meta.status || 'skipped', 40),
-    referenceId: cleanNullable(meta.referenceId, 120),
+    referenceId: cleanNullable(meta.referenceId || meta.roundId, 120),
     referenceType: cleanNullable(meta.referenceType, 60),
     metadata: meta.metadata || {},
     createdAt: new Date().toISOString(),
