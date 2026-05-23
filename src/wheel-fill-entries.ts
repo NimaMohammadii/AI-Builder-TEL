@@ -13,10 +13,11 @@ export function isWheelFillReady(createdAt: string, nowMs = Date.now()): boolean
 }
 
 export function pickWheelFillEntries(roundId: string, usedIds: string[], needed: number): WheelFillEntry[] {
+  const targetCount = Math.min(1, Math.max(0, Math.floor(needed)));
   const used = new Set(usedIds);
   const entries: WheelFillEntry[] = [];
   let seed = hashWheelFillSeed(roundId);
-  for (let attempts = 0; entries.length < needed && attempts < WHEEL_FILL_ENTRY_COUNT * 3; attempts += 1) {
+  for (let attempts = 0; entries.length < targetCount && attempts < WHEEL_FILL_ENTRY_COUNT * 3; attempts += 1) {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     const index = seed % WHEEL_FILL_ENTRY_COUNT;
     const userId = `wheel_seat_${index + 1}`;
