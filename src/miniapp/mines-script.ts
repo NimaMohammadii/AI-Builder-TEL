@@ -10,7 +10,7 @@ export const MINES_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
   function toNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*NANO))}
-  function fromNano(value){var ton=Math.max(0,Math.floor(Number(value)||0))/NANO;return ton.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function fromNano(value){var ton=Math.max(0,Math.floor(Number(value)||0))/NANO;return ton.toFixed(2)}
   function preload(url){if(!url)return;var img=new Image();img.decoding='async';img.src=url;if(img.decode)img.decode().catch(function(){})}
   function imageEl(kind){var img=document.createElement('img');img.decoding='async';img.loading='eager';img.alt=kind==='bomb'?'Mine':'Safe';img.src=kind==='bomb'?tileImages.bomb:tileImages.safe;img.onerror=function(){img.remove()};return img}
   function applyImages(data){if(!data)return;if(data.minesSafeUrl)tileImages.safe=data.minesSafeUrl;if(data.minesBombUrl)tileImages.bomb=data.minesBombUrl;preload(tileImages.safe);preload(tileImages.bomb);primeBoardImages()}
@@ -27,7 +27,7 @@ export const MINES_SCRIPT = `
   function setStatus(text){var el=q('minesToast');if(!el||!text)return;el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove('show')},4200)}
   function setMultiplierText(){var mx=q('minesMultiplier');if(!mx)return;var next=state.multiplier.toFixed(2)+'x';if(mx.textContent!==next&&lastMultiplierText!==next){mx.classList.remove('bump');void mx.offsetWidth;mx.classList.add('bump')}mx.textContent=next;lastMultiplierText=next;var view=q('mines');if(view)view.classList.toggle('playing',state.active)}
   function setBetNano(nano){var amount=q('minesBet');state.amountNano=clamp(Math.floor(Number(nano)||0),1,999999999999999);if(amount)amount.value=fromNano(state.amountNano);setMultiplierText()}
-  function refresh(){var amount=q('minesBet');var count=q('minesCount');state.amountNano=clamp(toNano(amount&&amount.value),1,999999999999999);state.mines=clamp(Math.floor(Number(count&&count.value)||3),1,20);if(amount)amount.value=fromNano(state.amountNano);setMultiplierText();var start=q('minesStart');if(start)start.textContent=state.active?'Playing':'Start Game';var cash=q('minesCashout');if(cash)cash.disabled=!state.active||state.revealed<1}
+  function refresh(){var amount=q('minesBet');var count=q('minesCount');state.amountNano=clamp(toNano(amount&&amount.value),1,999999999999999);state.mines=clamp(Math.floor(Number(count&&count.value)||3),1,20);if(amount){amount.setAttribute('step','0.01');amount.value=fromNano(state.amountNano)}setMultiplierText();var start=q('minesStart');if(start)start.textContent=state.active?'Playing':'Start Game';var cash=q('minesCashout');if(cash)cash.disabled=!state.active||state.revealed<1}
   function tileKind(i){return state.active||state.ended?state.bombs[i]?'bomb':'safe':'safe'}
   function setTileBack(tile,kind){var back=tile&&tile.querySelector&&tile.querySelector('.mine-tile-back');if(!back||back.getAttribute('data-kind')===kind)return;back.setAttribute('data-kind',kind);back.textContent='';back.appendChild(imageEl(kind))}
   function primeBoardImages(){document.querySelectorAll('[data-mine-cell]').forEach(function(tile){var i=Number(tile.getAttribute('data-mine-cell'));setTileBack(tile,tileKind(i))})}
