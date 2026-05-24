@@ -312,6 +312,10 @@ async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; 
   try {
     const update = (await c.req.json()) as TelegramUpdate;
     const bot = defaultBotRecord();
+    if (update.pre_checkout_query || update.message?.successful_payment) {
+      await processTelegramUpdate(c.env, bot, update);
+      return Response.json({ ok: true });
+    }
     c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('builder telegram processing failed', error)));
     return Response.json({ ok: true });
   } catch (error) { console.error('builder telegram webhook failed', error); return Response.json({ ok: true, recovered: true }); }
