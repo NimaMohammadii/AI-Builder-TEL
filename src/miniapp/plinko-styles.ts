@@ -1,4 +1,5 @@
 export const PLINKO_STYLES = `
+body:has(#plinko.active) .tabs{display:none!important}
 #plinko.view{overflow:hidden}
 .plinko-page{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:10px 0 132px;position:relative}
 .plinko-top{width:auto;display:flex;justify-content:flex-end;position:fixed;top:calc(26px + env(safe-area-inset-top));right:16px;z-index:12;pointer-events:none}
