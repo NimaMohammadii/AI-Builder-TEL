@@ -2,13 +2,13 @@ export const TON_GAME_UNIT_BRIDGE = `
 (function(){
   var NANO_PER_TON=1000000000;
   function toNano(value){return Math.floor(Math.max(0,Number(String(value||'').replace(',','.'))||0)*NANO_PER_TON)}
-  function fromNano(value){var ton=Math.max(0,Math.floor(Number(value)||0))/NANO_PER_TON;return ton.toFixed(4).replace(/\\.0+$/,'').replace(/(\\.\\d*?)0+$/,'$1')}
+  function fromNano(value){var ton=Math.max(0,Math.floor(Number(value)||0))/NANO_PER_TON;return ton.toFixed(2)}
   function patchInput(id){
     var input=document.getElementById(id);
     if(!input||input.dataset.tonBridge==='1')return;
     input.dataset.tonBridge='1';
     input.dataset.tonDisplay='1';
-    input.setAttribute('step','0.0001');
+    input.setAttribute('step','0.01');
     input.setAttribute('inputmode','decimal');
     input.value=fromNano(toNano(input.value||'0.01'));
   }
