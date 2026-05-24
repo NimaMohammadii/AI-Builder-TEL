@@ -12,7 +12,7 @@ export const PLINKO_TON_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2400)}
   function toNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*NANO))}
-  function toTon(nano){var v=Math.max(0,Math.floor(Number(nano)||0))/NANO;return v.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function toTon(nano){var v=Math.max(0,Math.floor(Number(nano)||0))/NANO;return v.toFixed(2)}
   function readBalance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
   function addBalance(deltaNano){if(window.VexaTonBalance)window.VexaTonBalance.add(Math.floor(Number(deltaNano)||0));else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(deltaNano)||0)}}))}
   function betNano(){var input=q('plinkoBet');var nano=toNano(input&&input.value);if(nano<1)nano=1;return nano}
@@ -49,7 +49,7 @@ export const PLINKO_TON_SCRIPT = `
     var bet=betNano();if(readBalance()<bet){toast('Not enough TON balance');return}
     running=true;addBalance(-bet);var arr=currentMultipliers();var index=Math.floor(Math.random()*arr.length);var win=Math.max(0,Math.floor(bet*(Number(arr[index])||0)));animate(index,win)
   }
-  function normalizeInput(){var input=q('plinkoBet');if(!input)return;input.setAttribute('inputmode','decimal');input.setAttribute('step','0.0001');if(!input.value||Number(input.value)>1000)input.value='0.01'}
+  function normalizeInput(){var input=q('plinkoBet');if(!input)return;input.setAttribute('inputmode','decimal');input.setAttribute('step','0.01');if(!input.value||Number(input.value)>1000)input.value='0.01';else input.value=toTon(toNano(input.value))}
   document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');if(!button)return;var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopImmediatePropagation();drop();return}if(action==='plinko-risk'){risk=button.getAttribute('data-risk')||'medium';document.querySelectorAll('[data-risk]').forEach(function(x){x.classList.toggle('active',x===button)});draw();return}if(action==='plinko-rows'){rows=rows===7?9:rows===9?11:7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);draw();return}if(action==='plinko-bet-half'){ev.preventDefault();setBetNano(Math.max(1,Math.floor(betNano()/2)));return}if(action==='plinko-bet-double'){ev.preventDefault();setBetNano(Math.max(1,Math.min(readBalance(),betNano()*2)));return}},true);
   window.addEventListener('resize',draw);window.addEventListener('vexa-ton-balance-sync',function(){normalizeInput();draw()});
   function start(){normalizeInput();draw();setTimeout(draw,250);setTimeout(draw,900)}
