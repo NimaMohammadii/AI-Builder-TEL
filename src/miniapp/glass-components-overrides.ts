@@ -30,6 +30,38 @@ button:not(.tab):not(.section-keyboard-dismiss),
   border:0!important;
   overflow:hidden!important;
 }
+#depositSheet.deposit-sheet.open,#withdrawSheet.deposit-sheet.open{
+  display:flex!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+#depositSheet.deposit-sheet.open .deposit-panel,#withdrawSheet.deposit-sheet.open .deposit-panel{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transform:translateY(0) scale(1)!important;
+  z-index:2!important;
+  background:rgba(8,8,8,.72)!important;
+  overflow:auto!important;
+}
+#depositSheet.deposit-sheet.open .deposit-panel .deposit-title,
+#depositSheet.deposit-sheet.open .deposit-panel .deposit-copy,
+#depositSheet.deposit-sheet.open .deposit-panel .deposit-custom-field,
+#depositSheet.deposit-sheet.open .deposit-panel .deposit-pay-button,
+#depositSheet.deposit-sheet.open .deposit-panel .deposit-stars-logo,
+#withdrawSheet.deposit-sheet.open .deposit-panel .deposit-title,
+#withdrawSheet.deposit-sheet.open .deposit-panel .deposit-copy,
+#withdrawSheet.deposit-sheet.open .deposit-panel .deposit-custom-field,
+#withdrawSheet.deposit-sheet.open .deposit-panel .deposit-pay-button,
+#withdrawSheet.deposit-sheet.open .deposit-panel .withdraw-status,
+#withdrawSheet.deposit-sheet.open .deposit-panel .withdraw-success{
+  opacity:1!important;
+  visibility:visible!important;
+}
+#depositSheet.deposit-sheet.open .deposit-backdrop,#withdrawSheet.deposit-sheet.open .deposit-backdrop{
+  z-index:0!important;
+}
 .voice-menu button{box-shadow:none!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .voice-menu button.active{background:rgba(255,255,255,.92)!important}
 .deposit-backdrop{background:rgba(0,0,0,.34)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important}
