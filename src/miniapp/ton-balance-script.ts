@@ -11,10 +11,10 @@ export const TON_BALANCE_SCRIPT = `
   var flushTimer=0;
   var lastLocalMutationAt=0;
   function clean(value){var n=Math.floor(Number(value));return Number.isFinite(n)&&n>=0?n:0}
-  function formatTonNumber(value){var raw=clean(value);var ton=raw/NANO_PER_TON;return ton.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function formatTonNumber(value){var raw=clean(value);var ton=raw/NANO_PER_TON;return ton.toFixed(2)}
   function formatTon(value){return formatTonNumber(value)}
   function plinkoUnits(value){return Math.max(0,Math.floor(clean(value)/PLINKO_UNIT_NANO))}
-  function parseTonText(text){var value=String(text||'').replace(/TON/i,'').trim();if(!value)return NaN;if(value.indexOf('.')>=0)return Math.floor(Number(value)*NANO_PER_TON);return Math.floor(Number(value))}
+  function parseTonText(text){var value=String(text||'').replace(/TON/i,'').trim();if(!value)return NaN;return Math.floor(Number(value)*NANO_PER_TON)}
   function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=localStorage.getItem('ownerId')||String((u&&u.id)||'');return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
   function pendingKey(){var u=user();return u.id?PENDING_PREFIX+u.id:''}
   function loadPending(){
@@ -33,7 +33,7 @@ export const TON_BALANCE_SCRIPT = `
   function hasPending(){return Math.floor(Number(loadPending())||0)!==0}
   function readDomBalance(){var nodes=document.querySelectorAll('[data-ton-balance-display],#topTonBalance,#plinkoTonBalance,#minesTonBalance');for(var i=0;i<nodes.length;i++){var raw=nodes[i].getAttribute('data-ton-balance-raw');if(raw!==null){var r=clean(raw);if(Number.isFinite(r))return r}var n=parseTonText(nodes[i].textContent);if(Number.isFinite(n)&&n>=0)return n}return 0}
   function read(){var stored=localStorage.getItem(KEY);if(stored!==null)return clean(stored);return clean(readDomBalance())}
-  function render(value){var balance=clean(value);var units=plinkoUnits(balance);localStorage.setItem(KEY,String(balance));document.querySelectorAll('[data-ton-balance-display],#topTonBalance').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=formatTonNumber(balance)});document.querySelectorAll('#plinkoTonBalance,#minesTonBalance').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=String(balance)});document.querySelectorAll('#plinkoCredit,#creditCount,#plinkoCreditHeader').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=String(units)});return balance}
+  function render(value){var balance=clean(value);var units=plinkoUnits(balance);var display=formatTonNumber(balance);localStorage.setItem(KEY,String(balance));document.querySelectorAll('[data-ton-balance-display],#topTonBalance,#plinkoTonBalance,#minesTonBalance').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=display});document.querySelectorAll('#plinkoCredit,#creditCount,#plinkoCreditHeader').forEach(function(el){el.setAttribute('data-ton-balance-raw',String(balance));el.textContent=String(units)});return balance}
   function emit(balance,delta){try{var units=plinkoUnits(balance);var unitDelta=Math.trunc((Number(delta)||0)/PLINKO_UNIT_NANO);window.dispatchEvent(new CustomEvent('vexa-ton-balance-sync',{detail:{tonBalanceNano:balance,deltaNano:Math.floor(Number(delta)||0),display:formatTonNumber(balance),rate:NANO_PER_TON}}));window.dispatchEvent(new CustomEvent('vexa-credit-sync',{detail:{credit:units,delta:unitDelta,tonBalanceNano:balance,display:formatTonNumber(balance),rate:PLINKO_UNIT_NANO}}))}catch(e){}}
   function write(value,delta,silent){var balance=render(value);if(!silent)emit(balance,delta);return balance}
   async function fetchServerBalance(){
