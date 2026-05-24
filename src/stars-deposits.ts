@@ -57,10 +57,9 @@ export async function listUserStarsDeposits(env: Env, userId: string): Promise<{
 }
 
 export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckoutQuery): Promise<void> {
-  const payload = cleanDepositId(query.invoice_payload);
-  await ensureStarsDepositsTable(env);
-  const row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(payload).first<StarDepositRow>();
-  const ok = Boolean(row && row.status === 'pending' && query.currency === 'XTR' && Number(query.total_amount) === Number(row.stars_amount));
+  const payload = String(query.invoice_payload || '').trim();
+  const amount = Math.floor(Number(query.total_amount));
+  const ok = /^stars_[0-9a-f]{20}$/.test(payload) && query.currency === 'XTR' && Number.isSafeInteger(amount) && amount >= 1 && amount <= 100000;
   await telegram(env.TELEGRAM_BOT_TOKEN, 'answerPreCheckoutQuery', {
     pre_checkout_query_id: query.id,
     ok,
