@@ -37,7 +37,7 @@ import { MINES_SECTION } from './mines';
 import { PLINKO_SECTION } from './plinko';
 import { CRASH_SECTION } from './crash';
 import { WHEEL_SECTION } from './wheel';
-import { DICE_SECTION } from './dice';
+import { DICE_SECTION } from './dice-fixed';
 import { LIMBO_SECTION } from './limbo';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
