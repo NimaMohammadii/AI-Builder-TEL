@@ -8,7 +8,7 @@ import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeP
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
     url: `${PUBLIC_BASE_URL}/telegram/webhook`,
-    allowed_updates: ['message', 'callback_query', 'my_chat_member', 'pre_checkout_query'],
+    allowed_updates: ['message', 'callback_query', 'my_chat_member'],
     drop_pending_updates: true,
   });
 }
