@@ -5,11 +5,10 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v9';
-  var META_KEY='vexaPlayZoneImageUrlsUpdatedAt:v9';
-  var TTL=300000;
-  var inFlight=null;
+  var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
-  function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
+  function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map))}catch(e){}}
+  function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
   function clean(url){var value=String(url||'');var marker=value.indexOf('?rt=');if(marker>=0)value=value.slice(0,marker);return value}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
   function setImage(img,url){if(!img||!allowed(url))return;var next=clean(url);if(img.getAttribute('src')!==next)img.src=next;img.classList.remove('is-empty');img.style.display='';img.loading='eager';img.decoding='async'}
@@ -17,20 +16,23 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
     setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko']);
   }
-  function playZoneActive(){var p=document.getElementById('playzone');return Boolean(p&&p.classList.contains('active'))}
-  async function refresh(force){
-    var cached=readCache();apply(cached);
-    var last=Number(localStorage.getItem(META_KEY)||0);
-    if(!force&&last&&Date.now()-last<TTL)return cached;
-    if(!force&&!playZoneActive())return cached;
-    if(inFlight)return inFlight;
-    inFlight=(async function(){
-      try{var response=await fetch('/app/api/section-locks',{cache:'no-store'});var data=await response.json();if(!data||!Array.isArray(data.sections))return cached;var next={};data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});writeCache(next);apply(next);return next}catch(e){return cached}
-    })().finally(function(){inFlight=null});
-    return inFlight;
+  function mapFromSectionLocks(cached){
+    var data=readSectionLocks();
+    if(!data||!Array.isArray(data.sections))return cached;
+    var next={};
+    data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});
+    all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});
+    return next;
+  }
+  function refresh(){
+    var cached=readCache();
+    var next=mapFromSectionLocks(cached);
+    if(next!==cached)writeCache(next);
+    apply(next);
+    return Promise.resolve(next);
   }
   apply(readCache());
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(function(){refresh(false)},120)},true);
-  window.VexaRefreshPlayZoneImages=function(){return refresh(true)};
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(refresh,160)},true);
+  window.VexaRefreshPlayZoneImages=function(){return refresh()};
 })();
 `;
