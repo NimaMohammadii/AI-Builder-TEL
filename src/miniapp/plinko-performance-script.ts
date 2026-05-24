@@ -2,8 +2,8 @@ export const PLINKO_PERFORMANCE_SCRIPT = `
 (function(){
   var activeDrops=0;
   var lastDropAt=0;
-  var MAX_SMOOTH_DROPS=10;
-  var DROP_COOLDOWN_MS=150;
+  var MAX_SMOOTH_DROPS=3;
+  var DROP_COOLDOWN_MS=420;
   var DROP_LIFETIME_MS=4300;
   function q(id){return document.getElementById(id)}
   function showToast(text){
@@ -28,7 +28,7 @@ export const PLINKO_PERFORMANCE_SCRIPT = `
     if(activeDrops>=MAX_SMOOTH_DROPS){
       ev.preventDefault();
       ev.stopImmediatePropagation();
-      showToast('Please wait for a few balls to finish');
+      showToast('Please wait a moment');
       return;
     }
     lastDropAt=now;
