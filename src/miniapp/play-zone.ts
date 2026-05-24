@@ -16,4 +16,4 @@ function gameCard([id, label, description, action]: typeof playZoneGames[number]
   return `<button class="game-card ${extraClass}" type="button" ${viewAttr}><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
-export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="play-zone-stage"><div class="play-zone-featured-row play-zone-grid-row">${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card${index > 2 ? ' play-zone-muted-card' : ''}`)).join('')}</div></div></section>`;
+export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view"><div class="play-zone-stage"><div class="play-zone-featured-row play-zone-grid-row">${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card${index < 3 ? ` play-zone-featured-card-${index + 1}` : ' play-zone-muted-card'}`)).join('')}</div></div></section>`;
