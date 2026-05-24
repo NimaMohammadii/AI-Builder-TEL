@@ -14,7 +14,41 @@ export const MINIAPP_SCRIPT = `
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function setHomeSheetLock(open){var h=q('home');if(!h)return;if(open)h.style.setProperty('overflow-y','hidden','important');else h.style.removeProperty('overflow-y')}
-  function setSheetOpen(id,bodyClass,open){var s=q(id);if(!s)return;document.body.classList.toggle(bodyClass,!!open);setHomeSheetLock(!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function applyFinanceSheetLayout(s,open){
+    if(!s)return;
+    var isFinance=s.id==='depositSheet'||s.id==='withdrawSheet';
+    if(!isFinance)return;
+    var panel=s.querySelector('.deposit-panel');
+    if(open){
+      if(s.parentElement!==document.body)document.body.appendChild(s);
+      s.style.setProperty('position','fixed','important');
+      s.style.setProperty('inset','0','important');
+      s.style.setProperty('z-index','10080','important');
+      s.style.setProperty('display','flex','important');
+      s.style.setProperty('align-items','center','important');
+      s.style.setProperty('justify-content','center','important');
+      s.style.setProperty('padding','20px 16px calc(92px + env(safe-area-inset-bottom))','important');
+      s.style.setProperty('opacity','1','important');
+      s.style.setProperty('visibility','visible','important');
+      s.style.setProperty('pointer-events','auto','important');
+      if(panel){
+        panel.style.setProperty('position','relative','important');
+        panel.style.setProperty('z-index','2','important');
+        panel.style.setProperty('display','block','important');
+        panel.style.setProperty('opacity','1','important');
+        panel.style.setProperty('visibility','visible','important');
+        panel.style.setProperty('transform','translateY(0) scale(1)','important');
+        panel.style.setProperty('width','min(100%,528px)','important');
+        panel.style.setProperty('max-height','min(78vh,620px)','important');
+        panel.style.setProperty('margin','auto','important');
+        panel.style.setProperty('overflow','auto','important');
+      }
+    }else{
+      s.removeAttribute('style');
+      if(panel)panel.removeAttribute('style');
+    }
+  }
+  function setSheetOpen(id,bodyClass,open){var s=q(id);if(!s)return;document.body.classList.toggle(bodyClass,!!open);setHomeSheetLock(!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true');applyFinanceSheetLayout(s,!!open)}
   function setDepositSheet(open){setSheetOpen('depositSheet','deposit-open',open)}
   function setWithdrawSheet(open){setSheetOpen('withdrawSheet','withdraw-open',open)}
   function setTransactionsSheet(open){setSheetOpen('transactionsSheet','transactions-open',open)}
