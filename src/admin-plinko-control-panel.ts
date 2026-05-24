@@ -1,8 +1,10 @@
 export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
 (function(){
   const riskLabels=['low','medium','high'];
+  const visibleRiskLabels=['low','high'];
   const rowLabels=['7','9','11'];
-  let config=null, selectedRow='7', selectedRisk='medium';
+  const visibleRowLabels=['9','11'];
+  let config=null, selectedRow='9', selectedRisk='low';
   function esc(v){return String(v??'').replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s))}
   function addMenu(){
     const menu=document.getElementById('adminMenu');
@@ -17,15 +19,15 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
     section.id='sectionPlinkoControl';
     section.dataset.title='Plinko Control';
     section.dataset.subtitle='Drop chances and multipliers.';
-    section.innerHTML='<div class="row-title"><div><h2>Plinko Control</h2><p class="muted small-text">Pick rows and risk, then change each house chance and multiplier.</p></div><button class="ghost" id="refreshPlinkoControl">Refresh</button></div><div class="plinko-simple-card"><label>Game mode</label><select id="plinkoMode"><option value="fair">Fair physics</option><option value="weighted">Use my chances</option><option value="house">House control</option></select><p class="muted small-text">Use my chances / House control makes the ball land based on the chances below.</p></div><div class="plinko-picker"><div><label>Rows</label><select id="plinkoRowsPick"><option value="7">7 rows</option><option value="9">9 rows</option><option value="11">11 rows</option></select></div><div><label>Risk</label><select id="plinkoRiskPick"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div></div><div class="preset-row"><button type="button" data-preset="balanced">Balanced</button><button type="button" data-preset="center">More center</button><button type="button" data-preset="edges">More edges</button><button type="button" data-preset="high">High risk</button></div><div class="plinko-summary"><b id="plinkoTotalChance">0%</b><span id="plinkoExpectedReturn">Expected 0x</span></div><div id="plinkoHouseRows" class="plinko-house-rows"></div><div class="plinko-control-actions"><button class="primary" id="savePlinkoControl" type="button">Save chances</button><button class="ghost" id="normalizePlinkoControl" type="button">Normalize</button><button class="ghost" id="resetPlinkoControl" type="button">Reset</button></div><p class="status" id="plinkoControlStatus"></p>';
+    section.innerHTML='<div class="row-title"><div><h2>Plinko Control</h2><p class="muted small-text">Mini app currently uses 9/11 rows and Low/High modes.</p></div><button class="ghost" id="refreshPlinkoControl">Refresh</button></div><div class="plinko-simple-card"><label>Game mode</label><select id="plinkoMode"><option value="fair">Fair physics</option><option value="weighted">Use my chances</option><option value="house">House control</option></select><p class="muted small-text">Use my chances / House control makes the ball land based on the chances below.</p></div><div class="plinko-picker"><div><label>Rows</label><select id="plinkoRowsPick"><option value="9">9 rows</option><option value="11">11 rows</option></select></div><div><label>Mode</label><select id="plinkoRiskPick"><option value="low">Low</option><option value="high">High</option></select></div></div><div class="preset-row"><button type="button" data-preset="balanced">Balanced</button><button type="button" data-preset="center">More center</button><button type="button" data-preset="edges">More edges</button><button type="button" data-preset="high">High mode</button></div><div class="plinko-summary"><b id="plinkoTotalChance">0%</b><span id="plinkoExpectedReturn">Expected 0x</span></div><div id="plinkoHouseRows" class="plinko-house-rows"></div><div class="plinko-control-actions"><button class="primary" id="savePlinkoControl" type="button">Save chances</button><button class="ghost" id="normalizePlinkoControl" type="button">Normalize</button><button class="ghost" id="resetPlinkoControl" type="button">Reset</button></div><p class="status" id="plinkoControlStatus"></p>';
     main.appendChild(section);
     btn.onclick=()=>{document.querySelectorAll('.menu-item').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.admin-section').forEach(s=>s.classList.toggle('active',s.id==='sectionPlinkoControl'));document.getElementById('adminTitle').textContent='Plinko Control';document.getElementById('adminSubtitle').textContent='Drop chances and multipliers.';menu.hidden=true;window.scrollTo({top:0,behavior:'smooth'});loadPlinkoControl();};
     document.getElementById('refreshPlinkoControl').onclick=loadPlinkoControl;
     document.getElementById('savePlinkoControl').onclick=savePlinkoControl;
     document.getElementById('resetPlinkoControl').onclick=resetPlinkoControl;
     document.getElementById('normalizePlinkoControl').onclick=()=>{normalizeCurrent();renderHouses();};
-    document.getElementById('plinkoRowsPick').onchange=e=>{selectedRow=e.target.value;renderHouses();};
-    document.getElementById('plinkoRiskPick').onchange=e=>{selectedRisk=e.target.value;renderHouses();};
+    document.getElementById('plinkoRowsPick').onchange=e=>{selectedRow=visibleRowLabels.includes(e.target.value)?e.target.value:'9';renderHouses();};
+    document.getElementById('plinkoRiskPick').onchange=e=>{selectedRisk=visibleRiskLabels.includes(e.target.value)?e.target.value:'low';renderHouses();};
     document.getElementById('plinkoMode').onchange=e=>{if(config)config.mode=e.target.value;};
     document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{applyPreset(b.dataset.preset);renderHouses();});
     injectCss();
@@ -38,7 +40,7 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
   }
   async function loadPlinkoControl(){
     const status=document.getElementById('plinkoControlStatus'); if(status)status.textContent='Loading Plinko control...';
-    try{const r=await fetch('/admin/api/plinko-control',{credentials:'same-origin'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load Plinko control');config=j;render();if(status)status.textContent='Updated '+new Date().toLocaleTimeString();}
+    try{const r=await fetch('/admin/api/plinko-control',{credentials:'same-origin'});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load Plinko control');config=j;selectedRow=visibleRowLabels.includes(selectedRow)?selectedRow:'9';selectedRisk=visibleRiskLabels.includes(selectedRisk)?selectedRisk:'low';render();if(status)status.textContent='Updated '+new Date().toLocaleTimeString();}
     catch(e){if(status)status.textContent=e.message||'Could not load Plinko control'}
   }
   function current(){return config.rows[selectedRow][selectedRisk]}
