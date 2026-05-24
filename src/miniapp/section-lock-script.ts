@@ -9,6 +9,7 @@ export const SECTION_LOCK_SCRIPT = `
   var originalConnectBotCardHtml='';
   var lastFullLoadAt=0;
   var lastUserLoadAt=0;
+  var countdownTimer=0;
   var FULL_RELOAD_COOLDOWN_MS=300000;
   var USER_RELOAD_COOLDOWN_MS=60000;
   var GLOBAL_CACHE_KEY='vexaSectionLocks:v1';
@@ -32,6 +33,11 @@ export const SECTION_LOCK_SCRIPT = `
   function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
   function countdownHtml(item){return item&&item.expiresAt?'<p>Opens in <span data-section-lock-expires-at="'+item.expiresAt+'">'+formatLeft(item.remainingMs)+'</span></p>':''}
   function tickCountdowns(){document.querySelectorAll('[data-section-lock-expires-at]').forEach(function(el){el.textContent=formatLeft(Date.parse(el.getAttribute('data-section-lock-expires-at')||'')-Date.now())})}
+  function scheduleCountdownTick(){
+    if(countdownTimer)return;
+    if(!document.querySelector('[data-section-lock-expires-at]'))return;
+    countdownTimer=setTimeout(function(){countdownTimer=0;tickCountdowns();scheduleCountdownTick()},1000);
+  }
   function lockVisual(item){var url=visualUrl(item);if(url){preload(url);return '<img class="section-lock-image" src="'+url+'" alt="" decoding="async"/>'}return lockSvg}
   function botCardVisual(item){return '<span class="connect-card-lock-icon">'+lockSvg+'</span>'}
   function setKeyboardMode(on){document.body.classList.toggle('section-code-keyboard-open',!!on);updateKeyboardInset()}
@@ -82,6 +88,7 @@ export const SECTION_LOCK_SCRIPT = `
     card.classList.add('connect-bot-card-locked');
     card.innerHTML=lockedCardHtml(item);
     bindBotCardCode(card);
+    tickCountdowns();scheduleCountdownTick();
   }
   function clearBotCardOverlay(){
     var card=connectBotCard();if(!card)return;
@@ -111,7 +118,15 @@ export const SECTION_LOCK_SCRIPT = `
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
       view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2>'+(countdownHtml(item)||'<p>Please try again later.</p>')+'</div>';
     }
-    section.appendChild(view);tickCountdowns();
+    section.appendChild(view);tickCountdowns();scheduleCountdownTick();
+  }
+
+  function applySectionLock(section){
+    if(!section)return;
+    var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
+    var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
+    section.classList.toggle('is-section-locked',isLocked);
+    if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
   }
 
   function applyLocks(){
@@ -119,12 +134,7 @@ export const SECTION_LOCK_SCRIPT = `
     var cardItem=locks['connect-bot-card'];
     var cardLocked=!!cardItem&&cardItem.mode!=='open'&&!isUnlocked('connect-bot-card');
     if(cardLocked)ensureBotCardOverlay(cardItem);else clearBotCardOverlay();
-    document.querySelectorAll('.view').forEach(function(section){
-      var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
-      var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
-      section.classList.toggle('is-section-locked',isLocked);
-      if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
-    });
+    applySectionLock(document.querySelector('.view.active'));
   }
 
   function applyGlobalData(data){locks={};(data&&data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}
@@ -157,6 +167,6 @@ export const SECTION_LOCK_SCRIPT = `
   window.VexaSectionLocks={reload:function(){return loadLocks(true)},syncUser:function(){return syncUserControls(true)},apply:applyLocks};
   document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;if(isNavigationEvent(ev))setTimeout(function(){loadLocks(false)},40)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){if(lastFullLoadAt)loadLocks(false);if(lastUserLoadAt)syncUserControls(false);updateKeyboardInset()}});
-  applyCachedLocks();setInterval(tickCountdowns,1000);
+  applyCachedLocks();
 })();
 `;
