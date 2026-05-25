@@ -8,7 +8,7 @@ const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
-const TRADE_MARKETS = ['bitcoin', 'ton'] as const;
+const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton'] as const;
 const ROUND_MS = 5 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
@@ -215,7 +215,7 @@ async function getBet(env: Env, id: string) {
   return b ? betJson(b) : null;
 }
 async function fetchPrice(market: TradeMarket): Promise<number> {
-  const symbol = market === 'ton' ? 'TONUSDT' : 'BTCUSDT';
+  const symbol = market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : 'BTCUSDT';
   const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error('Price feed is unavailable');
   const data = await res.json() as { price?: string };
@@ -247,6 +247,8 @@ function normalizePredictMarket(value: string): PredictMarket {
 function normalizeTradeMarket(value: string): TradeMarket {
   const market = value.trim().toLowerCase();
   if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
+  if (market === 'ethereum' || market === 'eth') return 'ethereum';
+  if (market === 'solana' || market === 'sol') return 'solana';
   if (market === 'ton') return 'ton';
   throw new Error('Invalid predict market');
 }
