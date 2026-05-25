@@ -1,8 +1,39 @@
 export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
+    html:has(#wheel.active),
     body:has(#wheel.active) {
       background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+    }
+
+    body:has(#wheel.active)::before,
+    body:has(#wheel.active)::after,
+    body:has(#wheel.active) .app::before,
+    body:has(#wheel.active) .app::after,
+    body:has(#wheel.active) .content::before,
+    body:has(#wheel.active) .content::after,
+    body:has(#wheel.active) #wheel::before,
+    body:has(#wheel.active) #wheel::after {
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+      box-shadow: none !important;
+    }
+
+    body:has(#wheel.active) .app,
+    body:has(#wheel.active) main.app,
+    body:has(#wheel.active) .content,
+    body:has(#wheel.active) .view.active,
+    body:has(#wheel.active) #wheel,
+    body:has(#wheel.active) .wheel-view,
+    body:has(#wheel.active) .top,
+    body:has(#wheel.active) header.top {
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+      box-shadow: none !important;
     }
 
     body:has(#wheel.active) .tabs {
@@ -10,18 +41,23 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-view {
+      position: relative;
+      box-sizing: border-box;
+      height: 100%;
       min-height: 100%;
       padding: 0 14px calc(96px + env(safe-area-inset-bottom));
       background: #000 !important;
-      color: #fff;
+      background-color: #000 !important;
+      background-image: none !important;
+      color: white;
       overflow-y: auto !important;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      box-sizing: border-box;
     }
 
     .wheel-wrap {
-      width: 100%;
+      position: relative;
+      z-index: 1;
       max-width: 520px;
       margin: 0 auto;
       display: grid;
@@ -36,47 +72,12 @@ export const WHEEL_SECTION = `
       margin-top: 8px;
     }
 
-    .wheel-disc {
+    .wheel-canvas {
       position: relative;
+      z-index: 1;
       width: min(376px, 91vw);
       height: min(376px, 91vw);
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at center, #0000 0 22%, #000 22.5% 23.5%, #0000 24%),
-        conic-gradient(
-          from -90deg,
-          #f2f2f2 0 72deg,
-          #4a0a1e 72deg 144deg,
-          #19191c 144deg 216deg,
-          #343438 216deg 288deg,
-          #101012 288deg 360deg
-        );
-      box-shadow:
-        0 28px 64px rgba(0, 0, 0, .62),
-        inset 0 0 0 12px rgba(55, 4, 22, .86),
-        inset 0 0 0 15px rgba(255, 255, 255, .16);
-      overflow: hidden;
-    }
-
-    .wheel-disc::before {
-      content: '';
-      position: absolute;
-      inset: 17%;
-      border-radius: 50%;
-      background: #000;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
-      z-index: 2;
-    }
-
-    .wheel-disc::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: radial-gradient(circle at 32% 24%, rgba(255, 255, 255, .18), transparent 32%);
-      opacity: .42;
-      z-index: 3;
-      pointer-events: none;
+      filter: none;
     }
 
     .wheel-pointer {
@@ -87,16 +88,20 @@ export const WHEEL_SECTION = `
       height: 64px;
       z-index: 5;
       transform: translateX(-50%);
+      background: transparent !important;
       filter: drop-shadow(0 12px 18px rgba(0, 0, 0, .45));
     }
 
-    .wheel-pointer::before {
+    .wheel-pointer:before {
       content: '';
       position: absolute;
       inset: 0;
       background: rgba(255, 255, 255, .08);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
+      border: 0 !important;
+      outline: 0 !important;
+      box-shadow: none !important;
       clip-path: polygon(50% 100%, 3% 0, 97% 0);
     }
 
@@ -107,12 +112,12 @@ export const WHEEL_SECTION = `
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: rgba(255, 255, 255, .06);
-      border: 1px solid rgba(255, 255, 255, .24);
-      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .32);
+      background: rgba(255, 255, 255, .06) !important;
+      border: 1px solid rgba(255, 255, 255, .24) !important;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .32) !important;
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
-      z-index: 6;
+      z-index: 4;
       text-align: center;
     }
 
@@ -247,7 +252,7 @@ export const WHEEL_SECTION = `
         height: 376px;
       }
 
-      .wheel-disc {
+      .wheel-canvas {
         width: min(356px, 92vw);
         height: min(356px, 92vw);
       }
@@ -262,7 +267,7 @@ export const WHEEL_SECTION = `
   <div class="wheel-wrap">
     <div class="wheel-stage">
       <div class="wheel-pointer"></div>
-      <div class="wheel-disc"></div>
+      <canvas class="wheel-canvas" width="1200" height="1200" data-wheel-canvas></canvas>
       <div class="wheel-center"><b>WHEEL</b></div>
     </div>
 
@@ -292,5 +297,131 @@ export const WHEEL_SECTION = `
       <div class="wheel-players" data-wheel-players></div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      var root = document.getElementById('wheel');
+      if (!root || root.dataset.readyWheelCanvasUi) return;
+      root.dataset.readyWheelCanvasUi = '1';
+
+      var canvas = root.querySelector('[data-wheel-canvas]');
+      var ctx = canvas.getContext('2d');
+      var amountInput = root.querySelector('[data-wheel-amount]');
+      var joinBtn = root.querySelector('[data-wheel-join]');
+      var statusEl = root.querySelector('[data-wheel-status]');
+      var colors = ['#f2f2f2', '#4a0a1e', '#19191c', '#343438', '#101012'];
+      var angle = -Math.PI / 2;
+
+      function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
+        var span = Math.max(.001, endAngle - startAngle);
+        var curve = Math.min(.078, span * .34);
+        var middleRadius = (innerRadius + outerRadius) / 2;
+        var innerStart = startAngle + curve;
+        var innerEnd = endAngle - curve;
+        var outerStart = startAngle + curve;
+        var outerEnd = endAngle - curve;
+
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
+        ctx.arc(cx, cy, innerRadius, innerStart, innerEnd, false);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(endAngle) * innerRadius,
+          cy + Math.sin(endAngle) * innerRadius,
+          cx + Math.cos(endAngle) * middleRadius,
+          cy + Math.sin(endAngle) * middleRadius
+        );
+        ctx.quadraticCurveTo(
+          cx + Math.cos(endAngle) * outerRadius,
+          cy + Math.sin(endAngle) * outerRadius,
+          cx + Math.cos(outerEnd) * outerRadius,
+          cy + Math.sin(outerEnd) * outerRadius
+        );
+        ctx.arc(cx, cy, outerRadius, outerEnd, outerStart, true);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(startAngle) * outerRadius,
+          cy + Math.sin(startAngle) * outerRadius,
+          cx + Math.cos(startAngle) * middleRadius,
+          cy + Math.sin(startAngle) * middleRadius
+        );
+        ctx.quadraticCurveTo(
+          cx + Math.cos(startAngle) * innerRadius,
+          cy + Math.sin(startAngle) * innerRadius,
+          cx + Math.cos(innerStart) * innerRadius,
+          cy + Math.sin(innerStart) * innerRadius
+        );
+        ctx.closePath();
+      }
+
+      function draw() {
+        var width = 1200;
+        var height = 1200;
+        var cx = 600;
+        var cy = 600;
+        var outerRadius = 486;
+        var innerRadius = 106;
+        var gap = .016;
+        var values = ['0.01', '0.01', '0.01', '0.01', '0.01'];
+
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRadius + 42, 0, Math.PI * 2);
+        ctx.fillStyle = '#030304';
+        ctx.fill();
+
+        values.forEach(function (value, index) {
+          var start = angle + index / values.length * Math.PI * 2 + gap;
+          var end = angle + (index + 1) / values.length * Math.PI * 2 - gap;
+          var middle = (start + end) / 2;
+          var color = colors[index % colors.length];
+
+          slicePath(cx, cy, innerRadius, outerRadius, start, end);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = .72;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(middle);
+          ctx.fillStyle = color === '#f2f2f2' ? '#080809' : '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '900 46px system-ui';
+          ctx.fillText(value, outerRadius * .58, 0);
+          ctx.restore();
+        });
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRadius + 38, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(55, 4, 22, .86)';
+        ctx.lineWidth = 12;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRadius + 33, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, .18)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
+        button.onclick = function () {
+          root.querySelectorAll('[data-wheel-quick]').forEach(function (item) {
+            item.classList.remove('active');
+          });
+          button.classList.add('active');
+          amountInput.value = button.getAttribute('data-wheel-quick') || '0.01';
+          statusEl.textContent = 'UI preview only';
+        };
+      });
+
+      joinBtn.onclick = function () {
+        statusEl.textContent = 'UI preview only';
+      };
+
+      draw();
+    })();
+  </script>
 </section>
 `;
