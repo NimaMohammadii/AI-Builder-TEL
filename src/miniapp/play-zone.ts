@@ -21,8 +21,10 @@ function playersOnline(id: string): number {
 
 function gameCard([id, label, description, action]: typeof playZoneGames[number], extraClass = ''): string {
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
-  const players = action === 'Play' ? `<span class="game-players" aria-label="Players online"><i></i><b>${playersOnline(id)}</b></span>` : '';
-  return `<button class="game-card ${extraClass}" type="button" ${viewAttr}><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-footer"><span class="game-open">${action}</span>${players}</span></button>`;
+  if (action === 'Play') {
+    return `<button class="game-card game-card-live ${extraClass}" type="button" ${viewAttr} aria-label="${label}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-footer game-footer-live"><span class="game-players" aria-label="Players online"><i></i><b>${playersOnline(id)}</b><em>Players</em></span></span></button>`;
+  }
+  return `<button class="game-card ${extraClass}" type="button"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-footer"><span class="game-open">${action}</span></span></button>`;
 }
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
