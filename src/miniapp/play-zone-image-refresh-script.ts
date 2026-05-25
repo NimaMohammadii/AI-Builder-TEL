@@ -25,7 +25,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     img.loading='eager';
     img.decoding='async';
   }
-  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||'');return '<button type="button" class="play-zone-nft-card" data-view="market"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
+  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||'');return '<button type="button" class="play-zone-nft-card" data-play-zone-nft-card="1"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
   function unique(items){var seen={},out=[];(Array.isArray(items)?items:[]).forEach(function(item){var id=String(item&&item.id||item&&item.title||'');if(!id||seen[id])return;seen[id]=1;out.push(item)});return out}
   function renderNfts(items){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;var list=unique(items).slice(0,13);if(!list.length){strip.hidden=true;track.innerHTML='';return}strip.hidden=false;var html=list.map(nftCard).join('');track.innerHTML=html+html}
   function fetchGifts(url){return fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){return Array.isArray(j&&j.gifts)?j.gifts:[]})}
@@ -40,6 +40,16 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
       try{localStorage.setItem(NFT_KEY,JSON.stringify({items:items,ts:Date.now()}))}catch(e){}
       renderNfts(items);
     }).catch(function(){if(cached&&cached.items)renderNfts(cached.items)}).finally(function(){nftBusy=false})}
+  function playNft(card){
+    if(!card)return;
+    var track=card.closest('[data-play-zone-nft-track]');
+    if(track)track.classList.add('is-paused');
+    card.classList.remove('is-nft-pulse');
+    void card.offsetWidth;
+    card.classList.add('is-nft-pulse');
+    clearTimeout(card.__vexaNftTimer);
+    card.__vexaNftTimer=setTimeout(function(){card.classList.remove('is-nft-pulse');if(track)track.classList.remove('is-paused')},950);
+  }
   function apply(map){
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
     setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko']);
@@ -59,7 +69,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function tickCounters(){document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))})}
   function startCounters(){if(countersStarted)return;countersStarted=true;setInterval(tickCounters,3000)}
   apply(readCache());loadLowNfts(false);startCounters();
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(refresh,160)},true);
+  document.addEventListener('click',function(e){var nft=e.target&&e.target.closest&&e.target.closest('#playzone [data-play-zone-nft-card]');if(nft){e.preventDefault();e.stopPropagation();playNft(nft);return}var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(refresh,160)},true);
   window.VexaRefreshPlayZoneImages=function(){return refresh()};
 })();
 `;
