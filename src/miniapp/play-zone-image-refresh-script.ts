@@ -43,10 +43,23 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     if(value>400)value=400-Math.floor(Math.random()*12);
     return value;
   }
+  function flipDigit(el,text){
+    el.classList.add('is-counting');
+    setTimeout(function(){el.textContent=text;el.classList.remove('is-counting')},135);
+  }
   function animateNumber(el,value){
     if(!el)return;
-    el.classList.add('is-counting');
-    setTimeout(function(){el.textContent=String(value);el.classList.remove('is-counting')},180);
+    var from=String(parseInt(el.textContent,10)||0).padStart(3,'0');
+    var to=String(value).padStart(3,'0');
+    var order=[2,1,0];
+    order.forEach(function(index,step){
+      if(from.charAt(index)===to.charAt(index))return;
+      setTimeout(function(){
+        var current=String(parseInt(el.textContent,10)||0).padStart(3,'0').split('');
+        current[index]=to.charAt(index);
+        flipDigit(el,String(parseInt(current.join(''),10)));
+      },step*170);
+    });
   }
   function tickCounters(){
     document.querySelectorAll('#playzone .game-card[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))});
