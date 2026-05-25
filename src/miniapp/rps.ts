@@ -1,8 +1,37 @@
 export const RPS_SECTION = `
 <section id="rps" class="view rps-view">
   <style>
+    html:has(#rps.active),
     body:has(#rps.active) {
-      background: #050004 !important;
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+    }
+
+    body:has(#rps.active)::before,
+    body:has(#rps.active)::after,
+    body:has(#rps.active) .app::before,
+    body:has(#rps.active) .app::after,
+    body:has(#rps.active) .content::before,
+    body:has(#rps.active) .content::after {
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+      box-shadow: none !important;
+    }
+
+    body:has(#rps.active) .app,
+    body:has(#rps.active) main.app,
+    body:has(#rps.active) .content,
+    body:has(#rps.active) .view.active,
+    body:has(#rps.active) #rps,
+    body:has(#rps.active) .rps-view,
+    body:has(#rps.active) .top,
+    body:has(#rps.active) header.top {
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
+      box-shadow: none !important;
     }
 
     body:has(#rps.active) .tabs {
@@ -13,10 +42,9 @@ export const RPS_SECTION = `
       min-height: 100%;
       padding: 8px 14px calc(104px + env(safe-area-inset-bottom));
       color: #fff;
-      background:
-        radial-gradient(circle at 50% 8%, rgba(255, 45, 96, .2), transparent 36%),
-        radial-gradient(circle at 12% 22%, rgba(255, 255, 255, .08), transparent 24%),
-        linear-gradient(180deg, #13030a 0%, #050004 48%, #000 100%) !important;
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
       overflow-y: auto !important;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
@@ -35,11 +63,11 @@ export const RPS_SECTION = `
       position: relative;
       min-height: 390px;
       border-radius: 34px;
-      background: rgba(255, 255, 255, .025);
+      background: rgba(255, 255, 255, .018);
       border: 0 !important;
-      box-shadow: 0 24px 70px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .075);
-      -webkit-backdrop-filter: blur(18px) saturate(150%);
-      backdrop-filter: blur(18px) saturate(150%);
+      box-shadow: 0 0 18px rgba(46, 2, 14, .18), 0 18px 52px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255, 255, 255, .045);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      backdrop-filter: blur(18px) saturate(140%);
       overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr auto;
@@ -50,9 +78,9 @@ export const RPS_SECTION = `
       content: '';
       position: absolute;
       inset: -35%;
-      background: conic-gradient(from 180deg, transparent, rgba(255, 45, 96, .16), transparent, rgba(255, 255, 255, .06), transparent);
-      animation: rpsGlow 8s linear infinite;
-      opacity: .72;
+      background: conic-gradient(from 180deg, transparent, rgba(45, 2, 13, .12), transparent, rgba(255, 255, 255, .035), transparent);
+      animation: rpsGlow 10s linear infinite;
+      opacity: .5;
     }
 
     .rps-arena > * {
@@ -71,11 +99,11 @@ export const RPS_SECTION = `
       min-height: 34px;
       padding: 0 12px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, .035);
+      background: rgba(255, 255, 255, .026);
       border: 0 !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 12px 28px rgba(0, 0, 0, .2);
-      -webkit-backdrop-filter: blur(10px) saturate(150%);
-      backdrop-filter: blur(10px) saturate(150%);
+      box-shadow: 0 0 12px rgba(46, 2, 14, .12), inset 0 1px 0 rgba(255, 255, 255, .06);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      backdrop-filter: blur(10px) saturate(140%);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -116,11 +144,11 @@ export const RPS_SECTION = `
     .rps-hand-card {
       height: 142px;
       border-radius: 28px;
-      background: rgba(255, 255, 255, .028);
+      background: rgba(255, 255, 255, .02);
       border: 0 !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 16px 38px rgba(0, 0, 0, .3);
-      -webkit-backdrop-filter: blur(14px) saturate(150%);
-      backdrop-filter: blur(14px) saturate(150%);
+      box-shadow: 0 0 12px rgba(46, 2, 14, .12), 0 14px 34px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .055);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      backdrop-filter: blur(14px) saturate(140%);
       display: grid;
       place-items: center;
       gap: 6px;
@@ -142,15 +170,15 @@ export const RPS_SECTION = `
       width: 58px;
       height: 58px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, .04);
+      background: rgba(255, 255, 255, .028);
       border: 0 !important;
       display: grid;
       place-items: center;
       font-weight: 950;
       color: #fff;
-      box-shadow: 0 16px 34px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .1);
-      -webkit-backdrop-filter: blur(12px) saturate(150%);
-      backdrop-filter: blur(12px) saturate(150%);
+      box-shadow: 0 0 14px rgba(46, 2, 14, .16), 0 14px 30px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .07);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      backdrop-filter: blur(12px) saturate(140%);
     }
 
     .rps-result {
@@ -172,11 +200,11 @@ export const RPS_SECTION = `
       height: 98px;
       border: 0 !important;
       border-radius: 24px;
-      background: rgba(255, 255, 255, .03);
+      background: rgba(255, 255, 255, .022);
       color: #fff;
-      box-shadow: 0 14px 32px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .09);
-      -webkit-backdrop-filter: blur(12px) saturate(150%);
-      backdrop-filter: blur(12px) saturate(150%);
+      box-shadow: 0 0 12px rgba(46, 2, 14, .11), 0 12px 28px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .06);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      backdrop-filter: blur(12px) saturate(140%);
       display: grid;
       place-items: center;
       gap: 4px;
@@ -200,19 +228,19 @@ export const RPS_SECTION = `
     }
 
     .rps-choice.is-picked {
-      background: rgba(255, 45, 96, .13);
-      box-shadow: 0 18px 38px rgba(255, 45, 96, .13), inset 0 1px 0 rgba(255, 255, 255, .11);
+      background: rgba(42, 2, 13, .28);
+      box-shadow: 0 0 16px rgba(70, 4, 22, .22), 0 14px 32px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .08);
     }
 
     .rps-panel {
       display: grid;
       gap: 10px;
       border-radius: 28px;
-      background: rgba(255, 255, 255, .025);
+      background: rgba(255, 255, 255, .018);
       border: 0 !important;
-      box-shadow: 0 18px 44px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .08);
-      -webkit-backdrop-filter: blur(18px) saturate(150%);
-      backdrop-filter: blur(18px) saturate(150%);
+      box-shadow: 0 0 16px rgba(46, 2, 14, .16), 0 16px 40px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .055);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      backdrop-filter: blur(18px) saturate(140%);
       padding: 14px;
     }
 
@@ -227,13 +255,13 @@ export const RPS_SECTION = `
       height: 50px;
       border-radius: 18px;
       border: 0 !important;
-      background: rgba(255, 255, 255, .028);
+      background: rgba(255, 255, 255, .022);
       color: #fff;
       font-weight: 950;
       outline: none;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 12px 24px rgba(0, 0, 0, .2);
-      -webkit-backdrop-filter: blur(10px) saturate(150%);
-      backdrop-filter: blur(10px) saturate(150%);
+      box-shadow: 0 0 10px rgba(46, 2, 14, .10), inset 0 1px 0 rgba(255, 255, 255, .06);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      backdrop-filter: blur(10px) saturate(140%);
     }
 
     .rps-input-row input {
@@ -250,12 +278,12 @@ export const RPS_SECTION = `
       height: 60px;
       border: 0;
       border-radius: 999px;
-      background: #fff;
-      color: #050506;
+      background: #21020b;
+      color: rgba(255, 255, 255, .92);
       font-size: 18px;
       font-weight: 950;
       letter-spacing: -.045em;
-      box-shadow: 0 14px 30px rgba(0, 0, 0, .52);
+      box-shadow: 0 0 18px rgba(70, 4, 22, .22), 0 14px 30px rgba(0, 0, 0, .46), inset 0 1px 0 rgba(255, 255, 255, .08);
     }
 
     .rps-stats {
@@ -267,10 +295,10 @@ export const RPS_SECTION = `
     .rps-stat {
       border: 0 !important;
       border-radius: 18px;
-      background: rgba(255, 255, 255, .026);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .075), 0 12px 24px rgba(0, 0, 0, .2);
-      -webkit-backdrop-filter: blur(10px) saturate(150%);
-      backdrop-filter: blur(10px) saturate(150%);
+      background: rgba(255, 255, 255, .02);
+      box-shadow: 0 0 10px rgba(46, 2, 14, .11), 0 10px 22px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .055);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      backdrop-filter: blur(10px) saturate(140%);
       padding: 10px;
       text-align: center;
     }
