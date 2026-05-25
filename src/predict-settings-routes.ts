@@ -1,4 +1,5 @@
 import app from './index';
+import './football-routes';
 import type { Env } from './types';
 
 const CACHE_NONE = 'no-store';
