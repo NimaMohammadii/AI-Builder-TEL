@@ -44,11 +44,8 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     if(!card)return;
     var track=card.closest('[data-play-zone-nft-track]');
     if(track)track.classList.add('is-paused');
-    card.classList.remove('is-nft-pulse');
-    void card.offsetWidth;
-    card.classList.add('is-nft-pulse');
     clearTimeout(card.__vexaNftTimer);
-    card.__vexaNftTimer=setTimeout(function(){card.classList.remove('is-nft-pulse');if(track)track.classList.remove('is-paused')},950);
+    card.__vexaNftTimer=setTimeout(function(){if(track)track.classList.remove('is-paused')},1200);
   }
   function apply(map){
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
