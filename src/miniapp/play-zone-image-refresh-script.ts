@@ -25,8 +25,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     img.loading='eager';
     img.decoding='async';
   }
-  function nftPrice(item){var raw=esc(item&&((item.price||'')+' '+(item.description||'')));var m=raw.replace(/,/g,'.').match(/([0-9]+(?:\\.[0-9]+)?)/);return m&&m[1]?m[1]:'0'}
-  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||''),price=nftPrice(item);return '<button type="button" class="play-zone-nft-card" data-view="market"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong><span class="play-zone-nft-price"><img src="/app/api/nft-price-icon.png" alt="TON" decoding="async"/><b>'+price+'</b></span></span></button>'}
+  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||'');return '<button type="button" class="play-zone-nft-card" data-view="market"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
   function renderNfts(items){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;var list=(Array.isArray(items)?items:[]).slice(0,6);if(!list.length){strip.hidden=true;track.innerHTML='';return}strip.hidden=false;var html=list.map(nftCard).join('');track.innerHTML=html+html}
   function loadLowNfts(force){if(nftBusy)return;var cached=null;try{cached=JSON.parse(localStorage.getItem(NFT_KEY)||'null')}catch(e){}if(cached&&cached.items&&!force&&Date.now()-Number(cached.ts||0)<180000){renderNfts(cached.items);return}if(cached&&cached.items)renderNfts(cached.items);nftBusy=true;fetch('/app/api/ton-gift-market-fresh?sort=price_asc&offset=0&limit=6&ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){var items=Array.isArray(j&&j.gifts)?j.gifts.slice(0,6):[];try{localStorage.setItem(NFT_KEY,JSON.stringify({items:items,ts:Date.now()}))}catch(e){}renderNfts(items)}).catch(function(){if(cached&&cached.items)renderNfts(cached.items)}).finally(function(){nftBusy=false})}
   function apply(map){
@@ -50,29 +49,12 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     startCounters();
     return Promise.resolve(next);
   }
-  function nextCount(current){
-    var base=parseInt(current,10);
-    if(!isFinite(base))base=100+Math.floor(Math.random()*301);
-    var delta=Math.floor(Math.random()*11)-5;
-    if(delta===0)delta=1;
-    var value=base+delta;
-    if(value<100)value=100+Math.floor(Math.random()*12);
-    if(value>400)value=400-Math.floor(Math.random()*12);
-    return value;
-  }
+  function nextCount(current){var base=parseInt(current,10);if(!isFinite(base))base=100+Math.floor(Math.random()*301);var delta=Math.floor(Math.random()*11)-5;if(delta===0)delta=1;var value=base+delta;if(value<100)value=100+Math.floor(Math.random()*12);if(value>400)value=400-Math.floor(Math.random()*12);return value}
   function flipDigit(el,text){el.classList.add('is-counting');setTimeout(function(){el.textContent=text;el.classList.remove('is-counting')},135)}
-  function animateNumber(el,value){
-    if(!el)return;
-    var from=String(parseInt(el.textContent,10)||0).padStart(3,'0');
-    var to=String(value).padStart(3,'0');
-    var order=[2,1,0];
-    order.forEach(function(index,step){if(from.charAt(index)===to.charAt(index))return;setTimeout(function(){var current=String(parseInt(el.textContent,10)||0).padStart(3,'0').split('');current[index]=to.charAt(index);flipDigit(el,String(parseInt(current.join(''),10)))},step*170)});
-  }
+  function animateNumber(el,value){if(!el)return;var from=String(parseInt(el.textContent,10)||0).padStart(3,'0');var to=String(value).padStart(3,'0');var order=[2,1,0];order.forEach(function(index,step){if(from.charAt(index)===to.charAt(index))return;setTimeout(function(){var current=String(parseInt(el.textContent,10)||0).padStart(3,'0').split('');current[index]=to.charAt(index);flipDigit(el,String(parseInt(current.join(''),10)))},step*170)})}
   function tickCounters(){document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))})}
   function startCounters(){if(countersStarted)return;countersStarted=true;setInterval(tickCounters,3000)}
-  apply(readCache());
-  loadLowNfts(false);
-  startCounters();
+  apply(readCache());loadLowNfts(false);startCounters();
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(refresh,160)},true);
   window.VexaRefreshPlayZoneImages=function(){return refresh()};
 })();
