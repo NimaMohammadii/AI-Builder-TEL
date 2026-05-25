@@ -12,7 +12,17 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
   function clean(url){var value=String(url||'');var marker=value.indexOf('?rt=');if(marker>=0)value=value.slice(0,marker);return value}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
-  function setImage(img,url){if(!img||!allowed(url))return;var next=clean(url);if(img.getAttribute('src')!==next)img.src=next;img.classList.remove('is-empty');img.style.display='';img.loading='eager';img.decoding='async'}
+  function setImage(img,url){
+    if(!img||!allowed(url))return;
+    var next=clean(url);
+    var fallback=img.getAttribute('data-fallback-src')||img.getAttribute('src')||'';
+    img.onerror=function(){this.onerror=null;if(fallback&&this.getAttribute('src')!==fallback)this.src=fallback;this.style.display=''};
+    if(next&&img.getAttribute('src')!==next)img.src=next;
+    img.classList.remove('is-empty');
+    img.style.display='';
+    img.loading='eager';
+    img.decoding='async';
+  }
   function apply(map){
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
     setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko']);
