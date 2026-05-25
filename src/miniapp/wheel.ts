@@ -145,7 +145,7 @@ export const WHEEL_SECTION = `
 
     .wheel-input-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       gap: 8px;
     }
 
@@ -161,15 +161,18 @@ export const WHEEL_SECTION = `
       outline: none;
     }
 
-    .wheel-input-row span {
+    .wheel-multiplier-btn {
       height: 50px;
-      min-width: 64px;
+      min-width: 58px;
       border-radius: 18px;
       border: 1px solid rgba(255, 255, 255, .1);
       background: rgba(0, 0, 0, .35);
+      color: #fff;
       display: grid;
       place-items: center;
       font-weight: 950;
+      font-size: 13px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
     }
 
     .wheel-quick {
@@ -203,14 +206,6 @@ export const WHEEL_SECTION = `
       letter-spacing: -.045em;
       border-color: #fff;
       box-shadow: 0 14px 28px rgba(0, 0, 0, .58);
-    }
-
-    .wheel-status {
-      min-height: 20px;
-      color: rgba(255, 255, 255, .7);
-      font-size: 12px;
-      text-align: center;
-      font-weight: 800;
     }
 
     .wheel-stats {
@@ -274,18 +269,18 @@ export const WHEEL_SECTION = `
     <div class="wheel-panel">
       <div class="wheel-controls">
         <div class="wheel-input-row">
-          <input data-wheel-amount inputmode="decimal" pattern="[0-9.]*" value="0.01" />
-          <span>TON</span>
+          <input data-wheel-amount inputmode="decimal" pattern="[0-9.]*" value="0.1" />
+          <button class="wheel-multiplier-btn" type="button" data-wheel-half>1/2</button>
+          <button class="wheel-multiplier-btn" type="button" data-wheel-double>2x</button>
         </div>
 
         <div class="wheel-quick">
-          <button data-wheel-quick="0.01" class="active">0.01</button>
-          <button data-wheel-quick="0.05">0.05</button>
-          <button data-wheel-quick="0.1">0.1</button>
+          <button data-wheel-quick="0.1" class="active">0.1</button>
+          <button data-wheel-quick="0.5">0.5</button>
+          <button data-wheel-quick="1">1</button>
         </div>
 
         <button class="wheel-join" data-wheel-join>Join Round</button>
-        <div class="wheel-status" data-wheel-status>UI preview only</div>
       </div>
 
       <div class="wheel-stats">
@@ -307,48 +302,25 @@ export const WHEEL_SECTION = `
       var canvas = root.querySelector('[data-wheel-canvas]');
       var ctx = canvas.getContext('2d');
       var amountInput = root.querySelector('[data-wheel-amount]');
-      var joinBtn = root.querySelector('[data-wheel-join]');
-      var statusEl = root.querySelector('[data-wheel-status]');
       var colors = ['#f2f2f2', '#4a0a1e', '#19191c', '#343438', '#101012'];
       var angle = -Math.PI / 2;
 
       function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-        var span = Math.max(.001, endAngle - startAngle);
-        var curve = Math.min(.078, span * .34);
-        var middleRadius = (innerRadius + outerRadius) / 2;
-        var innerStart = startAngle + curve;
-        var innerEnd = endAngle - curve;
-        var outerStart = startAngle + curve;
-        var outerEnd = endAngle - curve;
+        var tipRadius = .018;
+        var innerStart = startAngle + tipRadius;
+        var innerEnd = endAngle - tipRadius;
+        var outerStart = startAngle + tipRadius;
+        var outerEnd = endAngle - tipRadius;
+        var midRadius = (innerRadius + outerRadius) / 2;
 
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
         ctx.arc(cx, cy, innerRadius, innerStart, innerEnd, false);
-        ctx.quadraticCurveTo(
-          cx + Math.cos(endAngle) * innerRadius,
-          cy + Math.sin(endAngle) * innerRadius,
-          cx + Math.cos(endAngle) * middleRadius,
-          cy + Math.sin(endAngle) * middleRadius
-        );
-        ctx.quadraticCurveTo(
-          cx + Math.cos(endAngle) * outerRadius,
-          cy + Math.sin(endAngle) * outerRadius,
-          cx + Math.cos(outerEnd) * outerRadius,
-          cy + Math.sin(outerEnd) * outerRadius
-        );
+        ctx.lineTo(cx + Math.cos(endAngle) * midRadius, cy + Math.sin(endAngle) * midRadius);
+        ctx.lineTo(cx + Math.cos(outerEnd) * outerRadius, cy + Math.sin(outerEnd) * outerRadius);
         ctx.arc(cx, cy, outerRadius, outerEnd, outerStart, true);
-        ctx.quadraticCurveTo(
-          cx + Math.cos(startAngle) * outerRadius,
-          cy + Math.sin(startAngle) * outerRadius,
-          cx + Math.cos(startAngle) * middleRadius,
-          cy + Math.sin(startAngle) * middleRadius
-        );
-        ctx.quadraticCurveTo(
-          cx + Math.cos(startAngle) * innerRadius,
-          cy + Math.sin(startAngle) * innerRadius,
-          cx + Math.cos(innerStart) * innerRadius,
-          cy + Math.sin(innerStart) * innerRadius
-        );
+        ctx.lineTo(cx + Math.cos(startAngle) * midRadius, cy + Math.sin(startAngle) * midRadius);
+        ctx.lineTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
         ctx.closePath();
       }
 
@@ -360,7 +332,7 @@ export const WHEEL_SECTION = `
         var outerRadius = 486;
         var innerRadius = 106;
         var gap = .016;
-        var values = ['0.01', '0.01', '0.01', '0.01', '0.01'];
+        var values = ['0.1', '0.1', '0.1', '0.1', '0.1'];
 
         ctx.clearRect(0, 0, width, height);
 
@@ -411,13 +383,18 @@ export const WHEEL_SECTION = `
             item.classList.remove('active');
           });
           button.classList.add('active');
-          amountInput.value = button.getAttribute('data-wheel-quick') || '0.01';
-          statusEl.textContent = 'UI preview only';
+          amountInput.value = button.getAttribute('data-wheel-quick') || '0.1';
         };
       });
 
-      joinBtn.onclick = function () {
-        statusEl.textContent = 'UI preview only';
+      root.querySelector('[data-wheel-half]').onclick = function () {
+        var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2);
+        amountInput.value = String(value).replace(/\.0$/, '');
+      };
+
+      root.querySelector('[data-wheel-double]').onclick = function () {
+        var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
+        amountInput.value = String(value).replace(/\.0$/, '');
       };
 
       draw();
