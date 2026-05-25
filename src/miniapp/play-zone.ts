@@ -14,23 +14,18 @@ const playZoneGames = [
 const liveGames = playZoneGames.filter((game) => game[3] === 'Play');
 const upcomingGames = playZoneGames.filter((game) => game[3] !== 'Play');
 
+function playersOnline(id: string): number {
+  const seed = id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return 100 + (seed % 301);
+}
+
 function gameCard([id, label, description, action]: typeof playZoneGames[number], extraClass = ''): string {
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
-  const badge = action === 'Play' ? 'Live' : 'Soon';
-  return `<button class="game-card ${extraClass}" type="button" ${viewAttr}><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><span class="game-badge">${badge}</span><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
+  return `<button class="game-card ${extraClass}" type="button" ${viewAttr}><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><strong>${label}</strong><small>${description}</small></span><span class="game-footer"><span class="game-players" aria-label="Players online"><i></i><b>${playersOnline(id)}</b></span><span class="game-open">${action}</span></span></button>`;
 }
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
   <div class="play-zone-stage">
-    <section class="play-zone-hero">
-      <p class="play-zone-kicker">Vexa Arcade</p>
-      <h2>Play Zone</h2>
-      <p class="play-zone-copy">Pick a fast game, chase clean multipliers, and switch between live rooms without leaving the mini app.</p>
-      <div class="play-zone-stats" aria-label="Play Zone status">
-        <span><b>${liveGames.length}</b><small>Live</small></span>
-        <span><b>${upcomingGames.length}</b><small>Coming</small></span>
-      </div>
-    </section>
     <div class="play-zone-section-head"><strong>Live games</strong><span>Ready to play</span></div>
     <div class="play-zone-featured-row play-zone-grid-row">${liveGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div>
     <div class="play-zone-section-head play-zone-upcoming-head"><strong>Coming next</strong><span>New rooms soon</span></div>
