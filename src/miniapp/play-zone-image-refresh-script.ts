@@ -72,7 +72,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     });
   }
   function tickCounters(){
-    document.querySelectorAll('#playzone .game-card[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))});
+    document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))});
   }
   function startCounters(){
     if(countersStarted)return;
