@@ -89,19 +89,16 @@ export const WHEEL_SECTION = `
       z-index: 5;
       transform: translateX(-50%);
       background: transparent !important;
-      filter: drop-shadow(0 12px 18px rgba(0, 0, 0, .45));
+      filter: drop-shadow(0 16px 32px rgba(0, 0, 0, .62));
     }
 
     .wheel-pointer:before {
       content: '';
       position: absolute;
       inset: 0;
-      background: rgba(255, 255, 255, .08);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 0 !important;
-      outline: 0 !important;
-      box-shadow: none !important;
+      background: rgba(255, 255, 255, .06) !important;
+      border: 1px solid rgba(255, 255, 255, .24) !important;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .32) !important;
       clip-path: polygon(50% 100%, 3% 0, 97% 0);
     }
 
@@ -306,21 +303,30 @@ export const WHEEL_SECTION = `
       var angle = -Math.PI / 2;
 
       function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-        var tipRadius = .018;
-        var innerStart = startAngle + tipRadius;
-        var innerEnd = endAngle - tipRadius;
-        var outerStart = startAngle + tipRadius;
-        var outerEnd = endAngle - tipRadius;
-        var midRadius = (innerRadius + outerRadius) / 2;
+        var corner = .010;
+        var innerStart = startAngle + corner;
+        var innerEnd = endAngle - corner;
+        var outerStart = startAngle + corner;
+        var outerEnd = endAngle - corner;
 
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
-        ctx.arc(cx, cy, innerRadius, innerStart, innerEnd, false);
-        ctx.lineTo(cx + Math.cos(endAngle) * midRadius, cy + Math.sin(endAngle) * midRadius);
-        ctx.lineTo(cx + Math.cos(outerEnd) * outerRadius, cy + Math.sin(outerEnd) * outerRadius);
-        ctx.arc(cx, cy, outerRadius, outerEnd, outerStart, true);
-        ctx.lineTo(cx + Math.cos(startAngle) * midRadius, cy + Math.sin(startAngle) * midRadius);
-        ctx.lineTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
+        ctx.lineTo(cx + Math.cos(outerStart) * outerRadius, cy + Math.sin(outerStart) * outerRadius);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(startAngle) * outerRadius,
+          cy + Math.sin(startAngle) * outerRadius,
+          cx + Math.cos(startAngle + corner * .5) * outerRadius,
+          cy + Math.sin(startAngle + corner * .5) * outerRadius
+        );
+        ctx.arc(cx, cy, outerRadius, outerStart, outerEnd, false);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(endAngle) * outerRadius,
+          cy + Math.sin(endAngle) * outerRadius,
+          cx + Math.cos(outerEnd) * outerRadius,
+          cy + Math.sin(outerEnd) * outerRadius
+        );
+        ctx.lineTo(cx + Math.cos(innerEnd) * innerRadius, cy + Math.sin(innerEnd) * innerRadius);
+        ctx.arc(cx, cy, innerRadius, innerEnd, innerStart, true);
         ctx.closePath();
       }
 
