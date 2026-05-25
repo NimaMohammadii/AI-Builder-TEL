@@ -1,3 +1,4 @@
+
 export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
@@ -195,3 +196,4 @@ export const WHEEL_SECTION = `
     })();
   </script>
 </section>`;
+export const WHEEL_SECTION = ``;
