@@ -35,8 +35,11 @@ export const RPS_SECTION = `
       position: relative;
       min-height: 390px;
       border-radius: 34px;
-      background: rgba(255, 255, 255, .045);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, .025);
+      border: 0 !important;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .075);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      backdrop-filter: blur(18px) saturate(150%);
       overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr auto;
@@ -47,9 +50,9 @@ export const RPS_SECTION = `
       content: '';
       position: absolute;
       inset: -35%;
-      background: conic-gradient(from 180deg, transparent, rgba(255, 45, 96, .18), transparent, rgba(255, 255, 255, .08), transparent);
+      background: conic-gradient(from 180deg, transparent, rgba(255, 45, 96, .16), transparent, rgba(255, 255, 255, .06), transparent);
       animation: rpsGlow 8s linear infinite;
-      opacity: .8;
+      opacity: .72;
     }
 
     .rps-arena > * {
@@ -68,12 +71,15 @@ export const RPS_SECTION = `
       min-height: 34px;
       padding: 0 12px;
       border-radius: 999px;
-      background: rgba(0, 0, 0, .34);
-      border: 1px solid rgba(255, 255, 255, .1);
+      background: rgba(255, 255, 255, .035);
+      border: 0 !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 12px 28px rgba(0, 0, 0, .2);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      backdrop-filter: blur(10px) saturate(150%);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255, 255, 255, .7);
+      color: rgba(255, 255, 255, .72);
       font-size: 11px;
       font-weight: 900;
       letter-spacing: -.02em;
@@ -110,9 +116,11 @@ export const RPS_SECTION = `
     .rps-hand-card {
       height: 142px;
       border-radius: 28px;
-      background: rgba(0, 0, 0, .34);
-      border: 1px solid rgba(255, 255, 255, .1);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 16px 38px rgba(0, 0, 0, .34);
+      background: rgba(255, 255, 255, .028);
+      border: 0 !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 16px 38px rgba(0, 0, 0, .3);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+      backdrop-filter: blur(14px) saturate(150%);
       display: grid;
       place-items: center;
       gap: 6px;
@@ -134,13 +142,15 @@ export const RPS_SECTION = `
       width: 58px;
       height: 58px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, .08);
-      border: 1px solid rgba(255, 255, 255, .16);
+      background: rgba(255, 255, 255, .04);
+      border: 0 !important;
       display: grid;
       place-items: center;
       font-weight: 950;
       color: #fff;
-      box-shadow: 0 16px 34px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .16);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .1);
+      -webkit-backdrop-filter: blur(12px) saturate(150%);
+      backdrop-filter: blur(12px) saturate(150%);
     }
 
     .rps-result {
@@ -160,16 +170,18 @@ export const RPS_SECTION = `
 
     .rps-choice {
       height: 98px;
-      border: 1px solid rgba(255, 255, 255, .12);
+      border: 0 !important;
       border-radius: 24px;
-      background: rgba(255, 255, 255, .055);
+      background: rgba(255, 255, 255, .03);
       color: #fff;
-      box-shadow: 0 14px 32px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .12);
+      box-shadow: 0 14px 32px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .09);
+      -webkit-backdrop-filter: blur(12px) saturate(150%);
+      backdrop-filter: blur(12px) saturate(150%);
       display: grid;
       place-items: center;
       gap: 4px;
       font-weight: 950;
-      transition: transform .18s cubic-bezier(.2, .9, .16, 1), background .18s ease, border-color .18s ease;
+      transition: transform .18s cubic-bezier(.2, .9, .16, 1), background .18s ease, box-shadow .18s ease;
     }
 
     .rps-choice:active {
@@ -188,16 +200,19 @@ export const RPS_SECTION = `
     }
 
     .rps-choice.is-picked {
-      background: rgba(255, 45, 96, .18);
-      border-color: rgba(255, 45, 96, .42);
+      background: rgba(255, 45, 96, .13);
+      box-shadow: 0 18px 38px rgba(255, 45, 96, .13), inset 0 1px 0 rgba(255, 255, 255, .11);
     }
 
     .rps-panel {
       display: grid;
       gap: 10px;
       border-radius: 28px;
-      background: rgba(255, 255, 255, .04);
-      box-shadow: 0 18px 44px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .1);
+      background: rgba(255, 255, 255, .025);
+      border: 0 !important;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .08);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      backdrop-filter: blur(18px) saturate(150%);
       padding: 14px;
     }
 
@@ -211,12 +226,14 @@ export const RPS_SECTION = `
     .rps-input-row button {
       height: 50px;
       border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, .12);
-      background: rgba(0, 0, 0, .32);
+      border: 0 !important;
+      background: rgba(255, 255, 255, .028);
       color: #fff;
       font-weight: 950;
       outline: none;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 12px 24px rgba(0, 0, 0, .2);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      backdrop-filter: blur(10px) saturate(150%);
     }
 
     .rps-input-row input {
@@ -248,9 +265,12 @@ export const RPS_SECTION = `
     }
 
     .rps-stat {
-      border: 1px solid rgba(255, 255, 255, .1);
+      border: 0 !important;
       border-radius: 18px;
-      background: rgba(0, 0, 0, .3);
+      background: rgba(255, 255, 255, .026);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .075), 0 12px 24px rgba(0, 0, 0, .2);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      backdrop-filter: blur(10px) saturate(150%);
       padding: 10px;
       text-align: center;
     }
