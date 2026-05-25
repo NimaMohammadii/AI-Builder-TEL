@@ -11,12 +11,13 @@ const playZoneGames = [
   ['hilo', 'Hi-Lo', 'Call higher or lower to build streaks', 'Soon'],
 ] as const;
 
-const readyGames = playZoneGames.filter((game) => game[3] === 'Play');
-const lockedGames = playZoneGames.filter((game) => game[3] !== 'Play');
+const liveGames = playZoneGames.filter((game) => game[3] === 'Play');
+const upcomingGames = playZoneGames.filter((game) => game[3] !== 'Play');
 
-function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
+function gameCard([id, label, description, action]: typeof playZoneGames[number], extraClass = ''): string {
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
-  return `<button class="game-card ${extraClass}" type="button" ${viewAttr} aria-label="${label}"><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-open">${action}</span></button>`;
+  const badge = action === 'Play' ? 'Live' : 'Soon';
+  return `<button class="game-card ${extraClass}" type="button" ${viewAttr}><span class="game-image"><img src="/app/api/section-lock-image/${id}/locked.png?v=${cardImageVersion}" alt="${label}" decoding="async" onerror="this.style.display='none'"/></span><span class="game-info"><span class="game-badge">${badge}</span><strong>${label}</strong><small>${description}</small></span><span class="game-open">${action}</span></button>`;
 }
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
@@ -24,9 +25,15 @@ export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-v
     <section class="play-zone-hero">
       <p class="play-zone-kicker">Vexa Arcade</p>
       <h2>Play Zone</h2>
-      <p class="play-zone-copy">Choose a room, enter fast, and keep the whole arcade one tap away.</p>
+      <p class="play-zone-copy">Pick a fast game, chase clean multipliers, and switch between live rooms without leaving the mini app.</p>
+      <div class="play-zone-stats" aria-label="Play Zone status">
+        <span><b>${liveGames.length}</b><small>Live</small></span>
+        <span><b>${upcomingGames.length}</b><small>Coming</small></span>
+      </div>
     </section>
-    <div class="play-zone-featured-row play-zone-grid-row">${readyGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div>
-    <div class="play-zone-upcoming-row">${lockedGames.map((game) => gameCard(game, 'play-zone-muted-card')).join('')}</div>
+    <div class="play-zone-section-head"><strong>Live games</strong><span>Ready to play</span></div>
+    <div class="play-zone-featured-row play-zone-grid-row">${liveGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div>
+    <div class="play-zone-section-head play-zone-upcoming-head"><strong>Coming next</strong><span>New rooms soon</span></div>
+    <div class="play-zone-upcoming-row">${upcomingGames.map((game) => gameCard(game, 'play-zone-muted-card')).join('')}</div>
   </div>
 </section>`;
