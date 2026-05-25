@@ -1,7 +1,9 @@
 export const FOOTBALL_PREDICT_SCRIPT = `<script>
 (function(){
   var matches=[
-    {id:'arg-bra',stage:'World Cup Preview',time:'Today 21:00',a:'argentina',b:'brazil'}
+    {id:'arg-bra',stage:'World Cup Preview',time:'Today 21:00',a:'argentina',b:'brazil'},
+    {id:'fra-eng',stage:'Live Prediction',time:'Live soon',a:'france',b:'england'},
+    {id:'spa-ger',stage:'Group Match',time:'Tomorrow 20:00',a:'spain',b:'germany'}
   ];
   var teams={};
   function root(){return document.getElementById('predictzone')}
