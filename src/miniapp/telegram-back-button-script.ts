@@ -8,7 +8,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     var originalHide=back.hide&&back.hide.bind(back);
     var originalShow=back.show&&back.show.bind(back);
     var backTarget='';
-    var backSections=['predictzone','crash','plinko','mines','topplayers','wheel','dice'];
+    var backSections=['predictzone','crash','plinko','mines','topplayers','wheel','dice','rps'];
     function activeBackSection(){
       for(var i=0;i<backSections.length;i++){
         var node=document.getElementById(backSections[i]);
@@ -18,7 +18,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       return '';
     }
     function targetFor(section){
-      if(section==='predictzone'||section==='crash'||section==='plinko'||section==='mines'||section==='topplayers'||section==='wheel'||section==='dice')return 'playzone';
+      if(section==='predictzone'||section==='crash'||section==='plinko'||section==='mines'||section==='topplayers'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
       if(section==='rewards')return 'home';
       return '';
     }
