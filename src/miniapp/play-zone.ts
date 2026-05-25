@@ -22,7 +22,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
   <div class="play-zone-stage">
     <section class="play-zone-nft-strip" data-play-zone-nft-strip hidden>
-      <div class="play-zone-nft-head"><strong>Market Picks</strong><span>Low price NFTs</span></div>
+      <div class="play-zone-nft-head"><strong>Market Picks</strong></div>
       <div class="play-zone-nft-viewport"><div class="play-zone-nft-track" data-play-zone-nft-track></div></div>
     </section>
     <div class="play-zone-section-head"><strong>Live games</strong><span>Ready to play</span></div>
