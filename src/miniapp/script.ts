@@ -107,7 +107,12 @@ export const MINIAPP_SCRIPT = `
       if(!b)return;
       var id=b.getAttribute('data-game-view')||'';
       ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
-      if(q(id)){show(id);return}
+      if(q(id)){
+        b.classList.add('is-soft-entering');
+        document.body.classList.add('soft-game-entering');
+        setTimeout(function(){show(id);b.classList.remove('is-soft-entering');document.body.classList.remove('soft-game-entering')},180);
+        return;
+      }
       toast('Coming soon');
     },true);
   }
