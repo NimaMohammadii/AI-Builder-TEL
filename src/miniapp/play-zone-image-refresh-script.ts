@@ -6,6 +6,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var all=games.concat(ads).concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v9';
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
+  var countersStarted=false;
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map))}catch(e){}}
   function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
@@ -29,9 +30,34 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     var next=mapFromSectionLocks(cached);
     if(next!==cached)writeCache(next);
     apply(next);
+    startCounters();
     return Promise.resolve(next);
   }
+  function nextCount(current){
+    var base=parseInt(current,10);
+    if(!isFinite(base))base=100+Math.floor(Math.random()*301);
+    var delta=Math.floor(Math.random()*11)-5;
+    if(delta===0)delta=1;
+    var value=base+delta;
+    if(value<100)value=100+Math.floor(Math.random()*12);
+    if(value>400)value=400-Math.floor(Math.random()*12);
+    return value;
+  }
+  function animateNumber(el,value){
+    if(!el)return;
+    el.classList.add('is-counting');
+    setTimeout(function(){el.textContent=String(value);el.classList.remove('is-counting')},180);
+  }
+  function tickCounters(){
+    document.querySelectorAll('#playzone .game-card[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))});
+  }
+  function startCounters(){
+    if(countersStarted)return;
+    countersStarted=true;
+    setInterval(tickCounters,3000);
+  }
   apply(readCache());
+  startCounters();
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(refresh,160)},true);
   window.VexaRefreshPlayZoneImages=function(){return refresh()};
 })();
