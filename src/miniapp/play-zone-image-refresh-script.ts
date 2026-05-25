@@ -1,6 +1,6 @@
 export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
 (function(){
-  var games=['mines','plinko','crash','wheel','dice','limbo','tower','coinflip','hilo'];
+  var games=['mines','plinko','crash','wheel','dice','rps','tower','coinflip','hilo'];
   var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
