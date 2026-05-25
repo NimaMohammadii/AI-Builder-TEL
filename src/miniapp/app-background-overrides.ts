@@ -28,5 +28,4 @@ body:has(#vexaBoot:not(.hide)) .tabs{opacity:0!important;transform:translateY(86
 @keyframes vexaLogoBreath{0%,100%{transform:scale(1);filter:drop-shadow(0 0 20px rgba(0,0,0,.78))}50%{transform:scale(1.035);filter:drop-shadow(0 0 24px rgba(255,255,255,.18)) drop-shadow(0 0 26px rgba(0,0,0,.86))}}
 @keyframes vexaTextShine{0%,100%{opacity:.88;text-shadow:0 8px 28px rgba(0,0,0,.45),0 0 28px rgba(0,0,0,.75)}50%{opacity:1;text-shadow:0 8px 28px rgba(0,0,0,.45),0 0 22px rgba(255,255,255,.18),0 0 36px rgba(122,24,52,.35)}}
 @media (prefers-reduced-motion:reduce){.vexa-boot:before,.vexa-boot:after,.vexa-boot-card,.vexa-boot-card:before,.vexa-boot-logo,.vexa-boot-title{animation:none!important}}
-#home.view.active{background:#050203!important}
 `;
