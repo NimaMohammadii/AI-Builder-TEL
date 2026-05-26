@@ -19,12 +19,16 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
     block.innerHTML='<div class="image-current"><img id="minesSafePreview" src="/app/api/uploaded-image/mines-safe.png" alt=""/><div><strong>Mines safe tile image</strong><p class="muted small-text">Shown when a safe tile is revealed.</p></div></div><label>Upload safe tile image</label><input id="minesSafeFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadMinesSafe" type="button">Upload safe tile</button><div class="image-current"><img id="minesBombPreview" src="/app/api/uploaded-image/mines-bomb.png" alt=""/><div><strong>Mines mine tile image</strong><p class="muted small-text">Shown when a mine tile is revealed.</p></div></div><label>Upload mine tile image</label><input id="minesBombFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadMinesBomb" type="button">Upload mine tile</button><p id="minesTilesUploadStatus" class="status"></p>';
     section.appendChild(block);
   }
+  function rpsUploadHtml(side,label,kind,title){
+    const idSide=side.charAt(0).toUpperCase()+side.slice(1),idKind=kind.charAt(0).toUpperCase()+kind.slice(1),id='rps'+idSide+idKind;
+    return '<div class="image-current"><img id="'+id+'Preview" src="/app/api/uploaded-image/rps-'+side+'-'+kind+'.png" alt=""/><div><strong>RPS '+label+' '+title+' image</strong><p class="muted small-text">Shown for '+label+' '+title+' in Rock Paper Scissors.</p></div></div><label>Upload '+label+' '+title+' image</label><input id="'+id+'File" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="upload'+id+'" type="button">Upload '+label+' '+title+'</button>';
+  }
   function ensureRpsHandsPanel(){
     const section=document.getElementById('sectionImages');
     if(!section||document.getElementById('rpsHandsUploadBlock'))return;
     const block=document.createElement('div');
     block.id='rpsHandsUploadBlock';
-    block.innerHTML='<div class="image-current"><img id="rpsRockPreview" src="/app/api/uploaded-image/rps-rock.png" alt=""/><div><strong>RPS rock image</strong><p class="muted small-text">Shown instead of the rock emoji in Rock Paper Scissors.</p></div></div><label>Upload rock image</label><input id="rpsRockFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadRpsRock" type="button">Upload rock</button><div class="image-current"><img id="rpsPaperPreview" src="/app/api/uploaded-image/rps-paper.png" alt=""/><div><strong>RPS paper image</strong><p class="muted small-text">Shown instead of the paper emoji in Rock Paper Scissors.</p></div></div><label>Upload paper image</label><input id="rpsPaperFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadRpsPaper" type="button">Upload paper</button><div class="image-current"><img id="rpsScissorsPreview" src="/app/api/uploaded-image/rps-scissors.png" alt=""/><div><strong>RPS scissors image</strong><p class="muted small-text">Shown instead of the scissors emoji in Rock Paper Scissors.</p></div></div><label>Upload scissors image</label><input id="rpsScissorsFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadRpsScissors" type="button">Upload scissors</button><p id="rpsHandsUploadStatus" class="status"></p>';
+    block.innerHTML='<h3>Rock Paper Scissors hand images</h3><p class="muted small-text">Upload separate right-hand images for You and left-hand images for Bot.</p>'+rpsUploadHtml('you','You','rock','rock')+rpsUploadHtml('you','You','paper','paper')+rpsUploadHtml('you','You','scissors','scissors')+rpsUploadHtml('bot','Bot','rock','rock')+rpsUploadHtml('bot','Bot','paper','paper')+rpsUploadHtml('bot','Bot','scissors','scissors')+'<p id="rpsHandsUploadStatus" class="status"></p>';
     section.appendChild(block);
   }
   async function refreshPreview(){
@@ -35,11 +39,10 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       if(data.plinkoBallUrl){const previewBall=document.getElementById('plinkoBallPreview');preload(data.plinkoBallUrl);if(previewBall)previewBall.src=data.plinkoBallUrl;}
       if(data.minesSafeUrl){const p=document.getElementById('minesSafePreview');preload(data.minesSafeUrl);if(p)p.src=data.minesSafeUrl;}
       if(data.minesBombUrl){const p=document.getElementById('minesBombPreview');preload(data.minesBombUrl);if(p)p.src=data.minesBombUrl;}
-      if(data.rpsRockUrl){const p=document.getElementById('rpsRockPreview');preload(data.rpsRockUrl);if(p)p.src=data.rpsRockUrl;}
-      if(data.rpsPaperUrl){const p=document.getElementById('rpsPaperPreview');preload(data.rpsPaperUrl);if(p)p.src=data.rpsPaperUrl;}
-      if(data.rpsScissorsUrl){const p=document.getElementById('rpsScissorsPreview');preload(data.rpsScissorsUrl);if(p)p.src=data.rpsScissorsUrl;}
+      const map={YouRock:data.rpsYouRockUrl,YouPaper:data.rpsYouPaperUrl,YouScissors:data.rpsYouScissorsUrl,BotRock:data.rpsBotRockUrl,BotPaper:data.rpsBotPaperUrl,BotScissors:data.rpsBotScissorsUrl};
+      Object.keys(map).forEach((name)=>{const url=map[name];if(url){const p=document.getElementById('rps'+name+'Preview');preload(url);if(p)p.src=url;}});
       try{window.dispatchEvent(new CustomEvent('vexa-mines-images-sync',{detail:{safeUrl:data.minesSafeUrl,bombUrl:data.minesBombUrl}}))}catch(e){}
-      try{window.dispatchEvent(new CustomEvent('vexa-rps-images-sync',{detail:{rockUrl:data.rpsRockUrl,paperUrl:data.rpsPaperUrl,scissorsUrl:data.rpsScissorsUrl}}))}catch(e){}
+      try{window.dispatchEvent(new CustomEvent('vexa-rps-images-sync',{detail:{you:{rock:data.rpsYouRockUrl,paper:data.rpsYouPaperUrl,scissors:data.rpsYouScissorsUrl},bot:{rock:data.rpsBotRockUrl,paper:data.rpsBotPaperUrl,scissors:data.rpsBotScissorsUrl}}}))}catch(e){}
     }
     catch(e){}
   }
@@ -84,7 +87,7 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       try{const r=await fetch('/admin/api/upload-mines-tile-image',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}if(j.url){preload(j.url);const preview=document.getElementById(kind==='bomb'?'minesBombPreview':'minesSafePreview');if(preview)preview.src=j.url;}if(status)status.textContent='Mines image uploaded to R2.';refreshPreview();}catch(e){if(status)status.textContent='Upload request failed.';}
     };
   }
-  function wireRpsHand(buttonId,fileId,kind){
+  function wireRpsHand(buttonId,fileId,side,kind){
     const upload=document.getElementById(buttonId),file=document.getElementById(fileId),status=document.getElementById('rpsHandsUploadStatus');
     if(!upload||!file||upload.dataset.cachedUpload==='1')return;
     upload.dataset.cachedUpload='1';
@@ -92,8 +95,8 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       if(!file.files||!file.files[0]){if(status)status.textContent='Choose an image first.';return}
       if(!allowed.includes(file.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP files are allowed.';return}
       if(status)status.textContent='Uploading RPS image...';
-      const form=new FormData();form.append('kind',kind);form.append('image',file.files[0]);
-      try{const r=await fetch('/admin/api/upload-rps-hand-image',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}if(j.url){preload(j.url);const preview=document.getElementById(kind==='rock'?'rpsRockPreview':kind==='paper'?'rpsPaperPreview':'rpsScissorsPreview');if(preview)preview.src=j.url;}if(status)status.textContent='RPS image uploaded to R2.';refreshPreview();}catch(e){if(status)status.textContent='Upload request failed.';}
+      const form=new FormData();form.append('side',side);form.append('kind',kind);form.append('image',file.files[0]);
+      try{const r=await fetch('/admin/api/upload-rps-hand-image',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}if(j.url){preload(j.url);const id='rps'+side.charAt(0).toUpperCase()+side.slice(1)+kind.charAt(0).toUpperCase()+kind.slice(1)+'Preview';const preview=document.getElementById(id);if(preview)preview.src=j.url;}if(status)status.textContent='RPS image uploaded to R2.';refreshPreview();}catch(e){if(status)status.textContent='Upload request failed.';}
     };
   }
   function install(){
@@ -104,9 +107,7 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
     wirePlinkoBall();
     wireMinesTile('uploadMinesSafe','minesSafeFile','safe');
     wireMinesTile('uploadMinesBomb','minesBombFile','bomb');
-    wireRpsHand('uploadRpsRock','rpsRockFile','rock');
-    wireRpsHand('uploadRpsPaper','rpsPaperFile','paper');
-    wireRpsHand('uploadRpsScissors','rpsScissorsFile','scissors');
+    ['you','bot'].forEach((side)=>['rock','paper','scissors'].forEach((kind)=>{const id='Rps'+side.charAt(0).toUpperCase()+side.slice(1)+kind.charAt(0).toUpperCase()+kind.slice(1);wireRpsHand('upload'+id,id.charAt(0).toLowerCase()+id.slice(1)+'File',side,kind);}));
     refreshPreview();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
