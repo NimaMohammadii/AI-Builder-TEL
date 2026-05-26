@@ -6,11 +6,13 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var all=games.concat(ads).concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v9';
   var NFT_KEY='vexaPlayZoneMixedNfts:v4';
+  var OLD_NFT_KEYS=['vexaPlayZoneMixedNfts:v3','vexaPlayZoneMixedNfts:v2','vexaPlayZoneLowNfts:v1'];
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
   var countersStarted=false,nftBusy=false,lastGoodNfts=[];
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map))}catch(e){}}
-  function readNftCache(){try{return JSON.parse(localStorage.getItem(NFT_KEY)||'null')}catch(e){return null}}
+  function readNftKey(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
+  function readNftCache(){var allKeys=[NFT_KEY].concat(OLD_NFT_KEYS);for(var i=0;i<allKeys.length;i++){var cached=readNftKey(allKeys[i]);if(cached&&Array.isArray(cached.items)&&cached.items.length)return cached}return null}
   function writeNftCache(items){try{localStorage.setItem(NFT_KEY,JSON.stringify({items:items,ts:Date.now()}))}catch(e){}}
   function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
