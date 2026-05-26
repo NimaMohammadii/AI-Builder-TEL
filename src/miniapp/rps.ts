@@ -3,8 +3,8 @@ export const RPS_SECTION = `
   <style>
     html:has(#rps.active),
     body:has(#rps.active) {
-      background: #020001 !important;
-      background-color: #020001 !important;
+      background: #000 !important;
+      background-color: #000 !important;
       background-image: none !important;
     }
 
@@ -20,8 +20,8 @@ export const RPS_SECTION = `
     body:has(#rps.active) .rps-view,
     body:has(#rps.active) .top,
     body:has(#rps.active) header.top {
-      background: #020001 !important;
-      background-color: #020001 !important;
+      background: #000 !important;
+      background-color: #000 !important;
       background-image: none !important;
       box-shadow: none !important;
     }
@@ -33,10 +33,9 @@ export const RPS_SECTION = `
       min-height: 100%;
       padding: 8px 14px calc(104px + env(safe-area-inset-bottom));
       color: #fff;
-      background:
-        radial-gradient(ellipse at 50% -10%, rgba(52, 3, 16, .34), transparent 44%),
-        radial-gradient(ellipse at 50% 104%, rgba(34, 2, 11, .22), transparent 42%),
-        linear-gradient(180deg, #050001 0%, #020001 52%, #000 100%) !important;
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
       overflow-y: auto !important;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
@@ -258,36 +257,35 @@ export const RPS_SECTION = `
 
     .rps-input-row input,
     .rps-input-row button {
-      height: 50px;
-      border-radius: 18px;
+      min-width: 0;
+      height: 46px;
+      border-radius: 999px;
       color: #fff;
-      font-weight: 950;
-      outline: none;
+      font-weight: 900;
     }
 
     .rps-input-row input {
       padding: 0 14px;
-      font-size: 18px;
+      outline: 0;
+      font-size: 17px;
     }
 
     .rps-input-row button {
-      min-width: 58px;
-      font-size: 13px;
+      padding: 0 14px;
     }
 
     .rps-play {
-      height: 60px;
-      border: 0;
+      height: 54px;
+      border: 0 !important;
       border-radius: 999px;
-      background: linear-gradient(180deg, #2b0310, #170107);
-      color: rgba(255,255,255,.92);
-      font-size: 18px;
+      color: #fff;
+      font-size: 17px;
       font-weight: 950;
-      letter-spacing: -.045em;
+      letter-spacing: -.035em;
+      background: rgba(35,2,11,.48);
       box-shadow:
-        0 0 0 1px rgba(95,8,30,.10),
-        0 0 18px rgba(70,4,22,.20),
-        0 14px 30px rgba(0,0,0,.46),
+        0 0 0 1px rgba(95,8,30,.11),
+        0 14px 34px rgba(0,0,0,.36),
         inset 0 1px 0 rgba(255,255,255,.07);
     }
 
@@ -298,171 +296,160 @@ export const RPS_SECTION = `
     }
 
     .rps-stat {
-      border-radius: 18px;
-      padding: 10px;
-      text-align: center;
-    }
-
-    .rps-stat small {
-      display: block;
-      color: rgba(255,255,255,.45);
+      border-radius: 20px;
+      min-height: 54px;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      color: rgba(255,255,255,.58);
       font-size: 10px;
       font-weight: 850;
     }
 
     .rps-stat b {
-      display: block;
-      margin-top: 4px;
-      font-size: 14px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 950;
     }
 
-    .rps-shake {
-      animation: rpsShake .46s cubic-bezier(.2,.9,.16,1);
-    }
-
-    @keyframes rpsShake {
-      0%,100% { transform: translateY(0) scale(1); }
-      30% { transform: translateY(-8px) scale(1.03); }
-      60% { transform: translateY(4px) scale(.99); }
+    .rps-status {
+      min-height: 17px;
+      text-align: center;
+      color: rgba(255,255,255,.58);
+      font-size: 11px;
+      font-weight: 760;
     }
 
     @media(max-width: 380px) {
-      .rps-arena { min-height: 354px; padding: 15px; }
-      .rps-hand-card { height: 124px; border-radius: 24px; }
-      .rps-hand-card b { font-size: 48px; }
-      .rps-choice { height: 86px; border-radius: 21px; }
+      .rps-arena { min-height: 360px; padding: 15px; }
       .rps-title strong { font-size: 26px; }
+      .rps-duel { grid-template-columns: 1fr 48px 1fr; gap: 8px; }
+      .rps-hand-card { height: 124px; border-radius: 24px; }
+      .rps-hand-card b { font-size: 50px; }
+      .rps-vs { width: 48px; height: 48px; }
+      .rps-choice { height: 88px; }
+      .rps-choice i { font-size: 30px; }
     }
   </style>
-
   <div class="rps-wrap">
     <div class="rps-arena">
       <div class="rps-topline">
-        <span class="rps-pill">Best of 1</span>
-        <span class="rps-pill">Payout 1.95x</span>
+        <span class="rps-pill">Rock Paper Scissors</span>
+        <span class="rps-pill" data-rps-balance>Balance: 0 TON</span>
       </div>
-
-      <div class="rps-title">
-        <strong>Rock Paper Scissors</strong>
-        <span>Choose your hand and beat the bot</span>
-      </div>
-
+      <div class="rps-title"><strong>Pick your hand</strong><span>Beat the house and win instantly</span></div>
       <div class="rps-duel">
-        <div class="rps-hand-card" data-rps-player-card><b data-rps-player>✊</b><small>You</small></div>
+        <div class="rps-hand-card"><small>You</small><b data-rps-player>✊</b></div>
         <div class="rps-vs">VS</div>
-        <div class="rps-hand-card" data-rps-bot-card><b data-rps-bot>?</b><small>Bot</small></div>
+        <div class="rps-hand-card"><small>House</small><b data-rps-house>?</b></div>
       </div>
-
-      <div class="rps-result" data-rps-result>Pick a hand</div>
-
+      <div class="rps-result" data-rps-result>Choose a hand to begin</div>
       <div class="rps-choices">
-        <button class="rps-choice" type="button" data-rps-choice="rock"><i>✊</i><span>Rock</span></button>
-        <button class="rps-choice" type="button" data-rps-choice="paper"><i>✋</i><span>Paper</span></button>
-        <button class="rps-choice" type="button" data-rps-choice="scissors"><i>✌️</i><span>Scissors</span></button>
+        <button class="rps-choice" data-rps-choice="rock"><i>✊</i><span>Rock</span></button>
+        <button class="rps-choice" data-rps-choice="paper"><i>✋</i><span>Paper</span></button>
+        <button class="rps-choice" data-rps-choice="scissors"><i>✌️</i><span>Scissors</span></button>
       </div>
     </div>
-
     <div class="rps-panel">
       <div class="rps-input-row">
-        <input data-rps-bet inputmode="decimal" pattern="[0-9.]*" value="0.1" />
-        <button type="button" data-rps-half>1/2</button>
-        <button type="button" data-rps-double>2x</button>
+        <input data-rps-bet type="number" min="0.01" step="0.01" value="1" inputmode="decimal" />
+        <button data-rps-half>Half</button>
+        <button data-rps-max>Max</button>
       </div>
-
-      <button class="rps-play" type="button" data-rps-play>Play Round</button>
-
+      <button class="rps-play" data-rps-play>Play round</button>
       <div class="rps-stats">
-        <div class="rps-stat"><small>WINS</small><b data-rps-wins>0</b></div>
-        <div class="rps-stat"><small>STREAK</small><b data-rps-streak>0</b></div>
-        <div class="rps-stat"><small>BET</small><b data-rps-bet-label>0.1</b></div>
+        <div class="rps-stat"><span>Wins</span><b data-rps-wins>0</b></div>
+        <div class="rps-stat"><span>Losses</span><b data-rps-losses>0</b></div>
+        <div class="rps-stat"><span>Streak</span><b data-rps-streak>0</b></div>
       </div>
+      <div class="rps-status" data-rps-status></div>
     </div>
   </div>
-
   <script>
-    (function () {
+    (function(){
       var root = document.getElementById('rps');
-      if (!root || root.dataset.readyRps) return;
-      root.dataset.readyRps = '1';
-
-      var icons = { rock: '✊', paper: '✋', scissors: '✌️' };
-      var beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-      var picked = 'rock';
-      var wins = 0;
-      var streak = 0;
-      var playerEl = root.querySelector('[data-rps-player]');
-      var botEl = root.querySelector('[data-rps-bot]');
-      var resultEl = root.querySelector('[data-rps-result]');
+      if (!root || root.dataset.ready === '1') return;
+      root.dataset.ready = '1';
+      var choices = ['rock','paper','scissors'];
+      var emoji = { rock: '✊', paper: '✋', scissors: '✌️' };
+      var player = root.querySelector('[data-rps-player]');
+      var house = root.querySelector('[data-rps-house]');
+      var result = root.querySelector('[data-rps-result]');
       var betInput = root.querySelector('[data-rps-bet]');
-      var betLabel = root.querySelector('[data-rps-bet-label]');
+      var balanceEl = root.querySelector('[data-rps-balance]');
       var winsEl = root.querySelector('[data-rps-wins]');
+      var lossesEl = root.querySelector('[data-rps-losses]');
       var streakEl = root.querySelector('[data-rps-streak]');
-      var playerCard = root.querySelector('[data-rps-player-card]');
-      var botCard = root.querySelector('[data-rps-bot-card]');
-      var choices = ['rock', 'paper', 'scissors'];
-
-      function setBet(value) {
-        var next = Math.max(0.1, Number(value) || 0.1);
-        next = Math.round(next * 100) / 100;
-        betInput.value = String(next).replace(/\.0$/, '');
-        betLabel.textContent = betInput.value;
+      var statusEl = root.querySelector('[data-rps-status]');
+      var picked = 'rock';
+      var balance = 0;
+      var wins = Number(localStorage.getItem('rpsWins') || 0);
+      var losses = Number(localStorage.getItem('rpsLosses') || 0);
+      var streak = Number(localStorage.getItem('rpsStreak') || 0);
+      function readBalance(){
+        try { if (window.VexaTonBalance && typeof window.VexaTonBalance.read === 'function') return Number(window.VexaTonBalance.read() || 0) / 1000000000; } catch(e) {}
+        var el = document.querySelector('[data-ton-balance-display]');
+        var text = el ? String(el.textContent || '').replace(/[^0-9.]/g,'') : '0';
+        return Number(text || 0);
       }
-
-      function setPick(value) {
-        picked = value;
-        playerEl.textContent = icons[value];
-        root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
-          button.classList.toggle('is-picked', button.getAttribute('data-rps-choice') === value);
+      function writeBalance(next){
+        try { if (window.VexaTonBalance && typeof window.VexaTonBalance.write === 'function') { window.VexaTonBalance.write(Math.max(0, next) * 1000000000, 0, false); return; } } catch(e) {}
+        var el = document.querySelector('[data-ton-balance-display]');
+        if (el) el.textContent = Math.max(0, next).toFixed(2);
+      }
+      function sync(){
+        balance = readBalance();
+        balanceEl.textContent = 'Balance: ' + balance.toFixed(2) + ' TON';
+        winsEl.textContent = String(wins);
+        lossesEl.textContent = String(losses);
+        streakEl.textContent = String(streak);
+      }
+      function outcome(a,b){
+        if (a === b) return 'draw';
+        if ((a === 'rock' && b === 'scissors') || (a === 'paper' && b === 'rock') || (a === 'scissors' && b === 'paper')) return 'win';
+        return 'loss';
+      }
+      root.querySelectorAll('[data-rps-choice]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          picked = btn.dataset.rpsChoice || 'rock';
+          player.textContent = emoji[picked];
+          root.querySelectorAll('[data-rps-choice]').forEach(function(x){ x.classList.toggle('is-picked', x === btn); });
         });
-      }
-
-      function play() {
-        var bot = choices[Math.floor(Math.random() * choices.length)];
-        botEl.textContent = '?';
-        resultEl.textContent = 'Shuffling...';
-        playerCard.classList.remove('rps-shake');
-        botCard.classList.remove('rps-shake');
-        void playerCard.offsetWidth;
-        playerCard.classList.add('rps-shake');
-        botCard.classList.add('rps-shake');
-        setTimeout(function () {
-          botEl.textContent = icons[bot];
-          if (bot === picked) {
-            resultEl.textContent = 'Draw — try again';
-          } else if (beats[picked] === bot) {
-            wins += 1;
-            streak += 1;
-            resultEl.textContent = 'You win';
-          } else {
-            streak = 0;
-            resultEl.textContent = 'You lose';
-          }
-          winsEl.textContent = String(wins);
-          streakEl.textContent = String(streak);
-        }, 430);
-      }
-
-      root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
-        button.onclick = function () {
-          setPick(button.getAttribute('data-rps-choice') || 'rock');
-        };
       });
-
-      root.querySelector('[data-rps-half]').onclick = function () {
-        setBet(Number(betInput.value || '0.1') / 2);
-      };
-
-      root.querySelector('[data-rps-double]').onclick = function () {
-        setBet(Number(betInput.value || '0.1') * 2);
-      };
-
-      betInput.oninput = function () {
-        betLabel.textContent = betInput.value || '0.1';
-      };
-
-      root.querySelector('[data-rps-play]').onclick = play;
-      setPick('rock');
-      setBet(betInput.value);
+      root.querySelector('[data-rps-half]').addEventListener('click', function(){ sync(); betInput.value = Math.max(.01, balance / 2).toFixed(2); });
+      root.querySelector('[data-rps-max]').addEventListener('click', function(){ sync(); betInput.value = Math.max(.01, balance).toFixed(2); });
+      root.querySelector('[data-rps-play]').addEventListener('click', function(){
+        sync();
+        var bet = Math.max(.01, Number(betInput.value || 0));
+        if (bet > balance) { statusEl.textContent = 'Not enough balance'; return; }
+        var h = choices[Math.floor(Math.random() * choices.length)];
+        house.textContent = emoji[h];
+        var o = outcome(picked, h);
+        if (o === 'draw') {
+          result.textContent = 'Draw — stake returned';
+          statusEl.textContent = 'No balance change';
+        } else if (o === 'win') {
+          balance += bet;
+          wins += 1;
+          streak += 1;
+          result.textContent = 'You win +' + bet.toFixed(2) + ' TON';
+          statusEl.textContent = 'House picked ' + h;
+        } else {
+          balance -= bet;
+          losses += 1;
+          streak = 0;
+          result.textContent = 'You lose -' + bet.toFixed(2) + ' TON';
+          statusEl.textContent = 'House picked ' + h;
+        }
+        balance = Math.max(0, balance);
+        localStorage.setItem('rpsWins', String(wins));
+        localStorage.setItem('rpsLosses', String(losses));
+        localStorage.setItem('rpsStreak', String(streak));
+        writeBalance(balance);
+        sync();
+      });
+      sync();
+      root.querySelector('[data-rps-choice="rock"]').classList.add('is-picked');
     })();
   </script>
 </section>
