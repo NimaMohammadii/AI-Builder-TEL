@@ -14,6 +14,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
   function clean(url){var value=String(url||'');var marker=value.indexOf('?rt=');if(marker>=0)value=value.slice(0,marker);return value}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
+  function animUrl(item){return String(item&&(item.animationUrl||item.animatedUrl||item.videoUrl||item.previewUrl)||'')}
+  function isVideo(url){return /\.(mp4|webm|mov)(\?|#|$)/i.test(String(url||''))}
+  function withBust(url){if(!url)return '';return url+(url.indexOf('?')>=0?'&':'?')+'pzplay='+Date.now()}
   function setImage(img,url){
     if(!img||!allowed(url))return;
     var next=clean(url);
@@ -25,7 +28,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     img.loading='eager';
     img.decoding='async';
   }
-  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||'');return '<button type="button" class="play-zone-nft-card" data-play-zone-nft-card="1"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
+  function nftCard(item){var title=esc(item&&item.title||'Gift NFT'),img=esc(item&&item.imageUrl||''),anim=esc(animUrl(item));return '<button type="button" class="play-zone-nft-card" data-play-zone-nft-card="1" data-nft-still="'+img+'" data-nft-anim="'+anim+'"><span class="play-zone-nft-img">'+(img?'<img src="'+img+'" alt="" decoding="async" loading="eager"/>':'')+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
   function unique(items){var seen={},out=[];(Array.isArray(items)?items:[]).forEach(function(item){var id=String(item&&item.id||item&&item.title||'');if(!id||seen[id])return;seen[id]=1;out.push(item)});return out}
   function renderNfts(items){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;var list=unique(items).slice(0,13);if(!list.length){strip.hidden=true;track.innerHTML='';return}strip.hidden=false;var html=list.map(nftCard).join('');track.innerHTML=html+html}
   function fetchGifts(url){return fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){return Array.isArray(j&&j.gifts)?j.gifts:[]})}
@@ -40,12 +43,33 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
       try{localStorage.setItem(NFT_KEY,JSON.stringify({items:items,ts:Date.now()}))}catch(e){}
       renderNfts(items);
     }).catch(function(){if(cached&&cached.items)renderNfts(cached.items)}).finally(function(){nftBusy=false})}
+  function restoreNft(card,still){
+    var box=card&&card.querySelector('.play-zone-nft-img');
+    if(!box)return;
+    if(still)box.innerHTML='<img src="'+esc(still)+'" alt="" decoding="async" loading="eager"/>';
+  }
   function playNft(card){
     if(!card)return;
     var track=card.closest('[data-play-zone-nft-track]');
     if(track)track.classList.add('is-paused');
+    var box=card.querySelector('.play-zone-nft-img');
+    var still=card.getAttribute('data-nft-still')||'';
+    var anim=card.getAttribute('data-nft-anim')||'';
+    if(box&&anim){
+      if(isVideo(anim)){
+        box.innerHTML='<video src="'+esc(withBust(anim))+'" poster="'+esc(still)+'" muted autoplay playsinline preload="auto"></video>';
+        var video=box.querySelector('video');
+        if(video&&video.play)try{video.play().catch(function(){})}catch(e){}
+      }else{
+        var img=box.querySelector('img');
+        if(img)img.src=withBust(anim);else box.innerHTML='<img src="'+esc(withBust(anim))+'" alt="" decoding="async" loading="eager"/>';
+      }
+    }else if(box&&still){
+      var stillImg=box.querySelector('img');
+      if(stillImg)stillImg.src=withBust(still);
+    }
     clearTimeout(card.__vexaNftTimer);
-    card.__vexaNftTimer=setTimeout(function(){if(track)track.classList.remove('is-paused')},1200);
+    card.__vexaNftTimer=setTimeout(function(){restoreNft(card,still);if(track)track.classList.remove('is-paused')},2200);
   }
   function apply(map){
     games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
