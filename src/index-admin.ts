@@ -43,31 +43,43 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
-  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
+  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead, rpsRockHead, rpsPaperHead, rpsScissorsHead] = await Promise.all([
     c.env.ASSETS.head('credit-icon').catch(() => null),
     c.env.ASSETS.head('ton-icon').catch(() => null),
     c.env.ASSETS.head('plinko-ball').catch(() => null),
     c.env.ASSETS.head('mines-tile/safe').catch(() => null),
     c.env.ASSETS.head('mines-tile/bomb').catch(() => null),
+    c.env.ASSETS.head('rps-hand/rock').catch(() => null),
+    c.env.ASSETS.head('rps-hand/paper').catch(() => null),
+    c.env.ASSETS.head('rps-hand/scissors').catch(() => null),
   ]);
   const creditIconUrl = `/app/api/credit-icon.png?v=${assetVersion(creditHead)}`;
   const tonIconUrl = tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl;
   const plinkoBallUrl = plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
+  const rpsRockUrl = rpsRockHead ? `/app/api/uploaded-image/rps-rock.png?v=${assetVersion(rpsRockHead)}` : null;
+  const rpsPaperUrl = rpsPaperHead ? `/app/api/uploaded-image/rps-paper.png?v=${assetVersion(rpsPaperHead)}` : null;
+  const rpsScissorsUrl = rpsScissorsHead ? `/app/api/uploaded-image/rps-scissors.png?v=${assetVersion(rpsScissorsHead)}` : null;
   const locks = await getSectionLocks(c.env);
   const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl];
   if (minesSafeUrl) preload.push(minesSafeUrl);
   if (minesBombUrl) preload.push(minesBombUrl);
+  if (rpsRockUrl) preload.push(rpsRockUrl);
+  if (rpsPaperUrl) preload.push(rpsPaperUrl);
+  if (rpsScissorsUrl) preload.push(rpsScissorsUrl);
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsRockUrl, rpsPaperUrl, rpsScissorsUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
 app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse(c.env, 'plinko-ball', '/app/api/credit-icon.png'));
+app.get('/app/api/uploaded-image/rps-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/rock', null));
+app.get('/app/api/uploaded-image/rps-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/paper', null));
+app.get('/app/api/uploaded-image/rps-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/scissors', null));
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
@@ -86,6 +98,23 @@ app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
 app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
 app.post('/admin/api/upload-ton-icon', async (c) => uploadImageToR2(c, 'icon', 'ton-icon', (version) => ({ tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` })));
 app.post('/admin/api/upload-plinko-ball', async (c) => uploadImageToR2(c, 'image', 'plinko-ball', (version) => ({ plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` })));
+app.post('/admin/api/upload-rps-hand-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const kind = String(form.get('kind') || '');
+    if (!['rock', 'paper', 'scissors'].includes(kind)) return c.json({ error: 'Invalid RPS image kind.' }, 400);
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await putR2Image(c.env, `rps-hand/${kind}`, file, version);
+    await cleanupLegacyImageKv(c.env, [`admin:rps-hand/${kind}`, `admin:rps-hand/${kind}-type`, `admin:rps-hand/${kind}-version`]);
+    return c.json({ ok: true, size: file.size, type: file.type, kind, url: `/app/api/uploaded-image/rps-${kind}.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload RPS image' }, 400);
+  }
+});
 app.post('/admin/api/section-lock-image', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { const form = await c.req.formData(); const section = normalizeSectionId(String(form.get('sectionId') || '')); const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked')); const file = form.get('image'); if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400); if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400); const version = String(Date.now()); await putR2Image(c.env, sectionImageR2Key(section, kind), file, version); await cleanupLegacyImageKv(c.env, [sectionImageKey(section, kind), sectionImageTypeKey(section, kind), sectionImageVersionKey(section, kind)]); return c.json(await getSectionLocks(c.env)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); } });
 app.post('/admin/api/section-locks', zValidator('json', lockSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionLock(c.env, body.sectionId, body.locked)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400); } });
 app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionCodeLock(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400); } });
