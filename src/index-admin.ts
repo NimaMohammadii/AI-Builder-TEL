@@ -43,43 +43,50 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
-  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead, rpsRockHead, rpsPaperHead, rpsScissorsHead] = await Promise.all([
+  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead, rpsYouRockHead, rpsYouPaperHead, rpsYouScissorsHead, rpsBotRockHead, rpsBotPaperHead, rpsBotScissorsHead] = await Promise.all([
     c.env.ASSETS.head('credit-icon').catch(() => null),
     c.env.ASSETS.head('ton-icon').catch(() => null),
     c.env.ASSETS.head('plinko-ball').catch(() => null),
     c.env.ASSETS.head('mines-tile/safe').catch(() => null),
     c.env.ASSETS.head('mines-tile/bomb').catch(() => null),
-    c.env.ASSETS.head('rps-hand/rock').catch(() => null),
-    c.env.ASSETS.head('rps-hand/paper').catch(() => null),
-    c.env.ASSETS.head('rps-hand/scissors').catch(() => null),
+    c.env.ASSETS.head('rps-hand/you/rock').catch(() => null),
+    c.env.ASSETS.head('rps-hand/you/paper').catch(() => null),
+    c.env.ASSETS.head('rps-hand/you/scissors').catch(() => null),
+    c.env.ASSETS.head('rps-hand/bot/rock').catch(() => null),
+    c.env.ASSETS.head('rps-hand/bot/paper').catch(() => null),
+    c.env.ASSETS.head('rps-hand/bot/scissors').catch(() => null),
   ]);
   const creditIconUrl = `/app/api/credit-icon.png?v=${assetVersion(creditHead)}`;
   const tonIconUrl = tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl;
   const plinkoBallUrl = plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
-  const rpsRockUrl = rpsRockHead ? `/app/api/uploaded-image/rps-rock.png?v=${assetVersion(rpsRockHead)}` : null;
-  const rpsPaperUrl = rpsPaperHead ? `/app/api/uploaded-image/rps-paper.png?v=${assetVersion(rpsPaperHead)}` : null;
-  const rpsScissorsUrl = rpsScissorsHead ? `/app/api/uploaded-image/rps-scissors.png?v=${assetVersion(rpsScissorsHead)}` : null;
+  const rpsYouRockUrl = rpsYouRockHead ? `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}` : null;
+  const rpsYouPaperUrl = rpsYouPaperHead ? `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}` : null;
+  const rpsYouScissorsUrl = rpsYouScissorsHead ? `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}` : null;
+  const rpsBotRockUrl = rpsBotRockHead ? `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}` : null;
+  const rpsBotPaperUrl = rpsBotPaperHead ? `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}` : null;
+  const rpsBotScissorsUrl = rpsBotScissorsHead ? `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}` : null;
   const locks = await getSectionLocks(c.env);
   const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl];
   if (minesSafeUrl) preload.push(minesSafeUrl);
   if (minesBombUrl) preload.push(minesBombUrl);
-  if (rpsRockUrl) preload.push(rpsRockUrl);
-  if (rpsPaperUrl) preload.push(rpsPaperUrl);
-  if (rpsScissorsUrl) preload.push(rpsScissorsUrl);
+  [rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl].forEach((url) => { if (url) preload.push(url); });
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
   }
-  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsRockUrl, rpsPaperUrl, rpsScissorsUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
 app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse(c.env, 'plinko-ball', '/app/api/credit-icon.png'));
-app.get('/app/api/uploaded-image/rps-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/rock', null));
-app.get('/app/api/uploaded-image/rps-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/paper', null));
-app.get('/app/api/uploaded-image/rps-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/scissors', null));
+app.get('/app/api/uploaded-image/rps-you-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/rock', null));
+app.get('/app/api/uploaded-image/rps-you-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/paper', null));
+app.get('/app/api/uploaded-image/rps-you-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/scissors', null));
+app.get('/app/api/uploaded-image/rps-bot-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/rock', null));
+app.get('/app/api/uploaded-image/rps-bot-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/paper', null));
+app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/scissors', null));
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
@@ -102,15 +109,17 @@ app.post('/admin/api/upload-rps-hand-image', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
+    const side = String(form.get('side') || '');
     const kind = String(form.get('kind') || '');
+    if (!['you', 'bot'].includes(side)) return c.json({ error: 'Invalid RPS image side.' }, 400);
     if (!['rock', 'paper', 'scissors'].includes(kind)) return c.json({ error: 'Invalid RPS image kind.' }, 400);
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
     const version = String(Date.now());
-    await putR2Image(c.env, `rps-hand/${kind}`, file, version);
-    await cleanupLegacyImageKv(c.env, [`admin:rps-hand/${kind}`, `admin:rps-hand/${kind}-type`, `admin:rps-hand/${kind}-version`]);
-    return c.json({ ok: true, size: file.size, type: file.type, kind, url: `/app/api/uploaded-image/rps-${kind}.png?v=${version}` });
+    await putR2Image(c.env, `rps-hand/${side}/${kind}`, file, version);
+    await cleanupLegacyImageKv(c.env, [`admin:rps-hand/${side}/${kind}`, `admin:rps-hand/${side}/${kind}-type`, `admin:rps-hand/${side}/${kind}-version`]);
+    return c.json({ ok: true, size: file.size, type: file.type, side, kind, url: `/app/api/uploaded-image/rps-${side}-${kind}.png?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload RPS image' }, 400);
   }
