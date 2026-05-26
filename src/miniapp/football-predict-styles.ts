@@ -12,6 +12,8 @@ export const FOOTBALL_PREDICT_STYLES = `
 #predictzone .football-live-dot{width:7px;height:7px;border-radius:50%;background:#8f1738;box-shadow:0 0 0 0 rgba(143,23,56,.52);animation:footballLivePulse 1.15s ease-in-out infinite;flex:0 0 auto}
 @keyframes footballLivePulse{0%,100%{transform:scale(.86);box-shadow:0 0 0 0 rgba(143,23,56,.42);opacity:.72}50%{transform:scale(1.12);box-shadow:0 0 0 7px rgba(143,23,56,0);opacity:1}}
 #predictzone .football-match-time{font-size:10px;font-weight:850;color:rgba(255,255,255,.44);white-space:nowrap}
+#predictzone .football-balance-pill{height:35px!important;min-width:0!important;padding:0 12px!important;background:rgba(255,255,255,.055)!important;border:0!important;box-shadow:0 14px 34px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.14)!important}
+#predictzone .football-balance-pill .ton-mini-icon{width:24px!important;height:24px!important}.football-balance-pill .ton-mini-icon img{width:24px!important;height:24px!important}.football-balance-pill b{font-size:13px!important;font-weight:820!important;color:#fff!important}
 #predictzone .football-teams{display:grid;grid-template-columns:1fr 48px 1fr;align-items:center;gap:8px}
 #predictzone .football-team{display:grid;justify-items:center;gap:8px;min-width:0}
 #predictzone .football-team-logo{width:66px;height:66px;background-position:center;background-repeat:no-repeat;background-size:contain;filter:drop-shadow(0 14px 20px rgba(0,0,0,.34))}
@@ -30,16 +32,24 @@ export const FOOTBALL_PREDICT_STYLES = `
 #predictzone .football-detail-question{display:grid;gap:4px;text-align:left;padding:0 4px}
 #predictzone .football-detail-question strong{font-size:25px;font-weight:950;letter-spacing:-.07em;color:#fff;line-height:1}
 #predictzone .football-detail-question span{font-size:12px;font-weight:760;color:rgba(255,255,255,.48)}
-#predictzone .football-detail-picks{display:grid;grid-template-columns:1fr;gap:10px}
-#predictzone .football-detail-pick{height:66px;border:0;border-radius:24px;background:rgba(255,255,255,.055);box-shadow:0 16px 36px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.11);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 18px;text-align:left;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+#predictzone .football-detail-picks{display:grid;grid-template-columns:1fr .82fr 1fr;gap:8px}
+#predictzone .football-detail-pick{height:58px;border:0;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 16px 36px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.11);color:#fff;display:grid;align-content:center;justify-items:center;gap:3px;padding:0 9px;text-align:center;transition:transform .18s ease,background .18s ease,box-shadow .18s ease;min-width:0}
 #predictzone .football-detail-pick:active{transform:scale(.985)}
 #predictzone .football-detail-pick.selected{background:rgba(92,10,31,.28);box-shadow:0 18px 42px rgba(0,0,0,.24),0 0 30px rgba(143,23,56,.14),inset 0 1px 0 rgba(255,255,255,.16)}
-#predictzone .football-detail-pick span{font-size:18px;font-weight:950;letter-spacing:-.055em;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#predictzone .football-detail-pick b{height:32px;display:inline-flex;align-items:center;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.72);font-size:11px;font-weight:900;white-space:nowrap}
-#predictzone .football-detail-pick.selected b{background:rgba(143,23,56,.34);color:#fff}
+#predictzone .football-detail-pick span{font-size:13px;font-weight:950;letter-spacing:-.055em;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#predictzone .football-detail-pick b{display:block;background:transparent;color:rgba(255,255,255,.52);font-size:9px;font-weight:900;white-space:nowrap;line-height:1}
+#predictzone .football-detail-pick.selected b{color:#fff}
 #predictzone .football-confirm-pick{height:52px;border:0;border-radius:999px;background:rgba(143,23,56,.30);color:#fff;font-size:15px;font-weight:950;letter-spacing:-.035em;box-shadow:0 18px 40px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.14)}
 #predictzone .football-confirm-pick:disabled{background:rgba(255,255,255,.06);color:rgba(255,255,255,.46)}
 #predictzone .football-pick-status{min-height:16px;margin:0;text-align:center;color:rgba(255,255,255,.58);font-size:12px;font-weight:760;letter-spacing:-.02em}
+#predictzone .football-live-questions{display:grid;gap:10px;margin-top:2px}
+#predictzone .football-live-questions-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px;color:#fff}
+#predictzone .football-live-questions-head strong{font-size:18px;font-weight:950;letter-spacing:-.055em}.football-live-questions-head span{font-size:11px;font-weight:850;color:rgba(255,255,255,.45)}
+#predictzone .football-live-question-row{display:grid;grid-template-columns:minmax(0,1fr) 58px auto;align-items:center;gap:8px;min-height:58px;padding:9px 10px;border-radius:24px;background:rgba(255,255,255,.04);box-shadow:0 14px 34px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.09)}
+#predictzone .football-live-question-row>span{font-size:12px;font-weight:900;color:#fff;letter-spacing:-.035em;line-height:1.15}
+#predictzone .football-live-question-row>b{height:34px;display:grid;place-items:center;border-radius:999px;background:rgba(92,10,31,.22);color:#fff;font-size:12px;font-weight:950;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+#predictzone .football-live-question-row>b.is-ticking{transform:scale(1.04);color:#ffcad5}
+#predictzone .football-live-actions{display:flex;gap:6px}.football-live-actions button{height:34px;min-width:42px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:#fff;font-size:11px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
 @keyframes footballDetailIn{from{opacity:0;transform:translateX(18px) scale(.985)}to{opacity:1;transform:none}}
-@media(max-width:380px){#predictzone .football-team-logo{width:58px;height:58px}#predictzone .football-team b{font-size:12px}#predictzone .football-vs{width:42px;height:42px}#predictzone .football-pick-row button{height:39px;font-size:11px}#predictzone .football-detail-logo{width:74px!important;height:74px!important}#predictzone .football-detail-side b{font-size:18px}#predictzone .football-detail-scoreboard{grid-template-columns:1fr 50px 1fr;padding:18px 12px}#predictzone .football-detail-vs{width:50px;height:50px}#predictzone .football-detail-question strong{font-size:22px}#predictzone .football-detail-pick{height:60px;border-radius:22px}#predictzone .football-detail-pick span{font-size:16px}}
+@media(max-width:380px){#predictzone .football-team-logo{width:58px;height:58px}#predictzone .football-team b{font-size:12px}#predictzone .football-vs{width:42px;height:42px}#predictzone .football-pick-row button{height:39px;font-size:11px}#predictzone .football-detail-logo{width:74px!important;height:74px!important}#predictzone .football-detail-side b{font-size:18px}#predictzone .football-detail-scoreboard{grid-template-columns:1fr 50px 1fr;padding:18px 12px}#predictzone .football-detail-vs{width:50px;height:50px}#predictzone .football-detail-question strong{font-size:22px}#predictzone .football-detail-pick{height:54px;border-radius:22px}#predictzone .football-detail-pick span{font-size:11px}#predictzone .football-live-question-row{grid-template-columns:minmax(0,1fr) 52px auto;gap:6px}.football-live-actions button{min-width:36px}}
 `;
