@@ -32,6 +32,10 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     }
     function closeOverlays(section){
       if(section==='predictzone'){
+        var predict=document.getElementById('predictzone');
+        if(predict&&predict.classList.contains('football-match-detail-open')&&window.VexaFootballPredictBack){
+          try{if(window.VexaFootballPredictBack())return true}catch(e){}
+        }
         var sheet=document.querySelector('#predictzone [data-predict-bet-sheet]');
         if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');}
       }
@@ -40,12 +44,13 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
         var rewards=document.getElementById('rewardsPage');
         if(rewards&&rewards.parentNode)try{rewards.parentNode.removeChild(rewards)}catch(e){}
       }
+      return false;
     }
     function goBack(){
       var section=activeBackSection()||backTarget;
       var target=targetFor(section)||backTarget;
       if(!target)return;
-      closeOverlays(section);
+      if(closeOverlays(section)){syncBackButton();return;}
       var button=document.querySelector('[data-view="'+target+'"]');
       if(button)button.click();
       try{if(originalHide)originalHide();else back.hide();}catch(e){}
@@ -64,6 +69,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     document.addEventListener('click',function(){setTimeout(syncBackButton,40);setTimeout(syncBackButton,160);setTimeout(syncBackButton,360)},true);
     document.addEventListener('visibilitychange',syncBackButton);
     window.addEventListener('focus',syncBackButton);
+    window.addEventListener('vexa-football-detail-change',syncBackButton);
     if(window.MutationObserver){
       backSections.forEach(function(id){
         var node=document.getElementById(id);
