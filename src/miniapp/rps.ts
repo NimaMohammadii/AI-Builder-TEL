@@ -428,7 +428,7 @@ export const RPS_SECTION = `
 
       var icons = { rock: '✊', paper: '✋', scissors: '✌️' };
       var beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-      var rpsImages = { rock: '', paper: '', scissors: '' };
+      var rpsImages = { you: { rock: '', paper: '', scissors: '' }, bot: { rock: '', paper: '', scissors: '' } };
       var picked = 'rock';
       var wins = 0;
       var streak = 0;
@@ -445,17 +445,20 @@ export const RPS_SECTION = `
       var botCard = root.querySelector('[data-rps-bot-card]');
       var choices = ['rock', 'paper', 'scissors'];
 
-      function setCardImage(card, image, value, fallback) {
-        var url = value && rpsImages[value] ? rpsImages[value] : '';
+      function imageFor(side, value) {
+        return value && rpsImages[side] && rpsImages[side][value] ? rpsImages[side][value] : '';
+      }
+
+      function setCardImage(card, image, side, value) {
+        var url = imageFor(side, value);
         if (image) image.src = url;
         if (card) card.classList.toggle('has-rps-image', !!url);
-        return url || fallback;
       }
 
       function paintChoiceImages() {
         root.querySelectorAll('[data-rps-choice-img]').forEach(function (img) {
           var kind = img.getAttribute('data-rps-choice-img') || '';
-          var url = rpsImages[kind] || '';
+          var url = imageFor('you', kind);
           img.src = url;
           var btn = img.closest('[data-rps-choice]');
           if (btn) btn.classList.toggle('has-rps-image', !!url);
@@ -466,9 +469,12 @@ export const RPS_SECTION = `
         fetch('/app/api/uploaded-images', { cache: 'no-store' })
           .then(function (r) { return r.json(); })
           .then(function (data) {
-            rpsImages.rock = data.rpsRockUrl || '';
-            rpsImages.paper = data.rpsPaperUrl || '';
-            rpsImages.scissors = data.rpsScissorsUrl || '';
+            rpsImages.you.rock = data.rpsYouRockUrl || '';
+            rpsImages.you.paper = data.rpsYouPaperUrl || '';
+            rpsImages.you.scissors = data.rpsYouScissorsUrl || '';
+            rpsImages.bot.rock = data.rpsBotRockUrl || '';
+            rpsImages.bot.paper = data.rpsBotPaperUrl || '';
+            rpsImages.bot.scissors = data.rpsBotScissorsUrl || '';
             paintChoiceImages();
             setPick(picked);
           })
@@ -485,7 +491,7 @@ export const RPS_SECTION = `
       function setPick(value) {
         picked = value;
         playerEl.textContent = icons[value];
-        setCardImage(playerCard, playerImg, value, icons[value]);
+        setCardImage(playerCard, playerImg, 'you', value);
         root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
           button.classList.toggle('is-picked', button.getAttribute('data-rps-choice') === value);
         });
@@ -504,7 +510,7 @@ export const RPS_SECTION = `
         botCard.classList.add('rps-shake');
         setTimeout(function () {
           botEl.textContent = icons[bot];
-          setCardImage(botCard, botImg, bot, icons[bot]);
+          setCardImage(botCard, botImg, 'bot', bot);
           if (bot === picked) {
             resultEl.textContent = 'Draw — try again';
           } else if (beats[picked] === bot) {
