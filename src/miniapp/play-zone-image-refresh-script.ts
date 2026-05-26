@@ -5,9 +5,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v9';
-  var NFT_KEY='vexaPlayZoneMixedNfts:v3';
+  var NFT_KEY='vexaPlayZoneMixedNfts:v4';
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
-  var countersStarted=false,nftBusy=false,lastGoodNfts=[],retryTimer=null;
+  var countersStarted=false,nftBusy=false,lastGoodNfts=[];
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map))}catch(e){}}
   function readNftCache(){try{return JSON.parse(localStorage.getItem(NFT_KEY)||'null')}catch(e){return null}}
@@ -22,14 +22,11 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function mediaHtml(item){var still=esc(imgUrl(item));var anim=esc(animUrl(item));var title=esc(item&&item.title||'Gift NFT');if(isVideo(anim))return '<video src="'+anim+'" poster="'+still+'" data-nft-media="'+anim+'" muted loop playsinline preload="metadata" aria-label="'+title+'"></video>';return still?'<img src="'+still+'" data-nft-media="'+(anim||still)+'" alt="" decoding="async" loading="eager"/>':''}
   function setImage(img,url){if(!img||!allowed(url))return;var next=clean(url);var fallback=img.getAttribute('data-fallback-src')||img.getAttribute('src')||'';img.onerror=function(){this.onerror=null;if(fallback&&this.getAttribute('src')!==fallback)this.src=fallback;this.style.display=''};if(next&&img.getAttribute('src')!==next)img.src=next;img.classList.remove('is-empty');img.style.display='';img.loading='eager';img.decoding='async'}
   function nftCard(item){var title=esc(item&&item.title||'Gift NFT');return '<button type="button" class="play-zone-nft-card" data-play-zone-nft-card="1"><span class="play-zone-nft-img">'+mediaHtml(item)+'</span><span class="play-zone-nft-info"><strong>'+title+'</strong></span></button>'}
-  function statusCard(text){return '<button type="button" class="play-zone-nft-card play-zone-nft-loading"><span class="play-zone-nft-img"></span><span class="play-zone-nft-info"><strong>'+esc(text)+'</strong></span></button>'}
   function unique(items){var seen={},out=[];(Array.isArray(items)?items:[]).forEach(function(item){var id=String(item&&item.id||item&&item.title||item&&item.imageUrl||'');if(!id||seen[id])return;seen[id]=1;out.push(item)});return out}
-  function setStatus(text){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;strip.hidden=false;track.innerHTML=statusCard(text)}
-  function renderNfts(items,keepVisible){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;var list=unique(items).slice(0,13);if(!list.length){if(!keepVisible){strip.hidden=true;track.innerHTML=''}else if(!track.querySelector('[data-play-zone-nft-card]')){setStatus('Market loading...')}return}lastGoodNfts=list;strip.hidden=false;var html=list.map(nftCard).join('');track.innerHTML=html+html}
+  function renderNfts(items){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;var list=unique(items).slice(0,13);if(!list.length){if(!lastGoodNfts.length){strip.hidden=true;track.innerHTML=''}return}lastGoodNfts=list;strip.hidden=false;var html=list.map(nftCard).join('');track.innerHTML=html+html}
   function giftsFromResponse(j){return Array.isArray(j&&j.gifts)?j.gifts:Array.isArray(j&&j.items)?j.items:Array.isArray(j&&j.nfts)?j.nfts:[]}
-  function fetchGifts(url){var controller=null,timer=null;if(typeof AbortController!=='undefined'){controller=new AbortController();timer=setTimeout(function(){try{controller.abort()}catch(e){}},8000)}return fetch(url,{cache:'no-store',signal:controller?controller.signal:undefined}).then(function(r){return r.json()}).then(giftsFromResponse).finally(function(){if(timer)clearTimeout(timer)})}
-  function scheduleRetry(){clearTimeout(retryTimer);retryTimer=setTimeout(function(){loadLowNfts(true)},4500)}
-  function loadLowNfts(force){if(nftBusy)return;var cached=readNftCache();if(cached&&Array.isArray(cached.items)&&cached.items.length){lastGoodNfts=cached.items;renderNfts(cached.items,true);if(!force&&Date.now()-Number(cached.ts||0)<180000)return}else if(!force){setStatus('Market loading...')}nftBusy=true;var ts=Date.now();Promise.all([
+  function fetchGifts(url){return fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(giftsFromResponse)}
+  function loadLowNfts(force){if(nftBusy)return;var cached=readNftCache();if(cached&&Array.isArray(cached.items)&&cached.items.length){lastGoodNfts=cached.items;renderNfts(cached.items);if(!force&&Date.now()-Number(cached.ts||0)<180000)return}nftBusy=true;var ts=Date.now();Promise.all([
     fetchGifts('/app/api/ton-gift-market-fresh?sort=price_asc&offset=0&limit=13&ts='+ts),
     fetchGifts('/app/api/ton-gift-market-fresh?sort=price_desc&offset=12&limit=9&ts='+ts)
   ]).then(function(parts){
@@ -40,9 +37,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     var items=unique(low.concat(high));
     if(items.length<6)items=fallback;
     if(!items.length)items=lastGoodNfts;
-    if(items.length){clearTimeout(retryTimer);writeNftCache(items);renderNfts(items,true)}else{setStatus('Market loading...');scheduleRetry()}
-  }).catch(function(){if(lastGoodNfts.length){renderNfts(lastGoodNfts,true)}else{setStatus('Market loading...');scheduleRetry()}}).finally(function(){nftBusy=false})}
-  function playNft(card){if(!card||card.classList.contains('play-zone-nft-loading'))return;var track=card.closest('[data-play-zone-nft-track]');if(track)track.classList.add('is-paused');var video=card.querySelector('video[data-nft-media]');if(video){try{video.currentTime=0;video.play&&video.play().catch(function(){})}catch(e){}}var img=card.querySelector('img[data-nft-media]');if(img){var src=img.getAttribute('data-nft-media')||img.getAttribute('src')||'';if(src){img.src=src+(src.indexOf('?')>=0?'&':'?')+'play='+Date.now()}}clearTimeout(card.__vexaNftTimer);card.__vexaNftTimer=setTimeout(function(){if(track)track.classList.remove('is-paused')},2200)}
+    if(items.length){writeNftCache(items);renderNfts(items)}else{renderNfts([])}
+  }).catch(function(){renderNfts(lastGoodNfts)}).finally(function(){nftBusy=false})}
+  function playNft(card){if(!card)return;var track=card.closest('[data-play-zone-nft-track]');if(track)track.classList.add('is-paused');var video=card.querySelector('video[data-nft-media]');if(video){try{video.currentTime=0;video.play&&video.play().catch(function(){})}catch(e){}}var img=card.querySelector('img[data-nft-media]');if(img){var src=img.getAttribute('data-nft-media')||img.getAttribute('src')||'';if(src){img.src=src+(src.indexOf('?')>=0?'&':'?')+'play='+Date.now()}}clearTimeout(card.__vexaNftTimer);card.__vexaNftTimer=setTimeout(function(){if(track)track.classList.remove('is-paused')},2200)}
   function apply(map){games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko'])}
   function mapFromSectionLocks(cached){var data=readSectionLocks();if(!data||!Array.isArray(data.sections))return cached;var next={};data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});return next}
   function refresh(){var cached=readCache();var next=mapFromSectionLocks(cached);if(next!==cached)writeCache(next);apply(next);loadLowNfts(false);startCounters();return Promise.resolve(next)}
