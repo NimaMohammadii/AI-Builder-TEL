@@ -191,6 +191,35 @@ export const RPS_SECTION = `
       filter: drop-shadow(0 18px 28px rgba(0,0,0,.46));
     }
 
+    .rps-hand-img {
+      display: none;
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      border: 0 !important;
+      outline: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      filter: drop-shadow(0 18px 28px rgba(0,0,0,.46));
+      pointer-events: none;
+    }
+
+    .rps-choice .rps-hand-img {
+      width: 48px;
+      height: 48px;
+      filter: none;
+    }
+
+    .rps-hand-card.has-rps-image b,
+    .rps-choice.has-rps-image i {
+      display: none;
+    }
+
+    .rps-hand-card.has-rps-image .rps-hand-img,
+    .rps-choice.has-rps-image .rps-hand-img {
+      display: block;
+    }
+
     .rps-hand-card small,
     .rps-choice span {
       color: rgba(255,255,255,.58);
@@ -340,7 +369,9 @@ export const RPS_SECTION = `
       .rps-arena { min-height: 354px; padding: 15px; }
       .rps-hand-card { height: 124px; border-radius: 24px; }
       .rps-hand-card b { font-size: 48px; }
+      .rps-hand-img { width: 74px; height: 74px; }
       .rps-choice { height: 86px; border-radius: 21px; }
+      .rps-choice .rps-hand-img { width: 42px; height: 42px; }
       .rps-title strong { font-size: 26px; }
     }
   </style>
@@ -358,17 +389,17 @@ export const RPS_SECTION = `
       </div>
 
       <div class="rps-duel">
-        <div class="rps-hand-card" data-rps-player-card><b data-rps-player>✊</b><small>You</small></div>
+        <div class="rps-hand-card" data-rps-player-card><b data-rps-player>✊</b><img class="rps-hand-img" data-rps-player-img alt=""/><small>You</small></div>
         <div class="rps-vs">VS</div>
-        <div class="rps-hand-card" data-rps-bot-card><b data-rps-bot>?</b><small>Bot</small></div>
+        <div class="rps-hand-card" data-rps-bot-card><b data-rps-bot>?</b><img class="rps-hand-img" data-rps-bot-img alt=""/><small>Bot</small></div>
       </div>
 
       <div class="rps-result" data-rps-result>Pick a hand</div>
 
       <div class="rps-choices">
-        <button class="rps-choice" type="button" data-rps-choice="rock"><i>✊</i><span>Rock</span></button>
-        <button class="rps-choice" type="button" data-rps-choice="paper"><i>✋</i><span>Paper</span></button>
-        <button class="rps-choice" type="button" data-rps-choice="scissors"><i>✌️</i><span>Scissors</span></button>
+        <button class="rps-choice" type="button" data-rps-choice="rock"><i>✊</i><img class="rps-hand-img" data-rps-choice-img="rock" alt=""/><span>Rock</span></button>
+        <button class="rps-choice" type="button" data-rps-choice="paper"><i>✋</i><img class="rps-hand-img" data-rps-choice-img="paper" alt=""/><span>Paper</span></button>
+        <button class="rps-choice" type="button" data-rps-choice="scissors"><i>✌️</i><img class="rps-hand-img" data-rps-choice-img="scissors" alt=""/><span>Scissors</span></button>
       </div>
     </div>
 
@@ -397,11 +428,14 @@ export const RPS_SECTION = `
 
       var icons = { rock: '✊', paper: '✋', scissors: '✌️' };
       var beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+      var rpsImages = { rock: '', paper: '', scissors: '' };
       var picked = 'rock';
       var wins = 0;
       var streak = 0;
       var playerEl = root.querySelector('[data-rps-player]');
       var botEl = root.querySelector('[data-rps-bot]');
+      var playerImg = root.querySelector('[data-rps-player-img]');
+      var botImg = root.querySelector('[data-rps-bot-img]');
       var resultEl = root.querySelector('[data-rps-result]');
       var betInput = root.querySelector('[data-rps-bet]');
       var betLabel = root.querySelector('[data-rps-bet-label]');
@@ -410,6 +444,36 @@ export const RPS_SECTION = `
       var playerCard = root.querySelector('[data-rps-player-card]');
       var botCard = root.querySelector('[data-rps-bot-card]');
       var choices = ['rock', 'paper', 'scissors'];
+
+      function setCardImage(card, image, value, fallback) {
+        var url = value && rpsImages[value] ? rpsImages[value] : '';
+        if (image) image.src = url;
+        if (card) card.classList.toggle('has-rps-image', !!url);
+        return url || fallback;
+      }
+
+      function paintChoiceImages() {
+        root.querySelectorAll('[data-rps-choice-img]').forEach(function (img) {
+          var kind = img.getAttribute('data-rps-choice-img') || '';
+          var url = rpsImages[kind] || '';
+          img.src = url;
+          var btn = img.closest('[data-rps-choice]');
+          if (btn) btn.classList.toggle('has-rps-image', !!url);
+        });
+      }
+
+      function loadRpsImages() {
+        fetch('/app/api/uploaded-images', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            rpsImages.rock = data.rpsRockUrl || '';
+            rpsImages.paper = data.rpsPaperUrl || '';
+            rpsImages.scissors = data.rpsScissorsUrl || '';
+            paintChoiceImages();
+            setPick(picked);
+          })
+          .catch(function () {});
+      }
 
       function setBet(value) {
         var next = Math.max(0.1, Number(value) || 0.1);
@@ -421,6 +485,7 @@ export const RPS_SECTION = `
       function setPick(value) {
         picked = value;
         playerEl.textContent = icons[value];
+        setCardImage(playerCard, playerImg, value, icons[value]);
         root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
           button.classList.toggle('is-picked', button.getAttribute('data-rps-choice') === value);
         });
@@ -429,6 +494,8 @@ export const RPS_SECTION = `
       function play() {
         var bot = choices[Math.floor(Math.random() * choices.length)];
         botEl.textContent = '?';
+        if (botImg) botImg.removeAttribute('src');
+        botCard.classList.remove('has-rps-image');
         resultEl.textContent = 'Shuffling...';
         playerCard.classList.remove('rps-shake');
         botCard.classList.remove('rps-shake');
@@ -437,6 +504,7 @@ export const RPS_SECTION = `
         botCard.classList.add('rps-shake');
         setTimeout(function () {
           botEl.textContent = icons[bot];
+          setCardImage(botCard, botImg, bot, icons[bot]);
           if (bot === picked) {
             resultEl.textContent = 'Draw — try again';
           } else if (beats[picked] === bot) {
@@ -473,6 +541,7 @@ export const RPS_SECTION = `
       root.querySelector('[data-rps-play]').onclick = play;
       setPick('rock');
       setBet(betInput.value);
+      loadRpsImages();
     })();
   </script>
 </section>
