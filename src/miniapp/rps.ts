@@ -3,8 +3,8 @@ export const RPS_SECTION = `
   <style>
     html:has(#rps.active),
     body:has(#rps.active) {
-      background: #020001 !important;
-      background-color: #020001 !important;
+      background: #000 !important;
+      background-color: #000 !important;
       background-image: none !important;
     }
 
@@ -20,8 +20,8 @@ export const RPS_SECTION = `
     body:has(#rps.active) .rps-view,
     body:has(#rps.active) .top,
     body:has(#rps.active) header.top {
-      background: #020001 !important;
-      background-color: #020001 !important;
+      background: #000 !important;
+      background-color: #000 !important;
       background-image: none !important;
       box-shadow: none !important;
     }
@@ -33,10 +33,9 @@ export const RPS_SECTION = `
       min-height: 100%;
       padding: 8px 14px calc(104px + env(safe-area-inset-bottom));
       color: #fff;
-      background:
-        radial-gradient(ellipse at 50% -10%, rgba(52, 3, 16, .34), transparent 44%),
-        radial-gradient(ellipse at 50% 104%, rgba(34, 2, 11, .22), transparent 42%),
-        linear-gradient(180deg, #050001 0%, #020001 52%, #000 100%) !important;
+      background: #000 !important;
+      background-color: #000 !important;
+      background-image: none !important;
       overflow-y: auto !important;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
