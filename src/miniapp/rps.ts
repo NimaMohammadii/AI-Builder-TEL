@@ -8,6 +8,17 @@ export const RPS_SECTION = `
       background-image: none !important;
     }
 
+    body:has(#rps.active)::before,
+    body:has(#rps.active)::after,
+    body:has(#rps.active) .app::before,
+    body:has(#rps.active) .app::after {
+      content: none !important;
+      display: none !important;
+      background: none !important;
+      background-image: none !important;
+      box-shadow: none !important;
+    }
+
     body:has(#rps.active) .tabs {
       display: none !important;
     }
