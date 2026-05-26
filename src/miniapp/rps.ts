@@ -365,6 +365,67 @@ export const RPS_SECTION = `
       60% { transform: translateY(4px) scale(.99); }
     }
 
+    #rps .rps-arena {
+      border-radius: 0 !important;
+      background: transparent !important;
+      background-image: none !important;
+      box-shadow: none !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      overflow: visible !important;
+    }
+
+    #rps .rps-arena::before,
+    #rps .rps-arena::after {
+      content: none !important;
+      display: none !important;
+      background: none !important;
+      box-shadow: none !important;
+    }
+
+    #rps .rps-pill,
+    #rps .rps-hand-card,
+    #rps .rps-vs,
+    #rps .rps-choice,
+    #rps .rps-choice.is-picked {
+      border-radius: 0 !important;
+      background: transparent !important;
+      background-image: none !important;
+      box-shadow: none !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    #rps .rps-hand-card,
+    #rps .rps-choice {
+      overflow: visible !important;
+    }
+
+    #rps .rps-vs {
+      width: auto !important;
+      height: auto !important;
+    }
+
+    #rps .rps-hand-img,
+    #rps .rps-hand-card b {
+      transform-origin: center;
+    }
+
+    #rps .rps-hand-card.has-rps-image .rps-hand-img {
+      width: 96px;
+      height: 96px;
+    }
+
+    #rps .rps-hand-drop {
+      animation: rpsHandDrop .44s cubic-bezier(.16,.98,.18,1) both;
+    }
+
+    @keyframes rpsHandDrop {
+      0% { opacity: 0; transform: translateY(-74px) rotate(-90deg) scale(.88); }
+      68% { opacity: 1; transform: translateY(4px) rotate(5deg) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    }
+
     @media(max-width: 380px) {
       .rps-arena { min-height: 354px; padding: 15px; }
       .rps-hand-card { height: 124px; border-radius: 24px; }
@@ -449,10 +510,18 @@ export const RPS_SECTION = `
         return value && rpsImages[side] && rpsImages[side][value] ? rpsImages[side][value] : '';
       }
 
-      function setCardImage(card, image, side, value) {
+      function replayDrop(target) {
+        if (!target) return;
+        target.classList.remove('rps-hand-drop');
+        void target.offsetWidth;
+        target.classList.add('rps-hand-drop');
+      }
+
+      function setCardImage(card, image, icon, side, value, animate) {
         var url = imageFor(side, value);
         if (image) image.src = url;
         if (card) card.classList.toggle('has-rps-image', !!url);
+        if (animate) replayDrop(url && image ? image : icon);
       }
 
       function paintChoiceImages() {
@@ -476,7 +545,7 @@ export const RPS_SECTION = `
             rpsImages.bot.paper = data.rpsBotPaperUrl || '';
             rpsImages.bot.scissors = data.rpsBotScissorsUrl || '';
             paintChoiceImages();
-            setPick(picked);
+            setPick(picked, false);
           })
           .catch(function () {});
       }
@@ -488,10 +557,10 @@ export const RPS_SECTION = `
         betLabel.textContent = betInput.value;
       }
 
-      function setPick(value) {
+      function setPick(value, animate) {
         picked = value;
         playerEl.textContent = icons[value];
-        setCardImage(playerCard, playerImg, 'you', value);
+        setCardImage(playerCard, playerImg, playerEl, 'you', value, animate !== false);
         root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
           button.classList.toggle('is-picked', button.getAttribute('data-rps-choice') === value);
         });
@@ -503,14 +572,9 @@ export const RPS_SECTION = `
         if (botImg) botImg.removeAttribute('src');
         botCard.classList.remove('has-rps-image');
         resultEl.textContent = 'Shuffling...';
-        playerCard.classList.remove('rps-shake');
-        botCard.classList.remove('rps-shake');
-        void playerCard.offsetWidth;
-        playerCard.classList.add('rps-shake');
-        botCard.classList.add('rps-shake');
         setTimeout(function () {
           botEl.textContent = icons[bot];
-          setCardImage(botCard, botImg, 'bot', bot);
+          setCardImage(botCard, botImg, botEl, 'bot', bot, true);
           if (bot === picked) {
             resultEl.textContent = 'Draw — try again';
           } else if (beats[picked] === bot) {
@@ -523,12 +587,12 @@ export const RPS_SECTION = `
           }
           winsEl.textContent = String(wins);
           streakEl.textContent = String(streak);
-        }, 430);
+        }, 260);
       }
 
       root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
         button.onclick = function () {
-          setPick(button.getAttribute('data-rps-choice') || 'rock');
+          setPick(button.getAttribute('data-rps-choice') || 'rock', true);
         };
       });
 
@@ -545,7 +609,7 @@ export const RPS_SECTION = `
       };
 
       root.querySelector('[data-rps-play]').onclick = play;
-      setPick('rock');
+      setPick('rock', false);
       setBet(betInput.value);
       loadRpsImages();
     })();
