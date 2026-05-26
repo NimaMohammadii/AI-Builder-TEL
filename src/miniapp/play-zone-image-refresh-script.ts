@@ -27,7 +27,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function unique(items){var seen={},out=[];(Array.isArray(items)?items:[]).forEach(function(item){var id=String(item&&item.id||item&&item.title||item&&item.imageUrl||'');if(!id||seen[id])return;seen[id]=1;out.push(item)});return out}
   function renderNfts(items){var strip=document.querySelector('#playzone [data-play-zone-nft-strip]'),track=document.querySelector('#playzone [data-play-zone-nft-track]');if(!strip||!track)return;strip.hidden=false;var list=unique(items).slice(0,13);if(!list.length)return;lastGoodNfts=list;var html=list.map(nftCard).join('');track.innerHTML=html+html}
   function giftsFromResponse(j){return Array.isArray(j&&j.gifts)?j.gifts:Array.isArray(j&&j.items)?j.items:Array.isArray(j&&j.nfts)?j.nfts:[]}
-  function fetchGifts(url){return fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(giftsFromResponse)}
+  function fetchGifts(url){return fetch(url,{cache:'no-store'}).then(function(r){return r.json().catch(function(){return null}).then(function(j){if(!r.ok||!j||j.error)throw new Error(j&&j.error||'Could not load NFTs');return giftsFromResponse(j)})})}
+  function fetchFallbackNfts(){return fetchGifts('/app/api/ton-gift-market?ts='+Date.now()).then(function(items){return unique(items).slice(0,13)})}
+  function showNftsOrFallback(items){items=unique(items);if(items.length){writeNftCache(items);renderNfts(items);return Promise.resolve(items)}if(lastGoodNfts.length){renderNfts(lastGoodNfts);return Promise.resolve(lastGoodNfts)}return fetchFallbackNfts().then(function(fallback){if(fallback.length){writeNftCache(fallback);renderNfts(fallback)}else{renderNfts([])}return fallback}).catch(function(){renderNfts(lastGoodNfts);return lastGoodNfts})}
   function loadLowNfts(force){if(nftBusy)return;var cached=readNftCache();if(cached&&Array.isArray(cached.items)&&cached.items.length){lastGoodNfts=cached.items;renderNfts(cached.items);if(!force&&Date.now()-Number(cached.ts||0)<180000)return}nftBusy=true;var ts=Date.now();Promise.all([
     fetchGifts('/app/api/ton-gift-market-fresh?sort=price_asc&offset=0&limit=13&ts='+ts),
     fetchGifts('/app/api/ton-gift-market-fresh?sort=price_desc&offset=12&limit=9&ts='+ts)
@@ -38,9 +40,8 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     var fallback=parts[0].slice(0,13);
     var items=unique(low.concat(high));
     if(items.length<6)items=fallback;
-    if(!items.length)items=lastGoodNfts;
-    if(items.length){writeNftCache(items);renderNfts(items)}else{renderNfts([])}
-  }).catch(function(){renderNfts(lastGoodNfts)}).finally(function(){nftBusy=false})}
+    return showNftsOrFallback(items);
+  }).catch(function(){return showNftsOrFallback(lastGoodNfts)}).finally(function(){nftBusy=false})}
   function playNft(card){if(!card)return;var track=card.closest('[data-play-zone-nft-track]');if(track)track.classList.add('is-paused');var video=card.querySelector('video[data-nft-media]');if(video){try{video.currentTime=0;video.play&&video.play().catch(function(){})}catch(e){}}var img=card.querySelector('img[data-nft-media]');if(img){var src=img.getAttribute('data-nft-media')||img.getAttribute('src')||'';if(src){img.src=src+(src.indexOf('?')>=0?'&':'?')+'play='+Date.now()}}clearTimeout(card.__vexaNftTimer);card.__vexaNftTimer=setTimeout(function(){if(track)track.classList.remove('is-paused')},2200)}
   function apply(map){games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});setImage(document.querySelector('#playzone .play-zone-center-image[data-play-zone-ad="playzone-card-ad-plinko"]'),map['playzone-card-ad-plinko'])}
   function mapFromSectionLocks(cached){var data=readSectionLocks();if(!data||!Array.isArray(data.sections))return cached;var next={};data.sections.forEach(function(section){var url=clean(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=cached[id]});return next}
