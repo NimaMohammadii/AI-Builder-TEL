@@ -2,12 +2,6 @@ export const FOOTBALL_PREDICT_STYLES = `
 #predictzone .football-predict-view{display:none;padding:0 0 98px}
 #predictzone.football-predict-open .football-predict-view{display:grid;gap:14px}
 #predictzone.football-predict-open [data-vexa-predict-group-grid],#predictzone.football-predict-open [data-predict-card],#predictzone.football-predict-open .predict-toolbar-row,#predictzone.football-predict-open .predict-card-actions{display:none!important}
-#predictzone.football-match-detail-open .predict-zone-category-menu{display:none!important}
-#predictzone.football-match-detail-open .football-predict-view{margin-top:0!important;padding-top:0!important}
-#predictzone.football-match-detail-open .football-detail-page{padding-top:0!important;gap:16px!important}
-#predictzone.football-match-detail-open .football-detail-page>.football-match-head{position:sticky;top:0;z-index:50;margin:0 0 18px!important;padding:8px 0 12px;background:#050505!important;box-shadow:0 14px 24px #050505,0 24px 34px rgba(5,5,5,.95);-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-#predictzone.football-match-detail-open .football-detail-page>.football-match-head:before{content:"";position:absolute;left:-18px;right:-18px;top:-18px;bottom:-10px;background:#050505;z-index:-1;pointer-events:none}
-#predictzone.football-match-detail-open .football-detail-scoreboard{margin-top:0!important}
 #predictzone .football-match-list{display:grid;gap:13px}
 #predictzone .football-match-card{position:relative;border:0;border-radius:30px;padding:15px;background:rgba(255,255,255,.038);box-shadow:0 20px 52px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.10);overflow:hidden;color:#fff;text-align:left;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #predictzone .football-match-card:active{transform:scale(.99)}
