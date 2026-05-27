@@ -74,17 +74,19 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<string, unknown>>; stats: Record<string, number> }> {
   await ensureTonBalanceColumn(env);
   const rows = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'miniapp' AS source FROM app_users
+      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source FROM app_users
       UNION ALL
-      SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at, 'bot' AS source FROM bot_users
+      SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at,
+        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source
+      FROM bot_users
     ), ranked AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id, source ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
     SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source
     FROM ranked
     WHERE rn = 1
     ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
-    LIMIT 500`).all<AdminUserRow>();
+    LIMIT 700`).all<AdminUserRow>();
   const now = Date.now();
   const users = await Promise.all((rows.results ?? []).map(async (row) => {
     const [controls, levelInfo] = await Promise.all([
@@ -110,11 +112,22 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       lastSeenAt: row.last_seen_at,
       createdAt: row.created_at,
       source: row.source || 'unknown',
+      sourceLabel: sourceLabel(row.source || 'unknown'),
     };
   }));
   const online = users.filter((user) => user.isActive).length;
+  const aiBot = users.filter((user) => user.source === 'ai_bot').length;
+  const gameBot = users.filter((user) => user.source === 'game_bot').length;
+  const userBot = users.filter((user) => user.source === 'user_bot').length;
   const totalTonBalanceNano = users.reduce((sum, user) => sum + Number(user.tonBalanceNano || 0), 0);
-  return { users, stats: { total: users.length, online, inactive: users.length - online, totalTonBalanceNano } };
+  return { users, stats: { total: users.length, online, inactive: users.length - online, aiBot, gameBot, userBot, totalTonBalanceNano } };
+}
+
+function sourceLabel(source: string): string {
+  if (source === 'ai_bot') return 'AI Bot';
+  if (source === 'game_bot') return 'Game Bot';
+  if (source === 'user_bot') return 'User Bot';
+  return source || 'Unknown';
 }
 
 function formatTon(nano: number): string {
