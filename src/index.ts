@@ -7,6 +7,7 @@ import { miniAppHtml as builderAppHtml } from './miniapp';
 import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
+import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, gameBotToken, id, rateLimit, safeParseJson } from './utils';
 import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
@@ -102,6 +103,23 @@ app.post('/admin/upload-credit-icon', async (c) => {
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
   const body = c.req.valid('json');
   return c.json({ reply: await plainAiReply(c.env, body.instruction) });
+});
+
+app.post('/app/api/stars/deposits', async (c) => {
+  try {
+    const body = await c.req.json() as { userId?: string; stars?: unknown };
+    return c.json(await createStarsDeposit(c.env, String(body.userId || ''), body.stars));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create Stars deposit' }, 400);
+  }
+});
+
+app.get('/app/api/stars/deposits', async (c) => {
+  try {
+    return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
+  }
 });
 
 app.get('/app/api/bots', async (c) => {
