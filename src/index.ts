@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
+import { miniAppHtml as builderAppHtml } from './miniapp';
 import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
@@ -51,6 +52,8 @@ app.get('/app', () => html(miniAppHtml()));
 app.get('/app/', () => html(miniAppHtml()));
 app.get('/miniapp', () => html(miniAppHtml()));
 app.get('/app/index.html', () => html(miniAppHtml()));
+app.get('/builder', () => html(builderAppHtml()));
+app.get('/builder/', () => html(builderAppHtml()));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
 
