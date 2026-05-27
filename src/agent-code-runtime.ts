@@ -1,106 +1,138 @@
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage } from './types';
 
-type AgentHandlers = {
-  onStart?: (ctx: AgentCodeContext) => Promise<void>;
-  onMessage?: (ctx: AgentCodeContext) => Promise<void>;
-  onCallback?: (ctx: AgentCodeContext) => Promise<void>;
+type RunnerAction = {
+  method: string;
+  payload?: Record<string, unknown>;
 };
 
-type ReplyOptions = { buttons?: Array<Array<AgentButton>>; parse_mode?: string };
-type AgentButton = { text: string; callback_data?: string; url?: string; web_app?: { url: string } };
-
-type AgentCodeContext = {
-  text?: string;
-  data?: string;
-  userId: string;
-  chatId: number;
-  message?: TelegramMessage;
-  callback?: TelegramCallbackQuery;
-  reply: (text: string, options?: ReplyOptions) => Promise<void>;
-  answer: (text?: string) => Promise<void>;
-  telegram: (method: string, payload: Record<string, unknown>) => Promise<unknown>;
-  getState: () => Promise<Record<string, unknown>>;
-  setState: (next: object) => Promise<void>;
-  patchState: (next: object) => Promise<void>;
-  button: (text: string, data: string) => AgentButton;
-  urlButton: (text: string, url: string) => AgentButton;
-  webAppButton: (text: string, url: string) => AgentButton;
+type RunnerResponse = {
+  ok?: boolean;
+  state?: Record<string, unknown>;
+  actions?: RunnerAction[];
+  error?: string;
 };
 
 export async function handleAgentCodeMessage(env: Env, token: string, bot: BotRecord, codeSource: string, message: TelegramMessage): Promise<void> {
   const userId = String(message.from?.id ?? message.chat.id);
-  const ctx = await buildContext(env, token, bot, userId, message.chat.id, { message });
+  const chatId = message.chat.id;
+  const type = (message.text ?? '').trim() === '/start' ? 'start' : 'message';
+
   try {
-    const handlers = await compileAgentCode(codeSource);
-    if ((message.text ?? '').trim() === '/start' && handlers.onStart) return handlers.onStart(ctx);
-    if (handlers.onMessage) return handlers.onMessage(ctx);
+    const result = await runAgentCode(env, bot, codeSource, {
+      type,
+      userId,
+      chatId,
+      text: message.text,
+      message,
+    });
+    await applyRunnerResult(env, token, bot, userId, chatId, result);
   } catch (error) {
-    await ctx.reply(`Agent code error: ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`);
+    await tg(token, 'sendMessage', {
+      chat_id: chatId,
+      text: `Agent runner error: ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`,
+    });
   }
 }
 
 export async function handleAgentCodeCallback(env: Env, token: string, bot: BotRecord, codeSource: string, callback: TelegramCallbackQuery): Promise<void> {
   const chatId = callback.message?.chat.id ?? callback.from.id;
   const userId = String(callback.from.id);
-  const ctx = await buildContext(env, token, bot, userId, chatId, { callback });
+
+  await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+
   try {
-    const handlers = await compileAgentCode(codeSource);
-    if (handlers.onCallback) return handlers.onCallback(ctx);
-    await ctx.answer();
+    const result = await runAgentCode(env, bot, codeSource, {
+      type: 'callback',
+      userId,
+      chatId,
+      data: callback.data,
+      callback,
+    });
+    await applyRunnerResult(env, token, bot, userId, chatId, result);
   } catch (error) {
-    await ctx.answer('Error').catch(() => undefined);
-    await ctx.reply(`Agent code error: ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`);
+    await tg(token, 'sendMessage', {
+      chat_id: chatId,
+      text: `Agent runner error: ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`,
+    });
   }
 }
 
-async function compileAgentCode(source: string): Promise<AgentHandlers> {
-  const AsyncFunction = Object.getPrototypeOf(async function () { return undefined; }).constructor as new (...args: string[]) => () => Promise<AgentHandlers>;
-  const fn = new AsyncFunction(source);
-  return (await fn()) ?? {};
+async function runAgentCode(
+  env: Env,
+  bot: BotRecord,
+  codeSource: string,
+  input: {
+    type: 'start' | 'message' | 'callback';
+    userId: string;
+    chatId: number;
+    text?: string;
+    data?: string;
+    message?: TelegramMessage;
+    callback?: TelegramCallbackQuery;
+  },
+): Promise<RunnerResponse> {
+  const runnerUrl = (env as Env & { AGENT_RUNNER_URL?: string }).AGENT_RUNNER_URL;
+  if (!runnerUrl) throw new Error('AGENT_RUNNER_URL is missing');
+
+  const stateKey = `agent-code-state:${bot.id}:${input.userId}`;
+  const raw = await env.BOT_CACHE.get(stateKey).catch(() => null);
+  let state: Record<string, unknown> = {};
+  if (raw) {
+    try { state = JSON.parse(raw) as Record<string, unknown>; } catch { state = {}; }
+  }
+
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  const runnerSecret = (env as Env & { AGENT_RUNNER_SECRET?: string }).AGENT_RUNNER_SECRET;
+  if (runnerSecret) headers.Authorization = `Bearer ${runnerSecret}`;
+
+  const response = await fetch(runnerUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      bot: { id: bot.id, title: bot.title, username: bot.username },
+      type: input.type,
+      code: codeSource,
+      state,
+      ctx: {
+        text: input.text,
+        data: input.data,
+        userId: input.userId,
+        chatId: input.chatId,
+        message: input.message,
+        callback: input.callback,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`${response.status}${body ? ` ${body.slice(0, 120)}` : ''}`);
+  }
+
+  const result = (await response.json()) as RunnerResponse;
+  if (!result?.ok) {
+    throw new Error((result?.error ?? 'unknown error').slice(0, 120));
+  }
+  return result;
 }
 
-async function buildContext(
+async function applyRunnerResult(
   env: Env,
   token: string,
   bot: BotRecord,
   userId: string,
   chatId: number,
-  input: { message?: TelegramMessage; callback?: TelegramCallbackQuery },
-): Promise<AgentCodeContext> {
+  result: RunnerResponse,
+): Promise<void> {
   const stateKey = `agent-code-state:${bot.id}:${userId}`;
-  const getState = async (): Promise<Record<string, unknown>> => {
-    const raw = await env.BOT_CACHE.get(stateKey).catch(() => null);
-    if (!raw) return {};
-    try { return JSON.parse(raw) as Record<string, unknown>; } catch { return {}; }
-  };
-  const setState = async (next: object): Promise<void> => { await env.BOT_CACHE.put(stateKey, JSON.stringify(next), { expirationTtl: 60 * 60 * 24 * 14 }).catch(() => undefined); };
-  const patchState = async (next: object): Promise<void> => { const prev = await getState(); await setState({ ...prev, ...(next as Record<string, unknown>) }); };
+  const nextState = result.state ?? {};
+  await env.BOT_CACHE.put(stateKey, JSON.stringify(nextState), { expirationTtl: 60 * 60 * 24 * 14 }).catch(() => undefined);
 
-  return {
-    text: input.message?.text,
-    data: input.callback?.data,
-    userId,
-    chatId,
-    message: input.message,
-    callback: input.callback,
-    reply: async (text: string, options?: ReplyOptions) => {
-      const payload: Record<string, unknown> = { chat_id: chatId, text };
-      if (options?.parse_mode) payload.parse_mode = options.parse_mode;
-      if (options?.buttons?.length) payload.reply_markup = { inline_keyboard: options.buttons };
-      await tg(token, 'sendMessage', payload);
-    },
-    answer: async (text?: string) => {
-      if (!input.callback?.id) return;
-      await tg(token, 'answerCallbackQuery', { callback_query_id: input.callback.id, text });
-    },
-    telegram: async (method: string, payload: Record<string, unknown>) => tg(token, method, payload),
-    getState,
-    setState,
-    patchState,
-    button: (text: string, data: string) => ({ text, callback_data: data }),
-    urlButton: (text: string, url: string) => ({ text, url }),
-    webAppButton: (text: string, url: string) => ({ text, web_app: { url } }),
-  };
+  for (const action of result.actions ?? []) {
+    const payload: Record<string, unknown> = { ...(action.payload ?? {}) };
+    if (payload.chat_id == null) payload.chat_id = chatId;
+    await tg(token, action.method, payload);
+  }
 }
 
 async function tg<T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown): Promise<T> {
