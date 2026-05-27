@@ -1,7 +1,17 @@
 export const MINIAPP_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
-  if(tg){try{tg.ready();tg.expand()}catch(e){}}
+  function expandMiniApp(){
+    if(!tg)return;
+    try{tg.ready&&tg.ready()}catch(e){}
+    try{tg.expand&&tg.expand()}catch(e){}
+    try{tg.requestFullscreen&&tg.requestFullscreen()}catch(e){}
+    try{tg.disableVerticalSwipes&&tg.disableVerticalSwipes()}catch(e){}
+  }
+  expandMiniApp();
+  setTimeout(expandMiniApp,120);
+  setTimeout(expandMiniApp,500);
+  setTimeout(expandMiniApp,1200);
 
   var ownerId=localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
