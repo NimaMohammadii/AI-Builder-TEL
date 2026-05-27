@@ -7,7 +7,7 @@ import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import type { BotRecord, Env, TelegramUpdate } from './types';
-import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
+import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, gameBotToken, id, rateLimit, safeParseJson } from './utils';
 import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -327,11 +327,36 @@ async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: 
 
 async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env: Env }) {
   try {
-    await c.req.json().catch(() => null);
+    const update = (await c.req.json()) as TelegramUpdate;
+    const chatId = update.message?.chat.id;
+
+    if (!chatId) {
+      return Response.json({
+        ok: true,
+        ignored: true,
+        bot: 'game',
+      });
+    }
+
+    await telegramApiWithToken(gameBotToken(c.env), 'sendMessage', {
+      chat_id: chatId,
+      text: 'Open the mini app.',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: 'Open Mini App',
+              web_app: {
+                url: `${PUBLIC_BASE_URL}/app`,
+              },
+            },
+          ],
+        ],
+      },
+    });
 
     return Response.json({
       ok: true,
-      ignored: true,
       bot: 'game',
     });
   } catch (error) {
