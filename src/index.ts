@@ -7,7 +7,7 @@ import { adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import type { BotRecord, Env, TelegramUpdate } from './types';
-import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, gameBotToken, id, rateLimit, safeParseJson } from './utils';
+import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
 import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -82,18 +82,17 @@ app.post('/admin/upload-credit-icon', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
-  if (!(file && typeof file === 'object' && 'type' in file && 'size' in file && 'stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
-  const upload = file as Blob & { size: number; type: string; stream: () => ReadableStream<Uint8Array> };
-  if (!CREDIT_ICON_TYPES.has(upload.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (upload.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+  if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const version = String(Date.now());
-  await c.env.ASSETS.put('credit-icon', upload.stream(), { httpMetadata: { contentType: upload.type }, customMetadata: { version } });
+  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
   await Promise.all([
     c.env.BOT_CACHE.delete('admin:credit-icon').catch(() => undefined),
     c.env.BOT_CACHE.delete('admin:credit-icon-type').catch(() => undefined),
     c.env.BOT_CACHE.delete('admin:credit-icon-version').catch(() => undefined),
   ]);
-  return c.json({ ok: true, size: upload.size, type: upload.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
+  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
 });
 
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
@@ -328,40 +327,15 @@ async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: 
 
 async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env: Env }) {
   try {
-    const update = (await c.req.json()) as TelegramUpdate;
-    const chatId = update.message?.chat.id;
-
-    if (!chatId) {
-      return Response.json({
-        ok: true,
-        ignored: true,
-        bot: 'game',
-      });
-    }
-
-    await telegramApiWithToken(gameBotToken(c.env), 'sendMessage', {
-      chat_id: chatId,
-      text: 'Open the mini app.',
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: 'Open Mini App',
-              web_app: {
-                url: `${PUBLIC_BASE_URL}/app`,
-              },
-            },
-          ],
-        ],
-      },
-    });
+    await c.req.json().catch(() => null);
 
     return Response.json({
       ok: true,
+      ignored: true,
       bot: 'game',
     });
   } catch (error) {
-    console.error('secondary endpoint failed', error);
+    console.error('game telegram webhook failed', error);
 
     return Response.json({
       ok: true,
