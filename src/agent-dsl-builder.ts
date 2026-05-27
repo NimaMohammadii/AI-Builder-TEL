@@ -2,9 +2,11 @@ import type { Env } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, safeParseJson } from './utils';
 
 export type AgentDslButton = { text: string; action?: string; url?: string; webAppUrl?: string };
+export type AgentDslPayment = { title: string; description?: string; amount: number; payload?: string; success?: AgentDslStep[]; fail?: AgentDslStep[] };
 export type AgentDslStep = {
   reply?: string;
   buttons?: AgentDslButton[][];
+  payment?: AgentDslPayment;
   set?: Record<string, unknown>;
   patch?: Record<string, unknown>;
   clearState?: boolean;
@@ -32,11 +34,13 @@ export async function buildAgentDsl(env: Env, input: string): Promise<BuildResul
     'Do NOT write JavaScript code. Do NOT output BotFlow nodes.',
     'Design the bot freely, but final output must be this JSON shape:',
     '{"summary":"short","dsl":{"version":1,"name":"...","language":"fa|en|multi","start":[steps],"messages":[rules],"callbacks":[rules],"fallback":[steps]}}',
-    'Step shape: {"reply":"text","buttons":[[{"text":"...","action":"callback_data"}]],"set":{},"patch":{},"clearState":true,"next":"stateName"}.',
+    'Step shape: {"reply":"text","buttons":[[{"text":"...","action":"callback_data"}]],"payment":{"title":"...","description":"...","amount":10,"payload":"unique_id","success":[steps],"fail":[steps]},"set":{},"patch":{},"clearState":true,"next":"stateName"}.',
     'Button shape: {"text":"...","action":"..."} or {"text":"...","url":"https://..."} or {"text":"...","webAppUrl":"https://..."}.',
     'Rule shape: {"match":"exact text/callback OR *","steps":[...]}.',
     'Use callbacks for inline button action values.',
     'Use state with patch/set/next when multi-step behavior is needed.',
+    'Telegram Stars payments: when the user asks for payment, purchase, VIP, paid access, paid download, paid service, or subscription, use a payment step. amount is the number of Telegram Stars, currency is always XTR internally and must not be added to the DSL. payload should be stable and unique, e.g. vip_10_stars. Put the post-payment reply in payment.success.',
+    'For a pay button flow, make an inline button action like "pay_vip" and a callbacks rule match "pay_vip" whose steps include the payment object.',
     'If user asks Persian, write Persian bot text.',
     'Keep the DSL complete and executable.',
   ].join('\n');
@@ -44,7 +48,7 @@ export async function buildAgentDsl(env: Env, input: string): Promise<BuildResul
     const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: OPENAI_MODEL, instructions, input, max_output_tokens: 3200 }),
+      body: JSON.stringify({ model: OPENAI_MODEL, instructions, input, max_output_tokens: 3600 }),
     });
     const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
     const parsed = safeParseJson<Partial<BuildResult>>(extractJson(extractText(data) ?? ''), {});
@@ -82,14 +86,35 @@ function cleanSteps(value: unknown): AgentDslStep[] | null {
     const s = (step && typeof step === 'object' ? step : {}) as AgentDslStep;
     const out: AgentDslStep = {};
     if (typeof s.reply === 'string') out.reply = s.reply.slice(0, 4000);
-    if (Array.isArray(s.buttons)) out.buttons = s.buttons.slice(0, 10).map((row) => Array.isArray(row) ? row.slice(0, 5).map(cleanButton).filter(Boolean) as AgentDslButton[] : []).filter(Boolean);
+    if (Array.isArray(s.buttons)) out.buttons = s.buttons.slice(0, 10).map((row) => Array.isArray(row) ? row.slice(0, 5).map(cleanButton).filter(Boolean) as AgentDslButton[] : []).filter((row) => row.length);
+    const payment = cleanPayment(s.payment);
+    if (payment) out.payment = payment;
     if (s.set && typeof s.set === 'object') out.set = s.set;
     if (s.patch && typeof s.patch === 'object') out.patch = s.patch;
     if (s.clearState === true) out.clearState = true;
     if (typeof s.next === 'string') out.next = s.next.slice(0, 80);
     return out;
-  }).filter((s) => s.reply || s.buttons || s.set || s.patch || s.clearState || s.next);
+  }).filter((s) => s.reply || s.buttons || s.payment || s.set || s.patch || s.clearState || s.next);
   return steps.length ? steps : null;
+}
+
+function cleanPayment(payment: unknown): AgentDslPayment | null {
+  const p = (payment && typeof payment === 'object' ? payment : {}) as AgentDslPayment;
+  if (typeof p.title !== 'string' || !p.title.trim()) return null;
+  const amount = Math.max(1, Math.min(250000, Math.floor(Number(p.amount) || 0)));
+  if (!amount) return null;
+  return {
+    title: p.title.slice(0, 80),
+    description: typeof p.description === 'string' ? p.description.slice(0, 250) : p.title.slice(0, 80),
+    amount,
+    payload: typeof p.payload === 'string' && p.payload.trim() ? safePayload(p.payload) : safePayload(p.title + '_' + amount),
+    success: cleanSteps(p.success) || [{ reply: 'پرداخت با موفقیت انجام شد.' }],
+    fail: cleanSteps(p.fail) || [{ reply: 'پرداخت تأیید نشد. لطفاً دوباره تلاش کن.' }],
+  };
+}
+
+function safePayload(value: string): string {
+  return String(value || 'stars_payment').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'stars_payment';
 }
 
 function cleanButton(button: unknown): AgentDslButton | null {
