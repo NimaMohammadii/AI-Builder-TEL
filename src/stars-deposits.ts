@@ -1,6 +1,7 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
 import { adjustUserTonBalance } from './user-controls';
 import { awardDepositXp } from './xp-rewards';
+import { aiBotToken } from './utils';
 
 const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 
@@ -60,7 +61,7 @@ export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckou
   const payload = String(query.invoice_payload || '').trim();
   const amount = Math.floor(Number(query.total_amount));
   const ok = /^stars_[0-9a-f]{20}$/.test(payload) && query.currency === 'XTR' && Number.isSafeInteger(amount) && amount >= 1 && amount <= 100000;
-  await telegram(env.TELEGRAM_BOT_TOKEN, 'answerPreCheckoutQuery', {
+  await telegram(aiBotToken(env), 'answerPreCheckoutQuery', {
     pre_checkout_query_id: query.id,
     ok,
     error_message: ok ? undefined : 'Payment request is no longer valid.',
@@ -98,8 +99,10 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
+  const token = aiBotToken(env);
+  if (!token || token.length < 20) throw new Error('Main Telegram bot token is missing');
   const tonText = formatTon(amountNano);
-  const response = await telegram<TelegramInvoiceLinkResponse>(env.TELEGRAM_BOT_TOKEN, 'createInvoiceLink', {
+  const response = await telegram<TelegramInvoiceLinkResponse>(token, 'createInvoiceLink', {
     title: 'Vexa TON Balance',
     description: `${stars} Stars → ${tonText}`,
     payload: id,
@@ -107,7 +110,11 @@ async function createInvoiceLink(env: Env, id: string, stars: number, amountNano
     currency: 'XTR',
     prices: [{ label: `${tonText}`, amount: stars }],
   });
-  if (!response.ok || !response.result) throw new Error(response.description || 'Could not create Stars invoice');
+  if (!response.ok || !response.result) {
+    const description = response.description || 'Could not create Stars invoice';
+    if (/not found/i.test(description)) throw new Error('Telegram bot token was not accepted for Stars invoice. Check AI_BOT_TOKEN / TELEGRAM_BOT_TOKEN secret.');
+    throw new Error(description);
+  }
   return response.result;
 }
 
