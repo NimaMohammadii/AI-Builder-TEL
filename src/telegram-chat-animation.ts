@@ -44,7 +44,7 @@ const MAX_ANSWER_MOTION_STEPS = 16;
 const GROUP_MAX_ANSWER_MOTION_STEPS = 14;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<TelegramSentMessage> {
-  if (isGroupMode(mode)) return sendSmoothGroupReply(tg, key, chatId, () => Promise.resolve(text), text, replyMarkup, sendOptions);
+  if (isGroupMode(mode)) return (await sendSmoothGroupReply(tg, key, chatId, () => Promise.resolve(text), text, replyMarkup, sendOptions)).sent;
 
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   await sleep(60);
