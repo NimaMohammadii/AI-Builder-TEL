@@ -90,7 +90,7 @@ export function miniAppHtml(): string {
       flex: 0 0 auto;
     }
     .content {
-      height: calc(100dvh - 56px - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      height: calc(100dvh - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
       position: relative;
       z-index: 1;
       overflow: hidden;
@@ -327,7 +327,7 @@ export function miniAppHtml(): string {
     .empty { color: var(--muted); padding: 14px 0; line-height: 1.42; font-size: 13px; }
     @media (max-height: 720px) {
       .app { padding-left: 14px; padding-right: 14px; }
-      .content { height: calc(100dvh - 56px - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+      .content { height: calc(100dvh - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
       .decor { width: 198px; height: 198px; right: -54px; top: 62px; opacity: .36; }
       .hero { min-height: auto; }
       .hero h2 { font-size: clamp(31px, 9vw, 42px); margin: 11px 0 8px; }
@@ -367,7 +367,7 @@ export function miniAppHtml(): string {
     </header>
 
     <div class="content">
-      <section id="home" class="view active">
+      <section id="home" class="view">
         <div class="hero"><span class="eyebrow">No code. All power.</span><h2>Build Telegram Bots Without Code</h2><p>Create, connect, and improve your bot with AI inside one workspace.</p></div>
         <div class="actions"><button class="primary" onclick="showView('create')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Create Bot</button><button class="secondary" onclick="showView('workspace')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" stroke="currentColor" stroke-width="1.7"/></svg>Workspace</button></div>
         <div class="grid">
@@ -376,7 +376,7 @@ export function miniAppHtml(): string {
         </div>
       </section>
 
-      <section id="create" class="view"><section class="card card-pad create-card"><div class="section-title"><h3>Create Bot</h3><span>AI powered</span></div><div class="field"><label>BotFather Token</label><input id="token" placeholder="123456789:AA..." autocomplete="off" /></div><div class="field"><label>What should your bot do?</label><textarea id="prompt" placeholder="Example: Build a premium support bot for my digital product business. It should answer FAQs, show products, collect leads, and sound confident."></textarea></div><button class="primary" onclick="createBot()">Generate & Publish</button><p class="tiny">Your token is encrypted. The app creates the blueprint, connects webhook, and publishes instantly.</p></section></section>
+      <section id="create" class="view active"><section class="card card-pad create-card"><div class="section-title"><h3>Connect Telegram Bot</h3><span>AI powered</span></div><div class="field"><label>BotFather Token</label><input id="token" placeholder="123456789:AA..." autocomplete="off" /></div><div class="field"><label>What should your bot do?</label><textarea id="prompt" placeholder="Example: Build a premium support bot for my digital product business. It should answer FAQs, show products, collect leads, and sound confident."></textarea></div><button class="primary" onclick="createBot()">Generate & Publish</button><p class="tiny">Your token is encrypted. The app creates the blueprint, connects webhook, and publishes instantly.</p></section></section>
 
       <section id="bots" class="view"><section class="card card-pad bots-card"><div class="section-title"><h3>Your Bots</h3><button class="secondary" style="height:34px;padding:0 12px;border-radius:999px" onclick="loadBots()">Refresh</button></div><div id="botsList" class="bot-list"><div class="empty">Loading...</div></div></section></section>
 
@@ -384,8 +384,6 @@ export function miniAppHtml(): string {
 
       <section id="settings" class="view"><section class="card card-pad settings-card"><div class="section-title"><h3>Settings</h3><span>Minimal</span></div><div class="field"><label>Telegram User ID</label><input id="ownerId" placeholder="Auto from Telegram Mini App" /></div><button class="primary" onclick="saveOwner()">Save User</button><p class="tiny">In Telegram, this is automatically detected from WebApp user data when available.</p></section></section>
     </div>
-
-    <nav class="tabs"><button class="tab active" data-tab="home" onclick="showView('home')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7v8H4v-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Home</span></button><button class="tab" data-tab="bots" onclick="showView('bots')"><svg viewBox="0 0 24 24" fill="none"><path d="M8 9h8M9 14h1m4 0h1M7 4h10v4H7V4zm-2 4h14v11H5V8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Bots</span></button><button class="tab" data-tab="workspace" onclick="showView('workspace')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" stroke="currentColor" stroke-width="1.6"/></svg><span>Work</span></button><button class="tab" data-tab="settings" onclick="showView('settings')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8a4 4 0 100 8 4 4 0 000-8z" stroke="currentColor" stroke-width="1.7"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6l1.4 1.4m0-11.4l-1.4 1.4m-8.6 8.6l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Settings</span></button></nav>
   </main>
   <div id="toast" class="toast"></div>
   <script>
