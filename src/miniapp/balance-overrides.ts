@@ -20,6 +20,9 @@ export const BALANCE_OVERRIDES = `
   box-sizing:border-box!important;
 }
 .top-balance-pill:after{
+  content:none!important;
+}
+body.connect-only .top-balance-pill:after{
   content:"\\002B"!important;
   position:absolute!important;
   left:-4px!important;
