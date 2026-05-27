@@ -22,21 +22,27 @@ export const BALANCE_OVERRIDES = `
 .top-balance-pill:after{
   content:"\\002B"!important;
   position:absolute!important;
-  left:-3px!important;
-  bottom:-4px!important;
-  width:15px!important;
-  height:15px!important;
+  left:-4px!important;
+  bottom:-5px!important;
+  width:16px!important;
+  height:16px!important;
   border-radius:999px!important;
-  display:grid!important;
-  place-items:center!important;
-  background:rgba(255,255,255,.105)!important;
-  color:rgba(255,255,255,.58)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-  box-shadow:0 5px 12px rgba(0,0,0,.18)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.10)!important;
+  color:rgba(255,255,255,.72)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:0 5px 12px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  backdrop-filter:blur(8px)!important;
+  -webkit-backdrop-filter:blur(8px)!important;
+  opacity:1!important;
   font-size:12px!important;
-  line-height:1!important;
+  line-height:16px!important;
   font-weight:700!important;
+  text-align:center!important;
   pointer-events:none!important;
+  box-sizing:border-box!important;
 }
 .top-balance-pill b{
   font-size:13.8px!important;
