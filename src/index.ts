@@ -350,7 +350,7 @@ async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env
             {
               text: 'Open Mini App',
               web_app: {
-                url: `${PUBLIC_BASE_URL}/builder`,
+                url: `${PUBLIC_BASE_URL}/app`,
               },
             },
           ],
