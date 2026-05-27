@@ -308,13 +308,13 @@ async function handleTtsText(env: Env, key: string, chatId: number, userId: stri
     await send(key, chatId, 'Text to Speech is not configured. Add ELEVENLABS_API_KEY to Cloudflare secrets.');
     return mainMenu(key, chatId);
   }
-  if (text.length > 2500) return send(key, chatId, 'Text is too long. Please send a shorter text.');
+  if (text.length > 4800) return send(key, chatId, 'Text is too long. Please send text under 4800 characters.');
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'upload_voice' }).catch(() => undefined);
   try {
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selection.voiceId}`, {
       method: 'POST',
       headers: { 'xi-api-key': apiKey, 'content-type': 'application/json', accept: 'audio/mpeg' },
-      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+      body: JSON.stringify({ text, model_id: 'eleven_v3', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
     });
     if (!response.ok) throw new Error(`ElevenLabs error ${response.status}`);
     const audio = await response.arrayBuffer();
