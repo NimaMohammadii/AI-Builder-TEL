@@ -136,8 +136,8 @@ async function sendSpeech(env: Env, token: string, chatId: number, userId: strin
     await telegram(token, 'sendMessage', { chat_id: chatId, text: 'Text to Speech is not configured. Add ELEVENLABS_API_KEY to Cloudflare secrets.' });
     return;
   }
-  if (text.length > 2500) {
-    await telegram(token, 'sendMessage', { chat_id: chatId, text: 'Text is too long. Please send a shorter text.' });
+  if (text.length > 4800) {
+    await telegram(token, 'sendMessage', { chat_id: chatId, text: 'Text is too long. Please send text under 4800 characters.' });
     return;
   }
   await telegram(token, 'sendChatAction', { chat_id: chatId, action: selection.output === 'voice' ? 'record_voice' : 'upload_voice' }).catch(() => undefined);
@@ -145,7 +145,7 @@ async function sendSpeech(env: Env, token: string, chatId: number, userId: strin
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selection.voiceId}`, {
       method: 'POST',
       headers: { 'xi-api-key': apiKey, 'content-type': 'application/json', accept: 'audio/mpeg' },
-      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+      body: JSON.stringify({ text, model_id: 'eleven_v3', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
     });
     if (!response.ok) throw new Error(`ElevenLabs error ${response.status}`);
     const audio = await response.arrayBuffer();
