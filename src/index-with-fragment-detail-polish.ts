@@ -5,7 +5,7 @@ import './predict-routes';
 import './predict-entry-loader-routes';
 import './section-lock-event-routes';
 import './crash-routes';
-import { handleStarsSuccessfulPayment } from './stars-deposits';
+import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 
 export { SectionLockEvents } from './section-lock-events';
@@ -86,6 +86,24 @@ async function handleFastTelegramUpdate(request: Request, env: Env): Promise<Res
   }
   return null;
 }
+
+
+app.post('/app/api/stars/deposits', async (c) => {
+  try {
+    const body = await c.req.json() as { userId?: string; stars?: unknown };
+    return c.json(await createStarsDeposit(c.env, String(body.userId || ''), body.stars));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create Stars deposit' }, 400);
+  }
+});
+
+app.get('/app/api/stars/deposits', async (c) => {
+  try {
+    return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
+  }
+});
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
