@@ -4,6 +4,8 @@ export type Env = {
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
   TELEGRAM_BOT_TOKEN: string;
+  AI_BOT_TOKEN?: string;
+  GAME_BOT_TOKEN?: string;
   OPENAI_API_KEY: string;
   XAI_API_KEY?: string;
   TON_GIFT_MARKET_URL?: string;
