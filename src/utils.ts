@@ -41,6 +41,14 @@ export async function rateLimit(kv: KVNamespace, key: string, limit: number, win
   return true;
 }
 
+export function aiBotToken(env: Env): string {
+  return env.AI_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN;
+}
+
+export function gameBotToken(env: Env): string {
+  return env.GAME_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN;
+}
+
 export async function encryptUserToken(env: Env, token: string): Promise<string> {
   const key = await encryptionKey(env);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -50,6 +58,8 @@ export async function encryptUserToken(env: Env, token: string): Promise<string>
 
 export async function decryptUserToken(env: Env, encryptedToken: string): Promise<string> {
   if (encryptedToken === 'env:TELEGRAM_BOT_TOKEN') return env.TELEGRAM_BOT_TOKEN;
+  if (encryptedToken === 'env:AI_BOT_TOKEN') return aiBotToken(env);
+  if (encryptedToken === 'env:GAME_BOT_TOKEN') return gameBotToken(env);
   if (!encryptedToken.startsWith('v1:')) return encryptedToken;
   const [, ivB64, dataB64] = encryptedToken.split(':');
   if (!ivB64 || !dataB64) throw new Error('Invalid encrypted token');
