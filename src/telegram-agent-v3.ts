@@ -2,6 +2,7 @@ import { aiReply, defaultFlow, improveFlow, type BotFlow, type ChatHistoryMessag
 import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision-fixed';
 import { handleExpandedFlowCallback, handleExpandedFlowMessage, handleExpandedPreCheckoutQuery } from './telegram-flow-runtime-fixed';
 import { animatedTelegramAiReply, animatedTelegramSend, safeTelegramAiReply } from './telegram-chat-animation';
+import { clearTtsState, handleTtsCallback, handleTtsMessage } from './telegram-tts-handlers';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 
@@ -80,7 +81,7 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
-    await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
+    await clearTtsState(env, userId);
     await mainMenu(key, chatId);
     return;
   }
@@ -90,11 +91,14 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
     await env.BOT_CACHE.delete(historyKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
+    await clearTtsState(env, userId);
     const reply = await safeTelegramAiReply(() => aiReply(env, 'The user closed AI chat. Reply naturally in the user language.', text, []), 'چت هوش مصنوعی بسته شد.');
     await tg(key, 'sendMessage', { chat_id: chatId, text: reply, reply_markup: { remove_keyboard: true } });
     await mainMenu(key, chatId);
     return;
   }
+
+  if (await handleTtsMessage(env, key, message)) return;
 
   const tts = await getTtsSelection(env, userId);
   if (tts) return handleTtsText(env, key, chatId, userId, text, tts);
@@ -117,10 +121,11 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   const userId = String(q.from.id);
   const data = q.data ?? '';
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
+  if (await handleTtsCallback(env, key, q)) return;
 
   if (data === 'builder:chat') {
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: CHAT_TTL }).catch(() => undefined);
-    await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
+    await clearTtsState(env, userId);
     const bots = await dashboard(env, userId);
     await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'The user opened AI chat. Reply in the user language. Use only these real connected bots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []), 'Chat with AI روشن شد. پیام بعدی‌ات را بفرست.', { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false });
     return;
