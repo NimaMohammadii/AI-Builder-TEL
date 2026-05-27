@@ -1,10 +1,12 @@
-import { aiReply, defaultFlow, improveFlow, type BotFlow, type ChatHistoryMessage } from './ai';
+import { aiReply, defaultFlow, type BotFlow, type ChatHistoryMessage } from './ai';
 import { decideBuilderAgentAction, type AgentDashboardBot } from './agent-decision-fixed';
 import { handleExpandedFlowCallback, handleExpandedFlowMessage, handleExpandedPreCheckoutQuery } from './telegram-flow-runtime-fixed';
 import { animatedTelegramAiReply, animatedTelegramSend, safeTelegramAiReply } from './telegram-chat-animation';
 import { clearTtsState, handleTtsCallback, handleTtsMessage } from './telegram-tts-handlers';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
+import { buildAgentCode } from './agent-code-builder';
+import { handleAgentCodeCallback, handleAgentCodeMessage } from './agent-code-runtime';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -48,10 +50,14 @@ const TTS_VOICES: TtsVoice[] = [
 ];
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
-  const settings = safeParseJson<{ isBuilderBot?: boolean; flow?: BotFlow }>(bot.settings_json, {});
+  const settings = safeParseJson<{ isBuilderBot?: boolean; flow?: BotFlow; agentMode?: string; agentCode?: { source?: string } }>(bot.settings_json, {});
   const key = await decryptUserToken(env, bot.encrypted_token);
 
   if (!settings.isBuilderBot) {
+    if (settings.agentMode === 'code' && settings.agentCode?.source) {
+      if (update.callback_query) return handleAgentCodeCallback(env, key, bot, settings.agentCode.source, update.callback_query);
+      if (update.message) return handleAgentCodeMessage(env, key, bot, settings.agentCode.source, update.message);
+    }
     if (settings.flow && update.pre_checkout_query) return handleExpandedPreCheckoutQuery(key, update.pre_checkout_query, flowRuntimeDeps);
     if (settings.flow && update.callback_query) return handleExpandedFlowCallback(env, key, bot, settings.flow, update.callback_query, flowRuntimeDeps);
     if (settings.flow && update.message) return handleExpandedFlowMessage(env, key, bot, settings.flow, update.message, flowRuntimeDeps);
@@ -204,28 +210,18 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], targe
   const full = await getBot(env, target.id);
   if (!full) return { ok: false, action: 'edit_bot', botId: target.id, error: 'bot_not_found' };
   const settings = safeParseJson<Record<string, unknown>>(full.settings_json, {});
-  const flowNow = (settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot');
-  const instruction = [
-    'Apply the confirmed user request to the selected Telegram bot.',
-    'IMPORTANT: settings.flow is the only runtime source of truth. Do not use blueprint.',
-    'Return/produce a changed executable flow with valid nodes, buttons, next targets, keyboard, saveInputAs, notifyOwner, end, media, condition, url, webAppUrl, copyText, requestContact, requestLocation, and starsPayment fields.',
-    `current_flow=${JSON.stringify(compactFlow(flowNow))}`,
+  await progress('⚙️ دارم کد سفارشی ربات را می‌سازم...');
+  const result = await buildAgentCode(env, [
     `request=${text}`,
     `history=${history.slice(-8).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
-  ].join('\n\n');
-  await progress('⚙️ دارم تغییر را فقط روی settings.flow می‌سازم...');
-  const flow = await improveFlow(env, flowNow, instruction);
-  if (JSON.stringify(flowNow) === JSON.stringify(flow.flow)) return { ok: false, action: 'edit_bot', botId: full.id, error: 'flow_not_changed', flowSummary: flow.summary };
-  const revision = `rev_${Date.now()}`;
-  settings.flow = { ...flow.flow, revision };
-  await progress('💾 دارم flow جدید را ذخیره و کش را پاک می‌کنم...');
+    `current_flow_fallback=${JSON.stringify(compactFlow((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot')))}`,
+  ].join('\n\n'));
+  settings.agentMode = 'code';
+  settings.agentCode = { source: result.code, summary: result.summary, updatedAt: new Date().toISOString() };
+  await progress('💾 دارم کد را ذخیره می‌کنم...');
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), full.id).run();
-  await env.BOT_CACHE.delete(`flow-state:${full.id}:${userId}`).catch(() => undefined);
-  const saved = await env.DB.prepare('SELECT settings_json FROM bots WHERE id = ?').bind(full.id).first<{ settings_json: string }>();
-  const savedSettings = safeParseJson<Record<string, unknown>>(saved?.settings_json ?? '{}', {});
-  const savedFlow = savedSettings.flow as BotFlow | undefined;
-  if (!savedFlow || savedFlow.revision !== revision) return { ok: false, action: 'edit_bot', botId: full.id, error: 'flow_save_verify_failed' };
-  return { ok: true, action: 'edit_bot', botId: full.id, flowChanged: true, flowSummary: flow.summary, revision, runtimeSource: 'settings.flow', blueprintTouched: false, runtimeStateReset: true };
+  await env.BOT_CACHE.delete(`agent-code-state:${full.id}:${userId}`).catch(() => undefined);
+  return { ok: true, action: 'edit_bot', botId: full.id, agentMode: 'code', codeChanged: true, summary: result.summary };
 }
 
 async function state(env: Env, target: BotView | null, action: 'publish_bot' | 'activate_bot' | 'pause_bot', progress: (text: string) => Promise<void>): Promise<ActionResult> {
@@ -292,7 +288,7 @@ function isRealAction(action: string): action is RealAction { return action === 
 function pendingKey(userId: string): string { return `builder-pending-action:${userId}`; }
 function ttsKey(userId: string): string { return `builder-tts:${userId}`; }
 function toPlan(b: BotView): AgentDashboardBot { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flowName: b.flowName ?? b.flow?.name ?? null, flowDescription: b.flowDescription ?? null }; }
-function compactFlow(flow: BotFlow | null | undefined): unknown { if (!flow) return null; return { revision: flow.revision, name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next, url: button.url, webAppUrl: button.webAppUrl, copyText: button.copyText, requestContact: button.requestContact, requestLocation: button.requestLocation, starsPayment: button.starsPayment })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, media: node.media, condition: node.condition })) }; }
+function compactFlow(flow: BotFlow | null | undefined): unknown { if (!flow) return null; return { revision: (flow as BotFlow & { revision?: string }).revision, name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next, url: button.url, webAppUrl: button.webAppUrl, copyText: button.copyText, requestContact: button.requestContact, requestLocation: button.requestLocation, starsPayment: button.starsPayment })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, media: node.media, condition: node.condition })) }; }
 function botSnapshot(b: BotView): unknown { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flow: compactFlow(b.flow) }; }
 function extractText(data: ResponsesApiResult | null): string | null { if (!data) return null; if (data.output_text) return data.output_text; for (const item of data.output ?? []) for (const content of item.content ?? []) if (content.type === 'output_text' && content.text) return content.text; return null; }
 function extractJson(value: string): string { const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim(); const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}'); return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned; }
