@@ -41,6 +41,9 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'home', label: 'Home', description: 'Main landing section' },
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
+  { id: 'ai-miniapp', label: 'AI Bot Mini App', description: 'Open Mini App button in the AI bot' },
+  { id: 'ai-chat', label: 'AI Bot Chat', description: 'Chat with AI menu in the AI bot' },
+  { id: 'ai-tts', label: 'AI Bot Text to Speech', description: 'Text to Speech menu in the AI bot' },
   { id: 'playzone', label: 'Play Zone', description: 'Games hub section' },
   { id: 'predict', label: 'Predict', description: 'Predict section access' },
   { id: 'market', label: 'Market', description: 'NFT market section' },
@@ -107,6 +110,12 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
     };
   });
   return { sections };
+}
+
+export async function isSectionLocked(env: Env, sectionId: string): Promise<boolean> {
+  const normalized = ensureSection(sectionId);
+  const current = await readLocks(env);
+  return normalizeMode(current[normalized]) !== 'open';
 }
 
 export async function setSectionLock(env: Env, sectionId: string, locked: boolean, expiresAtInput: unknown = null): Promise<{ sections: SectionLock[] }> {
