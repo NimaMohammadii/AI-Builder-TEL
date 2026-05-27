@@ -4,6 +4,7 @@ import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramPr
 type State = { nodeId: string; data: Record<string, string> };
 type Tg = <T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown) => Promise<T>;
 type Deps = { telegramApi: Tg; sendText: (token: string, chatId: number, text: string) => Promise<void>; runtimeAiReply: (env: Env, systemPrompt: string, text: string) => Promise<string>; renderTemplate: (template: string, data: Record<string, string>) => string };
+const EMPTY_FLOW_MESSAGE = 'این ربات هنوز منطق اجرایی ندارد. از AI Builder TEL دوباره بساز یا آپدیتش کن.';
 
 export async function handleExpandedPreCheckoutQuery(token: string, query: TelegramPreCheckoutQuery, deps: Deps): Promise<void> {
   const ok = query.currency === 'XTR' && query.invoice_payload.startsWith('stars:');
@@ -12,8 +13,8 @@ export async function handleExpandedPreCheckoutQuery(token: string, query: Teleg
 
 export async function handleExpandedFlowMessage(env: Env, token: string, bot: BotRecord, flow: BotFlow, message: TelegramMessage, deps: Deps): Promise<void> {
   repair(flow);
-  if (isEmptyFlow(flow)) return;
   const chatId = message.chat.id;
+  if (isEmptyFlow(flow)) return deps.sendText(token, chatId, EMPTY_FLOW_MESSAGE);
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
 
@@ -26,7 +27,7 @@ export async function handleExpandedFlowMessage(env: Env, token: string, bot: Bo
 
   const state = await getState(env, bot.id, userId, flow);
   const node = flow.nodes[state.nodeId] ?? flow.nodes[flow.start];
-  if (!node) return;
+  if (!node) return deps.sendText(token, chatId, EMPTY_FLOW_MESSAGE);
 
   if (message.contact) state.data.contact = JSON.stringify(message.contact);
   if (message.location) state.data.location = JSON.stringify(message.location);
@@ -51,8 +52,11 @@ export async function handleExpandedFlowMessage(env: Env, token: string, bot: Bo
 
 export async function handleExpandedFlowCallback(env: Env, token: string, bot: BotRecord, flow: BotFlow, callback: TelegramCallbackQuery, deps: Deps): Promise<void> {
   repair(flow);
-  if (isEmptyFlow(flow)) return;
   const chatId = callback.message?.chat.id ?? callback.from.id;
+  if (isEmptyFlow(flow)) {
+    await deps.telegramApi(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+    return deps.sendText(token, chatId, EMPTY_FLOW_MESSAGE);
+  }
   const userId = String(callback.from.id);
   const data = callback.data ?? '';
   await deps.telegramApi(token, 'answerCallbackQuery', { callback_query_id: callback.id });
@@ -85,9 +89,9 @@ async function paid(env: Env, token: string, bot: BotRecord, flow: BotFlow, mess
 
 async function sendNode(env: Env, token: string, bot: BotRecord, flow: BotFlow, chatId: number, userId: string, state: State, deps: Deps): Promise<void> {
   repair(flow);
-  if (isEmptyFlow(flow)) return;
+  if (isEmptyFlow(flow)) return deps.sendText(token, chatId, EMPTY_FLOW_MESSAGE);
   const node = flow.nodes[state.nodeId] ?? flow.nodes[flow.start];
-  if (!node) return;
+  if (!node) return deps.sendText(token, chatId, EMPTY_FLOW_MESSAGE);
   if (node.media?.url) await sendMedia(token, chatId, node.media, deps);
   const buttons = (node.buttons ?? []).filter((b) => renderable(flow, b));
   await deps.telegramApi(token, 'sendMessage', { chat_id: chatId, text: deps.renderTemplate(node.message, state.data), reply_markup: markup(buttons) });
@@ -116,7 +120,6 @@ function repair(flow: BotFlow): void {
     }
   }
 }
-
 function isEmptyFlow(flow: BotFlow): boolean { return !Object.keys(flow.nodes ?? {}).length || !flow.start || !flow.nodes[flow.start]; }
 function markup(buttons: BotFlowButton[]): unknown {
   if (!buttons.length) return undefined;
