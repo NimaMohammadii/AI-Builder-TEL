@@ -27,7 +27,7 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
 
   if (data === 'builder:back') {
     await clearTtsState(env, userId);
-    await callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: 'https://builder-tel.vexaagent.workers.dev/builder' } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } });
+    await showMainMenu(botKey, chatId, messageId);
     return true;
   }
 
@@ -81,26 +81,48 @@ async function showMenu(env: Env, botKey: string, chatId: number, userId: string
   const output: TtsOutput = selected?.output || fallbackOutput || (savedOutput === 'voice' ? 'voice' : 'mp3');
   const voices = VOICES.slice(safePage * 9, safePage * 9 + 9);
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-  for (let i = 0; i < voices.length; i += 2) rows.push(voices.slice(i, i + 2).map((v) => ({ text: `${selected?.voiceName === v[0] ? '✅ ' : ''}${v[0]}`, callback_data: `builder:tts:voice:${v[0]}:${safePage}` })));
+  for (let i = 0; i < voices.length; i += 2) rows.push(voices.slice(i, i + 2).map((v) => ({ text: `${selected?.voiceName === v[0] ? '✔️ ' : ''}${v[0]}`, callback_data: `builder:tts:voice:${v[0]}:${safePage}` })));
   const nav = safePage === 0 ? { text: 'Next →', callback_data: 'builder:tts:page:1' } : { text: '← Previous', callback_data: 'builder:tts:page:0' };
   if (rows[4]?.length === 1) rows[4].push(nav); else rows.push([nav]);
   rows.push([{ text: '▶ Demo', callback_data: `builder:tts:demo:${safePage}` }]);
-  rows.push([{ text: `${output === 'mp3' ? '✅ ' : ''}MP3 📁`, callback_data: `builder:tts:output:mp3:${safePage}` }, { text: `${output === 'voice' ? '✅ ' : ''}Voice 🎙️`, callback_data: `builder:tts:output:voice:${safePage}` }]);
+  rows.push([{ text: `${output === 'mp3' ? '✔️ ' : ''}MP3 📁`, callback_data: `builder:tts:output:mp3:${safePage}` }, { text: `${output === 'voice' ? '✔️ ' : ''}Voice 🎙️`, callback_data: `builder:tts:output:voice:${safePage}` }]);
   rows.push([{ text: 'Back', callback_data: 'builder:back' }]);
-  const payload = { chat_id: chatId, text: `🎧 Text to Speech\n\nChoose a voice, choose output, then send your text.\nSelected voice: ${selected?.voiceName || 'none'}\nOutput: ${output.toUpperCase()}`, reply_markup: { inline_keyboard: rows } };
+  const payload = {
+    chat_id: chatId,
+    text: `<b>🎧 Text to Speech</b>\n\n<b>1.</b> Choose a voice.\n<b>2.</b> Choose output format.\n<b>3.</b> Send your text.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: rows },
+  };
   if (messageId) await callBot(botKey, 'editMessageText', { ...payload, message_id: messageId }).catch(() => callBot(botKey, 'sendMessage', payload));
   else await callBot(botKey, 'sendMessage', payload);
   return true;
 }
 
+async function showMainMenu(botKey: string, chatId: number, messageId?: number): Promise<void> {
+  const payload = {
+    chat_id: chatId,
+    text: '<b>AI Builder TEL</b>\n\nChoose an option:',
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'Open Mini App', web_app: { url: 'https://builder-tel.vexaagent.workers.dev/builder' } }],
+        [{ text: 'Chat with AI', callback_data: 'builder:chat' }],
+        [{ text: 'Text to Speech', callback_data: 'builder:tts' }],
+      ],
+    },
+  };
+  if (messageId) await callBot(botKey, 'editMessageText', { ...payload, message_id: messageId }).catch(() => callBot(botKey, 'sendMessage', payload));
+  else await callBot(botKey, 'sendMessage', payload);
+}
+
 async function speak(env: Env, botKey: string, chatId: number, userId: string, text: string, selected: TtsSelection, keep: boolean): Promise<void> {
   const apiKey = (env as Env & { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
-  if (!apiKey) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text to Speech is not configured. Add ELEVENLABS_API_KEY to Cloudflare secrets.' });
+  if (!apiKey) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text to Speech is not configured yet.' });
   if (text.length > 2500) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text is too long. Please send a shorter text.' });
   await callBot(botKey, 'sendChatAction', { chat_id: chatId, action: selected.output === 'voice' ? 'record_voice' : 'upload_voice' }).catch(() => undefined);
   try {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selected.voiceId}`, { method: 'POST', headers: { 'xi-api-key': apiKey, 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }) });
-    if (!res.ok) throw new Error(`ElevenLabs error ${res.status}`);
+    if (!res.ok) throw new Error(`Voice service error ${res.status}`);
     const audio = await res.arrayBuffer();
     const form = new FormData();
     form.append('chat_id', String(chatId));
