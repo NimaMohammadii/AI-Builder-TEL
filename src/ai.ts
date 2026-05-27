@@ -33,6 +33,7 @@ export type BotFlowNode = {
 
 export type BotFlow = {
   version: 1;
+  revision?: string;
   name: string;
   description: string;
   start: string;
