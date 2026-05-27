@@ -61,13 +61,17 @@ const server = http.createServer(async (req, res) => {
       message: baseCtx.message,
       callback: baseCtx.callback,
       reply(text, options = {}) {
+        const replyMarkup = options.reply_markup || (
+          Array.isArray(options.buttons) ? { inline_keyboard: options.buttons } : undefined
+        );
+
         actions.push({
           method: 'sendMessage',
           payload: {
             chat_id: baseCtx.chatId,
             text,
             parse_mode: options.parse_mode,
-            reply_markup: options.reply_markup
+            reply_markup: replyMarkup
           }
         });
       },
