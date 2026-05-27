@@ -5,8 +5,8 @@ import { animatedTelegramAiReply, animatedTelegramSend, safeTelegramAiReply } fr
 import { clearTtsState, handleTtsCallback, handleTtsMessage } from './telegram-tts-handlers';
 import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from './types';
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
-import { buildAgentCode } from './agent-code-builder';
-import { handleAgentCodeCallback, handleAgentCodeMessage } from './agent-code-runtime';
+import { buildAgentDsl, type AgentDsl } from './agent-dsl-builder';
+import { handleAgentDslCallback, handleAgentDslMessage } from './agent-dsl-runtime';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -50,19 +50,19 @@ const TTS_VOICES: TtsVoice[] = [
 ];
 
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
-  const settings = safeParseJson<{ isBuilderBot?: boolean; flow?: BotFlow; agentMode?: string; agentCode?: { source?: string } }>(bot.settings_json, {});
+  const settings = safeParseJson<{ isBuilderBot?: boolean; flow?: BotFlow; agentMode?: string; agentDsl?: { dsl?: AgentDsl; summary?: string; updatedAt?: string } }>(bot.settings_json, {});
   const key = await decryptUserToken(env, bot.encrypted_token);
 
   if (!settings.isBuilderBot) {
-    if (settings.agentMode === 'code' && settings.agentCode?.source) {
-      if (update.callback_query) return handleAgentCodeCallback(env, key, bot, settings.agentCode.source, update.callback_query);
-      if (update.message) return handleAgentCodeMessage(env, key, bot, settings.agentCode.source, update.message);
+    if (settings.agentMode === 'dsl' && settings.agentDsl?.dsl) {
+      if (update.callback_query) return handleAgentDslCallback(env, key, bot, settings.agentDsl.dsl, update.callback_query);
+      if (update.message) return handleAgentDslMessage(env, key, bot, settings.agentDsl.dsl, update.message);
     }
     if (settings.flow && update.pre_checkout_query) return handleExpandedPreCheckoutQuery(key, update.pre_checkout_query, flowRuntimeDeps);
     if (settings.flow && update.callback_query) return handleExpandedFlowCallback(env, key, bot, settings.flow, update.callback_query, flowRuntimeDeps);
     if (settings.flow && update.message) return handleExpandedFlowMessage(env, key, bot, settings.flow, update.message, flowRuntimeDeps);
     if (update.callback_query) await tg(key, 'answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
-    if (update.message) await send(key, update.message.chat.id, 'این ربات هنوز flow اجرایی ندارد. از AI Builder TEL تنظیمش کن.');
+    if (update.message) await send(key, update.message.chat.id, 'این ربات هنوز منطق اجرایی ندارد. از AI Builder TEL تنظیمش کن.');
     return;
   }
 
@@ -187,7 +187,7 @@ async function executePending(env: Env, key: string, chatId: number, userId: str
   const history = await loadHistory(env, historyKey);
   const progress = async (value: string) => editOrSend(key, chatId, callback, pending, value);
   try {
-    await progress('✅ تأیید شد؛ دارم flow واقعی ربات را می‌خوانم...');
+    await progress('✅ تأیید شد؛ دارم منطق ربات را می‌سازم...');
     const botsBefore = await dashboard(env, userId);
     const target = pending.targetBotId ? botsBefore.find((b) => b.id === pending.targetBotId) ?? null : botsBefore[0] ?? null;
     let result: ActionResult;
@@ -210,18 +210,19 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], targe
   const full = await getBot(env, target.id);
   if (!full) return { ok: false, action: 'edit_bot', botId: target.id, error: 'bot_not_found' };
   const settings = safeParseJson<Record<string, unknown>>(full.settings_json, {});
-  await progress('⚙️ دارم کد سفارشی ربات را می‌سازم...');
-  const result = await buildAgentCode(env, [
+  await progress('⚙️ دارم منطق اجرایی ربات را می‌سازم...');
+  const result = await buildAgentDsl(env, [
     `request=${text}`,
     `history=${history.slice(-8).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
     `current_flow_fallback=${JSON.stringify(compactFlow((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot')))}`,
   ].join('\n\n'));
-  settings.agentMode = 'code';
-  settings.agentCode = { source: result.code, summary: result.summary, updatedAt: new Date().toISOString() };
-  await progress('💾 دارم کد را ذخیره می‌کنم...');
+  settings.agentMode = 'dsl';
+  settings.agentDsl = { dsl: result.dsl, summary: result.summary, updatedAt: new Date().toISOString() };
+  delete settings.agentCode;
+  await progress('💾 دارم منطق ربات را ذخیره می‌کنم...');
   await env.DB.prepare('UPDATE bots SET settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(JSON.stringify(settings), full.id).run();
-  await env.BOT_CACHE.delete(`agent-code-state:${full.id}:${userId}`).catch(() => undefined);
-  return { ok: true, action: 'edit_bot', botId: full.id, agentMode: 'code', codeChanged: true, summary: result.summary };
+  await env.BOT_CACHE.delete(`agent-dsl-state:${full.id}:${userId}`).catch(() => undefined);
+  return { ok: true, action: 'edit_bot', botId: full.id, agentMode: 'dsl', dslChanged: true, summary: result.summary };
 }
 
 async function state(env: Env, target: BotView | null, action: 'publish_bot' | 'activate_bot' | 'pause_bot', progress: (text: string) => Promise<void>): Promise<ActionResult> {
