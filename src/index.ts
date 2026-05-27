@@ -12,7 +12,7 @@ import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
-const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
+const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query'];
 const WHEEL_MAX_PLAYERS = 5;
@@ -295,6 +295,8 @@ app.post('/app/api/wheel-round/join', async (c) => {
 
 app.post('/telegram', async (c) => handleBuilderWebhook(c));
 app.post('/telegram/webhook', async (c) => handleBuilderWebhook(c));
+app.post('/telegram/ai-webhook', async (c) => handleAiWebhook(c));
+app.post('/telegram/game-webhook', async (c) => handleGameWebhook(c));
 app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param('botId')));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
@@ -307,6 +309,30 @@ function adminCookieValue(cookie: string | undefined): string {
 }
 function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+
+async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
+  return handleBuilderWebhook(c);
+}
+
+async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env: Env }) {
+  try {
+    await c.req.json().catch(() => null);
+
+    return Response.json({
+      ok: true,
+      ignored: true,
+      bot: 'game',
+    });
+  } catch (error) {
+    console.error('game telegram webhook failed', error);
+
+    return Response.json({
+      ok: true,
+      recovered: true,
+      bot: 'game',
+    });
+  }
+}
 
 async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
   try {
