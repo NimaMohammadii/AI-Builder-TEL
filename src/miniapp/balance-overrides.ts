@@ -1,5 +1,6 @@
 export const BALANCE_OVERRIDES = `
 .top-balance-pill{
+  position:relative!important;
   height:35px!important;
   width:auto!important;
   min-width:0!important;
@@ -17,6 +18,25 @@ export const BALANCE_OVERRIDES = `
   justify-content:flex-start!important;
   flex:0 0 auto!important;
   box-sizing:border-box!important;
+}
+.top-balance-pill:after{
+  content:"\\002B"!important;
+  position:absolute!important;
+  left:-3px!important;
+  bottom:-4px!important;
+  width:15px!important;
+  height:15px!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  background:rgba(255,255,255,.105)!important;
+  color:rgba(255,255,255,.58)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:0 5px 12px rgba(0,0,0,.18)!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  pointer-events:none!important;
 }
 .top-balance-pill b{
   font-size:13.8px!important;
