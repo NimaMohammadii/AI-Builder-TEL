@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
 import { adminHtml, adminPanelHtml } from './admin';
-import { processTelegramUpdate, setTelegramWebhook } from './telegram-agent-safe';
+import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, id, rateLimit, safeParseJson } from './utils';
@@ -12,7 +12,7 @@ import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
-const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
+const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query'];
 const WHEEL_MAX_PLAYERS = 5;
@@ -93,12 +93,6 @@ app.post('/admin/upload-credit-icon', async (c) => {
     c.env.BOT_CACHE.delete('admin:credit-icon-version').catch(() => undefined),
   ]);
   return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
-});
-
-app.post('/setup-webhook', async (c) => {
-  const result = await setTelegramWebhook(c.env);
-  const menu = await setBuilderMenuButton(c.env.TELEGRAM_BOT_TOKEN, `${PUBLIC_BASE_URL}/app`);
-  return c.json({ ...result, menu, webhookUrl: `${PUBLIC_BASE_URL}/telegram/webhook`, miniApp: `${PUBLIC_BASE_URL}/app` });
 });
 
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
@@ -293,8 +287,6 @@ app.post('/app/api/wheel-round/join', async (c) => {
   }
 });
 
-app.post('/telegram', async (c) => handleBuilderWebhook(c));
-app.post('/telegram/webhook', async (c) => handleBuilderWebhook(c));
 app.post('/telegram/ai-webhook', async (c) => handleAiWebhook(c));
 app.post('/telegram/game-webhook', async (c) => handleGameWebhook(c));
 app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param('botId')));
@@ -311,7 +303,26 @@ function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY 
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
 
 async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
-  return handleBuilderWebhook(c);
+  try {
+    const update = (await c.req.json()) as TelegramUpdate;
+    const bot = defaultBotRecord();
+
+    if (update.pre_checkout_query || update.message?.successful_payment) {
+      await processTelegramUpdate(c.env, bot, update);
+      return Response.json({ ok: true });
+    }
+
+    c.executionCtx.waitUntil(
+      processTelegramUpdate(c.env, bot, update).catch((error) => {
+        console.error('ai telegram processing failed', error);
+      }),
+    );
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error('ai telegram webhook failed', error);
+    return Response.json({ ok: true, recovered: true });
+  }
 }
 
 async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env: Env }) {
@@ -334,19 +345,6 @@ async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env
   }
 }
 
-async function handleBuilderWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
-  try {
-    const update = (await c.req.json()) as TelegramUpdate;
-    const bot = defaultBotRecord();
-    if (update.pre_checkout_query || update.message?.successful_payment) {
-      await processTelegramUpdate(c.env, bot, update);
-      return Response.json({ ok: true });
-    }
-    c.executionCtx.waitUntil(processTelegramUpdate(c.env, bot, update).catch((error) => console.error('builder telegram processing failed', error)));
-    return Response.json({ ok: true });
-  } catch (error) { console.error('builder telegram webhook failed', error); return Response.json({ ok: true, recovered: true }); }
-}
-
 async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }, botId: string) {
   try {
     const update = (await c.req.json()) as TelegramUpdate;
@@ -364,7 +362,7 @@ async function getBot(env: Env, botId: string): Promise<BotRecord | null> {
 }
 
 function defaultBotRecord(): BotRecord {
-  return { id: DEFAULT_BOT_ID, owner_telegram_id: null, username: null, title: APP_NAME, status: 'active', encrypted_token: 'env:TELEGRAM_BOT_TOKEN', webhook_secret: 'default', blueprint_json: JSON.stringify(defaultBlueprint('An AI no-code Telegram bot builder.')), settings_json: JSON.stringify({ isBuilderBot: true }), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  return { id: DEFAULT_BOT_ID, owner_telegram_id: null, username: null, title: APP_NAME, status: 'active', encrypted_token: 'env:AI_BOT_TOKEN', webhook_secret: 'default', blueprint_json: JSON.stringify(defaultBlueprint('An AI no-code Telegram bot builder.')), settings_json: JSON.stringify({ isBuilderBot: true }), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
 }
 
 function safeBot(bot: BotRecord) {
@@ -550,11 +548,6 @@ async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean;
 
 async function deleteBotWebhook(token: string): Promise<{ ok: boolean; description?: string }> {
   const response = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ drop_pending_updates: true }) });
-  return response.json() as Promise<{ ok: boolean; description?: string }>;
-}
-
-async function setBuilderMenuButton(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
-  const response = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ menu_button: { type: 'web_app', text: 'AI Builder TEL', web_app: { url } } }) });
   return response.json() as Promise<{ ok: boolean; description?: string }>;
 }
 
