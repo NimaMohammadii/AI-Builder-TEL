@@ -24,15 +24,34 @@ type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string
 export async function processTelegramUpdate(env: Env, bot: BotRecord, update: TelegramUpdate): Promise<void> {
   await trackTelegramBotUser(env, bot.id, update).catch((error) => console.warn('admin user tracking skipped', error));
   try {
+    const settings = safeParseJson<{ isBuilderBot?: boolean }>(bot.settings_json, {});
+
     if (update.pre_checkout_query) {
-      await handleStarsPreCheckout(env, update.pre_checkout_query);
+      if (settings.isBuilderBot) {
+        await handleStarsPreCheckout(env, update.pre_checkout_query);
+        return;
+      }
+      const token = await decryptUserToken(env, bot.encrypted_token);
+      const payload = String(update.pre_checkout_query.invoice_payload || '');
+      const ok = update.pre_checkout_query.currency === 'XTR' && (payload.startsWith('dslpay:') || payload.startsWith('stars:'));
+      await telegram(token, 'answerPreCheckoutQuery', {
+        pre_checkout_query_id: update.pre_checkout_query.id,
+        ok,
+        error_message: ok ? undefined : 'Payment request is no longer valid.',
+      });
       return;
     }
+
     if (update.message?.successful_payment) {
-      const userId = update.message.from?.id ?? update.message.chat.id;
-      await handleStarsSuccessfulPayment(env, userId, update.message.successful_payment);
+      if (settings.isBuilderBot) {
+        const userId = update.message.from?.id ?? update.message.chat.id;
+        await handleStarsSuccessfulPayment(env, userId, update.message.successful_payment);
+        return;
+      }
+      await baseProcessTelegramUpdate(env, bot, update);
       return;
     }
+
     if (update.my_chat_member && (await handleMainBotGroupMembership(env, bot, update))) return;
     if (update.message && (await handleMainBotGroupMessage(env, bot, update))) return;
     if (isGroupUpdate(update)) return;
