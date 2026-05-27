@@ -23,11 +23,11 @@ export type AgentDsl = {
   fallback: AgentDslStep[];
 };
 
-type ResponsesApiResult = { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }> };
+type ResponsesApiResult = { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 type BuildResult = { summary: string; dsl: AgentDsl };
 
 export async function buildAgentDsl(env: Env, input: string): Promise<BuildResult> {
-  if (!env.OPENAI_API_KEY) return { summary: 'Default DSL created.', dsl: defaultDsl() };
+  if (!env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing');
   const instructions = [
     'Return strict JSON only. No markdown.',
     'You are designing an executable Telegram bot DSL for Cloudflare Worker.',
@@ -44,31 +44,40 @@ export async function buildAgentDsl(env: Env, input: string): Promise<BuildResul
     'If user asks Persian, write Persian bot text.',
     'Keep the DSL complete and executable.',
   ].join('\n');
-  try {
-    const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: OPENAI_MODEL, instructions, input, max_output_tokens: 3600 }),
-    });
-    const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
-    const parsed = safeParseJson<Partial<BuildResult>>(extractJson(extractText(data) ?? ''), {});
-    const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 280) : 'DSL bot created.';
-    return { summary, dsl: normalizeDsl(parsed.dsl) };
-  } catch {
-    return { summary: 'Default DSL created.', dsl: defaultDsl() };
-  }
+
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model: OPENAI_MODEL, instructions, input, max_output_tokens: 3600 }),
+  });
+  const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
+  if (!response.ok) throw new Error(data?.error?.message || `OpenAI DSL error ${response.status}`);
+
+  const text = extractText(data) ?? '';
+  const parsed = safeParseJson<Partial<BuildResult>>(extractJson(text), {});
+  if (!parsed.dsl || !isUsableRawDsl(parsed.dsl)) throw new Error('AI did not return a usable bot DSL');
+
+  const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 280) : 'DSL bot updated.';
+  return { summary, dsl: normalizeDsl(parsed.dsl) };
+}
+
+function isUsableRawDsl(input: unknown): boolean {
+  const raw = input as Partial<AgentDsl> | null;
+  return Boolean(raw && typeof raw === 'object' && Array.isArray(raw.start) && raw.start.length > 0 && (Array.isArray(raw.messages) || Array.isArray(raw.callbacks)));
 }
 
 function normalizeDsl(input: unknown): AgentDsl {
   const raw = (input && typeof input === 'object' ? input : {}) as Partial<AgentDsl>;
+  const start = cleanSteps(raw.start);
+  if (!start?.length) throw new Error('DSL start steps are empty');
   return {
     version: 1,
     name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'Custom Bot',
     language: typeof raw.language === 'string' ? raw.language.slice(0, 20) : 'multi',
-    start: cleanSteps(raw.start) || defaultDsl().start,
+    start,
     messages: cleanRules(raw.messages),
     callbacks: cleanRules(raw.callbacks),
-    fallback: cleanSteps(raw.fallback) || defaultDsl().fallback,
+    fallback: cleanSteps(raw.fallback) || [{ reply: 'پیامت دریافت شد.' }],
   };
 }
 
@@ -128,22 +137,10 @@ function cleanButton(button: unknown): AgentDslButton | null {
   return out;
 }
 
-function defaultDsl(): AgentDsl {
-  return {
-    version: 1,
-    name: 'Custom Bot',
-    language: 'multi',
-    start: [{ reply: 'سلام! ربات آماده است.', buttons: [[{ text: 'شروع', action: 'start' }]] }],
-    messages: [],
-    callbacks: [{ match: 'start', steps: [{ reply: 'پیام خودت را بفرست.' }] }],
-    fallback: [{ reply: 'پیامت دریافت شد.' }],
-  };
-}
-
 function extractText(data: ResponsesApiResult | null): string | null {
   if (!data) return null;
   if (data.output_text) return data.output_text;
   for (const item of data.output ?? []) for (const content of item.content ?? []) if (content.type === 'output_text' && content.text) return content.text;
-  return null;
+  return data.error?.message ?? null;
 }
-function extractJson(value: string): string { const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim(); const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}'); return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned; }
+function extractJson(value: string): string { const cleaned = value.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim(); const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}'); return start >= 0 && end > start ? cleaned.slice(start, end + 1) : ''; }
