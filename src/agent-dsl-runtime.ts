@@ -2,8 +2,8 @@ import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramPr
 import type { AgentDsl, AgentDslButton, AgentDslPayment, AgentDslStep } from './agent-dsl-builder';
 
 type DslState = Record<string, unknown>;
-
 type PendingPayment = { payload: string; success: AgentDslStep[]; fail: AgentDslStep[]; createdAt: number };
+const NOT_CONFIGURED = 'این ربات منطق جدید ندارد. از AI Builder دوباره آپدیتش کن.';
 
 export async function handleAgentDslPreCheckout(token: string, query: TelegramPreCheckoutQuery): Promise<void> {
   const ok = query.currency === 'XTR' && query.invoice_payload.startsWith('dslpay:');
@@ -14,6 +14,11 @@ export async function handleAgentDslMessage(env: Env, token: string, bot: BotRec
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const stateKey = key(bot.id, userId);
+
+  if (isPlaceholderDsl(dsl)) {
+    await tg(token, 'sendMessage', { chat_id: chatId, text: NOT_CONFIGURED });
+    return;
+  }
 
   if (message.successful_payment) {
     const payment = message.successful_payment;
@@ -39,6 +44,11 @@ export async function handleAgentDslCallback(env: Env, token: string, bot: BotRe
   const chatId = callback.message?.chat.id ?? callback.from.id;
   const userId = String(callback.from.id);
   const stateKey = key(bot.id, userId);
+  if (isPlaceholderDsl(dsl)) {
+    await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+    await tg(token, 'sendMessage', { chat_id: chatId, text: NOT_CONFIGURED });
+    return;
+  }
   const state = await readState(env, stateKey);
   await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
   const data = callback.data ?? '';
@@ -103,6 +113,11 @@ function markup(buttons?: AgentDslButton[][]): unknown {
 
 function render(text: string, state: DslState): string {
   return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, name: string) => String(state[name] ?? ''));
+}
+
+function isPlaceholderDsl(dsl: AgentDsl): boolean {
+  const first = dsl.start?.[0];
+  return Boolean(dsl.name === 'Custom Bot' && dsl.start?.length === 1 && first?.reply === 'سلام! ربات آماده است.');
 }
 
 async function readState(env: Env, stateKey: string): Promise<DslState> {
