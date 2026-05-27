@@ -23,10 +23,14 @@ type ActionResult = Record<string, unknown> & { ok: boolean; action: RealAction 
 type ResponsesApiResult = { output_text?: string; output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> };
 type TtsVoice = { name: string; id: string };
 type TtsSelection = { voiceName: string; voiceId: string; createdAt: number };
+type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loading'; expiresAt?: string | null };
+type AdminSettingRow = { value_json: string };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const TTS_TTL = 900;
+const LOCKS_KEY = 'admin:section-locks';
+const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
 const TTS_VOICES: TtsVoice[] = [
   { name: 'Liam', id: 'TX3LPaxmHKxFdv7VOQHJ' },
@@ -88,7 +92,7 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await clearTtsState(env, userId);
-    await mainMenu(key, chatId);
+    await mainMenu(env, key, chatId);
     return;
   }
 
@@ -100,16 +104,37 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
     await clearTtsState(env, userId);
     const reply = await safeTelegramAiReply(() => aiReply(env, 'The user closed AI chat. Reply naturally in the user language.', text, []), 'چت هوش مصنوعی بسته شد.');
     await tg(key, 'sendMessage', { chat_id: chatId, text: reply, reply_markup: { remove_keyboard: true } });
-    await mainMenu(key, chatId);
+    await mainMenu(env, key, chatId);
     return;
   }
 
-  if (await handleTtsMessage(env, key, message)) return;
+  if (await isAiSectionLocked(env, 'ai-tts')) {
+    const hadTts = Boolean(await getTtsSelection(env, userId)) || Boolean(await env.BOT_CACHE.get(ttsKey(userId)).catch(() => null));
+    if (hadTts || await handleTtsMessage(env, key, message)) {
+      await clearTtsState(env, userId);
+      await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
+      await send(key, chatId, LOCKED_TEXT);
+      return mainMenu(env, key, chatId);
+    }
+  } else if (await handleTtsMessage(env, key, message)) return;
 
   const tts = await getTtsSelection(env, userId);
-  if (tts) return handleTtsText(env, key, chatId, userId, text, tts);
+  if (tts) {
+    if (await isAiSectionLocked(env, 'ai-tts')) {
+      await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
+      await clearTtsState(env, userId);
+      await send(key, chatId, LOCKED_TEXT);
+      return mainMenu(env, key, chatId);
+    }
+    return handleTtsText(env, key, chatId, userId, text, tts);
+  }
 
-  if (!(await env.BOT_CACHE.get(chatKey).catch(() => null))) return mainMenu(key, chatId);
+  if (!(await env.BOT_CACHE.get(chatKey).catch(() => null))) return mainMenu(env, key, chatId);
+  if (await isAiSectionLocked(env, 'ai-chat')) {
+    await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
+    await send(key, chatId, LOCKED_TEXT);
+    return mainMenu(env, key, chatId);
+  }
 
   const pending = await getPending(env, userId);
   if (pending) {
@@ -127,6 +152,11 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   const userId = String(q.from.id);
   const data = q.data ?? '';
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
+
+  if (data === 'builder:miniapp') return lockedCallback(env, key, q, 'ai-miniapp');
+  if (data === 'builder:chat' && await lockedCallback(env, key, q, 'ai-chat')) return;
+  if ((data === 'builder:tts' || data.startsWith('builder:tts:')) && await lockedCallback(env, key, q, 'ai-tts')) return;
+
   if (await handleTtsCallback(env, key, q)) return;
 
   if (data === 'builder:chat') {
@@ -160,7 +190,15 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
     return rejectPending(env, key, chatId, userId, pending, q, 'Reject');
   }
 
-  await mainMenu(key, chatId);
+  await mainMenu(env, key, chatId);
+}
+
+async function lockedCallback(env: Env, key: string, q: TelegramCallbackQuery, sectionId: string): Promise<boolean> {
+  if (!(await isAiSectionLocked(env, sectionId))) return false;
+  const chatId = q.message?.chat.id ?? q.from.id;
+  await tg(key, 'answerCallbackQuery', { callback_query_id: q.id, text: LOCKED_TEXT, show_alert: true }).catch(() => undefined);
+  await send(key, chatId, LOCKED_TEXT);
+  return true;
 }
 
 async function agent(env: Env, key: string, chatId: number, userId: string, text: string): Promise<void> {
@@ -275,12 +313,38 @@ async function dashboard(env: Env, userId: string): Promise<BotView[]> {
   } catch { return []; }
 }
 
+async function isAiSectionLocked(env: Env, sectionId: string): Promise<boolean> {
+  const id = String(sectionId || '').replace(/[^a-zA-Z0-9_-]/g, '').trim();
+  if (!id) return false;
+  const raw = await readAdminSetting<Record<string, SavedLock>>(env, LOCKS_KEY).catch(() => null);
+  const item = raw?.[id];
+  if (!item) return false;
+  if (item.expiresAt && Date.parse(item.expiresAt) <= Date.now()) return false;
+  const mode = item.mode || (item.locked ? 'locked' : 'open');
+  return mode !== 'open';
+}
+
+async function readAdminSetting<T>(env: Env, name: string): Promise<T | null> {
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (name TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(name).first<AdminSettingRow>();
+    if (row?.value_json) return JSON.parse(row.value_json) as T;
+  } catch (error) {
+    console.warn('read ai lock setting failed', error);
+  }
+  return env.BOT_CACHE.get(name, 'json').catch(() => null) as Promise<T | null>;
+}
+
 async function getBot(env: Env, id: string): Promise<BotRecord | null> { try { return (await env.DB.prepare('SELECT * FROM bots WHERE id = ?').bind(id).first<BotRecord>()) ?? null; } catch { return null; } }
 async function getPending(env: Env, userId: string): Promise<PendingAction | null> { const raw = await env.BOT_CACHE.get(pendingKey(userId)).catch(() => null); const parsed = raw ? safeParseJson<PendingAction | null>(raw, null) : null; return parsed?.action ? parsed : null; }
 async function getTtsSelection(env: Env, userId: string): Promise<TtsSelection | null> { const raw = await env.BOT_CACHE.get(ttsKey(userId)).catch(() => null); return raw ? safeParseJson<TtsSelection | null>(raw, null) : null; }
 async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> { const raw = await env.BOT_CACHE.get(key).catch(() => null); const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : []; return Array.isArray(parsed) ? parsed.filter((x) => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-16) : []; }
 async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> { const next = [...h, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16); await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: CHAT_TTL }).catch(() => undefined); }
-async function mainMenu(key: string, chatId: number): Promise<void> { await tg(key, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/builder` } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } }); }
+async function mainMenu(env: Env, key: string, chatId: number): Promise<void> {
+  const miniAppLocked = await isAiSectionLocked(env, 'ai-miniapp').catch(() => false);
+  const firstRow = miniAppLocked ? [{ text: 'Open Mini App', callback_data: 'builder:miniapp' }] : [{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/builder` } }];
+  await tg(key, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [firstRow, [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } });
+}
 async function editOrSend(key: string, chatId: number, callback: TelegramCallbackQuery | null, pending: PendingAction | null, text: string): Promise<void> { const messageId = callback?.message?.message_id ?? pending?.proposalMessageId; const targetChatId = callback?.message?.chat.id ?? pending?.proposalChatId ?? chatId; if (messageId) await tg(key, 'editMessageText', { chat_id: targetChatId, message_id: messageId, text, reply_markup: { inline_keyboard: [] } }).catch(async () => send(key, chatId, text)); else await send(key, chatId, text); }
 async function send(key: string, chatId: number, text: string): Promise<void> { await animatedTelegramSend(tg, key, chatId, text); }
 async function tg<T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown): Promise<T> { const response = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); return response.json() as Promise<T>; }
@@ -306,7 +370,7 @@ async function handleTtsText(env: Env, key: string, chatId: number, userId: stri
   if (!apiKey) {
     await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
     await send(key, chatId, 'Text to Speech is not configured. Add ELEVENLABS_API_KEY to Cloudflare secrets.');
-    return mainMenu(key, chatId);
+    return mainMenu(env, key, chatId);
   }
   if (text.length > 4800) return send(key, chatId, 'Text is too long. Please send text under 4800 characters.');
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'upload_voice' }).catch(() => undefined);
@@ -324,7 +388,7 @@ async function handleTtsText(env: Env, key: string, chatId: number, userId: stri
     form.append('audio', new Blob([audio], { type: 'audio/mpeg' }), `${selection.voiceName}.mp3`);
     await tgForm(key, 'sendAudio', form);
     await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
-    await mainMenu(key, chatId);
+    await mainMenu(env, key, chatId);
   } catch (error) {
     await send(key, chatId, `Could not create speech. ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`);
   }
