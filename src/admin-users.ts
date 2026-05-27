@@ -85,7 +85,7 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
     SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source
     FROM ranked
     WHERE rn = 1
-    ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
+    ORDER BY source, datetime(COALESCE(last_seen_at, created_at)) DESC
     LIMIT 700`).all<AdminUserRow>();
   const now = Date.now();
   const users = await Promise.all((rows.results ?? []).map(async (row) => {
@@ -123,6 +123,79 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
   return { users, stats: { total: users.length, online, inactive: users.length - online, aiBot, gameBot, userBot, totalTonBalanceNano } };
 }
 
+export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promise<{ ok: true; userId: string; deleted: Record<string, number>; kvDeleted: number }> {
+  const userId = cleanUserId(userIdInput);
+  const deleted: Record<string, number> = {};
+  const tableDeletes: Array<[string, string]> = [
+    ['app_users', 'telegram_user_id'],
+    ['bot_users', 'telegram_user_id'],
+    ['user_controls', 'user_id'],
+    ['ton_transactions', 'user_id'],
+    ['ton_withdrawals', 'user_id'],
+    ['stars_deposits', 'user_id'],
+    ['user_levels', 'user_id'],
+    ['xp_events', 'user_id'],
+    ['daily_reward_claims', 'user_id'],
+    ['daily_reward_events', 'user_id'],
+    ['daily_rewards_claims', 'user_id'],
+    ['daily_rewards_events', 'user_id'],
+    ['market_purchases', 'user_id'],
+    ['nft_purchases', 'user_id'],
+    ['predict_bets', 'user_id'],
+    ['predict_entries', 'user_id'],
+    ['wheel_entries', 'user_id'],
+    ['crash_bets', 'user_id'],
+    ['plinko_rounds', 'user_id'],
+    ['mines_rounds', 'user_id'],
+    ['dice_rounds', 'user_id'],
+    ['rps_rounds', 'user_id'],
+  ];
+  for (const [table, column] of tableDeletes) {
+    deleted[table] = await safeDelete(env, table, column, userId);
+  }
+  const kvDeleted = await deleteUserKv(env, userId);
+  return { ok: true, userId, deleted, kvDeleted };
+}
+
+async function safeDelete(env: Env, table: string, column: string, userId: string): Promise<number> {
+  try {
+    const result = await env.DB.prepare(`DELETE FROM ${table} WHERE ${column} = ?`).bind(userId).run();
+    return Number(result.meta?.changes || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function deleteUserKv(env: Env, userId: string): Promise<number> {
+  const keys = new Set<string>([
+    `admin:user-controls:${userId}`,
+    `builder-ai-chat:${userId}`,
+    `builder-ai-history:${userId}`,
+    `builder-pending-action:${userId}`,
+    `builder-tts:${userId}`,
+    `vexaUserControls:${userId}`,
+  ]);
+  await collectKvByPrefix(env, `agent-dsl-state:`, keys, userId);
+  await collectKvByPrefix(env, `image-mode:`, keys, userId);
+  let count = 0;
+  for (const key of keys) {
+    try { await env.BOT_CACHE.delete(key); count++; } catch {}
+  }
+  return count;
+}
+
+async function collectKvByPrefix(env: Env, prefix: string, keys: Set<string>, userId: string): Promise<void> {
+  try {
+    let cursor: string | undefined;
+    for (let i = 0; i < 6; i++) {
+      const page = await env.BOT_CACHE.list({ prefix, cursor, limit: 1000 });
+      for (const item of page.keys) if (item.name.includes(userId)) keys.add(item.name);
+      if (page.list_complete) break;
+      cursor = page.cursor;
+    }
+  } catch {}
+}
+
 function sourceLabel(source: string): string {
   if (source === 'ai_bot') return 'AI Bot';
   if (source === 'game_bot') return 'Game Bot';
@@ -143,4 +216,10 @@ function cleanText(value: unknown, max: number): string | null {
 function cleanSection(value: unknown): string {
   const text = String(value ?? 'home').replace(/[^a-zA-Z0-9_-]/g, '').trim().slice(0, 40);
   return text || 'home';
+}
+
+function cleanUserId(value: unknown): string {
+  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!id) throw new Error('Missing user id');
+  return id;
 }
