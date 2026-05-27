@@ -85,17 +85,18 @@ app.post('/admin/upload-credit-icon', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!CREDIT_ICON_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+  if (!file || typeof file !== 'object' || !('type' in file) || !('size' in file) || !('stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
+  const iconFile = file as { type: string; size: number; stream: () => ReadableStream };
+  if (!CREDIT_ICON_TYPES.has(iconFile.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (iconFile.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const version = String(Date.now());
-  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+  await c.env.ASSETS.put('credit-icon', iconFile.stream(), { httpMetadata: { contentType: iconFile.type }, customMetadata: { version } });
   await Promise.all([
     c.env.BOT_CACHE.delete('admin:credit-icon').catch(() => undefined),
     c.env.BOT_CACHE.delete('admin:credit-icon-type').catch(() => undefined),
     c.env.BOT_CACHE.delete('admin:credit-icon-version').catch(() => undefined),
   ]);
-  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
+  return c.json({ ok: true, size: iconFile.size, type: iconFile.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
 });
 
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
