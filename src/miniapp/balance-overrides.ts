@@ -19,34 +19,32 @@ export const BALANCE_OVERRIDES = `
   flex:0 0 auto!important;
   box-sizing:border-box!important;
 }
-.top-balance-pill:after{
+.top-balance-pill:after,
+.top-balance-pill:before{
   content:none!important;
 }
 body.connect-only .top-balance-pill:after{
-  content:"\\002B"!important;
+  content:""!important;
   position:absolute!important;
   left:-4px!important;
   bottom:-5px!important;
   width:16px!important;
   height:16px!important;
   border-radius:999px!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
+  display:block!important;
   background:rgba(255,255,255,.12)!important;
-  color:rgba(255,255,255,.74)!important;
   border:0!important;
   outline:0!important;
   box-shadow:0 5px 12px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.14)!important;
   backdrop-filter:blur(20px)!important;
   -webkit-backdrop-filter:blur(20px)!important;
   opacity:1!important;
-  font-size:12px!important;
-  line-height:16px!important;
-  font-weight:700!important;
-  text-align:center!important;
   pointer-events:none!important;
   box-sizing:border-box!important;
+  background-image:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)),linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76))!important;
+  background-size:7px 1.5px,1.5px 7px!important;
+  background-position:center center,center center!important;
+  background-repeat:no-repeat!important;
 }
 .top-balance-pill b{
   font-size:13.8px!important;
