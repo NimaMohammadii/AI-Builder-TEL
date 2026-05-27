@@ -17,7 +17,7 @@ const DETAIL_POLISH_SCRIPT = `
       if(document.getElementById('vexa-fragment-detail-polish'))return;
       var style=document.createElement('style');
       style.id='vexa-fragment-detail-polish';
-      style.textContent='#market .market-nft-card,#market .market-owned-card{background:rgba(255,255,255,.04)!important;background-image:none!important;box-shadow:0 22px 58px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.12)!important}#market .market-nft-card:before{background:linear-gradient(135deg,rgba(255,255,255,.18),transparent 32%,rgba(255,255,255,.06) 74%,transparent)!important;opacity:.30!important;mix-blend-mode:normal!important}#market .market-nft-art:after,#market [class*=\"market-nft-art-\"]:after{background:radial-gradient(circle at 28% 18%,rgba(255,255,255,.08),transparent 24%)!important}#market .market-loading-orb{width:34px!important;height:34px!important;background:transparent!important;filter:none!important}#market .market-loading-orb:before{inset:0!important;border:2px solid rgba(255,255,255,.22)!important;border-top-color:#fff!important;animation:marketSpin .8s linear infinite!important}#market .market-loading-orb:after{inset:10px!important;border:0!important;background:#fff!important;opacity:.9!important;animation:none!important}#market .market-loading-gem{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-buy{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-status{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price *{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important;filter:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price img.market-price-icon{width:34px!important;height:34px!important;object-fit:contain!important;filter:none!important;opacity:.98!important}';
+      style.textContent='#market .market-nft-card,#market .market-owned-card{background:rgba(255,255,255,.04)!important;background-image:none!important;box-shadow:0 22px 58px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.12)!important}#market .market-nft-card:before{background:linear-gradient(135deg,rgba(255,255,255,.18),transparent 32%,rgba(255,255,255,.06) 74%,transparent)!important;opacity:.30!important;mix-blend-mode:normal!important}#market .market-nft-art:after,#market [class*="market-nft-art-"]:after{background:radial-gradient(circle at 28% 18%,rgba(255,255,255,.08),transparent 24%)!important}#market .market-loading-orb{width:34px!important;height:34px!important;background:transparent!important;filter:none!important}#market .market-loading-orb:before{inset:0!important;border:2px solid rgba(255,255,255,.22)!important;border-top-color:#fff!important;animation:marketSpin .8s linear infinite!important}#market .market-loading-orb:after{inset:10px!important;border:0!important;background:#fff!important;opacity:.9!important;animation:none!important}#market .market-loading-gem{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-buy{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-status{display:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price,#marketDetailSheet.vexa-fragment-detail [data-market-detail-price]{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price *{color:#fff!important;text-shadow:none!important;-webkit-text-fill-color:#fff!important;filter:none!important}#marketDetailSheet.vexa-fragment-detail .market-detail-price img.market-price-icon{width:34px!important;height:34px!important;object-fit:contain!important;filter:none!important;opacity:.98!important}';
       document.head.appendChild(style);
     }
     function isMarketActive(){
@@ -87,26 +87,27 @@ async function handleFastTelegramUpdate(request: Request, env: Env): Promise<Res
   return null;
 }
 
-
-app.post('/app/api/stars/deposits', async (c) => {
+async function handleStarsDepositRoute(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (url.pathname !== '/app/api/stars/deposits') return null;
   try {
-    const body = await c.req.json() as { userId?: string; stars?: unknown };
-    return c.json(await createStarsDeposit(c.env, String(body.userId || ''), body.stars));
+    if (request.method === 'POST') {
+      const body = await request.json().catch(() => ({})) as { userId?: string; stars?: unknown };
+      return Response.json(await createStarsDeposit(env, String(body.userId || ''), body.stars), { headers: { 'cache-control': 'no-store' } });
+    }
+    if (request.method === 'GET') {
+      return Response.json(await listUserStarsDeposits(env, String(url.searchParams.get('userId') || '')), { headers: { 'cache-control': 'no-store' } });
+    }
+    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: { 'cache-control': 'no-store' } });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not create Stars deposit' }, 400);
+    return Response.json({ error: error instanceof Error ? error.message : 'Stars deposit failed' }, { status: 400, headers: { 'cache-control': 'no-store' } });
   }
-});
-
-app.get('/app/api/stars/deposits', async (c) => {
-  try {
-    return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
-  }
-});
+}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const starsRoute = await handleStarsDepositRoute(request, env);
+    if (starsRoute) return starsRoute;
     const fastResponse = await handleFastTelegramUpdate(request, env).catch((error) => {
       console.error('fast telegram update failed', error);
       return Response.json({ ok: true, recovered: true });
