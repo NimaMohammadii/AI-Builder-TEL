@@ -593,9 +593,7 @@ export const RPS_SECTION = `
 
       function play() {
         var bot = choices[Math.floor(Math.random() * choices.length)];
-        playerAngle += 90;
-        botAngle -= 90;
-        setHandAngle(playerImg, playerAngle);
+        setCardImage(playerCard, playerImg, 'you', picked, true);
         if (botImg) {
           botImg.removeAttribute('src');
           setHandAngle(botImg, botAngle);
