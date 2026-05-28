@@ -69,7 +69,10 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
 export async function handleTtsMessage(env: Env, botKey: string, message: TelegramMessage): Promise<boolean> {
   const text = message.text?.trim() || '';
   const userId = String(message.from?.id ?? message.chat.id);
-  if (!text || text === '/start' || text === '/cancel' || text === 'پایان' || text === 'End' || text === 'End Chat') return false;
+
+  if (isEndText(text)) return closeBuilderAiChat(env, botKey, message.chat.id, userId);
+  if (!text || text === '/start' || text === '/cancel') return false;
+
   const selected = await readSelection(env, userId);
   if (!selected) return false;
   await speak(env, botKey, message.chat.id, userId, text, selected, false);
@@ -150,6 +153,25 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
   }
 }
 
+async function closeBuilderAiChat(env: Env, botKey: string, chatId: number, userId: string): Promise<boolean> {
+  const chatKey = `builder-ai-chat:${userId}`;
+  const active = await env.BOT_CACHE.get(chatKey).catch(() => null);
+  if (!active) return false;
+
+  await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
+  await env.BOT_CACHE.delete(`builder-ai-history:${userId}`).catch(() => undefined);
+  await env.BOT_CACHE.delete(`builder-pending-action:${userId}`).catch(() => undefined);
+  await clearTtsState(env, userId);
+  await deleteLastMainMenu(env, botKey, chatId);
+  await callBot(botKey, 'sendMessage', {
+    chat_id: chatId,
+    text: 'چت هوش مصنوعی بسته شد.',
+    reply_markup: { remove_keyboard: true },
+  });
+  await showMainMenu(botKey, chatId);
+  return true;
+}
+
 async function readSelection(env: Env, userId: string): Promise<TtsSelection | null> {
   const raw = await env.BOT_CACHE.get(keyOf(userId)).catch(() => null);
   return raw ? JSON.parse(raw) as TtsSelection : null;
@@ -171,9 +193,22 @@ async function deleteTtsMenuMessage(env: Env, botKey: string, chatId: number, us
   await callBot(botKey, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
 }
 
+async function deleteLastMainMenu(env: Env, botKey: string, chatId: number): Promise<void> {
+  const raw = await env.BOT_CACHE.get(mainMenuKeyOf(chatId)).catch(() => null);
+  const messageId = Number(raw);
+  if (!Number.isFinite(messageId) || messageId <= 0) return;
+  await callBot(botKey, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
+  await env.BOT_CACHE.delete(mainMenuKeyOf(chatId)).catch(() => undefined);
+}
+
+function isEndText(text: string): boolean {
+  return text === 'پایان' || text === 'End' || text === 'End Chat';
+}
+
 function keyOf(userId: string): string { return `builder-tts:${userId}`; }
 function outputKeyOf(userId: string): string { return `builder-tts-output:${userId}`; }
 function menuMessageKeyOf(userId: string): string { return `builder-tts-menu-message:${userId}`; }
+function mainMenuKeyOf(chatId: number): string { return `builder-main-menu:${chatId}`; }
 
 async function callBot<T = unknown>(key: string, method: string, payload: unknown): Promise<T> {
   const res = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
