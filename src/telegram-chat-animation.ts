@@ -1,5 +1,5 @@
 type TelegramReplyMarkup = Record<string, unknown>;
-type TelegramSentMessage = { ok: boolean; result?: { message_id: number } };
+type TelegramSentMessage = { ok: boolean; result?: { message_id: number }; description?: string };
 type TelegramSendOptions = Record<string, unknown>;
 type TelegramAnimationMode = 'full' | 'group' | 'light';
 type TelegramRenderedText = { plain: string; html: string; useHtml: boolean };
@@ -34,7 +34,7 @@ export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId
   if (animated) return { ok: true, result: { message_id: messageId } };
 
   const edited = await editFinalMessage(tg, key, chatId, messageId, text, editableReplyMarkup, sendOptions);
-  if (edited) return { ok: true, result: { message_id: messageId } };
+  if (isTelegramOk(edited)) return { ok: true, result: { message_id: messageId } };
 
   return sendFinalMessage(tg, key, chatId, text, replyMarkup, sendOptions);
 }
@@ -63,7 +63,7 @@ export async function animatedTelegramAiReply(tg: TelegramCall, key: string, cha
   if (animated) return { text, sent: { ok: true, result: { message_id: messageId } } };
 
   const edited = await editFinalMessage(tg, key, chatId, messageId, text, editableReplyMarkup, sendOptions);
-  if (edited) return { text, sent: { ok: true, result: { message_id: messageId } } };
+  if (isTelegramOk(edited)) return { text, sent: { ok: true, result: { message_id: messageId } } };
 
   return { text, sent: await sendFinalMessage(tg, key, chatId, text, replyMarkup, sendOptions) };
 }
@@ -90,7 +90,7 @@ async function sendSmoothGroupReply(tg: TelegramCall, key: string, chatId: numbe
   if (animated) return { text, sent: { ok: true, result: { message_id: messageId } } };
 
   const edited = await editFinalMessage(tg, key, chatId, messageId, text, editableReplyMarkup, sendOptions);
-  if (edited) return { text, sent: { ok: true, result: { message_id: messageId } } };
+  if (isTelegramOk(edited)) return { text, sent: { ok: true, result: { message_id: messageId } } };
 
   return { text, sent: await sendFinalMessage(tg, key, chatId, text, replyMarkup, sendOptions) };
 }
@@ -106,7 +106,13 @@ async function animateAnswerMotion(tg: TelegramCall, key: string, chatId: number
       ? finalEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)
       : { chat_id: chatId, message_id: messageId, text: steps[index] };
     const edited = await tg<TelegramSentMessage>(key, 'editMessageText', payload).catch(() => null);
-    if (!edited) return false;
+    if (!isTelegramOk(edited)) {
+      if (isLast && rendered.useHtml) {
+        const plainEdited = await tg<TelegramSentMessage>(key, 'editMessageText', plainEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)).catch(() => null);
+        return isTelegramOk(plainEdited);
+      }
+      return false;
+    }
     if (!isLast) await sleep(ANSWER_MOTION_DELAY_MS);
   }
 
@@ -124,7 +130,13 @@ async function animateGroupAnswerMotion(tg: TelegramCall, key: string, chatId: n
       ? finalEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)
       : { chat_id: chatId, message_id: messageId, text: steps[index] };
     const edited = await tg<TelegramSentMessage>(key, 'editMessageText', payload).catch(() => null);
-    if (!edited) return false;
+    if (!isTelegramOk(edited)) {
+      if (isLast && rendered.useHtml) {
+        const plainEdited = await tg<TelegramSentMessage>(key, 'editMessageText', plainEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)).catch(() => null);
+        return isTelegramOk(plainEdited);
+      }
+      return false;
+    }
     if (!isLast) await sleep(GROUP_ANSWER_MOTION_DELAY_MS);
   }
 
@@ -235,20 +247,47 @@ function finalEditPayload(chatId: number, messageId: number, rendered: TelegramR
   };
 }
 
+function plainEditPayload(chatId: number, messageId: number, rendered: TelegramRenderedText, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions): Record<string, unknown> {
+  const { parse_mode: _parseMode, ...safeOptions } = sendOptions ?? {};
+  return {
+    chat_id: chatId,
+    message_id: messageId,
+    text: rendered.plain,
+    ...safeOptions,
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  };
+}
+
 async function editFinalMessage(tg: TelegramCall, key: string, chatId: number, messageId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions): Promise<TelegramSentMessage | null> {
   const rendered = renderTelegramText(text, sendOptions);
-  return tg<TelegramSentMessage>(key, 'editMessageText', finalEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)).catch(() => null);
+  const edited = await tg<TelegramSentMessage>(key, 'editMessageText', finalEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)).catch(() => null);
+  if (isTelegramOk(edited)) return edited;
+  if (!rendered.useHtml) return edited;
+  return tg<TelegramSentMessage>(key, 'editMessageText', plainEditPayload(chatId, messageId, rendered, replyMarkup, sendOptions)).catch(() => null);
 }
 
 async function sendFinalMessage(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions): Promise<TelegramSentMessage> {
   const rendered = renderTelegramText(text, sendOptions);
-  return tg<TelegramSentMessage>(key, 'sendMessage', {
+  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', {
     chat_id: chatId,
     text: rendered.useHtml ? rendered.html : rendered.plain,
     ...(sendOptions ?? {}),
     ...(rendered.useHtml ? { parse_mode: 'HTML' } : {}),
     ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   });
+  if (isTelegramOk(sent) || !rendered.useHtml) return sent;
+
+  const { parse_mode: _parseMode, ...safeOptions } = sendOptions ?? {};
+  return tg<TelegramSentMessage>(key, 'sendMessage', {
+    chat_id: chatId,
+    text: rendered.plain,
+    ...safeOptions,
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
+}
+
+function isTelegramOk(result: TelegramSentMessage | null | undefined): result is TelegramSentMessage {
+  return Boolean(result?.ok);
 }
 
 export async function safeTelegramAiReply(replyFactory: () => Promise<string>, fallback: string): Promise<string> {
