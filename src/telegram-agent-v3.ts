@@ -25,10 +25,12 @@ type TtsVoice = { name: string; id: string };
 type TtsSelection = { voiceName: string; voiceId: string; createdAt: number };
 type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loading'; expiresAt?: string | null };
 type AdminSettingRow = { value_json: string };
+type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const TTS_TTL = 900;
+const MAIN_MENU_TTL = 7200;
 const LOCKS_KEY = 'admin:section-locks';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
@@ -96,7 +98,7 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
     return;
   }
 
-  if (text === 'End Chat' || text === '/cancel') {
+  if (text === 'End' || text === 'End Chat' || text === '/cancel') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(historyKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
@@ -163,7 +165,7 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
     await env.BOT_CACHE.put(`builder-ai-chat:${userId}`, '1', { expirationTtl: CHAT_TTL }).catch(() => undefined);
     await clearTtsState(env, userId);
     const bots = await dashboard(env, userId);
-    await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'The user opened AI chat. Reply in the user language. Use only these real connected bots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []), 'Chat with AI روشن شد. پیام بعدی‌ات را بفرست.', { keyboard: [[{ text: 'End Chat' }]], resize_keyboard: true, one_time_keyboard: false });
+    await animatedTelegramAiReply(tg, key, chatId, () => aiReply(env, 'The user opened AI chat. Reply in the user language. Use only these real connected bots.', JSON.stringify({ bots: bots.map(botSnapshot) }), []), 'Chat with AI روشن شد. پیام بعدی‌ات را بفرست.', { keyboard: [[{ text: 'End' }]], resize_keyboard: true, one_time_keyboard: false });
     return;
   }
 
@@ -349,11 +351,45 @@ async function getPending(env: Env, userId: string): Promise<PendingAction | nul
 async function getTtsSelection(env: Env, userId: string): Promise<TtsSelection | null> { const raw = await env.BOT_CACHE.get(ttsKey(userId)).catch(() => null); return raw ? safeParseJson<TtsSelection | null>(raw, null) : null; }
 async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]> { const raw = await env.BOT_CACHE.get(key).catch(() => null); const parsed = raw ? safeParseJson<ChatHistoryMessage[]>(raw, []) : []; return Array.isArray(parsed) ? parsed.filter((x) => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-16) : []; }
 async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> { const next = [...h, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16); await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: CHAT_TTL }).catch(() => undefined); }
+
 async function mainMenu(env: Env, key: string, chatId: number): Promise<void> {
   const miniAppLocked = await isAiSectionLocked(env, 'ai-miniapp').catch(() => false);
   const firstRow = miniAppLocked ? [{ text: 'Open Mini App', callback_data: 'builder:miniapp' }] : [{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/builder` } }];
-  await tg(key, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [firstRow, [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } });
+
+  await deleteLastMainMenu(env, key, chatId);
+
+  const sent = await tg<TelegramMessageResult>(key, 'sendMessage', {
+    chat_id: chatId,
+    text: 'AI Builder',
+    reply_markup: {
+      inline_keyboard: [
+        firstRow,
+        [{ text: 'Chat with AI', callback_data: 'builder:chat' }],
+        [{ text: 'Text to Speech', callback_data: 'builder:tts' }],
+      ],
+    },
+  });
+
+  const messageId = sent.result?.message_id;
+  if (messageId) {
+    await env.BOT_CACHE.put(mainMenuKey(chatId), String(messageId), { expirationTtl: MAIN_MENU_TTL }).catch(() => undefined);
+  }
 }
+
+async function deleteLastMainMenu(env: Env, key: string, chatId: number): Promise<void> {
+  const raw = await env.BOT_CACHE.get(mainMenuKey(chatId)).catch(() => null);
+  const messageId = Number(raw);
+
+  if (!Number.isFinite(messageId) || messageId <= 0) return;
+
+  await tg(key, 'deleteMessage', {
+    chat_id: chatId,
+    message_id: messageId,
+  }).catch(() => undefined);
+
+  await env.BOT_CACHE.delete(mainMenuKey(chatId)).catch(() => undefined);
+}
+
 async function editOrSend(key: string, chatId: number, callback: TelegramCallbackQuery | null, pending: PendingAction | null, text: string): Promise<void> { const messageId = callback?.message?.message_id ?? pending?.proposalMessageId; const targetChatId = callback?.message?.chat.id ?? pending?.proposalChatId ?? chatId; if (messageId) await tg(key, 'editMessageText', { chat_id: targetChatId, message_id: messageId, text, reply_markup: { inline_keyboard: [] } }).catch(async () => send(key, chatId, text)); else await send(key, chatId, text); }
 async function send(key: string, chatId: number, text: string): Promise<void> { await animatedTelegramSend(tg, key, chatId, text); }
 async function tg<T = { ok: boolean; description?: string }>(key: string, method: string, payload: unknown): Promise<T> { const response = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); return response.json() as Promise<T>; }
@@ -361,6 +397,7 @@ async function tgForm<T = { ok: boolean; description?: string }>(key: string, me
 function isRealAction(action: string): action is RealAction { return action === 'edit_bot' || action === 'publish_bot' || action === 'activate_bot' || action === 'pause_bot'; }
 function pendingKey(userId: string): string { return `builder-pending-action:${userId}`; }
 function ttsKey(userId: string): string { return `builder-tts:${userId}`; }
+function mainMenuKey(chatId: number): string { return `builder-main-menu:${chatId}`; }
 function toPlan(b: BotView): AgentDashboardBot { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flowName: b.flowName ?? b.flow?.name ?? null, flowDescription: b.flowDescription ?? null }; }
 function compactFlow(flow: BotFlow | null | undefined): unknown { if (!flow) return null; return { revision: (flow as BotFlow & { revision?: string }).revision, name: flow.name, description: flow.description, start: flow.start, variables: flow.variables, nodes: Object.values(flow.nodes ?? {}).map((node) => ({ id: node.id, message: node.message, keyboard: node.keyboard ?? 'inline', buttons: (node.buttons ?? []).map((button) => ({ text: button.text, next: button.next, url: button.url, webAppUrl: button.webAppUrl, copyText: button.copyText, requestContact: button.requestContact, requestLocation: button.requestLocation, starsPayment: button.starsPayment })), saveInputAs: node.saveInputAs, next: node.next, notifyOwner: node.notifyOwner, end: node.end, media: node.media, condition: node.condition })) }; }
 function botSnapshot(b: BotView): unknown { return { id: b.id, title: b.title, username: b.username, status: b.status, created_at: b.created_at, updated_at: b.updated_at, flow: compactFlow(b.flow) }; }
