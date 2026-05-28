@@ -10,6 +10,8 @@ type TtsCharge = { characters: number; amountNano: number; amountTon: string };
 const TTS_TTL = 900;
 const DEMO_TEXT = 'This is a short demo from Vexa Text to Speech.';
 const TTS_CHARACTER_PRICE_NANO = 120_000;
+const BUILDER_APP_URL = 'https://builder-tel.vexaagent.workers.dev/builder';
+const PAYMENT_APP_URL = `${BUILDER_APP_URL}?open=deposit`;
 const VOICES = [
   ['Liam', 'TX3LPaxmHKxFdv7VOQHJ'], ['Noah', '1SM7GgM6IMuvQlz2BwM3'], ['Ava', 'tnSpp4vdxKPjI9w0GnoV'],
   ['Nora', 'BIvP0GN1cAtSRTxNHnWS'], ['Alex', 'GFGuOkimbpNkTEOVDkqX'], ['Ella', 'NZiuR1C6kVMSWHG27sIM'],
@@ -125,7 +127,7 @@ async function showMainMenu(botKey: string, chatId: number, messageId?: number):
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: 'Open Mini App', web_app: { url: 'https://builder-tel.vexaagent.workers.dev/builder' } }],
+        [{ text: 'Open Mini App', web_app: { url: BUILDER_APP_URL } }],
         [{ text: 'Chat with AI', callback_data: 'builder:chat' }],
         [{ text: 'Text to Speech', callback_data: 'builder:tts' }],
       ],
@@ -156,6 +158,9 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
       await callBot(botKey, 'sendMessage', {
         chat_id: chatId,
         text: `Insufficient balance.\nCost: ${charge.amountTon} TON for ${charge.characters} characters.\nRate: 0.00012 TON per character.`,
+        reply_markup: {
+          inline_keyboard: [[{ text: 'Add balance', web_app: { url: PAYMENT_APP_URL } }]],
+        },
       });
       return;
     }
