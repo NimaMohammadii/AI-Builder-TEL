@@ -5,13 +5,11 @@ type TtsOutput = 'mp3' | 'voice';
 type TtsSelection = { voiceName: string; voiceId: string; output: TtsOutput; createdAt: number };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 type TelegramFileMessageResult = TelegramMessageResult & { result?: { message_id?: number; audio?: { file_id?: string }; voice?: { file_id?: string } } };
-
-type TtsCharge = { units: number; characters: number; amountNano: number; amountTon: string };
+type TtsCharge = { characters: number; amountNano: number; amountTon: string };
 
 const TTS_TTL = 900;
 const DEMO_TEXT = 'This is a short demo from Vexa Text to Speech.';
-const TTS_UNIT_CHARACTERS = 1000;
-const TTS_UNIT_PRICE_NANO = 120_000_000;
+const TTS_CHARACTER_PRICE_NANO = 120_000;
 const VOICES = [
   ['Liam', 'TX3LPaxmHKxFdv7VOQHJ'], ['Noah', '1SM7GgM6IMuvQlz2BwM3'], ['Ava', 'tnSpp4vdxKPjI9w0GnoV'],
   ['Nora', 'BIvP0GN1cAtSRTxNHnWS'], ['Alex', 'GFGuOkimbpNkTEOVDkqX'], ['Ella', 'NZiuR1C6kVMSWHG27sIM'],
@@ -101,7 +99,7 @@ async function showMenu(env: Env, botKey: string, chatId: number, userId: string
   rows.push([{ text: 'Back', callback_data: 'builder:back' }]);
   const payload = {
     chat_id: chatId,
-    text: `<b>🎧 Text to Speech</b>\n\nSend your text.\nPrice: <b>0.12 TON</b> per 1000 characters.\nDemo is free.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
+    text: `<b>🎧 Text to Speech</b>\n\nSend your text.\nPrice: <b>0.00012 TON</b> per character.\n1000 characters = <b>0.12 TON</b>.\nDemo is free.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: rows },
   };
@@ -157,7 +155,7 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
     } catch {
       await callBot(botKey, 'sendMessage', {
         chat_id: chatId,
-        text: `Insufficient balance.\nCost: ${charge.amountTon} TON for ${charge.characters} characters.\nRate: 0.12 TON per 1000 characters.`,
+        text: `Insufficient balance.\nCost: ${charge.amountTon} TON for ${charge.characters} characters.\nRate: 0.00012 TON per character.`,
       });
       return;
     }
@@ -248,14 +246,13 @@ async function deleteLastMainMenu(env: Env, botKey: string, chatId: number): Pro
 
 function calculateTtsCharge(text: string): TtsCharge {
   const characters = Array.from(text).length;
-  const units = Math.max(1, Math.ceil(characters / TTS_UNIT_CHARACTERS));
-  const amountNano = units * TTS_UNIT_PRICE_NANO;
-  return { units, characters, amountNano, amountTon: formatTon(amountNano) };
+  const amountNano = Math.max(1, characters) * TTS_CHARACTER_PRICE_NANO;
+  return { characters, amountNano, amountTon: formatTon(amountNano) };
 }
 
 function formatTon(nano: number): string {
   const value = Math.max(0, Math.floor(Number(nano) || 0)) / 1_000_000_000;
-  return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  return value.toFixed(6).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
 }
 
 function isEndText(text: string): boolean {
