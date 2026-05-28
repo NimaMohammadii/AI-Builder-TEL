@@ -20,8 +20,8 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
     section.appendChild(block);
   }
   function rpsUploadHtml(side,label,kind,title){
-    const idSide=side.charAt(0).toUpperCase()+side.slice(1),idKind=kind.charAt(0).toUpperCase()+kind.slice(1),id='rps'+idSide+idKind;
-    return '<div class="image-current"><img id="'+id+'Preview" src="/app/api/uploaded-image/rps-'+side+'-'+kind+'.png?t='+Date.now()+'" alt=""/><div><strong>RPS '+label+' '+title+' image</strong><p class="muted small-text">Shown for '+label+' '+title+' in Rock Paper Scissors.</p></div></div><label>Upload '+label+' '+title+' image</label><input id="'+id+'File" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="upload'+id+'" type="button">Upload '+label+' '+title+'</button>';
+    const idSide=side.charAt(0).toUpperCase()+side.slice(1),idKind=kind.charAt(0).toUpperCase()+kind.slice(1),id='rps'+idSide+idKind,uploadId='uploadRps'+idSide+idKind;
+    return '<div class="image-current"><img id="'+id+'Preview" src="/app/api/uploaded-image/rps-'+side+'-'+kind+'.png?t='+Date.now()+'" alt=""/><div><strong>RPS '+label+' '+title+' image</strong><p class="muted small-text">Shown for '+label+' '+title+' in Rock Paper Scissors.</p></div></div><label>Upload '+label+' '+title+' image</label><input id="'+id+'File" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="'+uploadId+'" type="button">Upload '+label+' '+title+'</button>';
   }
   function ensureRpsHandsPanel(){
     const section=document.getElementById('sectionImages');
