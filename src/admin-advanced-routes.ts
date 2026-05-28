@@ -1,3 +1,4 @@
+import { resetAllUsersEverywhere } from './admin-users';
 import { setGroupAiDisabled, setUserGroupAiDisabled, listUserGroups } from './group-ai-access';
 import { setSectionCodeLock, setSectionLock } from './section-locks';
 import { setUserSectionBlocked } from './user-controls';
@@ -6,6 +7,7 @@ import type { Env } from './types';
 type AppLike = {
   get: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
   post: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
+  delete: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
 };
 
 type HandlerContext = {
@@ -20,6 +22,15 @@ type HandlerContext = {
 };
 
 export function registerAdvancedAdminRoutes(app: AppLike): void {
+  app.delete('/admin/api/users', async (c) => {
+    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    try {
+      return c.json(await resetAllUsersEverywhere(c.env));
+    } catch (error) {
+      return c.json({ error: error instanceof Error ? error.message : 'Could not delete all users' }, 400);
+    }
+  });
+
   app.post('/admin/api/users/section-block-timed', async (c) => {
     if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
