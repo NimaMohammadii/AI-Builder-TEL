@@ -22,33 +22,56 @@ export type AgentDsl = {
   callbacks: AgentDslRule[];
   fallback: AgentDslStep[];
 };
+export type BuildAgentDslOptions = {
+  mode?: 'create' | 'edit';
+  currentDsl?: AgentDsl | null;
+  currentFlowFallback?: unknown;
+};
 
 type ResponsesApiResult = { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
 type BuildResult = { summary: string; dsl: AgentDsl };
 
-export async function buildAgentDsl(env: Env, input: string): Promise<BuildResult> {
+export async function buildAgentDsl(env: Env, input: string, options: BuildAgentDslOptions = {}): Promise<BuildResult> {
   if (!env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing');
+
+  const editMode = options.mode === 'edit' && Boolean(options.currentDsl);
   const instructions = [
     'Return strict JSON only. No markdown.',
-    'You are designing an executable Telegram bot DSL for Cloudflare Worker.',
+    editMode
+      ? 'You are editing an existing executable Telegram bot DSL for Cloudflare Worker.'
+      : 'You are creating a new executable Telegram bot DSL for Cloudflare Worker.',
     'Do NOT write JavaScript code. Do NOT output BotFlow nodes.',
-    'Design the bot freely, but final output must be this JSON shape:',
+    'Final output must be this JSON shape:',
     '{"summary":"short","dsl":{"version":1,"name":"...","language":"fa|en|multi","start":[steps],"messages":[rules],"callbacks":[rules],"fallback":[steps]}}',
     'Step shape: {"reply":"text","buttons":[[{"text":"...","action":"callback_data"}]],"payment":{"title":"...","description":"...","amount":10,"payload":"unique_id","success":[steps],"fail":[steps]},"set":{},"patch":{},"clearState":true,"next":"stateName"}.',
     'Button shape: {"text":"...","action":"..."} or {"text":"...","url":"https://..."} or {"text":"...","webAppUrl":"https://..."}.',
     'Rule shape: {"match":"exact text/callback OR *","steps":[...]}.',
     'Use callbacks for inline button action values.',
     'Use state with patch/set/next when multi-step behavior is needed.',
+    'Never add a menu, button, payment, text, screen, step, product, price, or feature unless the user explicitly requested it.',
+    'Leave unspecified parts empty or unchanged.',
+    editMode
+      ? 'Preserve the current DSL exactly unless a change is directly required by the user request. Do not rebuild, rename, reorganize, or replace the bot unless the user explicitly asks to reset or rebuild it.'
+      : 'Build only the minimum bot behavior requested by the user. Do not invent default menus, support buttons, products, payments, or extra sections.',
+    'If the user asks to add one thing, add only that one thing and keep the rest unchanged.',
+    'If the request is ambiguous, make the smallest safe change that follows the request. Do not fill gaps with invented content.',
     'Telegram Stars payments: when the user asks for payment, purchase, VIP, paid access, paid download, paid service, or subscription, use a payment step. amount is the number of Telegram Stars, currency is always XTR internally and must not be added to the DSL. payload should be stable and unique, e.g. vip_10_stars. Put the post-payment reply in payment.success.',
     'For a pay button flow, make an inline button action like "pay_vip" and a callbacks rule match "pay_vip" whose steps include the payment object.',
     'If user asks Persian, write Persian bot text.',
-    'Keep the DSL complete and executable.',
+    'Keep the returned DSL complete and executable.',
   ].join('\n');
+
+  const requestInput = JSON.stringify({
+    mode: editMode ? 'edit' : 'create',
+    request: input,
+    currentDsl: options.currentDsl ?? null,
+    currentFlowFallback: options.currentFlowFallback ?? null,
+  });
 
   const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OPENAI_MODEL, instructions, input, max_output_tokens: 3600 }),
+    body: JSON.stringify({ model: OPENAI_MODEL, instructions, input: requestInput, max_output_tokens: 3600 }),
   });
   const data = (await response.json().catch(() => null)) as ResponsesApiResult | null;
   if (!response.ok) throw new Error(data?.error?.message || `OpenAI DSL error ${response.status}`);
