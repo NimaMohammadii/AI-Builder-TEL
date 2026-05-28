@@ -390,8 +390,19 @@ export const RPS_SECTION = `
     }
 
     #rps .rps-hand-img {
-      transform: rotate(90deg);
+      --rps-hand-angle: 90deg;
+      --rps-hand-drop-start: -90deg;
+      --rps-hand-drop-overshoot: 5deg;
+      transform: rotate(var(--rps-hand-angle));
       transform-origin: center;
+      transition: transform .78s cubic-bezier(.18,.88,.24,1);
+      will-change: transform;
+    }
+
+    #rps [data-rps-bot-img] {
+      --rps-hand-angle: -90deg;
+      --rps-hand-drop-start: 90deg;
+      --rps-hand-drop-overshoot: -5deg;
     }
 
     #rps .rps-hand-card.has-rps-image .rps-hand-img {
@@ -404,9 +415,9 @@ export const RPS_SECTION = `
     }
 
     @keyframes rpsHandDrop {
-      0% { opacity: 0; transform: translateY(-74px) rotate(0deg) scale(.88); }
-      68% { opacity: 1; transform: translateY(4px) rotate(95deg) scale(1.02); }
-      100% { opacity: 1; transform: translateY(0) rotate(90deg) scale(1); }
+      0% { opacity: 0; transform: translateY(-74px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-start))) scale(.88); }
+      68% { opacity: 1; transform: translateY(4px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-overshoot))) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) rotate(var(--rps-hand-angle)) scale(1); }
     }
 
     @media(max-width: 380px) {
@@ -485,6 +496,8 @@ export const RPS_SECTION = `
       var picked = 'rock';
       var wins = 0;
       var streak = 0;
+      var playerAngle = 90;
+      var botAngle = -90;
       var playerImg = root.querySelector('[data-rps-player-img]');
       var botImg = root.querySelector('[data-rps-bot-img]');
       var resultEl = root.querySelector('[data-rps-result]');
@@ -513,6 +526,11 @@ export const RPS_SECTION = `
         target.classList.add('rps-hand-drop');
       }
 
+      function setHandAngle(image, angle) {
+        if (!image) return;
+        image.style.setProperty('--rps-hand-angle', angle + 'deg');
+      }
+
       function bindImage(container, image, url) {
         if (!container || !image) return false;
         image.onload = function () { container.classList.add('has-rps-image'); };
@@ -530,6 +548,7 @@ export const RPS_SECTION = `
       }
 
       function setCardImage(card, image, side, value, animate) {
+        setHandAngle(image, side === 'bot' ? botAngle : playerAngle);
         var url = imageFor(side, value);
         var hasImage = bindImage(card, image, url);
         if (animate && hasImage) replayDrop(image);
@@ -561,7 +580,13 @@ export const RPS_SECTION = `
 
       function play() {
         var bot = choices[Math.floor(Math.random() * choices.length)];
-        if (botImg) botImg.removeAttribute('src');
+        playerAngle += 90;
+        botAngle -= 90;
+        setHandAngle(playerImg, playerAngle);
+        if (botImg) {
+          botImg.removeAttribute('src');
+          setHandAngle(botImg, botAngle);
+        }
         botCard.classList.remove('has-rps-image');
         resultEl.textContent = 'Shuffling...';
         setTimeout(function () {
