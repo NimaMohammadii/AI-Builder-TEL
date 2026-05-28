@@ -248,12 +248,21 @@ async function edit(env: Env, text: string, history: ChatHistoryMessage[], targe
   const full = await getBot(env, target.id);
   if (!full) return { ok: false, action: 'edit_bot', botId: target.id, error: 'bot_not_found' };
   const settings = safeParseJson<Record<string, unknown>>(full.settings_json, {});
+  const currentDsl = (settings.agentDsl as { dsl?: AgentDsl } | undefined)?.dsl ?? null;
+  const currentFlowFallback = compactFlow((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot'));
   await progress('⚙️ دارم منطق اجرایی ربات را می‌سازم...');
-  const result = await buildAgentDsl(env, [
-    `request=${text}`,
-    `history=${history.slice(-8).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
-    `current_flow_fallback=${JSON.stringify(compactFlow((settings.flow as BotFlow | undefined) ?? defaultFlow('Telegram bot')))}`,
-  ].join('\n\n'));
+  const result = await buildAgentDsl(
+    env,
+    [
+      `request=${text}`,
+      `history=${history.slice(-8).map((m) => `${m.role}: ${m.content}`).join('\n')}`,
+    ].join('\n\n'),
+    {
+      mode: currentDsl ? 'edit' : 'create',
+      currentDsl,
+      currentFlowFallback,
+    },
+  );
   settings.agentMode = 'dsl';
   settings.agentDsl = { dsl: result.dsl, summary: result.summary, updatedAt: new Date().toISOString() };
   delete settings.agentCode;
