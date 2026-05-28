@@ -21,6 +21,8 @@ type AdminUserRow = {
   source: string | null;
 };
 
+type BulkDeleteResult = { ok: true; deleted: Record<string, number>; kvDeleted: number };
+
 export async function trackTelegramBotUser(env: Env, botId: string, update: TelegramUpdate): Promise<void> {
   const from = update.message?.from ?? update.callback_query?.from ?? update.pre_checkout_query?.from;
   if (!from?.id) return;
@@ -80,12 +82,12 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
         CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source
       FROM bot_users
     ), ranked AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id, source ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
     SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source
     FROM ranked
     WHERE rn = 1
-    ORDER BY source, datetime(COALESCE(last_seen_at, created_at)) DESC
+    ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
     LIMIT 700`).all<AdminUserRow>();
   const now = Date.now();
   const users = await Promise.all((rows.results ?? []).map(async (row) => {
@@ -126,7 +128,24 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
 export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promise<{ ok: true; userId: string; deleted: Record<string, number>; kvDeleted: number }> {
   const userId = cleanUserId(userIdInput);
   const deleted: Record<string, number> = {};
-  const tableDeletes: Array<[string, string]> = [
+  for (const [table, column] of userTableDeletes()) {
+    deleted[table] = await safeDelete(env, table, column, userId);
+  }
+  const kvDeleted = await deleteUserKv(env, userId);
+  return { ok: true, userId, deleted, kvDeleted };
+}
+
+export async function resetAllUsersEverywhere(env: Env): Promise<BulkDeleteResult> {
+  const deleted: Record<string, number> = {};
+  for (const [table] of userTableDeletes()) {
+    deleted[table] = await safeDeleteAll(env, table);
+  }
+  const kvDeleted = await deleteAllUserKv(env);
+  return { ok: true, deleted, kvDeleted };
+}
+
+function userTableDeletes(): Array<[string, string]> {
+  return [
     ['app_users', 'telegram_user_id'],
     ['bot_users', 'telegram_user_id'],
     ['user_controls', 'user_id'],
@@ -150,16 +169,20 @@ export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promi
     ['dice_rounds', 'user_id'],
     ['rps_rounds', 'user_id'],
   ];
-  for (const [table, column] of tableDeletes) {
-    deleted[table] = await safeDelete(env, table, column, userId);
-  }
-  const kvDeleted = await deleteUserKv(env, userId);
-  return { ok: true, userId, deleted, kvDeleted };
 }
 
 async function safeDelete(env: Env, table: string, column: string, userId: string): Promise<number> {
   try {
     const result = await env.DB.prepare(`DELETE FROM ${table} WHERE ${column} = ?`).bind(userId).run();
+    return Number(result.meta?.changes || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function safeDeleteAll(env: Env, table: string): Promise<number> {
+  try {
+    const result = await env.DB.prepare(`DELETE FROM ${table}`).run();
     return Number(result.meta?.changes || 0);
   } catch {
     return 0;
@@ -173,6 +196,8 @@ async function deleteUserKv(env: Env, userId: string): Promise<number> {
     `builder-ai-history:${userId}`,
     `builder-pending-action:${userId}`,
     `builder-tts:${userId}`,
+    `builder-tts-output:${userId}`,
+    `builder-tts-menu-message:${userId}`,
     `vexaUserControls:${userId}`,
   ]);
   await collectKvByPrefix(env, `agent-dsl-state:`, keys, userId);
@@ -181,6 +206,40 @@ async function deleteUserKv(env: Env, userId: string): Promise<number> {
   for (const key of keys) {
     try { await env.BOT_CACHE.delete(key); count++; } catch {}
   }
+  return count;
+}
+
+async function deleteAllUserKv(env: Env): Promise<number> {
+  const prefixes = [
+    'admin:user-controls:',
+    'builder-ai-chat:',
+    'builder-ai-history:',
+    'builder-pending-action:',
+    'builder-tts:',
+    'builder-tts-output:',
+    'builder-tts-menu-message:',
+    'vexaUserControls:',
+    'agent-dsl-state:',
+    'image-mode:',
+  ];
+  let count = 0;
+  for (const prefix of prefixes) count += await deleteKvByPrefix(env, prefix);
+  return count;
+}
+
+async function deleteKvByPrefix(env: Env, prefix: string): Promise<number> {
+  let count = 0;
+  try {
+    let cursor: string | undefined;
+    for (let i = 0; i < 20; i++) {
+      const page = await env.BOT_CACHE.list({ prefix, cursor, limit: 1000 });
+      for (const item of page.keys) {
+        try { await env.BOT_CACHE.delete(item.name); count++; } catch {}
+      }
+      if (page.list_complete) break;
+      cursor = page.cursor;
+    }
+  } catch {}
   return count;
 }
 
