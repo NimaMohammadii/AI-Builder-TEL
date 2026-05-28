@@ -514,9 +514,19 @@ export const RPS_SECTION = `
         return rpsImages[side][value] || '';
       }
 
-      function cacheBust(url) {
-        if (!url) return '';
-        return url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+      function applyUploadedRpsImages(data) {
+        if (!data) return;
+        rpsImages.you.rock = data.rpsYouRockUrl || rpsImages.you.rock;
+        rpsImages.you.paper = data.rpsYouPaperUrl || rpsImages.you.paper;
+        rpsImages.you.scissors = data.rpsYouScissorsUrl || rpsImages.you.scissors;
+        rpsImages.bot.rock = data.rpsBotRockUrl || rpsImages.bot.rock;
+        rpsImages.bot.paper = data.rpsBotPaperUrl || rpsImages.bot.paper;
+        rpsImages.bot.scissors = data.rpsBotScissorsUrl || rpsImages.bot.scissors;
+      }
+
+      function refreshRpsImages() {
+        paintChoiceImages();
+        setCardImage(playerCard, playerImg, 'you', picked, false);
       }
 
       function replayDrop(target) {
@@ -533,6 +543,8 @@ export const RPS_SECTION = `
 
       function bindImage(container, image, url) {
         if (!container || !image) return false;
+        image.decoding = 'async';
+        image.loading = 'eager';
         image.onload = function () { container.classList.add('has-rps-image'); };
         image.onerror = function () {
           image.removeAttribute('src');
@@ -543,7 +555,8 @@ export const RPS_SECTION = `
           container.classList.remove('has-rps-image');
           return false;
         }
-        image.src = cacheBust(url);
+        if (image.getAttribute('src') !== url) image.src = url;
+        if (image.complete && image.naturalWidth > 0) container.classList.add('has-rps-image');
         return true;
       }
 
@@ -625,6 +638,21 @@ export const RPS_SECTION = `
       };
 
       root.querySelector('[data-rps-play]').onclick = play;
+      window.addEventListener('vexa-rps-images-sync', function (event) {
+        applyUploadedRpsImages(event.detail || null);
+        refreshRpsImages();
+      });
+      try {
+        if (window.VexaUploadedImages && window.VexaUploadedImages.read) {
+          applyUploadedRpsImages(window.VexaUploadedImages.read());
+        }
+        if (window.VexaUploadedImages && window.VexaUploadedImages.load) {
+          window.VexaUploadedImages.load().then(function (data) {
+            applyUploadedRpsImages(data);
+            refreshRpsImages();
+          }).catch(function () {});
+        }
+      } catch (e) {}
       setPick('rock', false);
       setBet(betInput.value);
       paintChoiceImages();
