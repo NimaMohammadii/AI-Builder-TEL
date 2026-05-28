@@ -507,7 +507,9 @@ export const RPS_SECTION = `
       var choices = ['rock', 'paper', 'scissors'];
 
       function imageFor(side, value) {
-        return value && rpsImages[side] && rpsImages[side][value] ? rpsImages[side][value] : '';
+        if (!value) return '';
+        if (rpsImages[side] && rpsImages[side][value]) return rpsImages[side][value];
+        return '';
       }
 
       function replayDrop(target) {
@@ -517,38 +519,72 @@ export const RPS_SECTION = `
         target.classList.add('rps-hand-drop');
       }
 
+      function bindImage(container, image, url) {
+        if (!container || !image) return false;
+        if (!url) {
+          image.removeAttribute('src');
+          container.classList.remove('has-rps-image');
+          return false;
+        }
+        image.onload = function () { container.classList.add('has-rps-image'); };
+        image.onerror = function () { image.removeAttribute('src'); container.classList.remove('has-rps-image'); };
+        image.src = url;
+        return true;
+      }
+
       function setCardImage(card, image, icon, side, value, animate) {
         var url = imageFor(side, value);
-        if (image) image.src = url;
-        if (card) card.classList.toggle('has-rps-image', !!url);
-        if (animate) replayDrop(url && image ? image : icon);
+        var hasImage = bindImage(card, image, url);
+        if (animate) replayDrop(hasImage && image ? image : icon);
       }
 
       function paintChoiceImages() {
         root.querySelectorAll('[data-rps-choice-img]').forEach(function (img) {
           var kind = img.getAttribute('data-rps-choice-img') || '';
           var url = imageFor('you', kind);
-          img.src = url;
           var btn = img.closest('[data-rps-choice]');
-          if (btn) btn.classList.toggle('has-rps-image', !!url);
+          bindImage(btn, img, url);
         });
       }
 
+      function applyRpsImages(data) {
+        data = data || {};
+        var stamp = String(Date.now());
+        function fresh(url) { return url ? url + (url.indexOf('?') >= 0 ? '&' : '?') + 'rps=' + stamp : ''; }
+        rpsImages.you.rock = fresh(data.rpsYouRockUrl || '');
+        rpsImages.you.paper = fresh(data.rpsYouPaperUrl || '');
+        rpsImages.you.scissors = fresh(data.rpsYouScissorsUrl || '');
+        rpsImages.bot.rock = fresh(data.rpsBotRockUrl || '');
+        rpsImages.bot.paper = fresh(data.rpsBotPaperUrl || '');
+        rpsImages.bot.scissors = fresh(data.rpsBotScissorsUrl || '');
+        paintChoiceImages();
+        setPick(picked, false);
+      }
+
       function loadRpsImages() {
-        fetch('/app/api/uploaded-images', { cache: 'no-store' })
+        fetch('/app/api/uploaded-images?scope=rps&t=' + Date.now(), { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) {
-            rpsImages.you.rock = data.rpsYouRockUrl || '';
-            rpsImages.you.paper = data.rpsYouPaperUrl || '';
-            rpsImages.you.scissors = data.rpsYouScissorsUrl || '';
-            rpsImages.bot.rock = data.rpsBotRockUrl || '';
-            rpsImages.bot.paper = data.rpsBotPaperUrl || '';
-            rpsImages.bot.scissors = data.rpsBotScissorsUrl || '';
-            paintChoiceImages();
-            setPick(picked, false);
-          })
+          .then(applyRpsImages)
           .catch(function () {});
       }
+
+      window.addEventListener('vexa-rps-images-sync', function (event) {
+        var detail = event && event.detail ? event.detail : null;
+        if (!detail) return loadRpsImages();
+        applyRpsImages({
+          rpsYouRockUrl: detail.you && detail.you.rock,
+          rpsYouPaperUrl: detail.you && detail.you.paper,
+          rpsYouScissorsUrl: detail.you && detail.you.scissors,
+          rpsBotRockUrl: detail.bot && detail.bot.rock,
+          rpsBotPaperUrl: detail.bot && detail.bot.paper,
+          rpsBotScissorsUrl: detail.bot && detail.bot.scissors,
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        var open = event.target && event.target.closest && event.target.closest('[data-view="rps"],[data-game-view="rps"]');
+        if (open) setTimeout(loadRpsImages, 120);
+      }, true);
 
       function setBet(value) {
         var next = Math.max(0.1, Number(value) || 0.1);
@@ -612,6 +648,7 @@ export const RPS_SECTION = `
       setPick('rock', false);
       setBet(betInput.value);
       loadRpsImages();
+      setTimeout(loadRpsImages, 700);
     })();
   </script>
 </section>
