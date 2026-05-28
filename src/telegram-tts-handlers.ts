@@ -69,7 +69,7 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
 export async function handleTtsMessage(env: Env, botKey: string, message: TelegramMessage): Promise<boolean> {
   const text = message.text?.trim() || '';
   const userId = String(message.from?.id ?? message.chat.id);
-  if (!text || text === '/start' || text === '/cancel' || text === 'End' || text === 'End Chat') return false;
+  if (!text || text === '/start' || text === '/cancel' || text === 'پایان' || text === 'End' || text === 'End Chat') return false;
   const selected = await readSelection(env, userId);
   if (!selected) return false;
   await speak(env, botKey, message.chat.id, userId, text, selected, false);
@@ -143,8 +143,7 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
     await callBotForm(botKey, selected.output === 'voice' ? 'sendVoice' : 'sendAudio', form);
     if (!keep) {
       await deleteTtsMenuMessage(env, botKey, chatId, userId);
-      await clearTtsState(env, userId);
-      await showMainMenu(botKey, chatId);
+      await showMenu(env, botKey, chatId, userId, 0, undefined, selected.output);
     }
   } catch (e) {
     await callBot(botKey, 'sendMessage', { chat_id: chatId, text: `Could not create speech. ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}` });
