@@ -110,6 +110,16 @@ export const MINIAPP_SCRIPT = `
     removeLegacyLeagueAndRewards();
   }
 
+  function openInitialTarget(){
+    try{
+      var target=new URLSearchParams(location.search).get('open');
+      if(target==='deposit'){
+        show('home');
+        setDepositSheet(true);
+      }
+    }catch(e){}
+  }
+
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
@@ -203,5 +213,7 @@ export const MINIAPP_SCRIPT = `
   syncTelegramBackButton('home');
   userLine();
   updateTtsCharCount();
+  setTimeout(openInitialTarget,250);
+  setTimeout(openInitialTarget,900);
 })();
 `;
