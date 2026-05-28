@@ -2,6 +2,7 @@ import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 
 type TtsOutput = 'mp3' | 'voice';
 type TtsSelection = { voiceName: string; voiceId: string; output: TtsOutput; createdAt: number };
+type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 
 const TTS_TTL = 900;
 const VOICES = [
@@ -16,6 +17,7 @@ const VOICES = [
 export async function clearTtsState(env: Env, userId: string): Promise<void> {
   await env.BOT_CACHE.delete(keyOf(userId)).catch(() => undefined);
   await env.BOT_CACHE.delete(outputKeyOf(userId)).catch(() => undefined);
+  await env.BOT_CACHE.delete(menuMessageKeyOf(userId)).catch(() => undefined);
 }
 
 export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCallbackQuery): Promise<boolean> {
@@ -67,7 +69,7 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
 export async function handleTtsMessage(env: Env, botKey: string, message: TelegramMessage): Promise<boolean> {
   const text = message.text?.trim() || '';
   const userId = String(message.from?.id ?? message.chat.id);
-  if (!text || text === '/start' || text === '/cancel' || text === 'End Chat') return false;
+  if (!text || text === '/start' || text === '/cancel' || text === 'End' || text === 'End Chat') return false;
   const selected = await readSelection(env, userId);
   if (!selected) return false;
   await speak(env, botKey, message.chat.id, userId, text, selected, false);
@@ -93,15 +95,25 @@ async function showMenu(env: Env, botKey: string, chatId: number, userId: string
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: rows },
   };
-  if (messageId) await callBot(botKey, 'editMessageText', { ...payload, message_id: messageId }).catch(() => callBot(botKey, 'sendMessage', payload));
-  else await callBot(botKey, 'sendMessage', payload);
+
+  if (messageId) {
+    await callBot(botKey, 'editMessageText', { ...payload, message_id: messageId }).catch(async () => {
+      const sent = await callBot<TelegramMessageResult>(botKey, 'sendMessage', payload);
+      await saveMenuMessageId(env, userId, sent.result?.message_id);
+    });
+    await saveMenuMessageId(env, userId, messageId);
+  } else {
+    const sent = await callBot<TelegramMessageResult>(botKey, 'sendMessage', payload);
+    await saveMenuMessageId(env, userId, sent.result?.message_id);
+  }
+
   return true;
 }
 
 async function showMainMenu(botKey: string, chatId: number, messageId?: number): Promise<void> {
   const payload = {
     chat_id: chatId,
-    text: '<b>AI Builder TEL</b>\n\nChoose an option:',
+    text: '<b>AI Builder</b>\n\nChoose an option:',
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
@@ -129,7 +141,11 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
     form.append(selected.output === 'voice' ? 'voice' : 'audio', new Blob([audio], { type: 'audio/mpeg' }), `${selected.voiceName}.mp3`);
     if (selected.output === 'mp3') form.append('caption', `Voice: ${selected.voiceName}`);
     await callBotForm(botKey, selected.output === 'voice' ? 'sendVoice' : 'sendAudio', form);
-    if (!keep) await clearTtsState(env, userId);
+    if (!keep) {
+      await deleteTtsMenuMessage(env, botKey, chatId, userId);
+      await clearTtsState(env, userId);
+      await showMainMenu(botKey, chatId);
+    }
   } catch (e) {
     await callBot(botKey, 'sendMessage', { chat_id: chatId, text: `Could not create speech. ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}` });
   }
@@ -144,8 +160,21 @@ async function saveSelection(env: Env, userId: string, selected: TtsSelection): 
   await env.BOT_CACHE.put(keyOf(userId), JSON.stringify(selected), { expirationTtl: TTS_TTL }).catch(() => undefined);
 }
 
+async function saveMenuMessageId(env: Env, userId: string, messageId: number | undefined): Promise<void> {
+  if (!messageId) return;
+  await env.BOT_CACHE.put(menuMessageKeyOf(userId), String(messageId), { expirationTtl: TTS_TTL }).catch(() => undefined);
+}
+
+async function deleteTtsMenuMessage(env: Env, botKey: string, chatId: number, userId: string): Promise<void> {
+  const raw = await env.BOT_CACHE.get(menuMessageKeyOf(userId)).catch(() => null);
+  const messageId = Number(raw);
+  if (!Number.isFinite(messageId) || messageId <= 0) return;
+  await callBot(botKey, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
+}
+
 function keyOf(userId: string): string { return `builder-tts:${userId}`; }
 function outputKeyOf(userId: string): string { return `builder-tts-output:${userId}`; }
+function menuMessageKeyOf(userId: string): string { return `builder-tts-menu-message:${userId}`; }
 
 async function callBot<T = unknown>(key: string, method: string, payload: unknown): Promise<T> {
   const res = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
