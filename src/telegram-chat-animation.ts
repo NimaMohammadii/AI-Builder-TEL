@@ -44,90 +44,39 @@ const MAX_ANSWER_MOTION_STEPS = 16;
 const GROUP_MAX_ANSWER_MOTION_STEPS = 14;
 
 export async function animatedTelegramSend(tg: TelegramCall, key: string, chatId: number, text: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<TelegramSentMessage> {
-  const replyKeyboard = isReplyKeyboard(replyMarkup) ? replyMarkup : undefined;
-  const editableReplyMarkup = isReplyKeyboard(replyMarkup) ? undefined : replyMarkup;
-
-  if (isGroupMode(mode)) return (await sendSmoothGroupReply(tg, key, chatId, () => Promise.resolve(text), text, replyMarkup, sendOptions)).sent;
-
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
-  await sleep(60);
 
-  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: firstThinkingFrame(mode), ...(sendOptions ?? {}), ...(replyKeyboard ? { reply_markup: replyKeyboard } : {}) }).catch(() => null);
-  const messageId = sent?.result?.message_id;
-  if (!messageId) return tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
-
-  const animated = await animateAnswerMotion(tg, key, chatId, messageId, text, editableReplyMarkup);
-  if (animated) return { ok: true, result: { message_id: messageId } };
-
-  const edited = await editFinalMessage(tg, key, chatId, messageId, text, editableReplyMarkup);
-  if (edited) return { ok: true, result: { message_id: messageId } };
-
-  return tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
+  return tg<TelegramSentMessage>(key, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    ...(sendOptions ?? {}),
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
 }
 
 export async function animatedTelegramAiReply(tg: TelegramCall, key: string, chatId: number, replyFactory: () => Promise<string>, fallback: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions, mode: TelegramAnimationMode = 'full'): Promise<{ text: string; sent: TelegramSentMessage }> {
-  const replyKeyboard = isReplyKeyboard(replyMarkup) ? replyMarkup : undefined;
-  const editableReplyMarkup = isReplyKeyboard(replyMarkup) ? undefined : replyMarkup;
-
-  if (isGroupMode(mode)) {
-    return sendSmoothGroupReply(tg, key, chatId, replyFactory, fallback, replyMarkup, sendOptions);
-  }
-
-  const startedAt = Date.now();
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
-  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: firstThinkingFrame(mode), ...(sendOptions ?? {}), ...(replyKeyboard ? { reply_markup: replyKeyboard } : {}) }).catch(() => null);
-  const messageId = sent?.result?.message_id;
-
-  let thinking = true;
-  const loop = messageId ? animateThinking(tg, key, chatId, messageId, () => thinking, THINKING_FRAME_DELAY_MS) : Promise.resolve();
-
   const text = await safeTelegramAiReply(replyFactory, fallback);
-  const remainingThinkingMs = Math.max(0, MIN_THINKING_MS - (Date.now() - startedAt));
-  if (remainingThinkingMs > 0) await sleep(remainingThinkingMs);
-  thinking = false;
-  await loop.catch(() => undefined);
+  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    ...(sendOptions ?? {}),
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
 
-  if (!messageId) return { text, sent: await animatedTelegramSend(tg, key, chatId, text, replyMarkup, sendOptions, mode) };
-
-  const animated = await animateAnswerMotion(tg, key, chatId, messageId, text, editableReplyMarkup);
-  if (animated) return { text, sent: { ok: true, result: { message_id: messageId } } };
-
-  const edited = await editFinalMessage(tg, key, chatId, messageId, text, editableReplyMarkup);
-  if (edited) return { text, sent: { ok: true, result: { message_id: messageId } } };
-
-  return { text, sent: await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }) };
+  return { text, sent };
 }
 
 async function sendSmoothGroupReply(tg: TelegramCall, key: string, chatId: number, replyFactory: () => Promise<string>, fallback: string, replyMarkup?: TelegramReplyMarkup, sendOptions?: TelegramSendOptions): Promise<{ text: string; sent: TelegramSentMessage }> {
-  const replyKeyboard = isReplyKeyboard(replyMarkup) ? replyMarkup : undefined;
-  const editableReplyMarkup = isReplyKeyboard(replyMarkup) ? undefined : replyMarkup;
-
-  const startedAt = Date.now();
   await tg(key, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
-  const thinking = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text: GROUP_THINKING_TEXT, parse_mode: 'HTML', ...(sendOptions ?? {}), ...(replyKeyboard ? { reply_markup: replyKeyboard } : {}) }).catch(() => null);
-  const thinkingMessageId = thinking?.result?.message_id;
-
-  let thinkingActive = true;
-  const thinkingLoop = thinkingMessageId ? animateGroupThinking(tg, key, chatId, thinkingMessageId, () => thinkingActive) : Promise.resolve();
-
   const text = await safeTelegramAiReply(replyFactory, fallback);
-  const remainingThinkingMs = Math.max(0, GROUP_MIN_THINKING_MS - (Date.now() - startedAt));
-  if (remainingThinkingMs > 0) await sleep(remainingThinkingMs);
-  thinkingActive = false;
-  await thinkingLoop.catch(() => undefined);
+  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    ...(sendOptions ?? {}),
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
 
-  if (!thinkingMessageId) {
-    const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
-    return { text, sent };
-  }
-
-  const animated = await animateGroupAnswerMotion(tg, key, chatId, thinkingMessageId, text, editableReplyMarkup);
-  if (animated) return { text, sent: { ok: true, result: { message_id: thinkingMessageId } } };
-
-  const edited = await editFinalMessage(tg, key, chatId, thinkingMessageId, text, editableReplyMarkup);
-  if (edited) return { text, sent: { ok: true, result: { message_id: thinkingMessageId } } };
-
-  const sent = await tg<TelegramSentMessage>(key, 'sendMessage', { chat_id: chatId, text, ...(sendOptions ?? {}), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) });
   return { text, sent };
 }
 
