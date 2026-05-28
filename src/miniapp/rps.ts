@@ -55,10 +55,10 @@ export const RPS_SECTION = `
 
     .rps-wrap {
       width: 100%;
-      max-width: 520px;
+      max-width: 560px;
       margin: 0 auto;
       display: grid;
-      gap: 14px;
+      gap: 16px;
     }
 
     .rps-arena,
@@ -78,10 +78,10 @@ export const RPS_SECTION = `
     }
 
     .rps-arena {
-      min-height: 390px;
+      min-height: 430px;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      padding: 18px;
+      padding: 20px 18px;
     }
 
     .rps-arena::before {
@@ -153,32 +153,33 @@ export const RPS_SECTION = `
       display: grid;
       gap: 4px;
       text-align: center;
-      margin-top: 8px;
+      margin-top: 2px;
     }
 
     .rps-title strong {
-      font-size: 30px;
-      font-weight: 950;
-      letter-spacing: -.07em;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -.035em;
       text-shadow: 0 12px 26px rgba(0,0,0,.68);
     }
 
     .rps-title span {
-      color: rgba(255,255,255,.52);
-      font-size: 12px;
-      font-weight: 850;
+      color: rgba(255,255,255,.58);
+      font-size: 13px;
+      font-weight: 650;
     }
 
     .rps-duel {
       display: grid;
-      grid-template-columns: 1fr 58px 1fr;
+      grid-template-columns: 1fr 64px 1fr;
       align-items: center;
-      gap: 10px;
-      margin: 22px 0 18px;
+      gap: 12px;
+      margin: 28px 0 22px;
     }
 
     .rps-hand-card {
-      height: 142px;
+      height: 168px;
       border-radius: 28px;
       display: grid;
       place-items: center;
@@ -187,8 +188,8 @@ export const RPS_SECTION = `
 
     .rps-hand-img {
       display: none;
-      width: 84px;
-      height: 84px;
+      width: 116px;
+      height: 116px;
       object-fit: contain;
       border: 0 !important;
       outline: 0 !important;
@@ -199,8 +200,8 @@ export const RPS_SECTION = `
     }
 
     .rps-choice .rps-hand-img {
-      width: 48px;
-      height: 48px;
+      width: 54px;
+      height: 54px;
       filter: none;
     }
 
@@ -217,8 +218,8 @@ export const RPS_SECTION = `
     }
 
     .rps-vs {
-      width: 58px;
-      height: 58px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       display: grid;
       place-items: center;
@@ -227,22 +228,23 @@ export const RPS_SECTION = `
     }
 
     .rps-result {
-      min-height: 24px;
+      min-height: 26px;
       text-align: center;
-      font-size: 15px;
-      font-weight: 950;
-      letter-spacing: -.04em;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      font-size: 16px;
+      font-weight: 750;
+      letter-spacing: -.015em;
       color: rgba(255,255,255,.9);
     }
 
     .rps-choices {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 9px;
+      gap: 11px;
     }
 
     .rps-choice {
-      height: 98px;
+      height: 108px;
       border-radius: 24px;
       color: #fff;
       display: grid;
@@ -395,7 +397,7 @@ export const RPS_SECTION = `
       --rps-hand-drop-overshoot: 5deg;
       transform: rotate(var(--rps-hand-angle));
       transform-origin: center;
-      transition: transform .78s cubic-bezier(.18,.88,.24,1);
+      transition: transform 1.15s cubic-bezier(.18,.82,.22,1);
       will-change: transform;
     }
 
@@ -406,40 +408,35 @@ export const RPS_SECTION = `
     }
 
     #rps .rps-hand-card.has-rps-image .rps-hand-img {
-      width: 96px;
-      height: 96px;
+      width: 116px;
+      height: 116px;
     }
 
     #rps .rps-hand-drop {
-      animation: rpsHandDrop .44s cubic-bezier(.16,.98,.18,1) both;
+      animation: rpsHandDrop .92s cubic-bezier(.16,.86,.2,1) both;
     }
 
     @keyframes rpsHandDrop {
       0% { opacity: 0; transform: translateY(-74px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-start))) scale(.88); }
-      68% { opacity: 1; transform: translateY(4px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-overshoot))) scale(1.02); }
+      74% { opacity: 1; transform: translateY(4px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-overshoot))) scale(1.02); }
       100% { opacity: 1; transform: translateY(0) rotate(var(--rps-hand-angle)) scale(1); }
     }
 
     @media(max-width: 380px) {
-      .rps-arena { min-height: 354px; padding: 15px; }
-      .rps-hand-card { height: 124px; border-radius: 24px; }
-      .rps-hand-img { width: 74px; height: 74px; }
-      .rps-choice { height: 86px; border-radius: 21px; }
-      .rps-choice .rps-hand-img { width: 42px; height: 42px; }
-      .rps-title strong { font-size: 26px; }
+      .rps-arena { min-height: 390px; padding: 16px 12px; }
+      .rps-hand-card { height: 148px; border-radius: 24px; }
+      .rps-hand-img { width: 86px; height: 86px; }
+      #rps .rps-hand-card.has-rps-image .rps-hand-img { width: 104px; height: 104px; }
+      .rps-choice { height: 94px; border-radius: 21px; }
+      .rps-choice .rps-hand-img { width: 48px; height: 48px; }
+      .rps-title strong { font-size: 28px; letter-spacing: -.03em; }
     }
   </style>
 
   <div class="rps-wrap">
     <div class="rps-arena">
-      <div class="rps-topline">
-        <span class="rps-pill">Best of 1</span>
-        <span class="rps-pill">Payout 1.95x</span>
-      </div>
-
       <div class="rps-title">
         <strong>Rock Paper Scissors</strong>
-        <span>Choose your hand and beat the bot</span>
       </div>
 
       <div class="rps-duel">
@@ -614,7 +611,7 @@ export const RPS_SECTION = `
           }
           winsEl.textContent = String(wins);
           streakEl.textContent = String(streak);
-        }, 260);
+        }, 620);
       }
 
       root.querySelectorAll('[data-rps-choice]').forEach(function (button) {
