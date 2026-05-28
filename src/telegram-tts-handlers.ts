@@ -1,3 +1,4 @@
+import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 
 type TtsOutput = 'mp3' | 'voice';
@@ -5,8 +6,12 @@ type TtsSelection = { voiceName: string; voiceId: string; output: TtsOutput; cre
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 type TelegramFileMessageResult = TelegramMessageResult & { result?: { message_id?: number; audio?: { file_id?: string }; voice?: { file_id?: string } } };
 
+type TtsCharge = { units: number; characters: number; amountNano: number; amountTon: string };
+
 const TTS_TTL = 900;
 const DEMO_TEXT = 'This is a short demo from Vexa Text to Speech.';
+const TTS_UNIT_CHARACTERS = 1000;
+const TTS_UNIT_PRICE_NANO = 120_000_000;
 const VOICES = [
   ['Liam', 'TX3LPaxmHKxFdv7VOQHJ'], ['Noah', '1SM7GgM6IMuvQlz2BwM3'], ['Ava', 'tnSpp4vdxKPjI9w0GnoV'],
   ['Nora', 'BIvP0GN1cAtSRTxNHnWS'], ['Alex', 'GFGuOkimbpNkTEOVDkqX'], ['Ella', 'NZiuR1C6kVMSWHG27sIM'],
@@ -62,7 +67,7 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
   if (data.startsWith('builder:tts:demo:')) {
     const selected = await readSelection(env, userId);
     if (!selected) await callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Choose a voice first.' });
-    else await speak(env, botKey, chatId, userId, DEMO_TEXT, selected, true, demoKeyOf(selected));
+    else await speak(env, botKey, chatId, userId, DEMO_TEXT, selected, true, demoKeyOf(selected), false);
     return true;
   }
   return true;
@@ -77,7 +82,7 @@ export async function handleTtsMessage(env: Env, botKey: string, message: Telegr
 
   const selected = await readSelection(env, userId);
   if (!selected) return false;
-  await speak(env, botKey, message.chat.id, userId, text, selected, false);
+  await speak(env, botKey, message.chat.id, userId, text, selected, false, undefined, true);
   return true;
 }
 
@@ -96,7 +101,7 @@ async function showMenu(env: Env, botKey: string, chatId: number, userId: string
   rows.push([{ text: 'Back', callback_data: 'builder:back' }]);
   const payload = {
     chat_id: chatId,
-    text: `<b>🎧 Text to Speech</b>\n\nSend your text.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
+    text: `<b>🎧 Text to Speech</b>\n\nSend your text.\nPrice: <b>0.12 TON</b> per 1000 characters.\nDemo is free.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: rows },
   };
@@ -132,7 +137,7 @@ async function showMainMenu(botKey: string, chatId: number, messageId?: number):
   else await callBot(botKey, 'sendMessage', payload);
 }
 
-async function speak(env: Env, botKey: string, chatId: number, userId: string, text: string, selected: TtsSelection, keep: boolean, cacheKey?: string): Promise<void> {
+async function speak(env: Env, botKey: string, chatId: number, userId: string, text: string, selected: TtsSelection, keep: boolean, cacheKey?: string, chargeUser = false): Promise<void> {
   const cachedFileId = cacheKey ? await env.BOT_CACHE.get(cacheKey).catch(() => null) : null;
   if (cachedFileId) {
     await sendCachedAudio(botKey, chatId, selected, cachedFileId);
@@ -142,6 +147,22 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
   const apiKey = (env as Env & { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
   if (!apiKey) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text to Speech is not configured yet.' });
   if (text.length > 4800) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text is too long. Please send text under 4800 characters.' });
+
+  const charge = chargeUser ? calculateTtsCharge(text) : null;
+  let charged = false;
+  if (charge) {
+    try {
+      await debitUserTonBalanceIfEnough(env, userId, charge.amountNano, { kind: 'tts', title: `Text to Speech ${charge.characters} chars`, source: 'text_to_speech', voice: selected.voiceName, output: selected.output });
+      charged = true;
+    } catch {
+      await callBot(botKey, 'sendMessage', {
+        chat_id: chatId,
+        text: `Insufficient balance.\nCost: ${charge.amountTon} TON for ${charge.characters} characters.\nRate: 0.12 TON per 1000 characters.`,
+      });
+      return;
+    }
+  }
+
   await callBot(botKey, 'sendChatAction', { chat_id: chatId, action: selected.output === 'voice' ? 'record_voice' : 'upload_voice' }).catch(() => undefined);
   try {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selected.voiceId}`, { method: 'POST', headers: { 'xi-api-key': apiKey, 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: 'eleven_v3', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }) });
@@ -150,8 +171,9 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
     const form = new FormData();
     form.append('chat_id', String(chatId));
     form.append(selected.output === 'voice' ? 'voice' : 'audio', new Blob([audio], { type: 'audio/mpeg' }), `${selected.voiceName}.mp3`);
-    if (selected.output === 'mp3') form.append('caption', `Voice: ${selected.voiceName}`);
+    if (selected.output === 'mp3') form.append('caption', charge ? `Voice: ${selected.voiceName}\nCost: ${charge.amountTon} TON` : `Voice: ${selected.voiceName}`);
     const sent = await callBotForm<TelegramFileMessageResult>(botKey, selected.output === 'voice' ? 'sendVoice' : 'sendAudio', form);
+    if (!sent.ok) throw new Error(sent.description || 'Telegram upload failed');
     const fileId = selected.output === 'voice' ? sent.result?.voice?.file_id : sent.result?.audio?.file_id;
     if (cacheKey && fileId) await env.BOT_CACHE.put(cacheKey, fileId).catch(() => undefined);
     if (!keep) {
@@ -159,7 +181,10 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
       await showMenu(env, botKey, chatId, userId, 0, undefined, selected.output);
     }
   } catch (e) {
-    await callBot(botKey, 'sendMessage', { chat_id: chatId, text: `Could not create speech. ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}` });
+    if (charge && charged) {
+      await adjustUserTonBalance(env, userId, charge.amountNano, { kind: 'tts_refund', title: 'Text to Speech refund', source: 'text_to_speech', voice: selected.voiceName, output: selected.output }).catch(() => undefined);
+    }
+    await callBot(botKey, 'sendMessage', { chat_id: chatId, text: `Could not create speech. ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}${charge && charged ? '\nYour TON was refunded.' : ''}` });
   }
 }
 
@@ -219,6 +244,18 @@ async function deleteLastMainMenu(env: Env, botKey: string, chatId: number): Pro
   if (!Number.isFinite(messageId) || messageId <= 0) return;
   await callBot(botKey, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
   await env.BOT_CACHE.delete(mainMenuKeyOf(chatId)).catch(() => undefined);
+}
+
+function calculateTtsCharge(text: string): TtsCharge {
+  const characters = Array.from(text).length;
+  const units = Math.max(1, Math.ceil(characters / TTS_UNIT_CHARACTERS));
+  const amountNano = units * TTS_UNIT_PRICE_NANO;
+  return { units, characters, amountNano, amountTon: formatTon(amountNano) };
+}
+
+function formatTon(nano: number): string {
+  const value = Math.max(0, Math.floor(Number(nano) || 0)) / 1_000_000_000;
+  return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 }
 
 function isEndText(text: string): boolean {
