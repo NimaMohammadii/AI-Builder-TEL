@@ -61,12 +61,12 @@ app.get('/app/api/uploaded-images', async (c) => {
   const plinkoBallUrl = plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
-  const rpsYouRockUrl = rpsYouRockHead ? `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}` : null;
-  const rpsYouPaperUrl = rpsYouPaperHead ? `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}` : null;
-  const rpsYouScissorsUrl = rpsYouScissorsHead ? `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}` : null;
-  const rpsBotRockUrl = rpsBotRockHead ? `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}` : null;
-  const rpsBotPaperUrl = rpsBotPaperHead ? `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}` : null;
-  const rpsBotScissorsUrl = rpsBotScissorsHead ? `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}` : null;
+  const rpsYouRockUrl = `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}`;
+  const rpsYouPaperUrl = `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}`;
+  const rpsYouScissorsUrl = `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}`;
+  const rpsBotRockUrl = `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}`;
+  const rpsBotPaperUrl = `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}`;
+  const rpsBotScissorsUrl = `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}`;
   const locks = await getSectionLocks(c.env);
   const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl];
   if (minesSafeUrl) preload.push(minesSafeUrl);
