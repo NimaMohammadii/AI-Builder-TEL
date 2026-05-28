@@ -3,8 +3,10 @@ import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 type TtsOutput = 'mp3' | 'voice';
 type TtsSelection = { voiceName: string; voiceId: string; output: TtsOutput; createdAt: number };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
+type TelegramFileMessageResult = TelegramMessageResult & { result?: { message_id?: number; audio?: { file_id?: string }; voice?: { file_id?: string } } };
 
 const TTS_TTL = 900;
+const DEMO_TEXT = 'This is a short demo from Vexa Text to Speech.';
 const VOICES = [
   ['Liam', 'TX3LPaxmHKxFdv7VOQHJ'], ['Noah', '1SM7GgM6IMuvQlz2BwM3'], ['Ava', 'tnSpp4vdxKPjI9w0GnoV'],
   ['Nora', 'BIvP0GN1cAtSRTxNHnWS'], ['Alex', 'GFGuOkimbpNkTEOVDkqX'], ['Ella', 'NZiuR1C6kVMSWHG27sIM'],
@@ -60,7 +62,7 @@ export async function handleTtsCallback(env: Env, botKey: string, q: TelegramCal
   if (data.startsWith('builder:tts:demo:')) {
     const selected = await readSelection(env, userId);
     if (!selected) await callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Choose a voice first.' });
-    else await speak(env, botKey, chatId, userId, 'This is a short demo from Vexa Text to Speech.', selected, true);
+    else await speak(env, botKey, chatId, userId, DEMO_TEXT, selected, true, demoKeyOf(selected));
     return true;
   }
   return true;
@@ -94,7 +96,7 @@ async function showMenu(env: Env, botKey: string, chatId: number, userId: string
   rows.push([{ text: 'Back', callback_data: 'builder:back' }]);
   const payload = {
     chat_id: chatId,
-    text: `<b>🎧 Text to Speech</b>\n\n<b>1.</b> Choose a voice.\n<b>2.</b> Choose output format.\n<b>3.</b> Send your text.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
+    text: `<b>🎧 Text to Speech</b>\n\nSend your text.\n\n<b>Selected voice:</b> ${selected?.voiceName || 'none'}\n<b>Output:</b> ${output.toUpperCase()}`,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: rows },
   };
@@ -130,7 +132,13 @@ async function showMainMenu(botKey: string, chatId: number, messageId?: number):
   else await callBot(botKey, 'sendMessage', payload);
 }
 
-async function speak(env: Env, botKey: string, chatId: number, userId: string, text: string, selected: TtsSelection, keep: boolean): Promise<void> {
+async function speak(env: Env, botKey: string, chatId: number, userId: string, text: string, selected: TtsSelection, keep: boolean, cacheKey?: string): Promise<void> {
+  const cachedFileId = cacheKey ? await env.BOT_CACHE.get(cacheKey).catch(() => null) : null;
+  if (cachedFileId) {
+    await sendCachedAudio(botKey, chatId, selected, cachedFileId);
+    return;
+  }
+
   const apiKey = (env as Env & { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
   if (!apiKey) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text to Speech is not configured yet.' });
   if (text.length > 4800) return callBot(botKey, 'sendMessage', { chat_id: chatId, text: 'Text is too long. Please send text under 4800 characters.' });
@@ -143,7 +151,9 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
     form.append('chat_id', String(chatId));
     form.append(selected.output === 'voice' ? 'voice' : 'audio', new Blob([audio], { type: 'audio/mpeg' }), `${selected.voiceName}.mp3`);
     if (selected.output === 'mp3') form.append('caption', `Voice: ${selected.voiceName}`);
-    await callBotForm(botKey, selected.output === 'voice' ? 'sendVoice' : 'sendAudio', form);
+    const sent = await callBotForm<TelegramFileMessageResult>(botKey, selected.output === 'voice' ? 'sendVoice' : 'sendAudio', form);
+    const fileId = selected.output === 'voice' ? sent.result?.voice?.file_id : sent.result?.audio?.file_id;
+    if (cacheKey && fileId) await env.BOT_CACHE.put(cacheKey, fileId).catch(() => undefined);
     if (!keep) {
       await deleteTtsMenuMessage(env, botKey, chatId, userId);
       await showMenu(env, botKey, chatId, userId, 0, undefined, selected.output);
@@ -151,6 +161,14 @@ async function speak(env: Env, botKey: string, chatId: number, userId: string, t
   } catch (e) {
     await callBot(botKey, 'sendMessage', { chat_id: chatId, text: `Could not create speech. ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}` });
   }
+}
+
+async function sendCachedAudio(botKey: string, chatId: number, selected: TtsSelection, fileId: string): Promise<void> {
+  if (selected.output === 'voice') {
+    await callBot(botKey, 'sendVoice', { chat_id: chatId, voice: fileId });
+    return;
+  }
+  await callBot(botKey, 'sendAudio', { chat_id: chatId, audio: fileId, caption: `Voice: ${selected.voiceName}` });
 }
 
 async function closeBuilderAiChat(env: Env, botKey: string, chatId: number, userId: string): Promise<boolean> {
@@ -163,11 +181,13 @@ async function closeBuilderAiChat(env: Env, botKey: string, chatId: number, user
   await env.BOT_CACHE.delete(`builder-pending-action:${userId}`).catch(() => undefined);
   await clearTtsState(env, userId);
   await deleteLastMainMenu(env, botKey, chatId);
-  await callBot(botKey, 'sendMessage', {
+  const removeKeyboard = await callBot<TelegramMessageResult>(botKey, 'sendMessage', {
     chat_id: chatId,
-    text: 'چت هوش مصنوعی بسته شد.',
+    text: '\u2060',
     reply_markup: { remove_keyboard: true },
-  });
+  }).catch(() => null);
+  const messageId = removeKeyboard?.result?.message_id;
+  if (messageId) await callBot(botKey, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
   await showMainMenu(botKey, chatId);
   return true;
 }
@@ -209,6 +229,7 @@ function keyOf(userId: string): string { return `builder-tts:${userId}`; }
 function outputKeyOf(userId: string): string { return `builder-tts-output:${userId}`; }
 function menuMessageKeyOf(userId: string): string { return `builder-tts-menu-message:${userId}`; }
 function mainMenuKeyOf(chatId: number): string { return `builder-main-menu:${chatId}`; }
+function demoKeyOf(selected: TtsSelection): string { return `builder-tts-demo:${selected.output}:${selected.voiceId}`; }
 
 async function callBot<T = unknown>(key: string, method: string, payload: unknown): Promise<T> {
   const res = await fetch('https://api.telegram.org/' + 'bot' + key + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
