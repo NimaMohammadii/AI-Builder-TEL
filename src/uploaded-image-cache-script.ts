@@ -46,6 +46,14 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
       try{window.dispatchEvent(new CustomEvent('vexa-mines-images-sync',{detail:{safeUrl:data.minesSafeUrl||'',bombUrl:data.minesBombUrl||''}}))}catch(e){}
     }
   }
+  function applyRpsImages(data){
+    if(!data)return;
+    var urls=[data.rpsYouRockUrl,data.rpsYouPaperUrl,data.rpsYouScissorsUrl,data.rpsBotRockUrl,data.rpsBotPaperUrl,data.rpsBotScissorsUrl].filter(Boolean);
+    urls.forEach(preload);
+    if(urls.length){
+      try{window.dispatchEvent(new CustomEvent('vexa-rps-images-sync',{detail:{rpsYouRockUrl:data.rpsYouRockUrl||'',rpsYouPaperUrl:data.rpsYouPaperUrl||'',rpsYouScissorsUrl:data.rpsYouScissorsUrl||'',rpsBotRockUrl:data.rpsBotRockUrl||'',rpsBotPaperUrl:data.rpsBotPaperUrl||'',rpsBotScissorsUrl:data.rpsBotScissorsUrl||''}}))}catch(e){}
+    }
+  }
   function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
   function write(data){try{localStorage.setItem(KEY,JSON.stringify(data||{}));localStorage.setItem(META_KEY,String(Date.now()))}catch(e){}}
   function apply(data,withPreload){
@@ -54,10 +62,11 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     if(data.tonIconUrl)applyTonIcon(data.tonIconUrl);
     if(data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
     applyMinesImages(data);
+    applyRpsImages(data);
     if(withPreload)(data.preload||[]).forEach(preload);
   }
   function needsImages(){
-    if(document.querySelector('.view.active#playzone,.view.active#market,.view.active#connect,.view.active#mines,.view.active#plinko'))return true;
+    if(document.querySelector('.view.active#playzone,.view.active#market,.view.active#connect,.view.active#mines,.view.active#plinko,.view.active#rps'))return true;
     if(document.querySelector('img[src^="/app/api/credit-icon"],img[src^="/app/api/uploaded-image/credit-icon"],img[data-ton-icon]'))return true;
     return false;
   }
