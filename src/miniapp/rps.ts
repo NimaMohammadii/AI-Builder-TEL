@@ -390,6 +390,7 @@ export const RPS_SECTION = `
     }
 
     #rps .rps-hand-img {
+      transform: rotate(90deg);
       transform-origin: center;
     }
 
@@ -403,9 +404,9 @@ export const RPS_SECTION = `
     }
 
     @keyframes rpsHandDrop {
-      0% { opacity: 0; transform: translateY(-74px) rotate(-90deg) scale(.88); }
-      68% { opacity: 1; transform: translateY(4px) rotate(5deg) scale(1.02); }
-      100% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+      0% { opacity: 0; transform: translateY(-74px) rotate(0deg) scale(.88); }
+      68% { opacity: 1; transform: translateY(4px) rotate(95deg) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) rotate(90deg) scale(1); }
     }
 
     @media(max-width: 380px) {
