@@ -3,7 +3,7 @@ import type { Env } from './types';
 export const APP_NAME = 'AI Builder TEL';
 export const PUBLIC_BASE_URL = 'https://builder-tel.vexaagent.workers.dev';
 export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
-export const OPENAI_MODEL = 'gpt-4.1-mini';
+export const OPENAI_MODEL = 'gpt-5.4-mini';
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
