@@ -41,7 +41,6 @@ export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
     if(!file||!file.files||!file.files[0]){status.textContent='Choose an image first.';return}
     const selected=file.files[0];
     if(!allowed.includes(selected.type)){status.textContent='Only PNG, JPG, JPEG, SVG or WebP.';return}
-    if(selected.size>2_000_000){status.textContent='Image must be under 2MB.';return}
     status.textContent=opts.loading;
     const form=new FormData();
     form.append('image',selected);
