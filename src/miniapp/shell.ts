@@ -83,7 +83,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   overflow: hidden !important;
   box-sizing: border-box !important;
   background-color: rgba(255,255,255,.035) !important;
-  background-image: url('/app/api/home-intro-image-cached.png?v=default') !important;
+  background-image: url('/app/api/home-intro-image.png') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
