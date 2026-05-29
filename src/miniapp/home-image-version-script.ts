@@ -1,10 +1,14 @@
 export const HOME_IMAGE_VERSION_SCRIPT = `
 (function(){
-  var KEY='vexaHomeFinanceImageUrl:v2';
-  var META_KEY='vexaHomeFinanceImageUpdatedAt:v2';
+  var FINANCE_KEY='vexaHomeFinanceImageUrl:v2';
+  var FINANCE_META_KEY='vexaHomeFinanceImageUpdatedAt:v2';
+  var INTRO_KEY='vexaHomeIntroImageUrl:v1';
+  var INTRO_META_KEY='vexaHomeIntroImageUpdatedAt:v1';
   var TTL=900000;
-  var DEFAULT_URL='/app/api/home-finance-image-cached.png?v=default';
-  var inFlight=null;
+  var DEFAULT_FINANCE_URL='/app/api/home-finance-image-cached.png?v=default';
+  var DEFAULT_INTRO_URL='/app/api/home-intro-image-cached.png?v=default';
+  var financeInFlight=null;
+  var introInFlight=null;
 
   function normalizeUrl(url){
     return String(url||'')
@@ -58,13 +62,17 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     return img;
   }
 
-  function apply(url){
+  function applyIntro(url){
     ensureIntroImageStyle();
-    var next=normalizeUrl(url||DEFAULT_URL);
-    var introImg=ensureIntroImageElement();
-    if(introImg&&introImg.getAttribute('src')!==next)introImg.setAttribute('src',next);
-    var introCard=document.querySelector('#home .home-intro-card');
-    if(introCard)introCard.style.backgroundImage='url("'+next.replace(/"/g,'\\"')+'")';
+    var next=normalizeUrl(url||DEFAULT_INTRO_URL);
+    var img=ensureIntroImageElement();
+    if(img&&img.getAttribute('src')!==next)img.setAttribute('src',next);
+    var card=document.querySelector('#home .home-intro-card');
+    if(card)card.style.backgroundImage='url("'+next.replace(/"/g,'\\"')+'")';
+  }
+
+  function applyFinance(url){
+    var next=normalizeUrl(url||DEFAULT_FINANCE_URL);
     document.querySelectorAll('.home-finance-visual img').forEach(function(img){
       if(img.getAttribute('src')!==next)img.setAttribute('src',next);
       img.loading='eager';
@@ -72,15 +80,20 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     });
   }
 
-  function read(){
-    try{return localStorage.getItem(KEY)||''}catch(e){return ''}
+  function read(key){
+    try{return localStorage.getItem(key)||''}catch(e){return ''}
   }
 
-  function write(url){
+  function write(key,metaKey,url){
     try{
-      localStorage.setItem(KEY,normalizeUrl(url));
-      localStorage.setItem(META_KEY,String(Date.now()));
+      localStorage.setItem(key,normalizeUrl(url));
+      localStorage.setItem(metaKey,String(Date.now()));
     }catch(e){}
+  }
+
+  function fresh(metaKey){
+    var last=Number(localStorage.getItem(metaKey)||0);
+    return Boolean(last&&Date.now()-last<TTL);
   }
 
   function homeActive(){
@@ -88,34 +101,60 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     return Boolean(h&&h.classList.contains('active'));
   }
 
-  function load(force){
-    var cached=read();
-    apply(cached||DEFAULT_URL);
-    var last=Number(localStorage.getItem(META_KEY)||0);
-    if(!force&&cached&&last&&Date.now()-last<TTL)return Promise.resolve(cached);
-    if(!force&&!homeActive())return Promise.resolve(cached||DEFAULT_URL);
-    if(inFlight)return inFlight;
-    inFlight=fetch('/app/api/home-finance-image-meta',{cache:'no-store',headers:{accept:'application/json'}})
+  function loadIntro(force){
+    var cached=read(INTRO_KEY);
+    applyIntro(cached||DEFAULT_INTRO_URL);
+    if(!force&&cached&&fresh(INTRO_META_KEY))return Promise.resolve(cached);
+    if(!force&&!homeActive())return Promise.resolve(cached||DEFAULT_INTRO_URL);
+    if(introInFlight)return introInFlight;
+    introInFlight=fetch('/app/api/home-intro-image-meta',{cache:'no-store',headers:{accept:'application/json'}})
       .then(function(r){return r.json()})
       .then(function(data){
         if(data&&data.url){
-          write(data.url);
-          apply(data.url);
+          write(INTRO_KEY,INTRO_META_KEY,data.url);
+          applyIntro(data.url);
           return data.url;
         }
-        return cached||DEFAULT_URL;
+        return cached||DEFAULT_INTRO_URL;
       })
-      .catch(function(){return cached||DEFAULT_URL})
-      .finally(function(){inFlight=null});
-    return inFlight;
+      .catch(function(){return cached||DEFAULT_INTRO_URL})
+      .finally(function(){introInFlight=null});
+    return introInFlight;
   }
 
-  window.VexaRefreshHomeFinanceImage=function(){return load(true)};
-  apply(read()||DEFAULT_URL);
+  function loadFinance(force){
+    var cached=read(FINANCE_KEY);
+    applyFinance(cached||DEFAULT_FINANCE_URL);
+    if(!force&&cached&&fresh(FINANCE_META_KEY))return Promise.resolve(cached);
+    if(!force&&!homeActive())return Promise.resolve(cached||DEFAULT_FINANCE_URL);
+    if(financeInFlight)return financeInFlight;
+    financeInFlight=fetch('/app/api/home-finance-image-meta',{cache:'no-store',headers:{accept:'application/json'}})
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data&&data.url){
+          write(FINANCE_KEY,FINANCE_META_KEY,data.url);
+          applyFinance(data.url);
+          return data.url;
+        }
+        return cached||DEFAULT_FINANCE_URL;
+      })
+      .catch(function(){return cached||DEFAULT_FINANCE_URL})
+      .finally(function(){financeInFlight=null});
+    return financeInFlight;
+  }
+
+  function loadAll(force){
+    return Promise.all([loadIntro(force),loadFinance(force)]);
+  }
+
+  window.VexaRefreshHomeIntroImage=function(){return loadIntro(true)};
+  window.VexaRefreshHomeFinanceImage=function(){return loadFinance(true)};
+  applyIntro(read(INTRO_KEY)||DEFAULT_INTRO_URL);
+  applyFinance(read(FINANCE_KEY)||DEFAULT_FINANCE_URL);
   document.addEventListener('click',function(e){
     var b=e.target&&e.target.closest&&e.target.closest('[data-view="home"]');
-    if(b)setTimeout(function(){load(false)},120);
+    if(b)setTimeout(function(){loadAll(false)},120);
   },true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){load(false)},120)});else setTimeout(function(){load(false)},120);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){loadAll(false)},120)});else setTimeout(function(){loadAll(false)},120);
 })();
 `;
