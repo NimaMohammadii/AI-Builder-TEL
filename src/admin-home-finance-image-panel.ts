@@ -26,6 +26,7 @@ export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
   function ensurePanel(){
     const section=document.getElementById('sectionImages');
     if(!section||document.getElementById('homeFinanceImageUpload'))return;
+    makeBlock({previewId:'homeIntroImagePreview',previewSrc:'/app/api/home-intro-image-cached.png',title:'Home intro card image',text:'Shown in the top Home glass card. This is separate from Deposit / Withdraw.',label:'Upload Home intro card image',inputId:'homeIntroImageFile',buttonId:'homeIntroImageUpload',buttonText:'Upload Home intro image',statusId:'homeIntroImageStatus',endpoint:'/admin/api/upload-home-intro-image',fallback:'/app/api/home-intro-image-cached.png',success:'Home intro image uploaded.',loading:'Uploading Home intro image...'}).forEach(function(el){section.appendChild(el)});
     makeBlock({previewId:'homeFinanceImagePreview',previewSrc:'/app/api/home-finance-image.png',title:'Home finance image',text:'Shown on the right side of Deposit / Withdraw cards.',label:'Upload Home finance image',inputId:'homeFinanceImageFile',buttonId:'homeFinanceImageUpload',buttonText:'Upload Home image',statusId:'homeFinanceImageStatus',endpoint:'/admin/api/upload-home-finance-image',fallback:'/app/api/home-finance-image.png',success:'Home image uploaded.',loading:'Uploading Home image...'}).forEach(function(el){section.appendChild(el)});
     makeBlock({previewId:'crashTipImagePreview',previewSrc:'/app/api/crash-tip-image.png',title:'Crash tip image',text:'Shown at the moving tip of the Crash multiplier graph.',label:'Upload Crash tip image',inputId:'crashTipImageFile',buttonId:'crashTipImageUpload',buttonText:'Upload Crash tip',statusId:'crashTipImageStatus',endpoint:'/admin/api/upload-crash-tip-image',fallback:'/app/api/crash-tip-image.png',success:'Crash tip image uploaded.',loading:'Uploading Crash tip image...'}).forEach(function(el){section.appendChild(el)});
     makeBlock({previewId:'dailyRewardsHeroImagePreview',previewSrc:'/app/api/daily-rewards-hero-image.png',title:'Daily Rewards hero image',text:'Shown on the right side of the Daily Prize glass card.',label:'Upload Daily Rewards image',inputId:'dailyRewardsHeroImageFile',buttonId:'dailyRewardsHeroImageUpload',buttonText:'Upload Daily image',statusId:'dailyRewardsHeroImageStatus',endpoint:'/admin/api/upload-daily-rewards-hero-image',fallback:'/app/api/daily-rewards-hero-image.png',success:'Daily Rewards image uploaded.',loading:'Uploading Daily Rewards image...'}).forEach(function(el){section.appendChild(el)});
@@ -47,6 +48,8 @@ export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
       if(!response.ok){status.textContent=json.error||'Upload failed';return}
       if(preview)preview.src=(json.url||opts.fallback)+'&t='+Date.now();
       status.textContent=opts.success;
+      if(opts.endpoint==='/admin/api/upload-home-intro-image'&&window.VexaRefreshHomeIntroImage)window.VexaRefreshHomeIntroImage();
+      if(opts.endpoint==='/admin/api/upload-home-finance-image'&&window.VexaRefreshHomeFinanceImage)window.VexaRefreshHomeFinanceImage();
     }catch(error){status.textContent='Upload failed.'}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel);else ensurePanel();
