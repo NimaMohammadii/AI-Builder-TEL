@@ -82,7 +82,11 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   padding: 6px !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
-  background-image: none !important;
+  background-color: rgba(255,255,255,.035) !important;
+  background-image: url('/app/api/home-intro-image-cached.png?v=default') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 #home .home-intro-card h2,
 #home .home-intro-card p {
@@ -176,7 +180,6 @@ const SCRIPTS = [
   TOP_PLAYERS_HOME_CARD_SCRIPT,
   PLAY_ZONE_IMAGE_REFRESH_SCRIPT,
   MARKET_CONFIG_SCRIPT,
-  MINES_SCRIPT,
   PLINKO_SCRIPT,
   PLINKO_PERFORMANCE_SCRIPT,
   PLINKO_PANEL_SCRIPT,
