@@ -78,27 +78,39 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 #home .home-intro-card {
   min-height: 156px !important;
   display: grid !important;
-  place-items: center !important;
+  place-items: stretch !important;
   padding: 6px !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
-  background-image: url('/app/api/home-intro-image-cached.png?v=default') !important;
-  background-size: calc(100% - 12px) calc(100% - 12px) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
+  background-image: none !important;
 }
 #home .home-intro-card h2,
 #home .home-intro-card p {
   display: none !important;
 }
-#home .home-intro-card img.home-intro-image {
+#home .home-intro-image-frame {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 144px !important;
+  display: block !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.18) !important;
+  border-radius: 24px !important;
+  background: none !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+#home .home-intro-image-frame img.home-intro-image {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
-  max-height: 144px !important;
+  min-height: 144px !important;
   object-fit: cover !important;
   object-position: center !important;
-  border-radius: 24px !important;
+  border-radius: 23px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 `;
 
