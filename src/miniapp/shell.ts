@@ -79,10 +79,11 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   min-height: 156px !important;
   display: grid !important;
   place-items: center !important;
-  padding: 0 !important;
+  padding: 6px !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
   background-image: url('/app/api/home-intro-image-cached.png?v=default') !important;
-  background-size: contain !important;
+  background-size: calc(100% - 12px) calc(100% - 12px) !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
@@ -94,9 +95,10 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   display: block !important;
   width: 100% !important;
   height: 100% !important;
-  max-height: 156px !important;
-  object-fit: contain !important;
+  max-height: 144px !important;
+  object-fit: cover !important;
   object-position: center !important;
+  border-radius: 24px !important;
 }
 `;
 
