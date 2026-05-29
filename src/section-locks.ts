@@ -31,6 +31,7 @@ type SavedSectionLock = {
 };
 
 type AdminSettingRow = { value_json: string };
+type SectionImageInfo = { url: string | null; hasImage: boolean };
 
 const LOCKS_KEY = 'admin:section-locks';
 const SHARED_LOCK_IMAGE_ID = 'shared';
@@ -80,20 +81,19 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
   }
   if (changed) await writeLocks(env, saved).catch(() => undefined);
 
-  const hasLockedImage = await hasStoredSectionImage(env, SHARED_LOCK_IMAGE_ID, 'locked');
-  const hasCodeImage = await hasStoredSectionImage(env, SHARED_LOCK_IMAGE_ID, 'code');
-  const lockedVersion = await sectionImageVersion(env, SHARED_LOCK_IMAGE_ID, 'locked');
-  const codeVersion = await sectionImageVersion(env, SHARED_LOCK_IMAGE_ID, 'code');
-  const sharedLockedImageUrl = hasLockedImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/locked.png?v=${lockedVersion}` : null;
-  const sharedCodeImageUrl = hasCodeImage ? `/app/api/section-lock-image/${SHARED_LOCK_IMAGE_ID}/code.png?v=${codeVersion}` : null;
+  const sharedLockedImage = await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'locked');
+  const sharedCodeImage = await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'code');
 
-  const sections = DEFAULT_SECTIONS.map((section) => {
+  const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
     const item = saved[section.id];
     const mode = normalizeMode(item);
     const isLocked = mode !== 'open';
     const expiresAt = mode === 'open' ? null : normalizeExpiresAt(item?.expiresAt);
-    const lockedImageUrl = isLocked && mode !== 'loading' ? sharedLockedImageUrl : null;
-    const codeImageUrl = isLocked && mode !== 'loading' ? sharedCodeImageUrl : null;
+    const ownLockedImage = await sectionImageInfo(env, section.id, 'locked');
+    const ownCodeImage = await sectionImageInfo(env, section.id, 'code');
+    const imageUrl = ownLockedImage.url;
+    const lockedImageUrl = isLocked && mode !== 'loading' ? (ownLockedImage.url || sharedLockedImage.url) : imageUrl;
+    const codeImageUrl = isLocked && mode !== 'loading' ? (ownCodeImage.url || sharedCodeImage.url) : ownCodeImage.url;
     return {
       ...section,
       locked: isLocked,
@@ -101,14 +101,14 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
       expiresAt,
       remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null,
       hasCode: Boolean(item?.code),
-      hasImage: Boolean(lockedImageUrl),
-      imageUrl: lockedImageUrl,
+      hasImage: Boolean(imageUrl || lockedImageUrl),
+      imageUrl,
       hasLockedImage: Boolean(lockedImageUrl),
       lockedImageUrl,
       hasCodeImage: Boolean(codeImageUrl),
       codeImageUrl,
     };
-  });
+  }));
   return { sections };
 }
 
@@ -197,7 +197,15 @@ async function hasStoredSectionImage(env: Env, sectionId: string, kind: SectionL
 }
 
 async function sectionImageVersion(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<string> {
-  return (await env.BOT_CACHE.get(sectionImageVersionKey(sectionId, kind)).catch(() => null)) || '1';
+  const object = await env.ASSETS.head(sectionImageR2Key(sectionId, kind)).catch(() => null);
+  return object?.customMetadata?.version || (await env.BOT_CACHE.get(sectionImageVersionKey(sectionId, kind)).catch(() => null)) || '1';
+}
+
+async function sectionImageInfo(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<SectionImageInfo> {
+  const hasImage = await hasStoredSectionImage(env, sectionId, kind);
+  if (!hasImage) return { url: null, hasImage: false };
+  const version = await sectionImageVersion(env, sectionId, kind);
+  return { url: `/app/api/section-lock-image/${cleanSection(sectionId)}/${kind}.png?v=${version}`, hasImage: true };
 }
 
 async function readLocks(env: Env): Promise<Record<string, SavedSectionLock>> {
