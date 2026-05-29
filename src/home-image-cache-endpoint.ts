@@ -19,6 +19,7 @@ const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const FALLBACK_CACHE_CONTROL = 'public, max-age=300';
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+const MAX_IMAGE_BYTES = 2_000_000;
 
 const FALLBACK_IMAGES: Record<string, string> = {
   [HOME_INTRO_IMAGE_KEY]: fallbackSvg('Vexa Flow', 'Play, predict and manage TON in one place'),
@@ -62,15 +63,27 @@ async function uploadImage(c: HandlerContext, key: string, path: string, label: 
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    const file = pickImageFile(form);
+    if (!file) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    if (file.size > MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: `${path}?v=${version}` });
+    return c.json({ ok: true, url: `${path}?v=${version}`, version, size: file.size, type: file.type });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400);
   }
+}
+
+function pickImageFile(form: FormData): File | null {
+  for (const name of ['image', 'file', 'icon', 'upload']) {
+    const item = form.get(name);
+    if (item instanceof File) return item;
+  }
+  for (const item of form.values()) {
+    if (item instanceof File) return item;
+  }
+  return null;
 }
 
 function fallbackSvg(title: string, subtitle: string): string {
