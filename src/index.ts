@@ -19,8 +19,9 @@ const CREDIT_ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query'];
 const WHEEL_MAX_PLAYERS = 5;
 const WHEEL_MIN_ENTRY_NANO = 10_000_000;
+const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
 
-type WheelRoundRow = {
+ type WheelRoundRow = {
   id: string;
   status: 'open' | 'closed';
   total_amount_nano: number;
@@ -100,6 +101,28 @@ app.post('/admin/upload-credit-icon', async (c) => {
   return c.json({ ok: true, size: iconFile.size, type: iconFile.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
 });
 
+app.get('/app/api/home-intro-image-cached.png', async (c) => {
+  const image = await c.env.ASSETS.get(HOME_INTRO_IMAGE_KEY).catch(() => null);
+  if (!image) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  return new Response(image.body, { headers: { 'content-type': image.httpMetadata?.contentType ?? 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
+});
+app.get('/app/api/home-intro-image-meta', async (c) => {
+  const image = await c.env.ASSETS.head(HOME_INTRO_IMAGE_KEY).catch(() => null);
+  const version = image?.customMetadata?.version || image?.uploaded?.getTime?.() || 'default';
+  return c.json({ ok: true, version: String(version), url: `/app/api/home-intro-image-cached.png?v=${encodeURIComponent(String(version))}` }, 200, { 'cache-control': 'private, max-age=300' });
+});
+app.post('/admin/api/upload-home-intro-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const form = await c.req.formData();
+  const file = form.get('image');
+  if (!file || typeof file !== 'object' || !('type' in file) || !('stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
+  const imageFile = file as { type: string; stream: () => ReadableStream };
+  if (!CREDIT_ICON_TYPES.has(imageFile.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  const version = String(Date.now());
+  await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, imageFile.stream(), { httpMetadata: { contentType: imageFile.type }, customMetadata: { version } });
+  return c.json({ ok: true, url: `/app/api/home-intro-image-cached.png?v=${version}` });
+});
+
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
   const body = c.req.valid('json');
   return c.json({ reply: await plainAiReply(c.env, body.instruction) });
@@ -154,7 +177,7 @@ app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
 
   const title = me.result?.first_name ?? inferTitle(body.prompt);
   try {
-    await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`)
+    await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`) 
       .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
       .run();
   } catch (error) {
@@ -289,7 +312,7 @@ app.post('/app/api/wheel-round/join', async (c) => {
     try {
       const ticketStart = entries.reduce((max, entry) => Math.max(max, Number(entry.ticket_end || 0)), 0) + 1;
       const ticketEnd = ticketStart + amountNano - 1;
-      await c.env.DB.prepare(`INSERT INTO wheel_entries (id, round_id, user_id, username, first_name, amount_nano, ticket_start, ticket_end, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
+      await c.env.DB.prepare(`INSERT OR IGNORE INTO wheel_entries (id, round_id, user_id, username, first_name, amount_nano, ticket_start, ticket_end, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
         .bind(id('whent'), round.id, userId, cleanWheelName(body.username, userId), cleanWheelFirstName(body.firstName), amountNano, ticketStart, ticketEnd)
         .run();
       await c.env.DB.prepare('UPDATE wheel_rounds SET total_amount_nano = total_amount_nano + ? WHERE id = ? AND status = ?')
@@ -300,7 +323,7 @@ app.post('/app/api/wheel-round/join', async (c) => {
       throw error;
     }
     round = await getWheelRound(c.env, round.id) ?? round;
-    round = await fillWheelRoundIfReady(c.env, round);
+    round = await fillWheelRoundIfReady(round);
     entries = await wheelEntries(c.env, round.id);
     if (entries.length >= WHEEL_MAX_PLAYERS && round.status === 'open') round = await closeWheelRound(c.env, round, entries);
     return c.json(await wheelState(c.env, round), 200, { 'cache-control': 'no-store' });
