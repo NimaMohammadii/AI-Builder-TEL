@@ -74,6 +74,32 @@ import { UPLOADED_IMAGE_CACHE_SCRIPT } from '../uploaded-image-cache-script';
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
 
+const HOME_INTRO_CARD_IMAGE_STYLES = `
+#home .home-intro-card {
+  min-height: 156px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background-image: url('/app/api/home-intro-image-cached.png?v=default') !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+#home .home-intro-card h2,
+#home .home-intro-card p {
+  display: none !important;
+}
+#home .home-intro-card img.home-intro-image {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 156px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+`;
+
 const STYLES = [
   MINIAPP_STYLES,
   TTS_STYLES,
@@ -97,6 +123,7 @@ const STYLES = [
   PLAY_ZONE_ROW_IMAGE_FIX,
   PLAY_ZONE_EDGE_FIX,
   HOME_OVERRIDES,
+  HOME_INTRO_CARD_IMAGE_STYLES,
   TRANSACTIONS_GLOBAL_STYLES,
   HOME_FINANCE_STYLES,
   BALANCE_OVERRIDES,
