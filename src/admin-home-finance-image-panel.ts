@@ -1,6 +1,6 @@
 export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
 (function(){
-  const allowed=['image/png','image/jpeg','image/webp'];
+  const allowed=['image/png','image/jpeg','image/webp','image/svg+xml'];
   function byId(id){return document.getElementById(id)}
   function makeBlock(opts){
     const wrap=document.createElement('div');
@@ -11,7 +11,7 @@ export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
     const input=document.createElement('input');
     input.id=opts.inputId;
     input.type='file';
-    input.accept='image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp';
+    input.accept='image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg';
     const button=document.createElement('button');
     button.className='primary';
     button.id=opts.buttonId;
@@ -37,20 +37,25 @@ export const ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT = `<script>
     const file=byId(opts.inputId);
     const status=byId(opts.statusId);
     const preview=byId(opts.previewId);
+    if(!status)return;
     if(!file||!file.files||!file.files[0]){status.textContent='Choose an image first.';return}
-    if(!allowed.includes(file.files[0].type)){status.textContent='Only PNG, JPG, JPEG or WebP.';return}
+    const selected=file.files[0];
+    if(!allowed.includes(selected.type)){status.textContent='Only PNG, JPG, JPEG, SVG or WebP.';return}
+    if(selected.size>2_000_000){status.textContent='Image must be under 2MB.';return}
     status.textContent=opts.loading;
     const form=new FormData();
-    form.append('image',file.files[0]);
+    form.append('image',selected);
+    form.append('file',selected);
     try{
-      const response=await fetch(opts.endpoint,{method:'POST',body:form,credentials:'same-origin'});
-      const json=await response.json().catch(()=>({error:'Upload failed'}));
-      if(!response.ok){status.textContent=json.error||'Upload failed';return}
-      if(preview)preview.src=(json.url||opts.fallback)+'&t='+Date.now();
+      const response=await fetch(opts.endpoint,{method:'POST',body:form,credentials:'include'});
+      const json=await response.json().catch(()=>({error:'Upload failed: server did not return JSON'}));
+      if(!response.ok){status.textContent=json.error||('Upload failed: HTTP '+response.status);return}
+      const url=json.url||opts.fallback;
+      if(preview)preview.src=url+(url.indexOf('?')===-1?'?':'&')+'t='+Date.now();
       status.textContent=opts.success;
       if(opts.endpoint==='/admin/api/upload-home-intro-image'&&window.VexaRefreshHomeIntroImage)window.VexaRefreshHomeIntroImage();
       if(opts.endpoint==='/admin/api/upload-home-finance-image'&&window.VexaRefreshHomeFinanceImage)window.VexaRefreshHomeFinanceImage();
-    }catch(error){status.textContent='Upload failed.'}
+    }catch(error){status.textContent='Upload failed: '+(error&&error.message?error.message:'network error')}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel);else ensurePanel();
 })();
