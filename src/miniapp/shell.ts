@@ -83,7 +83,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   overflow: hidden !important;
   box-sizing: border-box !important;
   background-color: rgba(255,255,255,.035) !important;
-  background-image: url('/app/api/home-intro-image.png') !important;
+  background-image: var(--home-intro-image-url, url('/app/api/home-intro-image.png')) !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -116,6 +116,55 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   border: 0 !important;
   box-shadow: none !important;
 }
+`;
+
+const APP_CACHE_REFRESH_SCRIPT = `
+(function(){
+  try{
+    var storageKey='vexa-app-cache-version';
+    var current='';
+    var checking=false;
+    function withAv(url,version){
+      try{var u=new URL(url,location.href);u.searchParams.set('av',version);return u.pathname+u.search+u.hash}catch(e){return url}
+    }
+    function sameOriginAsset(url){
+      try{var u=new URL(url,location.href);return u.origin===location.origin&&(u.pathname.indexOf('/app/api/')===0||u.pathname.indexOf('/assets/')===0)}catch(e){return false}
+    }
+    function refreshImages(version){
+      if(!version)return;
+      document.documentElement.style.setProperty('--home-intro-image-url','url("'+withAv('/app/api/home-intro-image.png',version)+'")');
+      var imgs=document.querySelectorAll('img[src]');
+      for(var i=0;i<imgs.length;i++){
+        var img=imgs[i];
+        var src=img.getAttribute('src')||'';
+        if(!sameOriginAsset(src))continue;
+        var next=withAv(src,version);
+        if(next!==src)img.setAttribute('src',next);
+      }
+      try{window.VexaUploadedImages&&window.VexaUploadedImages.reload&&window.VexaUploadedImages.reload()}catch(e){}
+      try{window.dispatchEvent(new CustomEvent('vexa-app-cache-version',{detail:{version:version}}))}catch(e){}
+    }
+    function apply(version,force){
+      version=String(version||'');
+      if(!version)return;
+      var previous=current||localStorage.getItem(storageKey)||'';
+      current=version;
+      localStorage.setItem(storageKey,version);
+      if(force||previous!==version)refreshImages(version);
+    }
+    function check(){
+      if(checking)return;
+      checking=true;
+      fetch('/app/api/app-version',{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){if(j&&j.version)apply(j.version,false)}).catch(function(){}).finally(function(){checking=false});
+    }
+    window.VexaAppRefresh={check:check,apply:apply,refreshImages:refreshImages};
+    var saved=localStorage.getItem(storageKey)||'';
+    if(saved)refreshImages(saved);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',check);else check();
+    setInterval(function(){if(document.hidden)return;check()},3000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});
+  }catch(e){}
+})();
 `;
 
 const STYLES = [
@@ -172,6 +221,7 @@ const SECTIONS = [
 
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
+  APP_CACHE_REFRESH_SCRIPT,
   MINIAPP_SCRIPT,
   TON_BALANCE_SCRIPT,
   CONNECT_GROUPS_USAGE_SCRIPT,
