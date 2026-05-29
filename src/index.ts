@@ -21,7 +21,7 @@ const WHEEL_MAX_PLAYERS = 5;
 const WHEEL_MIN_ENTRY_NANO = 10_000_000;
 const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
 
- type WheelRoundRow = {
+type WheelRoundRow = {
   id: string;
   status: 'open' | 'closed';
   total_amount_nano: number;
@@ -177,7 +177,7 @@ app.post('/app/api/bots', zValidator('json', createBotSchema), async (c) => {
 
   const title = me.result?.first_name ?? inferTitle(body.prompt);
   try {
-    await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`) 
+    await c.env.DB.prepare(`INSERT INTO bots (id, owner_telegram_id, username, title, status, encrypted_token, webhook_secret, blueprint_json, settings_json) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`)
       .bind(botId, body.ownerTelegramId, me.result?.username ?? null, title, encryptedToken, 'mini-app-webhook', JSON.stringify(blueprint), JSON.stringify({ sourcePrompt: body.prompt, createdFromMiniApp: true, webhookUrl, flow }))
       .run();
   } catch (error) {
@@ -323,7 +323,7 @@ app.post('/app/api/wheel-round/join', async (c) => {
       throw error;
     }
     round = await getWheelRound(c.env, round.id) ?? round;
-    round = await fillWheelRoundIfReady(round);
+    round = await fillWheelRoundIfReady(c.env, round);
     entries = await wheelEntries(c.env, round.id);
     if (entries.length >= WHEEL_MAX_PLAYERS && round.status === 'open') round = await closeWheelRound(c.env, round, entries);
     return c.json(await wheelState(c.env, round), 200, { 'cache-control': 'no-store' });
