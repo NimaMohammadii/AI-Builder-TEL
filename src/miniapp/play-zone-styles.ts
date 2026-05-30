@@ -9,8 +9,8 @@ export const PLAY_ZONE_STYLES = `
 .play-zone-view{padding:6px 0 calc(150px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
 .play-zone-stage{--play-card-gap:6px;display:flex!important;flex-direction:column!important;gap:10px!important;padding:0 0 96px!important;position:relative!important;overflow:visible!important;width:100%!important;max-width:none!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
 .play-zone-hero{display:none!important}
-.play-zone-section-head{display:flex!important;align-items:end!important;justify-content:flex-start!important;gap:10px!important;margin:2px 0 4px!important;padding:10px 6px!important;border-radius:20px!important;background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-.play-zone-section-head strong{font-size:17px!important;font-weight:920!important;letter-spacing:-.045em!important;color:#fff!important;text-shadow:0 8px 18px rgba(0,0,0,.58)!important;filter:none!important}
+.play-zone-section-head{width:max-content!important;min-width:138px!important;max-width:calc(100% - 32px)!important;height:38px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;margin:2px auto 8px!important;padding:0 18px!important;border-radius:999px!important;background:rgba(255,255,255,.055)!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:blur(3px)!important;backdrop-filter:blur(3px)!important;text-align:center!important}
+.play-zone-section-head strong{font-size:13px!important;font-weight:850!important;letter-spacing:.045em!important;text-transform:uppercase!important;color:rgba(255,255,255,.64)!important;text-align:center!important;text-shadow:none!important;filter:none!important;line-height:1!important}
 .play-zone-section-head strong:before,.play-zone-section-head strong:after{content:none!important;display:none!important}
 .play-zone-section-head span{display:none!important}
 .play-zone-featured-row,.play-zone-upcoming-row,.play-zone-triangle,.play-zone-triangle-row,.play-zone-triangle-row-3,.play-zone-triangle-row-2,.play-zone-triangle-row-1{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;gap:10px!important;padding:0!important;margin:0!important;justify-content:stretch!important;perspective:none!important;position:relative!important;z-index:2!important;width:100%!important;max-width:none!important}
@@ -50,6 +50,8 @@ export const PLAY_ZONE_STYLES = `
   .content{height:calc(100dvh - 88px - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important}
   .play-zone-view{padding-bottom:calc(138px + env(safe-area-inset-bottom))!important}
   .play-zone-stage{--play-card-gap:6px;gap:9px!important;padding:0 0 90px!important}
+  .play-zone-section-head{height:36px!important;min-width:126px!important;margin:2px auto 8px!important;padding:0 16px!important}
+  .play-zone-section-head strong{font-size:12px!important;color:rgba(255,255,255,.60)!important}
   .game-card,.game-card-live{height:calc((100vw - (var(--play-card-gap) * 2)) / 3 + (var(--play-card-gap) * 2))!important;min-height:118px!important;max-height:150px!important;border-radius:20px!important;padding:0!important}
   .game-image,.game-card-live .game-image{inset:var(--play-card-gap)!important;border-radius:14px!important;aspect-ratio:3/1!important;border:0!important;outline:0!important;box-shadow:none!important}
   .game-image img{border-radius:14px!important;object-fit:fill!important;border:0!important;outline:0!important;box-shadow:none!important}
