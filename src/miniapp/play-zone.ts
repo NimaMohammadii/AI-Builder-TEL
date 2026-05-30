@@ -5,9 +5,9 @@ const playZoneGames = [
   ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
   ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
-  ['tower', 'Dragon Tower', 'Climb the tower and avoid danger', 'Play'],
-  ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
   ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
+  ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
+  ['tower', 'Dragon Tower', 'Climb the tower and avoid danger', 'Play'],
 ] as const;
 
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
