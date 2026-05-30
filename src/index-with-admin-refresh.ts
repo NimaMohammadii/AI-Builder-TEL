@@ -94,11 +94,21 @@ function isAdminRequest(c: { env: Env; req: { header: (name: string) => string |
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
 
+function cacheStaticImageResponse(request: Request, response: Response): Response {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith('/app/api/section-lock-image/') && pathname !== '/app/api/home-intro-image.png') return response;
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'public, max-age=31536000, immutable');
+  headers.delete('pragma');
+  headers.delete('expires');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const response = await app.fetch(request, env, ctx);
     const type = response.headers.get('content-type') || '';
-    if (!type.includes('text/html')) return response;
+    if (!type.includes('text/html')) return cacheStaticImageResponse(request, response);
     const html = await response.text();
     const headers = new Headers(response.headers);
     headers.delete('content-length');
