@@ -12,7 +12,7 @@ export const SECTION_LOCK_SCRIPT = `
   var countdownTimer=0;
   var FULL_RELOAD_COOLDOWN_MS=300000;
   var USER_RELOAD_COOLDOWN_MS=60000;
-  var GLOBAL_CACHE_KEY='vexaSectionLocks:v1';
+  var GLOBAL_CACHE_PREFIX='vexaSectionLocks:v1:';
   var USER_CACHE_PREFIX='vexaUserControls:';
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
@@ -20,6 +20,8 @@ export const SECTION_LOCK_SCRIPT = `
   var dismissSvg='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
+  function sectionLocksUrl(){var id=userId();return id?'/app/api/section-locks?userId='+encodeURIComponent(id):'/app/api/section-locks'}
+  function cacheGlobalKey(){var id=userId();return GLOBAL_CACHE_PREFIX+(id||'anonymous')}
   function lockId(id){return id==='predictzone'?'predict':id==='market'?'connect':id}
   function storageKey(id){return 'sectionUnlocked:'+lockId(id)}
   function cacheUserKey(){var id=userId();return id?USER_CACHE_PREFIX+id:''}
@@ -139,8 +141,8 @@ export const SECTION_LOCK_SCRIPT = `
 
   function applyGlobalData(data){locks={};(data&&data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}
   function applyUserData(data){userBlocked={};if(!data)return;if(Array.isArray(data.sectionBlocks)){data.sectionBlocks.forEach(function(item){if(item&&item.blocked)userBlocked[item.sectionId]={expiresAt:item.expiresAt||null,remainingMs:item.remainingMs==null?null:Number(item.remainingMs)}})}else{(data.blockedSections||[]).forEach(function(section){userBlocked[section]={expiresAt:null,remainingMs:null}})}userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}
-  function applyCachedLocks(){var global=readJson(GLOBAL_CACHE_KEY);if(global)applyGlobalData(global);var userCache=readJson(cacheUserKey());if(userCache)applyUserData(userCache);applyLocks()}
-  function loadGlobalLocks(){return fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){writeJson(GLOBAL_CACHE_KEY,data);applyGlobalData(data)}).catch(function(){})}
+  function applyCachedLocks(){var global=readJson(cacheGlobalKey());if(global)applyGlobalData(global);var userCache=readJson(cacheUserKey());if(userCache)applyUserData(userCache);applyLocks()}
+  function loadGlobalLocks(){return fetch(sectionLocksUrl(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){writeJson(cacheGlobalKey(),data);applyGlobalData(data)}).catch(function(){})}
   function loadUserControls(){var id=userId();if(!id)return Promise.resolve();return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){writeJson(cacheUserKey(),data);applyUserData(data)}).catch(function(){})}
   function loadLocks(force){
     var now=Date.now();
