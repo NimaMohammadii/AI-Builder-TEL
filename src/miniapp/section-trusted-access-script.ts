@@ -9,7 +9,10 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
   }
   function removeLockViews(){
     document.querySelectorAll('.section-locked-view,.connect-card-locked-view,.section-loading-mode').forEach(function(el){el.remove()});
-    document.querySelectorAll('.is-section-locked,.connect-bot-card-locked').forEach(function(el){el.classList.remove('is-section-locked','connect-bot-card-locked')});
+    document.querySelectorAll('.is-section-locked,.connect-bot-card-locked,.is-section-loading-active,.is-section-loading-pending').forEach(function(el){
+      el.classList.remove('is-section-locked','connect-bot-card-locked','is-section-loading-active','is-section-loading-pending');
+    });
+    document.body.classList.remove('section-loading-active');
   }
   function asJson(data){return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}})}
   function readTrusted(){
