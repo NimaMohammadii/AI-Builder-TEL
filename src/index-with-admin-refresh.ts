@@ -12,7 +12,7 @@ const ADMIN_REFRESH_SCRIPT = `
       var block=document.createElement('div');
       block.id='vexaForceRefreshBlock';
       block.style.cssText='margin:18px 0;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:rgba(255,255,255,.055)';
-      block.innerHTML='<h3 style="margin:0 0 8px;font-size:17px">Force update all users</h3><p class="muted small-text" style="margin:0 0 12px;color:rgba(255,255,255,.62)">Use this after changing images or assets. It bumps the app cache version so Mini App clients reload images with fresh URLs.</p><button id="vexaForceRefreshBtn" class="primary" type="button">Force update all users</button><p id="vexaForceRefreshStatus" class="status" style="margin:10px 0 0"></p>';
+      block.innerHTML='<h3 style="margin:0 0 8px;font-size:17px">Update app cache version</h3><p class="muted small-text" style="margin:0 0 12px;color:rgba(255,255,255,.62)">Images now use stable URLs and browser cache. Use this only after changing app code, not for normal image loading.</p><button id="vexaForceRefreshBtn" class="primary" type="button">Update cache version</button><p id="vexaForceRefreshStatus" class="status" style="margin:10px 0 0"></p>';
       target.insertBefore(block,target.firstChild);
       var btn=document.getElementById('vexaForceRefreshBtn');
       var status=document.getElementById('vexaForceRefreshStatus');
@@ -21,7 +21,7 @@ const ADMIN_REFRESH_SCRIPT = `
         btn.disabled=true;
         fetch('/admin/api/force-app-refresh',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({source:'admin-button'})})
           .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Update failed');return j})})
-          .then(function(j){if(status)status.textContent='Done. New version: '+j.version+'. Users will refresh images automatically.'; try{window.VexaAppRefresh&&window.VexaAppRefresh.apply(j.version,true)}catch(e){}})
+          .then(function(j){if(status)status.textContent='Done. New version: '+j.version; try{window.VexaAppRefresh&&window.VexaAppRefresh.apply(j.version,false)}catch(e){}})
           .catch(function(e){if(status)status.textContent=e&&e.message?e.message:'Update failed';})
           .finally(function(){btn.disabled=false});
       };
@@ -36,60 +36,37 @@ const CLIENT_REFRESH_SCRIPT = `
 (function(){
   try {
     var storageKey='vexa-app-cache-version';
-    var current='';
-    function addParam(url,version){
+    function stripCacheParams(url){
       try{
         var u=new URL(url,location.href);
-        if(u.origin!==location.origin)return url;
-        var p=u.pathname;
-        if(p.indexOf('/app/api/')!==0&&p.indexOf('/assets/')!==0)return url;
-        u.searchParams.set('av',version);
+        u.searchParams.delete('av');
+        u.searchParams.delete('rt');
         return u.pathname+u.search+u.hash;
       }catch(e){return url}
     }
-    function refreshImages(version){
-      if(!version)return;
+    function normalizeImages(){
       var imgs=document.querySelectorAll('img[src]');
       for(var i=0;i<imgs.length;i++){
         var img=imgs[i];
         var src=img.getAttribute('src')||'';
-        var next=addParam(src,version);
+        var next=stripCacheParams(src);
         if(next!==src)img.setAttribute('src',next);
       }
-      var styled=document.querySelectorAll('[style*="/app/api/"],[style*="/assets/"]');
-      for(var j=0;j<styled.length;j++){
-        var el=styled[j];
-        var style=el.getAttribute('style')||'';
-        var nextStyle=style.replace(/url\((['\"]?)([^)'\"]+)(['\"]?)\)/g,function(all,q1,url,q2){return 'url('+q1+addParam(url,version)+q2+')'});
-        if(nextStyle!==style)el.setAttribute('style',nextStyle);
-      }
-      try{window.VexaUploadedImages&&window.VexaUploadedImages.reload&&window.VexaUploadedImages.reload()}catch(e){}
-      try{window.dispatchEvent(new CustomEvent('vexa-app-cache-version',{detail:{version:version}}))}catch(e){}
     }
-    function apply(version,force){
+    function apply(version){
       version=String(version||'');
-      if(!version)return;
-      var previous=current||localStorage.getItem(storageKey)||'';
-      current=version;
-      localStorage.setItem(storageKey,version);
-      if(force||previous!==version)refreshImages(version);
+      if(version)localStorage.setItem(storageKey,version);
+      normalizeImages();
     }
-    function check(){
-      fetch('/app/api/app-version',{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){if(j&&j.version)apply(j.version,false)}).catch(function(){});
-    }
-    window.VexaAppRefresh={check:check,apply:apply,refreshImages:refreshImages};
-    var saved=localStorage.getItem(storageKey)||'';
-    if(saved)refreshImages(saved);
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',check);else check();
-    setInterval(check,30000);
-    document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});
+    window.VexaAppRefresh={check:function(){},apply:apply,refreshImages:function(){normalizeImages()}};
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',normalizeImages);else normalizeImages();
   } catch(e) {}
 })();
 `;
 
 app.get('/app/api/app-version', async (c) => {
   const version = await getAppVersion(c.env);
-  return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });
+  return c.json({ ok: true, version }, 200, { 'cache-control': 'public, max-age=3600' });
 });
 
 app.post('/admin/api/force-app-refresh', async (c) => {
