@@ -4,31 +4,35 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
-  var KEY='vexaPlayZoneImageUrls:v10';
-  var OLD_KEYS=['vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
+  var KEY='vexaPlayZoneImageUrls:v11';
+  var OLD_KEYS=['vexaPlayZoneImageUrls:v10','vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
   var countersStarted=false;
   var refreshInFlight=null;
-  function dropOldCaches(){try{OLD_KEYS.forEach(function(k){localStorage.removeItem(k)})}catch(e){}}
+  function dropOldCaches(){try{OLD_KEYS.forEach(function(k){localStorage.removeItem(k)});Object.keys(localStorage).forEach(function(k){if(k.indexOf('vexaPlayZoneImageUrlsUpdatedAt')===0)localStorage.removeItem(k)})}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map||{}))}catch(e){}}
   function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
   function stripCacheParams(url){try{var u=new URL(String(url||''),location.href);u.searchParams.delete('rt');u.searchParams.delete('av');return u.pathname+u.search+u.hash}catch(e){return String(url||'').replace(/([?&])(rt|av)=\d+(&?)/g,'$1').replace(/[?&]$/,'')}}
+  function baseGameUrl(id){return '/app/api/section-lock-image/'+id+'/locked.png'}
   function bust(url){var base=stripCacheParams(url);if(!base)return '';return base+(base.indexOf('?')>=0?'&':'?')+'rt='+Date.now()}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
   function setImage(img,url){
-    if(!img||!allowed(url))return;
-    var next=bust(url);
-    var fallback=img.getAttribute('data-fallback-src')||img.getAttribute('src')||'';
-    img.onerror=function(){this.onerror=null;if(fallback&&this.getAttribute('src')!==fallback)this.src=fallback;this.style.display=''};
+    if(!img)return;
+    var raw=allowed(url)?url:(img.getAttribute('data-section-image-src')||'');
+    if(!raw)return;
+    var next=bust(raw);
+    img.onerror=function(){this.onerror=null;this.style.display=''};
     if(next&&img.getAttribute('src')!==next)img.src=next;
+    img.setAttribute('data-fallback-src',next);
     img.classList.remove('is-empty');
     img.style.display='';
     img.loading='eager';
     img.decoding='async';
   }
+  function findGameImg(id){return document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img')}
   function apply(map){
-    games.forEach(function(id){setImage(document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img'),map[id]);setImage(document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img'),map[id])});
+    games.forEach(function(id){var img=findGameImg(id);if(img&&!img.getAttribute('data-section-image-src'))img.setAttribute('data-section-image-src',baseGameUrl(id));setImage(img,map[id]||baseGameUrl(id))});
     ads.concat(legacyAds).forEach(function(id){setImage(document.querySelector('#playzone [data-play-zone-ad="'+id+'"]'),map[id])});
   }
   function mapFromSectionLocks(cached){
@@ -38,6 +42,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
       data.sections.forEach(function(section){var url=stripCacheParams(section&&section.lockedImageUrl||section&&section.imageUrl||'');if(section&&all.indexOf(section.id)>=0&&allowed(url))next[section.id]=url});
     }
     all.forEach(function(id){if(!next[id]&&allowed(cached[id]))next[id]=stripCacheParams(cached[id])});
+    games.forEach(function(id){if(!next[id])next[id]=baseGameUrl(id)});
     return next;
   }
   function refreshFromCache(){var next=mapFromSectionLocks(readCache());writeCache(next);apply(next);startCounters();return next}
