@@ -7,6 +7,10 @@ function cleanUserId(value: unknown): string {
   return id;
 }
 
+function optionalUserId(value: unknown): string {
+  return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+}
+
 function key(userId: string): string {
   return 'admin:user-access-override:' + userId;
 }
@@ -15,6 +19,12 @@ async function getAccessOverride(env: Env, userId: string): Promise<{ userId: st
   const id = cleanUserId(userId);
   const value = await env.BOT_CACHE.get(key(id)).catch(() => null);
   return { userId: id, trustedAccess: value === '1' };
+}
+
+async function hasAccessOverride(env: Env, userIdInput: unknown): Promise<boolean> {
+  const id = optionalUserId(userIdInput);
+  if (!id) return false;
+  return (await env.BOT_CACHE.get(key(id)).catch(() => null)) === '1';
 }
 
 async function setAccessOverride(env: Env, userId: string, enabled: boolean): Promise<{ userId: string; trustedAccess: boolean }> {
@@ -36,6 +46,13 @@ function isAdmin(env: Env, keyValue: string): boolean {
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
+
+app.use('/app/api/section-locks', async (c, next) => {
+  if (await hasAccessOverride(c.env, c.req.query('userId'))) {
+    return c.json({ sections: [] }, 200, { 'cache-control': 'no-store' });
+  }
+  return next();
+});
 
 app.get('/app/api/user-access-override', async (c) => {
   try {
