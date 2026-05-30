@@ -14,15 +14,15 @@ export const PLAY_ZONE_STYLES = `
 .play-zone-section-head span{display:none!important}
 .play-zone-featured-row,.play-zone-upcoming-row,.play-zone-triangle,.play-zone-triangle-row,.play-zone-triangle-row-3,.play-zone-triangle-row-2,.play-zone-triangle-row-1{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;gap:10px!important;padding:0!important;margin:0!important;justify-content:stretch!important;perspective:none!important;position:relative!important;z-index:2!important;width:100%!important;max-width:none!important}
 .game-card-shell{width:100%!important;max-width:none!important;display:block!important;position:relative!important;margin:0!important;padding:0!important;transform:none!important;animation:none!important;box-shadow:none!important;background:transparent!important;border:0!important}
-.game-card{width:100%!important;max-width:none!important;min-width:0!important;height:104px!important;min-height:104px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:24px!important;background:rgba(255,255,255,.035)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;display:block!important;position:relative!important;color:#fff!important;text-align:left!important;overflow:hidden!important;scroll-snap-align:start!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}
+.game-card{width:100%!important;max-width:none!important;min-width:0!important;height:122px!important;min-height:122px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:24px!important;background:rgba(255,255,255,.035)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;display:block!important;position:relative!important;color:#fff!important;text-align:left!important;overflow:hidden!important;scroll-snap-align:start!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}
 .game-card:active{transform:scale(.985)!important}
 .game-card-live{background:rgba(255,255,255,.035)!important;background-color:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;border-radius:24px!important;overflow:hidden!important;filter:none!important}
 .game-card-live:before,.game-card-live:after,.play-zone-featured-card:before,.play-zone-featured-card:after{content:none!important;display:none!important;background:none!important;box-shadow:none!important}
 .game-card-live .game-info,.game-card-live .game-open{display:none!important}
-.game-image{position:absolute!important;inset:6px!important;width:auto!important;height:auto!important;aspect-ratio:auto!important;border-radius:20px!important;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.12),rgba(143,29,61,.16) 38%,rgba(0,0,0,.32))!important;display:block!important;place-items:unset!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;padding:0!important;z-index:1!important}
-.game-image img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:19px!important;background:transparent!important}
-.game-card-live .game-image{position:absolute!important;inset:6px!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:20px!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;padding:0!important}
-.game-card-live .game-image:after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:linear-gradient(180deg,rgba(0,0,0,0) 42%,rgba(0,0,0,.38) 100%)!important;pointer-events:none!important;z-index:2!important}
+.game-image{position:absolute!important;inset:6px!important;width:auto!important;height:auto!important;aspect-ratio:auto!important;border-radius:20px!important;background:rgba(0,0,0,.18)!important;display:block!important;place-items:unset!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;padding:0!important;z-index:1!important}
+.game-image img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:19px!important;background:transparent!important}
+.game-card-live .game-image{position:absolute!important;inset:6px!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:20px!important;box-shadow:none!important;background:rgba(0,0,0,.18)!important;overflow:hidden!important;padding:0!important}
+.game-card-live .game-image:after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:linear-gradient(180deg,rgba(0,0,0,0) 46%,rgba(0,0,0,.32) 100%)!important;pointer-events:none!important;z-index:2!important}
 .game-info{display:none!important}
 .game-badge{display:none!important}
 .game-info strong{font-size:15px!important;font-weight:930!important;letter-spacing:-.045em!important;line-height:1!important;color:#fff!important}
@@ -49,9 +49,9 @@ export const PLAY_ZONE_STYLES = `
   .content{height:calc(100dvh - 88px - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important}
   .play-zone-view{padding-bottom:calc(138px + env(safe-area-inset-bottom))!important}
   .play-zone-stage{gap:9px!important;padding:0 0 90px!important}
-  .game-card,.game-card-live{height:94px!important;min-height:94px!important;border-radius:22px!important;padding:6px!important}
+  .game-card,.game-card-live{height:112px!important;min-height:112px!important;border-radius:22px!important;padding:6px!important}
   .game-image,.game-card-live .game-image{inset:6px!important;border-radius:18px!important}
-  .game-image img{border-radius:17px!important}
+  .game-image img{border-radius:17px!important;object-fit:contain!important}
   .game-footer{bottom:13px!important;left:16px!important;right:16px!important}
   .game-players{gap:4px!important;padding:5px 9px!important}
   .game-players i{width:7px!important;height:7px!important}
