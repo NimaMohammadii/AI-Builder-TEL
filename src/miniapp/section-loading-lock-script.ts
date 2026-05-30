@@ -18,6 +18,15 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   function sectionId(id){return id==='predict'?'predictzone':id}
   function modeKeyFromView(id){return id==='predictzone'?'predict':id}
   function isGlobalLoading(){return !!modes['global-loading']}
+  function currentUserId(){
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+    return String(user.id||localStorage.getItem('ownerId')||'').trim();
+  }
+  function sectionLocksUrl(){
+    var uid=currentUserId();
+    return uid?'/app/api/section-locks?userId='+encodeURIComponent(uid):'/app/api/section-locks';
+  }
   function isTrustedAccess(){return window.VexaTrustedAccess===true}
   function clearTrustedLoading(){
     modes={};
@@ -126,7 +135,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     if(loadInFlight)return;
     loadInFlight=1;
     Promise.all([
-      fetch('/app/api/section-locks',{cache:'no-store'}).then(function(r){return r.json()}),
+      fetch(sectionLocksUrl(),{cache:'no-store'}).then(function(r){return r.json()}),
       fetch('/app/api/section-loading-meta',{cache:'no-store'}).then(function(r){return r.json()}).catch(function(){return {items:{}}})
     ]).then(function(res){if(isTrustedAccess()){clearTrustedLoading();return}var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){loadInFlight=0});
   }
