@@ -16,6 +16,7 @@ const MINIAPP_AUDIO_KEY = 'miniapp/audio';
 const MINIAPP_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
+const SECTION_LOCK_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
@@ -90,8 +91,8 @@ app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetRes
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
-app.get('/app/api/section-lock-image/:section/:kind', async (c) => { try { const section = normalizeSectionId(c.req.param('section')); const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, kind), null); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
-app.get('/app/api/section-lock-image/:section', async (c) => { try { const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
+app.get('/app/api/section-lock-image/:section/:kind', async (c) => { try { const section = normalizeSectionId(c.req.param('section')); const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, kind), null, { cacheControl: SECTION_LOCK_IMAGE_CACHE_CONTROL }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
+app.get('/app/api/section-lock-image/:section', async (c) => { try { const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null, { cacheControl: SECTION_LOCK_IMAGE_CACHE_CONTROL }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
 app.post('/app/api/section-locks/verify', zValidator('json', codeLockSchema), async (c) => { const body = c.req.valid('json'); try { return c.json(await verifySectionCode(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not verify code' }, 400); } });
 app.get('/admin/api/users', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await adminUsersJson(c.env)); } catch (error) { console.error('load admin users failed', error); return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalTonBalanceNano: 0 }, error: 'Database is not ready. Run migrations.' }, 500); } });
