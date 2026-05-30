@@ -1,12 +1,13 @@
 export const PLAY_ZONE_STYLES = `
 .app{padding-top:calc(40px + env(safe-area-inset-top))!important}
-.content{height:calc(100dvh - 92px - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;overflow:hidden!important}
+.content{height:calc(100dvh - 92px - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;overflow:hidden!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+.content::-webkit-scrollbar,.play-zone-view::-webkit-scrollbar,.play-zone-stage::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 .tabs{background:rgba(255,255,255,.055)!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:999px!important;box-shadow:0 18px 46px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 0 rgba(255,255,255,.05)!important;-webkit-backdrop-filter:blur(34px) saturate(210%)!important;backdrop-filter:blur(34px) saturate(210%)!important;isolation:isolate!important;overflow:hidden!important}
 .tabs:before,.tabs:after{content:none!important;display:none!important}
 .tab{background:transparent!important;border:0!important;color:rgba(255,255,255,.62)!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .tab.active{background:rgba(255,255,255,.9)!important;color:#050505!important;box-shadow:0 8px 24px rgba(255,255,255,.14),inset 0 1px 0 rgba(255,255,255,.72)!important}
-.play-zone-view{padding:6px 0 calc(150px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important}
-.play-zone-stage{display:flex!important;flex-direction:column!important;gap:10px!important;padding:0 0 96px!important;position:relative!important;overflow:visible!important;width:100%!important;max-width:none!important}
+.play-zone-view{padding:6px 0 calc(150px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+.play-zone-stage{display:flex!important;flex-direction:column!important;gap:10px!important;padding:0 0 96px!important;position:relative!important;overflow:visible!important;width:100%!important;max-width:none!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
 .play-zone-hero{display:none!important}
 .play-zone-section-head{display:flex!important;align-items:end!important;justify-content:flex-start!important;gap:10px!important;margin:2px 0 4px!important;padding:10px 6px!important;border-radius:20px!important;background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .play-zone-section-head strong{font-size:17px!important;font-weight:920!important;letter-spacing:-.045em!important;color:#fff!important;text-shadow:0 8px 18px rgba(0,0,0,.58)!important;filter:none!important}
@@ -14,15 +15,15 @@ export const PLAY_ZONE_STYLES = `
 .play-zone-section-head span{display:none!important}
 .play-zone-featured-row,.play-zone-upcoming-row,.play-zone-triangle,.play-zone-triangle-row,.play-zone-triangle-row-3,.play-zone-triangle-row-2,.play-zone-triangle-row-1{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;gap:10px!important;padding:0!important;margin:0!important;justify-content:stretch!important;perspective:none!important;position:relative!important;z-index:2!important;width:100%!important;max-width:none!important}
 .game-card-shell{width:100%!important;max-width:none!important;display:block!important;position:relative!important;margin:0!important;padding:0!important;transform:none!important;animation:none!important;box-shadow:none!important;background:transparent!important;border:0!important}
-.game-card{width:100%!important;max-width:none!important;min-width:0!important;height:122px!important;min-height:122px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:24px!important;background:rgba(255,255,255,.035)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;display:block!important;position:relative!important;color:#fff!important;text-align:left!important;overflow:hidden!important;scroll-snap-align:start!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}
+.game-card{width:100%!important;max-width:none!important;min-width:0!important;height:132px!important;min-height:132px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:24px!important;background:rgba(255,255,255,.035)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;display:block!important;position:relative!important;color:#fff!important;text-align:left!important;overflow:hidden!important;scroll-snap-align:start!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}
 .game-card:active{transform:scale(.985)!important}
 .game-card-live{background:rgba(255,255,255,.035)!important;background-color:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:0 16px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)!important;padding:6px!important;border-radius:24px!important;overflow:hidden!important;filter:none!important}
 .game-card-live:before,.game-card-live:after,.play-zone-featured-card:before,.play-zone-featured-card:after{content:none!important;display:none!important;background:none!important;box-shadow:none!important}
 .game-card-live .game-info,.game-card-live .game-open{display:none!important}
-.game-image{position:absolute!important;inset:6px!important;width:auto!important;height:auto!important;aspect-ratio:auto!important;border-radius:20px!important;background:rgba(0,0,0,.18)!important;display:block!important;place-items:unset!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;padding:0!important;z-index:1!important}
-.game-image img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:19px!important;background:transparent!important}
-.game-card-live .game-image{position:absolute!important;inset:6px!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:20px!important;box-shadow:none!important;background:rgba(0,0,0,.18)!important;overflow:hidden!important;padding:0!important}
-.game-card-live .game-image:after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:linear-gradient(180deg,rgba(0,0,0,0) 46%,rgba(0,0,0,.32) 100%)!important;pointer-events:none!important;z-index:2!important}
+.game-image{position:absolute!important;inset:6px!important;width:auto!important;height:auto!important;aspect-ratio:auto!important;border-radius:20px!important;background:rgba(255,255,255,.025)!important;display:block!important;place-items:unset!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.13)!important;box-shadow:none!important;padding:0!important;z-index:1!important}
+.game-image img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:19px!important;background:transparent!important;image-rendering:auto!important;transform:translateZ(0)!important;backface-visibility:hidden!important}
+.game-card-live .game-image{position:absolute!important;inset:6px!important;border:1px solid rgba(255,255,255,.13)!important;border-radius:20px!important;box-shadow:none!important;background:rgba(255,255,255,.025)!important;overflow:hidden!important;padding:0!important}
+.game-card-live .game-image:after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:linear-gradient(180deg,rgba(0,0,0,0) 58%,rgba(0,0,0,.18) 100%)!important;pointer-events:none!important;z-index:2!important}
 .game-info{display:none!important}
 .game-badge{display:none!important}
 .game-info strong{font-size:15px!important;font-weight:930!important;letter-spacing:-.045em!important;line-height:1!important;color:#fff!important}
@@ -49,7 +50,7 @@ export const PLAY_ZONE_STYLES = `
   .content{height:calc(100dvh - 88px - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important}
   .play-zone-view{padding-bottom:calc(138px + env(safe-area-inset-bottom))!important}
   .play-zone-stage{gap:9px!important;padding:0 0 90px!important}
-  .game-card,.game-card-live{height:112px!important;min-height:112px!important;border-radius:22px!important;padding:6px!important}
+  .game-card,.game-card-live{height:120px!important;min-height:120px!important;border-radius:22px!important;padding:6px!important}
   .game-image,.game-card-live .game-image{inset:6px!important;border-radius:18px!important}
   .game-image img{border-radius:17px!important;object-fit:contain!important}
   .game-footer{bottom:13px!important;left:16px!important;right:16px!important}
