@@ -2,10 +2,10 @@ const cardImageVersion = Date.now();
 const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
   ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
-  ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
+  ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],
   ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
   ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
-  ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],
+  ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
 ] as const;
 
 function playersOnline(id: string): number {
