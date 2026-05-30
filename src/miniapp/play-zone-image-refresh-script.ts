@@ -4,11 +4,12 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(ads).concat(legacyAds);
-  var KEY='vexaPlayZoneImageUrls:v12';
-  var OLD_KEYS=['vexaPlayZoneImageUrls:v11','vexaPlayZoneImageUrls:v10','vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
+  var KEY='vexaPlayZoneImageUrls:v13';
+  var OLD_KEYS=['vexaPlayZoneImageUrls:v12','vexaPlayZoneImageUrls:v11','vexaPlayZoneImageUrls:v10','vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
   var countersStarted=false;
   var refreshInFlight=null;
+  var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   function dropOldCaches(){try{OLD_KEYS.forEach(function(k){localStorage.removeItem(k)});Object.keys(localStorage).forEach(function(k){if(k.indexOf('vexaPlayZoneImageUrlsUpdatedAt')===0)localStorage.removeItem(k)})}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map||{}))}catch(e){}}
@@ -22,8 +23,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     var raw=allowed(url)?url:(img.getAttribute('data-section-image-src')||'');
     if(!raw)return;
     var next=stable(raw);
-    img.onerror=function(){this.onerror=null;this.style.display=''};
+    img.onerror=function(){this.onerror=null;this.src=this.dataset.fallbackSrc||next||this.src;this.style.display=''};
     if(next&&img.getAttribute('src')!==next)img.src=next;
+    img.setAttribute('data-section-image-src',next);
     img.setAttribute('data-fallback-src',next);
     img.classList.remove('is-empty');
     img.style.display='';
@@ -32,7 +34,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   }
   function findGameImg(id){return document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img')}
   function apply(map){
-    games.forEach(function(id){var img=findGameImg(id);if(img&&!img.getAttribute('data-section-image-src'))img.setAttribute('data-section-image-src',baseGameUrl(id));setImage(img,map[id]||baseGameUrl(id))});
+    games.forEach(function(id){var img=findGameImg(id);var url=map[id]||baseGameUrl(id);if(img&&(img.getAttribute('src')===EMPTY||img.getAttribute('src')!==url))setImage(img,url)});
     ads.concat(legacyAds).forEach(function(id){setImage(document.querySelector('#playzone [data-play-zone-ad="'+id+'"]'),map[id])});
   }
   function mapFromSectionLocks(cached){
@@ -60,8 +62,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function tickCounters(){document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){animateNumber(el,nextCount(el.textContent))})}
   function startCounters(){if(countersStarted)return;countersStarted=true;setInterval(tickCounters,3000)}
   dropOldCaches();refresh(false);
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"]');if(b)setTimeout(function(){refresh(false)},160)},true);
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-game-view]');if(b)setTimeout(function(){refresh(false)},160)},true);
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"]');if(b)setTimeout(function(){refresh(false)},80)},true);
   window.VexaRefreshPlayZoneImages=function(){return refresh(false)};
 })();
 `;
