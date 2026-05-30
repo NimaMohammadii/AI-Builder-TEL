@@ -9,12 +9,16 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     var originalShow=back.show&&back.show.bind(back);
     var backTarget='';
     var backSections=['predictzone','crash','plinko','mines','topplayers','wheel','dice','rps'];
+    function isDailyRewardsOpen(){
+      var page=document.getElementById('dailyRewardsPage');
+      return document.body.classList.contains('daily-rewards-open')||!!(page&&page.classList.contains('open'));
+    }
     function activeBackSection(){
       for(var i=0;i<backSections.length;i++){
         var node=document.getElementById(backSections[i]);
         if(node&&node.classList.contains('active'))return backSections[i];
       }
-      if(document.body.classList.contains('rewards-open')||document.getElementById('rewardsPage'))return 'rewards';
+      if(isDailyRewardsOpen()||document.body.classList.contains('rewards-open')||document.getElementById('rewardsPage'))return 'rewards';
       return '';
     }
     function targetFor(section){
@@ -40,6 +44,9 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
         if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');}
       }
       if(section==='rewards'){
+        document.body.classList.remove('daily-rewards-open');
+        var daily=document.getElementById('dailyRewardsPage');
+        if(daily){daily.classList.remove('open');daily.setAttribute('aria-hidden','true');}
         document.body.classList.remove('rewards-open');
         var rewards=document.getElementById('rewardsPage');
         if(rewards&&rewards.parentNode)try{rewards.parentNode.removeChild(rewards)}catch(e){}
