@@ -50,6 +50,7 @@ import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { TOP_PLAYERS_HOME_CARD_SCRIPT } from './top-players-home-card-script';
 import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
+import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { MARKET_CONFIG_SCRIPT } from './market-config-script';
 import { PLINKO_SCRIPT } from './plinko-script';
 import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
@@ -179,6 +180,7 @@ const SCRIPTS = [
   HOME_IMAGE_VERSION_SCRIPT,
   TOP_PLAYERS_HOME_CARD_SCRIPT,
   PLAY_ZONE_IMAGE_REFRESH_SCRIPT,
+  PLAY_ZONE_STACK_SCROLL_SCRIPT,
   MARKET_CONFIG_SCRIPT,
   PLINKO_SCRIPT,
   PLINKO_PERFORMANCE_SCRIPT,
