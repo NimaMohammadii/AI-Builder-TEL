@@ -15,7 +15,7 @@ type HandlerContext = {
 };
 
 const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
-const IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
+const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const FALLBACK_CACHE_CONTROL = 'public, max-age=300';
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 
