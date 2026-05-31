@@ -6,6 +6,8 @@ export type Env = {
   TELEGRAM_BOT_TOKEN: string;
   AI_BOT_TOKEN?: string;
   GAME_BOT_TOKEN?: string;
+  GAME_BOT_USERNAME?: string;
+  TELEGRAM_MINI_APP_SHORT_NAME?: string;
   OPENAI_API_KEY: string;
   XAI_API_KEY?: string;
   TON_GIFT_MARKET_URL?: string;
