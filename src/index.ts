@@ -81,6 +81,11 @@ type MinesFriendRoomRow = {
   board_size: number;
   round_index: number;
   finished_reason: string | null;
+  host_ready: number | null;
+  guest_ready: number | null;
+  host_has_points: number | null;
+  guest_has_points: number | null;
+  amount_nano: number | null;
   created_at: string;
   updated_at: string;
   expires_at: string;
@@ -93,7 +98,8 @@ const productSchema = z.object({ title: z.string().min(1).max(120), description:
 const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
 const rpsFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable() });
 const rpsFriendChoiceSchema = rpsFriendUserSchema.extend({ choice: z.enum(['rock', 'paper', 'scissors']) });
-const minesFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable() });
+const minesFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable(), amountNano: z.number().int().positive().optional(), mineCount: z.number().int().min(1).max(20).optional() });
+const minesFriendReadySchema = minesFriendUserSchema.extend({ hasPoints: z.boolean(), amountNano: z.number().int().positive() });
 const minesFriendRevealSchema = minesFriendUserSchema.extend({ cell: z.number().int().min(0).max(24) });
 
 app.get('/', (c) => c.redirect('/app'));
@@ -292,11 +298,13 @@ app.post('/app/api/mines/friend/rooms', zValidator('json', minesFriendUserSchema
   const allowed = await safeRateLimit(c.env, `mines-room:${userId}`, 20, 3600);
   if (!allowed) return c.json({ error: 'Too many friend rooms. Try again later.' }, 429);
   const roomId = id('mines');
-  const hidden = makeMinesHiddenCells(25, 3);
+  const mineCount = Math.max(1, Math.min(20, Math.floor(Number(body.mineCount) || 3)));
+  const amountNano = Math.max(1, Math.floor(Number(body.amountNano) || 10_000_000));
+  const hidden = makeMinesHiddenCells(25, mineCount);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   try {
-    await c.env.DB.prepare("INSERT INTO mines_friend_rooms (id, host_user_id, host_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, expires_at) VALUES (?, ?, ?, 'waiting', ?, ?, '[]', 3, 25, ?)")
-      .bind(roomId, userId, name, userId, JSON.stringify(hidden), expiresAt)
+    await c.env.DB.prepare("INSERT INTO mines_friend_rooms (id, host_user_id, host_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, amount_nano, expires_at) VALUES (?, ?, ?, 'waiting', ?, ?, '[]', ?, 25, ?, ?)")
+      .bind(roomId, userId, name, userId, JSON.stringify(hidden), mineCount, amountNano, expiresAt)
       .run();
     return c.json(await minesFriendState(c.env, roomId, userId));
   } catch (error) {
@@ -360,6 +368,37 @@ app.get('/app/api/mines/friend/rooms/:roomId', async (c) => {
     return c.json(await minesFriendState(c.env, roomId, userId));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load room' }, error instanceof Error && error.message === 'Room not found' ? 404 : 400);
+  }
+});
+
+app.post('/app/api/mines/friend/rooms/:roomId/ready', zValidator('json', minesFriendReadySchema), async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  const name = cleanFriendName(body.name, 'Player');
+  const amountNano = Math.max(1, Math.floor(Number(body.amountNano) || 0));
+  try {
+    const room = await getMinesFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isMinesRoomExpired(room)) {
+      await expireMinesRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    const role = minesRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    if (role === 'host') {
+      await c.env.DB.prepare('UPDATE mines_friend_rooms SET host_name = ?, host_ready = 1, host_has_points = ?, amount_nano = COALESCE(amount_nano, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind(name, body.hasPoints ? 1 : 0, amountNano, roomId)
+        .run();
+    } else {
+      await c.env.DB.prepare('UPDATE mines_friend_rooms SET guest_name = ?, guest_ready = 1, guest_has_points = ?, amount_nano = COALESCE(amount_nano, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind(name, body.hasPoints ? 1 : 0, amountNano, roomId)
+        .run();
+    }
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('save mines friend ready failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save ready state' }, 400);
   }
 });
 
@@ -916,7 +955,7 @@ function formatTon(value: unknown): string {
 
 
 async function getMinesFriendRoom(env: Env, roomId: string): Promise<MinesFriendRoomRow | null> {
-  return env.DB.prepare('SELECT id, host_user_id, host_name, guest_user_id, guest_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, round_index, finished_reason, created_at, updated_at, expires_at FROM mines_friend_rooms WHERE id = ?')
+  return env.DB.prepare('SELECT id, host_user_id, host_name, guest_user_id, guest_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, round_index, finished_reason, host_ready, guest_ready, host_has_points, guest_has_points, amount_nano, created_at, updated_at, expires_at FROM mines_friend_rooms WHERE id = ?')
     .bind(roomId)
     .first<MinesFriendRoomRow>();
 }
@@ -933,8 +972,22 @@ async function minesFriendState(env: Env, roomId: string, userId: string) {
   const revealed = parseRevealedCells(room.revealed_cells_json);
   const finished = room.status === 'finished' || room.status === 'expired';
   const currentTurnRole = room.current_turn_user_id === room.host_user_id ? 'host' : room.current_turn_user_id === room.guest_user_id ? 'guest' : null;
+  const hostReady = Boolean(room.host_ready);
+  const guestReady = Boolean(room.guest_ready);
+  const hostHasPoints = hostReady ? Boolean(room.host_has_points) : null;
+  const guestHasPoints = guestReady ? Boolean(room.guest_has_points) : null;
+  const youReady = role === 'host' ? hostReady : role === 'guest' ? guestReady : false;
+  const friendReady = role === 'host' ? guestReady : role === 'guest' ? hostReady : false;
+  const youHavePoints = role === 'host' ? hostHasPoints : role === 'guest' ? guestHasPoints : null;
+  const friendHasPoints = role === 'host' ? guestHasPoints : role === 'guest' ? hostHasPoints : null;
+  const amountNano = Math.max(1, Math.floor(Number(room.amount_nano) || 10_000_000));
   return {
     ok: true,
+    youReady,
+    friendReady,
+    youHavePoints,
+    friendHasPoints,
+    amountNano,
     room: {
       id: room.id,
       status: room.status,
@@ -945,6 +998,7 @@ async function minesFriendState(env: Env, roomId: string, userId: string) {
       isYourTurn: Boolean(userId && room.current_turn_user_id === userId && room.status === 'active'),
       boardSize: Number(room.board_size || 25),
       mineCount: Number(room.mine_count || hidden.length || 3),
+      amountNano,
       roundIndex: Number(room.round_index || 1),
       finishedReason: room.finished_reason,
       createdAt: room.created_at,
