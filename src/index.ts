@@ -175,6 +175,29 @@ app.post('/app/api/rps/friend/rooms', zValidator('json', rpsFriendUserSchema), a
   }
 });
 
+
+app.post('/app/api/rps/friend/rooms/:roomId/share', zValidator('json', rpsFriendUserSchema), async (c) => {
+  const roomId = cleanRpsRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanRpsUserId(body.userId);
+  const name = cleanRpsName(body.name, 'Player');
+  try {
+    const room = await getRpsFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isRpsRoomExpired(room)) {
+      await expireRpsRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    const role = rpsRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    const invite = await createRpsPreparedInvite(c.env, roomId, userId, name);
+    return c.json({ ok: true, ...invite });
+  } catch (error) {
+    console.error('prepare rps friend invite failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not prepare invite' }, 400);
+  }
+});
+
 app.post('/app/api/rps/friend/rooms/:roomId/join', zValidator('json', rpsFriendUserSchema), async (c) => {
   const roomId = cleanRpsRoomId(c.req.param('roomId'));
   const body = c.req.valid('json');
@@ -820,6 +843,67 @@ async function resolveRpsFriendRound(env: Env, roomId: string, hostUserId: strin
     env.DB.prepare("UPDATE rps_friend_rounds SET status = 'resolved', winner_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'open' AND host_choice IS NOT NULL AND guest_choice IS NOT NULL").bind(winnerUserId, round.id),
     env.DB.prepare("UPDATE rps_friend_rooms SET status = 'finished', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(roomId),
   ]);
+}
+
+
+function rpsStartParam(roomId: string): string {
+  return `rpsroom_${cleanRpsRoomId(roomId)}`;
+}
+
+async function rpsMiniAppInviteUrl(env: Env, roomId: string): Promise<string> {
+  const username = await getGameBotUsername(env);
+  const shortName = String(env.TELEGRAM_MINI_APP_SHORT_NAME || '').replace(/[^0-9A-Za-z_]/g, '').trim();
+  const appPath = shortName ? `/${shortName}` : '';
+  return `https://t.me/${username}${appPath}?startapp=${encodeURIComponent(rpsStartParam(roomId))}`;
+}
+
+async function createRpsPreparedInvite(env: Env, roomId: string, userId: string, name: string): Promise<{ preparedMessageId: string; inviteUrl: string; fallbackText: string }> {
+  const token = gameBotToken(env);
+  const numericUserId = Number(userId);
+  if (!token || !Number.isSafeInteger(numericUserId) || numericUserId <= 0) throw new Error('Telegram share is available only inside Telegram.');
+  const inviteUrl = await rpsMiniAppInviteUrl(env, roomId);
+  const displayName = name || 'A friend';
+  const fallbackText = `🎮 ${displayName} challenged you to Rock Paper Scissors!
+
+✊✋✌️ Tap the button and join the duel.`;
+  const response = await telegramApiWithToken<{ ok: boolean; result?: { id?: string }; description?: string }>(token, 'savePreparedInlineMessage', {
+    user_id: numericUserId,
+    result: {
+      type: 'article',
+      id: `rps_invite_${roomId}`.slice(0, 64),
+      title: 'Rock Paper Scissors Duel',
+      description: 'Invite a friend to join your RPS room in Vexa.',
+      input_message_content: {
+        message_text: fallbackText,
+        disable_web_page_preview: true,
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: '🎮 Enter RPS Room', url: inviteUrl }]],
+      },
+    },
+    allow_user_chats: true,
+    allow_bot_chats: false,
+    allow_group_chats: true,
+    allow_channel_chats: false,
+  });
+  if (!response.ok || !response.result?.id) throw new Error(response.description || 'Telegram could not prepare invite');
+  return { preparedMessageId: response.result.id, inviteUrl, fallbackText };
+}
+
+async function getGameBotUsername(env: Env): Promise<string> {
+  const configured = String(env.GAME_BOT_USERNAME || '').replace(/^@/, '').replace(/[^0-9A-Za-z_]/g, '').trim();
+  if (configured) return configured;
+  const token = gameBotToken(env);
+  if (!token) throw new Error('Telegram bot token is not configured');
+  const tokenId = String(token).split(':')[0].replace(/[^0-9A-Za-z_-]/g, '') || 'default';
+  const cacheKey = `telegram:game-bot-username:${tokenId}`;
+  const cached = await env.BOT_CACHE.get(cacheKey).catch(() => null);
+  if (cached) return cached;
+  const response = await telegramApiWithToken<{ ok: boolean; result?: { username?: string }; description?: string }>(token, 'getMe', {});
+  const username = String(response.result?.username || '').replace(/^@/, '').replace(/[^0-9A-Za-z_]/g, '').trim();
+  if (!response.ok || !username) throw new Error(response.description || 'Telegram bot username is not available');
+  await env.BOT_CACHE.put(cacheKey, username, { expirationTtl: 86400 }).catch(() => undefined);
+  return username;
 }
 
 function rpsChoiceBeats(a: RpsChoice, b: RpsChoice): boolean {
