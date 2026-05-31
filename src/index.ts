@@ -43,11 +43,37 @@ type WheelEntryRow = {
   created_at: string;
 };
 
+type RpsChoice = 'rock' | 'paper' | 'scissors';
+type RpsFriendRoomRow = {
+  id: string;
+  host_user_id: string;
+  host_name: string | null;
+  guest_user_id: string | null;
+  guest_name: string | null;
+  status: 'waiting' | 'active' | 'finished' | 'expired';
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+};
+type RpsFriendRoundRow = {
+  id: string;
+  room_id: string;
+  round_index: number;
+  host_choice: RpsChoice | null;
+  guest_choice: RpsChoice | null;
+  winner_user_id: string | null;
+  status: 'open' | 'draw' | 'resolved';
+  created_at: string;
+  resolved_at: string | null;
+};
+
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
 const statusSchema = z.object({ status: z.enum(['active', 'paused']) });
 const productSchema = z.object({ title: z.string().min(1).max(120), description: z.string().max(1000).default(''), priceAmount: z.number().int().nonnegative().default(0), currency: z.string().min(3).max(8).default('USD'), deliveryText: z.string().max(4000).default(''), metadata: z.record(z.unknown()).default({}) });
 const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
+const rpsFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable() });
+const rpsFriendChoiceSchema = rpsFriendUserSchema.extend({ choice: z.enum(['rock', 'paper', 'scissors']) });
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
@@ -126,6 +152,92 @@ app.post('/admin/api/upload-home-intro-image', async (c) => {
 app.post('/app/api/ai/chat', zValidator('json', chatSchema), async (c) => {
   const body = c.req.valid('json');
   return c.json({ reply: await plainAiReply(c.env, body.instruction) });
+});
+
+app.post('/app/api/rps/friend/rooms', zValidator('json', rpsFriendUserSchema), async (c) => {
+  const body = c.req.valid('json');
+  const userId = cleanRpsUserId(body.userId);
+  const name = cleanRpsName(body.name, 'Host');
+  const allowed = await safeRateLimit(c.env, `rps-room:${userId}`, 20, 3600);
+  if (!allowed) return c.json({ error: 'Too many RPS rooms. Try again later.' }, 429);
+  const roomId = id('rps');
+  const roundId = id('rps_round');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  try {
+    await c.env.DB.batch([
+      c.env.DB.prepare('INSERT INTO rps_friend_rooms (id, host_user_id, host_name, status, expires_at) VALUES (?, ?, ?, ?, ?)').bind(roomId, userId, name, 'waiting', expiresAt),
+      c.env.DB.prepare('INSERT INTO rps_friend_rounds (id, room_id, round_index) VALUES (?, ?, 1)').bind(roundId, roomId),
+    ]);
+    return c.json(await rpsFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('create rps friend room failed', error);
+    return c.json({ error: 'RPS friend rooms are not ready. Run the D1 migration.' }, 500);
+  }
+});
+
+app.post('/app/api/rps/friend/rooms/:roomId/join', zValidator('json', rpsFriendUserSchema), async (c) => {
+  const roomId = cleanRpsRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanRpsUserId(body.userId);
+  const name = cleanRpsName(body.name, 'Friend');
+  try {
+    const room = await getRpsFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isRpsRoomExpired(room)) {
+      await expireRpsRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    if (room.host_user_id === userId) return c.json(await rpsFriendState(c.env, roomId, userId));
+    if (room.guest_user_id && room.guest_user_id !== userId) return c.json({ error: 'Room already has two players' }, 409);
+    if (!room.guest_user_id) {
+      await c.env.DB.prepare("UPDATE rps_friend_rooms SET guest_user_id = ?, guest_name = ?, status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND guest_user_id IS NULL")
+        .bind(userId, name, roomId)
+        .run();
+    }
+    return c.json(await rpsFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('join rps friend room failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not join room' }, 400);
+  }
+});
+
+app.get('/app/api/rps/friend/rooms/:roomId', async (c) => {
+  const roomId = cleanRpsRoomId(c.req.param('roomId'));
+  const userId = cleanRpsUserId(c.req.query('userId') || '');
+  try {
+    return c.json(await rpsFriendState(c.env, roomId, userId));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load room' }, error instanceof Error && error.message === 'Room not found' ? 404 : 400);
+  }
+});
+
+app.post('/app/api/rps/friend/rooms/:roomId/choice', zValidator('json', rpsFriendChoiceSchema), async (c) => {
+  const roomId = cleanRpsRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanRpsUserId(body.userId);
+  const choice = body.choice;
+  try {
+    const room = await getRpsFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isRpsRoomExpired(room)) {
+      await expireRpsRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    if (room.status === 'finished') return c.json({ error: 'Room is finished' }, 409);
+    if (!room.guest_user_id) return c.json({ error: 'Waiting for friend' }, 409);
+    const role = rpsRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    const column = role === 'host' ? 'host_choice' : 'guest_choice';
+    const result = await c.env.DB.prepare(`UPDATE rps_friend_rounds SET ${column} = ? WHERE id = (SELECT id FROM rps_friend_rounds WHERE room_id = ? AND status = 'open' ORDER BY round_index DESC LIMIT 1) AND ${column} IS NULL`)
+      .bind(choice, roomId)
+      .run();
+    if ((result.meta?.changes ?? 0) === 0) return c.json(await rpsFriendState(c.env, roomId, userId));
+    await resolveRpsFriendRound(c.env, roomId, room.host_user_id, room.guest_user_id);
+    return c.json(await rpsFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('save rps friend choice failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save choice' }, 400);
+  }
 });
 
 app.post('/app/api/stars/deposits', async (c) => {
@@ -609,6 +721,140 @@ function cleanWheelAmount(value: unknown): number {
 
 function formatTon(value: unknown): string {
   return (Math.max(0, Math.floor(Number(value) || 0)) / 1_000_000_000).toFixed(4).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+}
+
+
+async function getRpsFriendRoom(env: Env, roomId: string): Promise<RpsFriendRoomRow | null> {
+  return env.DB.prepare('SELECT id, host_user_id, host_name, guest_user_id, guest_name, status, created_at, updated_at, expires_at FROM rps_friend_rooms WHERE id = ?')
+    .bind(roomId)
+    .first<RpsFriendRoomRow>();
+}
+
+async function getLatestRpsFriendRound(env: Env, roomId: string): Promise<RpsFriendRoundRow | null> {
+  return env.DB.prepare('SELECT id, room_id, round_index, host_choice, guest_choice, winner_user_id, status, created_at, resolved_at FROM rps_friend_rounds WHERE room_id = ? ORDER BY round_index DESC LIMIT 1')
+    .bind(roomId)
+    .first<RpsFriendRoundRow>();
+}
+
+async function getLatestResolvedRpsFriendRound(env: Env, roomId: string): Promise<RpsFriendRoundRow | null> {
+  return env.DB.prepare("SELECT id, room_id, round_index, host_choice, guest_choice, winner_user_id, status, created_at, resolved_at FROM rps_friend_rounds WHERE room_id = ? AND status != 'open' ORDER BY round_index DESC LIMIT 1")
+    .bind(roomId)
+    .first<RpsFriendRoundRow>();
+}
+
+async function rpsFriendState(env: Env, roomId: string, userId: string) {
+  const room = await getRpsFriendRoom(env, roomId);
+  if (!room) throw new Error('Room not found');
+  if (isRpsRoomExpired(room) && room.status !== 'finished' && room.status !== 'expired') {
+    await expireRpsRoom(env, roomId);
+    room.status = 'expired';
+  }
+  const round = await getLatestRpsFriendRound(env, roomId);
+  const latestResolvedRound = await getLatestResolvedRpsFriendRound(env, roomId);
+  const role = rpsRole(room, userId);
+  const resolved = round?.status === 'resolved' || round?.status === 'draw';
+  const yourChoice = role === 'host' ? round?.host_choice ?? null : role === 'guest' ? round?.guest_choice ?? null : null;
+  const opponentChoice = resolved ? (role === 'host' ? round?.guest_choice ?? null : role === 'guest' ? round?.host_choice ?? null : null) : null;
+  const winnerRole = round?.winner_user_id ? (round.winner_user_id === room.host_user_id ? 'host' : round.winner_user_id === room.guest_user_id ? 'guest' : null) : null;
+  return {
+    ok: true,
+    room: {
+      id: room.id,
+      status: room.status,
+      hostName: room.host_name || 'Host',
+      guestName: room.guest_name || null,
+      hasGuest: Boolean(room.guest_user_id),
+      createdAt: room.created_at,
+      updatedAt: room.updated_at,
+      expiresAt: room.expires_at,
+    },
+    player: { role },
+    round: round ? {
+      id: round.id,
+      roundIndex: Number(round.round_index || 1),
+      status: round.status,
+      yourChoice,
+      opponentChoice,
+      hostChoice: resolved ? round.host_choice : null,
+      guestChoice: resolved ? round.guest_choice : null,
+      hostPicked: Boolean(round.host_choice),
+      guestPicked: Boolean(round.guest_choice),
+      winnerUserId: round.winner_user_id,
+      winnerRole,
+      isDraw: round.status === 'draw',
+      createdAt: round.created_at,
+      resolvedAt: round.resolved_at,
+    } : null,
+    lastResult: latestResolvedRound ? {
+      id: latestResolvedRound.id,
+      roundIndex: Number(latestResolvedRound.round_index || 1),
+      status: latestResolvedRound.status,
+      winnerUserId: latestResolvedRound.winner_user_id,
+      winnerRole: latestResolvedRound.winner_user_id === room.host_user_id ? 'host' : latestResolvedRound.winner_user_id === room.guest_user_id ? 'guest' : null,
+      isDraw: latestResolvedRound.status === 'draw',
+      resolvedAt: latestResolvedRound.resolved_at,
+    } : null,
+  };
+}
+
+async function resolveRpsFriendRound(env: Env, roomId: string, hostUserId: string, guestUserId: string): Promise<void> {
+  const round = await getLatestRpsFriendRound(env, roomId);
+  if (!round || round.status !== 'open' || !round.host_choice || !round.guest_choice) return;
+  if (round.host_choice === round.guest_choice) {
+    const result = await env.DB.prepare("UPDATE rps_friend_rounds SET status = 'draw', resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'open' AND host_choice IS NOT NULL AND guest_choice IS NOT NULL")
+      .bind(round.id)
+      .run();
+    if ((result.meta?.changes ?? 0) > 0) {
+      await env.DB.prepare('INSERT INTO rps_friend_rounds (id, room_id, round_index) VALUES (?, ?, ?)')
+        .bind(id('rps_round'), roomId, Number(round.round_index || 1) + 1)
+        .run();
+      await env.DB.prepare('UPDATE rps_friend_rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != ?')
+        .bind('active', roomId, 'finished')
+        .run();
+    }
+    return;
+  }
+  const hostWins = rpsChoiceBeats(round.host_choice, round.guest_choice);
+  const winnerUserId = hostWins ? hostUserId : guestUserId;
+  await env.DB.batch([
+    env.DB.prepare("UPDATE rps_friend_rounds SET status = 'resolved', winner_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'open' AND host_choice IS NOT NULL AND guest_choice IS NOT NULL").bind(winnerUserId, round.id),
+    env.DB.prepare("UPDATE rps_friend_rooms SET status = 'finished', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(roomId),
+  ]);
+}
+
+function rpsChoiceBeats(a: RpsChoice, b: RpsChoice): boolean {
+  return (a === 'rock' && b === 'scissors') || (a === 'paper' && b === 'rock') || (a === 'scissors' && b === 'paper');
+}
+
+function rpsRole(room: RpsFriendRoomRow, userId: string): 'host' | 'guest' | 'spectator' {
+  if (room.host_user_id === userId) return 'host';
+  if (room.guest_user_id === userId) return 'guest';
+  return 'spectator';
+}
+
+function isRpsRoomExpired(room: RpsFriendRoomRow): boolean {
+  return Date.parse(room.expires_at) <= Date.now();
+}
+
+async function expireRpsRoom(env: Env, roomId: string): Promise<void> {
+  await env.DB.prepare("UPDATE rps_friend_rooms SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'finished'").bind(roomId).run();
+}
+
+function cleanRpsRoomId(value: unknown): string {
+  const roomId = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!roomId) throw new Error('Room not found');
+  return roomId;
+}
+
+function cleanRpsUserId(value: unknown): string {
+  const userId = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!userId) throw new Error('Telegram user not found');
+  return userId;
+}
+
+function cleanRpsName(value: unknown, fallback: string): string {
+  const name = String(value || fallback || 'Player').replace(/[<>]/g, '').trim().slice(0, 80);
+  return name || fallback;
 }
 
 async function setBotWebhook(token: string, url: string): Promise<{ ok: boolean; description?: string }> {
