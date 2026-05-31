@@ -4,7 +4,11 @@ export const PLINKO_GLASS_BALL_SCRIPT = `
   function apply(){
     try{window.dispatchEvent(new CustomEvent('vexa-credit-icon-sync',{detail:{url:GLASS_BALL_URL,source:'plinko-glass-ball'}}))}catch(e){}
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(apply,80);setTimeout(apply,700)});else{setTimeout(apply,80);setTimeout(apply,700)}
-  setInterval(function(){var active=document.getElementById('plinko');if(active&&active.classList.contains('active'))apply()},3000);
+  function isActive(){var active=document.getElementById('plinko');return !!(active&&active.classList.contains('active'))}
+  function applyIfActive(){if(isActive())apply()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(apply,80);setTimeout(applyIfActive,700)});else{setTimeout(apply,80);setTimeout(applyIfActive,700)}
+  document.addEventListener('click',function(ev){var btn=ev.target&&ev.target.closest&&ev.target.closest('[data-view="plinko"],[data-game-view="plinko"]');if(btn)setTimeout(apply,80)},true);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')applyIfActive()});
+  if(window.MutationObserver){var root=document.getElementById('plinko');if(root)new MutationObserver(applyIfActive).observe(root,{attributes:true,attributeFilter:['class']})}
 })();
 `;
