@@ -7,7 +7,7 @@ export const RPS_SECTION = `
     body:has(#rps.active) .app,body:has(#rps.active) main.app,body:has(#rps.active) .content,body:has(#rps.active) .view.active,body:has(#rps.active) #rps,body:has(#rps.active) .rps-view,body:has(#rps.active) .top,body:has(#rps.active) header.top{background:#000!important;background-color:#000!important;background-image:none!important;box-shadow:none!important}
     .rps-view{min-height:100%;padding:4px 14px calc(104px + env(safe-area-inset-bottom));color:#fff;background:#000!important;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;scrollbar-width:none}
     .rps-view::-webkit-scrollbar{display:none}
-    .rps-wrap{width:100%;max-width:560px;margin:0 auto;display:grid;gap:10px}
+    .rps-wrap{width:100%;max-width:560px;margin:-10px auto 0;display:grid;gap:10px}
     .rps-title{display:none!important}
     .rps-multipliers{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;margin:2px -14px 8px;padding:2px 14px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
     .rps-multipliers::-webkit-scrollbar{display:none}
@@ -39,9 +39,10 @@ export const RPS_SECTION = `
     .rps-input-row input,.rps-input-row button{height:50px;border-radius:18px;color:#fff;font-weight:950;outline:none}
     .rps-input-row input{padding:0 14px;font-size:18px}.rps-input-row button{min-width:58px;font-size:13px}
     .rps-play{height:60px;border:0;border-radius:999px;background:linear-gradient(180deg,#2b0310,#170107);color:rgba(255,255,255,.94);font-size:18px;font-weight:950;letter-spacing:-.045em;box-shadow:0 0 0 1px rgba(95,8,30,.10),0 0 18px rgba(70,4,22,.20),0 14px 30px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.07)}
-    .rps-friend-box{display:grid;gap:9px;border-radius:22px;padding:12px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 12px 28px rgba(0,0,0,.24)}
-    .rps-friend-row{display:flex;gap:8px;align-items:center}.rps-friend-row button,.rps-friend-link{height:40px;border:0;border-radius:15px;background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-    .rps-friend-row button{padding:0 12px}.rps-friend-link{min-width:0;flex:1;padding:0 11px;outline:0;color:rgba(255,255,255,.78)}.rps-friend-status{min-height:17px;color:rgba(255,255,255,.66);font-size:12px;font-weight:850;letter-spacing:-.02em}.rps-friend-primary{width:100%;height:44px!important;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.055))!important}.rps-view.is-friend-mode .rps-multipliers{opacity:.32}.rps-view.is-friend-mode .rps-input-row,.rps-view.is-friend-mode .rps-play,.rps-view.is-friend-mode .rps-stats{opacity:.38}
+    .rps-friend-box{display:block;border-radius:0;padding:0;background:transparent!important;box-shadow:none!important}
+    .rps-friend-row,.rps-friend-status{display:none!important}
+    .rps-friend-link{position:absolute;opacity:0;pointer-events:none}
+    .rps-friend-primary{width:100%;height:52px!important;border:0;border-radius:20px;color:rgba(255,255,255,.94);font-size:17px;font-weight:850;letter-spacing:-.035em;background:linear-gradient(180deg,rgba(45,2,15,.42),rgba(18,0,7,.30))!important;box-shadow:0 0 0 1px rgba(105,13,39,.28),inset 0 1px 0 rgba(255,255,255,.10),0 14px 30px rgba(0,0,0,.28);-webkit-backdrop-filter:blur(3px) saturate(122%);backdrop-filter:blur(3px) saturate(122%)}.rps-view.is-friend-mode .rps-multipliers{opacity:.32}.rps-view.is-friend-mode .rps-input-row,.rps-view.is-friend-mode .rps-play,.rps-view.is-friend-mode .rps-stats{opacity:.38}
     .rps-play:disabled{opacity:.42}
     .rps-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rps-stat{border-radius:18px;padding:10px;text-align:center}.rps-stat small{display:block;color:rgba(255,255,255,.45);font-size:10px;font-weight:850}.rps-stat b{display:block;margin-top:4px;font-size:14px}.rps-won-amount{color:rgba(58,164,82,.96)!important;text-shadow:0 0 12px rgba(13,80,32,.28)}
     .rps-hand-drop{animation:rpsHandDrop .92s cubic-bezier(.16,.86,.2,1) both}@keyframes rpsHandDrop{0%{opacity:0;transform:translateY(-74px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-start))) scale(.88)}74%{opacity:1;transform:translateY(4px) rotate(calc(var(--rps-hand-angle) + var(--rps-hand-drop-overshoot))) scale(1.02)}100%{opacity:1;transform:translateY(0) rotate(var(--rps-hand-angle)) scale(1)}}
@@ -71,8 +72,10 @@ export const RPS_SECTION = `
       <div class="rps-stats"><div class="rps-stat"><small>WINS</small><b data-rps-wins>0</b></div><div class="rps-stat"><small>WON</small><b class="rps-won-amount" data-rps-streak>0.00</b></div><div class="rps-stat"><small>BET</small><b data-rps-bet-label>0.1</b></div></div>
       <div class="rps-friend-box" data-rps-friend-box>
         <button class="rps-friend-primary" type="button" data-rps-friend-start>Play with Friend</button>
-        <div class="rps-friend-row"><input class="rps-friend-link" data-rps-friend-link readonly placeholder="Invite link appears here"/><button type="button" data-rps-friend-share>Share</button><button type="button" data-rps-friend-leave>Solo</button></div>
-        <div class="rps-friend-status" data-rps-friend-status>Solo with Bot/Rival is active.</div>
+        <input class="rps-friend-link" data-rps-friend-link readonly aria-hidden="true" tabindex="-1"/>
+        <button class="rps-friend-row" type="button" data-rps-friend-share aria-hidden="true" tabindex="-1">Share</button>
+        <button class="rps-friend-row" type="button" data-rps-friend-leave aria-hidden="true" tabindex="-1">Solo</button>
+        <div class="rps-friend-status" data-rps-friend-status aria-hidden="true"></div>
       </div>
     </div>
   </div>
