@@ -67,6 +67,25 @@ type RpsFriendRoundRow = {
   resolved_at: string | null;
 };
 
+type MinesFriendRoomRow = {
+  id: string;
+  host_user_id: string;
+  host_name: string | null;
+  guest_user_id: string | null;
+  guest_name: string | null;
+  status: 'waiting' | 'active' | 'finished' | 'expired';
+  current_turn_user_id: string | null;
+  hidden_cells_json: string;
+  revealed_cells_json: string;
+  mine_count: number;
+  board_size: number;
+  round_index: number;
+  finished_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+};
+
 const createBotSchema = z.object({ ownerTelegramId: z.string().min(1), telegramToken: z.string().min(30).max(128), prompt: z.string().min(10).max(6000) });
 const chatSchema = z.object({ instruction: z.string().min(2).max(4000) });
 const statusSchema = z.object({ status: z.enum(['active', 'paused']) });
@@ -74,6 +93,8 @@ const productSchema = z.object({ title: z.string().min(1).max(120), description:
 const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
 const rpsFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable() });
 const rpsFriendChoiceSchema = rpsFriendUserSchema.extend({ choice: z.enum(['rock', 'paper', 'scissors']) });
+const minesFriendUserSchema = z.object({ userId: z.string().min(1).max(80), name: z.string().max(80).optional().nullable() });
+const minesFriendRevealSchema = minesFriendUserSchema.extend({ cell: z.number().int().min(0).max(24) });
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
@@ -260,6 +281,152 @@ app.post('/app/api/rps/friend/rooms/:roomId/choice', zValidator('json', rpsFrien
   } catch (error) {
     console.error('save rps friend choice failed', error);
     return c.json({ error: error instanceof Error ? error.message : 'Could not save choice' }, 400);
+  }
+});
+
+
+app.post('/app/api/mines/friend/rooms', zValidator('json', minesFriendUserSchema), async (c) => {
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  const name = cleanFriendName(body.name, 'Host');
+  const allowed = await safeRateLimit(c.env, `mines-room:${userId}`, 20, 3600);
+  if (!allowed) return c.json({ error: 'Too many friend rooms. Try again later.' }, 429);
+  const roomId = id('mines');
+  const hidden = makeMinesHiddenCells(25, 3);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  try {
+    await c.env.DB.prepare("INSERT INTO mines_friend_rooms (id, host_user_id, host_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, expires_at) VALUES (?, ?, ?, 'waiting', ?, ?, '[]', 3, 25, ?)")
+      .bind(roomId, userId, name, userId, JSON.stringify(hidden), expiresAt)
+      .run();
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('create mines friend room failed', error);
+    return c.json({ error: 'Mines friend rooms are not ready. Run the D1 migration.' }, 500);
+  }
+});
+
+app.post('/app/api/mines/friend/rooms/:roomId/share', zValidator('json', minesFriendUserSchema), async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  const name = cleanFriendName(body.name, 'Player');
+  try {
+    const room = await getMinesFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isMinesRoomExpired(room)) {
+      await expireMinesRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    const role = minesRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    const invite = await createMinesPreparedInvite(c.env, roomId, userId, name);
+    return c.json({ ok: true, ...invite });
+  } catch (error) {
+    console.error('prepare mines friend invite failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not prepare invite' }, 400);
+  }
+});
+
+app.post('/app/api/mines/friend/rooms/:roomId/join', zValidator('json', minesFriendUserSchema), async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  const name = cleanFriendName(body.name, 'Friend');
+  try {
+    const room = await getMinesFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isMinesRoomExpired(room)) {
+      await expireMinesRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    if (room.host_user_id === userId) return c.json(await minesFriendState(c.env, roomId, userId));
+    if (room.guest_user_id && room.guest_user_id !== userId) return c.json({ error: 'Room already has two players' }, 409);
+    if (!room.guest_user_id) {
+      await c.env.DB.prepare("UPDATE mines_friend_rooms SET guest_user_id = ?, guest_name = ?, status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND guest_user_id IS NULL")
+        .bind(userId, name, roomId)
+        .run();
+    }
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('join mines friend room failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not join room' }, 400);
+  }
+});
+
+app.get('/app/api/mines/friend/rooms/:roomId', async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const userId = cleanFriendUserId(c.req.query('userId') || '');
+  try {
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load room' }, error instanceof Error && error.message === 'Room not found' ? 404 : 400);
+  }
+});
+
+app.post('/app/api/mines/friend/rooms/:roomId/start', zValidator('json', minesFriendUserSchema), async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  try {
+    const room = await getMinesFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isMinesRoomExpired(room)) {
+      await expireMinesRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    const role = minesRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    if (!room.guest_user_id) return c.json({ error: 'Waiting for friend' }, 409);
+    if (room.status === 'finished') {
+      const hidden = makeMinesHiddenCells(25, Number(room.mine_count || 3));
+      await c.env.DB.prepare("UPDATE mines_friend_rooms SET status = 'active', current_turn_user_id = host_user_id, hidden_cells_json = ?, revealed_cells_json = '[]', finished_reason = NULL, round_index = round_index + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(JSON.stringify(hidden), roomId)
+        .run();
+    } else if (room.status === 'waiting') {
+      await c.env.DB.prepare("UPDATE mines_friend_rooms SET status = 'active', current_turn_user_id = host_user_id, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(roomId)
+        .run();
+    }
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('start mines friend round failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not start round' }, 400);
+  }
+});
+
+app.post('/app/api/mines/friend/rooms/:roomId/reveal', zValidator('json', minesFriendRevealSchema), async (c) => {
+  const roomId = cleanFriendRoomId(c.req.param('roomId'));
+  const body = c.req.valid('json');
+  const userId = cleanFriendUserId(body.userId);
+  const cell = body.cell;
+  try {
+    const room = await getMinesFriendRoom(c.env, roomId);
+    if (!room) return c.json({ error: 'Room not found' }, 404);
+    if (isMinesRoomExpired(room)) {
+      await expireMinesRoom(c.env, roomId);
+      return c.json({ error: 'Room expired' }, 410);
+    }
+    const role = minesRole(room, userId);
+    if (role !== 'host' && role !== 'guest') return c.json({ error: 'You are not in this room' }, 403);
+    if (!room.guest_user_id) return c.json({ error: 'Waiting for friend' }, 409);
+    if (room.status !== 'active') return c.json({ error: 'Round is not active' }, 409);
+    if (room.current_turn_user_id !== userId) return c.json({ error: 'Friend turn' }, 409);
+    const hidden = parseNumberList(room.hidden_cells_json);
+    const revealed = parseRevealedCells(room.revealed_cells_json);
+    if (revealed.some((item) => item.cell === cell)) return c.json(await minesFriendState(c.env, roomId, userId));
+    const isHidden = hidden.includes(cell);
+    revealed.push({ cell, byUserId: userId, result: isHidden ? 'hidden' : 'safe' });
+    const safeRevealed = revealed.filter((item) => item.result === 'safe').length;
+    const safeTotal = Number(room.board_size || 25) - Number(room.mine_count || hidden.length || 3);
+    const finished = isHidden || safeRevealed >= safeTotal;
+    const nextTurn = finished ? null : (userId === room.host_user_id ? room.guest_user_id : room.host_user_id);
+    await c.env.DB.prepare("UPDATE mines_friend_rooms SET status = ?, current_turn_user_id = ?, revealed_cells_json = ?, finished_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'")
+      .bind(finished ? 'finished' : 'active', nextTurn, JSON.stringify(revealed), finished ? (isHidden ? 'hidden' : 'cleared') : null, roomId)
+      .run();
+    return c.json(await minesFriendState(c.env, roomId, userId));
+  } catch (error) {
+    console.error('reveal mines friend tile failed', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not select tile' }, 400);
   }
 });
 
@@ -746,6 +913,152 @@ function formatTon(value: unknown): string {
   return (Math.max(0, Math.floor(Number(value) || 0)) / 1_000_000_000).toFixed(4).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
 }
 
+
+
+async function getMinesFriendRoom(env: Env, roomId: string): Promise<MinesFriendRoomRow | null> {
+  return env.DB.prepare('SELECT id, host_user_id, host_name, guest_user_id, guest_name, status, current_turn_user_id, hidden_cells_json, revealed_cells_json, mine_count, board_size, round_index, finished_reason, created_at, updated_at, expires_at FROM mines_friend_rooms WHERE id = ?')
+    .bind(roomId)
+    .first<MinesFriendRoomRow>();
+}
+
+async function minesFriendState(env: Env, roomId: string, userId: string) {
+  const room = await getMinesFriendRoom(env, roomId);
+  if (!room) throw new Error('Room not found');
+  if (isMinesRoomExpired(room) && room.status !== 'finished' && room.status !== 'expired') {
+    await expireMinesRoom(env, roomId);
+    room.status = 'expired';
+  }
+  const role = minesRole(room, userId);
+  const hidden = parseNumberList(room.hidden_cells_json);
+  const revealed = parseRevealedCells(room.revealed_cells_json);
+  const finished = room.status === 'finished' || room.status === 'expired';
+  const currentTurnRole = room.current_turn_user_id === room.host_user_id ? 'host' : room.current_turn_user_id === room.guest_user_id ? 'guest' : null;
+  return {
+    ok: true,
+    room: {
+      id: room.id,
+      status: room.status,
+      hostName: room.host_name || 'Host',
+      guestName: room.guest_name || null,
+      hasGuest: Boolean(room.guest_user_id),
+      currentTurnRole,
+      isYourTurn: Boolean(userId && room.current_turn_user_id === userId && room.status === 'active'),
+      boardSize: Number(room.board_size || 25),
+      mineCount: Number(room.mine_count || hidden.length || 3),
+      roundIndex: Number(room.round_index || 1),
+      finishedReason: room.finished_reason,
+      createdAt: room.created_at,
+      updatedAt: room.updated_at,
+      expiresAt: room.expires_at,
+    },
+    player: { role },
+    board: {
+      revealed: revealed.map((item) => ({ cell: item.cell, result: item.result, byRole: item.byUserId === room.host_user_id ? 'host' : item.byUserId === room.guest_user_id ? 'guest' : null })),
+      hiddenCells: finished ? hidden : [],
+    },
+  };
+}
+
+function parseNumberList(value: string): number[] {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item >= 0 && item < 25) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseRevealedCells(value: string): Array<{ cell: number; byUserId: string; result: 'safe' | 'hidden' }> {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => ({ cell: Number(item.cell), byUserId: String(item.byUserId || ''), result: item.result === 'hidden' ? 'hidden' as const : 'safe' as const }))
+      .filter((item) => Number.isInteger(item.cell) && item.cell >= 0 && item.cell < 25);
+  } catch {
+    return [];
+  }
+}
+
+function makeMinesHiddenCells(boardSize: number, count: number): number[] {
+  const size = Math.max(1, Math.min(25, Math.floor(boardSize || 25)));
+  const total = Math.max(1, Math.min(size - 1, Math.floor(count || 3)));
+  const cells = new Set<number>();
+  while (cells.size < total) cells.add(Math.floor(Math.random() * size));
+  return [...cells].sort((a, b) => a - b);
+}
+
+function minesRole(room: MinesFriendRoomRow, userId: string): 'host' | 'guest' | 'spectator' {
+  if (room.host_user_id === userId) return 'host';
+  if (room.guest_user_id === userId) return 'guest';
+  return 'spectator';
+}
+
+function isMinesRoomExpired(room: MinesFriendRoomRow): boolean {
+  return Date.parse(room.expires_at) <= Date.now();
+}
+
+async function expireMinesRoom(env: Env, roomId: string): Promise<void> {
+  await env.DB.prepare("UPDATE mines_friend_rooms SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'finished'").bind(roomId).run();
+}
+
+function cleanFriendRoomId(value: unknown): string {
+  const roomId = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!roomId) throw new Error('Room not found');
+  return roomId;
+}
+
+function cleanFriendUserId(value: unknown): string {
+  const userId = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!userId) throw new Error('Telegram user not found');
+  return userId;
+}
+
+function cleanFriendName(value: unknown, fallback: string): string {
+  const name = String(value || fallback || 'Player').replace(/[<>]/g, '').trim().slice(0, 80);
+  return name || fallback;
+}
+
+function minesStartParam(roomId: string): string {
+  return `minesroom_${cleanFriendRoomId(roomId)}`;
+}
+
+async function minesMiniAppInviteUrl(env: Env, roomId: string): Promise<string> {
+  const username = await getGameBotUsername(env);
+  const shortName = String(env.TELEGRAM_MINI_APP_SHORT_NAME || '').replace(/[^0-9A-Za-z_]/g, '').trim();
+  const appPath = shortName ? `/${shortName}` : '';
+  return `https://t.me/${username}${appPath}?startapp=${encodeURIComponent(minesStartParam(roomId))}`;
+}
+
+async function createMinesPreparedInvite(env: Env, roomId: string, userId: string, name: string): Promise<{ preparedMessageId: string; inviteUrl: string; fallbackText: string }> {
+  const token = gameBotToken(env);
+  const numericUserId = Number(userId);
+  if (!token || !Number.isSafeInteger(numericUserId) || numericUserId <= 0) throw new Error('Telegram share is available only inside Telegram.');
+  const inviteUrl = await minesMiniAppInviteUrl(env, roomId);
+  const displayName = name || 'A friend';
+  const fallbackText = `🎮 ${displayName} invited you to a Mines friend round in Vexa.`;
+  const response = await telegramApiWithToken<{ ok: boolean; result?: { id?: string }; description?: string }>(token, 'savePreparedInlineMessage', {
+    user_id: numericUserId,
+    result: {
+      type: 'article',
+      id: `mines_invite_${roomId}`.slice(0, 64),
+      title: 'Mines Friend Round',
+      description: 'Invite a friend to join your private round in Vexa.',
+      input_message_content: {
+        message_text: fallbackText,
+        disable_web_page_preview: true,
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: '🎮 Join Friend Round', url: inviteUrl }]],
+      },
+    },
+    allow_user_chats: true,
+    allow_bot_chats: false,
+    allow_group_chats: true,
+    allow_channel_chats: false,
+  });
+  if (!response.ok || !response.result?.id) throw new Error(response.description || 'Telegram could not prepare invite');
+  return { preparedMessageId: response.result.id, inviteUrl, fallbackText };
+}
 
 async function getRpsFriendRoom(env: Env, roomId: string): Promise<RpsFriendRoomRow | null> {
   return env.DB.prepare('SELECT id, host_user_id, host_name, guest_user_id, guest_name, status, created_at, updated_at, expires_at FROM rps_friend_rooms WHERE id = ?')
