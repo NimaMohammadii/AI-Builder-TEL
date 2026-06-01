@@ -75,11 +75,13 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   function cleanText(value){return String(value||'').replace(/\s+/g,' ').trim()}
   function firstNumber(value){var match=String(value||'').replace(',', '.').match(/-?\d+(?:\.\d+)?/);return match?Number(match[0]):0}
   function formatNumber(value){var n=Math.max(0,Number(value)||0);return n.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function titleAmount(value){var match=String(value||'').match(/Amount\s+-?\d+(?:\.\d+)?/i);return firstNumber(match&&match[0]||'')}
+  function titleMultiplier(value){var match=String(value||'').match(/House\s+-?\d+(?:\.\d+)?x/i);return firstNumber(match&&match[0]||'')}
 
   function rowKey(row){
     if(!row)return '';
     if(row.dataset&&row.dataset.plinkoHistoryKey)return row.dataset.plinkoHistoryKey;
-    var key=cleanText(row.textContent)+'|'+(row.querySelector('img')&&row.querySelector('img').src||'');
+    var key=cleanText(row.textContent)+'|'+cleanText(row.getAttribute('title'))+'|'+(row.querySelector('img')&&row.querySelector('img').src||'');
     if(row.dataset)row.dataset.plinkoHistoryKey=key;
     return key;
   }
@@ -106,14 +108,15 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     name.className='plinko-history-name';
     name.textContent=srcName&&srcName.textContent?srcName.textContent:'Player';
 
+    var sourceTitle=source.getAttribute('title')||'';
     var metas=source.querySelectorAll('.plinko-live-meta');
-    var amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'1')||1;
+    var amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
     var ton=document.createElement('div');
     ton.className='plinko-history-meta';
     ton.textContent='TON '+formatNumber(amountValue);
 
     var sourceMult=source.querySelector('.plinko-live-mult');
-    var multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'0');
+    var multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'')||titleMultiplier(sourceTitle);
     var mult=document.createElement('div');
     mult.className='plinko-history-mult';
     mult.textContent='×'+formatNumber(multValue);
