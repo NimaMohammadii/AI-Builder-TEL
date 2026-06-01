@@ -9,6 +9,7 @@ import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits
 import type { Env, TelegramUpdate } from './types';
 
 export { SectionLockEvents } from './section-lock-events';
+export { PlinkoLiveRoom } from './plinko-live';
 
 const DETAIL_POLISH_SCRIPT = `
 (function(){
