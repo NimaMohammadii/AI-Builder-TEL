@@ -1,0 +1,100 @@
+import type { Env } from './types';
+
+const ROOM_NAME = 'global';
+const USER_DELAY_MS = 6000;
+
+type LiveEnv = Env & { PLINKO_LIVE?: DurableObjectNamespace };
+type LiveInput = { userId?: unknown; name?: unknown; photoUrl?: unknown };
+
+export function registerPlinkoLiveRoutes(app: { get: Function; post: Function }): void {
+  app.get('/app/api/plinko/live/ws', async (c: { env: LiveEnv; req: { raw: Request } }) => {
+    const stub = getRoom(c.env);
+    return stub ? stub.fetch(c.req.raw) : json({ error: 'Live is not configured.' }, 503);
+  });
+
+  app.post('/app/api/plinko/live/send', async (c: { env: LiveEnv; req: { raw: Request } }) => {
+    const stub = getRoom(c.env);
+    return stub ? stub.fetch(c.req.raw) : json({ error: 'Live is not configured.' }, 503);
+  });
+}
+
+export class PlinkoLiveRoom {
+  private sockets = new Set<WebSocket>();
+
+  constructor(private state: DurableObjectState, private env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname.endsWith('/ws')) return this.connect(request);
+    if (request.method === 'POST' && url.pathname.endsWith('/send')) return this.send(request);
+    return json({ error: 'Not found' }, 404);
+  }
+
+  private connect(request: Request): Response {
+    if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'Expected websocket.' }, 426);
+    const pair = new WebSocketPair();
+    const client = pair[0];
+    const server = pair[1];
+    server.accept();
+    this.sockets.add(server);
+    server.addEventListener('close', () => this.sockets.delete(server));
+    server.addEventListener('error', () => this.sockets.delete(server));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private async send(request: Request): Promise<Response> {
+    const body = await request.json().catch(() => ({})) as LiveInput;
+    const userId = cleanUserId(body.userId);
+    if (!userId) return json({ error: 'Missing user.' }, 400);
+
+    const now = Date.now();
+    const key = 'plinko-live-user-' + userId;
+    const last = Number(await this.state.storage.get<number>(key).catch(() => 0)) || 0;
+    const waitMs = USER_DELAY_MS - (now - last);
+    if (waitMs > 0) return json({ error: 'Wait a moment.', waitMs }, 429);
+    await this.state.storage.put(key, now);
+
+    const event = {
+      id: crypto.randomUUID(),
+      userId,
+      name: cleanName(body.name),
+      photoUrl: cleanPhotoUrl(body.photoUrl),
+      createdAt: now,
+      seed: Math.floor(Math.random() * 1000000000),
+    };
+    this.publish({ type: 'plinko-ball', event });
+    return json({ ok: true, event });
+  }
+
+  private publish(value: unknown): void {
+    const text = JSON.stringify(value);
+    for (const socket of this.sockets) {
+      try { socket.send(text); } catch { this.sockets.delete(socket); }
+    }
+  }
+}
+
+function getRoom(env: LiveEnv): DurableObjectStub | null {
+  if (!env.PLINKO_LIVE) return null;
+  return env.PLINKO_LIVE.get(env.PLINKO_LIVE.idFromName(ROOM_NAME));
+}
+
+function cleanUserId(value: unknown): string {
+  return String(value || '').replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80);
+}
+
+function cleanName(value: unknown): string {
+  return String(value || 'Player').replace(/[<>]/g, '').trim().slice(0, 80) || 'Player';
+}
+
+function cleanPhotoUrl(value: unknown): string {
+  const url = String(value || '').trim();
+  return /^https:\/\//i.test(url) ? url.slice(0, 500) : '';
+}
+
+function json(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
