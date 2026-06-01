@@ -3,7 +3,7 @@ export const CRASH_STYLES = `
 #crash.crash-view::-webkit-scrollbar{display:none}
 body:has(#crash.active) .tabs{display:none!important}
 body:has(#crash.active) .content{padding-bottom:0!important}
-#crash .crash-page{min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:4px 0 max(34px,env(safe-area-inset-bottom))}
+#crash .crash-page{min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:4px 0 max(34px,env(safe-area-inset-bottom))}
 #crash .crash-stage{position:relative;height:min(43vh,356px);min-height:322px;border-radius:34px;overflow:hidden;background:#000!important;border:0!important;outline:0!important;box-shadow:0 22px 56px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #crash .crash-stage:before,#crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
 #crash .crash-chart-square{display:none!important}
