@@ -12,8 +12,12 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
     if(document.getElementById('plinkoFeedTotalFixStyle'))return;
     var style=document.createElement('style');
     style.id='plinkoFeedTotalFixStyle';
-    style.textContent='#plinko .plinko-live-row,#plinko .plinko-history-row{grid-template-columns:24px minmax(0,1fr) auto auto auto!important}.plinko-live-total,.plinko-history-total{display:block!important;font-size:11px!important;font-weight:950!important;color:#0d7a3a!important;white-space:nowrap!important;text-shadow:0 0 10px rgba(13,122,58,.22)!important;min-width:max-content!important}';
+    style.textContent='#plinko .plinko-live-row,#plinko .plinko-history-row{grid-template-columns:24px minmax(0,1fr) auto auto!important}.plinko-live-total,.plinko-history-total{display:none!important}.plinko-feed-total-inline{display:inline-block!important;margin-left:6px!important;font-size:11px!important;font-weight:950!important;color:#0d7a3a!important;white-space:nowrap!important;text-shadow:0 0 10px rgba(13,122,58,.22)!important;vertical-align:baseline!important}#plinko .plinko-live-mult,#plinko .plinko-history-mult{min-width:max-content!important;white-space:nowrap!important}';
     document.head.appendChild(style);
+  }
+  function setPlainText(el,text){
+    while(el.firstChild)el.removeChild(el.firstChild);
+    el.appendChild(document.createTextNode(text));
   }
   function fixRow(row){
     if(!row)return;
@@ -22,15 +26,15 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
     var amount=num(amountEl&&amountEl.textContent)||1;
     var mult=num(multEl&&multEl.textContent);
     if(!mult)return;
-    if(amountEl&&/^Amount\s+/i.test(amountEl.textContent||''))amountEl.textContent='TON '+fmt(amount);
-    if(multEl)multEl.textContent='×'+fmt(mult);
-    var total=row.querySelector('.plinko-live-total,.plinko-history-total');
-    if(!total){
-      total=document.createElement('div');
-      total.className=row.classList.contains('plinko-history-row')?'plinko-history-total':'plinko-live-total';
-      row.appendChild(total);
+    if(amountEl)amountEl.textContent='TON '+fmt(amount);
+    if(multEl){
+      setPlainText(multEl,'×'+fmt(mult));
+      var inline=document.createElement('span');
+      inline.className='plinko-feed-total-inline';
+      inline.textContent=fmt(amount*mult);
+      multEl.appendChild(inline);
     }
-    total.textContent=fmt(amount*mult);
+    row.querySelectorAll('.plinko-live-total,.plinko-history-total').forEach(function(node){node.remove()});
   }
   function scan(){
     ensureStyle();
