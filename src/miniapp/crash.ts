@@ -17,17 +17,9 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
     <div class="crash-controls">
       <div class="crash-control-grid">
-        <div class="crash-field">
-          <small>Multiplier</small>
-          <b><span id="crashPanelMultiplier">1.00x</span><i>↗</i></b>
-        </div>
         <div class="crash-field crash-auto-field">
           <small>Auto Cash Out</small>
           <b><span class="crash-auto"><input id="crashAutoCashout" inputmode="decimal" pattern="[0-9.]*" value="2.00"/><span>x</span></span></b>
-        </div>
-        <div class="crash-field">
-          <small>Status</small>
-          <b><span id="crashStatus">Waiting</span><i>•</i></b>
         </div>
       </div>
       <div class="crash-bet">
