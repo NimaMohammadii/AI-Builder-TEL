@@ -167,13 +167,13 @@ function cleanPhotoUrl(value: unknown): string {
 function cleanAmount(value: unknown): number {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 0) return 0;
-  return Math.min(1000000, Math.round(amount * 10000) / 10000);
+  return Math.min(1000000, Math.round((amount + Number.EPSILON) * 100) / 100);
 }
 
 function cleanMultiplier(value: unknown): number {
   const multiplier = Number(value);
   if (!Number.isFinite(multiplier) || multiplier < 0) return 0;
-  return Math.min(1000000, Math.round(multiplier * 10000) / 10000);
+  return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
 function naturalResultKey(result: PlinkoResult): string {
