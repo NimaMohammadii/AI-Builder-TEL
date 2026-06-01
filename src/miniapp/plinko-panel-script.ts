@@ -29,25 +29,31 @@ export const PLINKO_PANEL_SCRIPT = `
     return readBalanceNano();
   }
 
+  function formatBet(value){
+    var next=Math.round((Math.max(0,Number(value)||0)+Number.EPSILON)*100)/100;
+    return next.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+  }
+
   function normalizeBet(value){
     var input=q('plinkoBet');
     var raw=String(value||'').replace(',','.').trim();
     var next=Number(raw);
-    if(!Number.isFinite(next)||next<=0)next=.01;
+    if(!Number.isFinite(next)||next<1)next=1;
+    next=Math.round((next+Number.EPSILON)*100)/100;
     var creditTon=currentCredit()/1000000000;
-    if(creditTon>0&&next>creditTon)next=creditTon;
-    if(input)input.value=String(next).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+    if(creditTon>=1&&next>creditTon)next=Math.round((creditTon+Number.EPSILON)*100)/100;
+    if(input)input.value=formatBet(next);
   }
 
   function currentBet(){
     var input=q('plinkoBet');
     var value=Number(String(input&&input.value||'').replace(',','.'));
-    return Number.isFinite(value)&&value>0?value:.01;
+    return Number.isFinite(value)&&value>=1?Math.round((value+Number.EPSILON)*100)/100:1;
   }
 
   function multiplyBet(multiplier){
     var value=currentBet();
-    normalizeBet(multiplier===.5?Math.max(.01,value/2):value*2);
+    normalizeBet(multiplier===.5?Math.max(1,value/2):value*2);
   }
 
   function setBetKeyboard(active){
