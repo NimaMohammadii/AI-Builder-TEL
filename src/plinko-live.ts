@@ -103,6 +103,7 @@ export class PlinkoLiveRoom {
     const body = await request.json().catch(() => ({})) as ResultInput;
     const amount = cleanAmount(body.amount);
     const multiplier = cleanMultiplier(body.multiplier);
+    if (amount <= 0 || multiplier <= 0) return json({ error: 'Invalid result.' }, 400);
     const total = cleanAmount(Number(body.total) || amount * multiplier);
     const result: PlinkoResult = {
       id: cleanId(body.id) || crypto.randomUUID(),
@@ -129,7 +130,8 @@ export class PlinkoLiveRoom {
 
   private async history(): Promise<PlinkoResult[]> {
     const history = await this.state.storage.get<PlinkoResult[]>(HISTORY_KEY).catch(() => null);
-    return Array.isArray(history) ? history.slice(0, HISTORY_LIMIT) : [];
+    if (!Array.isArray(history)) return [];
+    return history.filter((item) => Number(item?.amount) > 0 && Number(item?.multiplier) > 0 && Number(item?.total) > 0).slice(0, HISTORY_LIMIT);
   }
 
   private publish(value: unknown): void {
