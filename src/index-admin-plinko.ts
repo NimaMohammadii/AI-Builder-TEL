@@ -7,6 +7,7 @@ import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import { registerRankCharacterRoutes } from './rank-character-routes';
+import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -18,6 +19,7 @@ const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
+registerPlinkoLiveRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
 
@@ -296,5 +298,7 @@ function isAdmin(env: Env, key: string): boolean {
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
+
+export { PlinkoLiveRoom };
 
 export default app;
