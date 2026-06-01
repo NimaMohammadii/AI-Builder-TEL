@@ -33,7 +33,7 @@ export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
   rows: {
     '13': {
       low: {
-        multipliers: [5, 2.4, 1.8, 1.35, 1.15, 1, 0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5],
+        multipliers: [30, 5, 3.4, 2, 1.5, 1, 0.2, 0.2, 1, 1.5, 2, 3.4, 5, 30],
         weights: [1, 2, 3.5, 6, 9, 13, 15.5, 15.5, 13, 9, 6, 3.5, 2, 1],
       },
     },
