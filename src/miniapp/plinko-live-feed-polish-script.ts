@@ -176,6 +176,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var totalValue=dataNumber(source,'total');
     if(!Number.isFinite(totalValue))totalValue=amountValue*multValue;
     total.textContent=formatTonAmount(totalValue);
+    total.textContent=formatNumber(totalValue);
 
     row.appendChild(img);
     row.appendChild(name);
