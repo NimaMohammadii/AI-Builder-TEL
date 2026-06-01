@@ -122,6 +122,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   function firstNumber(value){var match=String(value||'').replace(',', '.').match(/-?\d+(?:\.\d+)?/);return match?Number(match[0]):0}
   function dataNumber(node,key){var value=node&&node.dataset?Number(node.dataset[key]):NaN;return Number.isFinite(value)&&value>=0?value:NaN}
   function formatNumber(value){var n=Math.max(0,Number(value)||0);return n.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function formatTonAmount(value){var n=Math.max(0,Number(value)||0);return n.toFixed(2)}
   function titleAmount(value){var match=String(value||'').match(/Amount\s+-?\d+(?:\.\d+)?/i);return firstNumber(match&&match[0]||'')}
   function titleMultiplier(value){var match=String(value||'').match(/House\s+-?\d+(?:\.\d+)?x/i);return firstNumber(match&&match[0]||'')}
 
@@ -161,7 +162,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     if(!Number.isFinite(amountValue)||amountValue<=0)amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
     var ton=document.createElement('div');
     ton.className='plinko-history-meta';
-    ton.textContent='TON '+formatNumber(amountValue);
+    ton.textContent='TON '+formatTonAmount(amountValue);
 
     var sourceMult=source.querySelector('.plinko-live-mult');
     var multValue=dataNumber(source,'multiplier');
@@ -174,6 +175,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     total.className='plinko-history-total';
     var totalValue=dataNumber(source,'total');
     if(!Number.isFinite(totalValue))totalValue=amountValue*multValue;
+    total.textContent=formatTonAmount(totalValue);
     total.textContent=formatNumber(totalValue);
 
     row.appendChild(img);
