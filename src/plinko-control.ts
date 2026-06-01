@@ -103,7 +103,7 @@ function normalizePlinkoConfig(input: any): PlinkoControlConfig {
   const expected = 14;
   const item = input?.rows?.['13']?.low ?? input?.rows?.['11']?.low ?? input?.rows?.['9']?.low ?? input?.rows?.['7']?.low;
   out.rows['13'].low = {
-    multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows['13'].low.multipliers, 0, 1000),
+    multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows['13'].low.multipliers, 0.01, 1000),
     weights: normalizeNumberArray(item?.weights, expected, base.rows['13'].low.weights, 0, 100000),
   };
   return out;
