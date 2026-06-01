@@ -32,7 +32,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
       </div>
       <div class="crash-bet">
         <button type="button" data-action="crash-half">1/2</button>
-        <span class="crash-bet-main active"><input id="crashAmount" inputmode="decimal" pattern="[0-9.]*" value="1" aria-label="Amount TON"/></span>
+        <span class="crash-bet-main active"><input id="crashAmount" inputmode="decimal" pattern="[0-9.]*" value="1.00" aria-label="Amount TON"/></span>
         <button type="button" data-action="crash-double">2x</button>
       </div>
       <div class="crash-actions">
