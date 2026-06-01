@@ -69,7 +69,8 @@ export class PlinkoLiveRoom {
     this.sockets.add(server);
     server.addEventListener('close', () => this.sockets.delete(server));
     server.addEventListener('error', () => this.sockets.delete(server));
-    safeSend(server, { type: 'plinko-history', events: await this.history() });
+    const history = await this.history();
+    safeSend(server, { type: 'plinko-history', events: history });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -102,7 +103,6 @@ export class PlinkoLiveRoom {
     const body = await request.json().catch(() => ({})) as ResultInput;
     const amount = cleanAmount(body.amount);
     const multiplier = cleanMultiplier(body.multiplier);
-    if (!amount || !multiplier) return json({ error: 'Invalid result.' }, 400);
     const total = cleanAmount(Number(body.total) || amount * multiplier);
     const result: PlinkoResult = {
       id: cleanId(body.id) || crypto.randomUUID(),
@@ -118,7 +118,7 @@ export class PlinkoLiveRoom {
     const dedupeKey = RESULT_DEDUPE_PREFIX + naturalResultKey(result);
     const last = Number(await this.state.storage.get<number>(dedupeKey).catch(() => 0)) || 0;
     if (Date.now() - last < RESULT_DEDUPE_MS) return json({ ok: true, duplicate: true, event: result });
-    await this.state.storage.put(dedupeKey, Date.now());
+    await this.state.storage.put(dedupeKey, Date.now(), { expirationTtl: 30 });
 
     const history = await this.history();
     const next = [result, ...history.filter((item) => item.id !== result.id)].slice(0, HISTORY_LIMIT);
