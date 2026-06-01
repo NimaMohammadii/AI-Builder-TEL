@@ -4,7 +4,7 @@ const ROOM_NAME = 'global';
 const USER_DELAY_MS = 6000;
 
 type LiveEnv = Env & { PLINKO_LIVE?: DurableObjectNamespace };
-type LiveInput = { userId?: unknown; name?: unknown; photoUrl?: unknown };
+type LiveInput = { userId?: unknown; name?: unknown; photoUrl?: unknown; amount?: unknown };
 
 export function registerPlinkoLiveRoutes(app: { get: Function; post: Function }): void {
   app.get('/app/api/plinko/live/ws', async (c: { env: LiveEnv; req: { raw: Request } }) => {
@@ -59,6 +59,7 @@ export class PlinkoLiveRoom {
       userId,
       name: cleanName(body.name),
       photoUrl: cleanPhotoUrl(body.photoUrl),
+      amount: cleanAmount(body.amount),
       createdAt: now,
       seed: Math.floor(Math.random() * 1000000000),
     };
@@ -90,6 +91,12 @@ function cleanName(value: unknown): string {
 function cleanPhotoUrl(value: unknown): string {
   const url = String(value || '').trim();
   return /^https:\/\//i.test(url) ? url.slice(0, 500) : '';
+}
+
+function cleanAmount(value: unknown): number {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 1) return 1;
+  return Math.min(1000000, Math.round(amount * 10000) / 10000);
 }
 
 function json(value: unknown, status = 200): Response {
