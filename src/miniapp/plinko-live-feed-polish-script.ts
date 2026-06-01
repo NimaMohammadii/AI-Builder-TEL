@@ -124,39 +124,19 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   function titleAmount(value){var match=String(value||'').match(/Amount\s+-?\d+(?:\.\d+)?/i);return firstNumber(match&&match[0]||'')}
   function titleMultiplier(value){var match=String(value||'').match(/House\s+-?\d+(?:\.\d+)?x/i);return firstNumber(match&&match[0]||'')}
 
-  function rowKey(row,amountValue,multValue){
+  function rowKey(row){
     if(!row)return '';
     if(row.dataset&&row.dataset.plinkoHistoryKey)return row.dataset.plinkoHistoryKey;
-    var key=cleanText(row.textContent)+'|'+cleanText(row.getAttribute('title'))+'|'+String(amountValue)+'|'+String(multValue)+'|'+(row.querySelector('img')&&row.querySelector('img').src||'');
+    var key=cleanText(row.textContent)+'|'+cleanText(row.getAttribute('title'))+'|'+(row.querySelector('img')&&row.querySelector('img').src||'');
     if(row.dataset)row.dataset.plinkoHistoryKey=key;
     return key;
   }
 
-  function removeBrokenHistoryRows(){
-    document.querySelectorAll('#plinkoLiveHistoryFeed .plinko-history-row').forEach(function(row){
-      var mult=firstNumber(row.querySelector('.plinko-history-mult')&&row.querySelector('.plinko-history-mult').textContent||'');
-      var total=firstNumber(row.querySelector('.plinko-history-total')&&row.querySelector('.plinko-history-total').textContent||'');
-      if(mult<=0||total<=0)row.remove();
-    });
-  }
-
   function addHistory(source){
     if(!source||!source.classList||!source.classList.contains('plinko-live-row'))return;
-
-    var sourceTitle=source.getAttribute('title')||'';
-    var metas=source.querySelectorAll('.plinko-live-meta');
-    var amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
-    var sourceMult=source.querySelector('.plinko-live-mult');
-    var multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'')||titleMultiplier(sourceTitle);
-
-    if(amountValue<=0||multValue<=0){
-      if(source.dataset)source.dataset.plinkoHistoryCopied='0';
-      return;
-    }
-
     if(source.dataset&&source.dataset.plinkoHistoryCopied==='1')return;
     var target=ensureFeed();
-    var key=rowKey(source,amountValue,multValue);
+    var key=rowKey(source);
     if(seen[key]){if(source.dataset)source.dataset.plinkoHistoryCopied='1';return}
     seen[key]=1;
     if(source.dataset)source.dataset.plinkoHistoryCopied='1';
@@ -174,10 +154,15 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     name.className='plinko-history-name';
     name.textContent=srcName&&srcName.textContent?srcName.textContent:'Player';
 
+    var sourceTitle=source.getAttribute('title')||'';
+    var metas=source.querySelectorAll('.plinko-live-meta');
+    var amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
     var ton=document.createElement('div');
     ton.className='plinko-history-meta';
     ton.textContent='TON '+formatNumber(amountValue);
 
+    var sourceMult=source.querySelector('.plinko-live-mult');
+    var multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'')||titleMultiplier(sourceTitle);
     var mult=document.createElement('div');
     mult.className='plinko-history-mult';
     mult.textContent='×'+formatNumber(multValue);
@@ -200,7 +185,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     ensureFeed();
     moveFeedIntoPage();
     gatePlinkoControl();
-    removeBrokenHistoryRows();
     document.querySelectorAll('#plinkoLiveFeed .plinko-live-row').forEach(addHistory);
   }
 
@@ -212,7 +196,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     new MutationObserver(function(records){
       moveFeedIntoPage();
       gatePlinkoControl();
-      removeBrokenHistoryRows();
       records.forEach(function(record){
         Array.prototype.forEach.call(record.addedNodes||[],function(node){
           if(node&&node.classList&&node.classList.contains('plinko-live-row'))addHistory(node);
