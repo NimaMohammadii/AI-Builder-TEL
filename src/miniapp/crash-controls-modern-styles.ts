@@ -39,9 +39,8 @@ export const CRASH_CONTROLS_MODERN_STYLES = `
 #crash .crash-live-user{min-width:0!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:rgba(255,255,255,.92)!important}
 #crash .crash-live-amount{font-size:11px!important;font-weight:900!important;color:rgba(255,255,255,.62)!important;white-space:nowrap!important}
 #crash .crash-live-status{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;font-size:11px!important;font-weight:930!important;color:rgba(255,255,255,.84)!important;white-space:nowrap!important}
-#crash .crash-live-win{color:#78ffb3!important;-webkit-text-fill-color:#78ffb3!important;font-size:12px!important;font-weight:950!important;font-variant-numeric:tabular-nums lining-nums!important;text-shadow:0 0 14px rgba(120,255,179,.16)!important}
-#crash .crash-live-row.cashout .crash-live-user,#crash .crash-live-row.cashout .crash-live-amount,#crash .crash-live-row.cashout .crash-live-status{color:#78ffb3!important;-webkit-text-fill-color:#78ffb3!important}
-#crash .crash-live-row.cashout{border-color:rgba(120,255,179,.22)!important;background:rgba(120,255,179,.055)!important}
-#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,140,160,.86)!important}
+#crash .crash-live-mult,#crash .crash-live-win{color:#78ffb3!important;-webkit-text-fill-color:#78ffb3!important;font-size:12px!important;font-weight:950!important;font-variant-numeric:tabular-nums lining-nums!important;text-shadow:0 0 14px rgba(120,255,179,.16)!important}
+#crash .crash-live-lost{color:rgba(255,100,125,.90)!important;-webkit-text-fill-color:rgba(255,100,125,.90)!important;font-size:12px!important;font-weight:930!important;font-variant-numeric:tabular-nums lining-nums!important}
+#crash .crash-live-row.crashed .crash-live-amount{color:rgba(255,100,125,.90)!important;-webkit-text-fill-color:rgba(255,100,125,.90)!important}
 @media(max-width:380px){#crash .crash-controls{padding:7px!important;gap:6px!important}#crash .crash-field{padding:6px 11px!important;min-height:40px!important}#crash .crash-field small,#crash .crash-label{font-size:10px!important}#crash .crash-field b,#crash .crash-auto input,#crash .crash-auto span{font-size:16px!important}#crash .crash-bet button,#crash .crash-bet-main{height:36px!important}#crash .crash-primary,#crash .crash-secondary{height:46px!important;font-size:15px!important}}
 `;
