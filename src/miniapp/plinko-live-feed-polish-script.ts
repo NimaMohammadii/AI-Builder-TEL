@@ -4,6 +4,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var seen={};
   var ready=false;
   var loading=false;
+  var fetchGuardInstalled=false;
+  var fallbackMultipliers=[5,2.4,1.8,1.35,1.15,1,.85,.85,1,1.15,1.35,1.8,2.4,5];
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
 
@@ -13,6 +15,44 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     style.id='plinkoLiveFeedPolishStyle';
     style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:394px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;gap:6px;z-index:2;margin:8px auto 0;padding:0 2px 2px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-row{height:34px;min-height:34px;border:0;border-radius:17px;background:rgba(255,255,255,.052);backdrop-filter:blur(4px) saturate(1.14);-webkit-backdrop-filter:blur(4px) saturate(1.14);display:grid;grid-template-columns:24px minmax(0,1fr) auto auto auto;align-items:center;gap:7px;padding:0 9px;color:#fff;box-shadow:none;box-sizing:border-box}.plinko-history-row img{width:24px;height:24px;border-radius:50%;object-fit:cover}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:850}.plinko-history-meta{font-size:10px;font-weight:850;color:rgba(255,255,255,.72);white-space:nowrap}.plinko-history-mult{font-size:11px;font-weight:950;color:#fff;white-space:nowrap}.plinko-history-total{font-size:11px;font-weight:950;color:#0d7a3a;white-space:nowrap;text-shadow:0 0 10px rgba(13,122,58,.20)}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){#plinkoLiveHistoryFeed{max-height:340px}}';
     document.head.appendChild(style);
+  }
+
+  function isControlUrl(input){
+    try{
+      var url=typeof input==='string'?input:(input&&input.url)||'';
+      return String(url).indexOf('/app/api/plinko-control')!==-1;
+    }catch(e){return false}
+  }
+
+  function sanitizeControl(data){
+    if(!data||!data.rows)return data;
+    var item=data.rows['13']&&data.rows['13'].low;
+    if(!item||!Array.isArray(item.multipliers)||item.multipliers.length!==14)return data;
+    item.multipliers=item.multipliers.map(function(value,index){
+      var n=Number(value);
+      return Number.isFinite(n)&&n>0?n:fallbackMultipliers[index];
+    });
+    return data;
+  }
+
+  function installControlFetchGuard(){
+    if(fetchGuardInstalled||typeof window.fetch!=='function')return;
+    fetchGuardInstalled=true;
+    var originalFetch=window.fetch.bind(window);
+    window.fetch=function(input,init){
+      var requestIsControl=isControlUrl(input);
+      return originalFetch(input,init).then(function(response){
+        if(!requestIsControl||!response||!response.ok)return response;
+        return response.clone().json().then(function(data){
+          var clean=sanitizeControl(data);
+          return new Response(JSON.stringify(clean),{
+            status:response.status,
+            statusText:response.statusText,
+            headers:response.headers
+          });
+        }).catch(function(){return response});
+      });
+    };
   }
 
   function dropButton(){return document.querySelector('[data-action="drop-plinko-ball"]')}
@@ -26,15 +66,21 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     btn.disabled=false;
   }
 
+  function reloadControl(){
+    var reload=window.plinkoReloadControl&&typeof window.plinkoReloadControl==='function'?window.plinkoReloadControl():null;
+    return Promise.resolve(reload);
+  }
+
   function gatePlinkoControl(){
     if(!active())return;
     ensureStyle();
+    installControlFetchGuard();
     if(ready||loading)return;
     loading=true;
     document.body.classList.add('plinko-control-loading');
     setDropLoading(true);
-    var reload=window.plinkoReloadControl&&typeof window.plinkoReloadControl==='function'?window.plinkoReloadControl():Promise.resolve();
-    Promise.resolve(reload).then(function(){return fetch('/app/api/plinko-control',{cache:'no-store'})}).catch(function(){return null}).then(function(){
+    reloadControl().then(function(){return fetch('/app/api/plinko-control',{cache:'no-store'})}).catch(function(){return null}).then(function(){
+      reloadControl();
       setTimeout(function(){
         ready=true;
         loading=false;
@@ -135,12 +181,14 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function scan(){
+    installControlFetchGuard();
     ensureFeed();
     moveFeedIntoPage();
     gatePlinkoControl();
     document.querySelectorAll('#plinkoLiveFeed .plinko-live-row').forEach(addHistory);
   }
 
+  installControlFetchGuard();
   ensureFeed();
   scan();
 
