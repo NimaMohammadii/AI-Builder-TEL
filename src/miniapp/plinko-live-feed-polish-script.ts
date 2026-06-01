@@ -120,7 +120,9 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
 
   function cleanText(value){return String(value||'').replace(/\s+/g,' ').trim()}
   function firstNumber(value){var match=String(value||'').replace(',', '.').match(/-?\d+(?:\.\d+)?/);return match?Number(match[0]):0}
+  function dataNumber(node,key){var value=node&&node.dataset?Number(node.dataset[key]):NaN;return Number.isFinite(value)&&value>=0?value:NaN}
   function formatNumber(value){var n=Math.max(0,Number(value)||0);return n.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
+  function formatTonAmount(value){var n=Math.max(0,Number(value)||0);return n.toFixed(2)}
   function titleAmount(value){var match=String(value||'').match(/Amount\s+-?\d+(?:\.\d+)?/i);return firstNumber(match&&match[0]||'')}
   function titleMultiplier(value){var match=String(value||'').match(/House\s+-?\d+(?:\.\d+)?x/i);return firstNumber(match&&match[0]||'')}
 
@@ -156,20 +158,24 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
 
     var sourceTitle=source.getAttribute('title')||'';
     var metas=source.querySelectorAll('.plinko-live-meta');
-    var amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
+    var amountValue=dataNumber(source,'amount');
+    if(!Number.isFinite(amountValue)||amountValue<=0)amountValue=firstNumber(metas[0]&&metas[0].textContent?metas[0].textContent:'')||titleAmount(sourceTitle)||1;
     var ton=document.createElement('div');
     ton.className='plinko-history-meta';
-    ton.textContent='TON '+formatNumber(amountValue);
+    ton.textContent='TON '+formatTonAmount(amountValue);
 
     var sourceMult=source.querySelector('.plinko-live-mult');
-    var multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'')||titleMultiplier(sourceTitle);
+    var multValue=dataNumber(source,'multiplier');
+    if(!Number.isFinite(multValue))multValue=firstNumber(sourceMult&&sourceMult.textContent?sourceMult.textContent:'')||titleMultiplier(sourceTitle);
     var mult=document.createElement('div');
     mult.className='plinko-history-mult';
     mult.textContent='×'+formatNumber(multValue);
 
     var total=document.createElement('div');
     total.className='plinko-history-total';
-    total.textContent=formatNumber(amountValue*multValue);
+    var totalValue=dataNumber(source,'total');
+    if(!Number.isFinite(totalValue))totalValue=amountValue*multValue;
+    total.textContent=formatTonAmount(totalValue);
 
     row.appendChild(img);
     row.appendChild(name);
