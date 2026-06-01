@@ -53,6 +53,7 @@ import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { MARKET_CONFIG_SCRIPT } from './market-config-script';
 import { PLINKO_SCRIPT } from './plinko-script';
+import { PLINKO_LIVE_FEED_POLISH_SCRIPT } from './plinko-live-feed-polish-script';
 import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
 import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
 import { MINES_SCRIPT } from './mines-script';
@@ -183,6 +184,7 @@ const SCRIPTS = [
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
   MARKET_CONFIG_SCRIPT,
   PLINKO_SCRIPT,
+  PLINKO_LIVE_FEED_POLISH_SCRIPT,
   PLINKO_PERFORMANCE_SCRIPT,
   PLINKO_PANEL_SCRIPT,
   MINES_SCRIPT,
