@@ -37,6 +37,7 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
     const source=value&&value.rows?value:fallback;
     const old=(source.rows&&((source.rows['13']&&source.rows['13'].low)||(source.rows['11']&&source.rows['11'].low)||(source.rows['9']&&source.rows['9'].low)||(source.rows['7']&&source.rows['7'].low)))||fallback.rows['13'].low;
     const item={multipliers:Array.isArray(old.multipliers)&&old.multipliers.length===14?old.multipliers.slice(0,14):fallback.rows['13'].low.multipliers.slice(),weights:Array.isArray(old.weights)&&old.weights.length===14?old.weights.slice(0,14):fallback.rows['13'].low.weights.slice()};
+    item.multipliers=item.multipliers.map((m,i)=>Number(m)>0?Number(m):fallback.rows['13'].low.multipliers[i]);
     return {enabled:source.enabled!==false,mode:'weighted',houseEdge:Number(source.houseEdge)||8,volatility:Number(source.volatility)||50,rows:{'13':{low:item}},updatedAt:source.updatedAt};
   }
   async function loadPlinkoControl(){
@@ -53,8 +54,8 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
     const ev=expected(item);
     document.getElementById('plinkoTotalChance').textContent='Total '+round(total)+'%';
     document.getElementById('plinkoExpectedReturn').textContent='Expected '+ev.toFixed(2)+'x';
-    document.getElementById('plinkoHouseRows').innerHTML=item.multipliers.map((m,i)=>'<div class="plinko-house-row"><strong>#'+(i+1)+'</strong><div><label>Multiplier</label><input data-mult="'+i+'" type="number" step="0.01" min="0" value="'+esc(m)+'"/></div><div><label>Chance %</label><input data-weight="'+i+'" type="number" step="0.1" min="0" value="'+esc(round(item.weights[i]))+'"/></div></div>').join('');
-    document.querySelectorAll('[data-mult]').forEach(input=>input.oninput=()=>{item.multipliers[Number(input.dataset.mult)]=Number(input.value||0);updateSummary();});
+    document.getElementById('plinkoHouseRows').innerHTML=item.multipliers.map((m,i)=>'<div class="plinko-house-row"><strong>#'+(i+1)+'</strong><div><label>Multiplier</label><input data-mult="'+i+'" type="number" step="0.01" min="0.01" value="'+esc(m)+'"/></div><div><label>Chance %</label><input data-weight="'+i+'" type="number" step="0.1" min="0" value="'+esc(round(item.weights[i]))+'"/></div></div>').join('');
+    document.querySelectorAll('[data-mult]').forEach(input=>input.oninput=()=>{item.multipliers[Number(input.dataset.mult)]=Number(input.value)>0?Number(input.value):0.01;updateSummary();});
     document.querySelectorAll('[data-weight]').forEach(input=>input.oninput=()=>{item.weights[Number(input.dataset.weight)]=Number(input.value||0);updateSummary();});
   }
   function updateSummary(){const item=current();const total=item.weights.reduce((a,b)=>a+Number(b||0),0);document.getElementById('plinkoTotalChance').textContent='Total '+round(total)+'%';document.getElementById('plinkoExpectedReturn').textContent='Expected '+expected(item).toFixed(2)+'x';}
