@@ -12,7 +12,7 @@ export const CRASH_SCRIPT = `
   function normalizeAutoCashout(){var input=q('crashAutoCashout');if(!input)return 0;var v=Number(String(input.value||'').replace(',','.'))||0;if(v>0&&v<1.01)v=1.01;if(v>200)v=200;if(input.value&&String(input.value)!==String(v))input.value=v.toFixed(2).replace(/\.00$/,'');return v>=1.01?v:0}
   function fmt(v){return Math.max(1,Number(v)||1).toFixed(2)+'x'}
   function status(text){var n=q('crashStatus');if(n)n.textContent=text}
-  function mult(v){var n=q('crashMultiplier');if(n)n.textContent=fmt(v)}
+  function mult(v){var text=fmt(v),n=q('crashMultiplier'),p=q('crashPanelMultiplier');if(n)n.textContent=text;if(p)p.textContent=text}
   function nextLabel(text){var n=q('crashNextRound');if(n)n.textContent=text}
   function setCountdown(text,hide){var box=q('crashStarting'),n=q('crashCountdown');if(n)n.textContent=text;if(box)box.classList.toggle('hidden',!!hide)}
   function setTotal(seconds){var n=q('crashTotalTime');if(n)n.textContent='Total '+Math.max(0,Math.floor(seconds))+'s'}
