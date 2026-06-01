@@ -1,5 +1,6 @@
 export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
 (function(){
+  var scanTimer=0;
   function fmt(value){
     var n=Math.max(0,Number(value)||0);
     return n.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
@@ -8,11 +9,12 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
     var match=String(value||'').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
     return match?Number(match[0]):0;
   }
+  function plinkoActive(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
   function ensureStyle(){
     if(document.getElementById('plinkoFeedTotalFixStyle'))return;
     var style=document.createElement('style');
     style.id='plinkoFeedTotalFixStyle';
-    style.textContent='#plinko .plinko-live-row,#plinko .plinko-history-row{grid-template-columns:24px minmax(0,1fr) auto auto!important}.plinko-live-total,.plinko-history-total{display:none!important}.plinko-feed-total-inline{display:inline-block!important;margin-left:6px!important;font-size:11px!important;font-weight:950!important;color:#0d7a3a!important;white-space:nowrap!important;text-shadow:0 0 10px rgba(13,122,58,.22)!important;vertical-align:baseline!important}#plinko .plinko-live-mult,#plinko .plinko-history-mult{min-width:max-content!important;white-space:nowrap!important}';
+    style.textContent='#plinko .plinko-live-row,#plinko .plinko-history-row{grid-template-columns:24px minmax(0,1fr) auto auto!important}.plinko-live-total,.plinko-history-total{display:none!important}.plinko-feed-total-inline{display:inline-block!important;margin-left:6px!important;font-size:11px!important;font-weight:950!important;color:#0d7a3a!important;-webkit-text-fill-color:#0d7a3a!important;white-space:nowrap!important;text-shadow:0 0 10px rgba(13,122,58,.22)!important;vertical-align:baseline!important}#plinko .plinko-live-mult,#plinko .plinko-history-mult{min-width:max-content!important;white-space:nowrap!important;overflow:visible!important}';
     document.head.appendChild(style);
   }
   function setPlainText(el,text){
@@ -28,11 +30,16 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
     if(!mult)return;
     if(amountEl)amountEl.textContent='TON '+fmt(amount);
     if(multEl){
-      setPlainText(multEl,'×'+fmt(mult));
-      var inline=document.createElement('span');
-      inline.className='plinko-feed-total-inline';
-      inline.textContent=fmt(amount*mult);
-      multEl.appendChild(inline);
+      var desired='×'+fmt(mult);
+      var inline=multEl.querySelector('.plinko-feed-total-inline');
+      var currentInline=inline&&inline.textContent;
+      if(!inline||currentInline!==fmt(amount*mult)||String(multEl.firstChild&&multEl.firstChild.nodeValue||'')!==desired){
+        setPlainText(multEl,desired);
+        inline=document.createElement('span');
+        inline.className='plinko-feed-total-inline';
+        inline.textContent=fmt(amount*mult);
+        multEl.appendChild(inline);
+      }
     }
     row.querySelectorAll('.plinko-live-total,.plinko-history-total').forEach(function(node){node.remove()});
   }
@@ -40,7 +47,14 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
     ensureStyle();
     document.querySelectorAll('#plinkoLiveFeed .plinko-live-row,#plinkoLiveHistoryFeed .plinko-history-row').forEach(fixRow);
   }
-  scan();
+  function startScanner(){
+    scan();
+    if(scanTimer)return;
+    scanTimer=setInterval(function(){
+      if(plinkoActive())scan();
+    },350);
+  }
+  startScanner();
   if(window.MutationObserver){
     new MutationObserver(function(records){
       records.forEach(function(record){
@@ -49,9 +63,11 @@ export const PLINKO_FEED_TOTAL_FIX_SCRIPT = `
           if(node&&node.querySelectorAll)node.querySelectorAll('.plinko-live-row,.plinko-history-row').forEach(fixRow);
         });
       });
+      setTimeout(scan,60);
+      setTimeout(scan,220);
     }).observe(document.body,{childList:true,subtree:true});
   }
-  document.addEventListener('click',function(){setTimeout(scan,80)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80)});
+  document.addEventListener('click',function(){setTimeout(scan,80);setTimeout(scan,260)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){setTimeout(scan,80);setTimeout(scan,300)}});
 })();
 `;
