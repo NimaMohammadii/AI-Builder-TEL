@@ -2,10 +2,19 @@ export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
     html:has(#wheel.active),
-    body:has(#wheel.active) {
+    body:has(#wheel.active),
+    body:has(#wheel.active) .app,
+    body:has(#wheel.active) main.app,
+    body:has(#wheel.active) .content,
+    body:has(#wheel.active) .view.active,
+    body:has(#wheel.active) #wheel,
+    body:has(#wheel.active) .wheel-view,
+    body:has(#wheel.active) .top,
+    body:has(#wheel.active) header.top {
       background: #000 !important;
       background-color: #000 !important;
       background-image: none !important;
+      box-shadow: none !important;
     }
 
     body:has(#wheel.active)::before,
@@ -16,20 +25,6 @@ export const WHEEL_SECTION = `
     body:has(#wheel.active) .content::after,
     body:has(#wheel.active) #wheel::before,
     body:has(#wheel.active) #wheel::after {
-      background: #000 !important;
-      background-color: #000 !important;
-      background-image: none !important;
-      box-shadow: none !important;
-    }
-
-    body:has(#wheel.active) .app,
-    body:has(#wheel.active) main.app,
-    body:has(#wheel.active) .content,
-    body:has(#wheel.active) .view.active,
-    body:has(#wheel.active) #wheel,
-    body:has(#wheel.active) .wheel-view,
-    body:has(#wheel.active) .top,
-    body:has(#wheel.active) header.top {
       background: #000 !important;
       background-color: #000 !important;
       background-image: none !important;
@@ -47,8 +42,6 @@ export const WHEEL_SECTION = `
       min-height: 100%;
       padding: 0 14px calc(96px + env(safe-area-inset-bottom));
       background: #000 !important;
-      background-color: #000 !important;
-      background-image: none !important;
       color: white;
       overflow-y: auto !important;
       overflow-x: hidden;
@@ -203,36 +196,52 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-shell {
       position: relative;
-      height: 34px;
+      height: 42px;
       border-radius: 999px;
-      background: rgba(255,255,255,.06);
+      background: rgba(255,255,255,.055);
       border: 1px solid rgba(255,255,255,.12);
       overflow: hidden;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.42);
+      touch-action: none;
+      user-select: none;
     }
 
     .wheel-chance-fill {
       position: absolute;
-      inset: 7px;
+      left: 8px;
+      right: 8px;
+      top: 11px;
+      height: 20px;
       border-radius: 999px;
-      background: linear-gradient(90deg, rgba(78, 8, 28, .92) 0%, rgba(78, 8, 28, .92) var(--wheel-chance, 20%), rgba(255,255,255,.12) var(--wheel-chance, 20%), rgba(255,255,255,.12) 100%);
+      background: linear-gradient(90deg, rgba(78, 8, 28, .94) 0%, rgba(78, 8, 28, .94) var(--wheel-pos, 38.78%), rgba(255,255,255,.12) var(--wheel-pos, 38.78%), rgba(255,255,255,.12) 100%);
       pointer-events: none;
+      transition: background .12s cubic-bezier(.2,.8,.2,1);
     }
 
     .wheel-chance-thumb {
       position: absolute;
-      left: var(--wheel-chance, 20%);
+      left: var(--wheel-pos, 38.78%);
       top: 50%;
-      width: 28px;
-      height: 28px;
-      border-radius: 11px;
+      width: 31px;
+      height: 31px;
+      border-radius: 12px;
       transform: translate(-50%, -50%);
       background: rgba(255,255,255,.035);
-      border: 1px solid rgba(255,255,255,.26);
-      box-shadow: 0 10px 22px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.28);
+      box-shadow: 0 10px 22px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.20);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       pointer-events: none;
+      transition: left .12s cubic-bezier(.2,.8,.2,1), transform .12s ease;
+    }
+
+    .wheel-chance-shell.dragging .wheel-chance-fill,
+    .wheel-chance-shell.dragging .wheel-chance-thumb {
+      transition-duration: .045s;
+    }
+
+    .wheel-chance-shell.dragging .wheel-chance-thumb {
+      transform: translate(-50%, -50%) scale(1.06);
     }
 
     .wheel-chance-slider {
@@ -250,13 +259,13 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 38px;
-      height: 38px;
+      width: 52px;
+      height: 52px;
     }
 
     .wheel-chance-slider::-moz-range-thumb {
-      width: 38px;
-      height: 38px;
+      width: 52px;
+      height: 52px;
       border: 0;
     }
 
@@ -434,11 +443,30 @@ export const WHEEL_SECTION = `
 
         var angle = 0;
         var spinning = false;
+        var dragging = false;
         var houseEdge = .96;
+        var minChance = 1;
+        var maxChance = 50;
         var pointerAngle = -Math.PI / 2;
 
         function clampChance(value) {
-          return Math.max(1, Math.min(50, Math.round(Number(value) || 20)));
+          return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));
+        }
+
+        function chanceToPos(chance) {
+          return ((clampChance(chance) - minChance) / (maxChance - minChance)) * 100;
+        }
+
+        function posToChance(pos) {
+          return clampChance(minChance + (Math.max(0, Math.min(100, pos)) / 100) * (maxChance - minChance));
+        }
+
+        function chanceFromClientX(clientX) {
+          var rect = chanceShell.getBoundingClientRect();
+          var usableLeft = rect.left + 8;
+          var usableWidth = Math.max(1, rect.width - 16);
+          var pos = ((clientX - usableLeft) / usableWidth) * 100;
+          return posToChance(pos);
         }
 
         function multiplierFor(chance) {
@@ -467,15 +495,42 @@ export const WHEEL_SECTION = `
 
         function updateUi() {
           var chance = clampChance(chanceInput.value);
+          var pos = chanceToPos(chance);
           var mult = multiplierFor(chance);
           chanceInput.value = String(chance);
-          root.style.setProperty('--wheel-chance', chance + '%');
-          chanceShell.style.setProperty('--wheel-chance', chance + '%');
+          root.style.setProperty('--wheel-pos', pos + '%');
+          chanceShell.style.setProperty('--wheel-pos', pos + '%');
           if (chanceText) chanceText.textContent = chance + '%';
           if (chanceStat) chanceStat.textContent = chance + '%';
           if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
           if (centerText) centerText.textContent = chance + '%';
           if (!spinning) draw(angle);
+        }
+
+        function setChanceFromClientX(clientX) {
+          if (spinning || chanceInput.disabled) return;
+          chanceInput.value = String(chanceFromClientX(clientX));
+          updateUi();
+        }
+
+        function startDrag(event) {
+          if (spinning || chanceInput.disabled) return;
+          dragging = true;
+          chanceShell.classList.add('dragging');
+          setChanceFromClientX(event.clientX);
+          event.preventDefault();
+        }
+
+        function moveDrag(event) {
+          if (!dragging) return;
+          setChanceFromClientX(event.clientX);
+          event.preventDefault();
+        }
+
+        function endDrag() {
+          if (!dragging) return;
+          dragging = false;
+          chanceShell.classList.remove('dragging');
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
@@ -667,6 +722,10 @@ export const WHEEL_SECTION = `
           amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
         });
 
+        chanceShell.addEventListener('pointerdown', startDrag);
+        document.addEventListener('pointermove', moveDrag, { passive: false });
+        document.addEventListener('pointerup', endDrag);
+        document.addEventListener('pointercancel', endDrag);
         chanceInput.addEventListener('input', updateUi);
         chanceInput.addEventListener('change', updateUi);
         spinButton.addEventListener('click', spin);
