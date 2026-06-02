@@ -22,54 +22,23 @@ const DICE_RANGE_CARD_STYLES = `
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
-  gap: 0 !important;
+  gap: 8px !important;
   backdrop-filter: blur(14px) saturate(1.16) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.16) !important;
 }
 
 .dice-view .dice-track-labels {
   flex: 0 0 auto !important;
-  height: 20px !important;
-  padding: 0 19px !important;
-  transform: translateY(18px) !important;
-  color: rgba(255, 255, 255, .58) !important;
-  font-size: 14px !important;
-  font-weight: 820 !important;
-  z-index: 5 !important;
+  transform: none !important;
 }
 
 .dice-view .dice-slider-shell {
   flex: 0 0 auto !important;
   width: 100% !important;
-  margin-top: 0 !important;
-}
-
-.dice-view .dice-slider-shell::before {
-  display: none !important;
 }
 
 .dice-view .dice-slider-visual {
-  height: 36px !important;
   background: rgba(0, 0, 0, .78) !important;
-  border-radius: 999px !important;
-  clip-path: polygon(
-    0 100%,
-    0 28%,
-    13% 28%,
-    16% 0,
-    19% 28%,
-    38% 28%,
-    41% 0,
-    44% 28%,
-    63% 28%,
-    66% 0,
-    69% 28%,
-    88% 28%,
-    91% 0,
-    94% 28%,
-    100% 28%,
-    100% 100%
-  ) !important;
 }
 
 .dice-view .dice-slider-thumb {
@@ -88,15 +57,6 @@ const DICE_RANGE_CARD_STYLES = `
     width: auto !important;
     height: 150px !important;
     padding: 16px 10px !important;
-  }
-
-  .dice-view .dice-track-labels {
-    font-size: 13px !important;
-    transform: translateY(17px) !important;
-  }
-
-  .dice-view .dice-slider-visual {
-    height: 34px !important;
   }
 
   .dice-view .dice-slider-thumb {
