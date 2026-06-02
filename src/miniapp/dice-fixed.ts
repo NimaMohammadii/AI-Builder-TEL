@@ -65,46 +65,147 @@ const DICE_RANGE_CARD_STYLES = `
   width: auto !important;
   max-width: 520px !important;
   margin: 0 auto !important;
-  padding: 10px 12px 12px !important;
+  padding: 14px !important;
   box-sizing: border-box !important;
-  border-radius: 28px !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  backdrop-filter: blur(3px) !important;
-  -webkit-backdrop-filter: blur(3px) !important;
+  border-radius: 32px !important;
+  background: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, .10) !important;
+  box-shadow: 0 24px 74px rgba(0, 0, 0, .50), inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+  overflow: hidden !important;
+  max-height: 430px !important;
+  transition: max-height .34s cubic-bezier(.2, .8, .2, 1), padding .28s ease, opacity .2s ease !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dice-view .dice-result-card:not(.open) {
+  max-height: 54px !important;
+  padding-bottom: 12px !important;
 }
 
 .dice-view .dice-result-head {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 8px !important;
-  color: rgba(255, 255, 255, .62) !important;
-  font-size: 10px !important;
-  font-weight: 900 !important;
-  letter-spacing: .12em !important;
-  text-transform: uppercase !important;
+  margin-bottom: 10px !important;
+  color: rgba(255, 255, 255, .50) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  letter-spacing: -.02em !important;
+  text-transform: none !important;
+}
+
+.dice-view .dice-result-title {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  color: rgba(255, 255, 255, .58) !important;
+}
+
+.dice-view .dice-result-title svg {
+  width: 17px !important;
+  height: 17px !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  color: rgba(255, 255, 255, .55) !important;
+}
+
+.dice-view .dice-result-title svg path {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.9 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.dice-view .dice-result-head-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
 .dice-view .dice-result-total {
   color: rgba(255, 255, 255, .92) !important;
-  font-size: 11px !important;
-  font-weight: 930 !important;
-  letter-spacing: .02em !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.02em !important;
   text-transform: none !important;
+}
+
+.dice-view .dice-result-toggle {
+  width: 28px !important;
+  height: 28px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .055) !important;
+  color: rgba(255, 255, 255, .85) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  transition: transform .22s ease, background .18s ease !important;
+}
+
+.dice-view .dice-result-toggle svg {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
+  transition: transform .28s cubic-bezier(.2, .8, .2, 1) !important;
+}
+
+.dice-view .dice-result-toggle path {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.4 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.dice-view .dice-result-card.open .dice-result-toggle svg {
+  transform: rotate(180deg) !important;
+}
+
+.dice-view .dice-result-toggle:active {
+  transform: scale(.94) !important;
+  background: rgba(255, 255, 255, .09) !important;
 }
 
 .dice-view .dice-result-list {
   display: grid !important;
   gap: 6px !important;
+  max-height: 394px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 2px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, .18) transparent !important;
+  transition: max-height .34s cubic-bezier(.2, .8, .2, 1), opacity .22s ease !important;
+}
+
+.dice-view .dice-result-card:not(.open) .dice-result-list {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.dice-view .dice-result-list::-webkit-scrollbar {
+  width: 4px !important;
+  display: block !important;
+}
+
+.dice-view .dice-result-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .18) !important;
+  border-radius: 999px !important;
 }
 
 .dice-view .dice-result-empty {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 820 !important;
   color: rgba(255, 255, 255, .45) !important;
-  padding: 8px 0 !important;
+  padding: 14px 0 !important;
   text-align: center !important;
 }
 
@@ -113,15 +214,15 @@ const DICE_RANGE_CARD_STYLES = `
   grid-template-columns: minmax(0, 1fr) auto auto !important;
   align-items: center !important;
   gap: 8px !important;
-  min-height: 32px !important;
-  border-radius: 999px !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  backdrop-filter: blur(3px) !important;
-  -webkit-backdrop-filter: blur(3px) !important;
+  min-height: 34px !important;
+  border-radius: 17px !important;
+  background: #030303 !important;
+  border: 1px solid rgba(255, 255, 255, .08) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035) !important;
   color: #fff !important;
-  padding: 0 2px !important;
+  padding: 2px 10px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .dice-view .dice-result-name {
@@ -138,7 +239,8 @@ const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-result-roll {
   font-size: 11px !important;
   font-weight: 930 !important;
-  color: rgba(255, 255, 255, .70) !important;
+  color: rgba(255, 255, 255, .62) !important;
+  white-space: nowrap !important;
 }
 
 .dice-view .dice-result-row.is-positive .dice-result-value {
@@ -174,7 +276,7 @@ const DICE_RANGE_CARD_STYLES = `
 }
 `;
 
-const DICE_RESULT_CARD = `<div class="dice-result-card" data-dice-result-card><div class="dice-result-head"><span>Results</span><b class="dice-result-total" data-dice-result-total>0</b></div><div class="dice-result-list" data-dice-result-list><div class="dice-result-empty">No results yet</div></div></div>`;
+const DICE_RESULT_CARD = `<div class="dice-result-card" data-dice-result-card><div class="dice-result-head"><span class="dice-result-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M9 17h6"/></svg><span>Results</span></span><div class="dice-result-head-actions"><b class="dice-result-total" data-dice-result-total>0</b><button class="dice-result-toggle" type="button" data-dice-result-toggle aria-label="Toggle results" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button></div></div><div class="dice-result-list" data-dice-result-list><div class="dice-result-empty">No results yet</div></div></div>`;
 
 const DICE_RESULT_SCRIPT = `
 (function(){
@@ -182,6 +284,8 @@ const DICE_RESULT_SCRIPT = `
   if (!root || root.dataset.resultHistoryReady) return;
   root.dataset.resultHistoryReady = '1';
 
+  var box = root.querySelector('[data-dice-result-card]');
+  var toggle = root.querySelector('[data-dice-result-toggle]');
   var list = root.querySelector('[data-dice-result-list]');
   var total = root.querySelector('[data-dice-result-total]');
   var button = root.querySelector('[data-dice-play]');
@@ -246,8 +350,16 @@ const DICE_RESULT_SCRIPT = `
       amount: amountValue,
     });
 
-    rows = rows.slice(0, 5);
+    rows = rows.slice(0, 50);
     render();
+  }
+
+  if (toggle && box) {
+    toggle.onclick = function() {
+      var open = !box.classList.contains('open');
+      box.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
   }
 
   if (button) {
