@@ -75,14 +75,14 @@ export const WHEEL_SECTION = `
 
     .wheel-pointer {
       position: absolute;
-      top: 8px;
+      top: 18px;
       left: 50%;
-      width: 46px;
-      height: 40px;
+      width: 38px;
+      height: 34px;
       z-index: 5;
       transform: translateX(-50%);
       background: transparent !important;
-      filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .74));
+      filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .78)) drop-shadow(0 0 8px rgba(255, 255, 255, .16));
     }
 
     .wheel-pointer:before {
@@ -92,9 +92,9 @@ export const WHEEL_SECTION = `
       top: 0;
       width: 0;
       height: 0;
-      border-left: 23px solid transparent !important;
-      border-right: 23px solid transparent !important;
-      border-top: 40px solid rgba(255,255,255,.92) !important;
+      border-left: 19px solid transparent !important;
+      border-right: 19px solid transparent !important;
+      border-top: 34px solid rgba(255,255,255,.94) !important;
       background: transparent !important;
       box-shadow: none !important;
       backdrop-filter: none;
@@ -105,13 +105,13 @@ export const WHEEL_SECTION = `
     .wheel-pointer:after {
       content: '';
       position: absolute;
-      left: 4px;
+      left: 3px;
       top: 2px;
       width: 0;
       height: 0;
-      border-left: 19px solid transparent;
-      border-right: 19px solid transparent;
-      border-top: 34px solid #030304;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 29px solid #030304;
       background: transparent;
       clip-path: none;
       pointer-events: none;
@@ -371,11 +371,11 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-ton-icon {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       display: inline-block;
       object-fit: contain;
-      flex: 0 0 26px;
+      flex: 0 0 24px;
       filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
@@ -487,9 +487,9 @@ export const WHEEL_SECTION = `
         </div>
 
         <div class="wheel-quick">
-          <button data-wheel-quick="0.1" class="active"><span>0.1</span><img class="wheel-ton-icon" src="/app/api/credit-icon.png" alt="Credit" loading="eager" decoding="async" data-wheel-credit-icon /></button>
-          <button data-wheel-quick="0.5"><span>0.5</span><img class="wheel-ton-icon" src="/app/api/credit-icon.png" alt="Credit" loading="eager" decoding="async" data-wheel-credit-icon /></button>
-          <button data-wheel-quick="1"><span>1</span><img class="wheel-ton-icon" src="/app/api/credit-icon.png" alt="Credit" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="0.1" class="active"><span>0.1</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="0.5"><span>0.5</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="1"><span>1</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
         </div>
 
         <button class="wheel-join" data-wheel-join>Spin</button>
@@ -542,7 +542,7 @@ export const WHEEL_SECTION = `
         var minChance = edgeChancePadding;
         var maxChance = 100 - edgeChancePadding;
         var pointerAngle = -Math.PI / 2;
-        var creditIconSrc = '/app/api/credit-icon.png';
+        var creditIconSrc = '/app/api/nft-price-icon.png?v=' + Date.now();
 
         function clampChance(value) {
           return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));
@@ -595,16 +595,11 @@ export const WHEEL_SECTION = `
 
         function hydrateCreditIcons() {
           var src = creditIconSrc;
-          try {
-            var uploaded = window.VexaUploadedImages && window.VexaUploadedImages.read && window.VexaUploadedImages.read();
-            if (uploaded && uploaded.creditIconUrl) src = uploaded.creditIconUrl;
-          } catch (e) {}
-          if (!window.__vexaWheelCreditIcon) {
-            window.__vexaWheelCreditIcon = new Image();
-          }
-          window.__vexaWheelCreditIcon.src = src;
-          root.querySelectorAll('[data-wheel-credit-icon]').forEach(function (img) {
-            if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+          var img = new Image();
+          img.decoding = 'async';
+          img.src = src;
+          root.querySelectorAll('[data-wheel-credit-icon]').forEach(function (item) {
+            if (item.getAttribute('src') !== src) item.setAttribute('src', src);
           });
         }
 
@@ -829,7 +824,6 @@ export const WHEEL_SECTION = `
         chanceInput.min = String(minChance);
         chanceInput.max = String(maxChance);
         hydrateCreditIcons();
-        if (window.VexaUploadedImages && window.VexaUploadedImages.load) window.VexaUploadedImages.load(false).then(hydrateCreditIcons).catch(function () {});
         chanceShell.addEventListener('pointerdown', startDrag);
         chanceShell.addEventListener('pointermove', moveDrag, { passive: false });
         chanceShell.addEventListener('pointerup', endDrag);
