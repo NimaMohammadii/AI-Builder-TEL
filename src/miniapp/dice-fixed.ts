@@ -3,14 +3,14 @@ import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-range-card {
   position: fixed !important;
-  top: calc(env(safe-area-inset-top) + 112px) !important;
-  left: 28px !important;
-  right: 28px !important;
+  top: calc(env(safe-area-inset-top) + 138px) !important;
+  left: 14px !important;
+  right: 14px !important;
   z-index: 8 !important;
   width: auto !important;
   max-width: 520px !important;
   margin: 0 auto !important;
-  padding: 16px 10px 10px !important;
+  padding: 18px 12px 12px !important;
   box-sizing: border-box !important;
   border-radius: 28px !important;
   background: rgba(0, 0, 0, .62) !important;
@@ -36,11 +36,11 @@ const DICE_RANGE_CARD_STYLES = `
 
 @media (max-width: 420px) {
   .dice-view .dice-range-card {
-    top: calc(env(safe-area-inset-top) + 104px) !important;
-    left: 24px !important;
-    right: 24px !important;
+    top: calc(env(safe-area-inset-top) + 130px) !important;
+    left: 14px !important;
+    right: 14px !important;
     width: auto !important;
-    padding: 14px 8px 8px !important;
+    padding: 16px 10px 10px !important;
   }
 
   .dice-view .dice-slider-thumb {
