@@ -214,15 +214,15 @@ export const WHEEL_SECTION = `
       --wheel-left-color: rgba(58, 6, 20, .84);
       --wheel-right-color: rgba(138, 138, 146, .54);
       position: relative;
-      height: 74px;
-      border-radius: 20px;
+      height: 86px;
+      border-radius: 22px;
       background: rgba(8,8,10,.48) !important;
       border: 1px solid rgba(255,255,255,.12) !important;
       overflow: visible;
       box-shadow: none !important;
       touch-action: none;
       user-select: none;
-      padding: 31px 6px 18px;
+      padding: 36px 6px 22px;
       box-sizing: border-box;
     }
 
@@ -231,7 +231,7 @@ export const WHEEL_SECTION = `
       position: absolute;
       left: 20px;
       right: 20px;
-      top: 28px;
+      top: 34px;
       height: 10px;
       background: linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 25%, rgba(255,255,255,.10) 25% calc(25% + 2px), transparent calc(25% + 2px) 50%, rgba(255,255,255,.10) 50% calc(50% + 2px), transparent calc(50% + 2px) 75%, rgba(255,255,255,.10) 75% calc(75% + 2px), transparent calc(75% + 2px) 100%);
       clip-path: polygon(0 100%, 1.6% 0, 3.2% 100%, 25% 100%, 26.6% 0, 28.2% 100%, 50% 100%, 51.6% 0, 53.2% 100%, 75% 100%, 76.6% 0, 78.2% 100%, 100% 100%);
@@ -360,11 +360,11 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-ton-icon {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       display: inline-block;
       object-fit: contain;
-      flex: 0 0 16px;
+      flex: 0 0 20px;
       filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
@@ -648,7 +648,7 @@ export const WHEEL_SECTION = `
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-          var corner = .024;
+          var corner = Math.min(.052, Math.max(.004, (endAngle - startAngle) * .18));
           var innerStart = startAngle + corner;
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
