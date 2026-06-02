@@ -193,7 +193,7 @@ export const WHEEL_SECTION = `
       position: absolute;
       left: 18px;
       right: 18px;
-      top: 10px;
+      top: 12px;
       z-index: 3;
       margin-bottom: 0;
       padding: 0;
@@ -214,7 +214,7 @@ export const WHEEL_SECTION = `
       --wheel-left-color: rgba(58, 6, 20, .84);
       --wheel-right-color: rgba(138, 138, 146, .54);
       position: relative;
-      height: 74px;
+      height: 84px;
       border-radius: 20px;
       background: rgba(8,8,10,.48) !important;
       border: 1px solid rgba(255,255,255,.12) !important;
@@ -222,7 +222,7 @@ export const WHEEL_SECTION = `
       box-shadow: none !important;
       touch-action: none;
       user-select: none;
-      padding: 31px 6px 18px;
+      padding: 36px 6px 20px;
       box-sizing: border-box;
     }
 
@@ -360,11 +360,11 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-ton-icon {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       display: inline-block;
       object-fit: contain;
-      flex: 0 0 16px;
+      flex: 0 0 20px;
       filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
@@ -648,7 +648,7 @@ export const WHEEL_SECTION = `
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-          var corner = .024;
+          var corner = .038;
           var innerStart = startAngle + corner;
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
