@@ -1,29 +1,6 @@
 import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
-const DICE_RANGE_STYLES = `
-.dice-view .dice-range-card {
-  margin: 0 auto 2px !important;
-  padding: 18px 10px 12px !important;
-  border-radius: 28px !important;
-  background: rgba(255, 255, 255, .026) !important;
-  border: 1px solid rgba(255, 255, 255, .12) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
-  transform: translateY(-72px) !important;
-  backdrop-filter: blur(14px) saturate(1.16) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.16) !important;
-}
-
-@media (max-width: 420px) {
-  .dice-view .dice-range-card {
-    margin: 0 auto 2px !important;
-    padding: 16px 8px 10px !important;
-    transform: translateY(-70px) !important;
-  }
-}
-`;
-
 export const DICE_SECTION = RAW_DICE_SECTION
-  .replace('</style>', DICE_RANGE_STYLES + '</style>')
   .replace('data-dice-bet-input-open>1</button>', 'data-dice-bet-input-open>1.00</button>')
   .replace('<b data-dice-current>1</b>', '<b data-dice-current>1.00</b>')
   .replace('min="1" inputmode="decimal" value="1"', 'min="0.01" step="0.01" inputmode="decimal" value="1.00"')
