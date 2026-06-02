@@ -13,7 +13,7 @@ export const LEVEL_SYNC_SCRIPT = `
   var lastSmartTickAt=0;
   var playMs=0;
   var dailyChecked=false;
-  var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,coinflip:1,hilo:1};
+  var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,rps:1,limbo:1,tower:1,coinflip:1,hilo:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-3',min:1,max:3,text:'Start your Vexa journey.'},
     {name:'Explorer',range:'Level 4-7',min:4,max:7,text:'Discover games, AI and rewards.'},

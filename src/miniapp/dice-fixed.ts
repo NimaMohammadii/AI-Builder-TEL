@@ -56,10 +56,22 @@ const DICE_RANGE_CARD_STYLES = `
   -webkit-backdrop-filter: blur(7px) saturate(1.22) !important;
 }
 
-body:has(#dice.active) #brandTitle {
+body:has(#mines.active) #brandTitle,
+body:has(#plinko.active) #brandTitle,
+body:has(#crash.active) #brandTitle,
+body:has(#wheel.active) #brandTitle,
+body:has(#dice.active) #brandTitle,
+body:has(#rps.active) #brandTitle,
+body:has(#limbo.active) #brandTitle,
+body:has(#tower.active) #brandTitle,
+body:has(#coinflip.active) #brandTitle,
+body:has(#hilo.active) #brandTitle {
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .dice-online-badge {
@@ -459,46 +471,76 @@ const DICE_RESULT_SCRIPT = `
 
 const DICE_ONLINE_BADGE_SCRIPT = `
 (function(){
-  var count = 204;
+  var games={mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'Rock Paper Scissors',limbo:'Limbo',tower:'Dragon Tower',coinflip:'Pump',hilo:'Chicken Cross'};
 
-  function isDiceActive() {
-    var root = document.getElementById('dice');
-    return !!(root && root.classList.contains('active'));
+  function activeGameId() {
+    for (var id in games) {
+      var root = document.getElementById(id);
+      if (root && root.classList.contains('active')) return id;
+    }
+    return '';
+  }
+
+  function fallbackCount(id) {
+    var seed = String(id || '').split('').reduce(function(sum, ch) { return sum + ch.charCodeAt(0); }, 0);
+    return 100 + (seed % 301);
+  }
+
+  function liveCount(id) {
+    var el = document.querySelector('#playzone .game-card-shell[data-game-view="' + id + '"] .game-players b');
+    var n = parseInt(el && el.textContent, 10);
+    return isFinite(n) ? n : fallbackCount(id);
+  }
+
+  function syncCardCount(id, value) {
+    var el = document.querySelector('#playzone .game-card-shell[data-game-view="' + id + '"] .game-players b');
+    if (el && String(parseInt(el.textContent, 10) || '') !== String(value)) el.textContent = String(value);
   }
 
   function renderBadge() {
     var title = document.getElementById('brandTitle');
     if (!title) return;
 
+    var id = activeGameId();
     var existing = title.querySelector('[data-dice-online-badge]');
-    if (!isDiceActive()) {
+    if (!id) {
       if (existing) existing.remove();
       return;
     }
 
-    if (existing) return;
-    if (String(title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim() !== 'Dice') return;
+    var expectedTitle = games[id] || '';
+    var currentTitle = String(title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim();
+    if (expectedTitle && currentTitle !== expectedTitle) title.textContent = expectedTitle;
 
-    var badge = document.createElement('span');
-    badge.className = 'dice-online-badge';
-    badge.setAttribute('data-dice-online-badge', '1');
+    var count = liveCount(id);
+    syncCardCount(id, count);
+
+    var badge = existing;
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'dice-online-badge';
+      badge.setAttribute('data-dice-online-badge', '1');
+
+      var dot = document.createElement('i');
+      var live = document.createElement('em');
+      var value = document.createElement('b');
+      live.textContent = 'LIVE';
+
+      badge.appendChild(dot);
+      badge.appendChild(live);
+      badge.appendChild(value);
+      title.appendChild(badge);
+    }
+
+    var valueEl = badge.querySelector('b');
+    if (valueEl) valueEl.textContent = String(count);
     badge.setAttribute('aria-label', count + ' live online');
-
-    var dot = document.createElement('i');
-    var live = document.createElement('em');
-    var value = document.createElement('b');
-    live.textContent = 'LIVE';
-    value.textContent = String(count);
-
-    badge.appendChild(dot);
-    badge.appendChild(live);
-    badge.appendChild(value);
-    title.appendChild(badge);
   }
 
   document.addEventListener('click', function() {
     setTimeout(renderBadge, 220);
   }, true);
+  window.addEventListener('vexa-play-zone-live-counts-updated', renderBadge);
 
   if (window.MutationObserver) {
     new MutationObserver(renderBadge).observe(document.body, {
