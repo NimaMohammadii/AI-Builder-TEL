@@ -59,6 +59,7 @@ import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
 import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
 import { MINES_SCRIPT } from './mines-script';
 import { CRASH_SCRIPT } from './crash-script';
+import { WHEEL_ASSETS_SCRIPT } from './wheel-assets-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
 import { SECTION_LOCK_SCRIPT } from './section-lock-script';
@@ -192,6 +193,7 @@ const SCRIPTS = [
   PLINKO_PANEL_SCRIPT,
   MINES_SCRIPT,
   CRASH_SCRIPT,
+  WHEEL_ASSETS_SCRIPT,
   PREDICT_ZONE_SETTINGS_SCRIPT,
   PREDICT_EXTRA_MARKETS_SCRIPT,
   PREDICT_ENTRY_LOADER_SCRIPT,
