@@ -9,8 +9,9 @@ const DICE_RANGE_CARD_STYLES = `
   z-index: 8 !important;
   width: auto !important;
   max-width: 520px !important;
+  aspect-ratio: 1 / 1 !important;
   margin: 0 auto !important;
-  padding: 18px 12px 12px !important;
+  padding: 18px 12px !important;
   box-sizing: border-box !important;
   border-radius: 28px !important;
   background: rgba(0, 0, 0, .62) !important;
@@ -18,8 +19,22 @@ const DICE_RANGE_CARD_STYLES = `
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
   transform: none !important;
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 8px !important;
   backdrop-filter: blur(14px) saturate(1.16) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.16) !important;
+}
+
+.dice-view .dice-track-labels {
+  flex: 0 0 auto !important;
+  transform: none !important;
+}
+
+.dice-view .dice-slider-shell {
+  flex: 0 0 auto !important;
+  width: 100% !important;
 }
 
 .dice-view .dice-slider-visual {
@@ -40,7 +55,7 @@ const DICE_RANGE_CARD_STYLES = `
     left: 14px !important;
     right: 14px !important;
     width: auto !important;
-    padding: 16px 10px 10px !important;
+    padding: 16px 10px !important;
   }
 
   .dice-view .dice-slider-thumb {
