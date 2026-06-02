@@ -564,7 +564,7 @@ export const WHEEL_SECTION = `
         var edgeChancePadding = 4;
         var minChance = edgeChancePadding;
         var maxChance = 100 - edgeChancePadding;
-        var pointerAngle = -Math.PI / 2;
+        var pointerAngle = 0;
         var creditIconSrc = '/app/api/nft-price-icon.png?v=' + Date.now();
 
         function clampChance(value) {
