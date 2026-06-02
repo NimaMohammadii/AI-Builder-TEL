@@ -1,4 +1,4 @@
-import { livePlayersSeed } from './game-live-counts';
+import { livePlayersSeed, shouldShowLivePlayersOnCard } from './game-live-counts';
 
 const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
@@ -17,8 +17,9 @@ const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
   const fallback = `/app/api/section-lock-image/${id}/locked.png`;
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
-  const footer = `<span class="game-footer game-footer-live"><span class="game-players" aria-label="Players online"><i></i><b>${livePlayersSeed(id)}</b><em>players</em></span></span>`;
-  return `<span class="game-card-shell ${extraClass}" ${viewAttr}><button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}"><span class="game-image"><img src="${transparentPixel}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/></span></button>${footer}</span>`;
+  const footer = shouldShowLivePlayersOnCard(id) ? `<span class="game-footer game-footer-live"><span class="game-players" aria-label="Players online"><i></i><b>${livePlayersSeed(id)}</b><em>players</em></span></span>` : '';
+  const countAttr = shouldShowLivePlayersOnCard(id) ? 'data-player-count-visible="true"' : 'data-player-count-visible="false"';
+  return `<span class="game-card-shell ${extraClass}" ${viewAttr} ${countAttr}><button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}"><span class="game-image"><img src="${transparentPixel}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/></span></button>${footer}</span>`;
 }
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
