@@ -9,7 +9,7 @@ const DICE_RANGE_CARD_STYLES = `
   z-index: 8 !important;
   width: auto !important;
   max-width: 520px !important;
-  aspect-ratio: 1 / 1 !important;
+  height: 170px !important;
   margin: 0 auto !important;
   padding: 18px 12px !important;
   box-sizing: border-box !important;
@@ -55,6 +55,7 @@ const DICE_RANGE_CARD_STYLES = `
     left: 14px !important;
     right: 14px !important;
     width: auto !important;
+    height: 150px !important;
     padding: 16px 10px !important;
   }
 
