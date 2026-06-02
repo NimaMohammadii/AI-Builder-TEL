@@ -33,7 +33,10 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
     <div class="crash-live open" id="crashLive">
       <div class="crash-live-head">
-        <span>Live Bets</span>
+        <span class="crash-live-title">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
+          <span>Live Bets</span>
+        </span>
         <div class="crash-live-head-actions">
           <b id="crashLiveTotal">0 TON</b>
           <button id="crashLiveToggle" class="crash-live-toggle" type="button" aria-label="Toggle live bets" aria-expanded="true">
