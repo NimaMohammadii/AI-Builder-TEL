@@ -29,6 +29,7 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { CONNECT_BOT_CARD_LOCK_STYLES } from './connect-bot-card-lock-styles';
 import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
+import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION } from './home';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
@@ -153,6 +154,7 @@ const STYLES = [
   CONNECT_BOT_CARD_LOCK_STYLES,
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
+  GAME_LIVE_COUNT_STYLES,
 ].join('');
 
 const SECTIONS = [
@@ -182,6 +184,7 @@ const SCRIPTS = [
   TOP_PLAYERS_HOME_CARD_SCRIPT,
   PLAY_ZONE_IMAGE_REFRESH_SCRIPT,
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
+  GAME_LIVE_COUNT_SCRIPT,
   MARKET_CONFIG_SCRIPT,
   PLINKO_SCRIPT,
   PLINKO_LIVE_FEED_POLISH_SCRIPT,
