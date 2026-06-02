@@ -13,6 +13,19 @@ const liveGameLabels: Record<string, string> = {
 const hiddenCardPlayerCounts = new Set(['hilo', 'coinflip', 'tower']);
 
 type LivePlayerRange = { start: number; end: number; min: number; max: number };
+type LivePlayerProfile = { offset: number; width: number; phase: number };
+
+const livePlayerProfiles: Record<string, LivePlayerProfile> = {
+  mines: { offset: -36, width: 18, phase: 5 },
+  plinko: { offset: 24, width: 32, phase: 17 },
+  rps: { offset: -12, width: -8, phase: 29 },
+  wheel: { offset: 58, width: 24, phase: 41 },
+  dice: { offset: -28, width: 14, phase: 53 },
+  crash: { offset: 72, width: 38, phase: 67 },
+  hilo: { offset: -44, width: 20, phase: 79 },
+  coinflip: { offset: 10, width: -12, phase: 89 },
+  tower: { offset: 46, width: 28, phase: 101 },
+};
 
 const livePlayerRanges: LivePlayerRange[] = [
   { start: 5, end: 11, min: 80, max: 220 },
@@ -21,8 +34,16 @@ const livePlayerRanges: LivePlayerRange[] = [
   { start: 0, end: 4, min: 500, max: 700 },
 ];
 
-function rangeForHour(hour: number): LivePlayerRange {
+function baseRangeForHour(hour: number): LivePlayerRange {
   return livePlayerRanges.find((range) => hour >= range.start && hour <= range.end) ?? livePlayerRanges[0];
+}
+
+function rangeForGameHour(id: string, hour: number): LivePlayerRange {
+  const base = baseRangeForHour(hour);
+  const profile = livePlayerProfiles[id] ?? { offset: 0, width: 0, phase: hashId(id) % 113 };
+  const low = Math.max(40, base.min + profile.offset);
+  const high = Math.max(low + 35, base.max + profile.offset + profile.width);
+  return { ...base, min: low, max: high };
 }
 
 function hashId(id: string): number {
@@ -30,12 +51,13 @@ function hashId(id: string): number {
 }
 
 function rangedLivePlayers(id: string, date = new Date()): number {
-  const range = rangeForHour(date.getHours());
+  const range = rangeForGameHour(id, date.getHours());
   const width = range.max - range.min + 1;
   const bucket = Math.floor(date.getTime() / 90000);
   const hash = hashId(id);
-  const wave = Math.floor((Math.sin((bucket + hash) * 1.618) + 1) * width * 0.22);
-  const drift = (bucket * 37 + hash * 13) % width;
+  const phase = livePlayerProfiles[id]?.phase ?? hash;
+  const wave = Math.floor((Math.sin((bucket + phase) * 1.618) + 1) * width * 0.22);
+  const drift = (bucket * 37 + hash * 13 + phase * 7) % width;
   return range.min + ((drift + wave) % width);
 }
 
@@ -135,15 +157,17 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var cardCountsVisible=${JSON.stringify(Object.fromEntries(Object.keys(liveGameLabels).map((id) => [id, shouldShowLivePlayersOnCard(id)])))};
   var counts={};
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
+  var profiles=${JSON.stringify(livePlayerProfiles)};
   function hash(id){var sum=0;String(id||'').split('').forEach(function(ch){sum+=ch.charCodeAt(0)});return sum}
-  function rangeForHour(hour){for(var i=0;i<ranges.length;i++){var r=ranges[i];if(hour>=r.start&&hour<=r.end)return r}return ranges[0]}
-  function ranged(id,date){date=date||new Date();var r=rangeForHour(date.getHours());var width=r.max-r.min+1;var bucket=Math.floor(date.getTime()/90000);var h=hash(id);var wave=Math.floor((Math.sin((bucket+h)*1.618)+1)*width*.22);var drift=(bucket*37+h*13)%width;return r.min+((drift+wave)%width)}
+  function baseRangeForHour(hour){for(var i=0;i<ranges.length;i++){var r=ranges[i];if(hour>=r.start&&hour<=r.end)return r}return ranges[0]}
+  function rangeForGameHour(id,hour){var base=baseRangeForHour(hour);var profile=profiles[id]||{offset:0,width:0,phase:hash(id)%113};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {start:base.start,end:base.end,min:low,max:high}}
+  function ranged(id,date){date=date||new Date();var r=rangeForGameHour(id,date.getHours());var width=r.max-r.min+1;var bucket=Math.floor(date.getTime()/90000);var h=hash(id);var phase=(profiles[id]&&profiles[id].phase)||h;var wave=Math.floor((Math.sin((bucket+phase)*1.618)+1)*width*.22);var drift=(bucket*37+h*13+phase*7)%width;return r.min+((drift+wave)%width)}
   function seed(id){return ranged(id)}
-  function inCurrentRange(id,value){var r=rangeForHour((new Date()).getHours());var n=Math.floor(Number(value));return isFinite(n)&&n>=r.min&&n<=r.max}
+  function inCurrentRange(id,value){var r=rangeForGameHour(id,(new Date()).getHours());var n=Math.floor(Number(value));return isFinite(n)&&n>=r.min&&n<=r.max}
   function cardValue(id){var el=document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b');var n=parseInt(el&&el.textContent,10);return isFinite(n)?n:null}
   function count(id){var fromCard=cardValue(id);if(fromCard!==null&&inCurrentRange(id,fromCard)){counts[id]=fromCard;return fromCard}if(!counts[id]||!inCurrentRange(id,counts[id]))counts[id]=seed(id);return counts[id]}
   function cardNodes(id){if(cardCountsVisible[id]===false)return [];return Array.prototype.slice.call(document.querySelectorAll('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b'))}
-  function setCount(id,value){var fallback=seed(id);var n=Math.floor(Number(value));if(!isFinite(n))n=fallback;var r=rangeForHour((new Date()).getHours());n=Math.max(r.min,Math.min(r.max,n));counts[id]=n;cardNodes(id).forEach(function(el){if(el.textContent!==String(n)){el.classList.add('is-counting');el.textContent=String(n);setTimeout(function(){el.classList.remove('is-counting')},180)}});renderBadge();return n}
+  function setCount(id,value){var fallback=seed(id);var n=Math.floor(Number(value));if(!isFinite(n))n=fallback;var r=rangeForGameHour(id,(new Date()).getHours());n=Math.max(r.min,Math.min(r.max,n));counts[id]=n;cardNodes(id).forEach(function(el){if(el.textContent!==String(n)){el.classList.add('is-counting');el.textContent=String(n);setTimeout(function(){el.classList.remove('is-counting')},180)}});renderBadge();return n}
   function activeGame(){var root=document.querySelector('.view.active');if(!root)return '';var id=root.id||'';return games[id]?id:''}
   function badges(title){return Array.prototype.slice.call(title.querySelectorAll('[data-game-online-badge],[data-dice-online-badge]'))}
   function stripBadges(title,keep){badges(title).forEach(function(node){if(node!==keep)node.remove()})}
