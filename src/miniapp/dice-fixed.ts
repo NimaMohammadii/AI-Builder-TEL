@@ -38,19 +38,6 @@ const DICE_RANGE_CARD_STYLES = `
   z-index: 5 !important;
 }
 
-.dice-view .dice-track-labels span::after {
-  content: '' !important;
-  position: absolute !important;
-  left: 50% !important;
-  top: 21px !important;
-  width: 0 !important;
-  height: 0 !important;
-  border-left: 6px solid transparent !important;
-  border-right: 6px solid transparent !important;
-  border-bottom: 8px solid rgba(255, 255, 255, .10) !important;
-  transform: translateX(-50%) !important;
-}
-
 .dice-view .dice-slider-shell {
   flex: 0 0 auto !important;
   width: 100% !important;
@@ -58,8 +45,36 @@ const DICE_RANGE_CARD_STYLES = `
 }
 
 .dice-view .dice-slider-shell::before {
-  top: 9px !important;
-  opacity: .34 !important;
+  top: 7px !important;
+  left: 20px !important;
+  right: 20px !important;
+  height: 16px !important;
+  opacity: .38 !important;
+  background: rgba(255, 255, 255, .10) !important;
+  clip-path: polygon(
+    0 100%,
+    0 58%,
+    10px 58%,
+    13px 34%,
+    16px 58%,
+    25% 58%,
+    calc(25% + 10px) 58%,
+    calc(25% + 13px) 34%,
+    calc(25% + 16px) 58%,
+    50% 58%,
+    calc(50% + 10px) 58%,
+    calc(50% + 13px) 34%,
+    calc(50% + 16px) 58%,
+    75% 58%,
+    calc(75% + 10px) 58%,
+    calc(75% + 13px) 34%,
+    calc(75% + 16px) 58%,
+    calc(100% - 16px) 58%,
+    calc(100% - 13px) 34%,
+    calc(100% - 10px) 58%,
+    100% 58%,
+    100% 100%
+  ) !important;
 }
 
 .dice-view .dice-slider-visual {
@@ -89,11 +104,9 @@ const DICE_RANGE_CARD_STYLES = `
     transform: translateY(17px) !important;
   }
 
-  .dice-view .dice-track-labels span::after {
-    top: 20px !important;
-    border-left-width: 5px !important;
-    border-right-width: 5px !important;
-    border-bottom-width: 7px !important;
+  .dice-view .dice-slider-shell::before {
+    top: 7px !important;
+    height: 15px !important;
   }
 
   .dice-view .dice-slider-thumb {
