@@ -75,24 +75,37 @@ export const WHEEL_SECTION = `
 
     .wheel-pointer {
       position: absolute;
-      top: 2px;
+      top: 0;
       left: 50%;
-      width: 34px;
-      height: 64px;
+      width: 42px;
+      height: 72px;
       z-index: 5;
       transform: translateX(-50%);
       background: transparent !important;
-      filter: drop-shadow(0 16px 32px rgba(0, 0, 0, .62));
+      filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .70)) drop-shadow(0 0 14px rgba(255, 255, 255, .16));
     }
 
     .wheel-pointer:before {
       content: '';
       position: absolute;
       inset: 0;
-      background: rgba(255, 255, 255, .06) !important;
-      border: 1px solid rgba(255, 255, 255, .24) !important;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .32) !important;
-      clip-path: polygon(50% 100%, 3% 0, 97% 0);
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.68) 26%, rgba(88,10,30,.96) 100%) !important;
+      border: 1px solid rgba(255, 255, 255, .42) !important;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .55) !important;
+      clip-path: polygon(50% 100%, 4% 0, 96% 0);
+    }
+
+    .wheel-pointer:after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 4px 10px rgba(0,0,0,.42);
     }
 
     .wheel-center {
@@ -166,13 +179,13 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-chance-card {
-      border: 0 !important;
-      border-radius: 0;
-      background: transparent !important;
-      padding: 0;
-      box-shadow: none !important;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      border: 1px solid rgba(255, 255, 255, .11) !important;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, .055) !important;
+      padding: 11px 10px 9px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255,255,255,.08) !important;
+      backdrop-filter: blur(8px) saturate(1.1);
+      -webkit-backdrop-filter: blur(8px) saturate(1.1);
     }
 
     .wheel-chance-head {
@@ -180,8 +193,8 @@ export const WHEEL_SECTION = `
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-bottom: 2px;
-      padding: 0 19px;
+      margin-bottom: 4px;
+      padding: 0 10px;
       font-size: 12px;
       font-weight: 900;
       color: rgba(255, 255, 255, .56);
@@ -197,12 +210,12 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-shell {
       --wheel-left-color: rgba(58, 6, 20, .84);
-      --wheel-right-color: rgba(6, 55, 24, .84);
+      --wheel-right-color: rgba(138, 138, 146, .54);
       position: relative;
-      height: 78px;
-      border-radius: 0;
-      background: transparent !important;
-      border: 0 !important;
+      height: 64px;
+      border-radius: 18px;
+      background: rgba(0,0,0,.16) !important;
+      border: 1px solid rgba(255,255,255,.07) !important;
       overflow: visible;
       box-shadow: none !important;
       touch-action: none;
@@ -226,13 +239,13 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-fill {
       position: absolute;
-      left: 8px;
-      right: 8px;
+      left: 14px;
+      right: 14px;
       top: 50%;
       height: 30px;
       border-radius: 999px;
       transform: translateY(-50%);
-      background: rgba(0,0,0,.78);
+      background: rgba(14,14,16,.86);
       border: 1px solid rgba(255,255,255,.15);
       box-shadow: 0 16px 36px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.55);
       backdrop-filter: blur(6px) saturate(1.15);
@@ -244,8 +257,8 @@ export const WHEEL_SECTION = `
     .wheel-chance-fill:before {
       content: '';
       position: absolute;
-      left: 11px;
-      right: 11px;
+      left: 16px;
+      right: 16px;
       top: 50%;
       height: 12px;
       border-radius: 999px;
@@ -335,6 +348,22 @@ export const WHEEL_SECTION = `
       font-weight: 900;
       height: 44px;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+    }
+
+    .wheel-quick button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .wheel-ton-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      object-fit: contain;
+      flex: 0 0 16px;
+      filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
     .wheel-quick button.active {
@@ -440,14 +469,14 @@ export const WHEEL_SECTION = `
           <div class="wheel-chance-shell" data-wheel-chance-shell>
             <div class="wheel-chance-fill"></div>
             <div class="wheel-chance-thumb"></div>
-            <input class="wheel-chance-slider" type="range" min="1" max="100" step="1" value="20" data-wheel-chance />
+            <input class="wheel-chance-slider" type="range" min="4" max="96" step="1" value="20" data-wheel-chance />
           </div>
         </div>
 
         <div class="wheel-quick">
-          <button data-wheel-quick="0.1" class="active">0.1</button>
-          <button data-wheel-quick="0.5">0.5</button>
-          <button data-wheel-quick="1">1</button>
+          <button data-wheel-quick="0.1" class="active"><span>0.1</span><img class="wheel-ton-icon" alt="TON" loading="eager" decoding="async" data-wheel-ton-icon /></button>
+          <button data-wheel-quick="0.5"><span>0.5</span><img class="wheel-ton-icon" alt="TON" loading="eager" decoding="async" data-wheel-ton-icon /></button>
+          <button data-wheel-quick="1"><span>1</span><img class="wheel-ton-icon" alt="TON" loading="eager" decoding="async" data-wheel-ton-icon /></button>
         </div>
 
         <button class="wheel-join" data-wheel-join>Spin</button>
@@ -496,24 +525,27 @@ export const WHEEL_SECTION = `
         var spinning = false;
         var dragging = false;
         var houseEdge = .96;
-        var minChance = 1;
-        var maxChance = 100;
+        var edgeChancePadding = 4;
+        var minChance = edgeChancePadding;
+        var maxChance = 100 - edgeChancePadding;
         var pointerAngle = -Math.PI / 2;
+        var tonIconSrc = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="#08c"/><path fill="#fff" d="M14.6 17.5h26.8c2.5 0 4.1 2.7 2.8 4.9L30.8 42.9a3.3 3.3 0 0 1-5.6 0L11.8 22.4c-1.3-2.2.3-4.9 2.8-4.9Zm11 20.1V22.4h-8.7l8.7 15.2Zm4.8 0 8.7-15.2h-8.7v15.2Z"/></svg>');
 
         function clampChance(value) {
           return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));
         }
 
         function chanceToRatio(chance) {
-          return clampChance(chance) / maxChance;
+          return (clampChance(chance) - minChance) / Math.max(1, maxChance - minChance);
         }
 
         function chanceToPos(chance) {
-          return chanceToRatio(chance) * 100;
+          return clampChance(chance);
         }
 
         function posToChance(pos) {
-          return clampChance((Math.max(0, Math.min(100, pos)) / 100) * maxChance);
+          var clampedPos = Math.max(minChance, Math.min(maxChance, pos));
+          return clampChance(clampedPos);
         }
 
         function chanceFromClientX(clientX) {
@@ -546,6 +578,16 @@ export const WHEEL_SECTION = `
 
         function toNano(value) {
           return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * 1000000000));
+        }
+
+        function hydrateTonIcons() {
+          if (!window.__vexaWheelTonIcon) {
+            window.__vexaWheelTonIcon = new Image();
+            window.__vexaWheelTonIcon.src = tonIconSrc;
+          }
+          root.querySelectorAll('[data-wheel-ton-icon]').forEach(function (img) {
+            if (!img.getAttribute('src')) img.setAttribute('src', tonIconSrc);
+          });
         }
 
         function updateUi() {
@@ -596,7 +638,7 @@ export const WHEEL_SECTION = `
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-          var corner = .010;
+          var corner = .024;
           var innerStart = startAngle + corner;
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
@@ -651,7 +693,7 @@ export const WHEEL_SECTION = `
           label('WIN ' + chance + '%', (userStart + userEnd) / 2, outerRadius * .58, '#fff', 44);
           if (chance < 100) {
             slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
-            ctx.fillStyle = '#17171a';
+            ctx.fillStyle = '#222226';
             ctx.globalAlpha = .86;
             ctx.fill();
             ctx.globalAlpha = 1;
@@ -763,6 +805,9 @@ export const WHEEL_SECTION = `
           var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
           amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
         });
+        chanceInput.min = String(minChance);
+        chanceInput.max = String(maxChance);
+        hydrateTonIcons();
         chanceShell.addEventListener('pointerdown', startDrag);
         chanceShell.addEventListener('pointermove', moveDrag, { passive: false });
         chanceShell.addEventListener('pointerup', endDrag);
