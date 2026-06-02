@@ -33,6 +33,10 @@ export const CRASH_CONTROLS_MODERN_STYLES = `
 #crash .crash-live{border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:hidden!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:430px!important}
 #crash .crash-live:not(.open){max-height:54px!important;padding-bottom:12px!important}
 #crash .crash-live-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:850!important;letter-spacing:-.02em!important;text-transform:none!important}
+#crash .crash-live-title{display:inline-flex!important;align-items:center!important;gap:7px!important;min-width:0!important;color:rgba(255,255,255,.58)!important}
+#crash .crash-live-title svg{width:17px!important;height:17px!important;display:block!important;flex:0 0 auto!important;color:rgba(255,255,255,.55)!important}
+#crash .crash-live-title svg path{fill:none!important;stroke:currentColor!important;stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#crash .crash-live-title span{display:inline-block!important;white-space:nowrap!important}
 #crash .crash-live-head-actions{display:flex!important;align-items:center!important;gap:8px!important}
 #crash .crash-live-head b{color:rgba(255,255,255,.92)!important;font-size:13px!important;font-weight:900!important;letter-spacing:-.02em!important;text-transform:none!important}
 #crash .crash-live-toggle{width:28px!important;height:28px!important;border:0!important;outline:0!important;border-radius:10px!important;background:rgba(255,255,255,.055)!important;color:rgba(255,255,255,.85)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;box-shadow:none!important;transition:transform .22s ease,background .18s ease!important}
