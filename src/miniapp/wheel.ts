@@ -166,13 +166,13 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-chance-card {
-      border-radius: 22px;
-      background: rgba(255, 255, 255, .025);
-      border: 1px solid rgba(255, 255, 255, .10);
-      padding: 12px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-      backdrop-filter: blur(3px);
-      -webkit-backdrop-filter: blur(3px);
+      border: 0 !important;
+      border-radius: 0;
+      background: transparent !important;
+      padding: 0;
+      box-shadow: none !important;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
 
     .wheel-chance-head {
@@ -180,7 +180,8 @@ export const WHEEL_SECTION = `
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-bottom: 9px;
+      margin-bottom: 2px;
+      padding: 0 19px;
       font-size: 12px;
       font-weight: 900;
       color: rgba(255, 255, 255, .56);
@@ -195,53 +196,103 @@ export const WHEEL_SECTION = `
     }
 
     .wheel-chance-shell {
+      --wheel-left-color: rgba(58, 6, 20, .84);
+      --wheel-right-color: rgba(6, 55, 24, .84);
       position: relative;
-      height: 42px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.055);
-      border: 1px solid rgba(255,255,255,.12);
-      overflow: hidden;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.42);
+      height: 78px;
+      border-radius: 0;
+      background: transparent !important;
+      border: 0 !important;
+      overflow: visible;
+      box-shadow: none !important;
       touch-action: none;
       user-select: none;
+      padding: 24px 6px 18px;
+      box-sizing: border-box;
+    }
+
+    .wheel-chance-shell:before {
+      content: '';
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      top: 6px;
+      height: 10px;
+      background: linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 25%, rgba(255,255,255,.10) 25% calc(25% + 2px), transparent calc(25% + 2px) 50%, rgba(255,255,255,.10) 50% calc(50% + 2px), transparent calc(50% + 2px) 75%, rgba(255,255,255,.10) 75% calc(75% + 2px), transparent calc(75% + 2px) 100%);
+      clip-path: polygon(0 100%, 1.6% 0, 3.2% 100%, 25% 100%, 26.6% 0, 28.2% 100%, 50% 100%, 51.6% 0, 53.2% 100%, 75% 100%, 76.6% 0, 78.2% 100%, 100% 100%);
+      opacity: .56;
+      pointer-events: none;
     }
 
     .wheel-chance-fill {
       position: absolute;
-      left: 16px;
-      right: 16px;
-      top: 11px;
-      height: 20px;
+      left: 8px;
+      right: 8px;
+      top: 50%;
+      height: 30px;
       border-radius: 999px;
-      background: linear-gradient(90deg, rgba(78, 8, 28, .94) 0%, rgba(78, 8, 28, .94) var(--wheel-pos, 20%), rgba(255,255,255,.12) var(--wheel-pos, 20%), rgba(255,255,255,.12) 100%);
+      transform: translateY(-50%);
+      background: rgba(0,0,0,.78);
+      border: 1px solid rgba(255,255,255,.15);
+      box-shadow: 0 16px 36px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.55);
+      backdrop-filter: blur(6px) saturate(1.15);
+      -webkit-backdrop-filter: blur(6px) saturate(1.15);
       pointer-events: none;
+      transition: none;
+    }
+
+    .wheel-chance-fill:before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      right: 11px;
+      top: 50%;
+      height: 12px;
+      border-radius: 999px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, var(--wheel-left-color) 0%, var(--wheel-left-color) var(--wheel-pos, 20%), var(--wheel-right-color) var(--wheel-pos, 20%), var(--wheel-right-color) 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 0 14px rgba(0,0,0,.42);
       transition: background .12s cubic-bezier(.2,.8,.2,1);
     }
 
     .wheel-chance-thumb {
       position: absolute;
-      left: calc(16px + (100% - 32px) * var(--wheel-ratio, .2));
+      left: calc(19px + (100% - 38px) * var(--wheel-ratio, .2));
       top: 50%;
-      width: 31px;
-      height: 31px;
+      width: 34px;
+      height: 34px;
       border-radius: 12px;
       transform: translate(-50%, -50%);
-      background: rgba(255,255,255,.035);
-      border: 1px solid rgba(255,255,255,.28);
-      box-shadow: 0 10px 22px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.20);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.34);
+      box-shadow: 0 14px 34px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(255,255,255,.06);
+      backdrop-filter: blur(7px) saturate(1.22);
+      -webkit-backdrop-filter: blur(7px) saturate(1.22);
       pointer-events: none;
-      transition: left .12s cubic-bezier(.2,.8,.2,1), transform .12s ease;
+      transition: left .10s cubic-bezier(.2,.8,.2,1), transform .16s ease, box-shadow .16s ease;
     }
 
-    .wheel-chance-shell.dragging .wheel-chance-fill,
+    .wheel-chance-thumb:before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 17px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(90deg, rgba(255,255,255,.58) 0 3px, transparent 3px 7px, rgba(255,255,255,.58) 7px 10px, transparent 10px 14px, rgba(255,255,255,.58) 14px 17px);
+      border-radius: 2px;
+      filter: drop-shadow(0 1px 6px rgba(0,0,0,.35));
+    }
+
+    .wheel-chance-shell.dragging .wheel-chance-fill:before,
     .wheel-chance-shell.dragging .wheel-chance-thumb {
       transition-duration: .045s;
     }
 
     .wheel-chance-shell.dragging .wheel-chance-thumb {
-      transform: translate(-50%, -50%) scale(1.06);
+      transform: translate(-50%, -50%) scale(1.055);
+      box-shadow: 0 18px 40px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.50);
     }
 
     .wheel-chance-slider {
@@ -467,8 +518,8 @@ export const WHEEL_SECTION = `
 
         function chanceFromClientX(clientX) {
           var rect = chanceShell.getBoundingClientRect();
-          var usableLeft = rect.left + 16;
-          var usableWidth = Math.max(1, rect.width - 32);
+          var usableLeft = rect.left + 19;
+          var usableWidth = Math.max(1, rect.width - 38);
           var pos = ((clientX - usableLeft) / usableWidth) * 100;
           return posToChance(pos);
         }
