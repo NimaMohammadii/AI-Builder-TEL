@@ -1,5 +1,4 @@
 import { CRASH_PERFORMANCE_SCRIPT } from './crash-performance-script';
-import { CRASH_SCRIPT } from './crash-script';
 import { CRASH_LIVE_D1_SCRIPT } from './crash-live-d1-script';
 import { CRASH_BET_INPUT_SCRIPT } from './crash-bet-input-script';
 import { CRASH_BACK_BUTTON_SCRIPT } from './crash-back-button-script';
@@ -40,7 +39,6 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
   </div>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
-  <script>${CRASH_SCRIPT}</script>
   <script>${CRASH_LIVE_D1_SCRIPT}</script>
   <script>${CRASH_BET_INPUT_SCRIPT}</script>
   <script>${CRASH_BACK_BUTTON_SCRIPT}</script>
