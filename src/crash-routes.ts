@@ -18,7 +18,7 @@ app.get('/app/api/crash-live', async (c) => {
     await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet'").bind(roundId).run().catch(() => undefined);
   }
   await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet'").bind(roundId).run().catch(() => undefined);
-  const rows = await c.env.DB.prepare("SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY CASE WHEN status='cashout' THEN 0 WHEN status='bet' THEN 1 ELSE 2 END ASC, payout_nano DESC, amount_nano DESC, datetime(created_at) ASC LIMIT 120").bind(roundId).all<Row>();
+  const rows = await c.env.DB.prepare("SELECT * FROM crash_live_bets WHERE round_id=? ORDER BY CASE WHEN status='cashout' THEN 0 WHEN status='bet' THEN 1 ELSE 2 END ASC, datetime(updated_at) DESC, payout_nano DESC, amount_nano DESC, datetime(created_at) ASC LIMIT 120").bind(roundId).all<Row>();
   const bets = (rows.results || []).map(json);
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
   const nextSyncMs = nextLiveSyncMs(state, bets);
@@ -57,7 +57,7 @@ async function ensure(env:{DB:D1Database}){
   await ensureCrashVirtualColumns(env.DB);
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
 }
-function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.username,amountNano:Number(r.amount_nano||0),amountTon:ton(r.amount_nano),status:r.status,cashoutMultiplier:r.cashout_multiplier==null?null:Number(r.cashout_multiplier),targetCashoutMultiplier:r.target_cashout_multiplier==null?null:Number(r.target_cashout_multiplier),payoutNano:Number(r.payout_nano||0),payoutTon:ton(r.payout_nano),isVirtual:Number(r.is_virtual||0)===1}}
+function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.username,amountNano:Number(r.amount_nano||0),amountTon:ton(r.amount_nano),status:r.status,cashoutMultiplier:r.cashout_multiplier==null?null:Number(r.cashout_multiplier),targetCashoutMultiplier:r.target_cashout_multiplier==null?null:Number(r.target_cashout_multiplier),payoutNano:Number(r.payout_nano||0),payoutTon:ton(r.payout_nano),isVirtual:Number(r.is_virtual||0)===1,createdAt:r.created_at,updatedAt:r.updated_at}}
 function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:ReturnType<typeof json>[]){
   if(!state.running)return Math.max(300, state.nextInMs + 80);
   let target = 0;
