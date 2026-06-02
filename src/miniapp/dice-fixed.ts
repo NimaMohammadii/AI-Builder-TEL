@@ -45,40 +45,31 @@ const DICE_RANGE_CARD_STYLES = `
 }
 
 .dice-view .dice-slider-shell::before {
-  top: 7px !important;
-  left: 20px !important;
-  right: 20px !important;
-  height: 16px !important;
-  opacity: .38 !important;
-  background: rgba(255, 255, 255, .10) !important;
-  clip-path: polygon(
-    0 100%,
-    0 58%,
-    10px 58%,
-    13px 34%,
-    16px 58%,
-    25% 58%,
-    calc(25% + 10px) 58%,
-    calc(25% + 13px) 34%,
-    calc(25% + 16px) 58%,
-    50% 58%,
-    calc(50% + 10px) 58%,
-    calc(50% + 13px) 34%,
-    calc(50% + 16px) 58%,
-    75% 58%,
-    calc(75% + 10px) 58%,
-    calc(75% + 13px) 34%,
-    calc(75% + 16px) 58%,
-    calc(100% - 16px) 58%,
-    calc(100% - 13px) 34%,
-    calc(100% - 10px) 58%,
-    100% 58%,
-    100% 100%
-  ) !important;
+  display: none !important;
 }
 
 .dice-view .dice-slider-visual {
+  height: 36px !important;
   background: rgba(0, 0, 0, .78) !important;
+  border-radius: 999px !important;
+  clip-path: polygon(
+    0 100%,
+    0 28%,
+    13% 28%,
+    16% 0,
+    19% 28%,
+    38% 28%,
+    41% 0,
+    44% 28%,
+    63% 28%,
+    66% 0,
+    69% 28%,
+    88% 28%,
+    91% 0,
+    94% 28%,
+    100% 28%,
+    100% 100%
+  ) !important;
 }
 
 .dice-view .dice-slider-thumb {
@@ -104,9 +95,8 @@ const DICE_RANGE_CARD_STYLES = `
     transform: translateY(17px) !important;
   }
 
-  .dice-view .dice-slider-shell::before {
-    top: 7px !important;
-    height: 15px !important;
+  .dice-view .dice-slider-visual {
+    height: 34px !important;
   }
 
   .dice-view .dice-slider-thumb {
