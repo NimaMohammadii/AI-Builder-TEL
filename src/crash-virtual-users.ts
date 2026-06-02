@@ -1,6 +1,6 @@
 const NANO = 1000000000;
 const HOUSE_EDGE = .04;
-const WAIT_BETWEEN_MS = 9000;
+const WAIT_BETWEEN_MS = 10000;
 const CRASH_HOLD_MS = 2200;
 const MAX_RUN_MS = 34000;
 const DAY_MS = 86400000;
