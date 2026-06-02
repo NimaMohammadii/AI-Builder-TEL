@@ -14,7 +14,7 @@ app.get('/app/api/crash-live', async (c) => {
   const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
   await seedCrashVirtualUsers(c.env.DB, roundId);
   await revealCrashVirtualCashouts(c.env.DB, roundId, state);
-  if(roundId===state.id && state.waiting){
+  if(roundId===state.id && state.inCrashHold){
     await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet'").bind(roundId).run().catch(() => undefined);
   }
   await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet'").bind(roundId).run().catch(() => undefined);
