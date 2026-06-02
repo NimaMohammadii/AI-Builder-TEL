@@ -52,6 +52,6 @@ body:has(#crash.active) .content{padding-bottom:0!important}
 #crash .crash-live-user{min-width:0;font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.92)}
 #crash .crash-live-amount{font-size:11px;font-weight:900;color:rgba(255,255,255,.70)}
 #crash .crash-live-status{font-size:11px;font-weight:930;color:rgba(255,255,255,.84)}
-#crash .crash-live-row.cashout .crash-live-status{color:#78ffb3}
-#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,140,160,.86)}
+#crash .crash-live-row.cashout .crash-live-amount,#crash .crash-live-row.cashout .crash-live-status{color:#78ffb3}
+#crash .crash-live-row.crashed .crash-live-amount,#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,140,160,.86)}
 `;
