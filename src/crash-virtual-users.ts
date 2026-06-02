@@ -52,7 +52,17 @@ export async function settleCrashVirtualUsers(db:D1Database, roundId:number){
 export async function revealCrashVirtualCashouts(db:D1Database, roundId:number, state = getCrashRoundState(Date.now())){
   if(roundId<state.id || (roundId===state.id && !state.running))return settleCrashVirtualUsers(db,roundId);
   if(roundId!==state.id || !state.running)return;
-  await db.prepare("UPDATE crash_live_bets SET status='cashout', cashout_multiplier=target_cashout_multiplier, payout_nano=CAST(amount_nano*target_cashout_multiplier AS INTEGER), updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND is_virtual=1 AND status='bet' AND target_cashout_multiplier <= ? AND target_cashout_multiplier < ?").bind(roundId,state.current,state.stop).run();
+  const target = await nextVirtualCashoutTarget(db, roundId, state);
+  if(!target)return;
+  await db.prepare("UPDATE crash_live_bets SET status='cashout', cashout_multiplier=target_cashout_multiplier, payout_nano=CAST(amount_nano*target_cashout_multiplier AS INTEGER), updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND is_virtual=1 AND status='bet' AND target_cashout_multiplier <= ? AND target_cashout_multiplier < ?").bind(roundId,target,state.stop).run();
+}
+
+export async function nextVirtualCashoutTarget(db:D1Database, roundId:number, state:CrashRoundState){
+  if(roundId!==state.id || !state.running)return 0;
+  const row = await db.prepare("SELECT target_cashout_multiplier AS target FROM crash_live_bets WHERE round_id=? AND is_virtual=1 AND status='bet' AND target_cashout_multiplier < ? ORDER BY target_cashout_multiplier ASC LIMIT 1").bind(roundId,state.stop).first<{target:number}>();
+  const target = Number(row?.target||0);
+  if(!target || target>state.current)return 0;
+  return target;
 }
 
 export function getCrashRoundState(now:number): CrashRoundState{
