@@ -119,25 +119,48 @@ export const WHEEL_SECTION = `
 
     .wheel-center {
       position: absolute;
-      width: 64px;
-      height: 64px;
+      width: 54px;
+      height: 54px;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: rgba(255, 255, 255, .06) !important;
-      border: 1px solid rgba(255, 255, 255, .24) !important;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .32) !important;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      background: radial-gradient(circle at 34% 24%, rgba(255,255,255,.34), rgba(255,255,255,.08) 34%, rgba(8,8,10,.72) 72%) !important;
+      border: 1px solid rgba(255, 255, 255, .30) !important;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .70), inset 0 1px 0 rgba(255, 255, 255, .44), inset 0 -10px 18px rgba(0,0,0,.52) !important;
+      backdrop-filter: blur(8px) saturate(1.26);
+      -webkit-backdrop-filter: blur(8px) saturate(1.26);
       z-index: 4;
       text-align: center;
+      overflow: hidden;
+    }
+
+    .wheel-center:before {
+      content: '';
+      position: absolute;
+      left: 9px;
+      top: 7px;
+      width: 19px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.30);
+      filter: blur(.4px);
+      transform: rotate(-22deg);
+      pointer-events: none;
     }
 
     .wheel-center b {
-      font-size: 11px;
-      color: rgba(255, 255, 255, .78);
-      letter-spacing: -.04em;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, .75);
+      position: relative;
+      font-size: 29px;
+      line-height: 1;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 900;
+      letter-spacing: -.12em;
+      padding-right: 2px;
+      color: transparent;
+      background: linear-gradient(180deg, #ffffff 0%, #d7d7dc 42%, #7f8089 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow: 0 2px 10px rgba(255,255,255,.20), 0 9px 18px rgba(0,0,0,.84);
     }
 
     .wheel-panel {
@@ -456,8 +479,8 @@ export const WHEEL_SECTION = `
       }
 
       .wheel-center {
-        width: 58px;
-        height: 58px;
+        width: 50px;
+        height: 50px;
       }
     }
   </style>
@@ -466,7 +489,7 @@ export const WHEEL_SECTION = `
     <div class="wheel-stage">
       <div class="wheel-pointer"></div>
       <canvas class="wheel-canvas" width="1200" height="1200" data-wheel-canvas></canvas>
-      <div class="wheel-center"><b data-wheel-center>20%</b></div>
+      <div class="wheel-center"><b data-wheel-center>W</b></div>
     </div>
 
     <div class="wheel-panel">
@@ -619,7 +642,7 @@ export const WHEEL_SECTION = `
           if (chanceText) chanceText.textContent = chance + '%';
           if (chanceStat) chanceStat.textContent = chance + '%';
           if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
-          if (centerText) centerText.textContent = chance + '%';
+          if (centerText) centerText.textContent = 'W';
           if (!spinning) draw(angle);
         }
 
