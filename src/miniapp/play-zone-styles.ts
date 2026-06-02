@@ -33,7 +33,7 @@ export const PLAY_ZONE_STYLES = `
 .game-players{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;min-width:0!important;color:rgba(255,255,255,.90)!important;font-size:10.5px!important;font-weight:900!important;letter-spacing:-.02em!important;white-space:nowrap!important;background:rgba(0,0,0,.18)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:999px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;padding:5px 10px!important;margin:0!important;-webkit-backdrop-filter:blur(3px)!important;backdrop-filter:blur(3px)!important}
 .game-players:before,.game-players:after{content:none!important;display:none!important}
 .game-players i{width:8px!important;height:8px!important;border-radius:50%!important;background:#18b96a!important;box-shadow:0 0 0 1px rgba(24,185,106,.16),0 0 8px rgba(24,185,106,.22),inset 0 1px 0 rgba(255,255,255,.24)!important;flex:0 0 auto!important;position:relative!important;animation:liveDotSoft 2.8s ease-in-out infinite!important}
-.game-players i:before{content:''!important;position:absolute!important;inset:-3px!important;border-radius:inherit!important;border:1px solid rgba(24,185,106,.28)!important;opacity:.32!important;animation:liveDotRing 2.8s ease-in-out infinite!important}
+.game-players i:before{content:''!important;position:absolute!important;inset:-2px!important;border-radius:inherit!important;border:1px solid rgba(24,185,106,.24)!important;opacity:.26!important;animation:liveDotRing 2.8s ease-in-out infinite!important}
 .game-players i:after{content:none!important;display:none!important}
 .game-players b{display:inline-block!important;min-width:23px!important;font-size:10.5px!important;font-weight:900!important;color:rgba(255,255,255,.90)!important;text-shadow:0 6px 14px rgba(0,0,0,.56),0 0 10px rgba(255,255,255,.08)!important;font-variant-numeric:tabular-nums!important;transition:opacity .14s ease,filter .18s ease!important}
 .game-players em{font-style:normal!important;color:rgba(255,255,255,.58)!important;font-size:8.6px!important;font-weight:800!important;text-transform:none!important;letter-spacing:.02em!important;margin-left:1px!important}
@@ -44,7 +44,7 @@ export const PLAY_ZONE_STYLES = `
 .play-zone-center-image.is-empty{display:none!important}
 .play-zone-plinko-showcase{display:none!important}
 @keyframes liveDotSoft{0%,100%{opacity:.66;transform:scale(.96)}50%{opacity:.96;transform:scale(1.04)}}
-@keyframes liveDotRing{0%,100%{opacity:.08;transform:scale(.82)}50%{opacity:.24;transform:scale(1.08)}}
+@keyframes liveDotRing{0%,100%{opacity:.08;transform:scale(.86)}50%{opacity:.20;transform:scale(1.02)}}
 @media(max-width:380px){
   .app{padding-top:calc(36px + env(safe-area-inset-top))!important}
   .content{height:calc(100dvh - 88px - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important}
