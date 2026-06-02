@@ -75,34 +75,45 @@ export const WHEEL_SECTION = `
 
     .wheel-pointer {
       position: absolute;
-      top: 0;
+      top: 8px;
       left: 50%;
-      width: 62px;
-      height: 54px;
+      width: 46px;
+      height: 40px;
       z-index: 5;
       transform: translateX(-50%);
       background: transparent !important;
-      filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .74)) drop-shadow(0 0 16px rgba(255, 255, 255, .14));
+      filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .74));
     }
 
     .wheel-pointer:before {
       content: '';
       position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.54) 34%, rgba(0,0,0,.86) 100%) !important;
-      border: 1.5px solid rgba(255, 255, 255, .86) !important;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, .64), inset 0 1px 0 rgba(255, 255, 255, .34), inset 0 -1px 0 rgba(0,0,0,.88) !important;
-      backdrop-filter: blur(10px) saturate(1.18);
-      -webkit-backdrop-filter: blur(10px) saturate(1.18);
-      clip-path: polygon(50% 100%, 0 0, 100% 0);
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-left: 23px solid transparent !important;
+      border-right: 23px solid transparent !important;
+      border-top: 40px solid rgba(255,255,255,.92) !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      clip-path: none;
     }
 
     .wheel-pointer:after {
       content: '';
       position: absolute;
-      inset: 2px;
-      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0) 42%);
-      clip-path: polygon(50% 100%, 0 0, 100% 0);
+      left: 4px;
+      top: 2px;
+      width: 0;
+      height: 0;
+      border-left: 19px solid transparent;
+      border-right: 19px solid transparent;
+      border-top: 34px solid #030304;
+      background: transparent;
+      clip-path: none;
       pointer-events: none;
     }
 
@@ -272,7 +283,7 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-thumb {
       position: absolute;
-      left: calc(16px + (100% - 32px) * var(--wheel-ratio, .2));
+      left: calc(29px + (100% - 58px) * var(--wheel-ratio, .2));
       top: 63%;
       width: 34px;
       height: 34px;
@@ -356,15 +367,15 @@ export const WHEEL_SECTION = `
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 3px;
+      gap: 1px;
     }
 
     .wheel-ton-icon {
-      width: 22px;
-      height: 22px;
+      width: 26px;
+      height: 26px;
       display: inline-block;
       object-fit: contain;
-      flex: 0 0 22px;
+      flex: 0 0 26px;
       filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
@@ -552,8 +563,8 @@ export const WHEEL_SECTION = `
 
         function chanceFromClientX(clientX) {
           var rect = chanceShell.getBoundingClientRect();
-          var usableLeft = rect.left + 16;
-          var usableWidth = Math.max(1, rect.width - 32);
+          var usableLeft = rect.left + 29;
+          var usableWidth = Math.max(1, rect.width - 58);
           var pos = ((clientX - usableLeft) / usableWidth) * 100;
           return posToChance(pos);
         }
