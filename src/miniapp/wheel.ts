@@ -208,19 +208,19 @@ export const WHEEL_SECTION = `
 
     .wheel-chance-fill {
       position: absolute;
-      left: 8px;
-      right: 8px;
+      left: 16px;
+      right: 16px;
       top: 11px;
       height: 20px;
       border-radius: 999px;
-      background: linear-gradient(90deg, rgba(78, 8, 28, .94) 0%, rgba(78, 8, 28, .94) var(--wheel-pos, 38.78%), rgba(255,255,255,.12) var(--wheel-pos, 38.78%), rgba(255,255,255,.12) 100%);
+      background: linear-gradient(90deg, rgba(78, 8, 28, .94) 0%, rgba(78, 8, 28, .94) var(--wheel-pos, 20%), rgba(255,255,255,.12) var(--wheel-pos, 20%), rgba(255,255,255,.12) 100%);
       pointer-events: none;
       transition: background .12s cubic-bezier(.2,.8,.2,1);
     }
 
     .wheel-chance-thumb {
       position: absolute;
-      left: var(--wheel-pos, 38.78%);
+      left: calc(16px + (100% - 32px) * var(--wheel-ratio, .2));
       top: 50%;
       width: 31px;
       height: 31px;
@@ -389,7 +389,7 @@ export const WHEEL_SECTION = `
           <div class="wheel-chance-shell" data-wheel-chance-shell>
             <div class="wheel-chance-fill"></div>
             <div class="wheel-chance-thumb"></div>
-            <input class="wheel-chance-slider" type="range" min="1" max="50" step="1" value="20" data-wheel-chance />
+            <input class="wheel-chance-slider" type="range" min="1" max="100" step="1" value="20" data-wheel-chance />
           </div>
         </div>
 
@@ -446,25 +446,29 @@ export const WHEEL_SECTION = `
         var dragging = false;
         var houseEdge = .96;
         var minChance = 1;
-        var maxChance = 50;
+        var maxChance = 100;
         var pointerAngle = -Math.PI / 2;
 
         function clampChance(value) {
           return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));
         }
 
+        function chanceToRatio(chance) {
+          return clampChance(chance) / maxChance;
+        }
+
         function chanceToPos(chance) {
-          return ((clampChance(chance) - minChance) / (maxChance - minChance)) * 100;
+          return chanceToRatio(chance) * 100;
         }
 
         function posToChance(pos) {
-          return clampChance(minChance + (Math.max(0, Math.min(100, pos)) / 100) * (maxChance - minChance));
+          return clampChance((Math.max(0, Math.min(100, pos)) / 100) * maxChance);
         }
 
         function chanceFromClientX(clientX) {
           var rect = chanceShell.getBoundingClientRect();
-          var usableLeft = rect.left + 8;
-          var usableWidth = Math.max(1, rect.width - 16);
+          var usableLeft = rect.left + 16;
+          var usableWidth = Math.max(1, rect.width - 32);
           var pos = ((clientX - usableLeft) / usableWidth) * 100;
           return posToChance(pos);
         }
@@ -496,10 +500,13 @@ export const WHEEL_SECTION = `
         function updateUi() {
           var chance = clampChance(chanceInput.value);
           var pos = chanceToPos(chance);
+          var ratio = chanceToRatio(chance);
           var mult = multiplierFor(chance);
           chanceInput.value = String(chance);
           root.style.setProperty('--wheel-pos', pos + '%');
+          root.style.setProperty('--wheel-ratio', String(ratio));
           chanceShell.style.setProperty('--wheel-pos', pos + '%');
+          chanceShell.style.setProperty('--wheel-ratio', String(ratio));
           if (chanceText) chanceText.textContent = chance + '%';
           if (chanceStat) chanceStat.textContent = chance + '%';
           if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
@@ -517,6 +524,7 @@ export const WHEEL_SECTION = `
           if (spinning || chanceInput.disabled) return;
           dragging = true;
           chanceShell.classList.add('dragging');
+          if (chanceShell.setPointerCapture && event.pointerId != null) chanceShell.setPointerCapture(event.pointerId);
           setChanceFromClientX(event.clientX);
           event.preventDefault();
         }
@@ -527,10 +535,13 @@ export const WHEEL_SECTION = `
           event.preventDefault();
         }
 
-        function endDrag() {
+        function endDrag(event) {
           if (!dragging) return;
           dragging = false;
           chanceShell.classList.remove('dragging');
+          if (chanceShell.releasePointerCapture && event && event.pointerId != null) {
+            try { chanceShell.releasePointerCapture(event.pointerId); } catch (e) {}
+          }
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
@@ -539,7 +550,6 @@ export const WHEEL_SECTION = `
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
           var outerEnd = endAngle - corner;
-
           ctx.beginPath();
           ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
           ctx.lineTo(cx + Math.cos(outerStart) * outerRadius, cy + Math.sin(outerStart) * outerRadius);
@@ -577,34 +587,30 @@ export const WHEEL_SECTION = `
           var userEnd = userStart + userArc;
           var loseStart = userEnd;
           var loseEnd = userStart + Math.PI * 2;
-
           ctx.clearRect(0, 0, 1200, 1200);
-
           ctx.beginPath();
           ctx.arc(cx, cy, outerRadius + 42, 0, Math.PI * 2);
           ctx.fillStyle = '#030304';
           ctx.fill();
-
           slicePath(cx, cy, innerRadius, outerRadius, userStart + gap, userEnd - gap);
           ctx.fillStyle = '#4a0a1e';
           ctx.globalAlpha = .94;
           ctx.fill();
           ctx.globalAlpha = 1;
           label('WIN ' + chance + '%', (userStart + userEnd) / 2, outerRadius * .58, '#fff', 44);
-
-          slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
-          ctx.fillStyle = '#17171a';
-          ctx.globalAlpha = .86;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          label('LOSE', (loseStart + loseEnd) / 2, outerRadius * .58, 'rgba(255,255,255,.72)', 44);
-
+          if (chance < 100) {
+            slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
+            ctx.fillStyle = '#17171a';
+            ctx.globalAlpha = .86;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            label('LOSE', (loseStart + loseEnd) / 2, outerRadius * .58, 'rgba(255,255,255,.72)', 44);
+          }
           ctx.beginPath();
           ctx.arc(cx, cy, outerRadius + 38, 0, Math.PI * 2);
           ctx.strokeStyle = 'rgba(55, 4, 22, .86)';
           ctx.lineWidth = 12;
           ctx.stroke();
-
           ctx.beginPath();
           ctx.arc(cx, cy, outerRadius + 33, 0, Math.PI * 2);
           ctx.strokeStyle = 'rgba(255, 255, 255, .18)';
@@ -649,7 +655,6 @@ export const WHEEL_SECTION = `
             if (resultStat) resultStat.textContent = 'No TON';
             return;
           }
-
           spinning = true;
           setControlsLocked(true);
           spinButton.disabled = true;
@@ -657,7 +662,6 @@ export const WHEEL_SECTION = `
           spinButton.textContent = 'Spinning...';
           if (resultStat) resultStat.textContent = 'Spinning';
           changeBalance(-betNano);
-
           var win = Math.random() * 100 < chance;
           var start = angle;
           var target = chooseTargetOffset(win, chance);
@@ -665,20 +669,12 @@ export const WHEEL_SECTION = `
           var finalAngle = start + turns + normalizeDelta(target - start);
           var started = performance.now();
           var duration = 3400;
-
-          function ease(t) {
-            return 1 - Math.pow(1 - t, 4);
-          }
-
+          function ease(t) { return 1 - Math.pow(1 - t, 4); }
           function frame(now) {
             var p = Math.min(1, (now - started) / duration);
             angle = start + (finalAngle - start) * ease(p);
             draw(angle);
-            if (p < 1) {
-              requestAnimationFrame(frame);
-              return;
-            }
-
+            if (p < 1) { requestAnimationFrame(frame); return; }
             angle = target;
             draw(angle);
             spinning = false;
@@ -695,48 +691,38 @@ export const WHEEL_SECTION = `
               if (resultStat) resultStat.textContent = 'Lost';
             }
           }
-
           requestAnimationFrame(frame);
         }
 
         root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
           button.addEventListener('click', function () {
             if (spinning) return;
-            root.querySelectorAll('[data-wheel-quick]').forEach(function (item) {
-              item.classList.remove('active');
-            });
+            root.querySelectorAll('[data-wheel-quick]').forEach(function (item) { item.classList.remove('active'); });
             button.classList.add('active');
             amountInput.value = button.getAttribute('data-wheel-quick') || '0.1';
           });
         });
-
         halfButton.addEventListener('click', function () {
           if (spinning) return;
           var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2);
           amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
         });
-
         doubleButton.addEventListener('click', function () {
           if (spinning) return;
           var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
           amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
         });
-
         chanceShell.addEventListener('pointerdown', startDrag);
-        document.addEventListener('pointermove', moveDrag, { passive: false });
-        document.addEventListener('pointerup', endDrag);
-        document.addEventListener('pointercancel', endDrag);
+        chanceShell.addEventListener('pointermove', moveDrag, { passive: false });
+        chanceShell.addEventListener('pointerup', endDrag);
+        chanceShell.addEventListener('pointercancel', endDrag);
         chanceInput.addEventListener('input', updateUi);
         chanceInput.addEventListener('change', updateUi);
         spinButton.addEventListener('click', spin);
         updateUi();
       }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initWheelGame);
-      } else {
-        initWheelGame();
-      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initWheelGame);
+      else initWheelGame();
     })();
   </script>
 </section>
