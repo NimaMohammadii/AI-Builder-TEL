@@ -73,36 +73,46 @@ body:has(#dice.active) #brandTitle {
   font-weight: 900 !important;
   letter-spacing: -.02em !important;
   white-space: nowrap !important;
-  background: rgba(0, 0, 0, .18) !important;
-  border: 1px solid rgba(255, 255, 255, .08) !important;
-  border-radius: 999px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
-  padding: 5px 9px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
   margin-left: 2px !important;
   transform: translateY(1px) !important;
-  -webkit-backdrop-filter: blur(3px) !important;
-  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .dice-online-badge i {
   width: 8px !important;
   height: 8px !important;
   border-radius: 50% !important;
-  background: #18b96a !important;
-  box-shadow: 0 0 0 1px rgba(24, 185, 106, .16), 0 0 8px rgba(24, 185, 106, .22), inset 0 1px 0 rgba(255, 255, 255, .24) !important;
+  background: #18ff84 !important;
+  box-shadow: 0 0 0 1px rgba(24, 255, 132, .25), 0 0 10px rgba(24, 255, 132, .46), 0 0 20px rgba(24, 255, 132, .18), inset 0 1px 0 rgba(255, 255, 255, .34) !important;
   flex: 0 0 auto !important;
   position: relative !important;
-  animation: liveDotSoft 2.8s ease-in-out infinite !important;
+  animation: liveDotSoft 1.35s ease-in-out infinite !important;
 }
 
 .dice-online-badge i::before {
   content: '' !important;
   position: absolute !important;
-  inset: -3px !important;
+  inset: -5px !important;
   border-radius: inherit !important;
-  border: 1px solid rgba(24, 185, 106, .28) !important;
-  opacity: .32 !important;
-  animation: liveDotRing 2.8s ease-in-out infinite !important;
+  border: 1px solid rgba(24, 255, 132, .46) !important;
+  opacity: .45 !important;
+  animation: liveDotRing 1.35s ease-in-out infinite !important;
+}
+
+.dice-online-badge em {
+  font-style: normal !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  letter-spacing: .08em !important;
+  color: rgba(24, 255, 132, .92) !important;
+  text-transform: uppercase !important;
+  line-height: 1 !important;
 }
 
 .dice-online-badge b {
@@ -127,14 +137,14 @@ body:has(#dice.active) #brandTitle {
   padding: 14px !important;
   box-sizing: border-box !important;
   border-radius: 32px !important;
-  background: #050505 !important;
-  border: 1px solid rgba(255, 255, 255, .10) !important;
-  box-shadow: 0 24px 74px rgba(0, 0, 0, .50), inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08) !important;
   overflow: hidden !important;
   max-height: 430px !important;
   transition: max-height .34s cubic-bezier(.2, .8, .2, 1), padding .28s ease, opacity .2s ease !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
 }
 
 .dice-view .dice-result-card:not(.open) {
@@ -275,13 +285,13 @@ body:has(#dice.active) #brandTitle {
   gap: 8px !important;
   min-height: 34px !important;
   border-radius: 17px !important;
-  background: #030303 !important;
+  background: rgba(0, 0, 0, .16) !important;
   border: 1px solid rgba(255, 255, 255, .08) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035) !important;
   color: #fff !important;
   padding: 2px 10px !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
 }
 
 .dice-view .dice-result-name {
@@ -335,12 +345,15 @@ body:has(#dice.active) #brandTitle {
 
   .dice-online-badge {
     gap: 4px !important;
-    padding: 4px 8px !important;
   }
 
   .dice-online-badge i {
     width: 7px !important;
     height: 7px !important;
+  }
+
+  .dice-online-badge em {
+    font-size: 7.4px !important;
   }
 
   .dice-online-badge b {
@@ -464,18 +477,21 @@ const DICE_ONLINE_BADGE_SCRIPT = `
     }
 
     if (existing) return;
-    if (String(title.textContent || '').trim() !== 'Dice') return;
+    if (String(title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim() !== 'Dice') return;
 
     var badge = document.createElement('span');
     badge.className = 'dice-online-badge';
     badge.setAttribute('data-dice-online-badge', '1');
-    badge.setAttribute('aria-label', count + ' online');
+    badge.setAttribute('aria-label', count + ' live online');
 
     var dot = document.createElement('i');
+    var live = document.createElement('em');
     var value = document.createElement('b');
+    live.textContent = 'LIVE';
     value.textContent = String(count);
 
     badge.appendChild(dot);
+    badge.appendChild(live);
     badge.appendChild(value);
     title.appendChild(badge);
   }
