@@ -193,7 +193,7 @@ export const WHEEL_SECTION = `
       position: absolute;
       left: 18px;
       right: 18px;
-      top: 12px;
+      top: 14px;
       z-index: 3;
       margin-bottom: 0;
       padding: 0;
@@ -214,15 +214,15 @@ export const WHEEL_SECTION = `
       --wheel-left-color: rgba(58, 6, 20, .84);
       --wheel-right-color: rgba(138, 138, 146, .54);
       position: relative;
-      height: 84px;
-      border-radius: 20px;
+      height: 96px;
+      border-radius: 22px;
       background: rgba(8,8,10,.48) !important;
       border: 1px solid rgba(255,255,255,.12) !important;
       overflow: visible;
       box-shadow: none !important;
       touch-action: none;
       user-select: none;
-      padding: 36px 6px 20px;
+      padding: 42px 6px 24px;
       box-sizing: border-box;
     }
 
@@ -231,7 +231,7 @@ export const WHEEL_SECTION = `
       position: absolute;
       left: 20px;
       right: 20px;
-      top: 28px;
+      top: 57px;
       height: 10px;
       background: linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 25%, rgba(255,255,255,.10) 25% calc(25% + 2px), transparent calc(25% + 2px) 50%, rgba(255,255,255,.10) 50% calc(50% + 2px), transparent calc(50% + 2px) 75%, rgba(255,255,255,.10) 75% calc(75% + 2px), transparent calc(75% + 2px) 100%);
       clip-path: polygon(0 100%, 1.6% 0, 3.2% 100%, 25% 100%, 26.6% 0, 28.2% 100%, 50% 100%, 51.6% 0, 53.2% 100%, 75% 100%, 76.6% 0, 78.2% 100%, 100% 100%);
@@ -243,7 +243,7 @@ export const WHEEL_SECTION = `
       position: absolute;
       left: 12px;
       right: 12px;
-      top: 50%;
+      top: 63%;
       height: 30px;
       border-radius: 999px;
       transform: translateY(-50%);
@@ -273,7 +273,7 @@ export const WHEEL_SECTION = `
     .wheel-chance-thumb {
       position: absolute;
       left: calc(16px + (100% - 32px) * var(--wheel-ratio, .2));
-      top: 50%;
+      top: 63%;
       width: 34px;
       height: 34px;
       border-radius: 12px;
@@ -356,15 +356,15 @@ export const WHEEL_SECTION = `
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 3px;
     }
 
     .wheel-ton-icon {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       display: inline-block;
       object-fit: contain;
-      flex: 0 0 20px;
+      flex: 0 0 22px;
       filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
     }
 
@@ -648,7 +648,7 @@ export const WHEEL_SECTION = `
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-          var corner = .038;
+          var corner = .028;
           var innerStart = startAngle + corner;
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
@@ -683,7 +683,7 @@ export const WHEEL_SECTION = `
           var cy = 600;
           var outerRadius = 486;
           var innerRadius = 106;
-          var gap = .014;
+          var gap = .004;
           var chance = clampChance(chanceInput.value);
           var userArc = Math.PI * 2 * chance / 100;
           var userStart = pointerAngle - userArc / 2 + rotation;
