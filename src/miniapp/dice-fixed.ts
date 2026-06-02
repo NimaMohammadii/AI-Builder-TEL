@@ -22,19 +22,26 @@ const DICE_RANGE_CARD_STYLES = `
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
-  gap: 8px !important;
+  gap: 0 !important;
   backdrop-filter: blur(14px) saturate(1.16) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.16) !important;
 }
 
 .dice-view .dice-track-labels {
   flex: 0 0 auto !important;
-  transform: none !important;
+  height: 18px !important;
+  padding: 0 19px !important;
+  transform: translateY(14px) !important;
+  color: rgba(255, 255, 255, .50) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  z-index: 5 !important;
 }
 
 .dice-view .dice-slider-shell {
   flex: 0 0 auto !important;
   width: 100% !important;
+  margin-top: 0 !important;
 }
 
 .dice-view .dice-slider-visual {
@@ -57,6 +64,12 @@ const DICE_RANGE_CARD_STYLES = `
     width: auto !important;
     height: 150px !important;
     padding: 16px 10px !important;
+  }
+
+  .dice-view .dice-track-labels {
+    height: 17px !important;
+    font-size: 12px !important;
+    transform: translateY(13px) !important;
   }
 
   .dice-view .dice-slider-thumb {
