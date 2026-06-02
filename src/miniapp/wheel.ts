@@ -227,9 +227,11 @@ export const WHEEL_SECTION = `
       height: 28px;
       border-radius: 11px;
       transform: translate(-50%, -50%);
-      background: rgba(255,255,255,.16);
-      border: 1px solid rgba(255,255,255,.28);
-      box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.26);
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.26);
+      box-shadow: 0 10px 22px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.18);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       pointer-events: none;
     }
 
@@ -403,268 +405,279 @@ export const WHEEL_SECTION = `
 
   <script>
     (function () {
-      var root = document.getElementById('wheel');
-      if (!root || root.dataset.readyWheelCanvasUi) return;
-      root.dataset.readyWheelCanvasUi = '1';
+      function initWheelGame() {
+        var root = document.getElementById('wheel');
+        if (!root || root.dataset.readyWheelCanvasUi === '1') return;
 
-      var canvas = root.querySelector('[data-wheel-canvas]');
-      var ctx = canvas.getContext('2d');
-      var amountInput = root.querySelector('[data-wheel-amount]');
-      var chanceInput = root.querySelector('[data-wheel-chance]');
-      var chanceShell = root.querySelector('[data-wheel-chance-shell]');
-      var chanceText = root.querySelector('[data-wheel-chance-value]');
-      var chanceStat = root.querySelector('[data-wheel-count]');
-      var multiplierStat = root.querySelector('[data-wheel-pot]');
-      var resultStat = root.querySelector('[data-wheel-user]');
-      var centerText = root.querySelector('[data-wheel-center]');
-      var spinButton = root.querySelector('[data-wheel-join]');
-      var angle = 0;
-      var spinning = false;
-      var houseEdge = .96;
-      var pointerAngle = -Math.PI / 2;
+        var canvas = root.querySelector('[data-wheel-canvas]');
+        var amountInput = root.querySelector('[data-wheel-amount]');
+        var chanceInput = root.querySelector('[data-wheel-chance]');
+        var chanceShell = root.querySelector('[data-wheel-chance-shell]');
+        var chanceText = root.querySelector('[data-wheel-chance-value]');
+        var chanceStat = root.querySelector('[data-wheel-count]');
+        var multiplierStat = root.querySelector('[data-wheel-pot]');
+        var resultStat = root.querySelector('[data-wheel-user]');
+        var centerText = root.querySelector('[data-wheel-center]');
+        var spinButton = root.querySelector('[data-wheel-join]');
+        var halfButton = root.querySelector('[data-wheel-half]');
+        var doubleButton = root.querySelector('[data-wheel-double]');
 
-      function clampChance(value) {
-        return Math.max(1, Math.min(50, Math.round(Number(value) || 20)));
-      }
-
-      function multiplierFor(chance) {
-        return Math.max(1.01, Math.floor((100 / chance) * houseEdge * 100) / 100);
-      }
-
-      function money(n) {
-        var x = Number(n) || 0;
-        return x.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-      }
-
-      function balance() {
-        return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0;
-      }
-
-      function changeBalance(deltaNano) {
-        if (window.VexaTonBalance) window.VexaTonBalance.add(Math.floor(Number(deltaNano) || 0));
-      }
-
-      function toNano(value) {
-        return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * 1000000000));
-      }
-
-      function updateUi() {
-        var chance = clampChance(chanceInput.value);
-        var mult = multiplierFor(chance);
-        chanceInput.value = String(chance);
-        root.style.setProperty('--wheel-chance', chance + '%');
-        if (chanceShell) chanceShell.style.setProperty('--wheel-chance', chance + '%');
-        if (chanceText) chanceText.textContent = chance + '%';
-        if (chanceStat) chanceStat.textContent = chance + '%';
-        if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
-        if (centerText) centerText.textContent = chance + '%';
-        if (!spinning) draw(angle);
-      }
-
-      function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-        var corner = .010;
-        var innerStart = startAngle + corner;
-        var innerEnd = endAngle - corner;
-        var outerStart = startAngle + corner;
-        var outerEnd = endAngle - corner;
-
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
-        ctx.lineTo(cx + Math.cos(outerStart) * outerRadius, cy + Math.sin(outerStart) * outerRadius);
-        ctx.quadraticCurveTo(
-          cx + Math.cos(startAngle) * outerRadius,
-          cy + Math.sin(startAngle) * outerRadius,
-          cx + Math.cos(startAngle + corner * .5) * outerRadius,
-          cy + Math.sin(startAngle + corner * .5) * outerRadius
-        );
-        ctx.arc(cx, cy, outerRadius, outerStart, outerEnd, false);
-        ctx.quadraticCurveTo(
-          cx + Math.cos(endAngle) * outerRadius,
-          cy + Math.sin(endAngle) * outerRadius,
-          cx + Math.cos(outerEnd) * outerRadius,
-          cy + Math.sin(outerEnd) * outerRadius
-        );
-        ctx.lineTo(cx + Math.cos(innerEnd) * innerRadius, cy + Math.sin(innerEnd) * innerRadius);
-        ctx.arc(cx, cy, innerRadius, innerEnd, innerStart, true);
-        ctx.closePath();
-      }
-
-      function label(text, angleValue, radius, color, size) {
-        var cx = 600;
-        var cy = 600;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angleValue);
-        ctx.fillStyle = color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '900 ' + size + 'px system-ui';
-        ctx.fillText(text, radius, 0);
-        ctx.restore();
-      }
-
-      function draw(rotation) {
-        var width = 1200;
-        var height = 1200;
-        var cx = 600;
-        var cy = 600;
-        var outerRadius = 486;
-        var innerRadius = 106;
-        var gap = .014;
-        var chance = clampChance(chanceInput.value);
-        var userArc = Math.PI * 2 * chance / 100;
-        var userStart = pointerAngle - userArc / 2 + rotation;
-        var userEnd = userStart + userArc;
-        var loseStart = userEnd;
-        var loseEnd = userStart + Math.PI * 2;
-
-        ctx.clearRect(0, 0, width, height);
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, outerRadius + 42, 0, Math.PI * 2);
-        ctx.fillStyle = '#030304';
-        ctx.fill();
-
-        slicePath(cx, cy, innerRadius, outerRadius, userStart + gap, userEnd - gap);
-        ctx.fillStyle = '#4a0a1e';
-        ctx.globalAlpha = .94;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        label('WIN ' + chance + '%', (userStart + userEnd) / 2, outerRadius * .58, '#fff', 44);
-
-        slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
-        ctx.fillStyle = '#17171a';
-        ctx.globalAlpha = .86;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        label('LOSE', (loseStart + loseEnd) / 2, outerRadius * .58, 'rgba(255,255,255,.72)', 44);
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, outerRadius + 38, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(55, 4, 22, .86)';
-        ctx.lineWidth = 12;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, outerRadius + 33, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, .18)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      function chooseTargetOffset(win, chance) {
-        var userArc = Math.PI * 2 * chance / 100;
-        if (win) {
-          var winSafe = Math.max(.01, userArc * .38);
-          return (Math.random() * winSafe * 2) - winSafe;
-        }
-        var loseSafe = Math.PI * 2 - userArc - .20;
-        return userArc / 2 + .10 + Math.random() * Math.max(.12, loseSafe);
-      }
-
-      function setControlsLocked(locked) {
-        amountInput.disabled = !!locked;
-        chanceInput.disabled = !!locked;
-        root.querySelector('[data-wheel-half]').disabled = !!locked;
-        root.querySelector('[data-wheel-double]').disabled = !!locked;
-        root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
-          button.disabled = !!locked;
-        });
-      }
-
-      function spin() {
-        if (spinning) return;
-        var chance = clampChance(chanceInput.value);
-        var betNano = toNano(amountInput.value);
-        var mult = multiplierFor(chance);
-        if (betNano <= 0) return;
-        if (window.VexaTonBalance && balance() < betNano) {
-          if (resultStat) resultStat.textContent = 'No TON';
+        if (!canvas || !amountInput || !chanceInput || !chanceShell || !spinButton || !halfButton || !doubleButton) {
+          setTimeout(initWheelGame, 80);
           return;
         }
 
-        spinning = true;
-        setControlsLocked(true);
-        spinButton.disabled = true;
-        spinButton.classList.remove('win');
-        spinButton.textContent = 'Spinning...';
-        if (resultStat) resultStat.textContent = 'Spinning';
-        changeBalance(-betNano);
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        var win = Math.random() * 100 < chance;
-        var start = angle;
-        var target = chooseTargetOffset(win, chance);
-        var turns = (Math.PI * 2) * (5 + Math.floor(Math.random() * 3));
-        var finalAngle = start + turns + normalizeDelta(target - start);
-        var started = performance.now();
-        var duration = 3400;
+        root.dataset.readyWheelCanvasUi = '1';
 
-        function ease(t) {
-          return 1 - Math.pow(1 - t, 4);
+        var angle = 0;
+        var spinning = false;
+        var houseEdge = .96;
+        var pointerAngle = -Math.PI / 2;
+
+        function clampChance(value) {
+          return Math.max(1, Math.min(50, Math.round(Number(value) || 20)));
         }
 
-        function frame(now) {
-          var p = Math.min(1, (now - started) / duration);
-          angle = start + (finalAngle - start) * ease(p);
-          draw(angle);
-          if (p < 1) {
-            requestAnimationFrame(frame);
+        function multiplierFor(chance) {
+          return Math.max(1.01, Math.floor((100 / chance) * houseEdge * 100) / 100);
+        }
+
+        function money(n) {
+          var x = Number(n) || 0;
+          var text = x.toFixed(2);
+          if (text.slice(-3) === '.00') return text.slice(0, -3);
+          if (text.charAt(text.length - 1) === '0') return text.slice(0, -1);
+          return text;
+        }
+
+        function balance() {
+          return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0;
+        }
+
+        function changeBalance(deltaNano) {
+          if (window.VexaTonBalance) window.VexaTonBalance.add(Math.floor(Number(deltaNano) || 0));
+        }
+
+        function toNano(value) {
+          return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * 1000000000));
+        }
+
+        function updateUi() {
+          var chance = clampChance(chanceInput.value);
+          var mult = multiplierFor(chance);
+          chanceInput.value = String(chance);
+          root.style.setProperty('--wheel-chance', chance + '%');
+          chanceShell.style.setProperty('--wheel-chance', chance + '%');
+          if (chanceText) chanceText.textContent = chance + '%';
+          if (chanceStat) chanceStat.textContent = chance + '%';
+          if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
+          if (centerText) centerText.textContent = chance + '%';
+          if (!spinning) draw(angle);
+        }
+
+        function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
+          var corner = .010;
+          var innerStart = startAngle + corner;
+          var innerEnd = endAngle - corner;
+          var outerStart = startAngle + corner;
+          var outerEnd = endAngle - corner;
+
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(innerStart) * innerRadius, cy + Math.sin(innerStart) * innerRadius);
+          ctx.lineTo(cx + Math.cos(outerStart) * outerRadius, cy + Math.sin(outerStart) * outerRadius);
+          ctx.quadraticCurveTo(cx + Math.cos(startAngle) * outerRadius, cy + Math.sin(startAngle) * outerRadius, cx + Math.cos(startAngle + corner * .5) * outerRadius, cy + Math.sin(startAngle + corner * .5) * outerRadius);
+          ctx.arc(cx, cy, outerRadius, outerStart, outerEnd, false);
+          ctx.quadraticCurveTo(cx + Math.cos(endAngle) * outerRadius, cy + Math.sin(endAngle) * outerRadius, cx + Math.cos(outerEnd) * outerRadius, cy + Math.sin(outerEnd) * outerRadius);
+          ctx.lineTo(cx + Math.cos(innerEnd) * innerRadius, cy + Math.sin(innerEnd) * innerRadius);
+          ctx.arc(cx, cy, innerRadius, innerEnd, innerStart, true);
+          ctx.closePath();
+        }
+
+        function label(text, angleValue, radius, color, size) {
+          var cx = 600;
+          var cy = 600;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angleValue);
+          ctx.fillStyle = color;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '900 ' + size + 'px system-ui';
+          ctx.fillText(text, radius, 0);
+          ctx.restore();
+        }
+
+        function draw(rotation) {
+          var cx = 600;
+          var cy = 600;
+          var outerRadius = 486;
+          var innerRadius = 106;
+          var gap = .014;
+          var chance = clampChance(chanceInput.value);
+          var userArc = Math.PI * 2 * chance / 100;
+          var userStart = pointerAngle - userArc / 2 + rotation;
+          var userEnd = userStart + userArc;
+          var loseStart = userEnd;
+          var loseEnd = userStart + Math.PI * 2;
+
+          ctx.clearRect(0, 0, 1200, 1200);
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, outerRadius + 42, 0, Math.PI * 2);
+          ctx.fillStyle = '#030304';
+          ctx.fill();
+
+          slicePath(cx, cy, innerRadius, outerRadius, userStart + gap, userEnd - gap);
+          ctx.fillStyle = '#4a0a1e';
+          ctx.globalAlpha = .94;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          label('WIN ' + chance + '%', (userStart + userEnd) / 2, outerRadius * .58, '#fff', 44);
+
+          slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
+          ctx.fillStyle = '#17171a';
+          ctx.globalAlpha = .86;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          label('LOSE', (loseStart + loseEnd) / 2, outerRadius * .58, 'rgba(255,255,255,.72)', 44);
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, outerRadius + 38, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(55, 4, 22, .86)';
+          ctx.lineWidth = 12;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, outerRadius + 33, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255, 255, 255, .18)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        function chooseTargetOffset(win, chance) {
+          var userArc = Math.PI * 2 * chance / 100;
+          if (win) {
+            var winSafe = Math.max(.01, userArc * .38);
+            return (Math.random() * winSafe * 2) - winSafe;
+          }
+          var loseSafe = Math.PI * 2 - userArc - .20;
+          return userArc / 2 + .10 + Math.random() * Math.max(.12, loseSafe);
+        }
+
+        function normalizeDelta(delta) {
+          var full = Math.PI * 2;
+          while (delta < 0) delta += full;
+          while (delta >= full) delta -= full;
+          return delta;
+        }
+
+        function setControlsLocked(locked) {
+          amountInput.disabled = !!locked;
+          chanceInput.disabled = !!locked;
+          halfButton.disabled = !!locked;
+          doubleButton.disabled = !!locked;
+          root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
+            button.disabled = !!locked;
+          });
+        }
+
+        function spin() {
+          if (spinning) return;
+          var chance = clampChance(chanceInput.value);
+          var betNano = toNano(amountInput.value);
+          var mult = multiplierFor(chance);
+          if (betNano <= 0) return;
+          if (window.VexaTonBalance && balance() < betNano) {
+            if (resultStat) resultStat.textContent = 'No TON';
             return;
           }
 
-          angle = target;
-          draw(angle);
-          spinning = false;
-          spinButton.disabled = false;
-          setControlsLocked(false);
-          if (win) {
-            var payout = Math.floor(betNano * mult);
-            changeBalance(payout);
-            spinButton.classList.add('win');
-            spinButton.textContent = 'Won +' + money(payout / 1000000000) + ' TON';
-            if (resultStat) resultStat.textContent = '+' + money(payout / 1000000000) + ' TON';
-          } else {
-            spinButton.textContent = 'Spin';
-            if (resultStat) resultStat.textContent = 'Lost';
+          spinning = true;
+          setControlsLocked(true);
+          spinButton.disabled = true;
+          spinButton.classList.remove('win');
+          spinButton.textContent = 'Spinning...';
+          if (resultStat) resultStat.textContent = 'Spinning';
+          changeBalance(-betNano);
+
+          var win = Math.random() * 100 < chance;
+          var start = angle;
+          var target = chooseTargetOffset(win, chance);
+          var turns = (Math.PI * 2) * (5 + Math.floor(Math.random() * 3));
+          var finalAngle = start + turns + normalizeDelta(target - start);
+          var started = performance.now();
+          var duration = 3400;
+
+          function ease(t) {
+            return 1 - Math.pow(1 - t, 4);
           }
+
+          function frame(now) {
+            var p = Math.min(1, (now - started) / duration);
+            angle = start + (finalAngle - start) * ease(p);
+            draw(angle);
+            if (p < 1) {
+              requestAnimationFrame(frame);
+              return;
+            }
+
+            angle = target;
+            draw(angle);
+            spinning = false;
+            spinButton.disabled = false;
+            setControlsLocked(false);
+            if (win) {
+              var payout = Math.floor(betNano * mult);
+              changeBalance(payout);
+              spinButton.classList.add('win');
+              spinButton.textContent = 'Won +' + money(payout / 1000000000) + ' TON';
+              if (resultStat) resultStat.textContent = '+' + money(payout / 1000000000) + ' TON';
+            } else {
+              spinButton.textContent = 'Spin';
+              if (resultStat) resultStat.textContent = 'Lost';
+            }
+          }
+
+          requestAnimationFrame(frame);
         }
 
-        requestAnimationFrame(frame);
-      }
-
-      function normalizeDelta(delta) {
-        var full = Math.PI * 2;
-        while (delta < 0) delta += full;
-        while (delta >= full) delta -= full;
-        return delta;
-      }
-
-      root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
-        button.onclick = function () {
-          if (spinning) return;
-          root.querySelectorAll('[data-wheel-quick]').forEach(function (item) {
-            item.classList.remove('active');
+        root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            if (spinning) return;
+            root.querySelectorAll('[data-wheel-quick]').forEach(function (item) {
+              item.classList.remove('active');
+            });
+            button.classList.add('active');
+            amountInput.value = button.getAttribute('data-wheel-quick') || '0.1';
           });
-          button.classList.add('active');
-          amountInput.value = button.getAttribute('data-wheel-quick') || '0.1';
-        };
-      });
+        });
 
-      root.querySelector('[data-wheel-half]').onclick = function () {
-        if (spinning) return;
-        var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2);
-        amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
-      };
+        halfButton.addEventListener('click', function () {
+          if (spinning) return;
+          var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2);
+          amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
+        });
 
-      root.querySelector('[data-wheel-double]').onclick = function () {
-        if (spinning) return;
-        var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
-        amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
-      };
+        doubleButton.addEventListener('click', function () {
+          if (spinning) return;
+          var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
+          amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
+        });
 
-      chanceInput.oninput = updateUi;
-      spinButton.onclick = spin;
-      updateUi();
+        chanceInput.addEventListener('input', updateUi);
+        chanceInput.addEventListener('change', updateUi);
+        spinButton.addEventListener('click', spin);
+        updateUi();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWheelGame);
+      } else {
+        initWheelGame();
+      }
     })();
   </script>
 </section>
