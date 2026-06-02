@@ -418,7 +418,6 @@ export const WHEEL_SECTION = `
       var resultStat = root.querySelector('[data-wheel-user]');
       var centerText = root.querySelector('[data-wheel-center]');
       var spinButton = root.querySelector('[data-wheel-join]');
-      var colors = ['#19191c', '#343438', '#101012', '#262629'];
       var angle = 0;
       var spinning = false;
       var houseEdge = .96;
@@ -459,7 +458,7 @@ export const WHEEL_SECTION = `
         if (chanceStat) chanceStat.textContent = chance + '%';
         if (multiplierStat) multiplierStat.textContent = mult.toFixed(2) + 'x';
         if (centerText) centerText.textContent = chance + '%';
-        draw(angle);
+        if (!spinning) draw(angle);
       }
 
       function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
@@ -490,6 +489,20 @@ export const WHEEL_SECTION = `
         ctx.closePath();
       }
 
+      function label(text, angleValue, radius, color, size) {
+        var cx = 600;
+        var cy = 600;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angleValue);
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '900 ' + size + 'px system-ui';
+        ctx.fillText(text, radius, 0);
+        ctx.restore();
+      }
+
       function draw(rotation) {
         var width = 1200;
         var height = 1200;
@@ -502,10 +515,8 @@ export const WHEEL_SECTION = `
         var userArc = Math.PI * 2 * chance / 100;
         var userStart = pointerAngle - userArc / 2 + rotation;
         var userEnd = userStart + userArc;
-        var restStart = userEnd;
-        var restArc = Math.PI * 2 - userArc;
-        var restCount = 4;
-        var restSlice = restArc / restCount;
+        var loseStart = userEnd;
+        var loseEnd = userStart + Math.PI * 2;
 
         ctx.clearRect(0, 0, width, height);
 
@@ -516,40 +527,17 @@ export const WHEEL_SECTION = `
 
         slicePath(cx, cy, innerRadius, outerRadius, userStart + gap, userEnd - gap);
         ctx.fillStyle = '#4a0a1e';
-        ctx.globalAlpha = .92;
+        ctx.globalAlpha = .94;
         ctx.fill();
         ctx.globalAlpha = 1;
+        label('WIN ' + chance + '%', (userStart + userEnd) / 2, outerRadius * .58, '#fff', 44);
 
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate((userStart + userEnd) / 2);
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '900 48px system-ui';
-        ctx.fillText(chance + '%', outerRadius * .58, 0);
-        ctx.restore();
-
-        for (var i = 0; i < restCount; i++) {
-          var start = restStart + i * restSlice + gap;
-          var end = restStart + (i + 1) * restSlice - gap;
-          var middle = (start + end) / 2;
-          slicePath(cx, cy, innerRadius, outerRadius, start, end);
-          ctx.fillStyle = colors[i % colors.length];
-          ctx.globalAlpha = .78;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(middle);
-          ctx.fillStyle = 'rgba(255,255,255,.72)';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.font = '900 38px system-ui';
-          ctx.fillText('LOSE', outerRadius * .58, 0);
-          ctx.restore();
-        }
+        slicePath(cx, cy, innerRadius, outerRadius, loseStart + gap, loseEnd - gap);
+        ctx.fillStyle = '#17171a';
+        ctx.globalAlpha = .86;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        label('LOSE', (loseStart + loseEnd) / 2, outerRadius * .58, 'rgba(255,255,255,.72)', 44);
 
         ctx.beginPath();
         ctx.arc(cx, cy, outerRadius + 38, 0, Math.PI * 2);
@@ -566,11 +554,22 @@ export const WHEEL_SECTION = `
 
       function chooseTargetOffset(win, chance) {
         var userArc = Math.PI * 2 * chance / 100;
-        var safe = Math.max(.02, userArc * .42);
-        if (win) return (Math.random() * safe * 2) - safe;
-        var loseArc = Math.PI * 2 - userArc;
-        var loseStart = userArc / 2 + .08;
-        return loseStart + Math.random() * Math.max(.1, loseArc - .16);
+        if (win) {
+          var winSafe = Math.max(.01, userArc * .38);
+          return (Math.random() * winSafe * 2) - winSafe;
+        }
+        var loseSafe = Math.PI * 2 - userArc - .20;
+        return userArc / 2 + .10 + Math.random() * Math.max(.12, loseSafe);
+      }
+
+      function setControlsLocked(locked) {
+        amountInput.disabled = !!locked;
+        chanceInput.disabled = !!locked;
+        root.querySelector('[data-wheel-half]').disabled = !!locked;
+        root.querySelector('[data-wheel-double]').disabled = !!locked;
+        root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
+          button.disabled = !!locked;
+        });
       }
 
       function spin() {
@@ -585,6 +584,7 @@ export const WHEEL_SECTION = `
         }
 
         spinning = true;
+        setControlsLocked(true);
         spinButton.disabled = true;
         spinButton.classList.remove('win');
         spinButton.textContent = 'Spinning...';
@@ -595,7 +595,7 @@ export const WHEEL_SECTION = `
         var start = angle;
         var target = chooseTargetOffset(win, chance);
         var turns = (Math.PI * 2) * (5 + Math.floor(Math.random() * 3));
-        var finalAngle = turns + target;
+        var finalAngle = start + turns + normalizeDelta(target - start);
         var started = performance.now();
         var duration = 3400;
 
@@ -616,6 +616,7 @@ export const WHEEL_SECTION = `
           draw(angle);
           spinning = false;
           spinButton.disabled = false;
+          setControlsLocked(false);
           if (win) {
             var payout = Math.floor(betNano * mult);
             changeBalance(payout);
@@ -631,8 +632,16 @@ export const WHEEL_SECTION = `
         requestAnimationFrame(frame);
       }
 
+      function normalizeDelta(delta) {
+        var full = Math.PI * 2;
+        while (delta < 0) delta += full;
+        while (delta >= full) delta -= full;
+        return delta;
+      }
+
       root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
         button.onclick = function () {
+          if (spinning) return;
           root.querySelectorAll('[data-wheel-quick]').forEach(function (item) {
             item.classList.remove('active');
           });
