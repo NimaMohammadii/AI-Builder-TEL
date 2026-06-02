@@ -3,7 +3,7 @@ import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-range-card {
   position: fixed !important;
-  top: calc(env(safe-area-inset-top) + 72px) !important;
+  top: calc(env(safe-area-inset-top) + 112px) !important;
   left: 28px !important;
   right: 28px !important;
   z-index: 8 !important;
@@ -36,7 +36,7 @@ const DICE_RANGE_CARD_STYLES = `
 
 @media (max-width: 420px) {
   .dice-view .dice-range-card {
-    top: calc(env(safe-area-inset-top) + 64px) !important;
+    top: calc(env(safe-area-inset-top) + 104px) !important;
     left: 24px !important;
     right: 24px !important;
     width: auto !important;
