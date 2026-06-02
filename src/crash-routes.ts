@@ -11,10 +11,10 @@ app.get('/app/api/crash-live', async (c) => {
   await ensure(c.env);
   const state = getCrashRoundState(Date.now());
   const requestedRoundId = Number(c.req.query('roundId'));
-  const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
+  const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : state.id;
   await seedCrashVirtualUsers(c.env.DB, roundId);
   await revealCrashVirtualCashouts(c.env.DB, roundId, state);
-  if(roundId===state.id && state.inCrashHold){
+  if(roundId===state.id && state.waiting){
     await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet'").bind(roundId).run().catch(() => undefined);
   }
   await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet'").bind(roundId).run().catch(() => undefined);
@@ -29,7 +29,7 @@ app.post('/app/api/crash-live/bet', async (c) => {
   await ensure(c.env);
   const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
   const state = getCrashRoundState(Date.now());
-  const roundId = rid(b.roundId ?? getCrashLiveRoundId(state)), userId = uid(b.userId), username = name(b.username,userId), amountNano = amt(b.amountNano);
+  const roundId = rid(b.roundId ?? betRoundId(state)), userId = uid(b.userId), username = name(b.username,userId), amountNano = amt(b.amountNano);
   await c.env.DB.prepare("INSERT INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT(round_id,user_id) DO UPDATE SET username=excluded.username, amount_nano=excluded.amount_nano, status='bet', cashout_multiplier=NULL, payout_nano=0, is_virtual=0, updated_at=CURRENT_TIMESTAMP").bind(roundId,userId,username,amountNano).run();
   return c.json({ok:true,roundId},200,{'cache-control':CACHE_NONE});
 });
@@ -72,6 +72,7 @@ function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:Return
   if(target)return getCrashTargetDelayMs(state,target);
   return Math.max(180, state.runMs - state.local + 80);
 }
+function betRoundId(state:ReturnType<typeof getCrashRoundState>){return state.waiting ? state.id + 1 : state.id}
 function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
 function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
 function name(v:unknown,f:string){let s=String(v||f||'User').replace(/[<>]/g,'').trim();if(s.startsWith('@'))s=s.slice(1);if(s.includes(' '))s=s.split(' ')[0];return s.slice(0,80)||'User'}
