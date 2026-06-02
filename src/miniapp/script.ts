@@ -24,6 +24,30 @@ export const MINIAPP_SCRIPT = `
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
   function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function setHomeSheetLock(open){var h=q('home');if(!h)return;if(open)h.style.setProperty('overflow-y','hidden','important');else h.style.removeProperty('overflow-y')}
+  function getActiveViewId(){var active=document.querySelector('.view.active');return active&&active.id||'home'}
+  function getGamePlayerCount(id){var n=document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b');return n?String(n.textContent||'').trim():''}
+  function renderHeaderGamePlayers(id){
+    var title=q('brandTitle');
+    if(!title)return;
+    title.querySelectorAll('[data-game-online-badge],[data-dice-online-badge]').forEach(function(n){n.remove()});
+    var count=getGamePlayerCount(id);
+    if(!count)return;
+    var badge=document.createElement('span');
+    badge.className='dice-online-badge';
+    badge.setAttribute(id==='dice'?'data-dice-online-badge':'data-game-online-badge','1');
+    badge.setAttribute('data-game-id',id);
+    badge.setAttribute('aria-label',count+' live online');
+    var dot=document.createElement('i');
+    var live=document.createElement('em');
+    var value=document.createElement('b');
+    live.textContent='LIVE';
+    value.textContent=count;
+    badge.appendChild(dot);
+    badge.appendChild(live);
+    badge.appendChild(value);
+    title.appendChild(badge);
+  }
+  function syncHeaderGamePlayers(){renderHeaderGamePlayers(getActiveViewId())}
   function applyFinanceSheetLayout(s,open){
     if(!s)return;
     var isFinance=s.id==='depositSheet'||s.id==='withdrawSheet';
@@ -104,6 +128,7 @@ export const MINIAPP_SCRIPT = `
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa');
+    renderHeaderGamePlayers(id);
     setHeaderGlassMode(id);
     syncTelegramBackButton(id);
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
@@ -201,6 +226,10 @@ export const MINIAPP_SCRIPT = `
     if(a==='save-user')saveUser();
   });
 
+  if(window.MutationObserver){
+    new MutationObserver(function(){syncHeaderGamePlayers()}).observe(document.body,{childList:true,subtree:true,characterData:true});
+  }
+
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(q('ownerId'))q('ownerId').value=ownerId;
   removeLegacyLeagueAndRewards();
@@ -209,6 +238,7 @@ export const MINIAPP_SCRIPT = `
   initHomeGlassButton();
   initPlayZoneGameNavigation();
   setText('brandTitle',sectionTitles.home);
+  renderHeaderGamePlayers('home');
   setHeaderGlassMode('home');
   syncTelegramBackButton('home');
   userLine();
