@@ -124,11 +124,11 @@ export const WHEEL_SECTION = `
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: radial-gradient(circle at 34% 24%, rgba(255,255,255,.34), rgba(255,255,255,.08) 34%, rgba(8,8,10,.72) 72%) !important;
-      border: 1px solid rgba(255, 255, 255, .30) !important;
-      box-shadow: 0 16px 34px rgba(0, 0, 0, .70), inset 0 1px 0 rgba(255, 255, 255, .44), inset 0 -10px 18px rgba(0,0,0,.52) !important;
-      backdrop-filter: blur(8px) saturate(1.26);
-      -webkit-backdrop-filter: blur(8px) saturate(1.26);
+      background: radial-gradient(circle at 34% 24%, rgba(255,255,255,.36), rgba(255,255,255,.10) 33%, rgba(8,8,10,.78) 72%) !important;
+      border: 1px solid rgba(255, 255, 255, .34) !important;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .70), inset 0 1px 0 rgba(255, 255, 255, .48), inset 0 -10px 18px rgba(0,0,0,.56), inset 0 0 18px rgba(255,255,255,.08) !important;
+      backdrop-filter: blur(8px) saturate(1.28);
+      -webkit-backdrop-filter: blur(8px) saturate(1.28);
       z-index: 4;
       text-align: center;
       overflow: hidden;
@@ -142,7 +142,7 @@ export const WHEEL_SECTION = `
       width: 19px;
       height: 10px;
       border-radius: 50%;
-      background: rgba(255,255,255,.30);
+      background: rgba(255,255,255,.32);
       filter: blur(.4px);
       transform: rotate(-22deg);
       pointer-events: none;
@@ -150,17 +150,21 @@ export const WHEEL_SECTION = `
 
     .wheel-center b {
       position: relative;
-      font-size: 29px;
+      display: block;
+      width: 100%;
+      transform: translateY(1px);
+      font-size: 28px;
       line-height: 1;
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: 'Bodoni 72', Didot, Georgia, 'Times New Roman', serif;
       font-weight: 900;
-      letter-spacing: -.12em;
-      padding-right: 2px;
+      letter-spacing: 0;
+      text-align: center;
       color: transparent;
-      background: linear-gradient(180deg, #ffffff 0%, #d7d7dc 42%, #7f8089 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #dedee4 43%, #8c8d96 100%);
       -webkit-background-clip: text;
       background-clip: text;
-      text-shadow: 0 2px 10px rgba(255,255,255,.20), 0 9px 18px rgba(0,0,0,.84);
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 1px 8px rgba(255,255,255,.18), 0 8px 16px rgba(0,0,0,.78);
     }
 
     .wheel-panel {
@@ -677,7 +681,7 @@ export const WHEEL_SECTION = `
         }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
-          var corner = .028;
+          var corner = .03;
           var innerStart = startAngle + corner;
           var innerEnd = endAngle - corner;
           var outerStart = startAngle + corner;
@@ -711,7 +715,7 @@ export const WHEEL_SECTION = `
           var cx = 600;
           var cy = 600;
           var outerRadius = 486;
-          var innerRadius = 106;
+          var innerRadius = 94;
           var gap = .004;
           var chance = clampChance(chanceInput.value);
           var userArc = Math.PI * 2 * chance / 100;
