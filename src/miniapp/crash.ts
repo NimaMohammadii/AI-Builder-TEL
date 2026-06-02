@@ -6,6 +6,7 @@ import { CRASH_BREAK_FX_SCRIPT } from './crash-break-fx-script';
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <div class="crash-page">
     <div class="crash-stage">
+      <div class="crash-history" id="crashHistory"></div>
       <canvas id="crashCanvas" class="crash-canvas" width="360" height="340" aria-label="Crash graph"></canvas>
       <div class="crash-multiplier-wrap">
         <div class="crash-multiplier" id="crashMultiplier">1.00x</div>
@@ -27,10 +28,8 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
         <button type="button" data-action="crash-double">2x</button>
       </div>
       <div class="crash-actions">
-        <button id="crashStart" class="crash-primary" type="button">Place Bet</button>
-        <button id="crashCashout" class="crash-secondary" type="button" disabled>Cash Out</button>
+        <button id="crashAction" class="crash-primary" type="button">Place Bet</button>
       </div>
-      <div class="crash-history" id="crashHistory"></div>
     </div>
     <div class="crash-live" id="crashLive">
       <div class="crash-live-head"><span>Live Bets</span><b id="crashLiveTotal">0 TON</b></div>
