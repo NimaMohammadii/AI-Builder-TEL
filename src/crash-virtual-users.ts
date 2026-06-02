@@ -148,7 +148,7 @@ function targetCashout(roundId:number,i:number,risk:number,stop:number){
   return t;
 }
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
-function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100)}
+function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
 function multAt(seconds:number){return 1+seconds*.12+seconds*seconds*.0042}
 function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
 function roundStop(roundId:number){return Math.min(rawRoundStop(roundId),maxReachableStop())}
