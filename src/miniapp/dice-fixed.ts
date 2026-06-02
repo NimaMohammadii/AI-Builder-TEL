@@ -4,29 +4,48 @@ const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-range-card {
   position: fixed !important;
   top: calc(env(safe-area-inset-top) + 72px) !important;
-  left: 14px !important;
-  right: 14px !important;
+  left: 28px !important;
+  right: 28px !important;
   z-index: 8 !important;
-  width: min(520px, calc(100vw - 28px)) !important;
+  width: auto !important;
   max-width: 520px !important;
   margin: 0 auto !important;
   padding: 16px 10px 10px !important;
+  box-sizing: border-box !important;
   border-radius: 28px !important;
-  background: rgba(255, 255, 255, .026) !important;
+  background: rgba(0, 0, 0, .62) !important;
   border: 1px solid rgba(255, 255, 255, .12) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
   transform: none !important;
+  overflow: hidden !important;
   backdrop-filter: blur(14px) saturate(1.16) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.16) !important;
+}
+
+.dice-view .dice-slider-visual {
+  background: rgba(0, 0, 0, .78) !important;
+}
+
+.dice-view .dice-slider-thumb {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(7px) saturate(1.22) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(1.22) !important;
 }
 
 @media (max-width: 420px) {
   .dice-view .dice-range-card {
     top: calc(env(safe-area-inset-top) + 64px) !important;
-    left: 12px !important;
-    right: 12px !important;
-    width: calc(100vw - 24px) !important;
+    left: 24px !important;
+    right: 24px !important;
+    width: auto !important;
     padding: 14px 8px 8px !important;
+  }
+
+  .dice-view .dice-slider-thumb {
+    width: 32px !important;
+    height: 32px !important;
   }
 }
 `;
