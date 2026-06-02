@@ -61,13 +61,16 @@ function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.u
 function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:ReturnType<typeof json>[]){
   if(!state.running)return Math.max(300, state.nextInMs + 80);
   let target = 0;
+  let overdue = false;
   for(const bet of bets){
     if(!bet.isVirtual || bet.status !== 'bet')continue;
     const next = Number(bet.targetCashoutMultiplier)||0;
+    if(next <= state.current && next < state.stop)overdue = true;
     if(next > state.current && next < state.stop && (!target || next < target))target = next;
   }
+  if(overdue)return 180;
   if(target)return getCrashTargetDelayMs(state,target);
-  return Math.max(300, state.runMs - state.local + 80);
+  return Math.max(180, state.runMs - state.local + 80);
 }
 function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
 function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
