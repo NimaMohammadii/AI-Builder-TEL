@@ -56,6 +56,65 @@ const DICE_RANGE_CARD_STYLES = `
   -webkit-backdrop-filter: blur(7px) saturate(1.22) !important;
 }
 
+body:has(#dice.active) #brandTitle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.dice-online-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  color: rgba(255, 255, 255, .90) !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.02em !important;
+  white-space: nowrap !important;
+  background: rgba(0, 0, 0, .18) !important;
+  border: 1px solid rgba(255, 255, 255, .08) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
+  padding: 5px 9px !important;
+  margin-left: 2px !important;
+  transform: translateY(1px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.dice-online-badge i {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #18b96a !important;
+  box-shadow: 0 0 0 1px rgba(24, 185, 106, .16), 0 0 8px rgba(24, 185, 106, .22), inset 0 1px 0 rgba(255, 255, 255, .24) !important;
+  flex: 0 0 auto !important;
+  position: relative !important;
+  animation: liveDotSoft 2.8s ease-in-out infinite !important;
+}
+
+.dice-online-badge i::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -3px !important;
+  border-radius: inherit !important;
+  border: 1px solid rgba(24, 185, 106, .28) !important;
+  opacity: .32 !important;
+  animation: liveDotRing 2.8s ease-in-out infinite !important;
+}
+
+.dice-online-badge b {
+  display: inline-block !important;
+  min-width: 23px !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+  color: rgba(255, 255, 255, .90) !important;
+  text-shadow: 0 6px 14px rgba(0, 0, 0, .56), 0 0 10px rgba(255, 255, 255, .08) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
 .dice-view .dice-result-card {
   position: fixed !important;
   top: calc(env(safe-area-inset-top) + 318px) !important;
@@ -273,6 +332,21 @@ const DICE_RANGE_CARD_STYLES = `
     left: 14px !important;
     right: 14px !important;
   }
+
+  .dice-online-badge {
+    gap: 4px !important;
+    padding: 4px 8px !important;
+  }
+
+  .dice-online-badge i {
+    width: 7px !important;
+    height: 7px !important;
+  }
+
+  .dice-online-badge b {
+    min-width: 20px !important;
+    font-size: 9.4px !important;
+  }
 }
 `;
 
@@ -370,10 +444,64 @@ const DICE_RESULT_SCRIPT = `
 })();
 `;
 
+const DICE_ONLINE_BADGE_SCRIPT = `
+(function(){
+  var count = 204;
+
+  function isDiceActive() {
+    var root = document.getElementById('dice');
+    return !!(root && root.classList.contains('active'));
+  }
+
+  function renderBadge() {
+    var title = document.getElementById('brandTitle');
+    if (!title) return;
+
+    var existing = title.querySelector('[data-dice-online-badge]');
+    if (!isDiceActive()) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (existing) return;
+    if (String(title.textContent || '').trim() !== 'Dice') return;
+
+    var badge = document.createElement('span');
+    badge.className = 'dice-online-badge';
+    badge.setAttribute('data-dice-online-badge', '1');
+    badge.setAttribute('aria-label', count + ' online');
+
+    var dot = document.createElement('i');
+    var value = document.createElement('b');
+    value.textContent = String(count);
+
+    badge.appendChild(dot);
+    badge.appendChild(value);
+    title.appendChild(badge);
+  }
+
+  document.addEventListener('click', function() {
+    setTimeout(renderBadge, 220);
+  }, true);
+
+  if (window.MutationObserver) {
+    new MutationObserver(renderBadge).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  }
+
+  renderBadge();
+})();
+`;
+
 export const DICE_SECTION = RAW_DICE_SECTION
   .replace('</style>', DICE_RANGE_CARD_STYLES + '</style>')
   .replace('<div class="dice-status" data-dice-status>', DICE_RESULT_CARD + '<div class="dice-status" data-dice-status>')
-  .replace('</script></section>', DICE_RESULT_SCRIPT + '</script></section>')
+  .replace('</script></section>', DICE_RESULT_SCRIPT + DICE_ONLINE_BADGE_SCRIPT + '</script></section>')
   .replace('data-dice-bet-input-open>1</button>', 'data-dice-bet-input-open>1.00</button>')
   .replace('<b data-dice-current>1</b>', '<b data-dice-current>1.00</b>')
   .replace('min="1" inputmode="decimal" value="1"', 'min="0.01" step="0.01" inputmode="decimal" value="1.00"')
