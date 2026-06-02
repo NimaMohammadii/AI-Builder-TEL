@@ -150,21 +150,17 @@ export const WHEEL_SECTION = `
 
     .wheel-center b {
       position: relative;
-      display: block;
-      width: 100%;
-      transform: translateY(1px);
-      font-size: 28px;
+      font-size: 29px;
       line-height: 1;
-      font-family: 'Bodoni 72', Didot, Georgia, 'Times New Roman', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-weight: 900;
-      letter-spacing: 0;
-      text-align: center;
+      letter-spacing: -.12em;
+      padding-right: 2px;
       color: transparent;
-      background: linear-gradient(180deg, #ffffff 0%, #dedee4 43%, #8c8d96 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #d7d7dc 42%, #7f8089 100%);
       -webkit-background-clip: text;
       background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 1px 8px rgba(255,255,255,.18), 0 8px 16px rgba(0,0,0,.78);
+      text-shadow: 0 2px 10px rgba(255,255,255,.20), 0 9px 18px rgba(0,0,0,.84);
     }
 
     .wheel-panel {
@@ -700,14 +696,20 @@ export const WHEEL_SECTION = `
         function label(text, angleValue, radius, color, size) {
           var cx = 600;
           var cy = 600;
+          var full = Math.PI * 2;
+          var normalized = ((angleValue % full) + full) % full;
+          var readableAngle = angleValue;
+          if (normalized > Math.PI / 2 && normalized < Math.PI * 1.5) {
+            readableAngle += Math.PI;
+          }
           ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(angleValue);
+          ctx.translate(cx + Math.cos(angleValue) * radius, cy + Math.sin(angleValue) * radius);
+          ctx.rotate(readableAngle);
           ctx.fillStyle = color;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.font = '900 ' + size + 'px system-ui';
-          ctx.fillText(text, radius, 0);
+          ctx.fillText(text, 0, 0);
           ctx.restore();
         }
 
