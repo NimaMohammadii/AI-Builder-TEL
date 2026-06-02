@@ -2,39 +2,42 @@ import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
 const VISUAL_SPACING_STYLES = `
 .dice-view .dice-wrap {
-  width: min(500px, 100%) !important;
+  width: min(520px, 100%) !important;
   min-height: auto !important;
-  aspect-ratio: 1 / 1 !important;
   justify-content: center !important;
-  gap: 10px !important;
+  gap: 8px !important;
   margin: 0 auto !important;
-  padding: 18px !important;
-  border-radius: 30px !important;
-  background: rgba(255, 255, 255, .026) !important;
-  border: 1px solid rgba(255, 255, 255, .12) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
-  transform: translateY(12px) !important;
-  backdrop-filter: blur(14px) saturate(1.18) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.18) !important;
-}
-
-.dice-view .dice-range-card {
-  width: 100% !important;
-  max-width: 100% !important;
-  align-self: center !important;
-  margin: 0 auto !important;
-  padding: 14px 8px 8px !important;
-  border-radius: 26px !important;
+  padding: 10px 0 0 !important;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
-  transform: none !important;
+  transform: translateY(12px) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
+.dice-view .dice-range-card {
+  width: calc(100% + 18px) !important;
+  max-width: 540px !important;
+  align-self: center !important;
+  margin: 0 -9px -30px !important;
+  padding: 18px 10px 42px !important;
+  border-radius: 30px !important;
+  background: rgba(255, 255, 255, .026) !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
+  transform: none !important;
+  backdrop-filter: blur(14px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.18) !important;
+}
+
+.dice-view .dice-slider-shell {
+  margin-left: -6px !important;
+  margin-right: -6px !important;
+}
+
 .dice-view .dice-slider-visual {
-  background: rgba(0, 0, 0, .72) !important;
+  background: rgba(0, 0, 0, .78) !important;
   border-color: rgba(255, 255, 255, .12) !important;
   backdrop-filter: blur(8px) saturate(1.12) !important;
   -webkit-backdrop-filter: blur(8px) saturate(1.12) !important;
@@ -47,26 +50,52 @@ const VISUAL_SPACING_STYLES = `
 }
 
 .dice-view .dice-status {
-  margin: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  margin: 0 0 8px !important;
+  transform: translateY(-6px) !important;
 }
 
 .dice-view .dice-panel {
   margin-top: 0 !important;
-  background: rgba(255, 255, 255, .032) !important;
+  background: #050505 !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+.dice-view .dice-field,
+.dice-view .dice-stat {
+  background: #030303 !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+.dice-view .dice-bet button {
+  background: #030303 !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+}
+
+.dice-view .dice-bet-main {
+  background: #0a0a0a !important;
+  border-color: rgba(255, 255, 255, .20) !important;
 }
 
 @media (max-width: 420px) {
   .dice-view .dice-wrap {
     width: min(360px, 100%) !important;
-    gap: 9px !important;
-    padding: 14px !important;
+    gap: 8px !important;
+    padding: 10px 0 0 !important;
     transform: translateY(10px) !important;
   }
 
   .dice-view .dice-range-card {
-    margin: 0 auto !important;
-    padding: 12px 6px 6px !important;
+    width: calc(100% + 14px) !important;
+    margin: 0 -7px -30px !important;
+    padding: 16px 8px 40px !important;
     transform: none !important;
+  }
+
+  .dice-view .dice-slider-shell {
+    margin-left: -5px !important;
+    margin-right: -5px !important;
   }
 }
 `;
