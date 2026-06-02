@@ -31,8 +31,16 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
         <button id="crashAction" class="crash-primary" type="button">Place Bet</button>
       </div>
     </div>
-    <div class="crash-live" id="crashLive">
-      <div class="crash-live-head"><span>Live Bets</span><b id="crashLiveTotal">0 TON</b></div>
+    <div class="crash-live open" id="crashLive">
+      <div class="crash-live-head">
+        <span>Live Bets</span>
+        <div class="crash-live-head-actions">
+          <b id="crashLiveTotal">0 TON</b>
+          <button id="crashLiveToggle" class="crash-live-toggle" type="button" aria-label="Toggle live bets" aria-expanded="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="crash-live-list" id="crashLiveList"><div class="crash-live-empty">No bets yet</div></div>
     </div>
   </div>
