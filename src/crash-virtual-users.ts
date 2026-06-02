@@ -125,7 +125,18 @@ function roundBotAmount(value:number,roll:number){
   if(rounded<.1) rounded=Math.round(value*10)/10;
   return Math.max(1,Math.floor(rounded*NANO));
 }
-function targetCashout(roundId:number,i:number,risk:number,stop:number){const r=rand(roundId,900+i);let min=1.15,max=1.8;if(risk>.45&&risk<=.80){min=1.8;max=3}else if(risk>.80&&risk<=.95){min=3;max=7}else if(risk>.95){min=7;max=15}let t=Math.floor((min+(max-min)*r)*100)/100;if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));return t}
+function targetCashout(roundId:number,i:number,risk:number,stop:number){
+  const r=rand(roundId,900+i);
+  const earlyLimit=Math.min(stop-.01,1.12);
+  if(stop>1.04 && earlyLimit>1.01 && rand(roundId,1500+i)<.22)return Math.floor((1.01+(earlyLimit-1.01)*r)*100)/100;
+  let min=1.15,max=1.8;
+  if(risk>.45&&risk<=.80){min=1.8;max=3}
+  else if(risk>.80&&risk<=.95){min=3;max=7}
+  else if(risk>.95){min=7;max=15}
+  let t=Math.floor((min+(max-min)*r)*100)/100;
+  if(rand(roundId,1200+i)<.08)t=Math.max(1.01,Math.min(15,stop+(rand(roundId,1300+i)*3+.2)));
+  return t;
+}
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
 function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100)}
 function multAt(seconds:number){return 1+seconds*.12+seconds*seconds*.0042}
