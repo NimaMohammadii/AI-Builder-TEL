@@ -23,22 +23,27 @@ export type CrashRoundState = {
 export async function ensureCrashVirtualColumns(db:D1Database){
   await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
   await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN target_cashout_multiplier REAL').run().catch(()=>undefined);
+  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
+  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_order INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
 }
 
-export async function seedCrashVirtualUsers(db:D1Database, roundId:number){
+
+export async function seedCrashVirtualUsers(db:D1Database, roundId:number, revealStartMs = Date.now(), revealEndMs = revealStartMs){
   const found = await db.prepare('SELECT COUNT(*) AS n FROM crash_live_bets WHERE round_id=? AND is_virtual=1').bind(roundId).first<{n:number}>();
   if(Number(found?.n||0)>0)return;
   const count = 60 + Math.floor(rand(roundId,1)*41);
   const stop = roundStop(roundId);
   const hourSlot = Math.floor(Date.now()/HOUR_MS);
-  const stmt = db.prepare("INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,target_cashout_multiplier,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+  const revealWindow = Math.max(0, revealEndMs - revealStartMs);
+  const stmt = db.prepare("INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,target_cashout_multiplier,virtual_reveal_at_ms,virtual_order,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 1, ?, ?, ?, datetime(?/1000, 'unixepoch'), datetime(?/1000, 'unixepoch'))");
   const batch=[];
   for(let i=0;i<count;i++){
     const risk = rand(roundId,100+i);
     const amount = amountNano(roundId,i,risk);
     const target = targetCashout(roundId,i,risk,stop);
     const username = scheduledName(roundId,hourSlot,i);
-    batch.push(stmt.bind(roundId,'virtual_'+hourSlot+'_'+roundId+'_'+i,username,amount,target));
+    const revealAt = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    batch.push(stmt.bind(roundId,'virtual_'+hourSlot+'_'+roundId+'_'+i,username,amount,target,revealAt,i + 1,revealAt,revealAt));
   }
   if(batch.length)await db.batch(batch);
 }
