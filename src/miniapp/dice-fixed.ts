@@ -457,67 +457,10 @@ const DICE_RESULT_SCRIPT = `
 })();
 `;
 
-const DICE_ONLINE_BADGE_SCRIPT = `
-(function(){
-  var count = 204;
-
-  function isDiceActive() {
-    var root = document.getElementById('dice');
-    return !!(root && root.classList.contains('active'));
-  }
-
-  function renderBadge() {
-    var title = document.getElementById('brandTitle');
-    if (!title) return;
-
-    var existing = title.querySelector('[data-dice-online-badge]');
-    if (!isDiceActive()) {
-      if (existing) existing.remove();
-      return;
-    }
-
-    if (existing) return;
-    if (String(title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim() !== 'Dice') return;
-
-    var badge = document.createElement('span');
-    badge.className = 'dice-online-badge';
-    badge.setAttribute('data-dice-online-badge', '1');
-    badge.setAttribute('aria-label', count + ' live online');
-
-    var dot = document.createElement('i');
-    var live = document.createElement('em');
-    var value = document.createElement('b');
-    live.textContent = 'LIVE';
-    value.textContent = String(count);
-
-    badge.appendChild(dot);
-    badge.appendChild(live);
-    badge.appendChild(value);
-    title.appendChild(badge);
-  }
-
-  document.addEventListener('click', function() {
-    setTimeout(renderBadge, 220);
-  }, true);
-
-  if (window.MutationObserver) {
-    new MutationObserver(renderBadge).observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-  }
-
-  renderBadge();
-})();
-`;
-
 export const DICE_SECTION = RAW_DICE_SECTION
   .replace('</style>', DICE_RANGE_CARD_STYLES + '</style>')
   .replace('<div class="dice-status" data-dice-status>', DICE_RESULT_CARD + '<div class="dice-status" data-dice-status>')
-  .replace('</script></section>', DICE_RESULT_SCRIPT + DICE_ONLINE_BADGE_SCRIPT + '</script></section>')
+  .replace('</script></section>', DICE_RESULT_SCRIPT + '</script></section>')
   .replace('data-dice-bet-input-open>1</button>', 'data-dice-bet-input-open>1.00</button>')
   .replace('<b data-dice-current>1</b>', '<b data-dice-current>1.00</b>')
   .replace('min="1" inputmode="decimal" value="1"', 'min="0.01" step="0.01" inputmode="decimal" value="1.00"')
