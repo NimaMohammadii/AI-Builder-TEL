@@ -5,6 +5,7 @@ export const SLOT_SCRIPT = `
   var symbolHeight = 92;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
+  var slotSound = null;
 
   function q(id){
     return document.getElementById(id);
@@ -13,6 +14,70 @@ export const SLOT_SCRIPT = `
   function setBrand(title){
     var brand = q('brandTitle');
     if(brand) brand.textContent = title;
+  }
+
+  function startSlotSound(){
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContext) return;
+
+    stopSlotSound();
+
+    var context = new AudioContext();
+    var master = context.createGain();
+    var motor = context.createOscillator();
+    var pulse = context.createOscillator();
+    var filter = context.createBiquadFilter();
+    var now = context.currentTime;
+
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.055, now + 0.08);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(980, now);
+    filter.frequency.exponentialRampToValueAtTime(360, now + 4.8);
+
+    motor.type = 'sawtooth';
+    motor.frequency.setValueAtTime(96, now);
+    motor.frequency.exponentialRampToValueAtTime(42, now + 4.8);
+
+    pulse.type = 'square';
+    pulse.frequency.setValueAtTime(18, now);
+    pulse.frequency.exponentialRampToValueAtTime(7, now + 4.8);
+
+    motor.connect(filter);
+    pulse.connect(filter);
+    filter.connect(master);
+    master.connect(context.destination);
+
+    motor.start(now);
+    pulse.start(now);
+
+    slotSound = {
+      context: context,
+      master: master,
+      motor: motor,
+      pulse: pulse
+    };
+  }
+
+  function stopSlotSound(){
+    if(!slotSound) return;
+
+    var context = slotSound.context;
+    var now = context.currentTime;
+
+    slotSound.master.gain.cancelScheduledValues(now);
+    slotSound.master.gain.setValueAtTime(Math.max(slotSound.master.gain.value, 0.0001), now);
+    slotSound.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+    try { slotSound.motor.stop(now + 0.14); } catch(e) {}
+    try { slotSound.pulse.stop(now + 0.14); } catch(e) {}
+
+    window.setTimeout(function(){
+      context.close().catch(function(){});
+    }, 180);
+
+    slotSound = null;
   }
 
   function randomSymbolIndex(){
@@ -82,6 +147,7 @@ export const SLOT_SCRIPT = `
     var matched = result.every(function(value){ return value === first; });
 
     spinning = false;
+    stopSlotSound();
 
     if(button) button.disabled = false;
 
@@ -100,6 +166,7 @@ export const SLOT_SCRIPT = `
     var pending = reelCount;
 
     spinning = true;
+    startSlotSound();
 
     if(button) button.disabled = true;
 
@@ -112,9 +179,9 @@ export const SLOT_SCRIPT = `
       var strip = stripNode(reelIndex);
       if(!strip) return;
 
-      var loops = 8 + reelIndex * 2;
+      var loops = 14 + reelIndex * 2;
       var finalIndex = loops * symbols.length + symbolIndex;
-      var duration = 1450 + reelIndex * 340;
+      var duration = 4200 + reelIndex * 400;
       var y = -finalIndex * symbolHeight + symbolHeight;
 
       buildStrip(reelIndex, loops + 2);
@@ -123,7 +190,7 @@ export const SLOT_SCRIPT = `
 
       requestAnimationFrame(function(){
         requestAnimationFrame(function(){
-          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.72,.08,1)';
+          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.06,.74,.08,1)';
           strip.style.transform = 'translate3d(0,' + y + 'px,0)';
         });
       });
