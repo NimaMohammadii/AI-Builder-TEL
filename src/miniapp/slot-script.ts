@@ -1,10 +1,10 @@
 export const SLOT_SCRIPT = `
 (function(){
   var symbols = ['🍒', '🍋', '🍇', '🍉', '🍊', '⭐', '💎', '7️⃣'];
-  var reelCount = 4;
+  var reelCount = 3;
   var symbolHeight = 82;
   var spinning = false;
-  var currentIndexes = [0, 1, 2, 3];
+  var currentIndexes = [0, 1, 2];
 
   function q(id){
     return document.getElementById(id);
@@ -13,11 +13,6 @@ export const SLOT_SCRIPT = `
   function setBrand(title){
     var brand = q('brandTitle');
     if(brand) brand.textContent = title;
-  }
-
-  function setStatus(text){
-    var node = q('slotStatusText');
-    if(node) node.textContent = text;
   }
 
   function randomSymbolIndex(){
@@ -94,8 +89,6 @@ export const SLOT_SCRIPT = `
       box.classList.remove('is-spinning');
       box.classList.toggle('is-win', matched);
     }
-
-    setStatus(matched ? 'Matched ' + symbols[first] : 'Ready to spin');
   }
 
   function spin(){
@@ -114,8 +107,6 @@ export const SLOT_SCRIPT = `
       box.classList.remove('is-win');
       box.classList.add('is-spinning');
     }
-
-    setStatus('Spinning');
 
     result.forEach(function(symbolIndex, reelIndex){
       var strip = stripNode(reelIndex);
@@ -148,48 +139,11 @@ export const SLOT_SCRIPT = `
     });
   }
 
-  function openPlayZone(){
-    document.querySelectorAll('.view').forEach(function(view){
-      view.classList.remove('active');
-    });
-
-    var play = q('playzone');
-    if(play) play.classList.add('active');
-
-    document.querySelectorAll('.tab').forEach(function(tab){
-      tab.classList.toggle('active', tab.getAttribute('data-view') === 'playzone');
-    });
-
-    setBrand('Play Zone');
-  }
-
-
-  function loadSlotFrame(){
-    var img = q('slotFrameImage');
-    if(!img) return;
-
-    fetch('/app/api/slot-frame', { cache: 'no-store' })
-      .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
-      .then(function(result){
-        if(!result.ok || !result.body || !result.body.slotFrameUrl) return;
-        img.onload = function(){ img.classList.add('is-loaded'); };
-        img.onerror = function(){ img.classList.remove('is-loaded'); img.removeAttribute('src'); };
-        img.src = result.body.slotFrameUrl;
-      })
-      .catch(function(){
-        img.classList.remove('is-loaded');
-      });
-  }
-
   function bind(){
     initReels();
-    loadSlotFrame();
 
     var spinButton = q('slotSpinButton');
     if(spinButton) spinButton.addEventListener('click', spin);
-
-    var backButton = q('slotBackButton');
-    if(backButton) backButton.addEventListener('click', openPlayZone);
 
     document.addEventListener('click', function(ev){
       var openButton = ev.target && ev.target.closest ? ev.target.closest('[data-game-view="slot"]') : null;
