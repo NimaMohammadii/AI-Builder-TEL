@@ -13,8 +13,8 @@ body:has(#slot.active) .tabs {
 .slot-machine {
   position: relative;
   z-index: 2;
-  width: min(100%, 390px);
-  margin: 34px auto 0;
+  width: min(100%, 408px);
+  margin: 20px auto 0;
   padding: 0 0 18px;
   background: transparent;
   overflow: visible;
@@ -148,7 +148,8 @@ body:has(#slot.active) .tabs {
   }
 
   .slot-machine {
-    margin-top: 30px;
+    width: min(100%, 398px);
+    margin-top: 18px;
   }
 }
 `;
