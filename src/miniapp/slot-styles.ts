@@ -22,7 +22,8 @@ body:has(#slot.active) .tabs {
 
 .slot-frame-image {
   position: absolute;
-  inset: 0;
+  top: -44px;
+  left: 0;
   z-index: 8;
   width: 100%;
   height: 100%;
@@ -40,7 +41,9 @@ body:has(#slot.active) .tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  width: 82%;
   height: 268px;
+  margin: 0 auto;
   padding: 0;
   background: transparent;
   overflow: hidden;
@@ -131,6 +134,7 @@ body:has(#slot.active) .tabs {
 
 @media (max-width: 380px) {
   .slot-window {
+    width: 82%;
     height: 248px;
     gap: 7px;
   }
