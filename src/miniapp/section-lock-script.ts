@@ -123,12 +123,17 @@ export const SECTION_LOCK_SCRIPT = `
     section.appendChild(view);tickCountdowns();scheduleCountdownTick();
   }
 
+  function setScreenLockState(active,item){
+    document.body.classList.toggle('section-lock-screen-active',!!active);
+    document.body.classList.toggle('section-lock-code-active',!!(active&&item&&item.mode==='code'));
+  }
+
   function applySectionLock(section){
-    if(!section)return;
+    if(!section){setScreenLockState(false,null);return false}
     var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
     var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
     section.classList.toggle('is-section-locked',isLocked);
-    if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
+    if(isLocked&&item.mode!=='loading'){ensureOverlay(section,item);setScreenLockState(true,item);return true}else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove();setScreenLockState(false,null);return false}
   }
 
   function applyLocks(){
