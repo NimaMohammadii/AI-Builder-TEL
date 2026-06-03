@@ -41,8 +41,8 @@ body:has(#slot.active) .tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
-  width: 64%;
-  height: 244px;
+  width: 66%;
+  height: 252px;
   margin: 66px auto 0;
   padding: 0;
   background: transparent;
@@ -135,8 +135,8 @@ body:has(#slot.active) .tabs {
 
 @media (max-width: 380px) {
   .slot-window {
-    width: 64%;
-    height: 226px;
+    width: 66%;
+    height: 234px;
     margin-top: 62px;
     gap: 6px;
     transform: translateX(-4px);
