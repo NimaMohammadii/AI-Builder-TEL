@@ -26,23 +26,13 @@ export const SLOT_SCRIPT = `
       window.crypto.getRandomValues(values);
       return values[0] % symbols.length;
     }
-
     return Math.floor(Math.random() * symbols.length);
   }
 
-  function createSymbol(value, index){
+  function createSymbol(value){
     var cell = document.createElement('div');
-    var face = document.createElement('span');
-    var shine = document.createElement('i');
-
-    cell.className = 'slot-symbol slot-symbol-depth-' + (index % 3);
-    face.className = 'slot-symbol-face';
-    shine.className = 'slot-symbol-shine';
-
-    face.textContent = value;
-    face.appendChild(shine);
-    cell.appendChild(face);
-
+    cell.className = 'slot-symbol';
+    cell.textContent = value;
     return cell;
   }
 
@@ -60,7 +50,7 @@ export const SLOT_SCRIPT = `
     var offset = reelIndex % symbols.length;
 
     for(var i = 0; i < total; i++){
-      strip.appendChild(createSymbol(symbols[(i + offset) % symbols.length], i));
+      strip.appendChild(createSymbol(symbols[(i + offset) % symbols.length]));
     }
   }
 
