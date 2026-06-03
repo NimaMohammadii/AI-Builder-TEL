@@ -2,7 +2,11 @@ export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
     html:has(#wheel.active),
-    body:has(#wheel.active),
+    body:has(#wheel.active) {
+      background: #020102 !important;
+      background-color: #020102 !important;
+    }
+
     body:has(#wheel.active) .app,
     body:has(#wheel.active) main.app,
     body:has(#wheel.active) .content,
@@ -11,22 +15,56 @@ export const WHEEL_SECTION = `
     body:has(#wheel.active) .wheel-view,
     body:has(#wheel.active) .top,
     body:has(#wheel.active) header.top {
-      background: #000 !important;
-      background-color: #000 !important;
+      background: transparent !important;
+      background-color: transparent !important;
       background-image: none !important;
       box-shadow: none !important;
     }
 
-    body:has(#wheel.active)::before,
-    body:has(#wheel.active)::after,
-    body:has(#wheel.active) .app::before,
-    body:has(#wheel.active) .app::after,
+    body:has(#wheel.active)::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background: radial-gradient(ellipse 118% 55% at 48% -10%, rgba(64,8,28,.58), transparent 62%), radial-gradient(ellipse 92% 15% at 50% 40%, rgba(0,0,0,.36), transparent 74%), linear-gradient(23deg, transparent 0 39%, rgba(0,0,0,.20) 47%, transparent 60%), linear-gradient(154deg, transparent 0 37%, rgba(0,0,0,.19) 48%, transparent 62%), radial-gradient(ellipse 68% 42% at 50% 42%, rgba(72,9,32,.28), transparent 68%), radial-gradient(ellipse 52% 38% at -8% 46%, rgba(92,12,38,.30), transparent 70%), radial-gradient(ellipse 54% 40% at 108% 44%, rgba(58,6,28,.32), transparent 70%), radial-gradient(ellipse 42% 34% at 4% 94%, rgba(48,5,24,.24), transparent 72%), radial-gradient(ellipse 42% 34% at 96% 92%, rgba(48,5,24,.24), transparent 72%), radial-gradient(ellipse 86% 48% at 20% 2%, rgba(78,10,34,.42), transparent 66%), radial-gradient(ellipse 82% 50% at 96% 8%, rgba(32,3,18,.62), transparent 64%), linear-gradient(180deg, #030102 0%, #070205 34%, #050303 62%, #010101 100%) !important;
+      pointer-events: none;
+    }
+
+    body:has(#wheel.active)::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background: linear-gradient(166deg, transparent 0 41%, rgba(96,12,42,.14) 48%, rgba(0,0,0,.24) 55%, transparent 66%), linear-gradient(18deg, transparent 0 42%, rgba(92,10,40,.13) 49%, rgba(0,0,0,.22) 56%, transparent 67%), radial-gradient(ellipse 78% 42% at 50% 10%, rgba(255,230,238,.040), transparent 60%), radial-gradient(ellipse 88% 18% at 50% 34%, rgba(0,0,0,.26), transparent 76%), radial-gradient(ellipse 62% 34% at 50% 50%, rgba(255,205,220,.014), transparent 70%), linear-gradient(180deg, rgba(255,210,225,.012), transparent 22%, rgba(0,0,0,.30) 100%) !important;
+      pointer-events: none;
+    }
+
+    body:has(#wheel.active) .app::before {
+      content: '';
+      position: absolute;
+      left: -26%;
+      right: -26%;
+      top: -10%;
+      height: 72%;
+      z-index: 0;
+      background: radial-gradient(ellipse 72% 70% at 48% 4%, rgba(82,10,36,.40), transparent 66%), radial-gradient(ellipse 96% 14% at 50% 45%, rgba(0,0,0,.30), transparent 78%), linear-gradient(24deg, transparent 0 44%, rgba(0,0,0,.21) 52%, transparent 66%), linear-gradient(151deg, transparent 0 43%, rgba(0,0,0,.20) 52%, transparent 67%), linear-gradient(92deg, transparent 0 44%, rgba(96,12,42,.10) 51%, rgba(0,0,0,.13) 58%, transparent 68%), radial-gradient(ellipse 70% 58% at 52% 52%, rgba(76,9,34,.24), transparent 70%), radial-gradient(ellipse 50% 60% at 4% 48%, rgba(98,12,40,.23), transparent 72%), radial-gradient(ellipse 50% 60% at 98% 44%, rgba(62,6,30,.26), transparent 72%), radial-gradient(ellipse 62% 72% at 20% 16%, rgba(98,12,40,.28), transparent 70%), radial-gradient(ellipse 66% 72% at 88% 8%, rgba(28,3,18,.66), transparent 72%) !important;
+      pointer-events: none;
+    }
+
+    body:has(#wheel.active) .app::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: linear-gradient(160deg, transparent 0 40%, rgba(0,0,0,.14) 50%, transparent 61%), linear-gradient(26deg, transparent 0 42%, rgba(0,0,0,.12) 51%, transparent 62%), linear-gradient(180deg, rgba(255,220,232,.010), transparent 26%, rgba(0,0,0,.20) 100%) !important;
+      pointer-events: none;
+    }
+
     body:has(#wheel.active) .content::before,
     body:has(#wheel.active) .content::after,
     body:has(#wheel.active) #wheel::before,
     body:has(#wheel.active) #wheel::after {
-      background: #000 !important;
-      background-color: #000 !important;
+      background: transparent !important;
       background-image: none !important;
       box-shadow: none !important;
     }
