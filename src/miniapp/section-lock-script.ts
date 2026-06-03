@@ -46,9 +46,26 @@ export const SECTION_LOCK_SCRIPT = `
   function updateKeyboardInset(){var vv=window.visualViewport;var inset=0;if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px')}
   if(window.visualViewport){window.visualViewport.addEventListener('resize',updateKeyboardInset);window.visualViewport.addEventListener('scroll',updateKeyboardInset)}
 
+  function setGlobalLockChrome(on){
+    var targets=[document.documentElement,document.body,document.querySelector('.app'),document.querySelector('.top'),document.querySelector('.content')];
+    targets.forEach(function(el){
+      if(!el)return;
+      if(on)el.style.setProperty('background','rgb(0,0,0)','important');
+      else el.style.removeProperty('background');
+    });
+    document.body.classList.toggle('section-full-lock-active',!!on);
+    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.setBackgroundColor){try{window.Telegram.WebApp.setBackgroundColor('#000000')}catch(e){}}
+    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.setHeaderColor){try{window.Telegram.WebApp.setHeaderColor('#000000')}catch(e){}}
+  }
+
+  function anyRegularLockVisible(){
+    return !!document.querySelector('.view.active .section-locked-view:not(.section-loading-mode)');
+  }
+
   function forceFullSectionLock(section,on){
     if(!section)return;
     if(on){
+      setGlobalLockChrome(true);
       section.classList.remove('has-section-lock-overlay');
       section.classList.add('is-section-locked');
       section.style.setProperty('background','rgb(0,0,0)','important');
@@ -62,6 +79,7 @@ export const SECTION_LOCK_SCRIPT = `
       section.style.removeProperty('background');
       section.style.removeProperty('overflow');
       Array.prototype.forEach.call(section.children,function(child){child.style.removeProperty('display')});
+      setTimeout(function(){if(!anyRegularLockVisible())setGlobalLockChrome(false)},0);
     }
   }
 
