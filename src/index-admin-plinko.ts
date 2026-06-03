@@ -179,7 +179,6 @@ app.post('/admin/api/upload-home-finance-image', async (c) => {
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(HOME_FINANCE_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     return c.json({ ok: true, url: `/app/api/home-finance-image.png?v=${version}` });
@@ -195,7 +194,6 @@ app.post('/admin/api/upload-crash-tip-image', async (c) => {
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(CRASH_TIP_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     return c.json({ ok: true, url: `/app/api/crash-tip-image.png?v=${version}` });
@@ -231,7 +229,6 @@ app.post('/admin/api/upload-mines-tile-image', async (c) => {
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(`mines-tile/${kind}`, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     return c.json({ ok: true, kind, url: `/app/api/uploaded-image/mines-${kind}.png?v=${version}` });
@@ -249,7 +246,6 @@ app.post('/admin/api/section-lock-image-v2', async (c) => {
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(sectionImageR2Key(section, kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     await Promise.all([

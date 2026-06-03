@@ -28,7 +28,6 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!TOP_PLAYERS_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(TOP_PLAYERS_HERO_IMAGE_KEY, file.stream(), {
       httpMetadata: { contentType: file.type },

@@ -143,7 +143,6 @@ app.post('/admin/upload-credit-icon', async (c) => {
   if (!file || typeof file !== 'object' || !('type' in file) || !('size' in file) || !('stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
   const iconFile = file as { type: string; size: number; stream: () => ReadableStream };
   if (!CREDIT_ICON_TYPES.has(iconFile.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  if (iconFile.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
   const version = String(Date.now());
   await c.env.ASSETS.put('credit-icon', iconFile.stream(), { httpMetadata: { contentType: iconFile.type }, customMetadata: { version } });
   await Promise.all([
