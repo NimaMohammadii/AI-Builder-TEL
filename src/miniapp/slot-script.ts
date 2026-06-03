@@ -119,7 +119,7 @@ export const SLOT_SCRIPT = `
     if(!strip) return;
 
     var y = -index * symbolHeight + symbolHeight;
-    strip.style.transition = animate ? 'transform .55s cubic-bezier(.16,.9,.2,1)' : 'none';
+    strip.style.transition = animate ? 'transform .65s cubic-bezier(.18,.92,.16,1)' : 'none';
     strip.style.transform = 'translate3d(0,' + y + 'px,0)';
   }
 
@@ -181,7 +181,7 @@ export const SLOT_SCRIPT = `
 
       var loops = 14 + reelIndex * 2;
       var finalIndex = loops * symbols.length + symbolIndex;
-      var duration = 4200 + reelIndex * 400;
+      var duration = 4300 + reelIndex * 420;
       var y = -finalIndex * symbolHeight + symbolHeight;
 
       buildStrip(reelIndex, loops + 2);
@@ -190,7 +190,7 @@ export const SLOT_SCRIPT = `
 
       requestAnimationFrame(function(){
         requestAnimationFrame(function(){
-          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.06,.74,.08,1)';
+          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.12,.86,.12,1)';
           strip.style.transform = 'translate3d(0,' + y + 'px,0)';
         });
       });
@@ -202,7 +202,7 @@ export const SLOT_SCRIPT = `
         pending--;
 
         if(pending <= 0) finish(result);
-      }, duration + 40);
+      }, duration + 180);
     });
   }
 
