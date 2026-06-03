@@ -62,6 +62,7 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'plinko', label: 'Plinko', description: 'Plinko game card and access image' },
   { id: 'crash', label: 'Crash', description: 'Crash game card image' },
   { id: 'wheel', label: 'Wheel', description: 'Wheel game card image' },
+  { id: 'wheel-separator', label: 'Wheel Separator Rod', description: 'Image used as separator rods between Wheel slices' },
   { id: 'dice', label: 'Dice', description: 'Dice game card image' },
   { id: 'rps', label: 'Rock Paper Scissors', description: 'Rock Paper Scissors game card image' },
   { id: 'tower', label: 'Tower', description: 'Tower game card image' },
