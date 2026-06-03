@@ -9,6 +9,7 @@ export const SLOT_SECTION = `
 
   <div class="slot-machine" aria-label="Slot machine game">
     <div class="slot-frame-glow"></div>
+    <img id="slotFrameImage" class="slot-frame-image" alt="" aria-hidden="true"/>
 
     <div class="slot-window" aria-hidden="true">
       <div class="slot-payline"></div>

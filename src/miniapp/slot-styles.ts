@@ -67,6 +67,22 @@ body:has(#slot.active) .tabs {
   pointer-events: none;
 }
 
+.slot-frame-image {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+
+.slot-frame-image.is-loaded {
+  opacity: 1;
+}
+
 .slot-window {
   position: relative;
   display: grid;
@@ -142,6 +158,8 @@ body:has(#slot.active) .tabs {
 }
 
 .slot-status-card {
+  position: relative;
+  z-index: 9;
   width: fit-content;
   max-width: 100%;
   min-width: 128px;
@@ -164,6 +182,8 @@ body:has(#slot.active) .tabs {
 }
 
 .slot-spin-button {
+  position: relative;
+  z-index: 9;
   width: 100%;
   height: 50px;
   border: 0;
