@@ -85,7 +85,7 @@ body:has(#slot.active) .tabs {
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
+  top: 14px;
   will-change: transform;
   transform: translate3d(0, 0, 0);
 }
@@ -140,6 +140,10 @@ body:has(#slot.active) .tabs {
     margin-top: 88px;
     gap: 6px;
     transform: translateX(-4px);
+  }
+
+  .slot-reel-strip {
+    top: 12px;
   }
 
   .slot-symbol {
