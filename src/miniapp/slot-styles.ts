@@ -20,6 +20,21 @@ body:has(#slot.active) .tabs {
   overflow: visible;
 }
 
+.slot-frame-image {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+
+.slot-frame-image.is-loaded {
+  opacity: 1;
+}
+
 .slot-window {
   position: relative;
   display: grid;
