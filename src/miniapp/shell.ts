@@ -2,6 +2,7 @@ import { MINIAPP_STYLES } from './styles';
 import { PLINKO_STYLES } from './plinko-styles';
 import { MINES_STYLES } from './mines-styles';
 import { CRASH_STYLES } from './crash-styles';
+import { SLOT_STYLES } from './slot-styles';
 import { PLINKO_CONTROLS_MODERN_STYLES } from './plinko-controls-modern-styles';
 import { CRASH_CONTROLS_MODERN_STYLES } from './crash-controls-modern-styles';
 import { PLAY_ZONE_STYLES } from './play-zone-styles';
@@ -40,6 +41,7 @@ import { TOP_PLAYERS_SECTION } from './top-players';
 import { MINES_SECTION } from './mines';
 import { PLINKO_SECTION } from './plinko';
 import { CRASH_SECTION } from './crash';
+import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
 import { RPS_SECTION } from './rps';
@@ -59,6 +61,7 @@ import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
 import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
 import { MINES_SCRIPT } from './mines-script';
 import { CRASH_SCRIPT } from './crash-script';
+import { SLOT_SCRIPT } from './slot-script';
 import { WHEEL_ASSETS_SCRIPT } from './wheel-assets-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
@@ -129,6 +132,7 @@ const STYLES = [
   PLINKO_STYLES,
   MINES_STYLES,
   CRASH_STYLES,
+  SLOT_STYLES,
   PLINKO_CONTROLS_MODERN_STYLES,
   CRASH_CONTROLS_MODERN_STYLES,
   PLAY_ZONE_STYLES,
@@ -169,6 +173,7 @@ const SECTIONS = [
   MINES_SECTION,
   PLINKO_SECTION,
   CRASH_SECTION,
+  SLOT_SECTION,
   WHEEL_SECTION,
   DICE_SECTION,
   RPS_SECTION,
@@ -193,6 +198,7 @@ const SCRIPTS = [
   PLINKO_PANEL_SCRIPT,
   MINES_SCRIPT,
   CRASH_SCRIPT,
+  SLOT_SCRIPT,
   WHEEL_ASSETS_SCRIPT,
   PREDICT_ZONE_SETTINGS_SCRIPT,
   PREDICT_EXTRA_MARKETS_SCRIPT,
