@@ -1,6 +1,8 @@
 export const SLOT_SECTION = `
 <section id="slot" class="view slot-view">
   <div class="slot-machine" aria-label="Slot machine game">
+    <img id="slotFrameImage" class="slot-frame-image" alt="" aria-hidden="true"/>
+
     <div class="slot-window" aria-hidden="true">
       <div class="slot-reel" data-slot-reel="0">
         <div class="slot-reel-strip"></div>
