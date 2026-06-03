@@ -78,6 +78,8 @@ body:has(#slot.active) .tabs {
   background: linear-gradient(180deg, rgba(0,0,0,.74), rgba(0,0,0,.42));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -18px 36px rgba(0,0,0,.46);
   overflow: hidden;
+  perspective: 760px;
+  transform-style: preserve-3d;
 }
 
 .slot-window:before,
@@ -93,12 +95,12 @@ body:has(#slot.active) .tabs {
 
 .slot-window:before {
   top: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.88), transparent);
+  background: linear-gradient(180deg, rgba(0,0,0,.90), rgba(0,0,0,.50) 36%, transparent);
 }
 
 .slot-window:after {
   bottom: 0;
-  background: linear-gradient(0deg, rgba(0,0,0,.88), transparent);
+  background: linear-gradient(0deg, rgba(0,0,0,.90), rgba(0,0,0,.50) 36%, transparent);
 }
 
 .slot-payline {
@@ -119,8 +121,29 @@ body:has(#slot.active) .tabs {
   height: 100%;
   border-radius: 21px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.055);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.07), transparent 62%),
+    linear-gradient(90deg, rgba(255,255,255,.055), transparent 22%, transparent 78%, rgba(255,255,255,.045)),
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 12px 0 20px rgba(255,255,255,.025),
+    inset -12px 0 20px rgba(0,0,0,.24),
+    inset 0 0 0 1px rgba(255,255,255,.055);
+  perspective: 620px;
+  transform-style: preserve-3d;
+}
+
+.slot-reel:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.09), transparent 18%, transparent 82%, rgba(0,0,0,.30)),
+    radial-gradient(ellipse at 50% 50%, transparent 38%, rgba(0,0,0,.32) 100%);
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
 .slot-reel-strip {
@@ -130,15 +153,74 @@ body:has(#slot.active) .tabs {
   top: 0;
   will-change: transform;
   transform: translate3d(0, 0, 0);
+  transform-style: preserve-3d;
 }
 
 .slot-symbol {
   height: 82px;
   display: grid;
   place-items: center;
-  font-size: 38px;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.32));
   user-select: none;
+  transform-style: preserve-3d;
+  perspective: 520px;
+}
+
+.slot-symbol-face {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  font-size: 36px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.18), rgba(255,255,255,.045) 48%, rgba(0,0,0,.22)),
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,.22), transparent 38%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -12px 18px rgba(0,0,0,.20),
+    0 14px 26px rgba(0,0,0,.34);
+  transform: rotateX(0deg) translateZ(22px);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.32));
+}
+
+.slot-symbol-face:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,.28), transparent 36%, transparent 66%, rgba(255,255,255,.05));
+  pointer-events: none;
+}
+
+.slot-symbol-shine {
+  position: absolute;
+  inset: 2px;
+  border-radius: 18px;
+  background: linear-gradient(120deg, rgba(255,255,255,.18), transparent 30%, transparent 72%, rgba(255,255,255,.06));
+  pointer-events: none;
+  transform: translateZ(8px);
+}
+
+.slot-symbol-depth-0 .slot-symbol-face {
+  transform: rotateX(15deg) translateZ(16px) scale(.92);
+  opacity: .72;
+}
+
+.slot-symbol-depth-1 .slot-symbol-face {
+  transform: rotateX(0deg) translateZ(32px) scale(1.04);
+  opacity: 1;
+}
+
+.slot-symbol-depth-2 .slot-symbol-face {
+  transform: rotateX(-15deg) translateZ(16px) scale(.92);
+  opacity: .74;
+}
+
+.slot-machine.is-spinning .slot-symbol-face {
+  filter: blur(.25px) drop-shadow(0 10px 18px rgba(0,0,0,.32));
 }
 
 .slot-status-card {
@@ -203,7 +285,17 @@ body:has(#slot.active) .tabs {
 
   .slot-symbol {
     height: 76px;
-    font-size: 35px;
+  }
+
+  .slot-symbol-face {
+    width: 53px;
+    height: 53px;
+    border-radius: 18px;
+    font-size: 34px;
+  }
+
+  .slot-symbol-shine {
+    border-radius: 16px;
   }
 
   .slot-machine {
