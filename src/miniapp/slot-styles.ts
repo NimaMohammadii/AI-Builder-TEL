@@ -108,6 +108,14 @@ body:has(#slot.active) .tabs {
   user-select: none;
 }
 
+.slot-symbol-image {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
 .slot-spin-button {
   position: relative;
   z-index: 9;
@@ -158,6 +166,11 @@ body:has(#slot.active) .tabs {
   .slot-symbol {
     height: 86px;
     font-size: 35px;
+  }
+
+  .slot-symbol-image {
+    width: 70px;
+    height: 70px;
   }
 
   .slot-machine {
