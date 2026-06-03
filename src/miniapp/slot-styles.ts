@@ -14,7 +14,7 @@ body:has(#slot.active) .tabs {
   position: relative;
   z-index: 2;
   width: min(100%, 390px);
-  margin: 54px auto 0;
+  margin: 34px auto 0;
   padding: 0 0 18px;
   background: transparent;
   overflow: visible;
@@ -40,10 +40,10 @@ body:has(#slot.active) .tabs {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  width: 74%;
-  height: 268px;
-  margin: 24px auto 0;
+  gap: 7px;
+  width: 70%;
+  height: 244px;
+  margin: 36px auto 0;
   padding: 0;
   background: transparent;
   overflow: hidden;
@@ -134,10 +134,10 @@ body:has(#slot.active) .tabs {
 
 @media (max-width: 380px) {
   .slot-window {
-    width: 74%;
-    height: 248px;
-    margin-top: 22px;
-    gap: 7px;
+    width: 70%;
+    height: 226px;
+    margin-top: 32px;
+    gap: 6px;
   }
 
   .slot-symbol {
@@ -146,7 +146,7 @@ body:has(#slot.active) .tabs {
   }
 
   .slot-machine {
-    margin-top: 48px;
+    margin-top: 30px;
   }
 }
 `;
