@@ -1,6 +1,15 @@
 export const SLOT_SCRIPT = `
 (function(){
-  var symbols = ['🍒', '🍋', '🍇', '🍉', '🍊', '⭐', '💎', '7️⃣'];
+  var symbols = [
+    { id: 'cherry', fallback: '🍒', label: 'Cherry' },
+    { id: 'lemon', fallback: '🍋', label: 'Lemon' },
+    { id: 'orange', fallback: '🍊', label: 'Orange' },
+    { id: 'grape', fallback: '🍇', label: 'Grape' },
+    { id: 'watermelon', fallback: '🍉', label: 'Watermelon' },
+    { id: 'diamond', fallback: '💎', label: 'Diamond' },
+    { id: 'gold', fallback: '⭐', label: 'Gold Star or Bell' },
+    { id: 'lucky7', fallback: '7️⃣', label: 'Lucky 7' }
+  ];
   var reelCount = 3;
   var symbolHeight = 92;
   var spinning = false;
@@ -89,10 +98,21 @@ export const SLOT_SCRIPT = `
     return Math.floor(Math.random() * symbols.length);
   }
 
-  function createSymbol(value){
+  function createSymbol(symbol){
     var cell = document.createElement('div');
     cell.className = 'slot-symbol';
-    cell.textContent = value;
+
+    if(symbol && symbol.imageUrl){
+      var img = document.createElement('img');
+      img.className = 'slot-symbol-image';
+      img.src = symbol.imageUrl;
+      img.alt = symbol.label || symbol.id || 'Slot symbol';
+      img.draggable = false;
+      cell.appendChild(img);
+      return cell;
+    }
+
+    cell.textContent = symbol && symbol.fallback ? symbol.fallback : '';
     return cell;
   }
 
@@ -206,6 +226,35 @@ export const SLOT_SCRIPT = `
     });
   }
 
+  function refreshReels(){
+    for(var i = 0; i < reelCount; i++){
+      buildStrip(i, 4);
+      setReelPosition(i, currentIndexes[i], false);
+    }
+  }
+
+  function loadSlotSymbols(){
+    fetch('/app/api/slot-symbols', { cache: 'no-store' })
+      .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
+      .then(function(result){
+        if(!result.ok || !result.body || !result.body.symbols) return;
+        var byId = {};
+        result.body.symbols.forEach(function(symbol){ byId[symbol.id] = symbol; });
+        symbols = symbols.map(function(symbol){
+          var uploaded = byId[symbol.id];
+          if(!uploaded || !uploaded.imageUrl) return symbol;
+          return {
+            id: symbol.id,
+            fallback: symbol.fallback,
+            label: uploaded.label || symbol.label,
+            imageUrl: uploaded.imageUrl
+          };
+        });
+        refreshReels();
+      })
+      .catch(function(){});
+  }
+
   function loadSlotFrame(){
     var img = q('slotFrameImage');
     if(!img) return;
@@ -226,6 +275,7 @@ export const SLOT_SCRIPT = `
   function bind(){
     initReels();
     loadSlotFrame();
+    loadSlotSymbols();
 
     var spinButton = q('slotSpinButton');
     if(spinButton) spinButton.addEventListener('click', spin);
