@@ -24,7 +24,6 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
 
 export const PLAY_ZONE_SECTION = `<section id="playzone" class="view play-zone-view">
   <div class="play-zone-stage">
-    <div class="play-zone-section-head"><strong>Live games</strong><span>Ready to play</span></div>
     <div class="play-zone-featured-row play-zone-grid-row">${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}</div>
   </div>
 </section>`;
