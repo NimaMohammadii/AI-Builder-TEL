@@ -59,7 +59,11 @@ export const SECTION_LOCK_SCRIPT = `
   }
 
   function anyRegularLockVisible(){
-    return !!document.querySelector('.view.active .section-locked-view:not(.section-loading-mode)');
+    return !!document.querySelector('body > .section-locked-view:not(.section-loading-mode)');
+  }
+
+  function removeRegularLockViews(){
+    document.querySelectorAll('.section-locked-view:not(.section-loading-mode)').forEach(function(el){try{el.remove()}catch(e){}});
   }
 
   function forceFullSectionLock(section,on){
@@ -137,16 +141,20 @@ export const SECTION_LOCK_SCRIPT = `
 
   function ensureOverlay(section, item){
     if(!section)return;
-    var old=section.querySelector('.section-locked-view');if(old)old.remove();
+    removeRegularLockViews();
     var view=document.createElement('div');view.className='section-locked-view';
-    view.style.setProperty('position','absolute','important');
+    view.setAttribute('data-lock-section-id',section.id||'');
+    view.style.setProperty('position','fixed','important');
     view.style.setProperty('inset','0','important');
-    view.style.setProperty('width','100%','important');
-    view.style.setProperty('min-height','100%','important');
+    view.style.setProperty('width','100vw','important');
+    view.style.setProperty('height','100dvh','important');
+    view.style.setProperty('min-height','100dvh','important');
     view.style.setProperty('background','rgb(0,0,0)','important');
-    view.style.setProperty('z-index','999','important');
+    view.style.setProperty('z-index','10090','important');
     view.style.setProperty('display','grid','important');
     view.style.setProperty('place-items','center','important');
+    view.style.setProperty('padding','calc(18px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))','important');
+    view.style.setProperty('box-sizing','border-box','important');
     if(item&&item.mode==='code'){
       view.classList.add('section-code-view');
       view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p>'+countdownHtml(item)+'<input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
@@ -165,7 +173,7 @@ export const SECTION_LOCK_SCRIPT = `
       var text=(item&&item.userBlocked)?'Your access to this section is currently restricted.':'This section is currently unavailable.';
       view.innerHTML='<div class="section-locked-card">'+lockVisual(item)+'<h2>'+text+'</h2>'+(countdownHtml(item)||'<p>Please try again later.</p>')+'</div>';
     }
-    section.appendChild(view);tickCountdowns();scheduleCountdownTick();
+    document.body.appendChild(view);tickCountdowns();scheduleCountdownTick();
   }
 
   function applySectionLock(section){
@@ -176,7 +184,7 @@ export const SECTION_LOCK_SCRIPT = `
       forceFullSectionLock(section,true);
       ensureOverlay(section,item);
     }else{
-      var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove();
+      removeRegularLockViews();
       if(!(item&&item.mode==='loading'))forceFullSectionLock(section,false);
     }
   }
