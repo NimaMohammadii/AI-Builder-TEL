@@ -122,6 +122,81 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 }
 `;
 
+const MINES_STATUS_SWAP_SCRIPT = `
+(function(){
+  var statusTimer=0;
+  var swapTimer=0;
+  var savedMultiplier='1.00x';
+  function q(id){return document.getElementById(id)}
+  function isMultiplierText(text){return /^[0-9]+(?:\\.[0-9]+)?x$/i.test(String(text||'').trim())}
+  function ensureStyle(){
+    if(document.getElementById('minesStatusSwapStyle'))return;
+    var style=document.createElement('style');
+    style.id='minesStatusSwapStyle';
+    style.textContent='#minesFriendNotice,#minesToast,.mines-toast{display:none!important;opacity:0!important;pointer-events:none!important}#minesMultiplier{will-change:opacity,transform,filter;transition:opacity .2s ease,transform .34s cubic-bezier(.2,.9,.18,1),filter .2s ease!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}#minesMultiplier.mines-status-fade{opacity:0!important;transform:translateY(5px) scale(.96)!important;filter:blur(2px)!important}#minesMultiplier.mines-status-label{font-size:12px!important;letter-spacing:-.02em!important;min-width:132px!important;max-width:min(230px,70vw)!important;padding-left:14px!important;padding-right:14px!important}';
+    document.head.appendChild(style);
+  }
+  function hideNotice(el){
+    if(!el)return;
+    el.style.setProperty('display','none','important');
+    el.style.setProperty('opacity','0','important');
+    el.style.setProperty('pointer-events','none','important');
+  }
+  function swapTo(text,isStatus){
+    var mx=q('minesMultiplier');
+    if(!mx||!text)return;
+    clearTimeout(swapTimer);
+    mx.classList.add('mines-status-fade');
+    swapTimer=setTimeout(function(){
+      mx.textContent=text;
+      mx.classList.toggle('mines-status-label',!!isStatus);
+      mx.classList.remove('mines-status-fade');
+      mx.classList.remove('bump');
+      void mx.offsetWidth;
+      mx.classList.add('bump');
+    },160);
+  }
+  function showStatus(text){
+    text=String(text||'').trim();
+    if(!text)return;
+    var mx=q('minesMultiplier');
+    if(mx&&isMultiplierText(mx.textContent))savedMultiplier=String(mx.textContent).trim();
+    clearTimeout(statusTimer);
+    swapTo(text,true);
+    statusTimer=setTimeout(function(){
+      var latest=q('minesMultiplier');
+      if(latest&&isMultiplierText(latest.textContent))savedMultiplier=String(latest.textContent).trim();
+      swapTo(savedMultiplier,true?false:false);
+    },1350);
+  }
+  function handleNotice(el){
+    hideNotice(el);
+    if(!el.__vexaMinesNoticeBound&&window.MutationObserver){
+      el.__vexaMinesNoticeBound=true;
+      new MutationObserver(function(){hideNotice(el);showStatus(el.textContent)}).observe(el,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    }
+    showStatus(el.textContent);
+  }
+  function scan(){
+    ensureStyle();
+    var old=q('minesFriendNotice')||q('minesToast');
+    if(old)handleNotice(old);
+  }
+  function bind(){
+    ensureStyle();
+    scan();
+    var root=q('mines');
+    if(root&&window.MutationObserver){
+      new MutationObserver(scan).observe(root,{childList:true,subtree:true});
+    }
+    document.addEventListener('click',function(ev){
+      if(ev.target&&ev.target.closest&&ev.target.closest('[data-game-view="mines"],[data-view="mines"]'))setTimeout(scan,80);
+    },true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+`;
+
 const STYLES = [
   MINIAPP_STYLES,
   TTS_STYLES,
@@ -192,6 +267,7 @@ const SCRIPTS = [
   PLINKO_PERFORMANCE_SCRIPT,
   PLINKO_PANEL_SCRIPT,
   MINES_SCRIPT,
+  MINES_STATUS_SWAP_SCRIPT,
   CRASH_SCRIPT,
   WHEEL_ASSETS_SCRIPT,
   PREDICT_ZONE_SETTINGS_SCRIPT,
