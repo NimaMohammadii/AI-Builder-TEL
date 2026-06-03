@@ -43,11 +43,11 @@ body:has(#slot.active) .tabs {
   gap: 7px;
   width: 64%;
   height: 244px;
-  margin: 58px auto 0;
+  margin: 66px auto 0;
   padding: 0;
   background: transparent;
   overflow: hidden;
-  transform: translateX(-14px);
+  transform: translateX(-8px);
 }
 
 .slot-window:before,
@@ -137,9 +137,9 @@ body:has(#slot.active) .tabs {
   .slot-window {
     width: 64%;
     height: 226px;
-    margin-top: 54px;
+    margin-top: 62px;
     gap: 6px;
-    transform: translateX(-12px);
+    transform: translateX(-7px);
   }
 
   .slot-symbol {
