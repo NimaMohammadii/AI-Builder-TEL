@@ -163,8 +163,27 @@ export const SLOT_SCRIPT = `
     setBrand('Play Zone');
   }
 
+
+  function loadSlotFrame(){
+    var img = q('slotFrameImage');
+    if(!img) return;
+
+    fetch('/app/api/slot-frame', { cache: 'no-store' })
+      .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
+      .then(function(result){
+        if(!result.ok || !result.body || !result.body.slotFrameUrl) return;
+        img.onload = function(){ img.classList.add('is-loaded'); };
+        img.onerror = function(){ img.classList.remove('is-loaded'); img.removeAttribute('src'); };
+        img.src = result.body.slotFrameUrl;
+      })
+      .catch(function(){
+        img.classList.remove('is-loaded');
+      });
+  }
+
   function bind(){
     initReels();
+    loadSlotFrame();
 
     var spinButton = q('slotSpinButton');
     if(spinButton) spinButton.addEventListener('click', spin);

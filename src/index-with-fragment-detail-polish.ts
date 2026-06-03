@@ -5,6 +5,7 @@ import './predict-routes';
 import './predict-entry-loader-routes';
 import './section-lock-event-routes';
 import './crash-routes';
+import './slot-frame';
 import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 
