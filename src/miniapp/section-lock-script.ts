@@ -46,6 +46,25 @@ export const SECTION_LOCK_SCRIPT = `
   function updateKeyboardInset(){var vv=window.visualViewport;var inset=0;if(vv){inset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop)}document.documentElement.style.setProperty('--section-keyboard-inset',inset+'px')}
   if(window.visualViewport){window.visualViewport.addEventListener('resize',updateKeyboardInset);window.visualViewport.addEventListener('scroll',updateKeyboardInset)}
 
+  function forceFullSectionLock(section,on){
+    if(!section)return;
+    if(on){
+      section.classList.remove('has-section-lock-overlay');
+      section.classList.add('is-section-locked');
+      section.style.setProperty('background','rgb(0,0,0)','important');
+      section.style.setProperty('overflow','hidden','important');
+      Array.prototype.forEach.call(section.children,function(child){
+        if(!child.classList||!child.classList.contains('section-locked-view'))child.style.setProperty('display','none','important');
+      });
+    }else{
+      section.classList.remove('has-section-lock-overlay');
+      section.classList.remove('is-section-locked');
+      section.style.removeProperty('background');
+      section.style.removeProperty('overflow');
+      Array.prototype.forEach.call(section.children,function(child){child.style.removeProperty('display')});
+    }
+  }
+
   function syncCredit(){
     if(userCredit===null||userCredit===undefined)return;
     var credit=Math.max(0,Math.floor(Number(userCredit)||0));
@@ -102,6 +121,14 @@ export const SECTION_LOCK_SCRIPT = `
     if(!section)return;
     var old=section.querySelector('.section-locked-view');if(old)old.remove();
     var view=document.createElement('div');view.className='section-locked-view';
+    view.style.setProperty('position','absolute','important');
+    view.style.setProperty('inset','0','important');
+    view.style.setProperty('width','100%','important');
+    view.style.setProperty('min-height','100%','important');
+    view.style.setProperty('background','rgb(0,0,0)','important');
+    view.style.setProperty('z-index','999','important');
+    view.style.setProperty('display','grid','important');
+    view.style.setProperty('place-items','center','important');
     if(item&&item.mode==='code'){
       view.classList.add('section-code-view');
       view.innerHTML='<button class="section-keyboard-dismiss" type="button" aria-label="Hide keyboard">'+dismissSvg+'</button><div class="section-locked-card code-card">'+lockVisual(item)+'<h2>Enter access code</h2><p>This section requires an access code.</p>'+countdownHtml(item)+'<input class="section-code-input" type="text" inputmode="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" enterkeyhint="done"/><button class="section-code-submit" type="button">Unlock</button><small class="section-code-status"></small></div>';
@@ -127,9 +154,13 @@ export const SECTION_LOCK_SCRIPT = `
     if(!section)return;
     var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
     var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
-    section.classList.toggle('has-section-lock-overlay',false);
-    section.classList.toggle('is-section-locked',isLocked);
-    if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
+    if(isLocked&&item.mode!=='loading'){
+      forceFullSectionLock(section,true);
+      ensureOverlay(section,item);
+    }else{
+      var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove();
+      if(!(item&&item.mode==='loading'))forceFullSectionLock(section,false);
+    }
   }
 
   function applyLocks(){
