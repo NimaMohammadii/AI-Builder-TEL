@@ -2,7 +2,7 @@ export const SLOT_SCRIPT = `
 (function(){
   var symbols = ['🍒', '🍋', '🍇', '🍉', '🍊', '⭐', '💎', '7️⃣'];
   var reelCount = 3;
-  var symbolHeight = 82;
+  var symbolHeight = 92;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
 
