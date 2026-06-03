@@ -12,7 +12,7 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
     document.querySelectorAll('.is-section-locked,.connect-bot-card-locked,.is-section-loading-active,.is-section-loading-pending').forEach(function(el){
       el.classList.remove('is-section-locked','connect-bot-card-locked','is-section-loading-active','is-section-loading-pending');
     });
-    document.body.classList.remove('section-loading-active','section-lock-screen-active','section-lock-code-active','section-code-keyboard-open');
+    document.body.classList.remove('section-loading-active');
   }
   function asJson(data){return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}})}
   function readTrusted(){
