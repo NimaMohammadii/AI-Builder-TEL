@@ -127,8 +127,14 @@ export const SECTION_LOCK_SCRIPT = `
     if(!section)return;
     var id=section.id, lid=lockId(id);var globalItem=locks[lid];var item=(userBlocked[lid])?Object.assign({},globalItem||{}, userBlocked[lid], {mode:'locked',locked:true,userBlocked:true}):globalItem;
     var isLocked=!!item&&item.mode!=='open'&&!isUnlocked(lid);
-    section.classList.toggle('is-section-locked',isLocked);
-    if(isLocked&&item.mode!=='loading')ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
+    var useOverlay=isLocked&&item.mode!=='loading';
+    section.classList.toggle('has-section-lock-overlay',useOverlay);
+    if(item&&item.mode==='loading'){
+      // Loading mode is owned by SECTION_LOADING_LOCK_SCRIPT.
+    }else{
+      section.classList.remove('is-section-locked');
+    }
+    if(useOverlay)ensureOverlay(section,item);else{var old=section.querySelector('.section-locked-view:not(.section-loading-mode)');if(old)old.remove()}
   }
 
   function applyLocks(){
