@@ -1,10 +1,10 @@
 export const SLOT_SCRIPT = `
 (function(){
   var symbols = ['🍒', '🍋', '🍇', '🍉', '🍊', '⭐', '💎', '7️⃣'];
-  var reelCount = 3;
-  var symbolHeight = 78;
+  var reelCount = 4;
+  var symbolHeight = 82;
   var spinning = false;
-  var currentIndexes = [0, 1, 2];
+  var currentIndexes = [0, 1, 2, 3];
 
   function q(id){
     return document.getElementById(id);
@@ -32,23 +32,13 @@ export const SLOT_SCRIPT = `
 
   function createSymbol(value){
     var cell = document.createElement('div');
-    var inner = document.createElement('span');
-
     cell.className = 'slot-symbol';
-    inner.className = 'slot-symbol-inner';
-    inner.textContent = value;
-
-    cell.appendChild(inner);
+    cell.textContent = value;
     return cell;
   }
 
-  function reelNode(reelIndex){
-    return document.querySelector('[data-slot-reel="' + reelIndex + '"]');
-  }
-
   function stripNode(reelIndex){
-    var reel = reelNode(reelIndex);
-    return reel ? reel.querySelector('.slot-reel-strip') : null;
+    return document.querySelector('[data-slot-reel="' + reelIndex + '"] .slot-reel-strip');
   }
 
   function buildStrip(reelIndex, loops){
@@ -70,24 +60,8 @@ export const SLOT_SCRIPT = `
     if(!strip) return;
 
     var y = -index * symbolHeight + symbolHeight;
-    strip.style.transition = animate ? 'transform .42s cubic-bezier(.18,1.28,.22,1)' : 'none';
+    strip.style.transition = animate ? 'transform .55s cubic-bezier(.16,.9,.2,1)' : 'none';
     strip.style.transform = 'translate3d(0,' + y + 'px,0)';
-  }
-
-  function clearFinalStates(){
-    document.querySelectorAll('.slot-reel').forEach(function(reel){
-      reel.classList.remove('is-final');
-    });
-  }
-
-  function markFinalReel(reelIndex){
-    var reel = reelNode(reelIndex);
-    if(!reel) return;
-
-    reel.classList.add('is-final');
-    window.setTimeout(function(){
-      reel.classList.remove('is-final');
-    }, 700);
   }
 
   function initReels(){
@@ -99,20 +73,9 @@ export const SLOT_SCRIPT = `
 
   function pickResult(){
     var result = [];
-    var matched = Math.random() < 0.18;
 
-    if(matched){
-      var same = randomSymbolIndex();
-      for(var i = 0; i < reelCount; i++) result.push(same);
-      return result;
-    }
-
-    for(var j = 0; j < reelCount; j++){
+    for(var i = 0; i < reelCount; i++){
       result.push(randomSymbolIndex());
-    }
-
-    if(result.every(function(value){ return value === result[0]; })){
-      result[reelCount - 1] = (result[reelCount - 1] + 1) % symbols.length;
     }
 
     return result;
@@ -133,40 +96,7 @@ export const SLOT_SCRIPT = `
       box.classList.toggle('is-win', matched);
     }
 
-    setStatus(matched ? 'Jackpot ' + symbols[first] : 'Ready to spin');
-  }
-
-  function animateReel(reelIndex, symbolIndex, done){
-    var strip = stripNode(reelIndex);
-    if(!strip){
-      done();
-      return;
-    }
-
-    var loops = 8 + reelIndex * 2;
-    var finalIndex = loops * symbols.length + symbolIndex;
-    var duration = 1500 + reelIndex * 380;
-    var y = -finalIndex * symbolHeight + symbolHeight;
-
-    buildStrip(reelIndex, loops + 2);
-
-    strip.style.transition = 'none';
-    strip.style.transform = 'translate3d(0,' + symbolHeight + 'px,0)';
-
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.09,.74,.08,1)';
-        strip.style.transform = 'translate3d(0,' + y + 'px,0)';
-      });
-    });
-
-    window.setTimeout(function(){
-      currentIndexes[reelIndex] = symbolIndex;
-      buildStrip(reelIndex, 4);
-      setReelPosition(reelIndex, symbolIndex, true);
-      markFinalReel(reelIndex);
-      done();
-    }, duration + 35);
+    setStatus(matched ? 'Matched ' + symbols[first] : 'Ready to spin');
   }
 
   function spin(){
@@ -178,7 +108,6 @@ export const SLOT_SCRIPT = `
     var pending = reelCount;
 
     spinning = true;
-    clearFinalStates();
 
     if(button) button.disabled = true;
 
@@ -190,10 +119,33 @@ export const SLOT_SCRIPT = `
     setStatus('Spinning');
 
     result.forEach(function(symbolIndex, reelIndex){
-      animateReel(reelIndex, symbolIndex, function(){
-        pending--;
-        if(pending <= 0) finish(result);
+      var strip = stripNode(reelIndex);
+      if(!strip) return;
+
+      var loops = 8 + reelIndex * 2;
+      var finalIndex = loops * symbols.length + symbolIndex;
+      var duration = 1450 + reelIndex * 340;
+      var y = -finalIndex * symbolHeight + symbolHeight;
+
+      buildStrip(reelIndex, loops + 2);
+      strip.style.transition = 'none';
+      strip.style.transform = 'translate3d(0,' + symbolHeight + 'px,0)';
+
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.72,.08,1)';
+          strip.style.transform = 'translate3d(0,' + y + 'px,0)';
+        });
       });
+
+      window.setTimeout(function(){
+        currentIndexes[reelIndex] = symbolIndex;
+        buildStrip(reelIndex, 4);
+        setReelPosition(reelIndex, symbolIndex, false);
+        pending--;
+
+        if(pending <= 0) finish(result);
+      }, duration + 40);
     });
   }
 
@@ -217,9 +169,6 @@ export const SLOT_SCRIPT = `
 
     var spinButton = q('slotSpinButton');
     if(spinButton) spinButton.addEventListener('click', spin);
-
-    var lever = q('slotLever');
-    if(lever) lever.addEventListener('click', spin);
 
     var backButton = q('slotBackButton');
     if(backButton) backButton.addEventListener('click', openPlayZone);
