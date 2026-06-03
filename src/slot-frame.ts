@@ -4,7 +4,6 @@ import type { Env } from './types';
 const KEY = 'slot-frame';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const MAX_SIZE = 2_000_000;
 
 const SLOT_SYMBOLS = [
   { id: 'cherry', label: 'Cherry / گیلاس' },
@@ -105,7 +104,6 @@ app.post('/admin/api/upload-slot-frame', async (c) => {
     const file = form.get('image');
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    if (file.size > MAX_SIZE) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     return c.json({ ok: true, slotFrameUrl: `/app/api/uploaded-image/slot-frame.png?v=${version}`, version }, 200, { 'cache-control': 'no-store' });
@@ -123,7 +121,6 @@ app.post('/admin/api/upload-slot-symbol', async (c) => {
     if (!SLOT_SYMBOL_IDS.has(id)) return c.json({ error: 'Choose a valid Slot symbol.' }, 400);
     if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
     if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    if (file.size > MAX_SIZE) return c.json({ error: 'Image must be under 2MB.' }, 400);
     const version = String(Date.now());
     await c.env.ASSETS.put(slotSymbolKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
     return c.json({ ok: true, id, imageUrl: slotSymbolUrl(id, version), version, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
