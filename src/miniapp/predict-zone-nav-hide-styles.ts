@@ -4,7 +4,6 @@ body:has(#predictzone.active) .tabs{display:none!important}
 body:has(#predictzone.active) .app{padding-top:calc(14px + env(safe-area-inset-top))!important;padding-bottom:0!important}
 body:has(#predictzone.active) .content{width:calc(100% + 32px)!important;height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;margin-left:-16px!important;margin-right:-16px!important;padding:0!important;overflow:hidden!important;background:transparent!important;box-shadow:none!important}
 body:has(#predictzone.active) .content:before,body:has(#predictzone.active) .content:after{display:none!important;content:none!important}
-body:has(#predictzone.active) .app:before,body:has(#predictzone.active) .app:after{display:none!important}
 body:has(#predictzone.active) #predictzone.active{padding-left:16px!important;padding-right:16px!important}
 body:has(#predictzone.active) #predictzone .predict-zone-simple-shell{position:relative!important;min-height:calc(100vh - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;display:block!important;padding:94px 0 0!important;overflow:visible!important;background:transparent!important}
 body:has(#predictzone.active) #predictzone .predict-zone-category-menu:before{display:none!important;content:none!important}
