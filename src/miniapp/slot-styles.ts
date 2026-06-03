@@ -43,7 +43,7 @@ body:has(#slot.active) .tabs {
   gap: 7px;
   width: 68%;
   height: 258px;
-  margin: 84px auto 0;
+  margin: 92px auto 0;
   padding: 0;
   background: transparent;
   overflow: hidden;
@@ -137,7 +137,7 @@ body:has(#slot.active) .tabs {
   .slot-window {
     width: 68%;
     height: 240px;
-    margin-top: 80px;
+    margin-top: 88px;
     gap: 6px;
     transform: translateX(-4px);
   }
