@@ -98,21 +98,37 @@ export const SLOT_SCRIPT = `
     return Math.floor(Math.random() * symbols.length);
   }
 
+  function createFallback(symbol){
+    var fallback = document.createElement('span');
+    fallback.className = 'slot-symbol-fallback';
+    fallback.textContent = symbol && symbol.fallback ? symbol.fallback : '';
+    return fallback;
+  }
+
   function createSymbol(symbol){
     var cell = document.createElement('div');
+    var fallback = createFallback(symbol);
+
     cell.className = 'slot-symbol';
+    cell.appendChild(fallback);
 
     if(symbol && symbol.imageUrl){
       var img = document.createElement('img');
       img.className = 'slot-symbol-image';
-      img.src = symbol.imageUrl;
       img.alt = symbol.label || symbol.id || 'Slot symbol';
+      img.decoding = 'async';
       img.draggable = false;
+      img.onload = function(){
+        cell.classList.add('has-image');
+      };
+      img.onerror = function(){
+        cell.classList.remove('has-image');
+        img.remove();
+      };
+      img.src = symbol.imageUrl;
       cell.appendChild(img);
-      return cell;
     }
 
-    cell.textContent = symbol && symbol.fallback ? symbol.fallback : '';
     return cell;
   }
 
