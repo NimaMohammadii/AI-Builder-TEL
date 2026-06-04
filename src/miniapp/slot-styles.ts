@@ -18,6 +18,7 @@ body:has(#slot.active) .tabs {
   padding: 0 0 18px;
   background: transparent;
   overflow: visible;
+  transform: translateY(-18px);
 }
 
 .slot-frame-image {
