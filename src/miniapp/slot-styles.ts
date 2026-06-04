@@ -136,32 +136,71 @@ body:has(#slot.active) .tabs {
   width: 84%;
   height: 50px;
   margin: 64px auto 0;
-  border: 1px solid rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.24);
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(135deg, rgba(36,4,15,.86), rgba(76,9,29,.76), rgba(112,19,45,.68));
-  box-shadow: 0 18px 38px rgba(76,9,29,.30), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -18px 34px rgba(0,0,0,.24);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: linear-gradient(135deg, rgba(32,0,12,.62), rgba(85,4,31,.52) 46%, rgba(126,13,48,.46));
+  box-shadow: 0 18px 42px rgba(52,0,18,.42), 0 0 28px rgba(105,6,38,.18), inset 0 1px 0 rgba(255,255,255,.30), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(12,0,5,.34);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
   font-size: 16px;
   font-weight: 950;
   letter-spacing: -.03em;
+  text-shadow: 0 1px 12px rgba(0,0,0,.38);
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform .18s ease, box-shadow .22s ease, border-color .22s ease;
+  animation: slotSpinGlassPulse 2.8s ease-in-out infinite;
+}
+
+.slot-spin-button:before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.08) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(255,255,255,.34), transparent 30%);
+  pointer-events: none;
+}
+
+.slot-spin-button:after {
+  content: "";
+  position: absolute;
+  top: -35%;
+  bottom: -35%;
+  left: -55%;
+  width: 42%;
+  z-index: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+  transform: translateX(-130%) rotate(18deg);
+  animation: slotSpinGlassShine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.slot-spin-button:active {
+  transform: translateY(1px) scale(.985);
 }
 
 .slot-spin-button:disabled {
   opacity: .62;
+  animation: none;
+}
+
+.slot-spin-button:disabled:after {
+  animation: none;
 }
 
 .slot-control-panel {
   position: relative;
   z-index: 9;
   width: min(100%, 408px);
-  margin: -24px auto 0;
+  margin: -48px auto 0;
 }
 
 .slot-controls {
-  width: 100%;
-  margin: 0;
+  width: 84%;
+  margin: 0 auto;
 }
 
 .slot-field {
@@ -186,6 +225,7 @@ body:has(#slot.active) .tabs {
   border-radius: 18px;
   background: rgba(255,255,255,.06);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+  box-sizing: border-box;
 }
 
 .slot-point-amount input {
@@ -240,6 +280,30 @@ body:has(#slot.active) .tabs {
   100% { transform: scale(1); }
 }
 
+@keyframes slotSpinGlassPulse {
+  0%, 100% {
+    box-shadow: 0 18px 42px rgba(52,0,18,.42), 0 0 28px rgba(105,6,38,.18), inset 0 1px 0 rgba(255,255,255,.30), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(12,0,5,.34);
+    border-color: rgba(255,255,255,.22);
+  }
+  50% {
+    box-shadow: 0 21px 48px rgba(68,0,24,.52), 0 0 38px rgba(134,11,50,.30), inset 0 1px 0 rgba(255,255,255,.38), inset 0 0 0 1px rgba(255,255,255,.14), inset 0 -18px 34px rgba(12,0,5,.30);
+    border-color: rgba(255,255,255,.32);
+  }
+}
+
+@keyframes slotSpinGlassShine {
+  0%, 42% { transform: translateX(-145%) rotate(18deg); opacity: 0; }
+  54% { opacity: .78; }
+  72%, 100% { transform: translateX(360%) rotate(18deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-spin-button,
+  .slot-spin-button:after {
+    animation: none;
+  }
+}
+
 @media (max-width: 380px) {
   .slot-window {
     width: 68%;
@@ -271,7 +335,7 @@ body:has(#slot.active) .tabs {
 
   .slot-control-panel {
     width: min(100%, 398px);
-    margin-top: -24px;
+    margin-top: -48px;
   }
 }
 `;
