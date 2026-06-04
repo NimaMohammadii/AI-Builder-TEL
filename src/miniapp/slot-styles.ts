@@ -18,7 +18,7 @@ body:has(#slot.active) .tabs {
   padding: 0 0 18px;
   background: transparent;
   overflow: visible;
-  transform: translateY(-18px);
+  transform: translateY(-34px);
 }
 
 .slot-frame-image {
@@ -190,6 +190,7 @@ body:has(#slot.active) .tabs {
   .slot-machine {
     width: min(100%, 398px);
     margin-top: 6px;
+    transform: translateY(-34px);
   }
 }
 `;
