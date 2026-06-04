@@ -19,34 +19,45 @@ export async function getUserLevel(env: Env, userIdInput: unknown): Promise<User
     await env.DB.prepare('INSERT OR IGNORE INTO user_levels (user_id, level, xp, total_xp, updated_at) VALUES (?, 1, 0, 0, CURRENT_TIMESTAMP)').bind(userId).run();
     return shapeLevel(userId, 1, 0, 0);
   }
-  return shapeLevel(userId, Number(row.level || 1), Number(row.xp || 0), Number(row.total_xp || 0));
+  const totalXp = Math.max(0, Math.floor(Number(row.total_xp) || 0));
+  if (totalXp > 0) {
+    const derived = levelFromTotalXp(totalXp);
+    if (derived.level !== Number(row.level || 1) || derived.xp !== Number(row.xp || 0)) {
+      await env.DB.prepare('UPDATE user_levels SET level = ?, xp = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').bind(derived.level, derived.xp, userId).run();
+    }
+    return shapeLevel(userId, derived.level, derived.xp, totalXp);
+  }
+  return shapeLevel(userId, Number(row.level || 1), Number(row.xp || 0), totalXp);
 }
 
-export async function addUserXp(env: Env, userIdInput: unknown, amountInput: unknown, sourceInput: unknown, metadata: unknown = null): Promise<{ profile: UserLevel; leveledUp: boolean; previousLevel: number }> {
+export async function addUserXp(env: Env, userIdInput: unknown, amountInput: unknown, sourceInput: unknown, metadata: unknown = null, eventIdInput: unknown = null): Promise<{ profile: UserLevel; leveledUp: boolean; previousLevel: number }> {
   const userId = cleanUserId(userIdInput);
   const amount = Math.max(0, Math.min(5000, Math.floor(Number(amountInput) || 0)));
   const source = cleanSource(sourceInput);
+  const eventId = cleanEventId(eventIdInput);
   await ensureLevelTables(env);
   const before = await getUserLevel(env, userId);
   if (amount < 1) return { profile: before, leveledUp: false, previousLevel: before.level };
 
-  let level = before.level;
-  let xp = before.xp + amount;
-  let totalXp = before.totalXp + amount;
-  while (xp >= nextLevelXp(level)) {
-    xp -= nextLevelXp(level);
-    level += 1;
+  const insert = await env.DB.prepare(`INSERT OR IGNORE INTO xp_events (id, user_id, source, amount, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
+    .bind(eventId || ('xp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24)), userId, source, amount, JSON.stringify(metadata ?? {}))
+    .run();
+  if (eventId && (insert.meta?.changes ?? 0) === 0) {
+    const profile = await getUserLevel(env, userId);
+    return { profile, leveledUp: false, previousLevel: profile.level };
   }
 
-  await env.DB.prepare(`INSERT INTO xp_events (id, user_id, source, amount, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
-    .bind('xp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24), userId, source, amount, JSON.stringify(metadata ?? {}))
-    .run();
-  await env.DB.prepare(`INSERT INTO user_levels (user_id, level, xp, total_xp, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(user_id) DO UPDATE SET level = excluded.level, xp = excluded.xp, total_xp = excluded.total_xp, updated_at = CURRENT_TIMESTAMP`)
-    .bind(userId, level, xp, totalXp)
+  await env.DB.prepare(`INSERT INTO user_levels (user_id, level, xp, total_xp, updated_at) VALUES (?, 1, 0, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET total_xp = user_levels.total_xp + excluded.total_xp, updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, amount)
     .run();
 
-  return { profile: shapeLevel(userId, level, xp, totalXp), leveledUp: level > before.level, previousLevel: before.level };
+  const row = await env.DB.prepare('SELECT total_xp FROM user_levels WHERE user_id = ?').bind(userId).first<{ total_xp: number }>();
+  const totalXp = Math.max(0, Math.floor(Number(row?.total_xp) || 0));
+  const derived = levelFromTotalXp(totalXp);
+  await env.DB.prepare('UPDATE user_levels SET level = ?, xp = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').bind(derived.level, derived.xp, userId).run();
+
+  return { profile: shapeLevel(userId, derived.level, derived.xp, totalXp), leveledUp: derived.level > before.level, previousLevel: before.level };
 }
 
 export async function ensureLevelTables(env: Env): Promise<void> {
@@ -71,6 +82,18 @@ export async function ensureLevelTables(env: Env): Promise<void> {
 export function nextLevelXp(levelInput: unknown): number {
   const level = Math.max(1, Math.floor(Number(levelInput) || 1));
   return Math.max(100, Math.floor(100 * Math.pow(level, 1.35)));
+}
+
+function levelFromTotalXp(totalXpInput: unknown): { level: number; xp: number } {
+  let remaining = Math.max(0, Math.floor(Number(totalXpInput) || 0));
+  let level = 1;
+  while (level < 999) {
+    const next = nextLevelXp(level);
+    if (remaining < next) break;
+    remaining -= next;
+    level += 1;
+  }
+  return { level, xp: remaining };
 }
 
 function shapeLevel(userId: string, level: number, xp: number, totalXp: number): UserLevel {
@@ -108,4 +131,8 @@ function cleanUserId(value: unknown): string {
 
 function cleanSource(value: unknown): string {
   return String(value ?? 'manual').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 48) || 'manual';
+}
+
+function cleanEventId(value: unknown): string {
+  return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 96);
 }

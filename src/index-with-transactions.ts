@@ -102,8 +102,8 @@ app.get('/app/api/level', async (c) => {
 
 app.post('/app/api/level/xp', async (c) => {
   try {
-    const body = await c.req.json() as { userId?: string; amount?: unknown; source?: unknown; metadata?: unknown };
-    return c.json(await addUserXp(c.env, body.userId || '', body.amount, body.source || 'manual', body.metadata || {}), 200, { 'cache-control': 'no-store' });
+    const body = await c.req.json() as { userId?: string; amount?: unknown; source?: unknown; metadata?: unknown; eventId?: unknown };
+    return c.json(await addUserXp(c.env, body.userId || '', body.amount, body.source || 'manual', body.metadata || {}, body.eventId), 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not add XP' }, 400, { 'cache-control': 'no-store' });
   }
