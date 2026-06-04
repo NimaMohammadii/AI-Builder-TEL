@@ -15,6 +15,24 @@ export const SLOT_SECTION = `
       </div>
     </div>
 
+    <div class="slot-status-panel" aria-live="polite">
+      <div id="slotMultiplier" class="slot-multiplier">1.00x</div>
+      <div id="slotResultText" class="slot-result-text">Set point amount</div>
+    </div>
+
+    <div class="slot-controls">
+      <div class="slot-field slot-point-field">
+        <span class="slot-label">Point Amount</span>
+        <div class="slot-point-amount">
+          <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01"/>
+          <div class="slot-quick-actions">
+            <button type="button" data-slot-action="amount-half">1/2</button>
+            <button type="button" data-slot-action="amount-double">2x</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <button id="slotSpinButton" class="slot-spin-button" type="button">
       Spin
     </button>
