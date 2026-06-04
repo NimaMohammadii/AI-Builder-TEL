@@ -3,6 +3,7 @@ import type { Env } from './types';
 
 const KEY = 'slot-frame';
 const SLOT_SPIN_AUDIO_KEY = 'slot-spin-audio';
+const CONTROL_PREFIX = 'slot-control/';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
@@ -19,6 +20,15 @@ const SLOT_SYMBOLS = [
 ] as const;
 
 const SLOT_SYMBOL_IDS = new Set(SLOT_SYMBOLS.map((symbol) => symbol.id));
+
+const SLOT_CONTROLS = [
+  { id: 'spin', label: 'Spin button / دکمه اسپین' },
+  { id: 'input', label: 'Input button / دکمه اینپوت' },
+] as const;
+
+const SLOT_CONTROL_IDS = new Set(SLOT_CONTROLS.map((control) => control.id));
+
+type SlotControlId = typeof SLOT_CONTROLS[number]['id'];
 
 type SlotSymbolId = typeof SLOT_SYMBOLS[number]['id'];
 
@@ -39,9 +49,18 @@ function slotSymbolKey(id: SlotSymbolId): string {
   return `${SYMBOL_PREFIX}${id}`;
 }
 
+function slotControlKey(id: SlotControlId): string {
+  return `${CONTROL_PREFIX}${id}`;
+}
+
 function cleanSlotSymbolId(value: string): SlotSymbolId | null {
   const id = value.replace(/\.png$/i, '') as SlotSymbolId;
   return SLOT_SYMBOL_IDS.has(id) ? id : null;
+}
+
+function cleanSlotControlId(value: string): SlotControlId | null {
+  const id = value.replace(/\.png$/i, '') as SlotControlId;
+  return SLOT_CONTROL_IDS.has(id) ? id : null;
 }
 
 function slotSymbolUrl(id: SlotSymbolId, version: string): string {
@@ -50,6 +69,25 @@ function slotSymbolUrl(id: SlotSymbolId, version: string): string {
 
 function slotSpinAudioUrl(version: string): string {
   return `/app/api/uploaded-audio/slot-spin?v=${version}`;
+}
+
+function slotControlUrl(id: SlotControlId, version: string): string {
+  return `/app/api/uploaded-image/slot-controls/${id}?v=${version}`;
+}
+
+async function controlPayload(env: Env) {
+  const controls = await Promise.all(SLOT_CONTROLS.map(async (control) => {
+    const head = await env.ASSETS.head(slotControlKey(control.id)).catch(() => null);
+    const version = head?.customMetadata?.version || '1';
+    return {
+      id: control.id,
+      label: control.label,
+      hasImage: Boolean(head),
+      imageUrl: head ? slotControlUrl(control.id, version) : null,
+      version,
+    };
+  }));
+  return controls;
 }
 
 async function symbolPayload(env: Env) {
@@ -65,6 +103,23 @@ async function symbolPayload(env: Env) {
     };
   }));
   return symbols;
+}
+
+async function slotControlResponse(env: Env, value: string): Promise<Response> {
+  const id = cleanSlotControlId(value);
+  if (!id) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const key = slotControlKey(id);
+  const head = await env.ASSETS.head(key).catch(() => null);
+  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'content-length': String(head.size),
+    },
+  });
 }
 
 async function slotSymbolResponse(env: Env, value: string): Promise<Response> {
@@ -108,6 +163,18 @@ app.get('/app/api/slot-symbols', async (c) => {
   return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
 });
 
+app.get('/app/api/slot-controls', async (c) => {
+  return c.json({ ok: true, controls: await controlPayload(c.env) }, 200, { 'cache-control': 'no-store' });
+});
+
+app.get('/app/api/uploaded-image/slot-controls/:id', async (c) => {
+  return slotControlResponse(c.env, c.req.param('id'));
+});
+
+app.get('/app/api/uploaded-image/slot-controls/:id.png', async (c) => {
+  return slotControlResponse(c.env, c.req.param('id'));
+});
+
 app.get('/app/api/uploaded-image/slot-symbols/:id', async (c) => {
   return slotSymbolResponse(c.env, c.req.param('id'));
 });
@@ -148,6 +215,23 @@ app.post('/admin/api/upload-slot-frame', async (c) => {
     return c.json({ ok: true, slotFrameUrl: `/app/api/uploaded-image/slot-frame.png?v=${version}`, version }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload slot frame' }, 400, { 'cache-control': 'no-store' });
+  }
+});
+
+app.post('/admin/api/upload-slot-control', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  try {
+    const form = await c.req.formData();
+    const id = String(form.get('id') || '') as SlotControlId;
+    const file = form.get('image');
+    if (!SLOT_CONTROL_IDS.has(id)) return c.json({ error: 'Choose a valid Slot control image.' }, 400);
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(slotControlKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, id, imageUrl: slotControlUrl(id, version), version, controls: await controlPayload(c.env) }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot control image' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
