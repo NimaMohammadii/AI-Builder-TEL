@@ -36,7 +36,7 @@ export function registerPlinkoLiveRoutes(app: { get: Function; post: Function })
   });
 
   app.post('/app/api/plinko/live/send', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    return fetchRoom(c.env, c.req.raw, 503);
+    return fetchRoomOrFallback(c.env, c.req.raw, fallbackSend);
   });
 
   app.post('/app/api/plinko/live/result', async (c: { env: LiveEnv; req: { raw: Request } }) => {
@@ -149,6 +149,44 @@ async function fetchRoom(env: LiveEnv, request: Request, fallbackStatus: number)
     console.error('plinko live route failed', error);
     return json({ error: 'Plinko live is temporarily unavailable.' }, fallbackStatus);
   }
+}
+
+async function fetchRoomOrFallback(
+  env: LiveEnv,
+  request: Request,
+  fallback: (request: Request) => Promise<Response>,
+): Promise<Response> {
+  const fallbackRequest = request.clone();
+  const stub = getRoom(env);
+  if (!stub) return fallback(fallbackRequest);
+
+  try {
+    return await stub.fetch(request);
+  } catch (error) {
+    console.error('plinko live send failed', error);
+    return fallback(fallbackRequest);
+  }
+}
+
+async function fallbackSend(request: Request): Promise<Response> {
+  const body = await request.json().catch(() => ({})) as LiveInput;
+  const userId = cleanUserId(body.userId);
+  if (!userId) return json({ error: 'Missing user.' }, 400);
+
+  const now = Date.now();
+  return json({
+    ok: true,
+    fallback: true,
+    event: {
+      id: crypto.randomUUID(),
+      userId,
+      name: cleanName(body.name),
+      photoUrl: cleanPhotoUrl(body.photoUrl),
+      amount: cleanAmount(body.amount),
+      createdAt: now,
+      seed: Math.floor(Math.random() * 1000000000),
+    },
+  });
 }
 
 function getRoom(env: LiveEnv): DurableObjectStub | null {
