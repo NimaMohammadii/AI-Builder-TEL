@@ -14,26 +14,24 @@ export const SLOT_SECTION = `
         <div class="slot-reel-strip"></div>
       </div>
     </div>
+
+    <button id="slotSpinButton" class="slot-spin-button" type="button">
+      Spin
+    </button>
   </div>
 
   <div class="slot-control-panel">
-    <div class="slot-control-row">
-      <div class="slot-controls">
-        <div class="slot-field slot-point-field">
-          <span class="slot-label">Point Amount</span>
-          <div class="slot-point-amount">
-            <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01"/>
-            <div class="slot-quick-actions">
-              <button type="button" data-slot-action="amount-half">1/2</button>
-              <button type="button" data-slot-action="amount-double">2x</button>
-            </div>
+    <div class="slot-controls">
+      <div class="slot-field slot-point-field">
+        <span class="slot-label">Point Amount</span>
+        <div class="slot-point-amount">
+          <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01"/>
+          <div class="slot-quick-actions">
+            <button type="button" data-slot-action="amount-half">1/2</button>
+            <button type="button" data-slot-action="amount-double">2x</button>
           </div>
         </div>
       </div>
-
-      <button id="slotSpinButton" class="slot-spin-button" type="button">
-        Spin
-      </button>
     </div>
   </div>
 </section>
