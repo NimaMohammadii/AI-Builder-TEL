@@ -17,12 +17,14 @@ export const SLOT_SCRIPT = `
   var maxSpinLoops = 10;
   var totalSpinMs = 7600;
   var reelStopGapMs = 800;
+  var soundStopDelayMs = 1000;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
   var slotAudioUrl = '';
   var slotAudio = null;
   var slotSoundTimer = null;
+  var slotSoundStopTimer = null;
 
   function q(id){
     return document.getElementById(id);
@@ -65,10 +67,26 @@ export const SLOT_SCRIPT = `
     }, 120);
   }
 
+  function scheduleSlotSoundStop(){
+    if(slotSoundStopTimer){
+      window.clearTimeout(slotSoundStopTimer);
+      slotSoundStopTimer = null;
+    }
+
+    slotSoundStopTimer = window.setTimeout(function(){
+      stopSlotSound();
+    }, soundStopDelayMs);
+  }
+
   function stopSlotSound(){
     if(slotSoundTimer){
       window.clearTimeout(slotSoundTimer);
       slotSoundTimer = null;
+    }
+
+    if(slotSoundStopTimer){
+      window.clearTimeout(slotSoundStopTimer);
+      slotSoundStopTimer = null;
     }
 
     if(!slotSound) return;
@@ -187,7 +205,7 @@ export const SLOT_SCRIPT = `
     var matched = result.every(function(value){ return value === first; });
 
     spinning = false;
-    stopSlotSound();
+    scheduleSlotSoundStop();
 
     if(button) button.disabled = false;
 
