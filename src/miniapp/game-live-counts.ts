@@ -1,7 +1,7 @@
 const liveGameLabels: Record<string, string> = {
   mines: 'Mines',
   plinko: 'Plinko',
-  rps: 'Rock Paper Scissors',
+  rps: 'RPS',
   wheel: 'Wheel',
   dice: 'Dice',
   crash: 'Crash',
