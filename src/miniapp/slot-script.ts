@@ -198,11 +198,80 @@ export const SLOT_SCRIPT = `
     return result;
   }
 
+  function isFruitSymbol(symbolId){
+    return ['cherry', 'lemon', 'orange', 'grape', 'watermelon'].indexOf(symbolId) !== -1;
+  }
+
+  function isPremiumSymbol(symbolId){
+    return ['diamond', 'gold', 'lucky7'].indexOf(symbolId) !== -1;
+  }
+
+  function resultCounts(result){
+    var counts = {};
+
+    result.forEach(function(symbolIndex){
+      var symbol = symbols[symbolIndex];
+      var symbolId = symbol && symbol.id;
+
+      if(!symbolId) return;
+
+      counts[symbolId] = (counts[symbolId] || 0) + 1;
+    });
+
+    return counts;
+  }
+
+  function topResultEntry(counts){
+    var top = { symbolId: '', count: 0 };
+
+    Object.keys(counts).forEach(function(symbolId){
+      if(counts[symbolId] > top.count){
+        top = { symbolId: symbolId, count: counts[symbolId] };
+      }
+    });
+
+    return top;
+  }
+
+  function resultProfile(result){
+    var entry = topResultEntry(resultCounts(result));
+
+    if(entry.count === 3){
+      if(isFruitSymbol(entry.symbolId)){
+        return { tier: 'triple-fruit', multiplier: 2, xp: 30, extraTurn: false };
+      }
+
+      if(entry.symbolId === 'diamond'){
+        return { tier: 'triple-diamond', multiplier: 5, xp: 80, extraTurn: false };
+      }
+
+      if(entry.symbolId === 'gold'){
+        return { tier: 'triple-gold', multiplier: 20, xp: 150, extraTurn: false };
+      }
+
+      if(entry.symbolId === 'lucky7'){
+        return { tier: 'triple-seven', multiplier: 100, xp: 300, extraTurn: false };
+      }
+    }
+
+    if(entry.count === 2){
+      if(isFruitSymbol(entry.symbolId)){
+        return { tier: 'pair-fruit', multiplier: 0.2, xp: 10, extraTurn: false };
+      }
+
+      if(isPremiumSymbol(entry.symbolId)){
+        return { tier: 'pair-premium', multiplier: 0, xp: 20, extraTurn: true };
+      }
+    }
+
+    return { tier: 'standard', multiplier: 0, xp: 5, extraTurn: false };
+  }
+
   function finish(result){
     var button = q('slotSpinButton');
     var box = document.querySelector('.slot-machine');
-    var first = result[0];
-    var matched = result.every(function(value){ return value === first; });
+    var profile = resultProfile(result);
+    var active = profile.multiplier > 0 || profile.extraTurn;
 
     spinning = false;
     scheduleSlotSoundStop();
@@ -211,10 +280,16 @@ export const SLOT_SCRIPT = `
 
     if(box){
       box.classList.remove('is-spinning');
-      box.classList.toggle('is-win', matched);
+      box.classList.toggle('is-win', active);
     }
 
-    awardXP(matched ? 80 : 4, matched ? 'game-win' : 'game-lose', { section: 'slot', event: 'finish', result: matched ? 'jackpot' : 'no-win' });
+    awardXP(profile.xp, 'reel-result', {
+      section: 'slot',
+      event: 'finish',
+      tier: profile.tier,
+      multiplier: profile.multiplier,
+      extraTurn: profile.extraTurn
+    });
   }
 
   function spin(){
