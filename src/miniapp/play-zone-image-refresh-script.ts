@@ -9,6 +9,8 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var countersStarted=false;
   var refreshInFlight=null;
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  var IMAGE_CACHE='vexa-play-zone-card-images-v1';
+  var imageState=window.__vexaPlayZoneCardImageState=window.__vexaPlayZoneCardImageState||{objectUrls:{},promises:{}};
   function dropOldCaches(){try{OLD_KEYS.forEach(function(k){localStorage.removeItem(k)});Object.keys(localStorage).forEach(function(k){if(k.indexOf('vexaPlayZoneImageUrlsUpdatedAt')===0)localStorage.removeItem(k)})}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map||{}))}catch(e){}}
@@ -17,23 +19,48 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function baseGameUrl(id){return '/app/api/section-lock-image/'+id+'/locked.png'}
   function stable(url){return stripCacheParams(url)}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
+  function fetchCachedImage(url){
+    if(!url)return Promise.resolve('');
+    if(imageState.objectUrls[url])return Promise.resolve(imageState.objectUrls[url]);
+    if(imageState.promises[url])return imageState.promises[url];
+    if(!('caches' in window)||!window.fetch||!window.URL||!window.URL.createObjectURL)return Promise.resolve(url);
+    imageState.promises[url]=caches.open(IMAGE_CACHE).then(function(cache){
+      return cache.match(url).then(function(hit){
+        if(hit)return hit.blob();
+        return fetch(url,{credentials:'same-origin',cache:'force-cache'}).then(function(res){
+          if(!res||!res.ok)throw new Error('play zone image failed');
+          cache.put(url,res.clone()).catch(function(){});
+          return res.blob();
+        });
+      });
+    }).then(function(blob){
+      if(!imageState.objectUrls[url])imageState.objectUrls[url]=URL.createObjectURL(blob);
+      return imageState.objectUrls[url];
+    }).catch(function(){return url}).finally(function(){delete imageState.promises[url]});
+    return imageState.promises[url];
+  }
   function setImage(img,url){
     if(!img)return;
     var raw=allowed(url)?url:(img.getAttribute('data-section-image-src')||'');
     if(!raw)return;
     var next=stable(raw);
+    var currentKey=img.getAttribute('data-section-image-src')||'';
     img.onerror=function(){this.onerror=null;this.src=this.dataset.fallbackSrc||next||this.src;this.style.display=''};
-    if(next&&img.getAttribute('src')!==next)img.src=next;
     img.setAttribute('data-section-image-src',next);
     img.setAttribute('data-fallback-src',next);
     img.classList.remove('is-empty');
     img.style.display='';
     img.loading='eager';
     img.decoding='async';
+    if(currentKey===next&&img.getAttribute('src')&&img.getAttribute('src')!==EMPTY)return;
+    fetchCachedImage(next).then(function(src){
+      if(!src||img.getAttribute('data-section-image-src')!==next)return;
+      if(img.getAttribute('src')!==src)img.src=src;
+    });
   }
   function findGameImg(id){return document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img')}
   function apply(map){
-    games.forEach(function(id){var img=findGameImg(id);var url=map[id]||baseGameUrl(id);if(img&&(img.getAttribute('src')===EMPTY||img.getAttribute('src')!==url))setImage(img,url)});
+    games.forEach(function(id){var img=findGameImg(id);var url=map[id]||baseGameUrl(id);var next=stable(url);if(img&&(img.getAttribute('src')===EMPTY||img.getAttribute('data-section-image-src')!==next))setImage(img,url)});
     legacyAds.forEach(function(id){setImage(document.querySelector('#playzone [data-play-zone-ad="'+id+'"]'),map[id])});
   }
   function mapFromSectionLocks(cached){
