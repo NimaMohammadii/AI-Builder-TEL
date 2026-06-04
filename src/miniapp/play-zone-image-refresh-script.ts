@@ -16,7 +16,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map||{}))}catch(e){}}
   function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
   function stripCacheParams(url){try{var u=new URL(String(url||''),location.href);u.searchParams.delete('rt');u.searchParams.delete('av');return u.pathname+u.search+u.hash}catch(e){return String(url||'').replace(/([?&])(rt|av)=\d+(&?)/g,'$1').replace(/[?&]$/,'')}}
-  function baseGameUrl(id){return '/app/api/section-lock-image/'+id+'/locked.png'}
+  function baseGameUrl(id){return '/app/api/section-lock-image/'+id+'/locked.png?v=1'}
   function stable(url){return stripCacheParams(url)}
   function allowed(url){return Boolean(url)&&String(url).indexOf('/app/api/section-lock-image/shared/')<0}
   function fetchCachedImage(url){
