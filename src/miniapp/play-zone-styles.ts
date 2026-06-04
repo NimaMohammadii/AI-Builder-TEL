@@ -40,11 +40,6 @@ export const PLAY_ZONE_STYLES = `
 .game-players b.is-counting{opacity:.66!important;filter:brightness(1.22)!important}
 .game-open{display:none!important}
 .play-zone-featured-card,.play-zone-featured-card.game-card-live,.play-zone-featured-card-2,.play-zone-featured-card-3,.play-zone-triangle-card{position:relative!important;transform:none!important;animation:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 14px 34px rgba(0,0,0,.16)!important;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.045))!important;border:1px solid rgba(255,255,255,.10)!important;-webkit-backdrop-filter:blur(3px)!important;backdrop-filter:blur(3px)!important}
-.play-zone-slot-entry-wrap{width:100%;display:flex!important;justify-content:center!important;margin:4px 0 12px!important;padding:0 4px!important}
-.play-zone-slot-entry{width:min(100%,260px);height:46px;border:0;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,rgba(91,15,36,.82),rgba(143,29,61,.86),rgba(192,58,91,.78));box-shadow:0 16px 38px rgba(143,29,61,.24),inset 0 1px 0 rgba(255,255,255,.18);font-size:14px;font-weight:930;letter-spacing:-.03em}
-.play-zone-slot-entry span{font-size:20px;line-height:1}
-.play-zone-slot-entry b{font-size:14px;font-weight:930}
-.play-zone-slot-entry:active{transform:scale(.985)}
 .play-zone-center-image{width:100%!important;height:auto!important;max-height:none!important;display:block!important;object-fit:contain!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;filter:none!important;animation:none!important;transform:none!important;margin:0!important;padding:0!important;position:static!important;z-index:auto!important;flex:0 0 auto!important;line-height:0!important}
 .play-zone-center-image.is-empty{display:none!important}
 .play-zone-plinko-showcase{display:none!important}
@@ -65,6 +60,5 @@ export const PLAY_ZONE_STYLES = `
   .game-players i{width:7px!important;height:7px!important}
   .game-players b{font-size:9.4px!important;min-width:20px!important}
   .game-players em{font-size:7.8px!important}
-  .play-zone-slot-entry{height:44px;width:min(100%,240px)}
 }
 `;

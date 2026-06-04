@@ -59,6 +59,7 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'wheel-separator', label: 'Wheel Separator Rod', description: 'Image used as separator rods between Wheel slices' },
   { id: 'dice', label: 'Dice', description: 'Dice game card image' },
   { id: 'rps', label: 'Rock Paper Scissors', description: 'Rock Paper Scissors game card image' },
+  { id: 'slot', label: 'Slot', description: 'Slot game card image' },
   { id: 'tower', label: 'Tower', description: 'Tower game card image' },
   { id: 'coinflip', label: 'Coin Flip', description: 'Coin Flip game card image' },
   { id: 'hilo', label: 'Hi-Lo', description: 'Hi-Lo game card image' },

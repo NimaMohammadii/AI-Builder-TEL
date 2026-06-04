@@ -9,7 +9,7 @@ const playZoneGames = [
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
   ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
   ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
-  ['tower', 'Dragon Tower', 'Climb the tower and avoid danger', 'Play'],
+  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
 ] as const;
 
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
@@ -32,21 +32,11 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
   `;
 }
 
-const slotEntryButton = `
-  <button class="play-zone-slot-entry" type="button" data-game-view="slot" aria-label="Open Slot game">
-    <span>🎰</span>
-    <b>Slot</b>
-  </button>
-`;
-
 export const PLAY_ZONE_SECTION = `
 <section id="playzone" class="view play-zone-view">
   <div class="play-zone-stage">
     <div class="play-zone-featured-row play-zone-grid-row">
       ${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}
-    </div>
-    <div class="play-zone-slot-entry-wrap">
-      ${slotEntryButton}
     </div>
   </div>
 </section>
