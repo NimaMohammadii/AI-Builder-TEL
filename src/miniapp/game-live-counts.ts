@@ -7,10 +7,10 @@ const liveGameLabels: Record<string, string> = {
   crash: 'Crash',
   hilo: 'Chicken Cross',
   coinflip: 'Pump',
-  tower: 'Dragon Tower',
+  slot: 'Slot',
 };
 
-const hiddenCardPlayerCounts = new Set(['hilo', 'coinflip', 'tower']);
+const hiddenCardPlayerCounts = new Set(['hilo', 'coinflip']);
 
 type LivePlayerRange = { start: number; end: number; min: number; max: number };
 type LivePlayerProfile = { offset: number; width: number; phase: number };
@@ -24,7 +24,7 @@ const livePlayerProfiles: Record<string, LivePlayerProfile> = {
   crash: { offset: 72, width: 38, phase: 67 },
   hilo: { offset: -44, width: 20, phase: 79 },
   coinflip: { offset: 10, width: -12, phase: 89 },
-  tower: { offset: 46, width: 28, phase: 101 },
+  slot: { offset: 46, width: 28, phase: 101 },
 };
 
 const livePlayerRanges: LivePlayerRange[] = [
