@@ -27,7 +27,7 @@ body:has(#slot.active) .tabs {
   left: 0;
   z-index: 8;
   width: 100%;
-  height: 482px;
+  height: 100%;
   object-fit: fill;
   opacity: 0;
   transition: opacity .22s ease;
@@ -130,11 +130,16 @@ body:has(#slot.active) .tabs {
   opacity: 1;
 }
 
-.slot-status-panel {
+.slot-control-panel {
   position: relative;
   z-index: 9;
+  width: min(100%, 408px);
+  margin: -24px auto 0;
+}
+
+.slot-status-panel {
   width: 100%;
-  margin: 116px 0 10px;
+  margin: 0 0 10px;
   padding: 12px 14px;
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
@@ -159,8 +164,6 @@ body:has(#slot.active) .tabs {
 }
 
 .slot-controls {
-  position: relative;
-  z-index: 9;
   width: 100%;
   margin: 0 0 10px;
 }
@@ -222,7 +225,7 @@ body:has(#slot.active) .tabs {
   z-index: 9;
   width: 100%;
   height: 50px;
-  margin-top: 8px;
+  margin-top: 64px;
   border: 0;
   border-radius: 20px;
   color: #fff;
@@ -251,11 +254,6 @@ body:has(#slot.active) .tabs {
   filter: none;
 }
 
-.slot-machine.is-spinning .slot-point-amount {
-  pointer-events: none;
-  opacity: .62;
-}
-
 .slot-machine.is-win .slot-window {
   animation: slotWinPulse .7s ease both;
 }
@@ -273,10 +271,6 @@ body:has(#slot.active) .tabs {
     margin-top: 88px;
     gap: 4px;
     transform: translateX(-4px);
-  }
-
-  .slot-frame-image {
-    height: 452px;
   }
 
   .slot-reel-strip {
@@ -299,8 +293,9 @@ body:has(#slot.active) .tabs {
     transform: translateY(-42px);
   }
 
-  .slot-status-panel {
-    margin-top: 112px;
+  .slot-control-panel {
+    width: min(100%, 398px);
+    margin-top: -24px;
   }
 }
 `;
