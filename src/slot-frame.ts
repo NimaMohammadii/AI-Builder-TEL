@@ -37,6 +37,11 @@ function slotSymbolKey(id: SlotSymbolId): string {
   return `${SYMBOL_PREFIX}${id}`;
 }
 
+function cleanSlotSymbolId(value: string): SlotSymbolId | null {
+  const id = value.replace(/\.png$/i, '') as SlotSymbolId;
+  return SLOT_SYMBOL_IDS.has(id) ? id : null;
+}
+
 function slotSymbolUrl(id: SlotSymbolId, version: string): string {
   return `/app/api/uploaded-image/slot-symbols/${id}.png?v=${version}`;
 }
@@ -81,8 +86,8 @@ app.get('/app/api/slot-symbols', async (c) => {
 });
 
 app.get('/app/api/uploaded-image/slot-symbols/:id.png', async (c) => {
-  const id = c.req.param('id') as SlotSymbolId;
-  if (!SLOT_SYMBOL_IDS.has(id)) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const id = cleanSlotSymbolId(c.req.param('id'));
+  if (!id) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
   const key = slotSymbolKey(id);
   const head = await c.env.ASSETS.head(key).catch(() => null);
   if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
