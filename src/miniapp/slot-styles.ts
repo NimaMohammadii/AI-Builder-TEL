@@ -31,7 +31,6 @@ body:has(#slot.active) .tabs {
   object-fit: fill;
   opacity: 0;
   transition: opacity .22s ease;
-  pointer-events: none;
 }
 
 .slot-frame-image.is-loaded {
@@ -130,18 +129,31 @@ body:has(#slot.active) .tabs {
   opacity: 1;
 }
 
+.slot-spin-button {
+  position: relative;
+  z-index: 9;
+  width: 100%;
+  height: 50px;
+  margin-top: 64px;
+  border: 0;
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #5b0f24, #8f1d3d, #c03a5b);
+  box-shadow: 0 18px 38px rgba(143,29,61,.34), inset 0 1px 0 rgba(255,255,255,.18);
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+
+.slot-spin-button:disabled {
+  opacity: .62;
+}
+
 .slot-control-panel {
   position: relative;
   z-index: 9;
   width: min(100%, 408px);
   margin: -24px auto 0;
-}
-
-.slot-control-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 118px;
-  align-items: end;
-  gap: 10px;
 }
 
 .slot-controls {
@@ -201,28 +213,6 @@ body:has(#slot.active) .tabs {
   font-weight: 950;
 }
 
-.slot-spin-button {
-  position: relative;
-  z-index: 9;
-  width: 118px;
-  height: 48px;
-  margin: 0;
-  border: 1px solid rgba(255,255,255,.13);
-  border-radius: 18px;
-  color: #fff;
-  background: linear-gradient(135deg, rgba(54,6,20,.82), rgba(92,12,34,.72), rgba(128,24,52,.68));
-  box-shadow: 0 16px 34px rgba(92,12,34,.30), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -18px 34px rgba(0,0,0,.18);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  font-size: 15px;
-  font-weight: 950;
-  letter-spacing: -.03em;
-}
-
-.slot-spin-button:disabled {
-  opacity: .62;
-}
-
 .slot-machine.is-spinning .slot-window {
   box-shadow: 0 0 34px rgba(192,58,91,.12);
 }
@@ -279,20 +269,6 @@ body:has(#slot.active) .tabs {
   .slot-control-panel {
     width: min(100%, 398px);
     margin-top: -24px;
-  }
-
-  .slot-control-row {
-    grid-template-columns: minmax(0, 1fr) 108px;
-    gap: 8px;
-  }
-
-  .slot-spin-button {
-    width: 108px;
-    font-size: 14px;
-  }
-
-  .slot-quick-actions button {
-    min-width: 32px;
   }
 }
 `;
