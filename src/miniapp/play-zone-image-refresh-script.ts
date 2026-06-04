@@ -1,9 +1,8 @@
 export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
 (function(){
   var games=['mines','plinko','crash','wheel','dice','rps','tower','coinflip','hilo'];
-  var ads=games.map(function(id){return 'playzone-card-ad-'+id});
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
-  var all=games.concat(ads).concat(legacyAds);
+  var all=games.concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v13';
   var OLD_KEYS=['vexaPlayZoneImageUrls:v12','vexaPlayZoneImageUrls:v11','vexaPlayZoneImageUrls:v10','vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
   var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
@@ -35,7 +34,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function findGameImg(id){return document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-game-view="'+id+'"] .game-image img')||document.querySelector('#playzone .game-card[data-view="'+id+'"] .game-image img')}
   function apply(map){
     games.forEach(function(id){var img=findGameImg(id);var url=map[id]||baseGameUrl(id);if(img&&(img.getAttribute('src')===EMPTY||img.getAttribute('src')!==url))setImage(img,url)});
-    ads.concat(legacyAds).forEach(function(id){setImage(document.querySelector('#playzone [data-play-zone-ad="'+id+'"]'),map[id])});
+    legacyAds.forEach(function(id){setImage(document.querySelector('#playzone [data-play-zone-ad="'+id+'"]'),map[id])});
   }
   function mapFromSectionLocks(cached){
     var data=readSectionLocks();
