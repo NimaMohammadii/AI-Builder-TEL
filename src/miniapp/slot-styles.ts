@@ -159,7 +159,7 @@ body:has(#slot.active) .tabs {
   inset: 1px;
   z-index: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.08) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(255,255,255,.34), transparent 30%);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(255,130,165,.12), transparent 30%);
   pointer-events: none;
 }
 
@@ -172,7 +172,7 @@ body:has(#slot.active) .tabs {
   width: 42%;
   z-index: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,150,180,.24), transparent);
   transform: translateX(-130%) rotate(18deg);
   animation: slotSpinGlassShine 3.2s ease-in-out infinite;
   pointer-events: none;
@@ -293,7 +293,7 @@ body:has(#slot.active) .tabs {
 
 @keyframes slotSpinGlassShine {
   0%, 42% { transform: translateX(-145%) rotate(18deg); opacity: 0; }
-  54% { opacity: .78; }
+  54% { opacity: .48; }
   72%, 100% { transform: translateX(360%) rotate(18deg); opacity: 0; }
 }
 
