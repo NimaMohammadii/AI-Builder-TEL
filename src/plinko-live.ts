@@ -32,18 +32,15 @@ type PlinkoResult = {
 
 export function registerPlinkoLiveRoutes(app: { get: Function; post: Function }): void {
   app.get('/app/api/plinko/live/ws', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    const stub = getRoom(c.env);
-    return stub ? stub.fetch(c.req.raw) : json({ error: 'Live is not configured.' }, 503);
+    return fetchRoom(c.env, c.req.raw, 503);
   });
 
   app.post('/app/api/plinko/live/send', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    const stub = getRoom(c.env);
-    return stub ? stub.fetch(c.req.raw) : json({ error: 'Live is not configured.' }, 503);
+    return fetchRoom(c.env, c.req.raw, 503);
   });
 
   app.post('/app/api/plinko/live/result', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    const stub = getRoom(c.env);
-    return stub ? stub.fetch(c.req.raw) : json({ error: 'Live is not configured.' }, 503);
+    return fetchRoom(c.env, c.req.raw, 200);
   });
 }
 
@@ -139,6 +136,18 @@ export class PlinkoLiveRoom {
     for (const socket of this.sockets) {
       try { socket.send(text); } catch { this.sockets.delete(socket); }
     }
+  }
+}
+
+async function fetchRoom(env: LiveEnv, request: Request, fallbackStatus: number): Promise<Response> {
+  const stub = getRoom(env);
+  if (!stub) return json({ error: 'Live is not configured.' }, fallbackStatus);
+
+  try {
+    return await stub.fetch(request);
+  } catch (error) {
+    console.error('plinko live route failed', error);
+    return json({ error: 'Plinko live is temporarily unavailable.' }, fallbackStatus);
   }
 }
 
