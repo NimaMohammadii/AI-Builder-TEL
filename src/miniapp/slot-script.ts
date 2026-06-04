@@ -100,9 +100,9 @@ export const SLOT_SCRIPT = `
 
   function createSymbol(symbol){
     var cell = document.createElement('div');
-    cell.className = symbol && symbol.imageReady ? 'slot-symbol has-image' : 'slot-symbol';
+    cell.className = symbol && symbol.imageUrl ? 'slot-symbol has-image' : 'slot-symbol';
 
-    if(symbol && symbol.imageUrl && symbol.imageReady){
+    if(symbol && symbol.imageUrl){
       var img = document.createElement('img');
       img.className = 'slot-symbol-image';
       img.alt = symbol.label || symbol.id || 'Slot symbol';
@@ -117,20 +117,6 @@ export const SLOT_SCRIPT = `
     }
 
     return cell;
-  }
-
-  function preloadImage(url){
-    return new Promise(function(resolve){
-      if(!url){
-        resolve(false);
-        return;
-      }
-
-      var image = new Image();
-      image.onload = function(){ resolve(true); };
-      image.onerror = function(){ resolve(false); };
-      image.src = url;
-    });
   }
 
   function stripNode(reelIndex){
@@ -257,42 +243,24 @@ export const SLOT_SCRIPT = `
         if(!result.ok || !result.body || !result.body.symbols) return;
 
         var byId = {};
-        var nextSymbols = symbols.map(function(symbol){
-          return {
-            id: symbol.id,
-            label: symbol.label
-          };
-        });
-
         result.body.symbols.forEach(function(symbol){
           byId[symbol.id] = symbol;
         });
 
-        nextSymbols = nextSymbols.map(function(symbol){
+        symbols = symbols.map(function(symbol){
           var uploaded = byId[symbol.id];
-          if(!uploaded || !uploaded.imageUrl) return symbol;
+          if(!uploaded || !uploaded.imageUrl) return {
+            id: symbol.id,
+            label: symbol.label
+          };
           return {
             id: symbol.id,
             label: uploaded.label || symbol.label,
-            imageUrl: uploaded.imageUrl,
-            imageReady: false
+            imageUrl: uploaded.imageUrl
           };
         });
 
-        Promise.all(nextSymbols.map(function(symbol){
-          return preloadImage(symbol.imageUrl);
-        })).then(function(loaded){
-          symbols = nextSymbols.map(function(symbol, index){
-            if(!symbol.imageUrl || !loaded[index]) return symbol;
-            return {
-              id: symbol.id,
-              label: symbol.label,
-              imageUrl: symbol.imageUrl,
-              imageReady: true
-            };
-          });
-          refreshReels();
-        });
+        refreshReels();
       })
       .catch(function(){});
   }
