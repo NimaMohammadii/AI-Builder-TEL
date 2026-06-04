@@ -18,6 +18,7 @@ export const SLOT_SCRIPT = `
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
   var slotAudioUrl = '';
+  var slotAudio = null;
 
   function q(id){
     return document.getElementById(id);
@@ -28,12 +29,24 @@ export const SLOT_SCRIPT = `
     if(brand) brand.textContent = title;
   }
 
+  function prepareSlotSound(url){
+    slotAudioUrl = url || '';
+    slotAudio = null;
+
+    if(!slotAudioUrl) return;
+
+    slotAudio = new Audio(slotAudioUrl);
+    slotAudio.loop = true;
+    slotAudio.preload = 'auto';
+    try { slotAudio.load(); } catch(e) {}
+  }
+
   function startSlotSound(){
     if(!slotAudioUrl) return;
 
     stopSlotSound();
 
-    var audio = new Audio(slotAudioUrl);
+    var audio = slotAudio || new Audio(slotAudioUrl);
     audio.loop = true;
     audio.preload = 'auto';
     audio.currentTime = 0;
@@ -185,9 +198,9 @@ export const SLOT_SCRIPT = `
       var strip = stripNode(reelIndex);
       if(!strip) return;
 
-      var loops = 16 + reelIndex * 2;
+      var loops = 22 + reelIndex * 2;
       var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
-      var duration = 5000 + reelIndex * 420;
+      var duration = 7000 + reelIndex * 420;
       var y = stripY(finalIndex);
 
       setReelPosition(reelIndex, currentIndexes[reelIndex], false);
@@ -268,7 +281,7 @@ export const SLOT_SCRIPT = `
       .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
       .then(function(result){
         if(!result.ok || !result.body || !result.body.audioUrl) return;
-        slotAudioUrl = result.body.audioUrl;
+        prepareSlotSound(result.body.audioUrl);
       })
       .catch(function(){});
   }
