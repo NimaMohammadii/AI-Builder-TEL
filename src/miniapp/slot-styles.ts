@@ -146,18 +146,18 @@ body:has(#slot.active) .tabs {
   position: relative;
   z-index: 9;
   width: min(100%, 408px);
-  margin: -38px auto 0;
+  margin: -112px auto 0;
 }
 
 .slot-controls {
-  width: 88%;
+  width: 94%;
   margin: 0 auto;
 }
 
 .slot-image-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -166,13 +166,17 @@ body:has(#slot.active) .tabs {
   display: grid;
   place-items: center;
   min-width: 0;
-  height: 58px;
+  height: clamp(72px, 18vw, 86px);
   padding: 0;
-  border: 0;
-  border-radius: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
   color: #fff;
   background: transparent !important;
   box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   overflow: visible;
   isolation: isolate;
   transition: transform .18s ease, opacity .18s ease;
@@ -184,7 +188,7 @@ body:has(#slot.active) .tabs {
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
   opacity: 0;
   pointer-events: none;
   transition: opacity .22s ease;
@@ -201,10 +205,12 @@ body:has(#slot.active) .tabs {
   place-items: center;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: inherit;
-  background: linear-gradient(135deg, #170007 0%, #320313 42%, #51071f 68%, #190008 100%);
-  box-shadow: 0 18px 42px rgba(12,0,5,.52), inset 0 1px 0 rgba(255,255,255,.12);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   font-size: 15px;
   font-weight: 950;
   letter-spacing: -.03em;
@@ -224,10 +230,14 @@ body:has(#slot.active) .tabs {
   z-index: 1;
   width: 72%;
   height: 70%;
-  border: 0;
+  border: 0 !important;
   outline: 0;
   color: #fff;
-  background: transparent;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
   font-size: 16px;
   font-weight: 950;
   text-align: center;
@@ -319,11 +329,11 @@ body:has(#slot.active) .tabs {
 
   .slot-control-panel {
     width: min(100%, 398px);
-    margin-top: -38px;
+    margin-top: -106px;
   }
 
   .slot-image-control {
-    height: 54px;
+    height: 68px;
   }
 }
 `;
