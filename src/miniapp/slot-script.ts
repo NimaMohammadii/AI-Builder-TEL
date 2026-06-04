@@ -19,6 +19,7 @@ export const SLOT_SCRIPT = `
   var slotSound = null;
   var slotAudioUrl = '';
   var slotAudio = null;
+  var slotSoundTimer = null;
 
   function q(id){
     return document.getElementById(id);
@@ -36,7 +37,7 @@ export const SLOT_SCRIPT = `
     if(!slotAudioUrl) return;
 
     slotAudio = new Audio(slotAudioUrl);
-    slotAudio.loop = true;
+    slotAudio.loop = false;
     slotAudio.preload = 'auto';
     try { slotAudio.load(); } catch(e) {}
   }
@@ -46,16 +47,23 @@ export const SLOT_SCRIPT = `
 
     stopSlotSound();
 
-    var audio = slotAudio || new Audio(slotAudioUrl);
-    audio.loop = true;
-    audio.preload = 'auto';
-    audio.currentTime = 0;
-    slotSound = audio;
+    slotSoundTimer = window.setTimeout(function(){
+      var audio = slotAudio || new Audio(slotAudioUrl);
+      audio.loop = false;
+      audio.preload = 'auto';
+      audio.currentTime = 0;
+      slotSound = audio;
 
-    audio.play().catch(function(){});
+      audio.play().catch(function(){});
+    }, 120);
   }
 
   function stopSlotSound(){
+    if(slotSoundTimer){
+      window.clearTimeout(slotSoundTimer);
+      slotSoundTimer = null;
+    }
+
     if(!slotSound) return;
 
     try {
