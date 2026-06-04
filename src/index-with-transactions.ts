@@ -94,18 +94,18 @@ app.post('/app/api/groups/:chatId/payer', async (c) => {
 
 app.get('/app/api/level', async (c) => {
   try {
-    return c.json(await getUserLevel(c.env, c.req.query('userId') || ''));
+    return c.json(await getUserLevel(c.env, c.req.query('userId') || ''), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load level' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load level' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
 app.post('/app/api/level/xp', async (c) => {
   try {
     const body = await c.req.json() as { userId?: string; amount?: unknown; source?: unknown; metadata?: unknown };
-    return c.json(await addUserXp(c.env, body.userId || '', body.amount, body.source || 'manual', body.metadata || {}));
+    return c.json(await addUserXp(c.env, body.userId || '', body.amount, body.source || 'manual', body.metadata || {}), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not add XP' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not add XP' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
