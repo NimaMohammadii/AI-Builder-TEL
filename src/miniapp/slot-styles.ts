@@ -291,6 +291,193 @@ body:has(#slot.active) .tabs {
   72%, 100% { transform: translateX(360%) rotate(18deg); opacity: 0; }
 }
 
+
+#slot .slot-live {
+  width: min(92%, 408px);
+  margin: -2px auto 18px;
+  border-radius: 32px !important;
+  background: #050505 !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-shadow: 0 24px 74px rgba(0,0,0,.50), inset 0 1px 0 rgba(255,255,255,.08) !important;
+  padding: 14px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: hidden !important;
+  transition: max-height .34s cubic-bezier(.2,.8,.2,1), padding .28s ease, opacity .2s ease !important;
+  max-height: 430px !important;
+}
+
+#slot .slot-live:not(.open) {
+  max-height: 54px !important;
+  padding-bottom: 12px !important;
+}
+
+#slot .slot-live-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 10px !important;
+  color: rgba(255,255,255,.50) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  letter-spacing: -.02em !important;
+  text-transform: none !important;
+}
+
+#slot .slot-live-title {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  color: rgba(255,255,255,.58) !important;
+}
+
+#slot .slot-live-title svg {
+  width: 17px !important;
+  height: 17px !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  color: rgba(255,255,255,.55) !important;
+}
+
+#slot .slot-live-title svg path {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.9 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+#slot .slot-live-title span {
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+#slot .slot-live-head-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+#slot .slot-live-head b {
+  color: rgba(255,255,255,.92) !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.02em !important;
+  text-transform: none !important;
+}
+
+#slot .slot-live-toggle {
+  width: 28px !important;
+  height: 28px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.055) !important;
+  color: rgba(255,255,255,.85) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  transition: transform .22s ease, background .18s ease !important;
+}
+
+#slot .slot-live-toggle svg {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
+  transition: transform .28s cubic-bezier(.2,.8,.2,1) !important;
+}
+
+#slot .slot-live-toggle path {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.4 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+#slot .slot-live.open .slot-live-toggle svg {
+  transform: rotate(180deg) !important;
+}
+
+#slot .slot-live-toggle:active {
+  transform: scale(.94) !important;
+  background: rgba(255,255,255,.09) !important;
+}
+
+#slot .slot-live-list {
+  display: grid !important;
+  gap: 6px !important;
+  max-height: 394px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 2px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255,255,255,.18) transparent !important;
+  transition: max-height .34s cubic-bezier(.2,.8,.2,1), opacity .22s ease !important;
+}
+
+#slot .slot-live:not(.open) .slot-live-list {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#slot .slot-live-list::-webkit-scrollbar {
+  width: 4px !important;
+  display: block !important;
+}
+
+#slot .slot-live-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18) !important;
+  border-radius: 999px !important;
+}
+
+#slot .slot-live-empty {
+  font-size: 12px !important;
+  font-weight: 820 !important;
+  color: rgba(255,255,255,.45) !important;
+  padding: 14px 0 !important;
+  text-align: center !important;
+}
+
+#slot .slot-live-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 34px !important;
+  border-radius: 17px !important;
+  background: #030303 !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  outline: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+  color: #fff !important;
+  padding: 2px 10px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#slot .slot-live-user {
+  min-width: 0 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  color: rgba(255,255,255,.92) !important;
+}
+
+#slot .slot-live-result {
+  font-size: 14px !important;
+  font-weight: 930 !important;
+  color: rgba(255,255,255,.84) !important;
+  white-space: nowrap !important;
+  letter-spacing: .04em !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   #slot .slot-spin-button {
     transition: none;
