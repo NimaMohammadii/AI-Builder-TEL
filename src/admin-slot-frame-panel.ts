@@ -16,17 +16,20 @@ export const ADMIN_SLOT_FRAME_PANEL_SCRIPT = `
 <script>
 (function(){
   var allowed=['image/png','image/jpeg','image/webp'];
-  function esc(v){return String(v||'').replace(/[&<>\"]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]||s})}
+  var audioAllowed=['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','application/ogg','audio/webm','audio/mp4','audio/aac','audio/x-m4a','audio/m4a'];
+  function esc(v){return String(v||'').replace(/[&<>"]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]||s})}
   function previewSrc(url){return url ? url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now() : ''}
   function mount(){
     var target=document.getElementById('sectionImages');
     if(!target||document.getElementById('slotFramePanel'))return;
     var wrap=document.createElement('div');
     wrap.id='slotFramePanel';
-    wrap.innerHTML='<h2>Slot game frame</h2><p class="muted small-text">Upload a transparent PNG/WebP or JPG frame overlay. It will load on the Slot game screen.</p><div class="slot-frame-admin-card"><img id="slotFramePreview" class="slot-frame-admin-preview" alt="Slot frame preview"/><div><strong>Frame image</strong><p class="muted small-text">Recommended: transparent PNG/WebP, roughly 780×900 or matching the Slot layout.</p><input id="slotFrameInput" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="slotFrameUpload" type="button">Upload slot frame</button><p id="slotFrameStatus" class="slot-frame-admin-status"></p></div></div><h2 style="margin-top:18px">Slot symbols</h2><p class="muted small-text">Upload these 8 images to replace the default Slot stickers: Cherry, Lemon, Orange, Grape, Watermelon, Diamond, Gold Star/Bell, Lucky 7.</p><div id="slotSymbolsGrid" class="slot-symbol-admin-grid"></div>';
+    wrap.innerHTML='<h2>Slot game frame</h2><p class="muted small-text">Upload a transparent PNG/WebP or JPG frame overlay. It will load on the Slot game screen.</p><div class="slot-frame-admin-card"><img id="slotFramePreview" class="slot-frame-admin-preview" alt="Slot frame preview"/><div><strong>Frame image</strong><p class="muted small-text">Recommended: transparent PNG/WebP, roughly 780×900 or matching the Slot layout.</p><input id="slotFrameInput" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="slotFrameUpload" type="button">Upload slot frame</button><p id="slotFrameStatus" class="slot-frame-admin-status"></p></div></div><div class="slot-frame-admin-card"><div></div><div><strong>Spin audio</strong><p class="muted small-text">Upload the audio that plays while the Slot reels spin. It stops when spin ends.</p><input id="slotSpinAudioInput" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,audio/m4a,.mp3,.wav,.ogg,.oga,.webm,.mp4,.m4a,.aac"/><button class="primary" id="slotSpinAudioUpload" type="button">Upload spin audio</button><p id="slotSpinAudioStatus" class="slot-frame-admin-status"></p></div></div><h2 style="margin-top:18px">Slot symbols</h2><p class="muted small-text">Upload these 8 images to replace the default Slot stickers: Cherry, Lemon, Orange, Grape, Watermelon, Diamond, Gold Star/Bell, Lucky 7.</p><div id="slotSymbolsGrid" class="slot-symbol-admin-grid"></div>';
     target.appendChild(wrap);
     var btn=document.getElementById('slotFrameUpload');
     if(btn)btn.onclick=upload;
+    var audioBtn=document.getElementById('slotSpinAudioUpload');
+    if(audioBtn)audioBtn.onclick=uploadSpinAudio;
     var grid=document.getElementById('slotSymbolsGrid');
     if(grid)grid.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest?ev.target.closest('[data-slot-symbol-upload]'):null;if(b)uploadSymbol(b.getAttribute('data-slot-symbol-upload'))});
     load();
@@ -43,8 +46,9 @@ export const ADMIN_SLOT_FRAME_PANEL_SCRIPT = `
         else{img.removeAttribute('src');img.style.opacity='.35'}
       }
       if(status)status.textContent=j.hasFrame?'Current frame loaded.':'No frame uploaded yet.';
+      loadSpinAudio();
       loadSymbols();
-    }catch(e){if(status)status.textContent=e&&e.message?e.message:'Could not load slot frame';loadSymbols()}
+    }catch(e){if(status)status.textContent=e&&e.message?e.message:'Could not load slot frame';loadSpinAudio();loadSymbols()}
   }
   function renderSymbols(symbols){
     var grid=document.getElementById('slotSymbolsGrid');
@@ -60,6 +64,16 @@ export const ADMIN_SLOT_FRAME_PANEL_SCRIPT = `
       if(!r.ok)throw new Error(j.error||'Could not load slot symbols');
       renderSymbols(j.symbols||[]);
     }catch(e){grid.innerHTML='<p class="muted small-text">'+esc(e&&e.message?e.message:'Could not load slot symbols')+'</p>'}
+  }
+  async function loadSpinAudio(){
+    var status=document.getElementById('slotSpinAudioStatus');
+    if(!status)return;
+    try{
+      var r=await fetch('/app/api/slot-spin-audio',{credentials:'same-origin',cache:'no-store'});
+      var j=await r.json();
+      if(!r.ok)throw new Error(j.error||'Could not load spin audio');
+      status.textContent=j.hasAudio?'Current spin audio loaded.':'No spin audio uploaded yet.';
+    }catch(e){status.textContent=e&&e.message?e.message:'Could not load spin audio'}
   }
   async function uploadSymbol(id){
     var input=document.getElementById('slotSymbolInput_'+id);
@@ -81,6 +95,25 @@ export const ADMIN_SLOT_FRAME_PANEL_SCRIPT = `
       if(img&&j.imageUrl){img.src=previewSrc(esc(j.imageUrl));img.style.opacity='1'}
       if(status)status.textContent='Symbol saved and ready in Slot reels.';
     }catch(e){if(status)status.textContent=e&&e.message?e.message:'Could not upload Slot symbol'}
+    finally{if(btn)btn.disabled=false}
+  }
+  async function uploadSpinAudio(){
+    var input=document.getElementById('slotSpinAudioInput');
+    var btn=document.getElementById('slotSpinAudioUpload');
+    var status=document.getElementById('slotSpinAudioStatus');
+    var file=input&&input.files&&input.files[0];
+    if(!file){if(status)status.textContent='Choose an audio file first.';return}
+    if(audioAllowed.indexOf(file.type)===-1){if(status)status.textContent='Only MP3, WAV, OGG, WebM, M4A or AAC.';return}
+    var form=new FormData();
+    form.append('audio',file);
+    if(btn)btn.disabled=true;
+    if(status)status.textContent='Uploading spin audio...';
+    try{
+      var r=await fetch('/admin/api/upload-slot-spin-audio',{method:'POST',credentials:'same-origin',body:form});
+      var j=await r.json();
+      if(!r.ok)throw new Error(j.error||'Could not upload spin audio');
+      if(status)status.textContent='Spin audio saved and ready in Slot.';
+    }catch(e){if(status)status.textContent=e&&e.message?e.message:'Could not upload spin audio'}
     finally{if(btn)btn.disabled=false}
   }
   async function upload(){
