@@ -30,7 +30,58 @@ export const SLOT_SCRIPT = `
   var slotAudio = null;
   var slotSoundTimer = null;
   var slotSoundStopTimer = null;
-  var slotLivePlayers = ['Amir','Ali','Reza','Arman','Arya','Arvin','Kian','Sina','Saman','Radin','Rayan','Shayan','Mahan','Parsa','Navid','Nima','Nikan','Kaveh','Sepehr','Taha','Erfan','Amin','Ilya','Bardia','Hirad','Omid','Pouya','Kasra','Arad','Mehrad','Nika','Ava','Mira','Luna','Daria','Tara','Maya','Lia','Nora','Elina','Raha','Yara','Vian','Mina','Roya','Aylin','Zara','Negin','Dorsa','Hana'];
+  var slotLiveProfiles = [
+    ['AriNova', 'AriPlay', 'AriSpin', 'AriBet', 'AriWin', 'AriMax', 'AriRush', 'AriTon', 'AriLux', 'AriPro'],
+    ['MayaStar', 'MayaSpin', 'MayaBet', 'MayaWin', 'MayaLux', 'MayaTon', 'MayaRush', 'MayaPlay', 'MayaPro', 'MayaNova'],
+    ['LiaMoon', 'LiaSpin', 'LiaBet', 'LiaWin', 'LiaLux', 'LiaTon', 'LiaRush', 'LiaPlay', 'LiaPro', 'LiaNova'],
+    ['NoraWave', 'NoraSpin', 'NoraBet', 'NoraWin', 'NoraLux', 'NoraTon', 'NoraRush', 'NoraPlay', 'NoraPro', 'NoraNova'],
+    ['ElinaFox', 'ElinaSpin', 'ElinaBet', 'ElinaWin', 'ElinaLux', 'ElinaTon', 'ElinaRush', 'ElinaPlay', 'ElinaPro', 'ElinaNova'],
+    ['RahaQueen', 'RahaSpin', 'RahaBet', 'RahaWin', 'RahaLux', 'RahaTon', 'RahaRush', 'RahaPlay', 'RahaPro', 'RahaNova'],
+    ['YaraGold', 'YaraSpin', 'YaraBet', 'YaraWin', 'YaraLux', 'YaraTon', 'YaraRush', 'YaraPlay', 'YaraPro', 'YaraNova'],
+    ['KianFlash', 'KianSpin', 'KianBet', 'KianWin', 'KianLux', 'KianTon', 'KianRush', 'KianPlay', 'KianPro', 'KianNova'],
+    ['ArmanX', 'ArmanSpin', 'ArmanBet', 'ArmanWin', 'ArmanLux', 'ArmanTon', 'ArmanRush', 'ArmanPlay', 'ArmanPro', 'ArmanNova'],
+    ['SinaAce', 'SinaSpin', 'SinaBet', 'SinaWin', 'SinaLux', 'SinaTon', 'SinaRush', 'SinaPlay', 'SinaPro', 'SinaNova'],
+    ['RayanJet', 'RayanSpin', 'RayanBet', 'RayanWin', 'RayanLux', 'RayanTon', 'RayanRush', 'RayanPlay', 'RayanPro', 'RayanNova'],
+    ['ParsaKing', 'ParsaSpin', 'ParsaBet', 'ParsaWin', 'ParsaLux', 'ParsaTon', 'ParsaRush', 'ParsaPlay', 'ParsaPro', 'ParsaNova'],
+    ['NikaRose', 'NikaSpin', 'NikaBet', 'NikaWin', 'NikaLux', 'NikaTon', 'NikaRush', 'NikaPlay', 'NikaPro', 'NikaNova'],
+    ['AvaCloud', 'AvaSpin', 'AvaBet', 'AvaWin', 'AvaLux', 'AvaTon', 'AvaRush', 'AvaPlay', 'AvaPro', 'AvaNova'],
+    ['DariaSun', 'DariaSpin', 'DariaBet', 'DariaWin', 'DariaLux', 'DariaTon', 'DariaRush', 'DariaPlay', 'DariaPro', 'DariaNova'],
+    ['TaraBlue', 'TaraSpin', 'TaraBet', 'TaraWin', 'TaraLux', 'TaraTon', 'TaraRush', 'TaraPlay', 'TaraPro', 'TaraNova'],
+    ['AmirWolf', 'AmirSpin', 'AmirBet', 'AmirWin', 'AmirLux', 'AmirTon', 'AmirRush', 'AmirPlay', 'AmirPro', 'AmirNova'],
+    ['AliTiger', 'AliSpin', 'AliBet', 'AliWin', 'AliLux', 'AliTon', 'AliRush', 'AliPlay', 'AliPro', 'AliNova'],
+    ['RezaStorm', 'RezaSpin', 'RezaBet', 'RezaWin', 'RezaLux', 'RezaTon', 'RezaRush', 'RezaPlay', 'RezaPro', 'RezaNova'],
+    ['AryaFire', 'AryaSpin', 'AryaBet', 'AryaWin', 'AryaLux', 'AryaTon', 'AryaRush', 'AryaPlay', 'AryaPro', 'AryaNova'],
+    ['ArvinNeo', 'ArvinSpin', 'ArvinBet', 'ArvinWin', 'ArvinLux', 'ArvinTon', 'ArvinRush', 'ArvinPlay', 'ArvinPro', 'ArvinNova'],
+    ['SamanSky', 'SamanSpin', 'SamanBet', 'SamanWin', 'SamanLux', 'SamanTon', 'SamanRush', 'SamanPlay', 'SamanPro', 'SamanNova'],
+    ['RadinHero', 'RadinSpin', 'RadinBet', 'RadinWin', 'RadinLux', 'RadinTon', 'RadinRush', 'RadinPlay', 'RadinPro', 'RadinNova'],
+    ['ShayanIce', 'ShayanSpin', 'ShayanBet', 'ShayanWin', 'ShayanLux', 'ShayanTon', 'ShayanRush', 'ShayanPlay', 'ShayanPro', 'ShayanNova'],
+    ['MahanBolt', 'MahanSpin', 'MahanBet', 'MahanWin', 'MahanLux', 'MahanTon', 'MahanRush', 'MahanPlay', 'MahanPro', 'MahanNova'],
+    ['NavidAce', 'NavidSpin', 'NavidBet', 'NavidWin', 'NavidLux', 'NavidTon', 'NavidRush', 'NavidPlay', 'NavidPro', 'NavidNova'],
+    ['NimaLuck', 'NimaSpin', 'NimaBet', 'NimaWin', 'NimaLux', 'NimaTon', 'NimaRush', 'NimaPlay', 'NimaPro', 'NimaNova'],
+    ['NikanFox', 'NikanSpin', 'NikanBet', 'NikanWin', 'NikanLux', 'NikanTon', 'NikanRush', 'NikanPlay', 'NikanPro', 'NikanNova'],
+    ['KavehLion', 'KavehSpin', 'KavehBet', 'KavehWin', 'KavehLux', 'KavehTon', 'KavehRush', 'KavehPlay', 'KavehPro', 'KavehNova'],
+    ['SepehrX', 'SepehrSpin', 'SepehrBet', 'SepehrWin', 'SepehrLux', 'SepehrTon', 'SepehrRush', 'SepehrPlay', 'SepehrPro', 'SepehrNova'],
+    ['TahaPeak', 'TahaSpin', 'TahaBet', 'TahaWin', 'TahaLux', 'TahaTon', 'TahaRush', 'TahaPlay', 'TahaPro', 'TahaNova'],
+    ['ErfanMax', 'ErfanSpin', 'ErfanBet', 'ErfanWin', 'ErfanLux', 'ErfanTon', 'ErfanRush', 'ErfanPlay', 'ErfanPro', 'ErfanNova'],
+    ['AminRock', 'AminSpin', 'AminBet', 'AminWin', 'AminLux', 'AminTon', 'AminRush', 'AminPlay', 'AminPro', 'AminNova'],
+    ['IlyaRay', 'IlyaSpin', 'IlyaBet', 'IlyaWin', 'IlyaLux', 'IlyaTon', 'IlyaRush', 'IlyaPlay', 'IlyaPro', 'IlyaNova'],
+    ['BardiaOne', 'BardiaSpin', 'BardiaBet', 'BardiaWin', 'BardiaLux', 'BardiaTon', 'BardiaRush', 'BardiaPlay', 'BardiaPro', 'BardiaNova'],
+    ['HiradMoon', 'HiradSpin', 'HiradBet', 'HiradWin', 'HiradLux', 'HiradTon', 'HiradRush', 'HiradPlay', 'HiradPro', 'HiradNova'],
+    ['OmidLite', 'OmidSpin', 'OmidBet', 'OmidWin', 'OmidLux', 'OmidTon', 'OmidRush', 'OmidPlay', 'OmidPro', 'OmidNova'],
+    ['PouyaGem', 'PouyaSpin', 'PouyaBet', 'PouyaWin', 'PouyaLux', 'PouyaTon', 'PouyaRush', 'PouyaPlay', 'PouyaPro', 'PouyaNova'],
+    ['KasraZen', 'KasraSpin', 'KasraBet', 'KasraWin', 'KasraLux', 'KasraTon', 'KasraRush', 'KasraPlay', 'KasraPro', 'KasraNova'],
+    ['AradTime', 'AradSpin', 'AradBet', 'AradWin', 'AradLux', 'AradTon', 'AradRush', 'AradPlay', 'AradPro', 'AradNova'],
+    ['MehradVip', 'MehradSpin', 'MehradBet', 'MehradWin', 'MehradLux', 'MehradTon', 'MehradRush', 'MehradPlay', 'MehradPro', 'MehradNova'],
+    ['MiraPearl', 'MiraSpin', 'MiraBet', 'MiraWin', 'MiraLux', 'MiraTon', 'MiraRush', 'MiraPlay', 'MiraPro', 'MiraNova'],
+    ['LunaNight', 'LunaSpin', 'LunaBet', 'LunaWin', 'LunaLux', 'LunaTon', 'LunaRush', 'LunaPlay', 'LunaPro', 'LunaNova'],
+    ['VianDream', 'VianSpin', 'VianBet', 'VianWin', 'VianLux', 'VianTon', 'VianRush', 'VianPlay', 'VianPro', 'VianNova'],
+    ['MinaBloom', 'MinaSpin', 'MinaBet', 'MinaWin', 'MinaLux', 'MinaTon', 'MinaRush', 'MinaPlay', 'MinaPro', 'MinaNova'],
+    ['RoyaMagic', 'RoyaSpin', 'RoyaBet', 'RoyaWin', 'RoyaLux', 'RoyaTon', 'RoyaRush', 'RoyaPlay', 'RoyaPro', 'RoyaNova'],
+    ['AylinStar', 'AylinSpin', 'AylinBet', 'AylinWin', 'AylinLux', 'AylinTon', 'AylinRush', 'AylinPlay', 'AylinPro', 'AylinNova'],
+    ['ZaraGlow', 'ZaraSpin', 'ZaraBet', 'ZaraWin', 'ZaraLux', 'ZaraTon', 'ZaraRush', 'ZaraPlay', 'ZaraPro', 'ZaraNova'],
+    ['NeginGem', 'NeginSpin', 'NeginBet', 'NeginWin', 'NeginLux', 'NeginTon', 'NeginRush', 'NeginPlay', 'NeginPro', 'NeginNova'],
+    ['DorsaCharm', 'DorsaSpin', 'DorsaBet', 'DorsaWin', 'DorsaLux', 'DorsaTon', 'DorsaRush', 'DorsaPlay', 'DorsaPro', 'DorsaNova'],
+  ];
   var slotLiveRows = [];
   var slotLiveTimer = null;
   var slotLiveRendered = '';
@@ -91,29 +142,77 @@ export const SLOT_SCRIPT = `
     });
   }
 
-  function slotLiveSymbolText(symbol){
+  function slotLiveSymbolFallback(symbol){
     var iconById = { cherry: '🍒', lemon: '🍋', orange: '🍊', grape: '🍇', watermelon: '🍉', diamond: '💎', gold: '⭐', lucky7: '7️⃣' };
     if(!symbol) return '—';
     return iconById[symbol.id] || symbol.label || symbol.id || '—';
   }
 
-  function seededSlotIndex(seed){
-    var x = Math.sin(seed * 9301.77 + 49297.13) * 233280;
+  function randomSlotLiveSymbolIndex(seed){
+    if(seed == null && window.crypto && window.crypto.getRandomValues){
+      var values = new Uint32Array(1);
+      window.crypto.getRandomValues(values);
+      return values[0] % symbols.length;
+    }
+    var numericSeed = Number(seed == null ? Date.now() : seed) || 0;
+    var x = Math.sin(numericSeed * 9301.77 + 49297.13) * 233280;
     return Math.abs(Math.floor(x)) % symbols.length;
   }
 
   function slotLiveResult(seed){
     var result = [];
     for(var i = 0; i < reelCount; i++){
-      result.push(slotLiveSymbolText(symbols[seededSlotIndex(seed + i * 17)]));
+      var index = randomSlotLiveSymbolIndex(seed + i * 17);
+      result.push({
+        id: symbols[index] && symbols[index].id,
+        label: symbols[index] && symbols[index].label,
+        imageUrl: symbols[index] && symbols[index].imageUrl,
+        fallback: slotLiveSymbolFallback(symbols[index])
+      });
     }
-    return result.join(' ');
+    return result;
+  }
+
+  function slotLiveName(profileIndex, seed){
+    var names = slotLiveProfiles[profileIndex] || ['Player' + (profileIndex + 1)];
+    var index = randomSlotLiveSymbolIndex(seed + profileIndex * 101) % names.length;
+    return names[index];
+  }
+
+  function slotLiveResultHtml(result){
+    return result.map(function(symbol){
+      if(symbol && symbol.imageUrl){
+        return '<span class="slot-live-symbol has-image"><img src="' + cleanText(symbol.imageUrl) + '" alt="' + cleanText(symbol.label || symbol.id || 'Slot symbol') + '" loading="lazy" decoding="async"><span>' + cleanText(symbol.fallback) + '</span></span>';
+      }
+      return '<span class="slot-live-symbol">' + cleanText(symbol && symbol.fallback ? symbol.fallback : '—') + '</span>';
+    }).join('');
+  }
+
+  function makeSlotLiveRow(profileIndex, seed, entering){
+    return {
+      key: profileIndex + '-' + Math.floor(seed),
+      profileIndex: profileIndex,
+      name: slotLiveName(profileIndex, seed),
+      result: slotLiveResult(seed),
+      entering: !!entering
+    };
+  }
+
+  function shuffleSlotProfiles(seed){
+    var indexes = slotLiveProfiles.map(function(_, index){ return index; });
+    for(var i = indexes.length - 1; i > 0; i--){
+      var j = randomSlotLiveSymbolIndex(seed + i * 13) % (i + 1);
+      var temp = indexes[i];
+      indexes[i] = indexes[j];
+      indexes[j] = temp;
+    }
+    return indexes;
   }
 
   function buildSlotLiveRows(){
     var tick = Math.floor(Date.now() / 9000);
-    slotLiveRows = slotLivePlayers.map(function(name, index){
-      return { name: name, result: slotLiveResult((index + 1) * 31 + tick * (index % 7 + 3)) };
+    slotLiveRows = shuffleSlotProfiles(tick).map(function(profileIndex, position){
+      return makeSlotLiveRow(profileIndex, (profileIndex + 1) * 31 + tick * (position % 7 + 3), position < 6);
     });
   }
 
@@ -121,24 +220,30 @@ export const SLOT_SCRIPT = `
     var list = q('slotLiveList');
     var count = q('slotLiveCount');
     if(!list) return;
-    if(count) count.textContent = slotLivePlayers.length + ' players';
+    if(count) count.textContent = slotLiveProfiles.length + ' players';
     if(!slotLiveRows.length) buildSlotLiveRows();
     var html = slotLiveRows.map(function(row){
-      return '<div class="slot-live-row"><span class="slot-live-user">' + cleanText(row.name) + '</span><span class="slot-live-result">' + cleanText(row.result) + '</span></div>';
+      var classes = 'slot-live-row' + (row.entering ? ' is-entering' : '');
+      return '<div class="' + classes + '" data-live-key="' + cleanText(row.key) + '"><span class="slot-live-user">' + cleanText(row.name) + '</span><span class="slot-live-result">' + slotLiveResultHtml(row.result) + '</span></div>';
     }).join('');
     if(html !== slotLiveRendered){
       list.innerHTML = html;
       slotLiveRendered = html;
+      window.setTimeout(function(){
+        slotLiveRows.forEach(function(row){ row.entering = false; });
+      }, 520);
     }
   }
 
   function refreshSlotLivePlayer(){
     if(!slotLiveRows.length) buildSlotLiveRows();
-    var index = Math.floor(Math.random() * slotLiveRows.length);
-    slotLiveRows[index] = {
-      name: slotLivePlayers[index],
-      result: slotLiveResult(Date.now() / 1000 + index * 43)
-    };
+    var profileIndex = Math.floor(Math.random() * slotLiveProfiles.length);
+    var seed = Date.now() / 1000 + profileIndex * 43 + Math.random() * 500;
+    var nextRow = makeSlotLiveRow(profileIndex, seed, true);
+    slotLiveRows = slotLiveRows.filter(function(row){ return row.profileIndex !== profileIndex; });
+    var insertAt = Math.floor(Math.random() * Math.min(4, slotLiveRows.length + 1));
+    slotLiveRows.splice(insertAt, 0, nextRow);
+    slotLiveRows = slotLiveRows.slice(0, slotLiveProfiles.length);
     renderSlotLive();
   }
 
