@@ -129,18 +129,18 @@ body:has(#slot.active) .tabs {
   opacity: 1;
 }
 
-.slot-spin-button {
+#slot .slot-spin-button {
   position: relative;
   z-index: 9;
   display: block;
   width: 84%;
   height: 50px;
   margin: 64px auto 0;
-  border: 1px solid rgba(255,255,255,.24);
+  border: 1px solid rgba(255,255,255,.18);
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(135deg, #5f0c26, #8a173f 46%, #3f0519);
-  box-shadow: 0 18px 42px rgba(52,0,18,.42), 0 0 28px rgba(105,6,38,.18), inset 0 1px 0 rgba(255,255,255,.30), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(12,0,5,.34);
+  background: linear-gradient(135deg, #2a020f 0%, #4b061d 42%, #6f0d2d 68%, #2f0313 100%) !important;
+  box-shadow: 0 18px 42px rgba(28,0,10,.56), 0 0 26px rgba(84,4,31,.18), inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -18px 34px rgba(8,0,4,.48);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
   font-size: 16px;
@@ -153,17 +153,17 @@ body:has(#slot.active) .tabs {
   animation: slotSpinGlassPulse 2.8s ease-in-out infinite;
 }
 
-.slot-spin-button:before {
+#slot .slot-spin-button:before {
   content: "";
   position: absolute;
   inset: 1px;
   z-index: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(255,130,165,.12), transparent 30%);
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(155,28,70,.16), transparent 32%);
   pointer-events: none;
 }
 
-.slot-spin-button:after {
+#slot .slot-spin-button:after {
   content: "";
   position: absolute;
   top: -35%;
@@ -172,22 +172,22 @@ body:has(#slot.active) .tabs {
   width: 42%;
   z-index: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255,150,180,.24), transparent);
+  background: linear-gradient(90deg, transparent, rgba(190,44,88,.22), transparent);
   transform: translateX(-130%) rotate(18deg);
   animation: slotSpinGlassShine 3.2s ease-in-out infinite;
   pointer-events: none;
 }
 
-.slot-spin-button:active {
+#slot .slot-spin-button:active {
   transform: translateY(1px) scale(.985);
 }
 
-.slot-spin-button:disabled {
+#slot .slot-spin-button:disabled {
   opacity: .62;
   animation: none;
 }
 
-.slot-spin-button:disabled:after {
+#slot .slot-spin-button:disabled:after {
   animation: none;
 }
 
@@ -282,12 +282,12 @@ body:has(#slot.active) .tabs {
 
 @keyframes slotSpinGlassPulse {
   0%, 100% {
-    box-shadow: 0 18px 42px rgba(52,0,18,.42), 0 0 28px rgba(105,6,38,.18), inset 0 1px 0 rgba(255,255,255,.30), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(12,0,5,.34);
-    border-color: rgba(255,255,255,.22);
+    box-shadow: 0 18px 42px rgba(28,0,10,.56), 0 0 26px rgba(84,4,31,.18), inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -18px 34px rgba(8,0,4,.48);
+    border-color: rgba(255,255,255,.16);
   }
   50% {
-    box-shadow: 0 21px 48px rgba(68,0,24,.52), 0 0 38px rgba(134,11,50,.30), inset 0 1px 0 rgba(255,255,255,.38), inset 0 0 0 1px rgba(255,255,255,.14), inset 0 -18px 34px rgba(12,0,5,.30);
-    border-color: rgba(255,255,255,.32);
+    box-shadow: 0 21px 48px rgba(36,0,13,.62), 0 0 34px rgba(106,8,40,.26), inset 0 1px 0 rgba(255,255,255,.22), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(8,0,4,.42);
+    border-color: rgba(255,255,255,.24);
   }
 }
 
@@ -298,8 +298,8 @@ body:has(#slot.active) .tabs {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot-spin-button,
-  .slot-spin-button:after {
+  #slot .slot-spin-button,
+  #slot .slot-spin-button:after {
     animation: none;
   }
 }
