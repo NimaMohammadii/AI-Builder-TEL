@@ -3,6 +3,7 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
   var CACHE_NAME='vexa-home-images-v1';
   var URL_PATH='/app/api/home-intro-image.png';
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  var state=window.__vexaHomeIntroImageState=window.__vexaHomeIntroImageState||{objectUrl:'',promise:null,loaded:false};
   function installCss(){
     if(document.getElementById('vexaHomeIntroNoCssReload'))return;
     var style=document.createElement('style');
@@ -21,13 +22,13 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     }
     return img;
   }
-  function load(){
-    installCss();
-    var img=ensureImg();
-    if(!img)return;
-    img.onerror=function(){this.onerror=null;this.src=URL_PATH};
-    if(!('caches' in window)||!window.fetch){if(img.getAttribute('src')!==URL_PATH)img.src=URL_PATH;return;}
-    caches.open(CACHE_NAME).then(function(cache){
+  function imageBlob(){
+    if(state.promise)return state.promise;
+    if(!('caches' in window)||!window.fetch){
+      state.promise=Promise.resolve(null);
+      return state.promise;
+    }
+    state.promise=caches.open(CACHE_NAME).then(function(cache){
       return cache.match(URL_PATH).then(function(hit){
         if(hit)return hit.blob();
         return fetch(URL_PATH,{credentials:'same-origin',cache:'force-cache'}).then(function(res){
@@ -36,12 +37,29 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
           return res.blob();
         });
       });
-    }).then(function(blob){
-      if(!blob)return;
-      var objectUrl=URL.createObjectURL(blob);
-      img.onload=function(){setTimeout(function(){try{URL.revokeObjectURL(objectUrl)}catch(e){}},30000)};
-      img.src=objectUrl;
-    }).catch(function(){if(img.getAttribute('src')!==URL_PATH)img.src=URL_PATH});
+    }).catch(function(){state.promise=null;return null});
+    return state.promise;
+  }
+  function pin(img,src,key){
+    if(!img||!src)return;
+    img.onerror=function(){this.onerror=null;if(this.getAttribute('src')!==URL_PATH)this.src=URL_PATH};
+    if(img.getAttribute('data-home-intro-cache-key')===key&&img.getAttribute('src')===src)return;
+    img.setAttribute('data-home-intro-cache-key',key);
+    img.src=src;
+    state.loaded=true;
+  }
+  function load(){
+    installCss();
+    var img=ensureImg();
+    if(!img)return;
+    if(state.objectUrl){pin(img,state.objectUrl,URL_PATH);return;}
+    if(state.loaded&&img.getAttribute('src')&&img.getAttribute('src')!==EMPTY)return;
+    if(!('caches' in window)||!window.fetch){pin(img,URL_PATH,URL_PATH);return;}
+    imageBlob().then(function(blob){
+      if(!blob){pin(img,URL_PATH,URL_PATH);return;}
+      if(!state.objectUrl)state.objectUrl=URL.createObjectURL(blob);
+      pin(img,state.objectUrl,URL_PATH);
+    }).catch(function(){pin(img,URL_PATH,URL_PATH)});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
   setTimeout(load,120);
