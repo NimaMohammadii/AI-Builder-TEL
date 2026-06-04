@@ -124,8 +124,14 @@ export const SLOT_SCRIPT = `
     return loopCount * symbols.length + localIndex;
   }
 
+  function symbolStep(){
+    var sample = document.querySelector('.slot-symbol');
+    return sample && sample.offsetHeight ? sample.offsetHeight : symbolHeight;
+  }
+
   function stripY(index){
-    return -index * symbolHeight + symbolHeight;
+    var step = symbolStep();
+    return -index * step + step;
   }
 
   function stripFragment(reelIndex, loops){
