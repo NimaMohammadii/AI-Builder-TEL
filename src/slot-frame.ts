@@ -43,7 +43,7 @@ function cleanSlotSymbolId(value: string): SlotSymbolId | null {
 }
 
 function slotSymbolUrl(id: SlotSymbolId, version: string): string {
-  return `/app/api/uploaded-image/slot-symbols/${id}.png?v=${version}`;
+  return `/app/api/uploaded-image/slot-symbols/${id}?v=${version}`;
 }
 
 async function symbolPayload(env: Env) {
@@ -59,6 +59,23 @@ async function symbolPayload(env: Env) {
     };
   }));
   return symbols;
+}
+
+async function slotSymbolResponse(env: Env, value: string): Promise<Response> {
+  const id = cleanSlotSymbolId(value);
+  if (!id) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const key = slotSymbolKey(id);
+  const head = await env.ASSETS.head(key).catch(() => null);
+  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'content-length': String(head.size),
+    },
+  });
 }
 
 app.get('/app/api/slot-frame', async (c) => {
@@ -85,21 +102,12 @@ app.get('/app/api/slot-symbols', async (c) => {
   return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
 });
 
+app.get('/app/api/uploaded-image/slot-symbols/:id', async (c) => {
+  return slotSymbolResponse(c.env, c.req.param('id'));
+});
+
 app.get('/app/api/uploaded-image/slot-symbols/:id.png', async (c) => {
-  const id = cleanSlotSymbolId(c.req.param('id'));
-  if (!id) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  const key = slotSymbolKey(id);
-  const head = await c.env.ASSETS.head(key).catch(() => null);
-  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  const object = await c.env.ASSETS.get(key).catch(() => null);
-  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, {
-    headers: {
-      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
-      'cache-control': 'public, max-age=31536000, immutable',
-      'content-length': String(head.size),
-    },
-  });
+  return slotSymbolResponse(c.env, c.req.param('id'));
 });
 
 app.post('/admin/api/upload-slot-frame', async (c) => {
