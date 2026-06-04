@@ -15,23 +15,18 @@ export const SLOT_SECTION = `
       </div>
     </div>
 
-    <button id="slotSpinButton" class="slot-spin-button" type="button">
-      Spin
-    </button>
   </div>
 
   <div class="slot-control-panel">
-    <div class="slot-controls">
-      <div class="slot-field slot-point-field">
-        <span class="slot-label">Point Amount</span>
-        <div class="slot-point-amount">
-          <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01"/>
-          <div class="slot-quick-actions">
-            <button type="button" data-slot-action="amount-half">1/2</button>
-            <button type="button" data-slot-action="amount-double">2x</button>
-          </div>
-        </div>
-      </div>
+    <div class="slot-controls slot-image-controls">
+      <button id="slotSpinButton" class="slot-image-control slot-spin-button" type="button" aria-label="Spin">
+        <img id="slotSpinButtonImage" class="slot-control-image" alt="" aria-hidden="true"/>
+        <span class="slot-control-fallback">Spin</span>
+      </button>
+      <label class="slot-image-control slot-input-control" aria-label="Point Amount">
+        <img id="slotInputButtonImage" class="slot-control-image" alt="" aria-hidden="true"/>
+        <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01"/>
+      </label>
     </div>
   </div>
 </section>
