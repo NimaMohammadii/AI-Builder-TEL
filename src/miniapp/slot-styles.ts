@@ -3,7 +3,7 @@ export const SLOT_STYLES = `
   position: relative;
   min-height: calc(100dvh - 130px);
   padding: 4px 0 18px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 body:has(#slot.active) .tabs {
@@ -27,10 +27,11 @@ body:has(#slot.active) .tabs {
   left: 0;
   z-index: 8;
   width: 100%;
-  height: 100%;
+  height: 482px;
   object-fit: fill;
   opacity: 0;
   transition: opacity .22s ease;
+  pointer-events: none;
 }
 
 .slot-frame-image.is-loaded {
@@ -133,7 +134,7 @@ body:has(#slot.active) .tabs {
   position: relative;
   z-index: 9;
   width: 100%;
-  margin: 20px 0 10px;
+  margin: 116px 0 10px;
   padding: 12px 14px;
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
@@ -274,6 +275,10 @@ body:has(#slot.active) .tabs {
     transform: translateX(-4px);
   }
 
+  .slot-frame-image {
+    height: 452px;
+  }
+
   .slot-reel-strip {
     top: 12px;
   }
@@ -295,7 +300,7 @@ body:has(#slot.active) .tabs {
   }
 
   .slot-status-panel {
-    margin-top: 18px;
+    margin-top: 112px;
   }
 }
 `;
