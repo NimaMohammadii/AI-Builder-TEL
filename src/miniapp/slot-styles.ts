@@ -108,12 +108,25 @@ body:has(#slot.active) .tabs {
   user-select: none;
 }
 
+.slot-symbol-fallback {
+  display: block;
+}
+
+.slot-symbol.has-image .slot-symbol-fallback {
+  display: none;
+}
+
 .slot-symbol-image {
   width: 76px;
   height: 76px;
   object-fit: contain;
   display: block;
   pointer-events: none;
+  opacity: 0;
+}
+
+.slot-symbol.has-image .slot-symbol-image {
+  opacity: 1;
 }
 
 .slot-spin-button {
