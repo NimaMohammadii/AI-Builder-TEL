@@ -18,6 +18,8 @@ export const MINES_SCRIPT = `
   var lastFriendMessage='';
   var tileImages={safe:'/app/api/uploaded-image/mines-safe.png',bomb:'/app/api/uploaded-image/mines-bomb.png'};
   var state={active:false,ended:false,amountNano:10000000,mines:3,revealed:0,bombs:{},safe:{},multiplier:1};
+  var xpRoundActive=false;
+  var xpRoundFinished=false;
   function q(id){return document.getElementById(id)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
   function toNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*NANO))}
@@ -34,6 +36,10 @@ export const MINES_SCRIPT = `
   function sound(name){if(name==='start'){tone(240,.09,'sine',.026);setTimeout(function(){tone(360,.11,'sine',.026)},55)}else if(name==='safe'){tone(520,.075,'triangle',.022);setTimeout(function(){tone(720,.08,'triangle',.018)},38)}else if(name==='mine'){tone(120,.18,'sawtooth',.026);setTimeout(function(){tone(72,.24,'sine',.022)},70)}else if(name==='cash'){tone(620,.08,'triangle',.025);setTimeout(function(){tone(880,.1,'triangle',.022)},55);setTimeout(function(){tone(1180,.12,'sine',.018)},120)}}
   function readTonBalance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
   function addTonDelta(deltaNano){if(window.VexaTonBalance)window.VexaTonBalance.add(Math.floor(Number(deltaNano)||0));else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(deltaNano)||0)}}))}
+  function addGameXp(amount,source,metadata){
+    if(!window.VexaLevel||typeof window.VexaLevel.add!=='function')return;
+    window.VexaLevel.add(amount,source,Object.assign({game:'mines'},metadata||{}));
+  }
   function friendPointKey(kind,roomId){return 'minesFriend:'+kind+':'+String(roomId||'')}
   function getFriendAmount(room){return Math.max(1,Math.floor(Number(room&&room.amountNano)||Number(state.amountNano)||10000000))}
   function hasFriendRoundPoints(room){return Boolean(room&&room.id&&localStorage.getItem(friendPointKey('joined',room.id)))||readTonBalance()>=getFriendAmount(room)}
@@ -56,9 +62,69 @@ export const MINES_SCRIPT = `
   function revealTile(tile,kind){if(!tile||tile.classList.contains('revealed'))return;setTileBack(tile,kind);tile.disabled=true;tile.setAttribute('aria-label',kind==='bomb'?'Mine tile':'Safe tile');tile.classList.add('revealed',kind==='bomb'?'bomb':'safe')}
   function revealAll(){document.querySelectorAll('[data-mine-cell]').forEach(function(tile){var i=Number(tile.getAttribute('data-mine-cell'));revealTile(tile,state.bombs[i]?'bomb':'safe')})}
   function revealMines(){document.querySelectorAll('[data-mine-cell]').forEach(function(tile){var i=Number(tile.getAttribute('data-mine-cell'));if(state.bombs[i])revealTile(tile,'bomb');else tile.disabled=true})}
-  function start(){refresh();if(friendMode||state.active)return;var balance=readTonBalance();if(balance<state.amountNano){setStatus('Not enough points');return}sound('start');state.active=true;state.ended=false;state.revealed=0;state.bombs={};state.safe={};state.multiplier=1;addTonDelta(-state.amountNano);placeBombs();buildBoard();setStatus('Choose a safe tile');refresh()}
-  function cashout(){if(friendMode||!state.active||state.revealed<1)return;var resultNano=Math.max(0,Math.floor(state.amountNano*state.multiplier));sound('cash');state.active=false;state.ended=true;addTonDelta(resultNano);revealAll();setStatus('Result +' + fromNano(resultNano));refresh()}
-  function hit(cell){if(friendMode){friendHit(cell);return}if(!state.active||state.ended)return;var i=Number(cell.getAttribute('data-mine-cell'));if(!Number.isFinite(i)||state.safe[i]||cell.classList.contains('revealed'))return;if(state.bombs[i]){sound('mine');state.active=false;state.ended=true;revealMines();setStatus('Hidden tile found');refresh();return}sound('safe');state.safe[i]=true;state.revealed++;revealTile(cell,'safe');calcMultiplier();if(state.revealed>=size-state.mines){cashout();return}refresh()}
+  function start(){
+    refresh();
+    if(friendMode||state.active)return;
+    var balance=readTonBalance();
+    if(balance<state.amountNano){setStatus('Not enough points');return}
+    sound('start');
+    state.active=true;
+    state.ended=false;
+    state.revealed=0;
+    state.bombs={};
+    state.safe={};
+    state.multiplier=1;
+    addTonDelta(-state.amountNano);
+    placeBombs();
+    buildBoard();
+    xpRoundActive=true;
+    xpRoundFinished=false;
+    addGameXp(2,'game-start',{action:'start'});
+    setStatus('Choose a safe tile');
+    refresh();
+  }
+  function cashout(){
+    if(friendMode||!state.active||state.revealed<1)return;
+    var resultNano=Math.max(0,Math.floor(state.amountNano*state.multiplier));
+    sound('cash');
+    state.active=false;
+    state.ended=true;
+    addTonDelta(resultNano);
+    revealAll();
+    if(xpRoundActive&&!xpRoundFinished){
+      xpRoundFinished=true;
+      addGameXp(state.multiplier<2?15:25,'game-win',{result:'cashout',multiplier:Number(state.multiplier.toFixed(2))});
+    }
+    setStatus('Result +' + fromNano(resultNano));
+    refresh();
+  }
+  function hit(cell){
+    if(friendMode){friendHit(cell);return}
+    if(!state.active||state.ended)return;
+    var i=Number(cell.getAttribute('data-mine-cell'));
+    if(!Number.isFinite(i)||state.safe[i]||cell.classList.contains('revealed'))return;
+    if(state.bombs[i]){
+      sound('mine');
+      state.active=false;
+      state.ended=true;
+      revealMines();
+      if(xpRoundActive&&!xpRoundFinished){
+        xpRoundFinished=true;
+        addGameXp(5,'game-lose',{result:'mine'});
+      }
+      setStatus('Hidden tile found');
+      refresh();
+      return;
+    }
+    sound('safe');
+    state.safe[i]=true;
+    state.revealed++;
+    revealTile(cell,'safe');
+    addGameXp(1,'game-action',{action:'safe-tile',revealed:state.revealed});
+    calcMultiplier();
+    if(state.revealed>=size-state.mines){cashout();return}
+    refresh();
+  }
   function tg(){return window.Telegram&&window.Telegram.WebApp}
   function user(){var t=tg();var u=(t&&t.initDataUnsafe&&t.initDataUnsafe.user)||{};var id=String(u.id||localStorage.getItem('ownerId')||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,80);if(!id){id=localStorage.getItem('minesFriendUserId')||('local_'+Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('minesFriendUserId',id)}var name=String(u.first_name||u.username||localStorage.getItem('ownerName')||'Player').replace(/[<>]/g,'').slice(0,80);return{id:id,name:name||'Player'}}
   function api(path,opt){return fetch(path,Object.assign({credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'}},opt||{})).then(function(r){return r.json().catch(function(){return{error:'Invalid response'}}).then(function(j){if(!r.ok)throw new Error(j.error||'Request failed');return j})})}
