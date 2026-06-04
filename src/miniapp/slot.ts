@@ -15,6 +15,12 @@ export const SLOT_SECTION = `
       </div>
     </div>
 
+    <button id="slotSpinButton" class="slot-spin-button" type="button">
+      Spin
+    </button>
+  </div>
+
+  <div class="slot-control-panel">
     <div class="slot-status-panel" aria-live="polite">
       <div id="slotMultiplier" class="slot-multiplier">1.00x</div>
       <div id="slotResultText" class="slot-result-text">Set point amount</div>
@@ -32,10 +38,6 @@ export const SLOT_SECTION = `
         </div>
       </div>
     </div>
-
-    <button id="slotSpinButton" class="slot-spin-button" type="button">
-      Spin
-    </button>
   </div>
 </section>
 `;
