@@ -159,6 +159,10 @@ body:has(#slot.active) .tabs {
   -webkit-backface-visibility: hidden;
 }
 
+.slot-machine.is-spinning .slot-symbol {
+  filter: none;
+}
+
 .slot-machine.is-win .slot-window {
   animation: slotWinPulse .7s ease both;
 }
