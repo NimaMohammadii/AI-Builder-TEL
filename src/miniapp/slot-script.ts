@@ -43,15 +43,15 @@ export const SLOT_SCRIPT = `
 
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(980, now);
-    filter.frequency.exponentialRampToValueAtTime(360, now + 4.8);
+    filter.frequency.exponentialRampToValueAtTime(360, now + 5.8);
 
     motor.type = 'sawtooth';
     motor.frequency.setValueAtTime(96, now);
-    motor.frequency.exponentialRampToValueAtTime(42, now + 4.8);
+    motor.frequency.exponentialRampToValueAtTime(42, now + 5.8);
 
     pulse.type = 'square';
     pulse.frequency.setValueAtTime(18, now);
-    pulse.frequency.exponentialRampToValueAtTime(7, now + 4.8);
+    pulse.frequency.exponentialRampToValueAtTime(7, now + 5.8);
 
     motor.connect(filter);
     pulse.connect(filter);
@@ -77,14 +77,14 @@ export const SLOT_SCRIPT = `
 
     slotSound.master.gain.cancelScheduledValues(now);
     slotSound.master.gain.setValueAtTime(Math.max(slotSound.master.gain.value, 0.0001), now);
-    slotSound.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    slotSound.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 
-    try { slotSound.motor.stop(now + 0.14); } catch(e) {}
-    try { slotSound.pulse.stop(now + 0.14); } catch(e) {}
+    try { slotSound.motor.stop(now + 0.2); } catch(e) {}
+    try { slotSound.pulse.stop(now + 0.2); } catch(e) {}
 
     window.setTimeout(function(){
       context.close().catch(function(){});
-    }, 180);
+    }, 240);
 
     slotSound = null;
   }
@@ -123,18 +123,23 @@ export const SLOT_SCRIPT = `
     return document.querySelector('[data-slot-reel="' + reelIndex + '"] .slot-reel-strip');
   }
 
-  function buildStrip(reelIndex, loops){
-    var strip = stripNode(reelIndex);
-    if(!strip) return;
-
-    strip.innerHTML = '';
-
+  function stripFragment(reelIndex, loops){
+    var fragment = document.createDocumentFragment();
     var total = Math.max(18, loops * symbols.length + 6);
     var offset = reelIndex % symbols.length;
 
     for(var i = 0; i < total; i++){
-      strip.appendChild(createSymbol(symbols[(i + offset) % symbols.length]));
+      fragment.appendChild(createSymbol(symbols[(i + offset) % symbols.length]));
     }
+
+    return fragment;
+  }
+
+  function buildStrip(reelIndex, loops){
+    var strip = stripNode(reelIndex);
+    if(!strip) return;
+
+    strip.replaceChildren(stripFragment(reelIndex, loops));
   }
 
   function setReelPosition(reelIndex, index, animate){
@@ -142,7 +147,7 @@ export const SLOT_SCRIPT = `
     if(!strip) return;
 
     var y = -index * symbolHeight + symbolHeight;
-    strip.style.transition = animate ? 'transform .65s cubic-bezier(.18,.92,.16,1)' : 'none';
+    strip.style.transition = animate ? 'transform .75s cubic-bezier(.12,.82,.12,1)' : 'none';
     strip.style.transform = 'translate3d(0,' + y + 'px,0)';
   }
 
@@ -202,18 +207,20 @@ export const SLOT_SCRIPT = `
       var strip = stripNode(reelIndex);
       if(!strip) return;
 
-      var loops = 14 + reelIndex * 2;
+      var loops = 16 + reelIndex * 2;
       var finalIndex = loops * symbols.length + symbolIndex;
-      var duration = 4300 + reelIndex * 420;
+      var duration = 5000 + reelIndex * 420;
       var y = -finalIndex * symbolHeight + symbolHeight;
+      var fragment = stripFragment(reelIndex, loops + 2);
 
-      buildStrip(reelIndex, loops + 2);
       strip.style.transition = 'none';
       strip.style.transform = 'translate3d(0,' + symbolHeight + 'px,0)';
+      strip.replaceChildren(fragment);
+      strip.offsetHeight;
 
       requestAnimationFrame(function(){
         requestAnimationFrame(function(){
-          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.12,.86,.12,1)';
+          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
           strip.style.transform = 'translate3d(0,' + y + 'px,0)';
         });
       });
@@ -225,7 +232,7 @@ export const SLOT_SCRIPT = `
         pending--;
 
         if(pending <= 0) finish(result);
-      }, duration + 180);
+      }, duration + 220);
     });
   }
 
