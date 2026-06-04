@@ -130,52 +130,7 @@ body:has(#slot.active) .tabs {
 }
 
 #slot .slot-spin-button {
-  position: relative;
-  z-index: 9;
-  display: block;
-  width: 84%;
-  height: 50px;
-  margin: 64px auto 0;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 20px;
-  color: #fff;
-  background: linear-gradient(135deg, #170007 0%, #320313 42%, #51071f 68%, #190008 100%) !important;
-  box-shadow: 0 18px 42px rgba(12,0,5,.66), 0 0 22px rgba(68,3,24,.14), inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -18px 34px rgba(5,0,2,.58);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  font-size: 16px;
-  font-weight: 950;
-  letter-spacing: -.03em;
-  text-shadow: 0 1px 12px rgba(0,0,0,.48);
-  overflow: hidden;
-  isolation: isolate;
-  transition: transform .18s ease, box-shadow .22s ease, border-color .22s ease;
-  animation: slotSpinGlassPulse 2.8s ease-in-out infinite;
-}
-
-#slot .slot-spin-button:before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  z-index: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(110,18,48,.12), transparent 32%);
-  pointer-events: none;
-}
-
-#slot .slot-spin-button:after {
-  content: "";
-  position: absolute;
-  top: -35%;
-  bottom: -35%;
-  left: -55%;
-  width: 42%;
-  z-index: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(140,28,64,.16), transparent);
-  transform: translateX(-130%) rotate(18deg);
-  animation: slotSpinGlassShine 3.2s ease-in-out infinite;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 #slot .slot-spin-button:active {
@@ -184,76 +139,118 @@ body:has(#slot.active) .tabs {
 
 #slot .slot-spin-button:disabled {
   opacity: .62;
-  animation: none;
-}
-
-#slot .slot-spin-button:disabled:after {
-  animation: none;
 }
 
 .slot-control-panel {
   position: relative;
   z-index: 9;
   width: min(100%, 408px);
-  margin: -48px auto 0;
+  margin: -38px auto 0;
 }
 
 .slot-controls {
-  width: 84%;
+  width: 88%;
   margin: 0 auto;
 }
 
-.slot-field {
+.slot-image-controls {
   display: grid;
-  gap: 7px;
-}
-
-.slot-label {
-  color: rgba(255,255,255,.54);
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: -.02em;
-}
-
-.slot-point-amount {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   align-items: center;
-  gap: 6px;
-  min-height: 48px;
-  padding: 7px 7px 7px 13px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.06);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
-  box-sizing: border-box;
 }
 
-.slot-point-amount input {
+.slot-image-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  color: #fff;
+  background: transparent !important;
+  box-shadow: none;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+.slot-control-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
+}
+
+.slot-control-image.is-loaded {
+  opacity: 1;
+}
+
+.slot-control-fallback {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: inherit;
+  background: linear-gradient(135deg, #170007 0%, #320313 42%, #51071f 68%, #190008 100%);
+  box-shadow: 0 18px 42px rgba(12,0,5,.52), inset 0 1px 0 rgba(255,255,255,.12);
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: -.03em;
+  text-shadow: 0 1px 12px rgba(0,0,0,.48);
+}
+
+.slot-control-image.is-loaded + .slot-control-fallback {
+  opacity: 0;
+}
+
+.slot-input-control {
+  cursor: text;
+}
+
+.slot-input-control input {
+  position: relative;
+  z-index: 1;
+  width: 72%;
+  height: 70%;
   border: 0;
   outline: 0;
   color: #fff;
   background: transparent;
   font-size: 16px;
-  font-weight: 900;
-  letter-spacing: -.03em;
-}
-
-.slot-quick-actions {
-  display: flex;
-  gap: 5px;
-}
-
-.slot-quick-actions button {
-  min-width: 34px;
-  height: 32px;
-  border: 0;
-  border-radius: 13px;
-  color: #fff;
-  background: rgba(255,255,255,.10);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-  font-size: 11px;
   font-weight: 950;
+  text-align: center;
+  letter-spacing: -.03em;
+  text-shadow: 0 1px 10px rgba(0,0,0,.58);
+}
+
+.slot-input-control input:disabled {
+  opacity: .62;
+}
+
+.slot-input-control:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: inherit;
+  background: rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+.slot-input-control:has(.slot-control-image.is-loaded):before {
+  opacity: 0;
 }
 
 .slot-machine.is-spinning .slot-window {
@@ -298,9 +295,8 @@ body:has(#slot.active) .tabs {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #slot .slot-spin-button,
-  #slot .slot-spin-button:after {
-    animation: none;
+  #slot .slot-spin-button {
+    transition: none;
   }
 }
 
@@ -335,7 +331,11 @@ body:has(#slot.active) .tabs {
 
   .slot-control-panel {
     width: min(100%, 398px);
-    margin-top: -48px;
+    margin-top: -38px;
+  }
+
+  .slot-image-control {
+    height: 54px;
   }
 }
 `;
