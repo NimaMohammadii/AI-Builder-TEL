@@ -7,6 +7,11 @@ const RESULT_DEDUPE_PREFIX = 'plinko-live-result-key-';
 const RESULT_DEDUPE_MS = 2500;
 const HISTORY_LIMIT = 50;
 
+const localSockets = new Set<WebSocket>();
+const localUserLast = new Map<string, number>();
+const localResultLast = new Map<string, number>();
+let localHistory: PlinkoResult[] = [];
+
 type LiveEnv = Env & { PLINKO_LIVE?: DurableObjectNamespace };
 type LiveInput = { userId?: unknown; name?: unknown; photoUrl?: unknown; amount?: unknown };
 type ResultInput = {
@@ -32,15 +37,15 @@ type PlinkoResult = {
 
 export function registerPlinkoLiveRoutes(app: { get: Function; post: Function }): void {
   app.get('/app/api/plinko/live/ws', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    return fetchRoom(c.env, c.req.raw, 503);
+    return fetchRoomOrFallback(c.env, c.req.raw, localConnect);
   });
 
   app.post('/app/api/plinko/live/send', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    return fetchRoomOrFallback(c.env, c.req.raw, fallbackSend);
+    return fetchRoomOrFallback(c.env, c.req.raw, localSend);
   });
 
   app.post('/app/api/plinko/live/result', async (c: { env: LiveEnv; req: { raw: Request } }) => {
-    return fetchRoom(c.env, c.req.raw, 200);
+    return fetchRoomOrFallback(c.env, c.req.raw, localResult);
   });
 }
 
@@ -83,35 +88,15 @@ export class PlinkoLiveRoom {
     if (waitMs > 0) return json({ error: 'Wait a moment.', waitMs }, 429);
     await this.state.storage.put(key, now);
 
-    const event = {
-      id: crypto.randomUUID(),
-      userId,
-      name: cleanName(body.name),
-      photoUrl: cleanPhotoUrl(body.photoUrl),
-      amount: cleanAmount(body.amount),
-      createdAt: now,
-      seed: Math.floor(Math.random() * 1000000000),
-    };
+    const event = makeBallEvent(body, userId, now);
     this.publish({ type: 'plinko-ball', event });
     return json({ ok: true, event });
   }
 
   private async result(request: Request): Promise<Response> {
     const body = await request.json().catch(() => ({})) as ResultInput;
-    const amount = cleanAmount(body.amount);
-    const multiplier = cleanMultiplier(body.multiplier);
-    if (amount <= 0 || multiplier <= 0) return json({ error: 'Invalid result.' }, 400);
-    const total = cleanAmount(Number(body.total) || amount * multiplier);
-    const result: PlinkoResult = {
-      id: cleanId(body.id) || crypto.randomUUID(),
-      userId: cleanUserId(body.userId),
-      name: cleanName(body.name),
-      photoUrl: cleanPhotoUrl(body.photoUrl),
-      amount,
-      multiplier,
-      total,
-      createdAt: Date.now(),
-    };
+    const result = makeResult(body);
+    if (!result) return json({ error: 'Invalid result.' }, 400);
 
     const dedupeKey = RESULT_DEDUPE_PREFIX + naturalResultKey(result);
     const last = Number(await this.state.storage.get<number>(dedupeKey).catch(() => 0)) || 0;
@@ -128,7 +113,7 @@ export class PlinkoLiveRoom {
   private async history(): Promise<PlinkoResult[]> {
     const history = await this.state.storage.get<PlinkoResult[]>(HISTORY_KEY).catch(() => null);
     if (!Array.isArray(history)) return [];
-    return history.filter((item) => Number(item?.amount) > 0 && Number(item?.multiplier) > 0 && Number(item?.total) > 0).slice(0, HISTORY_LIMIT);
+    return history.filter(isValidResult).slice(0, HISTORY_LIMIT);
   }
 
   private publish(value: unknown): void {
@@ -136,18 +121,6 @@ export class PlinkoLiveRoom {
     for (const socket of this.sockets) {
       try { socket.send(text); } catch { this.sockets.delete(socket); }
     }
-  }
-}
-
-async function fetchRoom(env: LiveEnv, request: Request, fallbackStatus: number): Promise<Response> {
-  const stub = getRoom(env);
-  if (!stub) return json({ error: 'Live is not configured.' }, fallbackStatus);
-
-  try {
-    return await stub.fetch(request);
-  } catch (error) {
-    console.error('plinko live route failed', error);
-    return json({ error: 'Plinko live is temporarily unavailable.' }, fallbackStatus);
   }
 }
 
@@ -163,30 +136,93 @@ async function fetchRoomOrFallback(
   try {
     return await stub.fetch(request);
   } catch (error) {
-    console.error('plinko live send failed', error);
+    console.error('plinko live room failed', error);
     return fallback(fallbackRequest);
   }
 }
 
-async function fallbackSend(request: Request): Promise<Response> {
+async function localConnect(request: Request): Promise<Response> {
+  if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'Expected websocket.' }, 426);
+  const pair = new WebSocketPair();
+  const client = pair[0];
+  const server = pair[1];
+  server.accept();
+  localSockets.add(server);
+  server.addEventListener('close', () => localSockets.delete(server));
+  server.addEventListener('error', () => localSockets.delete(server));
+  safeSend(server, { type: 'plinko-history', events: localHistory });
+  return new Response(null, { status: 101, webSocket: client });
+}
+
+async function localSend(request: Request): Promise<Response> {
   const body = await request.json().catch(() => ({})) as LiveInput;
   const userId = cleanUserId(body.userId);
   if (!userId) return json({ error: 'Missing user.' }, 400);
 
   const now = Date.now();
-  return json({
-    ok: true,
-    fallback: true,
-    event: {
-      id: crypto.randomUUID(),
-      userId,
-      name: cleanName(body.name),
-      photoUrl: cleanPhotoUrl(body.photoUrl),
-      amount: cleanAmount(body.amount),
-      createdAt: now,
-      seed: Math.floor(Math.random() * 1000000000),
-    },
-  });
+  const last = localUserLast.get(userId) || 0;
+  const waitMs = USER_DELAY_MS - (now - last);
+  if (waitMs > 0) return json({ error: 'Wait a moment.', waitMs }, 429);
+  localUserLast.set(userId, now);
+
+  const event = makeBallEvent(body, userId, now);
+  localPublish({ type: 'plinko-ball', event });
+  return json({ ok: true, fallback: true, event });
+}
+
+async function localResult(request: Request): Promise<Response> {
+  const body = await request.json().catch(() => ({})) as ResultInput;
+  const result = makeResult(body);
+  if (!result) return json({ error: 'Invalid result.' }, 400);
+
+  const key = naturalResultKey(result);
+  const last = localResultLast.get(key) || 0;
+  if (Date.now() - last < RESULT_DEDUPE_MS) return json({ ok: true, duplicate: true, event: result });
+  localResultLast.set(key, Date.now());
+
+  localHistory = [result, ...localHistory.filter((item) => item.id !== result.id)].filter(isValidResult).slice(0, HISTORY_LIMIT);
+  localPublish({ type: 'plinko-result', event: result });
+  return json({ ok: true, fallback: true, event: result });
+}
+
+function localPublish(value: unknown): void {
+  const text = JSON.stringify(value);
+  for (const socket of localSockets) {
+    try { socket.send(text); } catch { localSockets.delete(socket); }
+  }
+}
+
+function makeBallEvent(body: LiveInput, userId: string, createdAt: number) {
+  return {
+    id: crypto.randomUUID(),
+    userId,
+    name: cleanName(body.name),
+    photoUrl: cleanPhotoUrl(body.photoUrl),
+    amount: cleanAmount(body.amount),
+    createdAt,
+    seed: Math.floor(Math.random() * 1000000000),
+  };
+}
+
+function makeResult(body: ResultInput): PlinkoResult | null {
+  const amount = cleanAmount(body.amount);
+  const multiplier = cleanMultiplier(body.multiplier);
+  if (amount <= 0 || multiplier <= 0) return null;
+
+  return {
+    id: cleanId(body.id) || crypto.randomUUID(),
+    userId: cleanUserId(body.userId),
+    name: cleanName(body.name),
+    photoUrl: cleanPhotoUrl(body.photoUrl),
+    amount,
+    multiplier,
+    total: cleanAmount(Number(body.total) || amount * multiplier),
+    createdAt: Date.now(),
+  };
+}
+
+function isValidResult(item: PlinkoResult): boolean {
+  return Number(item?.amount) > 0 && Number(item?.multiplier) > 0 && Number(item?.total) > 0;
 }
 
 function getRoom(env: LiveEnv): DurableObjectStub | null {
