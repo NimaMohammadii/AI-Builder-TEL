@@ -129,12 +129,99 @@ body:has(#slot.active) .tabs {
   opacity: 1;
 }
 
+.slot-status-panel {
+  position: relative;
+  z-index: 9;
+  width: 100%;
+  margin: 20px 0 10px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06);
+  text-align: center;
+}
+
+.slot-multiplier {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -.05em;
+}
+
+.slot-result-text {
+  margin-top: 6px;
+  color: rgba(255,255,255,.58);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.slot-controls {
+  position: relative;
+  z-index: 9;
+  width: 100%;
+  margin: 0 0 10px;
+}
+
+.slot-field {
+  display: grid;
+  gap: 8px;
+}
+
+.slot-label {
+  color: rgba(255,255,255,.54);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: -.02em;
+}
+
+.slot-point-amount {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 7px 7px 7px 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+.slot-point-amount input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #fff;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+.slot-quick-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.slot-quick-actions button {
+  min-width: 42px;
+  height: 34px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+  font-size: 12px;
+  font-weight: 950;
+}
+
 .slot-spin-button {
   position: relative;
   z-index: 9;
   width: 100%;
   height: 50px;
-  margin-top: 64px;
+  margin-top: 8px;
   border: 0;
   border-radius: 20px;
   color: #fff;
@@ -161,6 +248,11 @@ body:has(#slot.active) .tabs {
 
 .slot-machine.is-spinning .slot-symbol {
   filter: none;
+}
+
+.slot-machine.is-spinning .slot-point-amount {
+  pointer-events: none;
+  opacity: .62;
 }
 
 .slot-machine.is-win .slot-window {
@@ -200,6 +292,10 @@ body:has(#slot.active) .tabs {
     width: min(100%, 398px);
     margin-top: 6px;
     transform: translateY(-42px);
+  }
+
+  .slot-status-panel {
+    margin-top: 18px;
   }
 }
 `;
