@@ -18,6 +18,11 @@ export const SLOT_SCRIPT = `
   var totalSpinMs = 7600;
   var reelStopGapMs = 800;
   var soundStopDelayMs = 1000;
+  var NANO = 1000000000;
+  var amountNano = 10000000;
+  var extraTurns = 0;
+  var activeCostNano = 0;
+  var activeFreeTurn = false;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
@@ -30,6 +35,32 @@ export const SLOT_SCRIPT = `
     return document.getElementById(id);
   }
 
+  function clamp(value, min, max){
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function toNano(value){
+    return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * NANO));
+  }
+
+  function fromNano(value){
+    var amount = Math.max(0, Math.floor(Number(value) || 0)) / NANO;
+    return amount.toFixed(2);
+  }
+
+  function readPointBalance(){
+    return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0;
+  }
+
+  function addPointDelta(deltaNano){
+    var delta = Math.floor(Number(deltaNano) || 0);
+    if(window.VexaTonBalance){
+      window.VexaTonBalance.add(delta);
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change', { detail: { deltaNano: delta } }));
+  }
+
   function awardXP(amount, source, metadata){
     if(window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'slot' });
   }
@@ -37,6 +68,51 @@ export const SLOT_SCRIPT = `
   function setBrand(title){
     var brand = q('brandTitle');
     if(brand) brand.textContent = title;
+  }
+
+  function setResultText(text){
+    var node = q('slotResultText');
+    if(node) node.textContent = text;
+  }
+
+  function setMultiplierText(value){
+    var node = q('slotMultiplier');
+    if(!node) return;
+    node.textContent = Number(value || 0).toFixed(2) + 'x';
+  }
+
+  function syncAmountInput(){
+    var input = q('slotAmount');
+    if(input) input.value = fromNano(amountNano);
+  }
+
+  function refreshControls(){
+    var button = q('slotSpinButton');
+    var input = q('slotAmount');
+    if(input) input.disabled = spinning;
+    if(button){
+      button.disabled = spinning;
+      button.textContent = spinning ? 'Running' : extraTurns > 0 ? 'Use Extra Turn' : 'Spin';
+    }
+  }
+
+  function readAmountInput(){
+    var input = q('slotAmount');
+    amountNano = clamp(toNano(input && input.value), 1, 999999999999999);
+    syncAmountInput();
+    return amountNano;
+  }
+
+  function setAmountNano(nextNano){
+    amountNano = clamp(Math.floor(Number(nextNano) || 0), 1, 999999999999999);
+    syncAmountInput();
+    refreshControls();
+  }
+
+  function adjustAmount(mode){
+    readAmountInput();
+    if(mode === 'amount-half') setAmountNano(Math.max(1, Math.floor(amountNano / 2)));
+    if(mode === 'amount-double') setAmountNano(amountNano * 2);
   }
 
   function prepareSlotSound(url){
@@ -267,14 +343,27 @@ export const SLOT_SCRIPT = `
     return { tier: 'standard', multiplier: 0, xp: 5, extraTurn: false };
   }
 
+  function resultLabel(profile, deltaNano){
+    if(profile.extraTurn) return 'Extra turn ready';
+    if(deltaNano > 0) return 'Result +' + fromNano(deltaNano);
+    return 'Result 0.00';
+  }
+
   function finish(result){
     var button = q('slotSpinButton');
     var box = document.querySelector('.slot-machine');
     var profile = resultProfile(result);
     var active = profile.multiplier > 0 || profile.extraTurn;
+    var resultNano = activeCostNano > 0 && profile.multiplier > 0 ? Math.floor(activeCostNano * profile.multiplier) : 0;
 
     spinning = false;
     scheduleSlotSoundStop();
+
+    if(resultNano > 0) addPointDelta(resultNano);
+    if(profile.extraTurn) extraTurns++;
+
+    setMultiplierText(profile.multiplier || 0);
+    setResultText(resultLabel(profile, resultNano));
 
     if(button) button.disabled = false;
 
@@ -290,6 +379,10 @@ export const SLOT_SCRIPT = `
       multiplier: profile.multiplier,
       extraTurn: profile.extraTurn
     });
+
+    activeCostNano = 0;
+    activeFreeTurn = false;
+    refreshControls();
   }
 
   function spin(){
@@ -300,8 +393,25 @@ export const SLOT_SCRIPT = `
     var result = pickResult();
     var pending = reelCount;
 
+    readAmountInput();
+    activeFreeTurn = extraTurns > 0;
+    activeCostNano = activeFreeTurn ? 0 : amountNano;
+
+    if(!activeFreeTurn && readPointBalance() < activeCostNano){
+      setResultText('Not enough points');
+      return;
+    }
+
+    if(activeFreeTurn){
+      extraTurns--;
+    }else{
+      addPointDelta(-activeCostNano);
+    }
+
     spinning = true;
-    awardXP(2, 'game-start', { section: 'slot', event: 'spin' });
+    awardXP(2, 'reel-start', { section: 'slot', event: 'spin' });
+    setResultText(activeFreeTurn ? 'Extra turn running' : 'Running');
+    setMultiplierText(1);
     startSlotSound();
 
     if(button) button.disabled = true;
@@ -333,6 +443,8 @@ export const SLOT_SCRIPT = `
         if(pending <= 0) finish(result);
       }, duration + 220);
     });
+
+    refreshControls();
   }
 
   function refreshReels(){
@@ -403,11 +515,27 @@ export const SLOT_SCRIPT = `
     loadSlotFrame();
     loadSlotSymbols();
     loadSlotSpinAudio();
+    syncAmountInput();
+    setMultiplierText(1);
+    setResultText('Set point amount');
+    refreshControls();
 
     var spinButton = q('slotSpinButton');
+    var amountInput = q('slotAmount');
     if(spinButton) spinButton.addEventListener('click', spin);
+    if(amountInput){
+      amountInput.addEventListener('change', readAmountInput);
+      amountInput.addEventListener('blur', readAmountInput);
+    }
 
     document.addEventListener('click', function(ev){
+      var actionButton = ev.target && ev.target.closest ? ev.target.closest('[data-slot-action]') : null;
+      if(actionButton){
+        ev.preventDefault();
+        adjustAmount(actionButton.getAttribute('data-slot-action'));
+        return;
+      }
+
       var openButton = ev.target && ev.target.closest ? ev.target.closest('[data-game-view="slot"]') : null;
       if(openButton) setBrand('Slot');
     }, true);
