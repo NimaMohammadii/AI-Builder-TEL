@@ -132,14 +132,17 @@ body:has(#slot.active) .tabs {
 .slot-spin-button {
   position: relative;
   z-index: 9;
-  width: 100%;
+  display: block;
+  width: 84%;
   height: 50px;
-  margin-top: 64px;
-  border: 0;
+  margin: 64px auto 0;
+  border: 1px solid rgba(255,255,255,.13);
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(135deg, #5b0f24, #8f1d3d, #c03a5b);
-  box-shadow: 0 18px 38px rgba(143,29,61,.34), inset 0 1px 0 rgba(255,255,255,.18);
+  background: linear-gradient(135deg, rgba(36,4,15,.86), rgba(76,9,29,.76), rgba(112,19,45,.68));
+  box-shadow: 0 18px 38px rgba(76,9,29,.30), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -18px 34px rgba(0,0,0,.24);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   font-size: 16px;
   font-weight: 950;
   letter-spacing: -.03em;
