@@ -30,6 +30,10 @@ export const SLOT_SCRIPT = `
   var slotAudio = null;
   var slotSoundTimer = null;
   var slotSoundStopTimer = null;
+  var slotLivePlayers = ['Amir','Ali','Reza','Arman','Arya','Arvin','Kian','Sina','Saman','Radin','Rayan','Shayan','Mahan','Parsa','Navid','Nima','Nikan','Kaveh','Sepehr','Taha','Erfan','Amin','Ilya','Bardia','Hirad','Omid','Pouya','Kasra','Arad','Mehrad','Nika','Ava','Mira','Luna','Daria','Tara','Maya','Lia','Nora','Elina','Raha','Yara','Vian','Mina','Roya','Aylin','Zara','Negin','Dorsa','Hana'];
+  var slotLiveRows = [];
+  var slotLiveTimer = null;
+  var slotLiveRendered = '';
 
   function q(id){
     return document.getElementById(id);
@@ -79,6 +83,81 @@ export const SLOT_SCRIPT = `
     var node = q('slotMultiplier');
     if(!node) return;
     node.textContent = Number(value || 0).toFixed(2) + 'x';
+  }
+
+  function cleanText(value){
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch){
+      return ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '"' ? '&quot;' : '&#39;';
+    });
+  }
+
+  function slotLiveSymbolText(symbol){
+    var iconById = { cherry: '🍒', lemon: '🍋', orange: '🍊', grape: '🍇', watermelon: '🍉', diamond: '💎', gold: '⭐', lucky7: '7️⃣' };
+    if(!symbol) return '—';
+    return iconById[symbol.id] || symbol.label || symbol.id || '—';
+  }
+
+  function seededSlotIndex(seed){
+    var x = Math.sin(seed * 9301.77 + 49297.13) * 233280;
+    return Math.abs(Math.floor(x)) % symbols.length;
+  }
+
+  function slotLiveResult(seed){
+    var result = [];
+    for(var i = 0; i < reelCount; i++){
+      result.push(slotLiveSymbolText(symbols[seededSlotIndex(seed + i * 17)]));
+    }
+    return result.join(' ');
+  }
+
+  function buildSlotLiveRows(){
+    var tick = Math.floor(Date.now() / 9000);
+    slotLiveRows = slotLivePlayers.map(function(name, index){
+      return { name: name, result: slotLiveResult((index + 1) * 31 + tick * (index % 7 + 3)) };
+    });
+  }
+
+  function renderSlotLive(){
+    var list = q('slotLiveList');
+    var count = q('slotLiveCount');
+    if(!list) return;
+    if(count) count.textContent = slotLivePlayers.length + ' players';
+    if(!slotLiveRows.length) buildSlotLiveRows();
+    var html = slotLiveRows.map(function(row){
+      return '<div class="slot-live-row"><span class="slot-live-user">' + cleanText(row.name) + '</span><span class="slot-live-result">' + cleanText(row.result) + '</span></div>';
+    }).join('');
+    if(html !== slotLiveRendered){
+      list.innerHTML = html;
+      slotLiveRendered = html;
+    }
+  }
+
+  function refreshSlotLivePlayer(){
+    if(!slotLiveRows.length) buildSlotLiveRows();
+    var index = Math.floor(Math.random() * slotLiveRows.length);
+    slotLiveRows[index] = {
+      name: slotLivePlayers[index],
+      result: slotLiveResult(Date.now() / 1000 + index * 43)
+    };
+    renderSlotLive();
+  }
+
+  function bindSlotLive(){
+    buildSlotLiveRows();
+    renderSlotLive();
+
+    var box = q('slotLive');
+    var toggle = q('slotLiveToggle');
+    if(toggle && box){
+      toggle.onclick = function(){
+        var open = !box.classList.contains('open');
+        box.classList.toggle('open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+    }
+
+    if(slotLiveTimer) window.clearInterval(slotLiveTimer);
+    slotLiveTimer = window.setInterval(refreshSlotLivePlayer, 1800);
   }
 
   function syncAmountInput(){
@@ -488,6 +567,8 @@ export const SLOT_SCRIPT = `
         });
 
         refreshReels();
+        buildSlotLiveRows();
+        renderSlotLive();
       })
       .catch(function(){});
   }
@@ -547,6 +628,7 @@ export const SLOT_SCRIPT = `
     setMultiplierText(1);
     setResultText('Set point amount');
     refreshControls();
+    bindSlotLive();
 
     var spinButton = q('slotSpinButton');
     var amountInput = q('slotAmount');
