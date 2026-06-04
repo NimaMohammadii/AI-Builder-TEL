@@ -152,7 +152,7 @@ export const SLOT_SCRIPT = `
     if(!strip) return;
 
     var index = stripIndexForSymbol(reelIndex, symbolIndex, restLoop);
-    strip.style.transition = animate ? 'transform .75s cubic-bezier(.12,.82,.12,1)' : 'none';
+    strip.style.transition = animate ? 'transform .75s linear' : 'none';
     strip.style.transform = 'translate3d(0,' + stripY(index) + 'px,0)';
   }
 
@@ -220,12 +220,14 @@ export const SLOT_SCRIPT = `
       var duration = totalSpinMs - ((reelCount - reelIndex - 1) * 220);
       var y = stripY(finalIndex);
 
-      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.12,.68,.36,.88)';
+      strip.style.willChange = 'transform';
+      strip.style.transition = 'transform ' + duration + 'ms linear';
       strip.style.transform = 'translate3d(0,' + y + 'px,0)';
 
       window.setTimeout(function(){
         currentIndexes[reelIndex] = symbolIndex;
         setReelPosition(reelIndex, symbolIndex, false);
+        strip.style.willChange = 'auto';
         pending--;
 
         if(pending <= 0) finish(result);
