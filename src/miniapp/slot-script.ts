@@ -109,18 +109,15 @@ export const SLOT_SCRIPT = `
     var cell = document.createElement('div');
     var fallback = createFallback(symbol);
 
-    cell.className = 'slot-symbol';
+    cell.className = symbol && symbol.imageReady ? 'slot-symbol has-image' : 'slot-symbol';
     cell.appendChild(fallback);
 
-    if(symbol && symbol.imageUrl){
+    if(symbol && symbol.imageUrl && symbol.imageReady){
       var img = document.createElement('img');
       img.className = 'slot-symbol-image';
       img.alt = symbol.label || symbol.id || 'Slot symbol';
       img.decoding = 'async';
       img.draggable = false;
-      img.onload = function(){
-        cell.classList.add('has-image');
-      };
       img.onerror = function(){
         cell.classList.remove('has-image');
         img.remove();
@@ -130,6 +127,20 @@ export const SLOT_SCRIPT = `
     }
 
     return cell;
+  }
+
+  function preloadImage(url){
+    return new Promise(function(resolve){
+      if(!url){
+        resolve(false);
+        return;
+      }
+
+      var image = new Image();
+      image.onload = function(){ resolve(true); };
+      image.onerror = function(){ resolve(false); };
+      image.src = url;
+    });
   }
 
   function stripNode(reelIndex){
@@ -254,19 +265,47 @@ export const SLOT_SCRIPT = `
       .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
       .then(function(result){
         if(!result.ok || !result.body || !result.body.symbols) return;
+
         var byId = {};
-        result.body.symbols.forEach(function(symbol){ byId[symbol.id] = symbol; });
-        symbols = symbols.map(function(symbol){
+        var nextSymbols = symbols.map(function(symbol){
+          return {
+            id: symbol.id,
+            fallback: symbol.fallback,
+            label: symbol.label
+          };
+        });
+
+        result.body.symbols.forEach(function(symbol){
+          byId[symbol.id] = symbol;
+        });
+
+        nextSymbols = nextSymbols.map(function(symbol){
           var uploaded = byId[symbol.id];
           if(!uploaded || !uploaded.imageUrl) return symbol;
           return {
             id: symbol.id,
             fallback: symbol.fallback,
             label: uploaded.label || symbol.label,
-            imageUrl: uploaded.imageUrl
+            imageUrl: uploaded.imageUrl,
+            imageReady: false
           };
         });
-        refreshReels();
+
+        Promise.all(nextSymbols.map(function(symbol){
+          return preloadImage(symbol.imageUrl);
+        })).then(function(loaded){
+          symbols = nextSymbols.map(function(symbol, index){
+            if(!symbol.imageUrl || !loaded[index]) return symbol;
+            return {
+              id: symbol.id,
+              fallback: symbol.fallback,
+              label: symbol.label,
+              imageUrl: symbol.imageUrl,
+              imageReady: true
+            };
+          });
+          refreshReels();
+        });
       })
       .catch(function(){});
   }
