@@ -211,13 +211,8 @@ export const SLOT_SCRIPT = `
       var duration = 6000 + reelIndex * 360;
       var y = stripY(finalIndex);
 
-      setReelPosition(reelIndex, currentIndexes[reelIndex], false);
-      strip.offsetHeight;
-
-      requestAnimationFrame(function(){
-        strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
-        strip.style.transform = 'translate3d(0,' + y + 'px,0)';
-      });
+      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
+      strip.style.transform = 'translate3d(0,' + y + 'px,0)';
 
       window.setTimeout(function(){
         currentIndexes[reelIndex] = symbolIndex;
