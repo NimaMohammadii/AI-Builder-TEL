@@ -821,6 +821,10 @@ export const WHEEL_SECTION = `
           });
         }
 
+        function awardXP(amount, source, metadata) {
+          if (window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'wheel' });
+        }
+
         function spin() {
           if (spinning) return;
           var chance = clampChance(chanceInput.value);
@@ -832,6 +836,7 @@ export const WHEEL_SECTION = `
             return;
           }
           spinning = true;
+          awardXP(2, 'game-start', { section: 'wheel', event: 'spin' });
           setControlsLocked(true);
           spinButton.disabled = true;
           spinButton.classList.remove('win');
@@ -858,11 +863,13 @@ export const WHEEL_SECTION = `
             setControlsLocked(false);
             if (win) {
               var payout = Math.floor(betNano * mult);
+              awardXP(mult >= 10 ? 60 : (mult >= 4 ? 30 : 12), 'game-win', { section: 'wheel', event: 'spin-finish', result: 'win', multiplier: mult });
               changeBalance(payout);
               spinButton.classList.add('win');
               spinButton.textContent = 'Won +' + money(payout / 1000000000) + ' TON';
               if (resultStat) resultStat.textContent = '+' + money(payout / 1000000000) + ' TON';
             } else {
+              awardXP(4, 'game-lose', { section: 'wheel', event: 'spin-finish', result: 'no-win', multiplier: mult });
               spinButton.textContent = 'Spin';
               if (resultStat) resultStat.textContent = 'Lost';
             }
