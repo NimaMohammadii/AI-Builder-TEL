@@ -1,5 +1,27 @@
 export const SLOT_SCRIPT = `
 (function(){
+  function slotSvgData(svg){
+    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+  }
+
+  function slotDefaultImage(symbol){
+    var defs = '<defs><radialGradient id="bg" cx="32%" cy="24%" r="70%"><stop offset="0" stop-color="#fff8ee"/><stop offset=".45" stop-color="#ffd6d6"/><stop offset="1" stop-color="#2b0714"/></radialGradient><filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity=".35"/></filter></defs>';
+    var base = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">' + defs + '<circle cx="48" cy="48" r="44" fill="url(#bg)" opacity=".18"/>';
+    var end = '</svg>';
+    var art = '';
+
+    if(symbol === 'cherry') art = '<g filter="url(#s)"><path d="M45 43c2-19 14-26 27-28" fill="none" stroke="#316d37" stroke-width="5" stroke-linecap="round"/><path d="M57 42c-1-13 3-23 14-31" fill="none" stroke="#40944b" stroke-width="5" stroke-linecap="round"/><ellipse cx="36" cy="60" rx="18" ry="17" fill="#e8184f"/><ellipse cx="58" cy="61" rx="18" ry="17" fill="#cf0d42"/><circle cx="29" cy="53" r="5" fill="#fff" opacity=".58"/><circle cx="52" cy="54" r="5" fill="#fff" opacity=".45"/></g>';
+    if(symbol === 'lemon') art = '<g filter="url(#s)" transform="rotate(-18 48 48)"><path d="M19 48c12-24 46-24 58 0-12 24-46 24-58 0Z" fill="#ffd83d"/><path d="M28 47c9-13 31-16 43 0-11 15-32 14-43 0Z" fill="#ffe978"/><path d="M35 37c8-8 24-7 34 3" fill="none" stroke="#fff6a9" stroke-width="5" stroke-linecap="round" opacity=".65"/></g>';
+    if(symbol === 'orange') art = '<g filter="url(#s)"><circle cx="49" cy="52" r="29" fill="#ff8a1c"/><path d="M46 23c2-8 8-12 18-12" fill="none" stroke="#3f9a41" stroke-width="5" stroke-linecap="round"/><path d="M59 18c8-3 14-1 18 4-8 5-15 5-21 1Z" fill="#45bf55"/><circle cx="39" cy="43" r="8" fill="#fff0b8" opacity=".34"/><path d="M31 64c14 12 34 9 46-7" fill="none" stroke="#d45b12" stroke-width="4" stroke-linecap="round" opacity=".32"/></g>';
+    if(symbol === 'grape') art = '<g filter="url(#s)"><path d="M47 26c3-8 9-13 19-15" fill="none" stroke="#3ea147" stroke-width="5" stroke-linecap="round"/><ellipse cx="63" cy="18" rx="12" ry="7" fill="#49c55e" transform="rotate(-18 63 18)"/><circle cx="39" cy="39" r="12" fill="#8f42ff"/><circle cx="57" cy="39" r="12" fill="#7a2ee0"/><circle cx="30" cy="56" r="12" fill="#7431da"/><circle cx="48" cy="56" r="13" fill="#9b55ff"/><circle cx="66" cy="56" r="12" fill="#6625c6"/><circle cx="40" cy="71" r="12" fill="#7f39e6"/><circle cx="58" cy="71" r="12" fill="#8f42ff"/><circle cx="35" cy="34" r="4" fill="#fff" opacity=".42"/></g>';
+    if(symbol === 'watermelon') art = '<g filter="url(#s)"><path d="M17 51c10 28 52 35 70 1-21 14-50 13-70-1Z" fill="#2fbf57"/><path d="M24 51c13 18 40 22 56 1-18 8-38 8-56-1Z" fill="#e8ffdf"/><path d="M31 50c12 12 30 14 42 1-14 4-28 4-42-1Z" fill="#ff4168"/><ellipse cx="43" cy="58" rx="3" ry="6" fill="#28131a"/><ellipse cx="56" cy="58" rx="3" ry="6" fill="#28131a"/><ellipse cx="67" cy="54" rx="3" ry="5" fill="#28131a"/></g>';
+    if(symbol === 'diamond') art = '<g filter="url(#s)"><path d="M27 20h42l15 20-36 40-36-40Z" fill="#74e7ff"/><path d="M27 20 12 40h72L69 20Z" fill="#b7f5ff"/><path d="M32 40 48 80 64 40Z" fill="#33b7e6"/><path d="M32 40 48 20 64 40Z" fill="#e8ffff" opacity=".7"/></g>';
+    if(symbol === 'gold') art = '<g filter="url(#s)"><path d="M48 12 58 35l25 2-19 16 6 25-22-13-22 13 6-25-19-16 25-2Z" fill="#ffc831"/><path d="M48 23 55 40l18 1-14 12 5 17-16-10-16 10 5-17-14-12 18-1Z" fill="#fff08a" opacity=".6"/></g>';
+    if(symbol === 'lucky7') art = '<g filter="url(#s)"><rect x="18" y="14" width="60" height="68" rx="18" fill="#e71946"/><path d="M33 28h31L45 70" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><path d="M33 28h31L45 70" fill="none" stroke="#ffd44f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g>';
+
+    return slotSvgData(base + art + end);
+  }
+
   var symbols = [
     { id: 'cherry', fallback: '🍒', label: 'Cherry' },
     { id: 'lemon', fallback: '🍋', label: 'Lemon' },
@@ -9,7 +31,12 @@ export const SLOT_SCRIPT = `
     { id: 'diamond', fallback: '💎', label: 'Diamond' },
     { id: 'gold', fallback: '⭐', label: 'Gold Star or Bell' },
     { id: 'lucky7', fallback: '7️⃣', label: 'Lucky 7' }
-  ];
+  ].map(function(symbol){
+    var defaultImageUrl = slotDefaultImage(symbol.id);
+    symbol.defaultImageUrl = defaultImageUrl;
+    symbol.imageUrl = defaultImageUrl;
+    return symbol;
+  });
   var reelCount = 3;
   var symbolHeight = 92;
   var spinning = false;
@@ -108,6 +135,13 @@ export const SLOT_SCRIPT = `
       img.src = symbol.imageUrl;
       img.alt = symbol.label || symbol.id || 'Slot symbol';
       img.draggable = false;
+      img.onerror = function(){
+        if(symbol.defaultImageUrl && img.src !== symbol.defaultImageUrl){
+          img.src = symbol.defaultImageUrl;
+          return;
+        }
+        cell.textContent = symbol.fallback || '';
+      };
       cell.appendChild(img);
       return cell;
     }
@@ -247,7 +281,8 @@ export const SLOT_SCRIPT = `
             id: symbol.id,
             fallback: symbol.fallback,
             label: uploaded.label || symbol.label,
-            imageUrl: uploaded.imageUrl
+            defaultImageUrl: symbol.defaultImageUrl,
+            imageUrl: uploaded.imageUrl || symbol.imageUrl
           };
         });
         refreshReels();
