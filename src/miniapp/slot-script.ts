@@ -124,10 +124,24 @@ export const SLOT_SCRIPT = `
     return document.querySelector('[data-slot-reel="' + reelIndex + '"] .slot-reel-strip');
   }
 
+  function reelOffset(reelIndex){
+    return reelIndex % symbols.length;
+  }
+
+  function stripIndexForSymbol(reelIndex, symbolIndex, loopCount){
+    var offset = reelOffset(reelIndex);
+    var localIndex = (symbolIndex - offset + symbols.length) % symbols.length;
+    return loopCount * symbols.length + localIndex;
+  }
+
+  function stripY(index){
+    return -index * symbolHeight + symbolHeight;
+  }
+
   function stripFragment(reelIndex, loops){
     var fragment = document.createDocumentFragment();
     var total = Math.max(18, loops * symbols.length + 6);
-    var offset = reelIndex % symbols.length;
+    var offset = reelOffset(reelIndex);
 
     for(var i = 0; i < total; i++){
       fragment.appendChild(createSymbol(symbols[(i + offset) % symbols.length]));
@@ -143,13 +157,13 @@ export const SLOT_SCRIPT = `
     strip.replaceChildren(stripFragment(reelIndex, loops));
   }
 
-  function setReelPosition(reelIndex, index, animate){
+  function setReelPosition(reelIndex, symbolIndex, animate){
     var strip = stripNode(reelIndex);
     if(!strip) return;
 
-    var y = -index * symbolHeight + symbolHeight;
+    var index = stripIndexForSymbol(reelIndex, symbolIndex, 0);
     strip.style.transition = animate ? 'transform .75s cubic-bezier(.12,.82,.12,1)' : 'none';
-    strip.style.transform = 'translate3d(0,' + y + 'px,0)';
+    strip.style.transform = 'translate3d(0,' + stripY(index) + 'px,0)';
   }
 
   function initReels(){
@@ -209,11 +223,12 @@ export const SLOT_SCRIPT = `
       if(!strip) return;
 
       var loops = 16 + reelIndex * 2;
-      var finalIndex = loops * symbols.length + symbolIndex;
+      var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, loops);
       var duration = 5000 + reelIndex * 420;
-      var y = -finalIndex * symbolHeight + symbolHeight;
+      var y = stripY(finalIndex);
 
-      setReelPosition(reelIndex, currentIndexes[reelIndex], false);
+      strip.style.transition = 'none';
+      strip.style.transform = 'translate3d(0,' + stripY(stripIndexForSymbol(reelIndex, currentIndexes[reelIndex], 0)) + 'px,0)';
       strip.offsetHeight;
 
       requestAnimationFrame(function(){
