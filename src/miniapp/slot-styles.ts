@@ -88,31 +88,7 @@ body:has(#slot.active) .tabs {
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse at 50% 50%,
-      rgba(255,255,255,.06) 0%,
-      rgba(255,255,255,.026) 30%,
-      rgba(0,0,0,.08) 58%,
-      rgba(0,0,0,.50) 100%
-    ),
-    linear-gradient(
-      90deg,
-      rgba(0,0,0,.40) 0%,
-      rgba(0,0,0,.14) 16%,
-      rgba(255,255,255,.018) 50%,
-      rgba(0,0,0,.14) 84%,
-      rgba(0,0,0,.42) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(0,0,0,.90) 0%,
-      rgba(0,0,0,.46) 26%,
-      rgba(0,0,0,0) 42%,
-      rgba(0,0,0,0) 58%,
-      rgba(0,0,0,.46) 74%,
-      rgba(0,0,0,.92) 100%
-    );
+  background: linear-gradient(180deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.34) 28%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.82) 100%);
 }
 
 .slot-reel-strip {
