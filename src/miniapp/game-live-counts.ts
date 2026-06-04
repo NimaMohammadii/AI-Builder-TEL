@@ -100,8 +100,8 @@ export const GAME_LIVE_COUNT_STYLES = `
 }
 
 .game-online-badge i {
-  width: 8px !important;
-  height: 8px !important;
+  width: 6px !important;
+  height: 6px !important;
   border-radius: 50% !important;
   background: #18ff84 !important;
   box-shadow: 0 0 0 1px rgba(24, 255, 132, .25), 0 0 8px rgba(24, 255, 132, .42), 0 0 14px rgba(24, 255, 132, .14), inset 0 1px 0 rgba(255, 255, 255, .34) !important;
@@ -113,7 +113,7 @@ export const GAME_LIVE_COUNT_STYLES = `
 .game-online-badge i::before {
   content: '' !important;
   position: absolute !important;
-  inset: -3px !important;
+  inset: -2px !important;
   border-radius: inherit !important;
   border: 1px solid rgba(24, 255, 132, .40) !important;
   opacity: .36 !important;
@@ -121,6 +121,7 @@ export const GAME_LIVE_COUNT_STYLES = `
 }
 
 .game-online-badge em {
+  display: none !important;
   font-style: normal !important;
   font-size: 8px !important;
   font-weight: 900 !important;
@@ -172,7 +173,7 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function badges(title){return Array.prototype.slice.call(title.querySelectorAll('[data-game-online-badge],[data-dice-online-badge]'))}
   function stripBadges(title,keep){badges(title).forEach(function(node){if(node!==keep)node.remove()})}
   function titleText(title){return String(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent||'').trim()}
-  function renderBadge(){var title=document.getElementById('brandTitle');if(!title)return;var id=activeGame();if(!id){stripBadges(title);return}var label=games[id]||'';if(titleText(title)!==label){stripBadges(title);return}var n=count(id);var badge=title.querySelector('[data-game-online-badge="'+id+'"]');stripBadges(title,badge);if(!badge){badge=document.createElement('span');badge.className='game-online-badge '+id+'-online-badge';badge.setAttribute('data-game-online-badge',id);var dot=document.createElement('i');var live=document.createElement('em');var value=document.createElement('b');live.textContent='LIVE';badge.appendChild(dot);badge.appendChild(live);badge.appendChild(value);title.appendChild(badge)}badge.setAttribute('aria-label',n+' live online');var b=badge.querySelector('b');if(b&&b.textContent!==String(n))b.textContent=String(n)}
+  function renderBadge(){var title=document.getElementById('brandTitle');if(!title)return;var id=activeGame();if(!id){stripBadges(title);return}var label=games[id]||'';if(titleText(title)!==label){stripBadges(title);return}var n=count(id);var badge=title.querySelector('[data-game-online-badge="'+id+'"]');stripBadges(title,badge);if(!badge){badge=document.createElement('span');badge.className='game-online-badge '+id+'-online-badge';badge.setAttribute('data-game-online-badge',id);var dot=document.createElement('i');var value=document.createElement('b');badge.appendChild(dot);badge.appendChild(value);title.appendChild(badge)}badge.setAttribute('aria-label',n+' live online');var b=badge.querySelector('b');if(b&&b.textContent!==String(n))b.textContent=String(n)}
   function refreshCounts(){Object.keys(games).forEach(function(id){setCount(id,seed(id))})}
   function syncCards(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current))counts[id]=current;else setCount(id,count(id))});renderBadge()}
   window.VexaLiveGameCounts={get:count,setCount:setCount,sync:syncCards,refresh:refreshCounts,renderBadge:renderBadge};
