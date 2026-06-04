@@ -1,11 +1,9 @@
 export const RPS_SECTION = `
 <section id="rps" class="view rps-view">
   <style>
-    html:has(#rps.active),body:has(#rps.active){background:#000!important;background-color:#000!important;background-image:none!important}
-    body:has(#rps.active)::before,body:has(#rps.active)::after,body:has(#rps.active) .app::before,body:has(#rps.active) .app::after{content:none!important;display:none!important;background:none!important;box-shadow:none!important}
     body:has(#rps.active) .tabs{display:none!important}
-    body:has(#rps.active) .app,body:has(#rps.active) main.app,body:has(#rps.active) .content,body:has(#rps.active) .view.active,body:has(#rps.active) #rps,body:has(#rps.active) .rps-view,body:has(#rps.active) .top,body:has(#rps.active) header.top{background:#000!important;background-color:#000!important;background-image:none!important;box-shadow:none!important}
-    .rps-view{min-height:100%;padding:4px 14px calc(104px + env(safe-area-inset-bottom));color:#fff;background:#000!important;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;scrollbar-width:none}
+    body:has(#rps.active) .app,body:has(#rps.active) main.app,body:has(#rps.active) .content,body:has(#rps.active) .view.active,body:has(#rps.active) #rps,body:has(#rps.active) .rps-view,body:has(#rps.active) .top,body:has(#rps.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
+    .rps-view{min-height:100%;padding:4px 14px calc(104px + env(safe-area-inset-bottom));color:#fff;background:transparent!important;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;scrollbar-width:none}
     .rps-view::-webkit-scrollbar{display:none}
     .rps-wrap{width:100%;max-width:560px;margin:-10px auto 0;display:grid;gap:10px}
     .rps-title{display:none!important}
@@ -52,7 +50,7 @@ export const RPS_SECTION = `
   </style>
   <div class="rps-wrap">
     <div class="rps-arena">
-      <div class="rps-title"><strong>Rock Paper Scissors</strong></div>
+      <div class="rps-title"><strong>RPS</strong></div>
       <div class="rps-multipliers" data-rps-multipliers></div>
       <div class="rps-duel">
         <div class="rps-hand-card" data-rps-player-card><img class="rps-hand-img" data-rps-player-img alt=""/><small>You</small></div>
@@ -71,7 +69,6 @@ export const RPS_SECTION = `
       <button class="rps-play" type="button" data-rps-play>Cash Out</button>
       <div class="rps-stats"><div class="rps-stat"><small>WINS</small><b data-rps-wins>0</b></div><div class="rps-stat"><small>WON</small><b class="rps-won-amount" data-rps-streak>0.00</b></div><div class="rps-stat"><small>BET</small><b data-rps-bet-label>0.1</b></div></div>
       <div class="rps-friend-box" data-rps-friend-box>
-        <button class="rps-friend-primary" type="button" data-rps-friend-start>Play with Friend</button>
         <input class="rps-friend-link" data-rps-friend-link readonly aria-hidden="true" tabindex="-1"/>
         <button class="rps-friend-row" type="button" data-rps-friend-share aria-hidden="true" tabindex="-1">Share</button>
         <button class="rps-friend-row" type="button" data-rps-friend-leave aria-hidden="true" tabindex="-1">Solo</button>
@@ -126,8 +123,8 @@ export const RPS_SECTION = `
       function joinFriendRoom(roomId){if(friendBusy||!roomId)return;friendBusy=true;setFriendMessage('Joining friend room...');var u=user();api('/app/api/rps/friend/rooms/'+encodeURIComponent(roomId)+'/join',{method:'POST',body:JSON.stringify({userId:u.id,name:u.name})}).then(function(state){enterFriendMode(state);requestSync(true)}).catch(function(e){returnToSolo((e.message||'Could not join room')+' — back to Solo')}).finally(function(){friendBusy=false;updateControls()})}
       function friendChoice(value){if(!friendCanChoose())return;friendBusy=true;setPick(value,true);setFriendMessage('Waiting for friend choice');var u=user();api('/app/api/rps/friend/rooms/'+encodeURIComponent(friendState.room.id)+'/choice',{method:'POST',body:JSON.stringify({userId:u.id,name:u.name,choice:value})}).then(function(state){renderFriendState(state);requestSync(true)}).catch(function(e){returnToSolo((e.message||'Could not save choice')+' — back to Solo')}).finally(function(){friendBusy=false;updateControls()})}
       function shareInvite(){if(!friendState||!friendState.room)return;var roomId=friendState.room.id;var link=inviteUrl(roomId);var text='🎮 Rock Paper Scissors challenge!\\n✊✋✌️ Join my duel in Vexa.';if(friendLink)friendLink.value=link;setFriendMessage('Preparing invite...');var u=user();api('/app/api/rps/friend/rooms/'+encodeURIComponent(roomId)+'/share',{method:'POST',body:JSON.stringify({userId:u.id,name:u.name})}).then(function(data){var invite=data.inviteUrl||link;if(friendLink)friendLink.value=invite;if(data.preparedMessageId&&tg&&typeof tg.shareMessage==='function'){try{var sent=tg.shareMessage(data.preparedMessageId);if(sent&&typeof sent.then==='function')sent.catch(function(){shareFallback(invite,data.fallbackText||text)});setFriendMessage('Choose a chat to send the invite');return}catch(e){}}shareFallback(invite,data.fallbackText||text)}).catch(function(){shareFallback(link,text)}).finally(function(){requestSync(true)})}
-      function showRpsFromInvite(){document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});root.classList.add('active');document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')==='rps')});var title=document.getElementById('brandTitle');if(title)title.textContent='Rock Paper Scissors'}
-      function chooseBotHand(){var losingChoice=choices.filter(function(x){return beats[x]===picked})[0];var botPool=[picked,picked,losingChoice,losingChoice,losingChoice,beats[picked]];return botPool[Math.floor(Math.random()*botPool.length)]}
+      function showRpsFromInvite(){document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});root.classList.add('active');document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')==='rps')});var title=document.getElementById('brandTitle');if(title)title.textContent='RPS'}
+      function chooseBotHand(){var losingChoice=choices.filter(function(x){return beats[x]===picked})[0];return Math.random()<.5?losingChoice:beats[picked]}
       function balanceRead(){return window.VexaTonBalance&&window.VexaTonBalance.read?Number(window.VexaTonBalance.read()):0}
       function balanceAdd(delta){if(window.VexaTonBalance&&window.VexaTonBalance.add)return window.VexaTonBalance.add(delta);window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:delta}}));return Promise.resolve(balanceRead()+delta)}
       function startSession(){var bet=betValue();setBet(bet);betNano=Math.round(bet*rate);if(balanceRead()<betNano){resultEl.textContent='Not enough credit';tone('lose');return false}sessionActive=true;streak=0;currentWinNano=0;balanceAdd(-betNano);renderMultipliers();updateControls();return true}
