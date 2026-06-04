@@ -220,7 +220,7 @@ export const SLOT_SCRIPT = `
       var duration = totalSpinMs - ((reelCount - reelIndex - 1) * 220);
       var y = stripY(finalIndex);
 
-      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.10,.74,.24,1)';
+      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.12,.68,.36,.88)';
       strip.style.transform = 'translate3d(0,' + y + 'px,0)';
 
       window.setTimeout(function(){
