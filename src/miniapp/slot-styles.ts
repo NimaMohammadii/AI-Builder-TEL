@@ -96,10 +96,7 @@ body:has(#slot.active) .tabs {
   left: 0;
   right: 0;
   top: 14px;
-  will-change: transform;
   transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .slot-symbol {
@@ -126,10 +123,6 @@ body:has(#slot.active) .tabs {
   display: block;
   pointer-events: none;
   opacity: 1;
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .slot-symbol.has-image .slot-symbol-image {
@@ -158,6 +151,12 @@ body:has(#slot.active) .tabs {
 
 .slot-machine.is-spinning .slot-window {
   box-shadow: 0 0 34px rgba(192,58,91,.12);
+}
+
+.slot-machine.is-spinning .slot-reel-strip {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .slot-machine.is-win .slot-window {
