@@ -12,6 +12,7 @@ export const SLOT_SCRIPT = `
   ];
   var reelCount = 3;
   var symbolHeight = 92;
+  var preparedLoops = 24;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
@@ -153,7 +154,7 @@ export const SLOT_SCRIPT = `
 
   function initReels(){
     for(var i = 0; i < reelCount; i++){
-      buildStrip(i, 4);
+      buildStrip(i, preparedLoops);
       setReelPosition(i, currentIndexes[i], false);
     }
   }
@@ -211,11 +212,8 @@ export const SLOT_SCRIPT = `
       var finalIndex = loops * symbols.length + symbolIndex;
       var duration = 5000 + reelIndex * 420;
       var y = -finalIndex * symbolHeight + symbolHeight;
-      var fragment = stripFragment(reelIndex, loops + 2);
 
-      strip.style.transition = 'none';
-      strip.style.transform = 'translate3d(0,' + symbolHeight + 'px,0)';
-      strip.replaceChildren(fragment);
+      setReelPosition(reelIndex, currentIndexes[reelIndex], false);
       strip.offsetHeight;
 
       requestAnimationFrame(function(){
@@ -227,7 +225,6 @@ export const SLOT_SCRIPT = `
 
       window.setTimeout(function(){
         currentIndexes[reelIndex] = symbolIndex;
-        buildStrip(reelIndex, 4);
         setReelPosition(reelIndex, symbolIndex, false);
         pending--;
 
@@ -238,7 +235,7 @@ export const SLOT_SCRIPT = `
 
   function refreshReels(){
     for(var i = 0; i < reelCount; i++){
-      buildStrip(i, 4);
+      buildStrip(i, preparedLoops);
       setReelPosition(i, currentIndexes[i], false);
     }
   }
