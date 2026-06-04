@@ -15,6 +15,7 @@ body:has(#slot.active) .tabs {
   z-index: 2;
   width: min(100%, 408px);
   margin: 8px auto 0;
+  min-height: 465px;
   padding: 0 0 18px;
   background: transparent;
   overflow: visible;
@@ -27,8 +28,8 @@ body:has(#slot.active) .tabs {
   left: 0;
   z-index: 8;
   width: 100%;
-  height: 100%;
-  object-fit: fill;
+  height: auto;
+  object-fit: contain;
   opacity: 0;
   transition: opacity .22s ease;
 }
@@ -168,11 +169,11 @@ body:has(#slot.active) .tabs {
   height: 58px;
   padding: 0;
   border: 0;
-  border-radius: 18px;
+  border-radius: 0;
   color: #fff;
   background: transparent !important;
-  box-shadow: none;
-  overflow: hidden;
+  box-shadow: none !important;
+  overflow: visible;
   isolation: isolate;
   transition: transform .18s ease, opacity .18s ease;
 }
@@ -183,7 +184,7 @@ body:has(#slot.active) .tabs {
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   opacity: 0;
   pointer-events: none;
   transition: opacity .22s ease;
@@ -238,20 +239,6 @@ body:has(#slot.active) .tabs {
   opacity: .62;
 }
 
-.slot-input-control:before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: inherit;
-  background: rgba(255,255,255,.06);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
-}
-
-.slot-input-control:has(.slot-control-image.is-loaded):before {
-  opacity: 0;
-}
 
 .slot-machine.is-spinning .slot-window {
   box-shadow: 0 0 34px rgba(192,58,91,.12);
@@ -325,6 +312,7 @@ body:has(#slot.active) .tabs {
 
   .slot-machine {
     width: min(100%, 398px);
+    min-height: 452px;
     margin-top: 6px;
     transform: translateY(-42px);
   }
