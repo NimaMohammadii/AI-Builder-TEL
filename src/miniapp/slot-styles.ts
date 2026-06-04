@@ -41,7 +41,7 @@ body:has(#slot.active) .tabs {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  gap: 5px;
   width: 68%;
   height: 258px;
   margin: 92px auto 0;
@@ -78,8 +78,8 @@ body:has(#slot.active) .tabs {
   height: 100%;
   border-radius: 21px;
   overflow: hidden;
-  background: linear-gradient(90deg, rgba(0,0,0,.34) 0%, rgba(255,255,255,.045) 18%, rgba(255,255,255,.07) 50%, rgba(255,255,255,.035) 82%, rgba(0,0,0,.38) 100%), linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.014));
-  box-shadow: inset 10px 0 18px rgba(0,0,0,.34), inset -10px 0 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,255,255,.07), 0 14px 28px rgba(0,0,0,.22);
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.055);
 }
 
 .slot-reel:before {
@@ -88,19 +88,7 @@ body:has(#slot.active) .tabs {
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.34) 28%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.82) 100%), linear-gradient(90deg, rgba(0,0,0,.34) 0%, rgba(255,255,255,.055) 18%, rgba(255,255,255,.03) 50%, rgba(255,255,255,.045) 82%, rgba(0,0,0,.38) 100%);
-}
-
-.slot-reel:after {
-  content: "";
-  position: absolute;
-  inset: 0 1px;
-  z-index: 5;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.08) 0%, rgba(255,255,255,.025) 38%, rgba(0,0,0,.18) 100%);
-  mix-blend-mode: screen;
-  opacity: .46;
+  background: linear-gradient(180deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.34) 28%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.82) 100%);
 }
 
 .slot-reel-strip {
@@ -187,7 +175,7 @@ body:has(#slot.active) .tabs {
     width: 68%;
     height: 240px;
     margin-top: 88px;
-    gap: 6px;
+    gap: 4px;
     transform: translateX(-4px);
   }
 
