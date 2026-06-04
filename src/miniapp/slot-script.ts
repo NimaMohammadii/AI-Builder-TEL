@@ -206,9 +206,9 @@ export const SLOT_SCRIPT = `
       var strip = stripNode(reelIndex);
       if(!strip) return;
 
-      var loops = 19 + reelIndex * 2;
+      var loops = 18 + reelIndex * 2;
       var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
-      var duration = 6000 + reelIndex * 360;
+      var duration = 5600 + reelIndex * 340;
       var y = stripY(finalIndex);
 
       strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.10,.74,.24,1)';
