@@ -1,14 +1,14 @@
 export const SLOT_SCRIPT = `
 (function(){
   var symbols = [
-    { id: 'cherry', fallback: '🍒', label: 'Cherry' },
-    { id: 'lemon', fallback: '🍋', label: 'Lemon' },
-    { id: 'orange', fallback: '🍊', label: 'Orange' },
-    { id: 'grape', fallback: '🍇', label: 'Grape' },
-    { id: 'watermelon', fallback: '🍉', label: 'Watermelon' },
-    { id: 'diamond', fallback: '💎', label: 'Diamond' },
-    { id: 'gold', fallback: '⭐', label: 'Gold Star or Bell' },
-    { id: 'lucky7', fallback: '7️⃣', label: 'Lucky 7' }
+    { id: 'cherry', label: 'Cherry' },
+    { id: 'lemon', label: 'Lemon' },
+    { id: 'orange', label: 'Orange' },
+    { id: 'grape', label: 'Grape' },
+    { id: 'watermelon', label: 'Watermelon' },
+    { id: 'diamond', label: 'Diamond' },
+    { id: 'gold', label: 'Gold Star or Bell' },
+    { id: 'lucky7', label: 'Lucky 7' }
   ];
   var reelCount = 3;
   var symbolHeight = 92;
@@ -98,19 +98,9 @@ export const SLOT_SCRIPT = `
     return Math.floor(Math.random() * symbols.length);
   }
 
-  function createFallback(symbol){
-    var fallback = document.createElement('span');
-    fallback.className = 'slot-symbol-fallback';
-    fallback.textContent = symbol && symbol.fallback ? symbol.fallback : '';
-    return fallback;
-  }
-
   function createSymbol(symbol){
     var cell = document.createElement('div');
-    var fallback = createFallback(symbol);
-
     cell.className = symbol && symbol.imageReady ? 'slot-symbol has-image' : 'slot-symbol';
-    cell.appendChild(fallback);
 
     if(symbol && symbol.imageUrl && symbol.imageReady){
       var img = document.createElement('img');
@@ -270,7 +260,6 @@ export const SLOT_SCRIPT = `
         var nextSymbols = symbols.map(function(symbol){
           return {
             id: symbol.id,
-            fallback: symbol.fallback,
             label: symbol.label
           };
         });
@@ -284,7 +273,6 @@ export const SLOT_SCRIPT = `
           if(!uploaded || !uploaded.imageUrl) return symbol;
           return {
             id: symbol.id,
-            fallback: symbol.fallback,
             label: uploaded.label || symbol.label,
             imageUrl: uploaded.imageUrl,
             imageReady: false
@@ -298,7 +286,6 @@ export const SLOT_SCRIPT = `
             if(!symbol.imageUrl || !loaded[index]) return symbol;
             return {
               id: symbol.id,
-              fallback: symbol.fallback,
               label: symbol.label,
               imageUrl: symbol.imageUrl,
               imageReady: true
