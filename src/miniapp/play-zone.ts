@@ -3,13 +3,13 @@ import { livePlayersSeed, shouldShowLivePlayersOnCard } from './game-live-counts
 const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
   ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
+  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
   ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],
   ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
   ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
   ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
   ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
-  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
 ] as const;
 
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
