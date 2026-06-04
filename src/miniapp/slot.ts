@@ -17,7 +17,7 @@ export const SLOT_SECTION = `
 
   </div>
 
-  <div class="slot-control-panel" style="margin-top:-194px;overflow:hidden;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important">
+  <div class="slot-control-panel" style="margin-top:-194px;overflow:hidden;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important;clip-path:inset(18px 0 0 0)">
     <div class="slot-controls slot-image-controls" style="width:92%;gap:8px;overflow:hidden">
       <button id="slotSpinButton" class="slot-image-control slot-spin-button" type="button" aria-label="Start" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important">
         <img id="slotSpinButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
