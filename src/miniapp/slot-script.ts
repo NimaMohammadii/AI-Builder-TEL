@@ -211,7 +211,7 @@ export const SLOT_SCRIPT = `
       var duration = 6000 + reelIndex * 360;
       var y = stripY(finalIndex);
 
-      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
+      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.10,.74,.24,1)';
       strip.style.transform = 'translate3d(0,' + y + 'px,0)';
 
       window.setTimeout(function(){
