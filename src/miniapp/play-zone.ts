@@ -14,8 +14,13 @@ const playZoneGames = [
 
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
+function stableCardImageUrl(id: string): string {
+  return `/app/api/section-lock-image/${id}/locked.png?v=1`;
+}
+
 function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
-  const fallback = `/app/api/section-lock-image/${id}/locked.png`;
+  const fallback = stableCardImageUrl(id);
+  const initialSrc = id === 'slot' ? fallback : transparentPixel;
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
   const footer = shouldShowLivePlayersOnCard(id) ? `<span class="game-footer game-footer-live"><span class="game-players" aria-label="Players online"><i></i><b>${livePlayersSeed(id)}</b><em>players</em></span></span>` : '';
   const countAttr = shouldShowLivePlayersOnCard(id) ? 'data-player-count-visible="true"' : 'data-player-count-visible="false"';
@@ -24,7 +29,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
     <span class="game-card-shell ${extraClass}" ${viewAttr} ${countAttr}>
       <button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}">
         <span class="game-image">
-          <img src="${transparentPixel}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/>
+          <img src="${initialSrc}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/>
         </span>
       </button>
       ${footer}
