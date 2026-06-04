@@ -17,6 +17,7 @@ export const SLOT_SCRIPT = `
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
+  var slotAudioUrl = '';
 
   function q(id){
     return document.getElementById(id);
@@ -28,65 +29,26 @@ export const SLOT_SCRIPT = `
   }
 
   function startSlotSound(){
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-    if(!AudioContext) return;
+    if(!slotAudioUrl) return;
 
     stopSlotSound();
 
-    var context = new AudioContext();
-    var master = context.createGain();
-    var motor = context.createOscillator();
-    var pulse = context.createOscillator();
-    var filter = context.createBiquadFilter();
-    var now = context.currentTime;
+    var audio = new Audio(slotAudioUrl);
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.currentTime = 0;
+    slotSound = audio;
 
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.055, now + 0.08);
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(980, now);
-    filter.frequency.exponentialRampToValueAtTime(360, now + 5.8);
-
-    motor.type = 'sawtooth';
-    motor.frequency.setValueAtTime(96, now);
-    motor.frequency.exponentialRampToValueAtTime(42, now + 5.8);
-
-    pulse.type = 'square';
-    pulse.frequency.setValueAtTime(18, now);
-    pulse.frequency.exponentialRampToValueAtTime(7, now + 5.8);
-
-    motor.connect(filter);
-    pulse.connect(filter);
-    filter.connect(master);
-    master.connect(context.destination);
-
-    motor.start(now);
-    pulse.start(now);
-
-    slotSound = {
-      context: context,
-      master: master,
-      motor: motor,
-      pulse: pulse
-    };
+    audio.play().catch(function(){});
   }
 
   function stopSlotSound(){
     if(!slotSound) return;
 
-    var context = slotSound.context;
-    var now = context.currentTime;
-
-    slotSound.master.gain.cancelScheduledValues(now);
-    slotSound.master.gain.setValueAtTime(Math.max(slotSound.master.gain.value, 0.0001), now);
-    slotSound.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-
-    try { slotSound.motor.stop(now + 0.2); } catch(e) {}
-    try { slotSound.pulse.stop(now + 0.2); } catch(e) {}
-
-    window.setTimeout(function(){
-      context.close().catch(function(){});
-    }, 240);
+    try {
+      slotSound.pause();
+      slotSound.currentTime = 0;
+    } catch(e) {}
 
     slotSound = null;
   }
@@ -301,10 +263,21 @@ export const SLOT_SCRIPT = `
       });
   }
 
+  function loadSlotSpinAudio(){
+    fetch('/app/api/slot-spin-audio', { cache: 'no-store' })
+      .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
+      .then(function(result){
+        if(!result.ok || !result.body || !result.body.audioUrl) return;
+        slotAudioUrl = result.body.audioUrl;
+      })
+      .catch(function(){});
+  }
+
   function bind(){
     initReels();
     loadSlotFrame();
     loadSlotSymbols();
+    loadSlotSpinAudio();
 
     var spinButton = q('slotSpinButton');
     if(spinButton) spinButton.addEventListener('click', spin);
