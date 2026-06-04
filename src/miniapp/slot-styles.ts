@@ -117,8 +117,8 @@ body:has(#slot.active) .tabs {
 }
 
 .slot-symbol-image {
-  width: 68px;
-  height: 68px;
+  width: 62px;
+  height: 62px;
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -188,8 +188,8 @@ body:has(#slot.active) .tabs {
   }
 
   .slot-symbol-image {
-    width: 62px;
-    height: 62px;
+    width: 56px;
+    height: 56px;
   }
 
   .slot-machine {
