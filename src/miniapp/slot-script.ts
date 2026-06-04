@@ -16,6 +16,7 @@ export const SLOT_SCRIPT = `
   var preparedLoops = 18;
   var maxSpinLoops = 10;
   var totalSpinMs = 7600;
+  var reelStopGapMs = 800;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
@@ -223,7 +224,7 @@ export const SLOT_SCRIPT = `
 
       var loops = maxSpinLoops - (reelCount - reelIndex - 1);
       var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
-      var duration = totalSpinMs - ((reelCount - reelIndex - 1) * 220);
+      var duration = totalSpinMs - ((reelCount - reelIndex - 1) * reelStopGapMs);
       var y = stripY(finalIndex);
 
       strip.style.willChange = 'transform';
