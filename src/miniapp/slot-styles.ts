@@ -136,17 +136,17 @@ body:has(#slot.active) .tabs {
   width: 84%;
   height: 50px;
   margin: 64px auto 0;
-  border: 1px solid rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.14);
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(135deg, #2a020f 0%, #4b061d 42%, #6f0d2d 68%, #2f0313 100%) !important;
-  box-shadow: 0 18px 42px rgba(28,0,10,.56), 0 0 26px rgba(84,4,31,.18), inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -18px 34px rgba(8,0,4,.48);
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  background: linear-gradient(135deg, #170007 0%, #320313 42%, #51071f 68%, #190008 100%) !important;
+  box-shadow: 0 18px 42px rgba(12,0,5,.66), 0 0 22px rgba(68,3,24,.14), inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -18px 34px rgba(5,0,2,.58);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
   font-size: 16px;
   font-weight: 950;
   letter-spacing: -.03em;
-  text-shadow: 0 1px 12px rgba(0,0,0,.38);
+  text-shadow: 0 1px 12px rgba(0,0,0,.48);
   overflow: hidden;
   isolation: isolate;
   transition: transform .18s ease, box-shadow .22s ease, border-color .22s ease;
@@ -159,7 +159,7 @@ body:has(#slot.active) .tabs {
   inset: 1px;
   z-index: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(155,28,70,.16), transparent 32%);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015) 34%, rgba(255,255,255,0) 58%), radial-gradient(circle at 18% 0%, rgba(110,18,48,.12), transparent 32%);
   pointer-events: none;
 }
 
@@ -172,7 +172,7 @@ body:has(#slot.active) .tabs {
   width: 42%;
   z-index: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(190,44,88,.22), transparent);
+  background: linear-gradient(90deg, transparent, rgba(140,28,64,.16), transparent);
   transform: translateX(-130%) rotate(18deg);
   animation: slotSpinGlassShine 3.2s ease-in-out infinite;
   pointer-events: none;
@@ -282,18 +282,18 @@ body:has(#slot.active) .tabs {
 
 @keyframes slotSpinGlassPulse {
   0%, 100% {
-    box-shadow: 0 18px 42px rgba(28,0,10,.56), 0 0 26px rgba(84,4,31,.18), inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -18px 34px rgba(8,0,4,.48);
-    border-color: rgba(255,255,255,.16);
+    box-shadow: 0 18px 42px rgba(12,0,5,.66), 0 0 22px rgba(68,3,24,.14), inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -18px 34px rgba(5,0,2,.58);
+    border-color: rgba(255,255,255,.12);
   }
   50% {
-    box-shadow: 0 21px 48px rgba(36,0,13,.62), 0 0 34px rgba(106,8,40,.26), inset 0 1px 0 rgba(255,255,255,.22), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(8,0,4,.42);
-    border-color: rgba(255,255,255,.24);
+    box-shadow: 0 21px 48px rgba(16,0,7,.70), 0 0 28px rgba(78,6,30,.20), inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -18px 34px rgba(5,0,2,.52);
+    border-color: rgba(255,255,255,.18);
   }
 }
 
 @keyframes slotSpinGlassShine {
   0%, 42% { transform: translateX(-145%) rotate(18deg); opacity: 0; }
-  54% { opacity: .48; }
+  54% { opacity: .34; }
   72%, 100% { transform: translateX(360%) rotate(18deg); opacity: 0; }
 }
 
