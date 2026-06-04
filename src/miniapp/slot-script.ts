@@ -25,6 +25,10 @@ export const SLOT_SCRIPT = `
     return document.getElementById(id);
   }
 
+  function awardXP(amount, source, metadata){
+    if(window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'slot' });
+  }
+
   function setBrand(title){
     var brand = q('brandTitle');
     if(brand) brand.textContent = title;
@@ -182,6 +186,8 @@ export const SLOT_SCRIPT = `
       box.classList.remove('is-spinning');
       box.classList.toggle('is-win', matched);
     }
+
+    awardXP(matched ? 80 : 4, matched ? 'game-win' : 'game-lose', { section: 'slot', event: 'finish', result: matched ? 'jackpot' : 'no-win' });
   }
 
   function spin(){
@@ -193,6 +199,7 @@ export const SLOT_SCRIPT = `
     var pending = reelCount;
 
     spinning = true;
+    awardXP(2, 'game-start', { section: 'slot', event: 'spin' });
     startSlotSound();
 
     if(button) button.disabled = true;
