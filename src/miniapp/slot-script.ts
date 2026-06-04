@@ -198,19 +198,17 @@ export const SLOT_SCRIPT = `
       var strip = stripNode(reelIndex);
       if(!strip) return;
 
-      var loops = 22 + reelIndex * 2;
+      var loops = 19 + reelIndex * 2;
       var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
-      var duration = 7000 + reelIndex * 420;
+      var duration = 6000 + reelIndex * 360;
       var y = stripY(finalIndex);
 
       setReelPosition(reelIndex, currentIndexes[reelIndex], false);
       strip.offsetHeight;
 
       requestAnimationFrame(function(){
-        requestAnimationFrame(function(){
-          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
-          strip.style.transform = 'translate3d(0,' + y + 'px,0)';
-        });
+        strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.82,.08,1)';
+        strip.style.transform = 'translate3d(0,' + y + 'px,0)';
       });
 
       window.setTimeout(function(){
