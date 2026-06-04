@@ -98,6 +98,8 @@ body:has(#slot.active) .tabs {
   top: 14px;
   will-change: transform;
   transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .slot-symbol {
@@ -123,7 +125,11 @@ body:has(#slot.active) .tabs {
   object-fit: contain;
   display: block;
   pointer-events: none;
-  opacity: 0;
+  opacity: 1;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .slot-symbol.has-image .slot-symbol-image {
