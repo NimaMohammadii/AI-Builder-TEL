@@ -13,7 +13,7 @@ export const SLOT_SCRIPT = `
   var reelCount = 3;
   var symbolHeight = 92;
   var restLoop = 6;
-  var preparedLoops = 34;
+  var preparedLoops = 24;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
@@ -215,7 +215,7 @@ export const SLOT_SCRIPT = `
 
       var loops = 18 + reelIndex * 2;
       var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
-      var duration = 7900 + reelIndex * 340;
+      var duration = 5600 + reelIndex * 340;
       var y = stripY(finalIndex);
 
       strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.10,.74,.24,1)';
