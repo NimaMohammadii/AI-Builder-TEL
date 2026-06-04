@@ -12,7 +12,8 @@ export const SLOT_SCRIPT = `
   ];
   var reelCount = 3;
   var symbolHeight = 92;
-  var preparedLoops = 24;
+  var restLoop = 6;
+  var preparedLoops = 34;
   var spinning = false;
   var currentIndexes = [0, 1, 2];
   var slotSound = null;
@@ -161,7 +162,7 @@ export const SLOT_SCRIPT = `
     var strip = stripNode(reelIndex);
     if(!strip) return;
 
-    var index = stripIndexForSymbol(reelIndex, symbolIndex, 0);
+    var index = stripIndexForSymbol(reelIndex, symbolIndex, restLoop);
     strip.style.transition = animate ? 'transform .75s cubic-bezier(.12,.82,.12,1)' : 'none';
     strip.style.transform = 'translate3d(0,' + stripY(index) + 'px,0)';
   }
@@ -223,12 +224,11 @@ export const SLOT_SCRIPT = `
       if(!strip) return;
 
       var loops = 16 + reelIndex * 2;
-      var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, loops);
+      var finalIndex = stripIndexForSymbol(reelIndex, symbolIndex, restLoop + loops);
       var duration = 5000 + reelIndex * 420;
       var y = stripY(finalIndex);
 
-      strip.style.transition = 'none';
-      strip.style.transform = 'translate3d(0,' + stripY(stripIndexForSymbol(reelIndex, currentIndexes[reelIndex], 0)) + 'px,0)';
+      setReelPosition(reelIndex, currentIndexes[reelIndex], false);
       strip.offsetHeight;
 
       requestAnimationFrame(function(){
