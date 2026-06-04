@@ -139,7 +139,7 @@ body:has(#slot.active) .tabs {
   border: 1px solid rgba(255,255,255,.24);
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(135deg, rgba(32,0,12,.62), rgba(85,4,31,.52) 46%, rgba(126,13,48,.46));
+  background: linear-gradient(135deg, #5f0c26, #8a173f 46%, #3f0519);
   box-shadow: 0 18px 42px rgba(52,0,18,.42), 0 0 28px rgba(105,6,38,.18), inset 0 1px 0 rgba(255,255,255,.30), inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -18px 34px rgba(12,0,5,.34);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
