@@ -137,40 +137,21 @@ body:has(#slot.active) .tabs {
   margin: -24px auto 0;
 }
 
-.slot-status-panel {
-  width: 100%;
-  margin: 0 0 10px;
-  padding: 12px 14px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06);
-  text-align: center;
-}
-
-.slot-multiplier {
-  color: #fff;
-  font-size: 22px;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: -.05em;
-}
-
-.slot-result-text {
-  margin-top: 6px;
-  color: rgba(255,255,255,.58);
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.2;
+.slot-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: end;
+  gap: 10px;
 }
 
 .slot-controls {
   width: 100%;
-  margin: 0 0 10px;
+  margin: 0;
 }
 
 .slot-field {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .slot-label {
@@ -184,10 +165,10 @@ body:has(#slot.active) .tabs {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 50px;
-  padding: 7px 7px 7px 14px;
-  border-radius: 20px;
+  gap: 6px;
+  min-height: 48px;
+  padding: 7px 7px 7px 13px;
+  border-radius: 18px;
   background: rgba(255,255,255,.06);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
 }
@@ -198,40 +179,42 @@ body:has(#slot.active) .tabs {
   outline: 0;
   color: #fff;
   background: transparent;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: -.03em;
 }
 
 .slot-quick-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .slot-quick-actions button {
-  min-width: 42px;
-  height: 34px;
+  min-width: 34px;
+  height: 32px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 13px;
   color: #fff;
   background: rgba(255,255,255,.10);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 950;
 }
 
 .slot-spin-button {
   position: relative;
   z-index: 9;
-  width: 100%;
-  height: 50px;
-  margin-top: 64px;
-  border: 0;
-  border-radius: 20px;
+  width: 118px;
+  height: 48px;
+  margin: 0;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 18px;
   color: #fff;
-  background: linear-gradient(135deg, #5b0f24, #8f1d3d, #c03a5b);
-  box-shadow: 0 18px 38px rgba(143,29,61,.34), inset 0 1px 0 rgba(255,255,255,.18);
-  font-size: 16px;
+  background: linear-gradient(135deg, rgba(54,6,20,.82), rgba(92,12,34,.72), rgba(128,24,52,.68));
+  box-shadow: 0 16px 34px rgba(92,12,34,.30), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -18px 34px rgba(0,0,0,.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-size: 15px;
   font-weight: 950;
   letter-spacing: -.03em;
 }
@@ -296,6 +279,20 @@ body:has(#slot.active) .tabs {
   .slot-control-panel {
     width: min(100%, 398px);
     margin-top: -24px;
+  }
+
+  .slot-control-row {
+    grid-template-columns: minmax(0, 1fr) 108px;
+    gap: 8px;
+  }
+
+  .slot-spin-button {
+    width: 108px;
+    font-size: 14px;
+  }
+
+  .slot-quick-actions button {
+    min-width: 32px;
   }
 }
 `;
