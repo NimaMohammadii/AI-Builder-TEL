@@ -92,7 +92,8 @@ export const SLOT_SCRIPT = `
     if(input) input.disabled = spinning;
     if(button){
       button.disabled = spinning;
-      button.textContent = spinning ? 'Running' : extraTurns > 0 ? 'Use Extra Turn' : 'Spin';
+      var fallback = button.querySelector('.slot-control-fallback');
+      if(fallback) fallback.textContent = spinning ? 'Running' : extraTurns > 0 ? 'Use Extra Turn' : 'Spin';
     }
   }
 
@@ -500,6 +501,24 @@ export const SLOT_SCRIPT = `
       });
   }
 
+  function loadSlotControls(){
+    fetch('/app/api/slot-controls', { cache: 'no-store' })
+      .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
+      .then(function(result){
+        if(!result.ok || !result.body || !result.body.controls) return;
+
+        result.body.controls.forEach(function(control){
+          var img = control.id === 'spin' ? q('slotSpinButtonImage') : control.id === 'input' ? q('slotInputButtonImage') : null;
+          if(!img || !control.imageUrl) return;
+
+          img.onload = function(){ img.classList.add('is-loaded'); };
+          img.onerror = function(){ img.classList.remove('is-loaded'); img.removeAttribute('src'); };
+          img.src = control.imageUrl;
+        });
+      })
+      .catch(function(){});
+  }
+
   function loadSlotSpinAudio(){
     fetch('/app/api/slot-spin-audio', { cache: 'no-store' })
       .then(function(response){ return response.json().then(function(body){ return { ok: response.ok, body: body }; }); })
@@ -514,6 +533,7 @@ export const SLOT_SCRIPT = `
     initReels();
     loadSlotFrame();
     loadSlotSymbols();
+    loadSlotControls();
     loadSlotSpinAudio();
     syncAmountInput();
     setMultiplierText(1);
