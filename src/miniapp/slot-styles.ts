@@ -6,13 +6,8 @@ export const SLOT_STYLES = `
   overflow: hidden;
 }
 
-body:has(#slot.active) .top,
 body:has(#slot.active) .tabs {
   display: none !important;
-}
-
-body:has(#slot.active) .content {
-  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
 .slot-machine {
