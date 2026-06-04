@@ -2,8 +2,10 @@ import app from './index';
 import type { Env } from './types';
 
 const KEY = 'slot-frame';
+const SLOT_SPIN_AUDIO_KEY = 'slot-spin-audio';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
 
 const SLOT_SYMBOLS = [
   { id: 'cherry', label: 'Cherry / گیلاس' },
@@ -44,6 +46,10 @@ function cleanSlotSymbolId(value: string): SlotSymbolId | null {
 
 function slotSymbolUrl(id: SlotSymbolId, version: string): string {
   return `/app/api/uploaded-image/slot-symbols/${id}?v=${version}`;
+}
+
+function slotSpinAudioUrl(version: string): string {
+  return `/app/api/uploaded-audio/slot-spin?v=${version}`;
 }
 
 async function symbolPayload(env: Env) {
@@ -110,6 +116,26 @@ app.get('/app/api/uploaded-image/slot-symbols/:id.png', async (c) => {
   return slotSymbolResponse(c.env, c.req.param('id'));
 });
 
+app.get('/app/api/slot-spin-audio', async (c) => {
+  const head = await c.env.ASSETS.head(SLOT_SPIN_AUDIO_KEY).catch(() => null);
+  const version = head?.customMetadata?.version || '1';
+  return c.json({ ok: true, hasAudio: Boolean(head), audioUrl: head ? slotSpinAudioUrl(version) : null, version }, 200, { 'cache-control': 'no-store' });
+});
+
+app.get('/app/api/uploaded-audio/slot-spin', async (c) => {
+  const head = await c.env.ASSETS.head(SLOT_SPIN_AUDIO_KEY).catch(() => null);
+  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const object = await c.env.ASSETS.get(SLOT_SPIN_AUDIO_KEY).catch(() => null);
+  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'audio/mpeg',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'content-length': String(head.size),
+    },
+  });
+});
+
 app.post('/admin/api/upload-slot-frame', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
@@ -139,5 +165,20 @@ app.post('/admin/api/upload-slot-symbol', async (c) => {
     return c.json({ ok: true, id, imageUrl: slotSymbolUrl(id, version), version, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot symbol' }, 400, { 'cache-control': 'no-store' });
+  }
+});
+
+app.post('/admin/api/upload-slot-spin-audio', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  try {
+    const form = await c.req.formData();
+    const file = form.get('audio');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an audio file.' }, 400);
+    if (!AUDIO_TYPES.has(file.type)) return c.json({ error: 'Only MP3, WAV, OGG, WebM, M4A or AAC audio files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(SLOT_SPIN_AUDIO_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, audioUrl: slotSpinAudioUrl(version), version }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot spin audio' }, 400, { 'cache-control': 'no-store' });
   }
 });
