@@ -22,7 +22,7 @@ export const PUMP_SECTION = `
       z-index: -3;
       background:
         radial-gradient(ellipse 110% 54% at 50% -14%, rgba(58, 4, 24, .62), transparent 62%),
-        radial-gradient(ellipse 64% 38% at 50% 30%, rgba(72, 7, 31, .20), transparent 70%),
+        radial-gradient(ellipse 64% 38% at 50% 26%, rgba(72, 7, 31, .18), transparent 70%),
         linear-gradient(180deg, #040102 0%, #090205 44%, #010101 100%);
       pointer-events: none;
     }
@@ -30,7 +30,7 @@ export const PUMP_SECTION = `
     .pump-view {
       height: 100%;
       min-height: 100%;
-      padding: 0 14px calc(82px + env(safe-area-inset-bottom));
+      padding: 0 14px calc(78px + env(safe-area-inset-bottom));
       box-sizing: border-box;
       overflow-y: auto !important;
       overflow-x: hidden;
@@ -42,20 +42,20 @@ export const PUMP_SECTION = `
       width: min(100%, 430px);
       min-height: calc(100vh - 96px);
       margin: 0 auto;
-      padding-top: 28px;
+      padding-top: 24px;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      gap: 12px;
+      gap: 10px;
       box-sizing: border-box;
     }
 
     .pump-stage {
       position: relative;
-      min-height: 330px;
+      min-height: 350px;
       display: grid;
       place-items: center;
-      padding-top: 34px;
+      padding-top: 14px;
       box-sizing: border-box;
     }
 
@@ -63,12 +63,12 @@ export const PUMP_SECTION = `
       content: '';
       position: absolute;
       left: 50%;
-      bottom: 22px;
-      width: 244px;
-      height: 62px;
+      bottom: 34px;
+      width: 260px;
+      height: 64px;
       transform: translateX(-50%);
       border-radius: 50%;
-      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .22), transparent 72%);
+      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .20), transparent 74%);
       filter: blur(18px);
       pointer-events: none;
     }
@@ -76,31 +76,35 @@ export const PUMP_SECTION = `
     .pump-balloon-wrap {
       --pump-scale: 1;
       position: relative;
-      width: 260px;
-      height: 268px;
+      width: 280px;
+      height: 306px;
       display: grid;
       place-items: center;
-      transform-origin: 50% 84%;
-      filter: drop-shadow(0 26px 48px rgba(0, 0, 0, .78));
+      transform-origin: 50% 82%;
+      filter: drop-shadow(0 30px 50px rgba(0, 0, 0, .82));
     }
 
     .pump-balloon-wrap::before {
       content: '';
       position: absolute;
       left: 50%;
-      top: 50%;
-      width: 214px;
-      height: 234px;
+      top: 49%;
+      width: 218px;
+      height: 246px;
       transform: translate(-50%, -50%);
       border-radius: 50%;
-      background: radial-gradient(circle at 50% 54%, rgba(92, 8, 34, .24), transparent 68%);
-      filter: blur(22px);
-      opacity: .62;
+      background: radial-gradient(circle at 50% 54%, rgba(88, 6, 34, .20), transparent 70%);
+      filter: blur(24px);
+      opacity: .58;
       pointer-events: none;
     }
 
     .pump-balloon-wrap.is-pumping .pump-balloon {
-      animation: balloonInflate .34s cubic-bezier(.16, .98, .34, 1) both;
+      animation: balloonInflate .36s cubic-bezier(.16, .98, .34, 1) both;
+    }
+
+    .pump-balloon-wrap.is-pumping .pump-inflator-core {
+      animation: inflaterPulse .24s ease both;
     }
 
     .pump-balloon-wrap.is-popped {
@@ -109,21 +113,21 @@ export const PUMP_SECTION = `
 
     .pump-balloon {
       position: relative;
-      width: 182px;
-      height: 224px;
+      width: 188px;
+      height: 232px;
       border-radius: 52% 52% 48% 48% / 47% 47% 57% 57%;
       background:
-        radial-gradient(ellipse at 32% 18%, rgba(255,235,242,.24), rgba(255,225,235,.08) 12%, transparent 24%),
-        radial-gradient(ellipse at 43% 29%, rgba(255,150,182,.10), transparent 40%),
-        radial-gradient(circle at 72% 76%, rgba(0,0,0,.50), transparent 48%),
-        radial-gradient(circle at 48% 42%, #5b0823 0%, #3a0316 44%, #20010c 78%, #0c0005 100%);
+        radial-gradient(ellipse at 31% 18%, rgba(255, 238, 245, .20), rgba(255, 220, 232, .065) 12%, transparent 24%),
+        radial-gradient(ellipse at 42% 29%, rgba(255, 150, 182, .075), transparent 38%),
+        radial-gradient(circle at 73% 76%, rgba(0, 0, 0, .54), transparent 48%),
+        radial-gradient(circle at 48% 42%, #5d0823 0%, #3a0316 44%, #1f010c 78%, #0a0004 100%);
       border: 0;
       box-shadow:
-        inset 0 2px 0 rgba(255,255,255,.10),
-        inset -24px -36px 52px rgba(0,0,0,.50),
-        inset 18px 12px 34px rgba(255,126,166,.075),
-        inset 0 0 26px rgba(255,225,235,.035),
-        0 0 28px rgba(76,5,30,.18);
+        inset 0 2px 0 rgba(255, 255, 255, .08),
+        inset -26px -38px 54px rgba(0, 0, 0, .54),
+        inset 18px 12px 34px rgba(255, 126, 166, .055),
+        inset 0 0 28px rgba(255, 225, 235, .028),
+        0 0 26px rgba(76, 5, 30, .16);
       transform: scale(var(--pump-scale));
       transform-origin: 50% 82%;
       transition: transform .28s cubic-bezier(.18, .88, .26, 1), filter .24s ease;
@@ -133,13 +137,13 @@ export const PUMP_SECTION = `
     .pump-balloon::before {
       content: '';
       position: absolute;
-      left: 27%;
-      top: 15%;
-      width: 34px;
-      height: 19px;
+      left: 29%;
+      top: 16%;
+      width: 24px;
+      height: 14px;
       border-radius: 50%;
-      background: rgba(255,255,255,.16);
-      filter: blur(1.2px);
+      background: rgba(255, 255, 255, .12);
+      filter: blur(1.4px);
       transform: rotate(-25deg);
     }
 
@@ -147,61 +151,92 @@ export const PUMP_SECTION = `
       content: '';
       position: absolute;
       left: 50%;
-      bottom: -15px;
-      width: 32px;
-      height: 24px;
+      bottom: -16px;
+      width: 34px;
+      height: 26px;
       transform: translateX(-50%) rotate(45deg);
-      border-radius: 7px 10px 7px 10px;
-      background: linear-gradient(145deg, #3a0418, #140006 72%);
+      border-radius: 8px 11px 8px 11px;
+      background: linear-gradient(145deg, #3b0418, #120005 72%);
       box-shadow:
-        inset 0 1px 0 rgba(255, 230, 238, .14),
-        0 8px 18px rgba(0,0,0,.32);
-    }
-
-    .pump-string {
-      position: absolute;
-      left: 50%;
-      bottom: 0;
-      width: 2px;
-      height: 58px;
-      transform: translateX(-50%);
-      background: linear-gradient(180deg, rgba(255,190,210,.30), rgba(255,190,210,.035));
-      border-radius: 999px;
+        inset 0 1px 0 rgba(255, 230, 238, .12),
+        0 9px 18px rgba(0, 0, 0, .34);
     }
 
     .pump-multiplier {
       position: absolute;
       left: 50%;
-      top: 0;
-      transform: translateX(-50%);
-      font-size: 40px;
+      top: 45%;
+      transform: translate(-50%, -50%);
+      font-size: 43px;
       font-weight: 950;
       letter-spacing: -.06em;
       color: #fff;
-      text-shadow: 0 2px 16px rgba(0,0,0,.58), 0 0 22px rgba(125,14,48,.34);
+      text-shadow: 0 2px 18px rgba(0, 0, 0, .62), 0 0 20px rgba(125, 14, 48, .32);
       pointer-events: none;
       z-index: 3;
     }
 
-    .pump-status {
+    .pump-inflator {
       position: absolute;
       left: 50%;
-      bottom: 2px;
-      min-width: 178px;
-      min-height: 42px;
+      bottom: 5px;
+      width: 106px;
+      height: 92px;
       transform: translateX(-50%);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 18px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .pump-nozzle {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 12px;
+      height: 54px;
+      transform: translateX(-50%);
       border-radius: 999px;
-      background: rgba(255,255,255,.052);
-      border: 1px solid rgba(255,255,255,.07);
-      color: rgba(255,255,255,.76);
-      font-size: 13px;
-      font-weight: 850;
-      backdrop-filter: blur(14px) saturate(1.15);
-      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      background: linear-gradient(180deg, rgba(255, 213, 226, .30), rgba(72, 8, 30, .78) 48%, rgba(14, 0, 7, .96));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .20),
+        0 0 16px rgba(88, 7, 36, .24);
+    }
+
+    .pump-inflator-core {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 102px;
+      height: 52px;
+      transform: translateX(-50%);
+      border-radius: 22px 22px 30px 30px;
+      background:
+        radial-gradient(circle at 36% 26%, rgba(255, 255, 255, .16), transparent 22%),
+        linear-gradient(180deg, rgba(75, 8, 32, .96), rgba(18, 1, 8, .98));
+      border: 1px solid rgba(255, 220, 232, .12);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .13),
+        inset -12px -16px 22px rgba(0, 0, 0, .36),
+        0 14px 26px rgba(0, 0, 0, .40);
+    }
+
+    .pump-inflator-core::before,
+    .pump-inflator-core::after {
+      content: '';
+      position: absolute;
+      top: 17px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, .56);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10);
+    }
+
+    .pump-inflator-core::before {
+      left: 24px;
+    }
+
+    .pump-inflator-core::after {
+      right: 24px;
     }
 
     .pump-controls {
@@ -209,9 +244,9 @@ export const PUMP_SECTION = `
       margin: 0 auto;
       padding: 22px 16px 18px;
       border-radius: 32px;
-      background: rgba(0,0,0,.48);
-      border: 1px solid rgba(255,255,255,.12);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 18px 54px rgba(0,0,0,.35);
+      background: rgba(0, 0, 0, .48);
+      border: 1px solid rgba(255, 255, 255, .12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 18px 54px rgba(0, 0, 0, .35);
       backdrop-filter: blur(16px) saturate(1.16);
       -webkit-backdrop-filter: blur(16px) saturate(1.16);
     }
@@ -219,7 +254,7 @@ export const PUMP_SECTION = `
     .pump-label {
       display: block;
       margin: 0 0 10px 4px;
-      color: rgba(255,255,255,.64);
+      color: rgba(255, 255, 255, .64);
       font-size: 14px;
       font-weight: 900;
     }
@@ -234,8 +269,8 @@ export const PUMP_SECTION = `
     .pump-bet-row input {
       height: 56px;
       border-radius: 22px;
-      border: 1px solid rgba(255,255,255,.13);
-      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255, 255, 255, .13);
+      background: rgba(255, 255, 255, .025);
       color: #fff;
       font-size: 20px;
       font-weight: 950;
@@ -262,20 +297,20 @@ export const PUMP_SECTION = `
 
     .pump-action {
       color: #0a0608;
-      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(218,218,220,.95));
+      background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(218, 218, 220, .95));
     }
 
     .pump-action.is-playing {
       color: #fff;
       background: linear-gradient(180deg, #6f0d2f, #3c0418 100%);
-      border: 1px solid rgba(255,188,208,.20);
+      border: 1px solid rgba(255, 188, 208, .20);
     }
 
     .pump-cashout {
       display: none;
       color: #fff;
-      background: rgba(255,255,255,.045);
-      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255, 255, 255, .045);
+      border: 1px solid rgba(255, 255, 255, .12);
     }
 
     .pump-controls.is-playing .pump-cashout {
@@ -295,6 +330,12 @@ export const PUMP_SECTION = `
       100% { transform: scale(var(--pump-scale)); }
     }
 
+    @keyframes inflaterPulse {
+      0% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.045, .94); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
     @keyframes pumpPop {
       0% { transform: scale(1); opacity: 1; }
       45% { transform: scale(1.18); opacity: .94; }
@@ -304,12 +345,15 @@ export const PUMP_SECTION = `
 
   <div class="pump-page">
     <div class="pump-stage">
-      <div id="pumpMultiplier" class="pump-multiplier">1.00x</div>
       <div id="pumpBalloonWrap" class="pump-balloon-wrap">
-        <div id="pumpBalloon" class="pump-balloon"></div>
-        <div class="pump-string"></div>
+        <div id="pumpBalloon" class="pump-balloon">
+          <div id="pumpMultiplier" class="pump-multiplier">1.00x</div>
+        </div>
+        <div class="pump-inflator" aria-hidden="true">
+          <div class="pump-nozzle"></div>
+          <div class="pump-inflator-core"></div>
+        </div>
       </div>
-      <div id="pumpStatus" class="pump-status">Start and pump carefully</div>
     </div>
 
     <div id="pumpControls" class="pump-controls">
@@ -393,11 +437,6 @@ export const PUMP_SECTION = `
         return nano;
       }
 
-      function setStatus(text) {
-        var node = q('pumpStatus');
-        if (node) node.textContent = text;
-      }
-
       function render() {
         var wrap = q('pumpBalloonWrap');
         var label = q('pumpMultiplier');
@@ -433,27 +472,21 @@ export const PUMP_SECTION = `
         var balance = readBalanceNano();
         betNano = normalizeBet();
 
-        if (balance < betNano) {
-          setStatus('Not enough balance');
-          return;
-        }
+        if (balance < betNano) return;
 
         state = 'playing';
         multiplier = 1;
         pumps = 0;
         burstAt = hiddenBurstPoint();
         addBalanceNano(-betNano);
-        setStatus('Pump before it pops');
         render();
       }
 
-      function resetSoon(text, delay) {
-        setStatus(text);
+      function resetSoon(delay) {
         setTimeout(function(){
           state = 'idle';
           multiplier = 1;
           pumps = 0;
-          setStatus('Start and pump carefully');
           render();
         }, delay);
       }
@@ -478,11 +511,10 @@ export const PUMP_SECTION = `
         if (multiplier >= burstAt) {
           state = 'popped';
           render();
-          resetSoon('Popped at ' + formatMultiplier(multiplier), 1250);
+          resetSoon(1250);
           return;
         }
 
-        setStatus('Safe so far');
         render();
       }
 
@@ -492,7 +524,7 @@ export const PUMP_SECTION = `
         addBalanceNano(payout);
         state = 'cashed';
         render();
-        resetSoon('Cashed out ' + formatMultiplier(multiplier), 1050);
+        resetSoon(1050);
       }
 
       function multiplyBet(value) {
