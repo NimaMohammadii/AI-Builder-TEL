@@ -22,7 +22,7 @@ export const PUMP_SECTION = `
       z-index: -3;
       background:
         radial-gradient(ellipse 110% 54% at 50% -14%, rgba(58, 4, 24, .62), transparent 62%),
-        radial-gradient(ellipse 64% 38% at 50% 44%, rgba(72, 7, 31, .22), transparent 70%),
+        radial-gradient(ellipse 64% 38% at 50% 38%, rgba(72, 7, 31, .22), transparent 70%),
         linear-gradient(180deg, #040102 0%, #090205 44%, #010101 100%);
       pointer-events: none;
     }
@@ -30,7 +30,7 @@ export const PUMP_SECTION = `
     .pump-view {
       height: 100%;
       min-height: 100%;
-      padding: 0 14px calc(108px + env(safe-area-inset-bottom));
+      padding: 0 14px calc(92px + env(safe-area-inset-bottom));
       box-sizing: border-box;
       overflow-y: auto !important;
       overflow-x: hidden;
@@ -40,19 +40,19 @@ export const PUMP_SECTION = `
 
     .pump-page {
       width: min(100%, 430px);
-      min-height: calc(100vh - 116px);
+      min-height: calc(100vh - 96px);
       margin: 0 auto;
-      padding-top: 210px;
+      padding-top: 118px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
-      gap: 16px;
+      justify-content: center;
+      gap: 14px;
       box-sizing: border-box;
     }
 
     .pump-stage {
       position: relative;
-      min-height: 338px;
+      min-height: 304px;
       display: grid;
       place-items: center;
     }
@@ -61,28 +61,44 @@ export const PUMP_SECTION = `
       content: '';
       position: absolute;
       left: 50%;
-      bottom: 28px;
-      width: 250px;
-      height: 70px;
+      bottom: 20px;
+      width: 254px;
+      height: 68px;
       transform: translateX(-50%);
       border-radius: 50%;
-      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .34), transparent 72%);
-      filter: blur(14px);
+      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .28), transparent 72%);
+      filter: blur(16px);
       pointer-events: none;
     }
 
     .pump-balloon-wrap {
+      --pump-scale: 1;
       position: relative;
       width: 260px;
-      height: 286px;
+      height: 274px;
       display: grid;
       place-items: center;
       transform-origin: 50% 84%;
-      filter: drop-shadow(0 26px 54px rgba(0, 0, 0, .74));
+      filter: drop-shadow(0 28px 54px rgba(0, 0, 0, .78));
     }
 
-    .pump-balloon-wrap.is-pumping {
-      animation: pumpBounce .25s ease both;
+    .pump-balloon-wrap::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 218px;
+      height: 238px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 54%, rgba(92, 8, 34, .28), transparent 67%);
+      filter: blur(20px);
+      opacity: .72;
+      pointer-events: none;
+    }
+
+    .pump-balloon-wrap.is-pumping .pump-balloon {
+      animation: balloonInflate .34s cubic-bezier(.16, .98, .34, 1) both;
     }
 
     .pump-balloon-wrap.is-popped {
@@ -91,33 +107,38 @@ export const PUMP_SECTION = `
 
     .pump-balloon {
       position: relative;
-      width: 174px;
-      height: 212px;
-      border-radius: 50% 50% 47% 47% / 48% 48% 56% 56%;
+      width: 178px;
+      height: 218px;
+      border-radius: 52% 52% 48% 48% / 47% 47% 57% 57%;
       background:
-        radial-gradient(circle at 31% 20%, rgba(255,255,255,.38), rgba(255,255,255,.10) 15%, transparent 28%),
-        radial-gradient(circle at 70% 74%, rgba(0,0,0,.45), transparent 46%),
-        radial-gradient(circle at 48% 42%, #4f061e 0%, #390315 45%, #20010c 79%, #100006 100%);
-      border: 1px solid rgba(255, 210, 226, .28);
+        radial-gradient(circle at 31% 19%, rgba(255,255,255,.55), rgba(255,255,255,.16) 13%, transparent 27%),
+        radial-gradient(ellipse at 39% 28%, rgba(255,200,218,.16), transparent 36%),
+        radial-gradient(circle at 69% 74%, rgba(0,0,0,.48), transparent 48%),
+        radial-gradient(circle at 48% 42%, #5a0822 0%, #3c0417 42%, #21010c 78%, #0d0005 100%);
+      border: 0;
       box-shadow:
-        inset 0 2px 0 rgba(255,255,255,.22),
-        inset -18px -32px 42px rgba(0,0,0,.42),
-        inset 16px 10px 30px rgba(255,121,158,.08),
-        0 0 0 1px rgba(94,10,38,.82),
-        0 0 34px rgba(76,5,30,.20);
-      transition: width .22s ease, height .22s ease;
+        inset 0 3px 0 rgba(255,255,255,.20),
+        inset -22px -34px 48px rgba(0,0,0,.48),
+        inset 18px 12px 34px rgba(255,126,166,.10),
+        inset 0 0 22px rgba(255,225,235,.055),
+        0 0 36px rgba(76,5,30,.22);
+      transform: scale(var(--pump-scale));
+      transform-origin: 50% 82%;
+      transition: transform .28s cubic-bezier(.18, .88, .26, 1), filter .24s ease;
+      will-change: transform;
     }
 
     .pump-balloon::before {
       content: '';
       position: absolute;
-      left: 27%;
-      top: 14%;
-      width: 44px;
-      height: 28px;
+      left: 25%;
+      top: 13%;
+      width: 50px;
+      height: 31px;
       border-radius: 50%;
-      background: rgba(255,255,255,.22);
-      transform: rotate(-24deg);
+      background: rgba(255,255,255,.30);
+      filter: blur(.2px);
+      transform: rotate(-25deg);
     }
 
     .pump-balloon::after {
@@ -129,16 +150,18 @@ export const PUMP_SECTION = `
       height: 24px;
       transform: translateX(-50%) rotate(45deg);
       border-radius: 7px 10px 7px 10px;
-      background: linear-gradient(145deg, #3a0418, #170008 72%);
-      border: 1px solid rgba(255,210,226,.20);
+      background: linear-gradient(145deg, #3a0418, #140006 72%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 230, 238, .18),
+        0 8px 18px rgba(0,0,0,.32);
     }
 
     .pump-string {
       position: absolute;
       left: 50%;
-      bottom: 2px;
+      bottom: 0;
       width: 2px;
-      height: 68px;
+      height: 64px;
       transform: translateX(-50%);
       background: linear-gradient(180deg, rgba(255,190,210,.36), rgba(255,190,210,.04));
       border-radius: 999px;
@@ -146,21 +169,22 @@ export const PUMP_SECTION = `
 
     .pump-multiplier {
       position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
+      left: 50%;
+      top: 45%;
+      transform: translate(-50%, -50%);
       font-size: 42px;
       font-weight: 950;
       letter-spacing: -.06em;
       color: #fff;
-      text-shadow: 0 2px 16px rgba(0,0,0,.52), 0 0 24px rgba(125,14,48,.34);
+      text-shadow: 0 2px 16px rgba(0,0,0,.54), 0 0 24px rgba(125,14,48,.36);
       pointer-events: none;
+      z-index: 2;
     }
 
     .pump-status {
       position: absolute;
       left: 50%;
-      bottom: 8px;
+      bottom: 2px;
       min-width: 178px;
       min-height: 42px;
       transform: translateX(-50%);
@@ -169,8 +193,8 @@ export const PUMP_SECTION = `
       justify-content: center;
       padding: 0 18px;
       border-radius: 999px;
-      background: rgba(255,255,255,.055);
-      border: 1px solid rgba(255,255,255,.075);
+      background: rgba(255,255,255,.052);
+      border: 1px solid rgba(255,255,255,.07);
       color: rgba(255,255,255,.76);
       font-size: 13px;
       font-weight: 850;
@@ -263,10 +287,10 @@ export const PUMP_SECTION = `
       opacity: .48;
     }
 
-    @keyframes pumpBounce {
-      0% { transform: scale(1); }
-      48% { transform: scale(1.055, .96); }
-      100% { transform: scale(1); }
+    @keyframes balloonInflate {
+      0% { transform: scale(var(--pump-scale)); }
+      45% { transform: scale(calc(var(--pump-scale) * 1.075), calc(var(--pump-scale) * .975)); }
+      100% { transform: scale(var(--pump-scale)); }
     }
 
     @keyframes pumpPop {
@@ -334,7 +358,7 @@ export const PUMP_SECTION = `
 
       function toTon(nano) {
         var value = Math.max(0, Math.floor(Number(nano) || 0)) / NANO;
-        return value.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1');
+        return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
       }
 
       function formatMultiplier(value) {
@@ -374,7 +398,6 @@ export const PUMP_SECTION = `
 
       function render() {
         var wrap = q('pumpBalloonWrap');
-        var balloon = q('pumpBalloon');
         var label = q('pumpMultiplier');
         var controls = q('pumpControls');
         var action = q('pumpAction');
@@ -383,12 +406,12 @@ export const PUMP_SECTION = `
         var half = q('pumpHalf');
         var double = q('pumpDouble');
         var playing = state === 'playing';
-        var scale = Math.min(1.42, 1 + (multiplier - 1) * .07 + pumps * .012);
+        var scale = Math.min(1.52, 1 + (multiplier - 1) * .075 + pumps * .014);
 
         if (label) label.textContent = formatMultiplier(multiplier);
-        if (balloon) {
-          balloon.style.width = Math.round(174 * scale) + 'px';
-          balloon.style.height = Math.round(212 * scale) + 'px';
+        if (wrap) {
+          wrap.style.setProperty('--pump-scale', scale.toFixed(3));
+          wrap.classList.toggle('is-popped', state === 'popped');
         }
         if (controls) controls.classList.toggle('is-playing', playing);
         if (action) {
@@ -402,7 +425,6 @@ export const PUMP_SECTION = `
         if (input) input.disabled = playing;
         if (half) half.disabled = playing;
         if (double) double.disabled = playing;
-        if (wrap) wrap.classList.toggle('is-popped', state === 'popped');
       }
 
       function startRound() {
