@@ -1,7 +1,7 @@
 export const ADMIN_DICE_ASSETS_PANEL_SCRIPT = `
 <style>
 #diceAssetsPanel{margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,.10)}
-.dice-asset-admin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.dice-asset-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 .dice-asset-admin-card{padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(255,255,255,.03)}
 .dice-asset-admin-title{display:flex;gap:9px;align-items:center}.dice-asset-admin-title strong{font-size:12px;line-height:1.25}
 .dice-asset-admin-preview{width:70px;height:70px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(0,0,0,.38);object-fit:contain;opacity:.35}
@@ -20,7 +20,7 @@ export const ADMIN_DICE_ASSETS_PANEL_SCRIPT = `
     if(!target||document.getElementById('diceAssetsPanel'))return;
     var wrap=document.createElement('div');
     wrap.id='diceAssetsPanel';
-    wrap.innerHTML='<h2>Dice game images</h2><p class="muted small-text">Upload three Dice images: Roll Dice button, the full bet input row with both side buttons, and the slider button on the number bar.</p><div id="diceAssetsGrid" class="dice-asset-admin-grid"><div class="empty">Loading...</div></div>';
+    wrap.innerHTML='<h2>Dice game images</h2><p class="muted small-text">Upload Dice images: Roll Dice button, the full bet input row, the slider button, and the bottom stats replacement image.</p><div id="diceAssetsGrid" class="dice-asset-admin-grid"><div class="empty">Loading...</div></div>';
     target.appendChild(wrap);
     var grid=document.getElementById('diceAssetsGrid');
     if(grid)grid.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest?ev.target.closest('[data-dice-asset-upload]'):null;if(b)upload(b.getAttribute('data-dice-asset-upload'))});
