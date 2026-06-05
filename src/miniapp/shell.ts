@@ -45,6 +45,7 @@ import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
 import { RPS_SECTION } from './rps';
+import { PUMP_SECTION } from './pump';
 import { LIMBO_SECTION } from './limbo';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
@@ -178,6 +179,7 @@ const SECTIONS = [
   WHEEL_SECTION,
   DICE_SECTION,
   RPS_SECTION,
+  PUMP_SECTION,
   LIMBO_SECTION,
 ].join('');
 
