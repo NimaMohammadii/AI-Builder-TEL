@@ -1,6 +1,11 @@
 export const PLAY_ZONE_VISIBILITY_SCRIPT = `
 (function(){
   var endpoint='/app/api/play-zone-cards';
+  function currentUserId(){
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+    return String(user.id||localStorage.getItem('ownerId')||'').trim();
+  }
   function setCard(card,visible){
     if(!card)return;
     if(visible){
@@ -22,7 +27,10 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     });
   }
   function refresh(){
-    fetch(endpoint,{credentials:'same-origin',cache:'no-store'})
+    if(window.VexaTrustedAccess===true){apply({cards:[]});return}
+    var uid=currentUserId();
+    var url=endpoint+(uid?'?userId='+encodeURIComponent(uid):'');
+    fetch(url,{credentials:'same-origin',cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(j){if(j)apply(j)})
       .catch(function(){});

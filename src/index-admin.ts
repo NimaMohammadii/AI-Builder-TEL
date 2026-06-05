@@ -7,6 +7,7 @@ import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { getPlayZoneCardVisibility, setPlayZoneCardVisibility } from './play-zone-card-visibility';
+import { hasAccessOverride } from './user-access-override-routes';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
 
@@ -93,7 +94,13 @@ app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetRes
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
-app.get('/app/api/play-zone-cards', async (c) => c.json(await getPlayZoneCardVisibility(c.env), 200, { 'cache-control': 'no-store' }));
+app.get('/app/api/play-zone-cards', async (c) => {
+  const visibility = await getPlayZoneCardVisibility(c.env);
+  if (await hasAccessOverride(c.env, c.req.query('userId'))) {
+    return c.json({ ...visibility, trustedAccess: true, hiddenIds: [], cards: visibility.cards.map((card) => ({ ...card, visible: true })) }, 200, { 'cache-control': 'no-store' });
+  }
+  return c.json(visibility, 200, { 'cache-control': 'no-store' });
+});
 app.get('/app/api/section-lock-image/:section/:kind', async (c) => { try { const section = normalizeSectionId(c.req.param('section')); const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, kind), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/section-lock-image/:section', async (c) => { try { const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));

@@ -11,26 +11,49 @@ function optionalUserId(value: unknown): string {
   return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
 }
 
-function key(userId: string): string {
-  return 'admin:user-access-override:' + userId;
+type AccessOverrideRow = { trusted_access: number | boolean | null };
+
+async function ensureAccessOverrideTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_user_access_overrides (
+    user_id TEXT PRIMARY KEY,
+    trusted_access INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
 }
 
 async function getAccessOverride(env: Env, userId: string): Promise<{ userId: string; trustedAccess: boolean }> {
   const id = cleanUserId(userId);
-  const value = await env.BOT_CACHE.get(key(id)).catch(() => null);
-  return { userId: id, trustedAccess: value === '1' };
+  await ensureAccessOverrideTable(env);
+  const row = await env.DB.prepare('SELECT trusted_access FROM admin_user_access_overrides WHERE user_id = ?')
+    .bind(id)
+    .first<AccessOverrideRow>();
+  return { userId: id, trustedAccess: row?.trusted_access === 1 || row?.trusted_access === true };
 }
 
-async function hasAccessOverride(env: Env, userIdInput: unknown): Promise<boolean> {
+export async function hasAccessOverride(env: Env, userIdInput: unknown): Promise<boolean> {
   const id = optionalUserId(userIdInput);
   if (!id) return false;
-  return (await env.BOT_CACHE.get(key(id)).catch(() => null)) === '1';
+  await ensureAccessOverrideTable(env);
+  const row = await env.DB.prepare('SELECT trusted_access FROM admin_user_access_overrides WHERE user_id = ?')
+    .bind(id)
+    .first<AccessOverrideRow>();
+  return row?.trusted_access === 1 || row?.trusted_access === true;
 }
 
 async function setAccessOverride(env: Env, userId: string, enabled: boolean): Promise<{ userId: string; trustedAccess: boolean }> {
   const id = cleanUserId(userId);
-  if (enabled) await env.BOT_CACHE.put(key(id), '1');
-  else await env.BOT_CACHE.delete(key(id));
+  await ensureAccessOverrideTable(env);
+  if (enabled) {
+    await env.DB.prepare(`INSERT INTO admin_user_access_overrides (user_id, trusted_access, updated_at)
+      VALUES (?, 1, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        trusted_access = 1,
+        updated_at = CURRENT_TIMESTAMP`)
+      .bind(id)
+      .run();
+  } else {
+    await env.DB.prepare('DELETE FROM admin_user_access_overrides WHERE user_id = ?').bind(id).run();
+  }
   return getAccessOverride(env, id);
 }
 
