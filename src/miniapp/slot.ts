@@ -1,5 +1,5 @@
 export const SLOT_SECTION = `
-<section id="slot" class="view slot-view" style="overflow-x:hidden;max-width:100vw">
+<section id="slot" class="view slot-view" style="overflow-x:hidden;max-width:100vw;transform:translateY(-10px)">
   <div class="slot-machine" aria-label="Interactive section">
     <img id="slotFrameImage" class="slot-frame-image" alt="" aria-hidden="true"/>
 
@@ -17,8 +17,8 @@ export const SLOT_SECTION = `
 
   </div>
 
-  <div class="slot-control-panel" style="margin-top:-194px;overflow:hidden;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important;clip-path:inset(18px 0 0 0)">
-    <div class="slot-controls slot-image-controls" style="width:92%;gap:8px;overflow:hidden">
+  <div class="slot-control-panel" style="margin-top:-220px;overflow:hidden;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important;clip-path:inset(18px 0 0 0)">
+    <div class="slot-controls slot-image-controls" style="width:88%;gap:2px;overflow:hidden">
       <button id="slotSpinButton" class="slot-image-control slot-spin-button" type="button" aria-label="Start" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important">
         <img id="slotSpinButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
         <span class="slot-control-fallback">Start</span>
@@ -30,7 +30,7 @@ export const SLOT_SECTION = `
     </div>
   </div>
 
-  <div class="slot-live open" id="slotLive">
+  <div class="slot-live open" id="slotLive" style="margin-top:-18px!important">
     <div class="slot-live-head">
       <span class="slot-live-title">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
