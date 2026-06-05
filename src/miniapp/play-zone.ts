@@ -26,7 +26,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
   const countAttr = shouldShowLivePlayersOnCard(id) ? 'data-player-count-visible="true"' : 'data-player-count-visible="false"';
 
   return `
-    <span class="game-card-shell ${extraClass}" ${viewAttr} ${countAttr}>
+    <span class="game-card-shell ${extraClass}" data-play-zone-card-id="${id}" ${viewAttr} ${countAttr}>
       <button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}">
         <span class="game-image">
           <img src="${initialSrc}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/>
