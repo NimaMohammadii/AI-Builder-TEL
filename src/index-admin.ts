@@ -5,6 +5,7 @@ import './market-routes';
 import { adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance } from './user-controls';
+import { getPlayZoneCards, setPlayZoneCardHidden } from './play-zone-cards';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env } from './types';
@@ -27,6 +28,7 @@ const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBa
 const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
 const audioEnabledSchema = z.object({ enabled: z.boolean() });
+const playZoneCardVisibilitySchema = z.object({ cardId: z.string().min(1).max(40), hidden: z.boolean() });
 
 app.get('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
@@ -91,6 +93,7 @@ app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetRes
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
+app.get('/app/api/play-zone-cards', async (c) => c.json(await getPlayZoneCards(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
 app.get('/app/api/section-lock-image/:section/:kind', async (c) => { try { const section = normalizeSectionId(c.req.param('section')); const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, kind), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/section-lock-image/:section', async (c) => { try { const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
@@ -102,6 +105,8 @@ app.post('/admin/api/users/ton-balance', zValidator('json', userTonBalanceSchema
 app.post('/admin/api/users/ton-balance-adjust', zValidator('json', userTonBalanceAdjustSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await adjustUserTonBalance(c.env, body.userId, body.deltaNano)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not adjust TON balance' }, 400); } });
 app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setUserSectionBlocked(c.env, body.userId, body.sectionId, body.blocked)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update access' }, 400); } });
 app.get('/admin/api/section-locks', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getSectionLocks(c.env)); });
+app.get('/admin/api/play-zone-cards', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getPlayZoneCards(c.env)); });
+app.post('/admin/api/play-zone-cards/visibility', zValidator('json', playZoneCardVisibilitySchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setPlayZoneCardHidden(c.env, body.cardId, body.hidden)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update Play Zone card' }, 400); } });
 app.get('/admin/api/miniapp-audio', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getMiniappAudioJson(c.env)); });
 app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
 app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
