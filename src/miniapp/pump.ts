@@ -22,7 +22,7 @@ export const PUMP_SECTION = `
       z-index: -3;
       background:
         radial-gradient(ellipse 110% 54% at 50% -14%, rgba(58, 4, 24, .62), transparent 62%),
-        radial-gradient(ellipse 64% 38% at 50% 26%, rgba(72, 7, 31, .18), transparent 70%),
+        radial-gradient(ellipse 64% 38% at 50% 25%, rgba(72, 7, 31, .17), transparent 70%),
         linear-gradient(180deg, #040102 0%, #090205 44%, #010101 100%);
       pointer-events: none;
     }
@@ -42,7 +42,7 @@ export const PUMP_SECTION = `
       width: min(100%, 430px);
       min-height: calc(100vh - 96px);
       margin: 0 auto;
-      padding-top: 24px;
+      padding-top: 22px;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -52,10 +52,10 @@ export const PUMP_SECTION = `
 
     .pump-stage {
       position: relative;
-      min-height: 350px;
+      min-height: 354px;
       display: grid;
       place-items: center;
-      padding-top: 14px;
+      padding-top: 10px;
       box-sizing: border-box;
     }
 
@@ -63,9 +63,9 @@ export const PUMP_SECTION = `
       content: '';
       position: absolute;
       left: 50%;
-      bottom: 34px;
-      width: 260px;
-      height: 64px;
+      bottom: 30px;
+      width: 270px;
+      height: 66px;
       transform: translateX(-50%);
       border-radius: 50%;
       background: radial-gradient(ellipse at center, rgba(92, 8, 34, .20), transparent 74%);
@@ -76,31 +76,16 @@ export const PUMP_SECTION = `
     .pump-balloon-wrap {
       --pump-scale: 1;
       position: relative;
-      width: 280px;
-      height: 306px;
+      width: 296px;
+      height: 320px;
       display: grid;
       place-items: center;
       transform-origin: 50% 82%;
       filter: drop-shadow(0 30px 50px rgba(0, 0, 0, .82));
     }
 
-    .pump-balloon-wrap::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 49%;
-      width: 218px;
-      height: 246px;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: radial-gradient(circle at 50% 54%, rgba(88, 6, 34, .20), transparent 70%);
-      filter: blur(24px);
-      opacity: .58;
-      pointer-events: none;
-    }
-
-    .pump-balloon-wrap.is-pumping .pump-balloon {
-      animation: balloonInflate .36s cubic-bezier(.16, .98, .34, 1) both;
+    .pump-balloon-wrap.is-pumping .pump-balloon-svg {
+      animation: balloonInflate .38s cubic-bezier(.16, .98, .34, 1) both;
     }
 
     .pump-balloon-wrap.is-pumping .pump-inflator-core {
@@ -111,93 +96,53 @@ export const PUMP_SECTION = `
       animation: pumpPop .38s ease both;
     }
 
-    .pump-balloon {
+    .pump-balloon-svg {
       position: relative;
-      width: 188px;
-      height: 232px;
-      border-radius: 52% 52% 48% 48% / 47% 47% 57% 57%;
-      background:
-        radial-gradient(ellipse at 31% 18%, rgba(255, 238, 245, .20), rgba(255, 220, 232, .065) 12%, transparent 24%),
-        radial-gradient(ellipse at 42% 29%, rgba(255, 150, 182, .075), transparent 38%),
-        radial-gradient(circle at 73% 76%, rgba(0, 0, 0, .54), transparent 48%),
-        radial-gradient(circle at 48% 42%, #5d0823 0%, #3a0316 44%, #1f010c 78%, #0a0004 100%);
-      border: 0;
-      box-shadow:
-        inset 0 2px 0 rgba(255, 255, 255, .08),
-        inset -26px -38px 54px rgba(0, 0, 0, .54),
-        inset 18px 12px 34px rgba(255, 126, 166, .055),
-        inset 0 0 28px rgba(255, 225, 235, .028),
-        0 0 26px rgba(76, 5, 30, .16);
+      z-index: 2;
+      width: 242px;
+      height: 280px;
+      overflow: visible;
       transform: scale(var(--pump-scale));
-      transform-origin: 50% 82%;
+      transform-origin: 50% 78%;
       transition: transform .28s cubic-bezier(.18, .88, .26, 1), filter .24s ease;
       will-change: transform;
     }
 
-    .pump-balloon::before {
-      content: '';
-      position: absolute;
-      left: 29%;
-      top: 16%;
-      width: 24px;
-      height: 14px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .12);
-      filter: blur(1.4px);
-      transform: rotate(-25deg);
-    }
-
-    .pump-balloon::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      bottom: -16px;
-      width: 34px;
-      height: 26px;
-      transform: translateX(-50%) rotate(45deg);
-      border-radius: 8px 11px 8px 11px;
-      background: linear-gradient(145deg, #3b0418, #120005 72%);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 230, 238, .12),
-        0 9px 18px rgba(0, 0, 0, .34);
-    }
-
     .pump-multiplier {
-      position: absolute;
-      left: 50%;
-      top: 45%;
-      transform: translate(-50%, -50%);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 43px;
       font-weight: 950;
-      letter-spacing: -.06em;
-      color: #fff;
+      letter-spacing: -3px;
+      fill: #fff;
+      paint-order: stroke;
+      stroke: rgba(18, 0, 8, .38);
+      stroke-width: 2px;
       text-shadow: 0 2px 18px rgba(0, 0, 0, .62), 0 0 20px rgba(125, 14, 48, .32);
       pointer-events: none;
-      z-index: 3;
     }
 
     .pump-inflator {
       position: absolute;
       left: 50%;
-      bottom: 5px;
-      width: 106px;
-      height: 92px;
+      bottom: 4px;
+      width: 122px;
+      height: 102px;
       transform: translateX(-50%);
       pointer-events: none;
-      z-index: 2;
+      z-index: 3;
     }
 
     .pump-nozzle {
       position: absolute;
       left: 50%;
       top: 0;
-      width: 12px;
-      height: 54px;
+      width: 13px;
+      height: 60px;
       transform: translateX(-50%);
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255, 213, 226, .30), rgba(72, 8, 30, .78) 48%, rgba(14, 0, 7, .96));
+      background: linear-gradient(180deg, rgba(255, 213, 226, .34), rgba(72, 8, 30, .82) 48%, rgba(14, 0, 7, .98));
       box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .20),
+        inset 0 1px 0 rgba(255, 255, 255, .22),
         0 0 16px rgba(88, 7, 36, .24);
     }
 
@@ -205,25 +150,25 @@ export const PUMP_SECTION = `
       position: absolute;
       left: 50%;
       bottom: 0;
-      width: 102px;
-      height: 52px;
+      width: 112px;
+      height: 56px;
       transform: translateX(-50%);
-      border-radius: 22px 22px 30px 30px;
+      border-radius: 24px 24px 31px 31px;
       background:
-        radial-gradient(circle at 36% 26%, rgba(255, 255, 255, .16), transparent 22%),
-        linear-gradient(180deg, rgba(75, 8, 32, .96), rgba(18, 1, 8, .98));
+        radial-gradient(circle at 34% 24%, rgba(255, 255, 255, .15), transparent 24%),
+        linear-gradient(180deg, rgba(82, 8, 34, .98), rgba(18, 1, 8, .99));
       border: 1px solid rgba(255, 220, 232, .12);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, .13),
-        inset -12px -16px 22px rgba(0, 0, 0, .36),
-        0 14px 26px rgba(0, 0, 0, .40);
+        inset -12px -16px 22px rgba(0, 0, 0, .38),
+        0 15px 28px rgba(0, 0, 0, .44);
     }
 
     .pump-inflator-core::before,
     .pump-inflator-core::after {
       content: '';
       position: absolute;
-      top: 17px;
+      top: 19px;
       width: 16px;
       height: 16px;
       border-radius: 50%;
@@ -232,11 +177,11 @@ export const PUMP_SECTION = `
     }
 
     .pump-inflator-core::before {
-      left: 24px;
+      left: 27px;
     }
 
     .pump-inflator-core::after {
-      right: 24px;
+      right: 27px;
     }
 
     .pump-controls {
@@ -326,7 +271,7 @@ export const PUMP_SECTION = `
 
     @keyframes balloonInflate {
       0% { transform: scale(var(--pump-scale)); }
-      45% { transform: scale(calc(var(--pump-scale) * 1.075), calc(var(--pump-scale) * .975)); }
+      46% { transform: scale(calc(var(--pump-scale) * 1.07), calc(var(--pump-scale) * .975)); }
       100% { transform: scale(var(--pump-scale)); }
     }
 
@@ -346,9 +291,52 @@ export const PUMP_SECTION = `
   <div class="pump-page">
     <div class="pump-stage">
       <div id="pumpBalloonWrap" class="pump-balloon-wrap">
-        <div id="pumpBalloon" class="pump-balloon">
-          <div id="pumpMultiplier" class="pump-multiplier">1.00x</div>
-        </div>
+        <svg class="pump-balloon-svg" viewBox="0 0 260 310" aria-hidden="true">
+          <defs>
+            <radialGradient id="pumpBody" cx="41%" cy="33%" r="72%">
+              <stop offset="0" stop-color="#65102c"/>
+              <stop offset="0.38" stop-color="#3c0418"/>
+              <stop offset="0.78" stop-color="#190008"/>
+              <stop offset="1" stop-color="#070003"/>
+            </radialGradient>
+            <radialGradient id="pumpShade" cx="72%" cy="74%" r="60%">
+              <stop offset="0" stop-color="rgba(0,0,0,.68)"/>
+              <stop offset="0.62" stop-color="rgba(0,0,0,.18)"/>
+              <stop offset="1" stop-color="rgba(0,0,0,0)"/>
+            </radialGradient>
+            <radialGradient id="pumpHighlight" cx="34%" cy="22%" r="42%">
+              <stop offset="0" stop-color="rgba(255,255,255,.36)"/>
+              <stop offset="0.26" stop-color="rgba(255,225,235,.15)"/>
+              <stop offset="0.66" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <linearGradient id="pumpNeck" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="#4b061e"/>
+              <stop offset="0.72" stop-color="#120005"/>
+            </linearGradient>
+            <filter id="pumpSurface" x="-16%" y="-16%" width="132%" height="132%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.018 0.035" numOctaves="2" seed="7" result="noise"/>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.1" xChannelSelector="R" yChannelSelector="G" result="distorted"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="softAlpha"/>
+              <feSpecularLighting in="softAlpha" surfaceScale="2.4" specularConstant="0.58" specularExponent="22" lighting-color="#ffd4e0" result="spec">
+                <fePointLight x="78" y="26" z="128"/>
+              </feSpecularLighting>
+              <feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/>
+              <feMerge>
+                <feMergeNode in="distorted"/>
+                <feMergeNode in="specClip"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <g filter="url(#pumpSurface)">
+            <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpBody)"/>
+            <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpShade)" opacity="0.88"/>
+            <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpHighlight)" opacity="0.82"/>
+            <path d="M77 77c17-24 51-34 82-22" fill="none" stroke="rgba(255,255,255,.11)" stroke-width="7" stroke-linecap="round" opacity=".58"/>
+            <ellipse cx="91" cy="79" rx="25" ry="15" transform="rotate(-22 91 79)" fill="rgba(255,255,255,.13)"/>
+            <path d="M114 252c9 5 23 5 32 0l-16 34-16-34Z" fill="url(#pumpNeck)"/>
+          </g>
+          <text id="pumpMultiplier" class="pump-multiplier" x="130" y="154" text-anchor="middle" dominant-baseline="middle">1.00x</text>
+        </svg>
         <div class="pump-inflator" aria-hidden="true">
           <div class="pump-nozzle"></div>
           <div class="pump-inflator-core"></div>
