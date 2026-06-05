@@ -23,7 +23,7 @@ export const SLOT_SECTION = `
         <img id="slotSpinButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
         <span class="slot-control-fallback">Start</span>
       </button>
-      <label class="slot-image-control slot-input-control" aria-label="Amount" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important">
+      <label class="slot-image-control slot-input-control" aria-label="Amount" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important;transform:translateX(-6px)">
         <img id="slotInputButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
         <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01" style="font-size:22px"/>
       </label>
