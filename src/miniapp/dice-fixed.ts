@@ -316,6 +316,20 @@ body:has(#dice.active) #brandTitle {
   color: #78ffb3 !important;
 }
 
+.dice-view .dice-roll-button {
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.045)), linear-gradient(135deg, #4b0618, #1b0208 55%, #6b0822) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.22) !important;
+  box-shadow: 0 18px 34px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(0,0,0,.45), 0 0 24px rgba(95,8,32,.36) !important;
+  backdrop-filter: blur(12px) saturate(1.35) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.35) !important;
+}
+
+.dice-view .dice-roll-button.is-rolling {
+  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035)), linear-gradient(135deg, #3a0412, #120106 60%, #4b0618) !important;
+  color: #fff !important;
+}
+
 @media (max-width: 420px) {
   .dice-view .dice-range-card {
     top: calc(env(safe-area-inset-top) + 130px) !important;
