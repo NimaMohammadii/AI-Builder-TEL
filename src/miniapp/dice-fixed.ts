@@ -1,5 +1,7 @@
 import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
+const DICE_INPUT_ROW_ASSET = 'https://raw.githubusercontent.com/NimaMohammadii/AI-Builder-TEL/main/src/miniapp/image-dice/IMG_6730.png?v=5eaf891b081a86beb6ecfc1500bdfca99b692452';
+
 const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-range-card {
   position: fixed !important;
@@ -316,6 +318,41 @@ body:has(#dice.active) #brandTitle {
   color: #78ffb3 !important;
 }
 
+.dice-view .dice-bet {
+  position: relative !important;
+  min-height: 76px !important;
+  height: 76px !important;
+  grid-template-columns: .74fr 1.52fr .74fr !important;
+  gap: 0 !important;
+  padding: 9px 12px !important;
+  box-sizing: border-box !important;
+  border-radius: 26px !important;
+  background-image: url('${DICE_INPUT_ROW_ASSET}') !important;
+  background-size: 100% 100% !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, .42)) !important;
+}
+
+.dice-view .dice-bet button {
+  position: relative !important;
+  z-index: 2 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
+}
+
+.dice-view .dice-bet-main {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  font-size: 19px !important;
+}
+
 @media (max-width: 420px) {
   .dice-view .dice-range-card {
     top: calc(env(safe-area-inset-top) + 130px) !important;
@@ -359,6 +396,12 @@ body:has(#dice.active) #brandTitle {
   .dice-online-badge b {
     min-width: 20px !important;
     font-size: 9.4px !important;
+  }
+
+  .dice-view .dice-bet {
+    min-height: 70px !important;
+    height: 70px !important;
+    padding: 8px 10px !important;
   }
 }
 `;
