@@ -1,6 +1,46 @@
 import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
 const DICE_RANGE_CARD_STYLES = `
+
+body:has(#dice.active) {
+  background: #030203 !important;
+  background-image: none !important;
+}
+
+html:has(#dice.active) {
+  background: #030203 !important;
+}
+
+body:has(#dice.active)::before,
+body:has(#dice.active)::after {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+body:has(#dice.active) .app,
+body:has(#dice.active) main.app,
+body:has(#dice.active) .content,
+body:has(#dice.active) .top,
+body:has(#dice.active) header.top,
+body:has(#dice.active) .dice-view {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+body:has(#dice.active) .app::before,
+body:has(#dice.active) .app::after {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+body:has(#dice.active) .content::before,
+body:has(#dice.active) .content::after,
+body:has(#dice.active) .top::before,
+body:has(#dice.active) .top::after {
+  display: initial !important;
+  opacity: 1 !important;
+}
+
 .dice-view .dice-range-card {
   position: fixed !important;
   top: calc(env(safe-area-inset-top) + 138px) !important;
