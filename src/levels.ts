@@ -117,9 +117,9 @@ function rankName(levelInput: unknown): string {
   if (level >= 60) return 'Titan';
   if (level >= 40) return 'Legend';
   if (level >= 25) return 'Master';
-  if (level >= 15) return 'Elite';
-  if (level >= 8) return 'Pro';
-  if (level >= 4) return 'Explorer';
+  if (level >= 16) return 'Elite';
+  if (level >= 10) return 'Pro';
+  if (level >= 5) return 'Explorer';
   return 'Rookie';
 }
 
