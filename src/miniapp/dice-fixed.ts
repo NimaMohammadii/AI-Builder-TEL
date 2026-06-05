@@ -324,41 +324,39 @@ body:has(#dice.active) #brandTitle {
   min-height: 98px !important;
   height: 98px !important;
   grid-template-columns: .74fr 1.52fr .74fr !important;
-  gap: 12px !important;
-  padding: 10px 0 !important;
+  gap: 0 !important;
+  padding: 14px 13px !important;
   box-sizing: border-box !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  background-image: none !important;
+  border-radius: 30px !important;
+  background-image: url('${DICE_INPUT_ROW_ASSET}') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   filter: none !important;
 }
 
 .dice-view .dice-bet button {
   position: relative !important;
   z-index: 2 !important;
-  height: 62px !important;
-  min-height: 62px !important;
-  background: rgba(255, 255, 255, .055) !important;
-  border: 1px solid rgba(255, 255, 255, .13) !important;
-  border-radius: 22px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 14px 26px rgba(0, 0, 0, .18) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   color: #fff !important;
-  font-size: 18px !important;
-  font-weight: 950 !important;
   text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
 }
 
 .dice-view .dice-bet > button:not(.dice-bet-main) {
-  color: #fff !important;
-  font-size: 18px !important;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  text-shadow: none !important;
 }
 
 .dice-view .dice-bet-main {
-  background: rgba(255, 255, 255, .065) !important;
-  border: 1px solid rgba(255, 255, 255, .13) !important;
-  border-radius: 22px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 14px 26px rgba(0, 0, 0, .18) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   font-size: 23px !important;
   color: #fff !important;
 }
@@ -368,13 +366,16 @@ body:has(#dice.active) #brandTitle {
   min-height: 64px !important;
   border: 0 !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, .92) !important;
-  background-image: none !important;
+  background-color: transparent !important;
+  background-image: url('${DICE_ROLL_BUTTON_ASSET}') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   box-shadow: none !important;
-  color: #050505 !important;
+  color: #fff !important;
   font-size: 21px !important;
   font-weight: 950 !important;
-  text-shadow: none !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
 }
 
 @media (max-width: 420px) {
@@ -425,13 +426,7 @@ body:has(#dice.active) #brandTitle {
   .dice-view .dice-bet {
     min-height: 90px !important;
     height: 90px !important;
-    padding: 8px 0 !important;
-  }
-
-  .dice-view .dice-bet button,
-  .dice-view .dice-bet-main {
-    height: 58px !important;
-    min-height: 58px !important;
+    padding: 12px 11px !important;
   }
 
   .dice-view .dice-roll-button {
