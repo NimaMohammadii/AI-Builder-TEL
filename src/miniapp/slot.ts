@@ -37,6 +37,7 @@ export const SLOT_SECTION = `
         <span>Live Bets</span>
       </span>
       <div class="slot-live-head-actions">
+        <b id="slotLiveCount">50 players</b>
         <button id="slotLiveToggle" class="slot-live-toggle" type="button" aria-label="Toggle live slot results" aria-expanded="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
         </button>
