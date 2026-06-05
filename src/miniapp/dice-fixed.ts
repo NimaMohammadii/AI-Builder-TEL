@@ -332,7 +332,7 @@ body:has(#dice.active) #brandTitle {
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  filter: drop-shadow(0 22px 38px rgba(0, 0, 0, .48)) !important;
+  filter: none !important;
 }
 
 .dice-view .dice-bet button {
@@ -368,13 +368,14 @@ body:has(#dice.active) #brandTitle {
   border-radius: 999px !important;
   background-color: transparent !important;
   background-image: url('${DICE_ROLL_BUTTON_ASSET}') !important;
-  background-size: 100% 100% !important;
+  background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   box-shadow: none !important;
-  color: transparent !important;
-  font-size: 0 !important;
-  text-shadow: none !important;
+  color: #fff !important;
+  font-size: 21px !important;
+  font-weight: 950 !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
 }
 
 @media (max-width: 420px) {
