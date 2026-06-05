@@ -377,6 +377,22 @@ body:has(#dice.active) #brandTitle {
 }
 `;
 
+
+const DICE_ASSET_STYLES = `
+.dice-view .dice-roll-button{position:relative!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.dice-view .dice-roll-button .dice-roll-button-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;opacity:0!important;pointer-events:none!important;transition:opacity .18s ease!important}
+.dice-view .dice-roll-button.has-dice-image{background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:transparent!important;text-shadow:none!important}
+.dice-view .dice-roll-button.has-dice-image .dice-roll-button-image{opacity:1!important}
+.dice-view .dice-bet{position:relative!important;overflow:hidden!important;min-height:54px!important;border-radius:20px!important}
+.dice-view .dice-bet .dice-bet-row-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;opacity:0!important;pointer-events:none!important;z-index:0!important;transition:opacity .18s ease!important}
+.dice-view .dice-bet.has-dice-image .dice-bet-row-image{opacity:1!important}
+.dice-view .dice-bet.has-dice-image button{position:relative!important;z-index:1!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:transparent!important;text-shadow:none!important}
+.dice-view .dice-bet.has-dice-image button.active{background:transparent!important;border-color:transparent!important}
+.dice-view .dice-slider-shell.has-dice-thumb-image .dice-slider-thumb{width:52px!important;height:52px!important;border:0!important;border-radius:0!important;background-color:transparent!important;background-image:var(--dice-slider-image)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.dice-view .dice-slider-shell.has-dice-thumb-image .dice-slider-thumb:before{display:none!important;content:none!important}
+@media(max-width:420px){.dice-view .dice-slider-shell.has-dice-thumb-image .dice-slider-thumb{width:48px!important;height:48px!important}.dice-view .dice-bet{min-height:50px!important}}
+`;
+
 const DICE_ACTION_BUTTON_STYLE = 'style="background:radial-gradient(circle at 22% 10%,rgba(255,255,255,.24),rgba(255,255,255,.055) 20%,transparent 42%),linear-gradient(180deg,rgba(255,255,255,.095),rgba(255,255,255,.018)),linear-gradient(135deg,#2a030e 0%,#070003 52%,#3d0414 100%)!important;color:#fff!important;border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 20px 38px rgba(0,0,0,.66),inset 0 1px 0 rgba(255,255,255,.30),inset 0 -1px 0 rgba(0,0,0,.58),inset 0 0 18px rgba(255,255,255,.035),0 0 22px rgba(61,4,20,.28)!important;backdrop-filter:blur(16px) saturate(1.35)!important;-webkit-backdrop-filter:blur(16px) saturate(1.35)!important;text-shadow:0 2px 12px rgba(0,0,0,.62)!important;"';
 
 const DICE_RESULT_CARD = `<div class="dice-result-card" data-dice-result-card><div class="dice-result-head"><span class="dice-result-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M9 17h6"/></svg><span>Results</span></span><div class="dice-result-head-actions"><b class="dice-result-total" data-dice-result-total>0</b><button class="dice-result-toggle" type="button" data-dice-result-toggle aria-label="Toggle results" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button></div></div><div class="dice-result-list" data-dice-result-list><div class="dice-result-empty">No results yet</div></div></div>`;
@@ -473,11 +489,37 @@ const DICE_RESULT_SCRIPT = `
 })();
 `;
 
+
+const DICE_ASSET_SCRIPT = `
+(function(){
+  var root=document.getElementById('dice');
+  if(!root||root.dataset.diceAssetsReady)return;
+  root.dataset.diceAssetsReady='1';
+  function ensureImg(parent,cls){
+    if(!parent)return null;
+    var img=parent.querySelector('.'+cls);
+    if(!img){img=document.createElement('img');img.className=cls;img.alt='';img.setAttribute('aria-hidden','true');parent.insertBefore(img,parent.firstChild)}
+    return img;
+  }
+  function apply(assets){
+    var map={};
+    (assets||[]).forEach(function(a){if(a&&a.id&&a.imageUrl)map[a.id]=a.imageUrl});
+    var roll=root.querySelector('[data-dice-play]');
+    if(roll&&map.roll){var ri=ensureImg(roll,'dice-roll-button-image');ri.src=map.roll;roll.classList.add('has-dice-image')}
+    var bet=root.querySelector('.dice-bet');
+    if(bet&&map.bet){var bi=ensureImg(bet,'dice-bet-row-image');bi.src=map.bet;bet.classList.add('has-dice-image')}
+    var slider=root.querySelector('[data-dice-slider-wrap]');
+    if(slider&&map.slider){slider.style.setProperty('--dice-slider-image','url("'+String(map.slider).replace(/"/g,'%22')+'")');slider.classList.add('has-dice-thumb-image')}
+  }
+  fetch('/app/api/dice-assets',{cache:'no-store',credentials:'same-origin'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j)apply(j.assets||[])}).catch(function(){});
+})();
+`;
+
 export const DICE_SECTION = RAW_DICE_SECTION
-  .replace('</style>', DICE_RANGE_CARD_STYLES + '</style>')
+  .replace('</style>', DICE_RANGE_CARD_STYLES + DICE_ASSET_STYLES + '</style>')
   .replace('<button class="dice-roll-button" type="button" data-dice-play>', '<button class="dice-roll-button" type="button" data-dice-play ' + DICE_ACTION_BUTTON_STYLE + '>')
   .replace('<div class="dice-status" data-dice-status>', DICE_RESULT_CARD + '<div class="dice-status" data-dice-status>')
-  .replace('</script></section>', DICE_RESULT_SCRIPT + '</script></section>')
+  .replace('</script></section>', DICE_RESULT_SCRIPT + DICE_ASSET_SCRIPT + '</script></section>')
   .replace('data-dice-bet-input-open>1</button>', 'data-dice-bet-input-open>1.00</button>')
   .replace('<b data-dice-current>1</b>', '<b data-dice-current>1.00</b>')
   .replace('min="1" inputmode="decimal" value="1"', 'min="0.01" step="0.01" inputmode="decimal" value="1.00"')
