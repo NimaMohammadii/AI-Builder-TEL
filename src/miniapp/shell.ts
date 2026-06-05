@@ -44,6 +44,7 @@ import { CRASH_SECTION } from './crash';
 import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
+import { DICE_ASSET_OVERRIDES } from './dice-asset-overrides';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { LIMBO_SECTION } from './limbo';
@@ -162,6 +163,7 @@ const STYLES = [
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
   GAME_LIVE_COUNT_STYLES,
+  DICE_ASSET_OVERRIDES,
 ].join('');
 
 const SECTIONS = [
@@ -229,39 +231,10 @@ export function miniAppShellHtml(): string {
   <style>${STYLES}</style>
 </head>
 <body>
-  <div id="vexaBoot" class="vexa-boot">
-    <div class="vexa-boot-card">
-      <img class="vexa-boot-logo" src="${GAME_BOT_PROFILE_IMAGE}" alt="Vexa App"/>
-    </div>
+  <div id="app">
+    ${SECTIONS}
   </div>
-  <main class="app">
-    <header class="top">
-      <div class="brand">
-        <img class="logo" src="${GAME_BOT_PROFILE_IMAGE}" alt="Vexa App"/>
-        <div>
-          <div style="display:flex;align-items:center;gap:9px;min-width:0">
-            <h1 id="brandTitle">Vexa FLOW</h1>
-            <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)">Starter</div>
-          </div>
-          <p id="userLine">AI Bot Control</p>
-        </div>
-      </div>
-      <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
-        <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
-        <b id="topTonBalance" data-ton-balance-display>0</b>
-      </button>
-    </header>
-    <div class="content">${SECTIONS}</div>
-    <nav class="tabs">
-      <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="playzone">Play Zone</button>
-      <button class="tab" data-view="predictzone">Predict</button>
-    </nav>
-  </main>
-  <div id="toast" class="toast"></div>
   ${SCRIPTS}
-  ${PREDICT_CARD_ACTIONS_SCRIPT}
-  ${FOOTBALL_PREDICT_SCRIPT}
 </body>
 </html>`;
 }
