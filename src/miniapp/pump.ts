@@ -22,7 +22,7 @@ export const PUMP_SECTION = `
       z-index: -3;
       background:
         radial-gradient(ellipse 110% 54% at 50% -14%, rgba(58, 4, 24, .62), transparent 62%),
-        radial-gradient(ellipse 64% 38% at 50% 38%, rgba(72, 7, 31, .22), transparent 70%),
+        radial-gradient(ellipse 64% 38% at 50% 30%, rgba(72, 7, 31, .20), transparent 70%),
         linear-gradient(180deg, #040102 0%, #090205 44%, #010101 100%);
       pointer-events: none;
     }
@@ -30,7 +30,7 @@ export const PUMP_SECTION = `
     .pump-view {
       height: 100%;
       min-height: 100%;
-      padding: 0 14px calc(92px + env(safe-area-inset-bottom));
+      padding: 0 14px calc(82px + env(safe-area-inset-bottom));
       box-sizing: border-box;
       overflow-y: auto !important;
       overflow-x: hidden;
@@ -42,32 +42,34 @@ export const PUMP_SECTION = `
       width: min(100%, 430px);
       min-height: calc(100vh - 96px);
       margin: 0 auto;
-      padding-top: 118px;
+      padding-top: 28px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: 14px;
+      justify-content: flex-start;
+      gap: 12px;
       box-sizing: border-box;
     }
 
     .pump-stage {
       position: relative;
-      min-height: 304px;
+      min-height: 330px;
       display: grid;
       place-items: center;
+      padding-top: 34px;
+      box-sizing: border-box;
     }
 
     .pump-stage::after {
       content: '';
       position: absolute;
       left: 50%;
-      bottom: 20px;
-      width: 254px;
-      height: 68px;
+      bottom: 22px;
+      width: 244px;
+      height: 62px;
       transform: translateX(-50%);
       border-radius: 50%;
-      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .28), transparent 72%);
-      filter: blur(16px);
+      background: radial-gradient(ellipse at center, rgba(92, 8, 34, .22), transparent 72%);
+      filter: blur(18px);
       pointer-events: none;
     }
 
@@ -75,11 +77,11 @@ export const PUMP_SECTION = `
       --pump-scale: 1;
       position: relative;
       width: 260px;
-      height: 274px;
+      height: 268px;
       display: grid;
       place-items: center;
       transform-origin: 50% 84%;
-      filter: drop-shadow(0 28px 54px rgba(0, 0, 0, .78));
+      filter: drop-shadow(0 26px 48px rgba(0, 0, 0, .78));
     }
 
     .pump-balloon-wrap::before {
@@ -87,13 +89,13 @@ export const PUMP_SECTION = `
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 218px;
-      height: 238px;
+      width: 214px;
+      height: 234px;
       transform: translate(-50%, -50%);
       border-radius: 50%;
-      background: radial-gradient(circle at 50% 54%, rgba(92, 8, 34, .28), transparent 67%);
-      filter: blur(20px);
-      opacity: .72;
+      background: radial-gradient(circle at 50% 54%, rgba(92, 8, 34, .24), transparent 68%);
+      filter: blur(22px);
+      opacity: .62;
       pointer-events: none;
     }
 
@@ -107,21 +109,21 @@ export const PUMP_SECTION = `
 
     .pump-balloon {
       position: relative;
-      width: 178px;
-      height: 218px;
+      width: 182px;
+      height: 224px;
       border-radius: 52% 52% 48% 48% / 47% 47% 57% 57%;
       background:
-        radial-gradient(circle at 31% 19%, rgba(255,255,255,.55), rgba(255,255,255,.16) 13%, transparent 27%),
-        radial-gradient(ellipse at 39% 28%, rgba(255,200,218,.16), transparent 36%),
-        radial-gradient(circle at 69% 74%, rgba(0,0,0,.48), transparent 48%),
-        radial-gradient(circle at 48% 42%, #5a0822 0%, #3c0417 42%, #21010c 78%, #0d0005 100%);
+        radial-gradient(ellipse at 32% 18%, rgba(255,235,242,.24), rgba(255,225,235,.08) 12%, transparent 24%),
+        radial-gradient(ellipse at 43% 29%, rgba(255,150,182,.10), transparent 40%),
+        radial-gradient(circle at 72% 76%, rgba(0,0,0,.50), transparent 48%),
+        radial-gradient(circle at 48% 42%, #5b0823 0%, #3a0316 44%, #20010c 78%, #0c0005 100%);
       border: 0;
       box-shadow:
-        inset 0 3px 0 rgba(255,255,255,.20),
-        inset -22px -34px 48px rgba(0,0,0,.48),
-        inset 18px 12px 34px rgba(255,126,166,.10),
-        inset 0 0 22px rgba(255,225,235,.055),
-        0 0 36px rgba(76,5,30,.22);
+        inset 0 2px 0 rgba(255,255,255,.10),
+        inset -24px -36px 52px rgba(0,0,0,.50),
+        inset 18px 12px 34px rgba(255,126,166,.075),
+        inset 0 0 26px rgba(255,225,235,.035),
+        0 0 28px rgba(76,5,30,.18);
       transform: scale(var(--pump-scale));
       transform-origin: 50% 82%;
       transition: transform .28s cubic-bezier(.18, .88, .26, 1), filter .24s ease;
@@ -131,13 +133,13 @@ export const PUMP_SECTION = `
     .pump-balloon::before {
       content: '';
       position: absolute;
-      left: 25%;
-      top: 13%;
-      width: 50px;
-      height: 31px;
+      left: 27%;
+      top: 15%;
+      width: 34px;
+      height: 19px;
       border-radius: 50%;
-      background: rgba(255,255,255,.30);
-      filter: blur(.2px);
+      background: rgba(255,255,255,.16);
+      filter: blur(1.2px);
       transform: rotate(-25deg);
     }
 
@@ -152,7 +154,7 @@ export const PUMP_SECTION = `
       border-radius: 7px 10px 7px 10px;
       background: linear-gradient(145deg, #3a0418, #140006 72%);
       box-shadow:
-        inset 0 1px 0 rgba(255, 230, 238, .18),
+        inset 0 1px 0 rgba(255, 230, 238, .14),
         0 8px 18px rgba(0,0,0,.32);
     }
 
@@ -161,24 +163,24 @@ export const PUMP_SECTION = `
       left: 50%;
       bottom: 0;
       width: 2px;
-      height: 64px;
+      height: 58px;
       transform: translateX(-50%);
-      background: linear-gradient(180deg, rgba(255,190,210,.36), rgba(255,190,210,.04));
+      background: linear-gradient(180deg, rgba(255,190,210,.30), rgba(255,190,210,.035));
       border-radius: 999px;
     }
 
     .pump-multiplier {
       position: absolute;
       left: 50%;
-      top: 45%;
-      transform: translate(-50%, -50%);
-      font-size: 42px;
+      top: 0;
+      transform: translateX(-50%);
+      font-size: 40px;
       font-weight: 950;
       letter-spacing: -.06em;
       color: #fff;
-      text-shadow: 0 2px 16px rgba(0,0,0,.54), 0 0 24px rgba(125,14,48,.36);
+      text-shadow: 0 2px 16px rgba(0,0,0,.58), 0 0 22px rgba(125,14,48,.34);
       pointer-events: none;
-      z-index: 2;
+      z-index: 3;
     }
 
     .pump-status {
@@ -302,9 +304,9 @@ export const PUMP_SECTION = `
 
   <div class="pump-page">
     <div class="pump-stage">
+      <div id="pumpMultiplier" class="pump-multiplier">1.00x</div>
       <div id="pumpBalloonWrap" class="pump-balloon-wrap">
         <div id="pumpBalloon" class="pump-balloon"></div>
-        <div id="pumpMultiplier" class="pump-multiplier">1.00x</div>
         <div class="pump-string"></div>
       </div>
       <div id="pumpStatus" class="pump-status">Start and pump carefully</div>
