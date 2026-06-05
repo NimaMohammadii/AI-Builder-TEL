@@ -148,7 +148,8 @@ export const SLOT_SCRIPT = `
   function slotLiveCleanName(value){
     return String(value == null ? '' : value)
       .replace(/[<>]/g, '')
-      .replace(/\s+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
       .slice(0, 18);
   }
 
@@ -160,17 +161,18 @@ export const SLOT_SCRIPT = `
     }
   }
 
+  function slotLiveAccountName(user){
+    var first = slotLiveCleanName(user && user.first_name);
+    var last = slotLiveCleanName(user && user.last_name);
+    var full = slotLiveCleanName([first, last].filter(Boolean).join(' '));
+    return full || first || slotLiveCleanName(localStorage.getItem('ownerName') || localStorage.getItem('slotLiveName') || '');
+  }
+
   function slotLiveCurrentUserNames(){
-    var user = slotLiveTelegramUser() || {};
-    var base = slotLiveCleanName(user.username || user.first_name || localStorage.getItem('ownerName') || localStorage.getItem('slotLiveName') || '');
+    var base = slotLiveAccountName(slotLiveTelegramUser() || {});
     if(!base) return [];
     try{ localStorage.setItem('slotLiveName', base); }catch(e){}
-    var names = [base];
-    ['Rush', 'Play', 'Spin', 'Win', 'Lux', 'Ton', 'Pro', 'Nova', 'Max'].forEach(function(suffix){
-      var trimmed = slotLiveCleanName(base + suffix);
-      if(trimmed && names.indexOf(trimmed) === -1) names.push(trimmed);
-    });
-    return names;
+    return [base];
   }
 
   function ensureSlotLiveRealProfile(){
@@ -224,10 +226,20 @@ export const SLOT_SCRIPT = `
   function slotLiveResultHtml(result){
     return result.map(function(symbol){
       if(symbol && symbol.imageUrl){
-        return '<span class="slot-live-symbol has-image"><img src="' + cleanText(symbol.imageUrl) + '" alt="' + cleanText(symbol.label || symbol.id || 'Slot symbol') + '" loading="lazy" decoding="async"><span>' + cleanText(symbol.fallback) + '</span></span>';
+        return '<span class="slot-live-symbol has-image"><img src="' + cleanText(symbol.imageUrl) + '" alt="' + cleanText(symbol.label || symbol.id || 'Slot symbol') + '" loading="eager" decoding="async"><span>' + cleanText(symbol.fallback) + '</span></span>';
       }
       return '<span class="slot-live-symbol">' + cleanText(symbol && symbol.fallback ? symbol.fallback : '—') + '</span>';
     }).join('');
+  }
+
+  function bindSlotLiveImageFallbacks(list){
+    Array.prototype.forEach.call(list.querySelectorAll('.slot-live-symbol.has-image img'), function(img){
+      img.onerror = function(){
+        var cell = img.parentNode;
+        if(cell && cell.classList) cell.classList.remove('has-image');
+        if(img.parentNode) img.parentNode.removeChild(img);
+      };
+    });
   }
 
   function makeSlotLiveRow(profileIndex, seed, entering){
@@ -286,10 +298,8 @@ export const SLOT_SCRIPT = `
 
   function renderSlotLive(){
     var list = q('slotLiveList');
-    var count = q('slotLiveCount');
     if(!list) return;
     ensureSlotLiveRealProfile();
-    if(count) count.textContent = slotLiveProfiles.length + ' players';
     if(!slotLiveRows.length) buildSlotLiveRows();
     var html = slotLiveRows.map(function(row){
       var classes = 'slot-live-row' + (row.entering ? ' is-entering' : '');
@@ -297,6 +307,7 @@ export const SLOT_SCRIPT = `
     }).join('');
     if(html !== slotLiveRendered){
       list.innerHTML = html;
+      bindSlotLiveImageFallbacks(list);
       slotLiveRendered = html;
       window.setTimeout(function(){
         slotLiveRows.forEach(function(row){ row.entering = false; });
@@ -463,6 +474,11 @@ export const SLOT_SCRIPT = `
   function createSymbol(symbol){
     var cell = document.createElement('div');
     cell.className = symbol && symbol.imageUrl ? 'slot-symbol has-image' : 'slot-symbol';
+
+    var fallback = document.createElement('span');
+    fallback.className = 'slot-symbol-fallback';
+    fallback.textContent = slotLiveSymbolFallback(symbol);
+    cell.appendChild(fallback);
 
     if(symbol && symbol.imageUrl){
       var img = document.createElement('img');
