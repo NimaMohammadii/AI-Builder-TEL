@@ -85,11 +85,11 @@ export const PUMP_SECTION = `
     }
 
     .pump-balloon-wrap.is-pumping .pump-balloon-svg {
-      animation: balloonInflate .38s cubic-bezier(.16, .98, .34, 1) both;
+      animation: balloonInflate .42s cubic-bezier(.16, .98, .34, 1) both;
     }
 
-    .pump-balloon-wrap.is-pumping .pump-inflator-core {
-      animation: inflaterPulse .24s ease both;
+    .pump-balloon-wrap.is-pumping .pump-nozzle {
+      animation: nozzlePulse .24s ease both;
     }
 
     .pump-balloon-wrap.is-popped {
@@ -108,6 +108,27 @@ export const PUMP_SECTION = `
       will-change: transform;
     }
 
+    .pump-inflated-art,
+    .pump-empty-art {
+      transition: opacity .30s ease, transform .34s cubic-bezier(.18, .88, .26, 1);
+      transform-origin: 130px 238px;
+    }
+
+    .pump-empty-art {
+      opacity: 0;
+      transform: translateY(16px) rotate(-5deg) scale(.88, .44);
+    }
+
+    .pump-balloon-wrap.is-empty .pump-inflated-art {
+      opacity: 0;
+      transform: translateY(34px) rotate(-7deg) scale(.86, .34);
+    }
+
+    .pump-balloon-wrap.is-empty .pump-empty-art {
+      opacity: 1;
+      transform: translateY(0) rotate(-5deg) scale(1);
+    }
+
     .pump-multiplier {
       font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 43px;
@@ -119,69 +140,79 @@ export const PUMP_SECTION = `
       stroke-width: 2px;
       text-shadow: 0 2px 18px rgba(0, 0, 0, .62), 0 0 20px rgba(125, 14, 48, .32);
       pointer-events: none;
+      transition: opacity .22s ease, transform .28s ease;
+    }
+
+    .pump-balloon-wrap.is-empty .pump-multiplier {
+      opacity: .42;
+      transform: translateY(54px) scale(.78);
     }
 
     .pump-inflator {
       position: absolute;
       left: 50%;
-      bottom: 4px;
-      width: 122px;
-      height: 102px;
+      bottom: 14px;
+      width: 168px;
+      height: 92px;
       transform: translateX(-50%);
       pointer-events: none;
       z-index: 3;
     }
 
-    .pump-nozzle {
+    .pump-hose {
       position: absolute;
       left: 50%;
-      top: 0;
-      width: 13px;
-      height: 60px;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255, 213, 226, .34), rgba(72, 8, 30, .82) 48%, rgba(14, 0, 7, .98));
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .22),
-        0 0 16px rgba(88, 7, 36, .24);
-    }
-
-    .pump-inflator-core {
-      position: absolute;
-      left: 50%;
-      bottom: 0;
+      bottom: 24px;
       width: 112px;
       height: 56px;
       transform: translateX(-50%);
-      border-radius: 24px 24px 31px 31px;
-      background:
-        radial-gradient(circle at 34% 24%, rgba(255, 255, 255, .15), transparent 24%),
-        linear-gradient(180deg, rgba(82, 8, 34, .98), rgba(18, 1, 8, .99));
-      border: 1px solid rgba(255, 220, 232, .12);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .13),
-        inset -12px -16px 22px rgba(0, 0, 0, .38),
-        0 15px 28px rgba(0, 0, 0, .44);
+      border-bottom: 5px solid rgba(112, 17, 45, .78);
+      border-left: 5px solid rgba(112, 17, 45, .62);
+      border-radius: 0 0 0 38px;
+      filter: drop-shadow(0 5px 10px rgba(0, 0, 0, .45));
     }
 
-    .pump-inflator-core::before,
-    .pump-inflator-core::after {
+    .pump-hose::after {
       content: '';
       position: absolute;
-      top: 19px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, .56);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10);
+      right: -8px;
+      bottom: -7px;
+      width: 18px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255, 215, 226, .28), rgba(42, 3, 18, .98));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
     }
 
-    .pump-inflator-core::before {
-      left: 27px;
+    .pump-nozzle {
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      width: 14px;
+      height: 58px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255, 213, 226, .35), rgba(72, 8, 30, .82) 48%, rgba(14, 0, 7, .98));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .20),
+        0 0 14px rgba(88, 7, 36, .20);
     }
 
-    .pump-inflator-core::after {
-      right: 27px;
+    .pump-mini-pump {
+      position: absolute;
+      left: 10px;
+      bottom: 0;
+      width: 62px;
+      height: 34px;
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 30% 26%, rgba(255, 255, 255, .15), transparent 24%),
+        linear-gradient(180deg, rgba(70, 7, 30, .95), rgba(14, 0, 7, .99));
+      border: 1px solid rgba(255, 220, 232, .10);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .12),
+        inset -8px -10px 16px rgba(0, 0, 0, .40),
+        0 12px 24px rgba(0, 0, 0, .42);
     }
 
     .pump-controls {
@@ -275,10 +306,10 @@ export const PUMP_SECTION = `
       100% { transform: scale(var(--pump-scale)); }
     }
 
-    @keyframes inflaterPulse {
-      0% { transform: translateX(-50%) scale(1); }
-      50% { transform: translateX(-50%) scale(1.045, .94); }
-      100% { transform: translateX(-50%) scale(1); }
+    @keyframes nozzlePulse {
+      0% { transform: translateX(-50%) scaleY(1); }
+      50% { transform: translateX(-50%) scaleY(.88); }
+      100% { transform: translateX(-50%) scaleY(1); }
     }
 
     @keyframes pumpPop {
@@ -327,7 +358,7 @@ export const PUMP_SECTION = `
               </feMerge>
             </filter>
           </defs>
-          <g filter="url(#pumpSurface)">
+          <g class="pump-inflated-art" filter="url(#pumpSurface)">
             <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpBody)"/>
             <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpShade)" opacity="0.88"/>
             <path d="M130 20C73 20 38 65 38 127c0 62 35 113 72 128 8 3 13 10 20 10s12-7 20-10c37-15 72-66 72-128C222 65 187 20 130 20Z" fill="url(#pumpHighlight)" opacity="0.82"/>
@@ -335,11 +366,17 @@ export const PUMP_SECTION = `
             <ellipse cx="91" cy="79" rx="25" ry="15" transform="rotate(-22 91 79)" fill="rgba(255,255,255,.13)"/>
             <path d="M114 252c9 5 23 5 32 0l-16 34-16-34Z" fill="url(#pumpNeck)"/>
           </g>
+          <g class="pump-empty-art" filter="url(#pumpSurface)">
+            <path d="M54 210c26-30 86-41 144-18 17 7 25 20 16 31-13 17-62 25-116 16-35-6-58-17-44-29Z" fill="url(#pumpBody)" opacity=".94"/>
+            <path d="M62 214c35-13 82-15 136-1" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="6" stroke-linecap="round" opacity=".62"/>
+            <path d="M112 236c11 7 26 7 37 0l-19 31-18-31Z" fill="url(#pumpNeck)" opacity=".94"/>
+          </g>
           <text id="pumpMultiplier" class="pump-multiplier" x="130" y="154" text-anchor="middle" dominant-baseline="middle">1.00x</text>
         </svg>
         <div class="pump-inflator" aria-hidden="true">
           <div class="pump-nozzle"></div>
-          <div class="pump-inflator-core"></div>
+          <div class="pump-hose"></div>
+          <div class="pump-mini-pump"></div>
         </div>
       </div>
     </div>
@@ -435,11 +472,13 @@ export const PUMP_SECTION = `
         var half = q('pumpHalf');
         var double = q('pumpDouble');
         var playing = state === 'playing';
-        var scale = Math.min(1.52, 1 + (multiplier - 1) * .075 + pumps * .014);
+        var inflated = pumps > 0 || state === 'popped' || state === 'cashed';
+        var scale = inflated ? Math.min(1.52, 1 + (multiplier - 1) * .075 + pumps * .014) : 1;
 
         if (label) label.textContent = formatMultiplier(multiplier);
         if (wrap) {
           wrap.style.setProperty('--pump-scale', scale.toFixed(3));
+          wrap.classList.toggle('is-empty', !inflated);
           wrap.classList.toggle('is-popped', state === 'popped');
         }
         if (controls) controls.classList.toggle('is-playing', playing);
