@@ -33,6 +33,7 @@ const DICE_ASSETS = [
   { id: 'roll', label: 'Roll Dice button / دکمه رول دایس', hint: 'Replaces the main Roll Dice button.' },
   { id: 'bet', label: 'Bet input row / اینپوت و دو دکمه عددی', hint: 'Replaces the visual row that contains 1/2, amount input, and 2x together.' },
   { id: 'slider', label: 'Number bar button / دکمه نوار عددی تاس', hint: 'Replaces the draggable button on the Dice number bar.' },
+  { id: 'stats', label: 'Bottom stats row / تصویر جایگزین کارت‌های پایین', hint: 'Replaces the BET, LAST WIN, and BALANCE cards together.' },
 ] as const;
 
 const DICE_ASSET_IDS = new Set(DICE_ASSETS.map((asset) => asset.id));
