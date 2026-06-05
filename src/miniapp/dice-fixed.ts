@@ -1,46 +1,6 @@
 import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
 const DICE_RANGE_CARD_STYLES = `
-
-body:has(#dice.active) {
-  background: #030203 !important;
-  background-image: none !important;
-}
-
-html:has(#dice.active) {
-  background: #030203 !important;
-}
-
-body:has(#dice.active)::before,
-body:has(#dice.active)::after {
-  display: block !important;
-  opacity: 1 !important;
-}
-
-body:has(#dice.active) .app,
-body:has(#dice.active) main.app,
-body:has(#dice.active) .content,
-body:has(#dice.active) .top,
-body:has(#dice.active) header.top,
-body:has(#dice.active) .dice-view {
-  background: transparent !important;
-  background-image: none !important;
-}
-
-body:has(#dice.active) .app::before,
-body:has(#dice.active) .app::after {
-  display: block !important;
-  opacity: 1 !important;
-}
-
-body:has(#dice.active) .content::before,
-body:has(#dice.active) .content::after,
-body:has(#dice.active) .top::before,
-body:has(#dice.active) .top::after {
-  display: initial !important;
-  opacity: 1 !important;
-}
-
 .dice-view .dice-range-card {
   position: fixed !important;
   top: calc(env(safe-area-inset-top) + 138px) !important;
@@ -417,7 +377,7 @@ body:has(#dice.active) #brandTitle {
 }
 `;
 
-const DICE_ACTION_BUTTON_STYLE = 'style="background:radial-gradient(circle at 22% 10%,rgba(255,255,255,.38),rgba(255,255,255,.10) 20%,transparent 42%),linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.035)),linear-gradient(135deg,#5a071d 0%,#25030c 48%,#7a0a27 100%)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 20px 38px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(0,0,0,.52),inset 0 0 18px rgba(255,255,255,.055),0 0 28px rgba(122,10,39,.34)!important;backdrop-filter:blur(16px) saturate(1.5)!important;-webkit-backdrop-filter:blur(16px) saturate(1.5)!important;text-shadow:0 2px 12px rgba(0,0,0,.56)!important;"';
+const DICE_ACTION_BUTTON_STYLE = 'style="background:radial-gradient(circle at 22% 10%,rgba(255,255,255,.24),rgba(255,255,255,.055) 20%,transparent 42%),linear-gradient(180deg,rgba(255,255,255,.095),rgba(255,255,255,.018)),linear-gradient(135deg,#2a030e 0%,#070003 52%,#3d0414 100%)!important;color:#fff!important;border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 20px 38px rgba(0,0,0,.66),inset 0 1px 0 rgba(255,255,255,.30),inset 0 -1px 0 rgba(0,0,0,.58),inset 0 0 18px rgba(255,255,255,.035),0 0 22px rgba(61,4,20,.28)!important;backdrop-filter:blur(16px) saturate(1.35)!important;-webkit-backdrop-filter:blur(16px) saturate(1.35)!important;text-shadow:0 2px 12px rgba(0,0,0,.62)!important;"';
 
 const DICE_RESULT_CARD = `<div class="dice-result-card" data-dice-result-card><div class="dice-result-head"><span class="dice-result-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M9 17h6"/></svg><span>Results</span></span><div class="dice-result-head-actions"><b class="dice-result-total" data-dice-result-total>0</b><button class="dice-result-toggle" type="button" data-dice-result-toggle aria-label="Toggle results" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button></div></div><div class="dice-result-list" data-dice-result-list><div class="dice-result-empty">No results yet</div></div></div>`;
 
