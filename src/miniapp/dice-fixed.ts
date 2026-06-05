@@ -320,18 +320,18 @@ body:has(#dice.active) #brandTitle {
 
 .dice-view .dice-bet {
   position: relative !important;
-  min-height: 76px !important;
-  height: 76px !important;
+  min-height: 98px !important;
+  height: 98px !important;
   grid-template-columns: .74fr 1.52fr .74fr !important;
   gap: 0 !important;
-  padding: 9px 12px !important;
+  padding: 14px 13px !important;
   box-sizing: border-box !important;
-  border-radius: 26px !important;
+  border-radius: 30px !important;
   background-image: url('${DICE_INPUT_ROW_ASSET}') !important;
-  background-size: 100% 100% !important;
+  background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, .42)) !important;
+  filter: drop-shadow(0 22px 38px rgba(0, 0, 0, .48)) !important;
 }
 
 .dice-view .dice-bet button {
@@ -346,11 +346,18 @@ body:has(#dice.active) #brandTitle {
   text-shadow: 0 2px 10px rgba(0, 0, 0, .55) !important;
 }
 
+.dice-view .dice-bet > button:not(.dice-bet-main) {
+  color: transparent !important;
+  font-size: 0 !important;
+  text-shadow: none !important;
+}
+
 .dice-view .dice-bet-main {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
-  font-size: 19px !important;
+  font-size: 23px !important;
+  color: #fff !important;
 }
 
 @media (max-width: 420px) {
@@ -399,9 +406,9 @@ body:has(#dice.active) #brandTitle {
   }
 
   .dice-view .dice-bet {
-    min-height: 70px !important;
-    height: 70px !important;
-    padding: 8px 10px !important;
+    min-height: 90px !important;
+    height: 90px !important;
+    padding: 12px 11px !important;
   }
 }
 `;
