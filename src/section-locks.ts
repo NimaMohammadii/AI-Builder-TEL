@@ -61,7 +61,7 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'rps', label: 'Rock Paper Scissors', description: 'Rock Paper Scissors game card image' },
   { id: 'slot', label: 'Slot', description: 'Slot game card image' },
   { id: 'tower', label: 'Tower', description: 'Tower game card image' },
-  { id: 'coinflip', label: 'Coin Flip', description: 'Coin Flip game card image' },
+  { id: 'coinflip', label: 'Pump', description: 'Pump game card and access image' },
   { id: 'hilo', label: 'Hi-Lo', description: 'Hi-Lo game card image' },
 ];
 
