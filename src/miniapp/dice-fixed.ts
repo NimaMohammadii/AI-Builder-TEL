@@ -1,7 +1,8 @@
 import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
 const DICE_INPUT_ROW_ASSET = 'https://raw.githubusercontent.com/NimaMohammadii/AI-Builder-TEL/main/src/miniapp/image-dice/IMG_6730.png?v=5eaf891b081a86beb6ecfc1500bdfca99b692452';
-const DICE_ROLL_BUTTON_ASSET = 'https://raw.githubusercontent.com/NimaMohammadii/AI-Builder-TEL/main/src/miniapp/image-dice/dice-roll-button.png.PNG?v=bfb1fef99c84ad442bceb6e59c257a975ba70abf';
+const DICE_ROLL_BUTTON_ASSET = 'https://raw.githubusercontent.com/NimaMohammadii/AI-Builder-TEL/main/src/miniapp/image-dice/dice-roll-buttun.PNG?v=f199f365dcc6089e7587c971be35ef0a2fc75cda';
+const DICE_BET_ROW_BUTTON_ASSET = 'https://raw.githubusercontent.com/NimaMohammadii/AI-Builder-TEL/main/src/miniapp/image-dice/dice-bet-row.PNG?v=11f1c46af0bafae4a6668794053bb833acf23382';
 
 const DICE_RANGE_CARD_STYLES = `
 .dice-view .dice-range-card {
@@ -52,11 +53,21 @@ const DICE_RANGE_CARD_STYLES = `
 }
 
 .dice-view .dice-slider-thumb {
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 12px !important;
-  backdrop-filter: blur(7px) saturate(1.22) !important;
-  -webkit-backdrop-filter: blur(7px) saturate(1.22) !important;
+  width: 42px !important;
+  height: 42px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent url('${DICE_BET_ROW_BUTTON_ASSET}') center / contain no-repeat !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  image-rendering: auto !important;
+}
+
+.dice-view .dice-slider-thumb:before {
+  display: none !important;
+  content: none !important;
 }
 
 body:has(#dice.active) #brandTitle {
@@ -321,18 +332,21 @@ body:has(#dice.active) #brandTitle {
 
 .dice-view .dice-bet {
   position: relative !important;
-  min-height: 98px !important;
-  height: 98px !important;
+  min-height: 108px !important;
+  height: 108px !important;
   grid-template-columns: .74fr 1.52fr .74fr !important;
   gap: 0 !important;
   padding: 14px 13px !important;
   box-sizing: border-box !important;
   border-radius: 30px !important;
   background-image: url('${DICE_INPUT_ROW_ASSET}') !important;
-  background-size: cover !important;
+  background-size: 100% 100% !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  filter: drop-shadow(0 22px 38px rgba(0, 0, 0, .48)) !important;
+  filter: none !important;
+  box-shadow: none !important;
+  image-rendering: auto !important;
+  transform: translateZ(0) !important;
 }
 
 .dice-view .dice-bet button {
@@ -362,8 +376,8 @@ body:has(#dice.active) #brandTitle {
 }
 
 .dice-view .dice-roll-button {
-  height: 64px !important;
-  min-height: 64px !important;
+  height: 96px !important;
+  min-height: 96px !important;
   border: 0 !important;
   border-radius: 999px !important;
   background-color: transparent !important;
@@ -372,9 +386,23 @@ body:has(#dice.active) #brandTitle {
   background-position: center !important;
   background-repeat: no-repeat !important;
   box-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  image-rendering: auto !important;
+  transform: translateZ(0) !important;
   color: transparent !important;
   font-size: 0 !important;
   text-shadow: none !important;
+}
+
+.dice-view .dice-roll-button:disabled,
+.dice-view .dice-roll-button.is-rolling {
+  background-color: transparent !important;
+  background-image: url('${DICE_ROLL_BUTTON_ASSET}') !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: translateZ(0) !important;
 }
 
 @media (max-width: 420px) {
@@ -394,8 +422,8 @@ body:has(#dice.active) #brandTitle {
   }
 
   .dice-view .dice-slider-thumb {
-    width: 32px !important;
-    height: 32px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .dice-view .dice-result-card {
@@ -423,14 +451,14 @@ body:has(#dice.active) #brandTitle {
   }
 
   .dice-view .dice-bet {
-    min-height: 90px !important;
-    height: 90px !important;
+    min-height: 100px !important;
+    height: 100px !important;
     padding: 12px 11px !important;
   }
 
   .dice-view .dice-roll-button {
-    height: 62px !important;
-    min-height: 62px !important;
+    height: 88px !important;
+    min-height: 88px !important;
   }
 }
 `;
