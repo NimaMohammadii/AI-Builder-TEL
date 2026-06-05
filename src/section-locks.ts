@@ -88,7 +88,9 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
     const ownLockedImage = await sectionImageInfo(env, section.id, 'locked');
     const ownCodeImage = await sectionImageInfo(env, section.id, 'code');
     const imageUrl = ownLockedImage.url;
-    const lockedImageUrl = isLocked && mode !== 'loading' ? (ownLockedImage.url || sharedLockedImage.url) : imageUrl;
+    const useSharedLockedImage = section.id === 'coinflip' && Boolean(sharedLockedImage.url);
+    const sectionLockedImageUrl = useSharedLockedImage ? sharedLockedImage.url : ownLockedImage.url;
+    const lockedImageUrl = isLocked && mode !== 'loading' ? (sectionLockedImageUrl || sharedLockedImage.url) : imageUrl;
     const codeImageUrl = isLocked && mode !== 'loading' ? (ownCodeImage.url || sharedCodeImage.url) : ownCodeImage.url;
     return {
       ...section,
