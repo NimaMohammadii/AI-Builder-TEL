@@ -17,10 +17,10 @@ export const LEVEL_SYNC_SCRIPT = `
   var renderedTotalXp=-1;
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,slot:1,coinflip:1,hilo:1};
   var ranks=[
-    {name:'Rookie',range:'Level 1-3',min:1,max:3,text:'Start your Vexa journey.'},
-    {name:'Explorer',range:'Level 4-7',min:4,max:7,text:'Discover games, AI and rewards.'},
-    {name:'Pro',range:'Level 8-14',min:8,max:14,text:'Consistent player with real momentum.'},
-    {name:'Elite',range:'Level 15-24',min:15,max:24,text:'Premium status and strong activity.'},
+    {name:'Rookie',range:'Level 1-4',min:1,max:4,text:'Start your Vexa journey.'},
+    {name:'Explorer',range:'Level 5-9',min:5,max:9,text:'Discover games, AI and rewards.'},
+    {name:'Pro',range:'Level 10-15',min:10,max:15,text:'Consistent player with real momentum.'},
+    {name:'Elite',range:'Level 16-24',min:16,max:24,text:'Premium status and strong activity.'},
     {name:'Master',range:'Level 25-39',min:25,max:39,text:'Advanced user with high control.'},
     {name:'Legend',range:'Level 40-59',min:40,max:59,text:'Rare profile with serious prestige.'},
     {name:'Titan',range:'Level 60+',min:60,max:999,text:'The highest Vexa FLOW status.'}
@@ -43,7 +43,7 @@ export const LEVEL_SYNC_SCRIPT = `
   function xpEventId(){return 'xpc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)}
   function markActivity(){lastActivityAt=Date.now()}
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
-  function rank(level){level=Math.max(1,Math.floor(Number(level)||1));if(level>=60)return 'Titan';if(level>=40)return 'Legend';if(level>=25)return 'Master';if(level>=15)return 'Elite';if(level>=8)return 'Pro';if(level>=4)return 'Explorer';return 'Rookie'}
+  function rank(level){level=Math.max(1,Math.floor(Number(level)||1));if(level>=60)return 'Titan';if(level>=40)return 'Legend';if(level>=25)return 'Master';if(level>=16)return 'Elite';if(level>=10)return 'Pro';if(level>=5)return 'Explorer';return 'Rookie'}
   function rankKey(value){return String(value||'Rookie').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40)||'Rookie'}
   function setRankCharacter(rankName){try{var img=document.querySelector('.brand img.logo');if(!img)return;if(!img.dataset.defaultSrc)img.dataset.defaultSrc=img.getAttribute('src')||'https://t.me/i/userpic/320/VexaFlowBOT.jpg';var key=rankKey(rankName);var version=String(window.__vexaAppVersion||Date.now());var src='/app/api/rank-character/'+encodeURIComponent(key)+'.png?v='+version;if(img.getAttribute('src')!==src){img.onerror=function(){this.onerror=null;this.src=this.dataset.defaultSrc||'https://t.me/i/userpic/320/VexaFlowBOT.jpg'};img.src=src}bindRankModalTrigger(img)}catch(e){}}
   function need(level){level=Math.max(1,Math.floor(Number(level)||1));return Math.max(100,Math.floor(100*Math.pow(level,1.35)))}
@@ -65,15 +65,7 @@ export const LEVEL_SYNC_SCRIPT = `
     return page;
   }
   function rankIcon(name){return {Rookie:'✦',Explorer:'◆',Pro:'⬢',Elite:'✧',Master:'◇',Legend:'✺',Titan:'♛'}[name]||'✦'}
-  function renderRankModal(){
-    var p=clean(profile||{level:1,xp:0,totalXp:0});
-    var page=ensureRankModal();
-    var current=page.querySelector('[data-rank-current]');
-    var list=page.querySelector('[data-rank-list]');
-    var idx=rankIndex(p.rankName);
-    current.innerHTML='<div class="vexa-rank-level-strip"><div class="vexa-rank-level-orb">'+rankIcon(p.rankName)+'</div><div class="vexa-rank-level-main"><strong>'+esc(p.rankName)+'</strong><span>Level '+p.level+' · '+p.progressPercent+'% progress · '+p.xpLeft+' XP left</span></div><div class="vexa-rank-level-pill">Current</div></div>';
-    list.innerHTML=ranks.map(function(r,i){var cls=i===idx?'current':(i<idx?'done':'');return '<div class="vexa-rank-item '+cls+'" style="animation-delay:'+(i*38)+'ms"><div class="vexa-rank-dot">'+rankIcon(r.name)+'</div><div class="vexa-rank-info"><strong>'+esc(r.name)+'</strong><p>'+esc(r.text)+'</p>'+(i===idx?'<span class="vexa-rank-now">Current rank</span>':'')+'</div><div class="vexa-rank-range">'+esc(r.range)+'</div></div>'}).join('');
-  }
+  function renderRankModal(){var p=clean(profile||{level:1,xp:0,totalXp:0});var page=ensureRankModal();var current=page.querySelector('[data-rank-current]');var list=page.querySelector('[data-rank-list]');var idx=rankIndex(p.rankName);current.innerHTML='<div class="vexa-rank-level-strip"><div class="vexa-rank-level-orb">'+rankIcon(p.rankName)+'</div><div class="vexa-rank-level-main"><strong>'+esc(p.rankName)+'</strong><span>Level '+p.level+' · '+p.progressPercent+'% progress · '+p.xpLeft+' XP left</span></div><div class="vexa-rank-level-pill">Current</div></div>';list.innerHTML=ranks.map(function(r,i){var cls=i===idx?'current':(i<idx?'done':'');return '<div class="vexa-rank-item '+cls+'" style="animation-delay:'+(i*38)+'ms"><div class="vexa-rank-dot">'+rankIcon(r.name)+'</div><div class="vexa-rank-info"><strong>'+esc(r.name)+'</strong><p>'+esc(r.text)+'</p>'+(i===idx?'<span class="vexa-rank-now">Current rank</span>':'')+'</div><div class="vexa-rank-range">'+esc(r.range)+'</div></div>'}).join('')}
   function openRankModal(){renderRankModal();var page=ensureRankModal();requestAnimationFrame(function(){page.classList.add('open');page.setAttribute('aria-hidden','false')})}
   function closeRankModal(){var page=document.getElementById('vexaRankModal');if(!page)return;page.classList.remove('open');page.setAttribute('aria-hidden','true')}
   function bindRankModalTrigger(img){if(!img||img.dataset.rankModalReady==='1')return;img.dataset.rankModalReady='1';img.setAttribute('role','button');img.setAttribute('tabindex','0');img.setAttribute('aria-label','Open rank system');img.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openRankModal()});img.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openRankModal()}})}
@@ -84,41 +76,10 @@ export const LEVEL_SYNC_SCRIPT = `
   function xpBody(ev){return JSON.stringify({userId:ev.userId,amount:ev.amount,source:ev.source||'activity',metadata:ev.metadata||{section:section()},eventId:ev.eventId})}
   function flushPendingXp(){var userId=id();if(!userId||flushingXp)return;var pending=loadPendingXp();if(!pending.length)return;flushingXp=true;queue=queue.then(function(){function step(){var list=loadPendingXp();if(!list.length)return Promise.resolve();var ev=list[0];return fetch('/app/api/level/xp',{method:'POST',cache:'no-store',headers:{'content-type':'application/json','cache-control':'no-store'},body:xpBody(ev)}).then(function(r){if(!r.ok)throw new Error('xp sync failed');return r.json().catch(function(){return null})}).then(function(j){list=loadPendingXp();if(list.length&&list[0].eventId===ev.eventId)list.shift();else list=list.filter(function(x){return x.eventId!==ev.eventId});savePendingXp(list);if(j&&j.profile)render(j.profile,{authoritative:true,force:true});if(j&&j.leveledUp&&j.profile)popup(j.profile.level,j.profile.rankName);return step()})}return step()}).catch(function(){}).then(function(){flushingXp=false})}
   function add(amount,source,metadata){var userId=id();amount=Math.max(0,Math.floor(Number(amount)||0));if(!userId||!amount)return;var ev={eventId:xpEventId(),userId:userId,amount:amount,source:source||'activity',metadata:metadata||{section:section()}};var pending=loadPendingXp();pending.push(ev);savePendingXp(pending);preview(amount);flushPendingXp()}
-  function awardDailyOpen(){
-    var userId=id();
-    if(!userId||dailyChecked)return;
-    dailyChecked=true;
-    try{
-      var key=dailyStorageKey(),today=todayKey();
-      if(localStorage.getItem(key)===today)return;
-      localStorage.setItem(key,today);
-      add(DAILY_XP_AMOUNT,'daily-open',{date:today});
-      xpToast(DAILY_XP_AMOUNT);
-    }catch(e){}
-  }
+  function awardDailyOpen(){var userId=id();if(!userId||dailyChecked)return;dailyChecked=true;try{var key=dailyStorageKey(),today=todayKey();if(localStorage.getItem(key)===today)return;localStorage.setItem(key,today);add(DAILY_XP_AMOUNT,'daily-open',{date:today});xpToast(DAILY_XP_AMOUNT)}catch(e){}}
   function load(){var userId=id();if(!userId)return;loadPlayMs();loadCachedProfile();fetch('/app/api/level?userId='+encodeURIComponent(userId),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.json()}).then(function(p){render(p,{authoritative:true,force:true});flushPendingXp();awardDailyOpen()}).catch(function(){flushPendingXp();awardDailyOpen()})}
-  function tickPlayXp(){
-    var now=Date.now();
-    var elapsed=Math.max(0,Math.min(30000,now-lastTickAt));
-    lastTickAt=now;
-    if(!id())return;
-    if(document.hidden)return;
-    if(!isGameSection(section())){savePlayMs();return}
-    if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();return}
-    playMs+=elapsed;
-    while(playMs>=PLAY_XP_INTERVAL_MS){
-      playMs-=PLAY_XP_INTERVAL_MS;
-      add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});
-      xpToast(PLAY_XP_AMOUNT);
-    }
-    savePlayMs();
-  }
-  function smartTick(force){
-    var now=Date.now();
-    if(!force&&now-lastSmartTickAt<5000)return;
-    lastSmartTickAt=now;
-    tickPlayXp();
-  }
+  function tickPlayXp(){var now=Date.now();var elapsed=Math.max(0,Math.min(30000,now-lastTickAt));lastTickAt=now;if(!id())return;if(document.hidden)return;if(!isGameSection(section())){savePlayMs();return}if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();return}playMs+=elapsed;while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs()}
+  function smartTick(force){var now=Date.now();if(!force&&now-lastSmartTickAt<5000)return;lastSmartTickAt=now;tickPlayXp()}
   window.VexaLevel={add:add,load:load,openRanks:openRankModal,flushPlayXp:function(){smartTick(true)}};
   ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section())){markActivity();smartTick(false)}},true)});
   document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs()}else{lastTickAt=Date.now();markActivity();load();smartTick(true)}});
