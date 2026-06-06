@@ -16,7 +16,6 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function setStatus(text,kind){var n=q('tonWalletDepositStatus');if(!n)return;n.textContent=text||'';n.classList.toggle('success',kind==='success');n.classList.toggle('error',kind==='error');n.classList.toggle('pending',kind==='pending')}
   function forceDepositCenter(){var sheet=q('depositSheet');if(!sheet)return;sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
   function closeDepositSheet(){var sheet=q('depositSheet');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}var home=q('home');if(home)home.style.removeProperty('overflow-y');document.body.classList.remove('deposit-open','deposit-keyboard-open')}
-  function starsAmount(){var input=q('starsAmountSheet');return Math.max(0,Math.floor(Number(input&&input.value)||0))}
   function cleanAmount(value){var n=Number(String(value||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*NANO_PER_TON)/NANO_PER_TON:0}
   function preciseTon(value){var n=cleanAmount(value);return n?n.toFixed(9).replace(/0+$/,'').replace(/\.$/,''):'0'}
   function shortTon(value){var n=cleanAmount(value);return n?n.toFixed(4).replace(/0+$/,'').replace(/\.$/,''):'0'}
@@ -37,9 +36,11 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   }
   async function loadTonUsd(){
     try{
-      var r=await fetch('/app/api/ton/price',{cache:'no-store'});
+      var user=ownerId();
+      var path='/app/api/predict-round?market=ton'+(user?'&userId='+encodeURIComponent(user):'');
+      var r=await fetch(path,{cache:'no-store'});
       var j=await r.json();
-      var value=Number(j&&j.usd);
+      var value=Number(j&&j.round&&j.round.startPrice);
       if(Number.isFinite(value)&&value>0){tonUsd=value;syncModeUi()}
     }catch(e){}
   }
@@ -54,6 +55,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     var box=q('depositPaymentModeSwitch');if(box)box.classList.toggle('ton',depositMode==='ton');
     var sheet=q('depositSheet');if(sheet)sheet.classList.toggle('deposit-ton-mode',depositMode==='ton');
     syncModeUi();
+    if(depositMode==='ton'&&!tonUsd)loadTonUsd();
   }
   function syncModeUi(){
     var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!input||!out)return;
@@ -104,7 +106,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
       row.insertAdjacentHTML('beforeend','<div id="depositPaymentModeSwitch" class="deposit-mode-switch"><button type="button" data-action="set-deposit-mode" data-mode="stars">Stars</button><button type="button" data-action="set-deposit-mode" data-mode="ton">TON</button></div>');
       row.insertAdjacentHTML('afterend','<p id="tonWalletDepositStatus" class="ton-wallet-status"></p>');
     }
-    setMode(depositMode);forceDepositCenter();loadTonConnect().catch(function(){});loadTonUsd();
+    setMode(depositMode);forceDepositCenter();loadTonConnect().catch(function(){});if(!tonUsd)loadTonUsd();
   }
   function bind(){ensureUi();document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet')syncModeUi()});document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit')setTimeout(ensureUi,40);if(action==='set-deposit-mode'){ev.preventDefault();ev.stopPropagation();setMode(button.getAttribute('data-mode'))}if(action==='confirm-ton-payment'){ev.preventDefault();ev.stopPropagation();confirmTonPayment()}},true);setTimeout(ensureUi,220);setTimeout(ensureUi,900)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
