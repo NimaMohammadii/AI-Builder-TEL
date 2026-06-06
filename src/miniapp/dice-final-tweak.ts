@@ -22,6 +22,9 @@ export const DICE_FINAL_TWEAK = `<style>
   font-size:20px!important;
   line-height:1.05!important;
 }
+#dice .dice-bet .dice-bet-row-image{
+  transform:translateY(-50%) scale(1.42)!important;
+}
 #dice .dice-bet.has-dice-image .dice-bet-main,
 #dice .dice-bet.has-dice-image .dice-bet-main.active,
 #dice .dice-bet .dice-bet-main,
@@ -105,6 +108,9 @@ export const DICE_FINAL_TWEAK = `<style>
   }
   #dice .dice-control-grid .dice-field b{
     font-size:19px!important;
+  }
+  #dice .dice-bet .dice-bet-row-image{
+    transform:translateY(-50%) scale(1.48)!important;
   }
   #dice .dice-bet.has-dice-image .dice-bet-main,
   #dice .dice-bet.has-dice-image .dice-bet-main.active,
