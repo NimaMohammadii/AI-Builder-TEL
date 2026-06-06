@@ -8,7 +8,7 @@ export const DICE_FINAL_TWEAK = `<style>
   transform:translateY(-18px)!important;
 }
 #dice .dice-status{
-  transform:translateY(-18px)!important;
+  transform:translateY(-10px)!important;
 }
 #dice .dice-control-grid .dice-field small,
 #dice .dice-control-grid .dice-field b{
@@ -37,6 +37,7 @@ export const DICE_FINAL_TWEAK = `<style>
   justify-content:center!important;
   padding-top:0!important;
   line-height:1!important;
+  transform:translateY(-7px)!important;
 }
 #dice .dice-roll-button,
 #dice .dice-roll-button .dice-roll-button-image{
@@ -93,7 +94,7 @@ export const DICE_FINAL_TWEAK = `<style>
     transform:translateY(-18px)!important;
   }
   #dice .dice-status{
-    transform:translateY(-17px)!important;
+    transform:translateY(-9px)!important;
   }
   #dice .dice-control-grid .dice-field small,
   #dice .dice-control-grid .dice-field b{
@@ -110,6 +111,7 @@ export const DICE_FINAL_TWEAK = `<style>
   #dice .dice-bet .dice-bet-main,
   #dice .dice-bet .dice-bet-main.active{
     padding-top:0!important;
+    transform:translateY(-7px)!important;
   }
 }
 </style><script>
