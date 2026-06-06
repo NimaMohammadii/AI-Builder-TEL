@@ -12,7 +12,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles = [];
+  var plinkoVirtualProfiles=['Arman','Nika','Sarina','Kian','Mahan','Lina','Dara','Yas','Rayan','Tina','Mehrad','Ava','Soren','Melika','Navid','Raha','Amir','Dina','Shayan','Mina','Parsa','Setareh','Bardia','Hana','Arian','Nora','Pouya','Vera','Kourosh','Saba'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -148,13 +148,16 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var total=document.getElementById('plinkoHistoryTotal');
     var list=document.getElementById('plinkoHistoryList');
     if(!total||!list)return;
-    var sum=0;
+    var realSum=0;
+    var virtualSum=0;
     list.querySelectorAll('.plinko-history-row').forEach(function(row){
       var n=row&&row.dataset?Number(row.dataset.amount):0;
-      if(Number.isFinite(n)&&n>0)sum+=n;
+      if(!Number.isFinite(n)||n<=0)return;
+      if(row.dataset&&row.dataset.virtual==='1')virtualSum+=n;
+      else realSum+=n;
     });
-    if(liveHourlyTurnover!==null)sum=liveHourlyTurnover;
-    total.textContent=formatTonAmount(sum)+' TON · Past 1 hour';
+    var base=liveHourlyTurnover!==null?liveHourlyTurnover:realSum;
+    total.textContent=formatTonAmount(base+virtualSum)+' TON · Past 1 hour';
   }
 
   function randomIndex(seed,max){
@@ -164,8 +167,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function virtualName(profileIndex,seed){
-    var names=plinkoVirtualProfiles[profileIndex]||[];
-    return names[randomIndex(seed+profileIndex*101,names.length)];
+    if(!plinkoVirtualProfiles.length)return 'Player';
+    return plinkoVirtualProfiles[Math.abs(profileIndex+randomIndex(seed+profileIndex*101,plinkoVirtualProfiles.length))%plinkoVirtualProfiles.length];
   }
 
   function virtualAmount(profileIndex,seed){
@@ -193,27 +196,60 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var amount=virtualAmount(profileIndex,seed);
     var multiplier=virtualMultiplier(profileIndex,seed);
     return {
-      key:'virtual-'+profileIndex+'-'+Math.floor(seed),
+      key:'virtual-'+currentHourStart()+'-'+profileIndex+'-'+Math.floor(seed),
       name:virtualName(profileIndex,seed),
       amount:amount,
       multiplier:multiplier,
-      total:Math.round((amount*multiplier+Number.EPSILON)*100)/100
+      total:Math.round((amount*multiplier+Number.EPSILON)*100)/100,
+      createdAt:currentHourStart()+Math.max(0,Math.min(Date.now()-currentHourStart(),randomIndex(seed+profileIndex*53,3600000))),
+      isVirtual:true
     };
   }
 
-  function buildVirtualRows(){virtualRows=[]}
+  function buildVirtualRows(){
+    var hour=currentHourStart();
+    var seed=hour/1000;
+    var count=12+randomIndex(seed,7);
+    var indexes=shuffleVirtualProfiles(seed);
+    virtualRows=[];
+    for(var i=0;i<count;i++)virtualRows.push(makeVirtualRow(indexes[i%indexes.length]||i,seed+i*911));
+    virtualRows.sort(function(a,b){return Number(a.createdAt||0)-Number(b.createdAt||0)});
+  }
 
-  function pushVirtualRow(){virtualRows=[]}
+  function pushVirtualRow(){
+    if(!active())return;
+    syncHourlyReset();
+    virtualNonce+=1;
+    var indexes=shuffleVirtualProfiles(Date.now()+virtualNonce*977);
+    var row=makeVirtualRow(indexes[virtualNonce%Math.max(1,indexes.length)]||virtualNonce,Date.now()+virtualNonce*1307);
+    row.createdAt=Date.now();
+    row.key='virtual-live-'+liveHourStartedAt+'-'+virtualNonce+'-'+row.createdAt;
+    virtualRows.unshift(row);
+    if(virtualRows.length>24)virtualRows.length=24;
+    addHistoryData(row,row.key);
+  }
+
+  function renderVirtualRows(){
+    if(!virtualRows.length)buildVirtualRows();
+    virtualRows.forEach(function(row){addHistoryData(row,row.key)});
+  }
+
+  function scheduleVirtualRows(){
+    if(virtualTimer)return;
+    virtualTimer=setInterval(pushVirtualRow,12000+randomIndex(Date.now(),9000));
+  }
 
   function ensureVirtualRows(){
-    virtualRendered=true;
-    if(virtualTimer){clearInterval(virtualTimer);virtualTimer=null}
+    if(!virtualRendered){buildVirtualRows();renderVirtualRows();virtualRendered=true}
+    scheduleVirtualRows();
   }
 
   function currentHourStart(){return Math.floor(Date.now()/3600000)*3600000}
   function resetHistoryForHour(hourStartedAt){
     liveHourStartedAt=hourStartedAt||currentHourStart();
-    liveHourlyTurnover=0;
+    liveHourlyTurnover=null;
+    virtualRows=[];
+    virtualRendered=false;
     seen={};
     var list=document.getElementById('plinkoHistoryList');
     if(list)list.innerHTML='<div class="plinko-history-empty">No bets yet</div>';
@@ -291,6 +327,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       row.dataset.total=String(totalValue);
       row.dataset.multiplier=String(multValue);
       if(data.createdAt!=null)row.dataset.createdAt=String(data.createdAt);
+      if(data.isVirtual)row.dataset.virtual='1';
     }
     if(totalValue>amountValue){
       row.className+=' win';
@@ -309,8 +346,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     while(target.querySelectorAll('.plinko-history-row').length>50)target.removeChild(target.lastChild);
     updateHistoryTotal();
   }
-
-  function renderVirtualRows(){}
 
   function addHistory(source){
     if(!source||!source.classList||!source.classList.contains('plinko-live-row'))return;
@@ -369,7 +404,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   window.addEventListener('vexa-plinko-live-hour',function(ev){applyLiveHourDetail(ev&&ev.detail)});
-  setInterval(syncHourlyReset,30000);
+  setInterval(function(){syncHourlyReset();ensureVirtualRows()},30000);
   document.addEventListener('click',function(){setTimeout(scan,80)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80)});
 })();
