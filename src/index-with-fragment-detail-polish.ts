@@ -105,6 +105,28 @@ function handleTonConnectManifest(request: Request): Response | null {
   });
 }
 
+async function handleTonPriceRoute(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (url.pathname !== '/app/api/ton/price') return null;
+  try {
+    const cached = await env.BOT_CACHE.get('ton:usd:price', 'json').catch(() => null) as { usd?: number; updatedAt?: number } | null;
+    if (cached?.usd && Date.now() - Number(cached.updatedAt || 0) < 60_000) {
+      return Response.json(cached, { headers: { 'cache-control': 'no-store' } });
+    }
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd', {
+      headers: { accept: 'application/json', 'user-agent': 'VexaFLOW/1.0' },
+    });
+    const json = await response.json().catch(() => null) as { ['the-open-network']?: { usd?: number } } | null;
+    const usd = Number(json?.['the-open-network']?.usd || 0);
+    if (!Number.isFinite(usd) || usd <= 0) throw new Error('Could not load TON price');
+    const payload = { usd, updatedAt: Date.now(), source: 'coingecko' };
+    await env.BOT_CACHE.put('ton:usd:price', JSON.stringify(payload), { expirationTtl: 90 }).catch(() => undefined);
+    return Response.json(payload, { headers: { 'cache-control': 'no-store' } });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : 'Could not load TON price' }, { status: 400, headers: { 'cache-control': 'no-store' } });
+  }
+}
+
 async function handleStarsDepositRoute(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== '/app/api/stars/deposits') return null;
@@ -126,6 +148,8 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const manifestRoute = handleTonConnectManifest(request);
     if (manifestRoute) return manifestRoute;
+    const tonPriceRoute = await handleTonPriceRoute(request, env);
+    if (tonPriceRoute) return tonPriceRoute;
     const starsRoute = await handleStarsDepositRoute(request, env);
     if (starsRoute) return starsRoute;
     const fastResponse = await handleFastTelegramUpdate(request, env).catch((error) => {
