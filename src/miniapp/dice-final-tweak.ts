@@ -1,12 +1,20 @@
 export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-uploaded-stats-image{
-  width:min(540px,calc(100% + 28px))!important;
+  width:min(560px,calc(100% + 46px))!important;
   max-width:none!important;
   top:-68px!important;
 }
 #dice .dice-control-grid .dice-field small,
 #dice .dice-control-grid .dice-field b{
   transform:translateY(-8px)!important;
+}
+#dice .dice-control-grid .dice-field small{
+  font-size:12px!important;
+  line-height:1.05!important;
+}
+#dice .dice-control-grid .dice-field b{
+  font-size:20px!important;
+  line-height:1.05!important;
 }
 #dice .dice-bet.has-dice-image .dice-bet-main,
 #dice .dice-bet.has-dice-image .dice-bet-main.active,
@@ -66,13 +74,19 @@ export const DICE_FINAL_TWEAK = `<style>
 }
 @media(max-width:420px){
   #dice .dice-uploaded-stats-image{
-    width:min(484px,calc(100% + 28px))!important;
+    width:min(500px,calc(100% + 44px))!important;
     max-width:none!important;
     top:-68px!important;
   }
   #dice .dice-control-grid .dice-field small,
   #dice .dice-control-grid .dice-field b{
     transform:translateY(-7px)!important;
+  }
+  #dice .dice-control-grid .dice-field small{
+    font-size:11.5px!important;
+  }
+  #dice .dice-control-grid .dice-field b{
+    font-size:19px!important;
   }
 }
 </style><script>
