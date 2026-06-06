@@ -2,7 +2,9 @@ import type { Env } from './types';
 
 const ROOM_NAME = 'global';
 const USER_DELAY_MS = 6000;
-const HISTORY_KEY = 'plinko-live-history';
+const HISTORY_KEY_PREFIX = 'plinko-live-history-';
+const TURNOVER_KEY_PREFIX = 'plinko-live-turnover-';
+const ONE_HOUR_MS = 60 * 60 * 1000;
 const RESULT_DEDUPE_PREFIX = 'plinko-live-result-key-';
 const RESULT_DEDUPE_MS = 2500;
 const HISTORY_LIMIT = 50;
@@ -33,6 +35,12 @@ type PlinkoResult = {
   multiplier: number;
   total: number;
   createdAt: number;
+};
+
+type PlinkoHistoryPayload = {
+  events: PlinkoResult[];
+  hourlyTurnover: number;
+  hourStartedAt: number;
 };
 
 export function registerPlinkoLiveRoutes(app: { get: Function; post: Function }): void {
@@ -72,7 +80,7 @@ export class PlinkoLiveRoom {
     server.addEventListener('close', () => this.sockets.delete(server));
     server.addEventListener('error', () => this.sockets.delete(server));
     const history = await this.history();
-    safeSend(server, { type: 'plinko-history', events: history });
+    safeSend(server, { type: 'plinko-history', events: history.events, hourlyTurnover: history.hourlyTurnover, hourStartedAt: history.hourStartedAt });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -104,16 +112,23 @@ export class PlinkoLiveRoom {
     await this.state.storage.put(dedupeKey, Date.now(), { expirationTtl: 30 });
 
     const history = await this.history();
-    const next = [result, ...history.filter((item) => item.id !== result.id)].slice(0, HISTORY_LIMIT);
-    await this.state.storage.put(HISTORY_KEY, next);
-    this.publish({ type: 'plinko-result', event: result });
+    const next = [result, ...history.events.filter((item) => item.id !== result.id)].slice(0, HISTORY_LIMIT);
+    const hourlyTurnover = roundAmount(history.hourlyTurnover + result.amount);
+    await this.state.storage.put(historyKey(history.hourStartedAt), next);
+    await this.state.storage.put(turnoverKey(history.hourStartedAt), hourlyTurnover);
+    this.publish({ type: 'plinko-result', event: result, hourlyTurnover, hourStartedAt: history.hourStartedAt });
     return json({ ok: true, event: result });
   }
 
-  private async history(): Promise<PlinkoResult[]> {
-    const history = await this.state.storage.get<PlinkoResult[]>(HISTORY_KEY).catch(() => null);
-    if (!Array.isArray(history)) return [];
-    return history.filter(isValidResult).slice(0, HISTORY_LIMIT);
+  private async history(): Promise<PlinkoHistoryPayload> {
+    const hourStartedAt = currentHourStartedAt();
+    const history = await this.state.storage.get<PlinkoResult[]>(historyKey(hourStartedAt)).catch(() => null);
+    const hourlyTurnover = Number(await this.state.storage.get<number>(turnoverKey(hourStartedAt)).catch(() => 0)) || 0;
+    return {
+      events: Array.isArray(history) ? history.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT) : [],
+      hourlyTurnover: roundAmount(hourlyTurnover),
+      hourStartedAt,
+    };
   }
 
   private publish(value: unknown): void {
@@ -150,7 +165,8 @@ async function localConnect(request: Request): Promise<Response> {
   localSockets.add(server);
   server.addEventListener('close', () => localSockets.delete(server));
   server.addEventListener('error', () => localSockets.delete(server));
-  safeSend(server, { type: 'plinko-history', events: localHistory });
+  pruneLocalHistory();
+  safeSend(server, { type: 'plinko-history', events: localHistory, hourlyTurnover: localHourlyTurnover(), hourStartedAt: currentHourStartedAt() });
   return new Response(null, { status: 101, webSocket: client });
 }
 
@@ -180,8 +196,9 @@ async function localResult(request: Request): Promise<Response> {
   if (Date.now() - last < RESULT_DEDUPE_MS) return json({ ok: true, duplicate: true, event: result });
   localResultLast.set(key, Date.now());
 
-  localHistory = [result, ...localHistory.filter((item) => item.id !== result.id)].filter(isValidResult).slice(0, HISTORY_LIMIT);
-  localPublish({ type: 'plinko-result', event: result });
+  pruneLocalHistory();
+  localHistory = [result, ...localHistory.filter((item) => item.id !== result.id)].filter(isCurrentHourResult).slice(0, HISTORY_LIMIT);
+  localPublish({ type: 'plinko-result', event: result, hourlyTurnover: localHourlyTurnover(), hourStartedAt: currentHourStartedAt() });
   return json({ ok: true, fallback: true, event: result });
 }
 
@@ -223,6 +240,37 @@ function makeResult(body: ResultInput): PlinkoResult | null {
 
 function isValidResult(item: PlinkoResult): boolean {
   return Number(item?.amount) > 0 && Number(item?.multiplier) > 0 && Number(item?.total) > 0;
+}
+
+function isCurrentHourResult(item: PlinkoResult): boolean {
+  return isValidResult(item) && Number(item.createdAt) >= currentHourStartedAt();
+}
+
+function currentHourStartedAt(): number {
+  return Math.floor(Date.now() / ONE_HOUR_MS) * ONE_HOUR_MS;
+}
+
+function historyKey(hourStartedAt: number): string {
+  return HISTORY_KEY_PREFIX + String(hourStartedAt);
+}
+
+function turnoverKey(hourStartedAt: number): string {
+  return TURNOVER_KEY_PREFIX + String(hourStartedAt);
+}
+
+function roundAmount(value: unknown): number {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+
+function pruneLocalHistory(): void {
+  localHistory = localHistory.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT);
+}
+
+function localHourlyTurnover(): number {
+  pruneLocalHistory();
+  return roundAmount(localHistory.reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
 }
 
 function getRoom(env: LiveEnv): DurableObjectStub | null {

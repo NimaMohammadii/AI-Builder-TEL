@@ -10,58 +10,10 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var virtualTimer=null;
   var virtualRendered=false;
   var virtualNonce=0;
-  var plinkoVirtualProfiles = [
-    ['AriNova', 'AriPlay', 'AriSpin', 'AriBet', 'AriWin', 'AriMax', 'AriRush', 'AriTon', 'AriLux', 'AriPro'],
-    ['MayaStar', 'MayaSpin', 'MayaBet', 'MayaWin', 'MayaLux', 'MayaTon', 'MayaRush', 'MayaPlay', 'MayaPro', 'MayaNova'],
-    ['LiaMoon', 'LiaSpin', 'LiaBet', 'LiaWin', 'LiaLux', 'LiaTon', 'LiaRush', 'LiaPlay', 'LiaPro', 'LiaNova'],
-    ['NoraWave', 'NoraSpin', 'NoraBet', 'NoraWin', 'NoraLux', 'NoraTon', 'NoraRush', 'NoraPlay', 'NoraPro', 'NoraNova'],
-    ['ElinaFox', 'ElinaSpin', 'ElinaBet', 'ElinaWin', 'ElinaLux', 'ElinaTon', 'ElinaRush', 'ElinaPlay', 'ElinaPro', 'ElinaNova'],
-    ['RahaQueen', 'RahaSpin', 'RahaBet', 'RahaWin', 'RahaLux', 'RahaTon', 'RahaRush', 'RahaPlay', 'RahaPro', 'RahaNova'],
-    ['YaraGold', 'YaraSpin', 'YaraBet', 'YaraWin', 'YaraLux', 'YaraTon', 'YaraRush', 'YaraPlay', 'YaraPro', 'YaraNova'],
-    ['KianFlash', 'KianSpin', 'KianBet', 'KianWin', 'KianLux', 'KianTon', 'KianRush', 'KianPlay', 'KianPro', 'KianNova'],
-    ['ArmanX', 'ArmanSpin', 'ArmanBet', 'ArmanWin', 'ArmanLux', 'ArmanTon', 'ArmanRush', 'ArmanPlay', 'ArmanPro', 'ArmanNova'],
-    ['SinaAce', 'SinaSpin', 'SinaBet', 'SinaWin', 'SinaLux', 'SinaTon', 'SinaRush', 'SinaPlay', 'SinaPro', 'SinaNova'],
-    ['RayanJet', 'RayanSpin', 'RayanBet', 'RayanWin', 'RayanLux', 'RayanTon', 'RayanRush', 'RayanPlay', 'RayanPro', 'RayanNova'],
-    ['ParsaKing', 'ParsaSpin', 'ParsaBet', 'ParsaWin', 'ParsaLux', 'ParsaTon', 'ParsaRush', 'ParsaPlay', 'ParsaPro', 'ParsaNova'],
-    ['NikaRose', 'NikaSpin', 'NikaBet', 'NikaWin', 'NikaLux', 'NikaTon', 'NikaRush', 'NikaPlay', 'NikaPro', 'NikaNova'],
-    ['AvaCloud', 'AvaSpin', 'AvaBet', 'AvaWin', 'AvaLux', 'AvaTon', 'AvaRush', 'AvaPlay', 'AvaPro', 'AvaNova'],
-    ['DariaSun', 'DariaSpin', 'DariaBet', 'DariaWin', 'DariaLux', 'DariaTon', 'DariaRush', 'DariaPlay', 'DariaPro', 'DariaNova'],
-    ['TaraBlue', 'TaraSpin', 'TaraBet', 'TaraWin', 'TaraLux', 'TaraTon', 'TaraRush', 'TaraPlay', 'TaraPro', 'TaraNova'],
-    ['AmirWolf', 'AmirSpin', 'AmirBet', 'AmirWin', 'AmirLux', 'AmirTon', 'AmirRush', 'AmirPlay', 'AmirPro', 'AmirNova'],
-    ['AliTiger', 'AliSpin', 'AliBet', 'AliWin', 'AliLux', 'AliTon', 'AliRush', 'AliPlay', 'AliPro', 'AliNova'],
-    ['RezaStorm', 'RezaSpin', 'RezaBet', 'RezaWin', 'RezaLux', 'RezaTon', 'RezaRush', 'RezaPlay', 'RezaPro', 'RezaNova'],
-    ['AryaFire', 'AryaSpin', 'AryaBet', 'AryaWin', 'AryaLux', 'AryaTon', 'AryaRush', 'AryaPlay', 'AryaPro', 'AryaNova'],
-    ['ArvinNeo', 'ArvinSpin', 'ArvinBet', 'ArvinWin', 'ArvinLux', 'ArvinTon', 'ArvinRush', 'ArvinPlay', 'ArvinPro', 'ArvinNova'],
-    ['SamanSky', 'SamanSpin', 'SamanBet', 'SamanWin', 'SamanLux', 'SamanTon', 'SamanRush', 'SamanPlay', 'SamanPro', 'SamanNova'],
-    ['RadinHero', 'RadinSpin', 'RadinBet', 'RadinWin', 'RadinLux', 'RadinTon', 'RadinRush', 'RadinPlay', 'RadinPro', 'RadinNova'],
-    ['ShayanIce', 'ShayanSpin', 'ShayanBet', 'ShayanWin', 'ShayanLux', 'ShayanTon', 'ShayanRush', 'ShayanPlay', 'ShayanPro', 'ShayanNova'],
-    ['MahanBolt', 'MahanSpin', 'MahanBet', 'MahanWin', 'MahanLux', 'MahanTon', 'MahanRush', 'MahanPlay', 'MahanPro', 'MahanNova'],
-    ['NavidAce', 'NavidSpin', 'NavidBet', 'NavidWin', 'NavidLux', 'NavidTon', 'NavidRush', 'NavidPlay', 'NavidPro', 'NavidNova'],
-    ['NimaLuck', 'NimaSpin', 'NimaBet', 'NimaWin', 'NimaLux', 'NimaTon', 'NimaRush', 'NimaPlay', 'NimaPro', 'NimaNova'],
-    ['NikanFox', 'NikanSpin', 'NikanBet', 'NikanWin', 'NikanLux', 'NikanTon', 'NikanRush', 'NikanPlay', 'NikanPro', 'NikanNova'],
-    ['KavehLion', 'KavehSpin', 'KavehBet', 'KavehWin', 'KavehLux', 'KavehTon', 'KavehRush', 'KavehPlay', 'KavehPro', 'KavehNova'],
-    ['SepehrX', 'SepehrSpin', 'SepehrBet', 'SepehrWin', 'SepehrLux', 'SepehrTon', 'SepehrRush', 'SepehrPlay', 'SepehrPro', 'SepehrNova'],
-    ['TahaPeak', 'TahaSpin', 'TahaBet', 'TahaWin', 'TahaLux', 'TahaTon', 'TahaRush', 'TahaPlay', 'TahaPro', 'TahaNova'],
-    ['ErfanMax', 'ErfanSpin', 'ErfanBet', 'ErfanWin', 'ErfanLux', 'ErfanTon', 'ErfanRush', 'ErfanPlay', 'ErfanPro', 'ErfanNova'],
-    ['AminRock', 'AminSpin', 'AminBet', 'AminWin', 'AminLux', 'AminTon', 'AminRush', 'AminPlay', 'AminPro', 'AminNova'],
-    ['IlyaRay', 'IlyaSpin', 'IlyaBet', 'IlyaWin', 'IlyaLux', 'IlyaTon', 'IlyaRush', 'IlyaPlay', 'IlyaPro', 'IlyaNova'],
-    ['BardiaOne', 'BardiaSpin', 'BardiaBet', 'BardiaWin', 'BardiaLux', 'BardiaTon', 'BardiaRush', 'BardiaPlay', 'BardiaPro', 'BardiaNova'],
-    ['HiradMoon', 'HiradSpin', 'HiradBet', 'HiradWin', 'HiradLux', 'HiradTon', 'HiradRush', 'HiradPlay', 'HiradPro', 'HiradNova'],
-    ['OmidLite', 'OmidSpin', 'OmidBet', 'OmidWin', 'OmidLux', 'OmidTon', 'OmidRush', 'OmidPlay', 'OmidPro', 'OmidNova'],
-    ['PouyaGem', 'PouyaSpin', 'PouyaBet', 'PouyaWin', 'PouyaLux', 'PouyaTon', 'PouyaRush', 'PouyaPlay', 'PouyaPro', 'PouyaNova'],
-    ['KasraZen', 'KasraSpin', 'KasraBet', 'KasraWin', 'KasraLux', 'KasraTon', 'KasraRush', 'KasraPlay', 'KasraPro', 'KasraNova'],
-    ['AradTime', 'AradSpin', 'AradBet', 'AradWin', 'AradLux', 'AradTon', 'AradRush', 'AradPlay', 'AradPro', 'AradNova'],
-    ['MehradVip', 'MehradSpin', 'MehradBet', 'MehradWin', 'MehradLux', 'MehradTon', 'MehradRush', 'MehradPlay', 'MehradPro', 'MehradNova'],
-    ['MiraPearl', 'MiraSpin', 'MiraBet', 'MiraWin', 'MiraLux', 'MiraTon', 'MiraRush', 'MiraPlay', 'MiraPro', 'MiraNova'],
-    ['LunaNight', 'LunaSpin', 'LunaBet', 'LunaWin', 'LunaLux', 'LunaTon', 'LunaRush', 'LunaPlay', 'LunaPro', 'LunaNova'],
-    ['VianDream', 'VianSpin', 'VianBet', 'VianWin', 'VianLux', 'VianTon', 'VianRush', 'VianPlay', 'VianPro', 'VianNova'],
-    ['MinaBloom', 'MinaSpin', 'MinaBet', 'MinaWin', 'MinaLux', 'MinaTon', 'MinaRush', 'MinaPlay', 'MinaPro', 'MinaNova'],
-    ['RoyaMagic', 'RoyaSpin', 'RoyaBet', 'RoyaWin', 'RoyaLux', 'RoyaTon', 'RoyaRush', 'RoyaPlay', 'RoyaPro', 'RoyaNova'],
-    ['AylinStar', 'AylinSpin', 'AylinBet', 'AylinWin', 'AylinLux', 'AylinTon', 'AylinRush', 'AylinPlay', 'AylinPro', 'AylinNova'],
-    ['ZaraGlow', 'ZaraSpin', 'ZaraBet', 'ZaraWin', 'ZaraLux', 'ZaraTon', 'ZaraRush', 'ZaraPlay', 'ZaraPro', 'ZaraNova'],
-    ['NeginGem', 'NeginSpin', 'NeginBet', 'NeginWin', 'NeginLux', 'NeginTon', 'NeginRush', 'NeginPlay', 'NeginPro', 'NeginNova'],
-    ['DorsaCharm', 'DorsaSpin', 'DorsaBet', 'DorsaWin', 'DorsaLux', 'DorsaTon', 'DorsaRush', 'DorsaPlay', 'DorsaPro', 'DorsaNova'],
-  ];
+  var liveHourStartedAt=0;
+  var liveHourlyTurnover=null;
+  var plinkoVirtualProfiles = [];
+
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
 
@@ -173,7 +125,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     if(!feed.querySelector('.plinko-history-head')){
       var head=document.createElement('div');
       head.className='plinko-history-head';
-      head.innerHTML='<span class="plinko-history-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg><span>Live Bets</span></span><b id="plinkoHistoryTotal">0.00 TON · ۱ ساعته گذشته</b>';
+      head.innerHTML='<span class="plinko-history-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg><span>Live Bets</span></span><b id="plinkoHistoryTotal">0.00 TON · Past 1 hour</b>';
       feed.insertBefore(head,feed.firstChild);
     }
     if(!feed.querySelector('.plinko-history-list')){
@@ -201,7 +153,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       var n=row&&row.dataset?Number(row.dataset.amount):0;
       if(Number.isFinite(n)&&n>0)sum+=n;
     });
-    total.textContent=formatTonAmount(sum)+' TON · ۱ ساعته گذشته';
+    if(liveHourlyTurnover!==null)sum=liveHourlyTurnover;
+    total.textContent=formatTonAmount(sum)+' TON · Past 1 hour';
   }
 
   function randomIndex(seed,max){
@@ -211,7 +164,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function virtualName(profileIndex,seed){
-    var names=plinkoVirtualProfiles[profileIndex]||['Player'+(profileIndex+1)];
+    var names=plinkoVirtualProfiles[profileIndex]||[];
     return names[randomIndex(seed+profileIndex*101,names.length)];
   }
 
@@ -248,30 +201,38 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     };
   }
 
-  function buildVirtualRows(){
-    var tick=Math.floor(Date.now()/9000);
-    virtualRows=shuffleVirtualProfiles(tick).slice(0,50).map(function(profileIndex,position){
-      return makeVirtualRow(profileIndex,(profileIndex+1)*31+tick*(position%7+3)+position*19);
-    });
-  }
+  function buildVirtualRows(){virtualRows=[]}
 
-  function pushVirtualRow(){
-    if(!virtualRows.length)buildVirtualRows();
-    var profileIndex=randomIndex(Date.now()+virtualNonce++,plinkoVirtualProfiles.length);
-    var row=makeVirtualRow(profileIndex,Date.now()+profileIndex*43+Math.random()*5000+virtualNonce);
-    virtualRows=virtualRows.filter(function(item){return item.key.indexOf('virtual-'+profileIndex+'-')!==0});
-    virtualRows.unshift(row);
-    virtualRows=virtualRows.slice(0,50);
-    renderVirtualRows();
-  }
+  function pushVirtualRow(){virtualRows=[]}
 
   function ensureVirtualRows(){
-    if(virtualRendered)return;
-    buildVirtualRows();
-    renderVirtualRows();
     virtualRendered=true;
-    if(virtualTimer)clearInterval(virtualTimer);
-    virtualTimer=setInterval(pushVirtualRow,1800);
+    if(virtualTimer){clearInterval(virtualTimer);virtualTimer=null}
+  }
+
+  function currentHourStart(){return Math.floor(Date.now()/3600000)*3600000}
+  function resetHistoryForHour(hourStartedAt){
+    liveHourStartedAt=hourStartedAt||currentHourStart();
+    liveHourlyTurnover=0;
+    seen={};
+    var list=document.getElementById('plinkoHistoryList');
+    if(list)list.innerHTML='<div class="plinko-history-empty">No bets yet</div>';
+    updateHistoryTotal();
+  }
+  function applyLiveHourDetail(detail){
+    var hour=Number(detail&&detail.hourStartedAt)||currentHourStart();
+    if(liveHourStartedAt&&hour!==liveHourStartedAt)resetHistoryForHour(hour);
+    else liveHourStartedAt=hour;
+    if(detail&&detail.hourlyTurnover!=null){
+      var amount=Number(detail.hourlyTurnover);
+      liveHourlyTurnover=Number.isFinite(amount)&&amount>=0?amount:0;
+    }
+    updateHistoryTotal();
+  }
+  function syncHourlyReset(){
+    var hour=currentHourStart();
+    if(!liveHourStartedAt)liveHourStartedAt=hour;
+    if(hour!==liveHourStartedAt)resetHistoryForHour(hour);
   }
 
   function cleanText(value){return String(value||'').replace(/\s+/g,' ').trim()}
@@ -294,6 +255,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var target=historyList();
     if(!target||!data)return;
     key=key||[data.name,data.amount,data.multiplier,data.total].join('|');
+    syncHourlyReset();
+    if(data.createdAt!=null&&Number(data.createdAt)<liveHourStartedAt)return;
     if(seen[key])return;
     seen[key]=1;
 
@@ -327,6 +290,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       row.dataset.amount=String(amountValue);
       row.dataset.total=String(totalValue);
       row.dataset.multiplier=String(multValue);
+      if(data.createdAt!=null)row.dataset.createdAt=String(data.createdAt);
     }
     if(totalValue>amountValue){
       row.className+=' win';
@@ -346,11 +310,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     updateHistoryTotal();
   }
 
-  function renderVirtualRows(){
-    ensureFeed();
-    if(!virtualRows.length)buildVirtualRows();
-    virtualRows.slice().reverse().forEach(function(row){addHistoryData(row,row.key)});
-  }
+  function renderVirtualRows(){}
 
   function addHistory(source){
     if(!source||!source.classList||!source.classList.contains('plinko-live-row'))return;
@@ -375,7 +335,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       photoUrl:srcImg&&srcImg.src?srcImg.src:'/app/api/uploaded-image/credit-icon.png',
       amount:amountValue,
       multiplier:multValue,
-      total:totalValue
+      total:totalValue,
+      createdAt:dataNumber(source,'createdAt')
     },key);
   }
 
@@ -384,12 +345,14 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     ensureFeed();
     moveFeedIntoPage();
     gatePlinkoControl();
+    syncHourlyReset();
     ensureVirtualRows();
     document.querySelectorAll('#plinkoLiveFeed .plinko-live-row').forEach(addHistory);
   }
 
   installControlFetchGuard();
   ensureFeed();
+  if(window.__plinkoLiveHour)applyLiveHourDetail(window.__plinkoLiveHour);
   scan();
 
   if(window.MutationObserver){
@@ -405,6 +368,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   }
 
+  window.addEventListener('vexa-plinko-live-hour',function(ev){applyLiveHourDetail(ev&&ev.detail)});
+  setInterval(syncHourlyReset,30000);
   document.addEventListener('click',function(){setTimeout(scan,80)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80)});
 })();
