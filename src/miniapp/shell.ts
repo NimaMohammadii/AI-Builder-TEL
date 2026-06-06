@@ -45,6 +45,7 @@ import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
 import { DICE_FINAL_TWEAK } from './dice-final-tweak';
+import { DICE_ASSET_CACHE_SCRIPT } from './dice-asset-cache-script';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { LIMBO_SECTION } from './limbo';
@@ -186,6 +187,7 @@ const SECTIONS = [
 
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
+  DICE_ASSET_CACHE_SCRIPT,
   MINIAPP_SCRIPT,
   TON_BALANCE_SCRIPT,
   CONNECT_GROUPS_USAGE_SCRIPT,
