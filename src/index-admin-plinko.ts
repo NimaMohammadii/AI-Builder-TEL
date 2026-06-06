@@ -24,7 +24,7 @@ registerPlinkoLiveRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 
-app.get('/app/api/plinko-control-image/:kind.png', async (c) => {
+app.get('/app/api/plinko-control-image/:kind', async (c) => {
   const kind = normalizePlinkoControlImageKind(c.req.param('kind'));
   const object = await c.env.ASSETS.get(plinkoControlImageKey(kind)).catch(() => null);
   if (!object) return new Response(defaultPlinkoControlImageSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
