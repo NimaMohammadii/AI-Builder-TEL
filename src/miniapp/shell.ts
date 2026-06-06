@@ -44,6 +44,7 @@ import { CRASH_SECTION } from './crash';
 import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
+import { DICE_FINAL_TWEAK } from './dice-final-tweak';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { LIMBO_SECTION } from './limbo';
@@ -177,7 +178,7 @@ const SECTIONS = [
   CRASH_SECTION,
   SLOT_SECTION,
   WHEEL_SECTION,
-  DICE_SECTION,
+  DICE_SECTION + DICE_FINAL_TWEAK,
   RPS_SECTION,
   PUMP_SECTION,
   LIMBO_SECTION,
