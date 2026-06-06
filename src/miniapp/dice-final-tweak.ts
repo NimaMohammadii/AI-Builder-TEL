@@ -2,7 +2,7 @@ export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-uploaded-stats-image{
   width:min(560px,calc(100% + 46px))!important;
   max-width:none!important;
-  top:-28px!important;
+  top:-48px!important;
 }
 #dice button.dice-field.dice-mode-field,
 #dice button.dice-field.dice-mode-field.active,
@@ -35,7 +35,7 @@ export const DICE_FINAL_TWEAK = `<style>
   #dice .dice-uploaded-stats-image{
     width:min(500px,calc(100% + 44px))!important;
     max-width:none!important;
-    top:-28px!important;
+    top:-48px!important;
   }
 }
 </style>`;
