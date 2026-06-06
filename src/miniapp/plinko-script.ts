@@ -35,7 +35,7 @@ export const PLINKO_SCRIPT = `
   function fmtAmountInput(v){var n=roundCurrency(v);return n.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1')}
   function fmtTon(v){var n=Math.max(0,Number(v)||0);return n.toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
   function fmtFeedTon(v){return roundCurrency(v).toFixed(2)}
-  function fmtFeedMultiplier(v){var n=roundCurrency(v);return n.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1')}
+  function fmtFeedMultiplier(v){var n=roundCurrency(v);return n.toFixed(2)}
   function readPoints(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function')return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0))/NANO;return Math.max(0,Number((q('plinkoCredit')||{}).textContent||'1000')||1000)}
   function renderPoints(){credit=readPoints();var display=fmtTon(credit);['plinkoCredit','creditCount','plinkoCreditHeader'].forEach(function(id){var el=q(id);if(el)el.textContent=display});return credit}
   function changePoints(delta){var nano=Math.trunc((Number(delta)||0)*NANO);if(window.VexaTonBalance&&typeof window.VexaTonBalance.add==='function'){window.VexaTonBalance.add(nano);credit=readPoints();return}credit=Math.max(0,credit+(Number(delta)||0));renderPoints();try{window.dispatchEvent(new CustomEvent('vexa-credit-game-change',{detail:{credit:credit,delta:delta}}))}catch(e){}}
