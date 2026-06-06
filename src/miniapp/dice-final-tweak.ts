@@ -1,12 +1,41 @@
 export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-uploaded-stats-image{
-  width:min(560px,calc(100% + 46px))!important;
+  width:min(540px,calc(100% + 28px))!important;
   max-width:none!important;
   top:-68px!important;
 }
 #dice .dice-control-grid .dice-field small,
 #dice .dice-control-grid .dice-field b{
   transform:translateY(-8px)!important;
+}
+#dice .dice-bet.has-dice-image .dice-bet-main,
+#dice .dice-bet.has-dice-image .dice-bet-main.active,
+#dice .dice-bet .dice-bet-main,
+#dice .dice-bet .dice-bet-main.active{
+  color:#fff!important;
+  text-shadow:0 5px 14px rgba(0,0,0,.85)!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+}
+#dice .dice-roll-button,
+#dice .dice-roll-button .dice-roll-button-image{
+  transition:transform .14s cubic-bezier(.2,.9,.2,1),filter .14s ease,opacity .14s ease!important;
+  will-change:transform,filter!important;
+}
+#dice .dice-roll-button.is-pressing .dice-roll-button-image,
+#dice .dice-roll-button:active .dice-roll-button-image{
+  transform:translateY(-22%) scale(1.13)!important;
+  filter:brightness(1.18) saturate(1.12)!important;
+}
+#dice .dice-roll-button.roll-pop .dice-roll-button-image{
+  animation:diceRollButtonPop .34s cubic-bezier(.18,.9,.25,1) both!important;
+}
+@keyframes diceRollButtonPop{
+  0%{transform:translateY(-22%) scale(1)}
+  36%{transform:translateY(-22%) scale(1.15)}
+  100%{transform:translateY(-22%) scale(1.03)}
 }
 #dice button.dice-field.dice-mode-field,
 #dice button.dice-field.dice-mode-field.active,
@@ -37,7 +66,7 @@ export const DICE_FINAL_TWEAK = `<style>
 }
 @media(max-width:420px){
   #dice .dice-uploaded-stats-image{
-    width:min(500px,calc(100% + 44px))!important;
+    width:min(484px,calc(100% + 28px))!important;
     max-width:none!important;
     top:-68px!important;
   }
@@ -46,4 +75,29 @@ export const DICE_FINAL_TWEAK = `<style>
     transform:translateY(-7px)!important;
   }
 }
-</style>`;
+</style><script>
+(function(){
+  var root=document.getElementById('dice');
+  if(!root||root.dataset.diceRollButtonPolish)return;
+  root.dataset.diceRollButtonPolish='1';
+  function bind(){
+    var btn=root.querySelector('[data-dice-play]');
+    if(!btn||btn.dataset.rollPolishBound)return;
+    btn.dataset.rollPolishBound='1';
+    function press(){btn.classList.add('is-pressing')}
+    function release(){btn.classList.remove('is-pressing')}
+    btn.addEventListener('pointerdown',press,{passive:true});
+    btn.addEventListener('pointerup',release,{passive:true});
+    btn.addEventListener('pointercancel',release,{passive:true});
+    btn.addEventListener('pointerleave',release,{passive:true});
+    btn.addEventListener('click',function(){
+      btn.classList.remove('roll-pop');
+      void btn.offsetWidth;
+      btn.classList.add('roll-pop');
+      setTimeout(function(){btn.classList.remove('roll-pop')},360);
+    },true);
+  }
+  bind();
+  setTimeout(bind,250);
+})();
+</script>`;
