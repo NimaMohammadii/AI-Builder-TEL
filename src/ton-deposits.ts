@@ -86,7 +86,15 @@ export async function verifyTonDeposit(env: Env, depositId: string): Promise<Ton
   await env.DB.prepare(`UPDATE ton_deposits SET status = 'completed', tx_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'completed'`)
     .bind(txHash, id)
     .run();
-  await adjustUserTonBalance(env, row.user_id, row.ton_balance_nano);
+  await adjustUserTonBalance(env, row.user_id, row.ton_balance_nano, {
+    kind: 'deposit',
+    title: 'TON wallet deposit',
+    description: `${row.amount_ton} TON wallet payment`,
+    referenceId: row.id,
+    referenceType: 'ton_deposit',
+    status: 'completed',
+    metadata: { txHash },
+  });
   await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
   const completed = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ?').bind(id).first<DepositRow>();
   return rowToDeposit(completed ?? { ...row, status: 'completed', tx_hash: txHash }, wallet);
@@ -145,7 +153,7 @@ async function ensureTonDepositsTable(env: Env): Promise<void> {
     user_id TEXT NOT NULL,
     amount_ton TEXT NOT NULL,
     amount_nano TEXT NOT NULL,
-    ton_balance_nano INTEGER NOT NULL,
+    ton_balance_nano INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
     tx_hash TEXT UNIQUE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
