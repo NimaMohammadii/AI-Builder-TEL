@@ -123,10 +123,12 @@ export class PlinkoLiveRoom {
   private async history(): Promise<PlinkoHistoryPayload> {
     const hourStartedAt = currentHourStartedAt();
     const history = await this.state.storage.get<PlinkoResult[]>(historyKey(hourStartedAt)).catch(() => null);
-    const hourlyTurnover = Number(await this.state.storage.get<number>(turnoverKey(hourStartedAt)).catch(() => 0)) || 0;
+    const events = Array.isArray(history) ? history.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT) : [];
+    const storedHourlyTurnover = Number(await this.state.storage.get<number>(turnoverKey(hourStartedAt)).catch(() => 0)) || 0;
+    const historyTurnover = events.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     return {
-      events: Array.isArray(history) ? history.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT) : [],
-      hourlyTurnover: roundAmount(hourlyTurnover),
+      events,
+      hourlyTurnover: roundAmount(Math.max(storedHourlyTurnover, historyTurnover)),
       hourStartedAt,
     };
   }
