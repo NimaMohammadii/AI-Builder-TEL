@@ -14,7 +14,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function esc(value){return String(value==null?'':value).replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c})}
   function ownerId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
   function setStatus(text,kind){var n=q('tonWalletDepositStatus');if(!n)return;n.textContent=text||'';n.classList.toggle('success',kind==='success');n.classList.toggle('error',kind==='error');n.classList.toggle('pending',kind==='pending')}
-  function closeDepositSheet(){var sheet=q('depositSheet');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}document.body.classList.remove('deposit-open','deposit-keyboard-open')}
+  function closeDepositSheet(){var sheet=q('depositSheet');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}var home=q('home');if(home)home.style.removeProperty('overflow-y');document.body.classList.remove('deposit-open','deposit-keyboard-open')}
   function starsAmount(){var input=q('starsAmountSheet');return Math.max(0,Math.floor(Number(input&&input.value)||0))}
   function amountFromStars(){var stars=starsAmount();return stars>0?stars*STARS_TO_NANO/NANO_PER_TON:0}
   function cleanAmount(value){var n=Number(String(value||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*NANO_PER_TON)/NANO_PER_TON:0}
@@ -56,7 +56,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     connecting=true;
     try{
       var ui=await loadTonConnect();
-      if(!ui.connected){setStatus('Choose your TON wallet','pending');closeDepositSheet();setTimeout(function(){ui.openModal().catch(function(error){setStatus(error&&error.message?error.message:'Could not connect wallet','error')})},120)}
+      if(!ui.connected){setStatus('Choose your TON wallet','pending');closeDepositSheet();setTimeout(function(){ui.openModal().catch(function(error){setStatus(error&&error.message?error.message:'Could not connect wallet','error')})},180)}
       setConnectedUi();
       if(ui.connected)setStatus('Wallet connected. You can pay now.','success')
     }catch(error){setStatus(error&&error.message?error.message:'Could not connect wallet','error');toast(error&&error.message?error.message:'Could not connect wallet')}
@@ -82,6 +82,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
       renderPending(deposit);
       var validUntil=Math.floor(Date.now()/1000)+300;
       closeDepositSheet();
+      await new Promise(function(resolve){setTimeout(resolve,180)});
       await ui.sendTransaction({validUntil:validUntil,messages:[{address:deposit.wallet,amount:String(deposit.amountNano||tonToNanoString(deposit.amountTon)),payload:''}]});
       setStatus('Transaction sent. Checking payment confirmation…','pending');
       setTimeout(function(){verifyDeposit(deposit.id,true)},4500);
