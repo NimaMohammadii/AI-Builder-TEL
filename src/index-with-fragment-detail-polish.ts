@@ -88,6 +88,23 @@ async function handleFastTelegramUpdate(request: Request, env: Env): Promise<Res
   return null;
 }
 
+function handleTonConnectManifest(request: Request): Response | null {
+  const url = new URL(request.url);
+  if (url.pathname !== '/tonconnect-manifest.json' && url.pathname !== '/app/api/tonconnect-manifest.json') return null;
+  const origin = url.origin;
+  return Response.json({
+    url: `${origin}/app`,
+    name: 'Vexa FLOW',
+    iconUrl: `${origin}/app/api/credit-icon.png`,
+  }, {
+    headers: {
+      'cache-control': 'no-store',
+      'access-control-allow-origin': '*',
+      'content-type': 'application/json; charset=utf-8',
+    },
+  });
+}
+
 async function handleStarsDepositRoute(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== '/app/api/stars/deposits') return null;
@@ -107,6 +124,8 @@ async function handleStarsDepositRoute(request: Request, env: Env): Promise<Resp
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const manifestRoute = handleTonConnectManifest(request);
+    if (manifestRoute) return manifestRoute;
     const starsRoute = await handleStarsDepositRoute(request, env);
     if (starsRoute) return starsRoute;
     const fastResponse = await handleFastTelegramUpdate(request, env).catch((error) => {
