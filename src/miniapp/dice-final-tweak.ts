@@ -23,7 +23,7 @@ export const DICE_FINAL_TWEAK = `<style>
   line-height:1.05!important;
 }
 #dice .dice-bet .dice-bet-row-image{
-  transform:translateY(-50%) scale(1.46)!important;
+  transform:translateY(-50%) scale(1.41)!important;
 }
 #dice .dice-bet.has-dice-image .dice-bet-main,
 #dice .dice-bet.has-dice-image .dice-bet-main.active,
@@ -110,7 +110,7 @@ export const DICE_FINAL_TWEAK = `<style>
     font-size:19px!important;
   }
   #dice .dice-bet .dice-bet-row-image{
-    transform:translateY(-50%) scale(1.54)!important;
+    transform:translateY(-50%) scale(1.49)!important;
   }
   #dice .dice-bet.has-dice-image .dice-bet-main,
   #dice .dice-bet.has-dice-image .dice-bet-main.active,
