@@ -16,13 +16,13 @@ const HOME_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
-const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input']);
+const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
 
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
-app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
+app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 
 app.get('/app/api/plinko-control-image/:kind.png', async (c) => {
   const kind = normalizePlinkoControlImageKind(c.req.param('kind'));
@@ -229,7 +229,7 @@ app.post('/admin/api/upload-crash-tip-image', async (c) => {
 
 app.get('/admin/api/plinko-control', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await getPlinkoControl(c.env));
+  return c.json(await getPlinkoControlPayload(c.env));
 });
 
 app.post('/admin/api/plinko-control', async (c) => {
@@ -291,16 +291,26 @@ async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CON
 }
 
 
-function normalizePlinkoControlImageKind(value: string): 'drop' | 'input' {
-  const clean = String(value || '').replace(/\.png$/i, '');
-  return PLINKO_CONTROL_IMAGE_KINDS.has(clean) ? clean as 'drop' | 'input' : 'drop';
+async function getPlinkoControlPayload(env: Env) {
+  const config = await getPlinkoControl(env);
+  const house = await env.ASSETS.head(plinkoControlImageKey('house')).catch(() => null);
+  const houseVersion = house?.customMetadata?.version || house?.uploaded?.getTime?.() || '';
+  return { ...config, assets: { houseVersion: String(houseVersion || '') } };
 }
 
-function plinkoControlImageKey(kind: 'drop' | 'input'): string {
+function normalizePlinkoControlImageKind(value: string): 'drop' | 'input' | 'house' {
+  const clean = String(value || '').replace(/\.png$/i, '');
+  return PLINKO_CONTROL_IMAGE_KINDS.has(clean) ? clean as 'drop' | 'input' | 'house' : 'drop';
+}
+
+function plinkoControlImageKey(kind: 'drop' | 'input' | 'house'): string {
   return `plinko-control/${kind}`;
 }
 
-function defaultPlinkoControlImageSvg(kind: 'drop' | 'input'): string {
+function defaultPlinkoControlImageSvg(kind: 'drop' | 'input' | 'house'): string {
+  if (kind === 'house') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><g fill="none" stroke="#ffffff" stroke-opacity=".34" stroke-width="3"><rect x="2" y="6" width="50" height="84" rx="16"/><rect x="55" y="6" width="50" height="84" rx="16"/><rect x="108" y="6" width="50" height="84" rx="16"/><rect x="161" y="6" width="50" height="84" rx="16"/><rect x="214" y="6" width="50" height="84" rx="16"/><rect x="267" y="6" width="50" height="84" rx="16"/><rect x="320" y="6" width="50" height="84" rx="16"/><rect x="373" y="6" width="50" height="84" rx="16"/><rect x="426" y="6" width="50" height="84" rx="16"/><rect x="479" y="6" width="50" height="84" rx="16"/><rect x="532" y="6" width="50" height="84" rx="16"/><rect x="585" y="6" width="50" height="84" rx="16"/><rect x="638" y="6" width="50" height="84" rx="16"/><rect x="691" y="6" width="50" height="84" rx="16"/></g></svg>';
+  }
   if (kind === 'input') {
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><rect x="0" y="0" width="170" height="96" rx="30" fill="#1d1d1d" stroke="#565656" stroke-width="3"/><rect x="190" y="0" width="368" height="96" rx="30" fill="#343434" stroke="#6a6a6a" stroke-width="3"/><rect x="578" y="0" width="170" height="96" rx="30" fill="#1d1d1d" stroke="#565656" stroke-width="3"/><text x="85" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">1/2</text><text x="374" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">1</text><text x="663" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">2x</text></svg>';
   }
