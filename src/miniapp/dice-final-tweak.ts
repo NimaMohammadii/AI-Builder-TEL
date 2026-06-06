@@ -4,6 +4,10 @@ export const DICE_FINAL_TWEAK = `<style>
   max-width:none!important;
   top:-68px!important;
 }
+#dice .dice-control-grid .dice-field small,
+#dice .dice-control-grid .dice-field b{
+  transform:translateY(-8px)!important;
+}
 #dice button.dice-field.dice-mode-field,
 #dice button.dice-field.dice-mode-field.active,
 #dice button.dice-field.dice-mode-field:hover,
@@ -36,6 +40,10 @@ export const DICE_FINAL_TWEAK = `<style>
     width:min(500px,calc(100% + 44px))!important;
     max-width:none!important;
     top:-68px!important;
+  }
+  #dice .dice-control-grid .dice-field small,
+  #dice .dice-control-grid .dice-field b{
+    transform:translateY(-7px)!important;
   }
 }
 </style>`;
