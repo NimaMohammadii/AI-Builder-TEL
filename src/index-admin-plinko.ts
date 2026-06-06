@@ -16,12 +16,37 @@ const HOME_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
+const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input']);
 
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControl(c.env)));
+
+app.get('/app/api/plinko-control-image/:kind.png', async (c) => {
+  const kind = normalizePlinkoControlImageKind(c.req.param('kind'));
+  const object = await c.env.ASSETS.get(plinkoControlImageKey(kind)).catch(() => null);
+  if (!object) return new Response(defaultPlinkoControlImageSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+});
+
+app.post('/admin/api/upload-plinko-control-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const kind = normalizePlinkoControlImageKind(String(form.get('kind') || 'drop'));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(plinkoControlImageKey(kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, kind, url: `/app/api/plinko-control-image/${kind}.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Plinko control image' }, 400);
+  }
+});
 
 app.get('/app/api/nft-price-icon.png', async (c) => {
   const object = await c.env.ASSETS.get(NFT_PRICE_ICON_KEY).catch(() => null);
@@ -263,6 +288,23 @@ async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CON
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': cacheControl } });
+}
+
+
+function normalizePlinkoControlImageKind(value: string): 'drop' | 'input' {
+  const clean = String(value || '').replace(/\.png$/i, '');
+  return PLINKO_CONTROL_IMAGE_KINDS.has(clean) ? clean as 'drop' | 'input' : 'drop';
+}
+
+function plinkoControlImageKey(kind: 'drop' | 'input'): string {
+  return `plinko-control/${kind}`;
+}
+
+function defaultPlinkoControlImageSvg(kind: 'drop' | 'input'): string {
+  if (kind === 'input') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><rect x="0" y="0" width="170" height="96" rx="30" fill="#1d1d1d" stroke="#565656" stroke-width="3"/><rect x="190" y="0" width="368" height="96" rx="30" fill="#343434" stroke="#6a6a6a" stroke-width="3"/><rect x="578" y="0" width="170" height="96" rx="30" fill="#1d1d1d" stroke="#565656" stroke-width="3"/><text x="85" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">1/2</text><text x="374" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">1</text><text x="663" y="58" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="36" font-weight="800">2x</text></svg>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><rect x="0" y="0" width="748" height="96" rx="30" fill="#191919" stroke="#4d4d4d" stroke-width="3"/><text x="374" y="59" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="800">Drop Ball</text></svg>';
 }
 
 function defaultNftPriceIconSvg(): string {
