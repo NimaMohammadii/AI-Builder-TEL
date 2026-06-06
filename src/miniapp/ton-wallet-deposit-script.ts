@@ -13,6 +13,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2800)}
   function ownerId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
   function setStatus(text,kind){var n=q('tonWalletDepositStatus');if(!n)return;n.textContent=text||'';n.classList.toggle('success',kind==='success');n.classList.toggle('error',kind==='error');n.classList.toggle('pending',kind==='pending')}
+  function forceDepositCenter(){var sheet=q('depositSheet');if(!sheet)return;sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
   function closeDepositSheet(){var sheet=q('depositSheet');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}var home=q('home');if(home)home.style.removeProperty('overflow-y');document.body.classList.remove('deposit-open','deposit-keyboard-open')}
   function starsAmount(){var input=q('starsAmountSheet');return Math.max(0,Math.floor(Number(input&&input.value)||0))}
   function amountFromStars(){var stars=starsAmount();return stars>0?stars*STARS_TO_NANO/NANO_PER_TON:0}
@@ -40,6 +41,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     if(box)box.classList.add('open');
     syncDefaultAmount();
     setStatus('', '');
+    forceDepositCenter();
     setTimeout(function(){var input=q('tonWalletAmountSheet');if(input){input.focus();input.select&&input.select()}},120);
   }
   function resetTonForm(){
@@ -101,14 +103,15 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function ensureUi(){
     installStyles();
     var payStars=document.querySelector('#depositSheet [data-action="deposit-custom-stars-sheet"]');
-    if(!payStars||q('tonWalletDepositBox')){syncDefaultAmount();return}
+    if(!payStars||q('tonWalletDepositBox')){syncDefaultAmount();forceDepositCenter();return}
     payStars.insertAdjacentHTML('afterend','<div id="tonWalletDepositBox" class="ton-wallet-deposit-box"><div class="ton-wallet-action"><button class="ton-wallet-pay-button" type="button" data-action="open-ton-payment">Pay With TON</button><div class="ton-wallet-form"><input id="tonWalletAmountSheet" inputmode="decimal" placeholder="TON amount"/><button class="ton-wallet-confirm" type="button" data-action="confirm-ton-payment">Confirm</button></div></div><p id="tonWalletDepositStatus" class="ton-wallet-status"></p></div>');
     syncDefaultAmount();
     var pending=readPending();
     if(pending&&pending.id)setStatus('Previous payment is waiting for confirmation.','pending');
+    forceDepositCenter();
     loadTonConnect().catch(function(){});
   }
-  function bind(){ensureUi();document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet')syncDefaultAmount()});document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit')setTimeout(ensureUi,40);if(action==='open-ton-payment'){ev.preventDefault();ev.stopPropagation();openTonForm()}if(action==='confirm-ton-payment'){ev.preventDefault();ev.stopPropagation();confirmTonPayment()}},true);setTimeout(ensureUi,220);setTimeout(ensureUi,900)}
+  function bind(){ensureUi();document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet')syncDefaultAmount()});document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setTimeout(ensureUi,40);setTimeout(forceDepositCenter,0);setTimeout(forceDepositCenter,60);setTimeout(forceDepositCenter,180)}if(action==='open-ton-payment'){ev.preventDefault();ev.stopPropagation();openTonForm()}if(action==='confirm-ton-payment'){ev.preventDefault();ev.stopPropagation();confirmTonPayment()}},true);setTimeout(ensureUi,220);setTimeout(ensureUi,900)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
