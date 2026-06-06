@@ -24,11 +24,15 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function savePending(deposit){try{localStorage.setItem('vexa:pending-ton-wallet-deposit',JSON.stringify({id:deposit.id,userId:deposit.userId||ownerId(),amountTon:deposit.amountTon,amountNano:deposit.amountNano,wallet:deposit.wallet,status:deposit.status,createdAt:Date.now()}))}catch(e){}}
   function readPending(){try{return JSON.parse(localStorage.getItem('vexa:pending-ton-wallet-deposit')||'null')}catch(e){return null}}
   function clearPending(){try{localStorage.removeItem('vexa:pending-ton-wallet-deposit')}catch(e){}}
+  function applyTonConnectDarkTheme(){
+    if(!tonConnectUi)return;
+    try{tonConnectUi.uiOptions={uiPreferences:{theme:'DARK'}}}catch(e){}
+  }
   function loadTonConnect(){
-    if(tonConnectUi)return Promise.resolve(tonConnectUi);
+    if(tonConnectUi){applyTonConnectDarkTheme();return Promise.resolve(tonConnectUi)};
     if(tonConnectReady)return tonConnectReady;
     tonConnectReady=new Promise(function(resolve,reject){
-      function init(){try{tonConnectUi=new window.TON_CONNECT_UI.TonConnectUI({manifestUrl:window.location.origin+'/tonconnect-manifest.json'});resolve(tonConnectUi)}catch(e){reject(e)}}
+      function init(){try{tonConnectUi=new window.TON_CONNECT_UI.TonConnectUI({manifestUrl:window.location.origin+'/tonconnect-manifest.json',uiPreferences:{theme:'DARK'}});applyTonConnectDarkTheme();resolve(tonConnectUi)}catch(e){reject(e)}}
       if(window.TON_CONNECT_UI&&window.TON_CONNECT_UI.TonConnectUI){init();return}
       var script=document.createElement('script');script.src=TONCONNECT_CDN;script.async=true;script.onload=init;script.onerror=function(){reject(new Error('Could not load TonConnect'))};document.head.appendChild(script);
     });
@@ -82,6 +86,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     try{
       setStatus('Preparing payment…','pending');
       var ui=await loadTonConnect();
+      applyTonConnectDarkTheme();
       var deposit=await createDeposit(amount);
       savePending(deposit);
       closeDepositSheet();
