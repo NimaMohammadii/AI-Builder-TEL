@@ -4,6 +4,9 @@ export const DICE_FINAL_TWEAK = `<style>
   max-width:none!important;
   top:-68px!important;
 }
+#dice .dice-panel{
+  transform:translateY(-18px)!important;
+}
 #dice .dice-control-grid .dice-field small,
 #dice .dice-control-grid .dice-field b{
   transform:translateY(-8px)!important;
@@ -26,6 +29,11 @@ export const DICE_FINAL_TWEAK = `<style>
   font-weight:900!important;
   letter-spacing:-.03em!important;
   font-variant-numeric:tabular-nums lining-nums!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding-top:10px!important;
+  line-height:1!important;
 }
 #dice .dice-roll-button,
 #dice .dice-roll-button .dice-roll-button-image{
@@ -78,6 +86,9 @@ export const DICE_FINAL_TWEAK = `<style>
     max-width:none!important;
     top:-68px!important;
   }
+  #dice .dice-panel{
+    transform:translateY(-18px)!important;
+  }
   #dice .dice-control-grid .dice-field small,
   #dice .dice-control-grid .dice-field b{
     transform:translateY(-7px)!important;
@@ -87,6 +98,12 @@ export const DICE_FINAL_TWEAK = `<style>
   }
   #dice .dice-control-grid .dice-field b{
     font-size:19px!important;
+  }
+  #dice .dice-bet.has-dice-image .dice-bet-main,
+  #dice .dice-bet.has-dice-image .dice-bet-main.active,
+  #dice .dice-bet .dice-bet-main,
+  #dice .dice-bet .dice-bet-main.active{
+    padding-top:9px!important;
   }
 }
 </style><script>
