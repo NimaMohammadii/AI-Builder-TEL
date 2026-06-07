@@ -3,11 +3,22 @@ import { TON_WALLET_DEPOSIT_SCRIPT } from './ton-wallet-deposit-script';
 const DEPOSIT_CORE_SCRIPT = `
 (function(){
   var STARS_TO_NANO=5890080;
+  var MIN_STARS_DEPOSIT=2;
   var tg=window.Telegram&&window.Telegram.WebApp;
   function q(id){return document.getElementById(id)}
   function currentUserId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
   function escapeHtml(value){return String(value||'').replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c})}
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2600)}
+  function normalizeNumericText(value){
+    var text=String(value==null?'':value).trim();
+    var fa='۰۱۲۳۴۵۶۷۸۹';var ar='٠١٢٣٤٥٦٧٨٩';
+    text=text.replace(/[۰-۹]/g,function(d){return String(fa.indexOf(d))}).replace(/[٠-٩]/g,function(d){return String(ar.indexOf(d))});
+    text=text.replace(/[٫٬،，,]/g,'.').replace(/[\\u200e\\u200f\\u202a-\\u202e\\s]/g,'').replace(/[^0-9.]/g,'');
+    var first=text.indexOf('.');
+    if(first!==-1)text=text.slice(0,first+1)+text.slice(first+1).replace(/\\./g,'');
+    return text;
+  }
+  function starsAmount(value){return Math.max(0,Math.floor(Number(normalizeNumericText(value))||0))}
   function tonText(nano){var value=Math.abs(Math.floor(Number(nano)||0))/1000000000;return value.toFixed(4).replace(/\\.0+$/,'').replace(/(\\.\\d*?)0+$/,'$1')+' TON'}
   function dateText(value){try{return new Date(value).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return String(value||'')}}
   async function api(path,payload){var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload||{})});var j=await r.json().catch(function(){return{error:'Invalid response'}});if(!r.ok)throw new Error(j.error||'Request failed');return j}
@@ -23,7 +34,29 @@ const DEPOSIT_CORE_SCRIPT = `
   function setDepositKeyboard(open){document.body.classList.toggle('deposit-keyboard-open',!!open)}
   function clearFinanceInlineStyles(sheet){if(!sheet)return;sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
   function setSheet(id,open){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();var sheet=q(id);if(!sheet)return;clearFinanceInlineStyles(sheet);if(open){sheet.classList.remove('closing');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTimeout(function(){clearFinanceInlineStyles(sheet)},30)}else{sheet.classList.add('closing');sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');setTimeout(function(){sheet.classList.remove('closing');clearFinanceInlineStyles(sheet)},420)}setTimeout(syncOpenState,20)}
-  function updateEquivalent(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!out)return;var stars=Math.max(0,Math.floor(Number(input&&input.value)||0));out.textContent=stars>0?'≈ '+tonText(stars*STARS_TO_NANO):'≈ 0 TON'}
+  function updateEquivalent(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!out)return;var stars=starsAmount(input&&input.value);out.textContent=stars>0?'≈ '+tonText(stars*STARS_TO_NANO):'≈ 0 TON'}
+  async function submitStarsSheet(){
+    var userId=currentUserId();
+    var input=q('starsAmountSheet');
+    var stars=starsAmount(input&&input.value);
+    var status=q('depositStatus');
+    if(!userId){toast('Telegram user not found');if(status)status.textContent='Telegram user not found';return}
+    if(stars<MIN_STARS_DEPOSIT){var msg='Minimum deposit is '+MIN_STARS_DEPOSIT+' Stars';toast(msg);if(status)status.textContent=msg;return}
+    if(status)status.textContent='Creating secure Telegram invoice';
+    try{
+      var d=await api('/app/api/stars/deposits',{userId:userId,stars:stars});
+      if(status)status.textContent='Opening Telegram Stars payment';
+      if(d.invoiceLink){
+        if(tg&&typeof tg.openInvoice==='function'){
+          tg.openInvoice(d.invoiceLink,function(state){
+            if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;
+            if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);
+            if(state==='paid'&&window.VexaLevel&&window.VexaLevel.load)setTimeout(function(){window.VexaLevel.load()},1100);
+          });
+        }else{window.location.href=d.invoiceLink}
+      }
+    }catch(error){var text=error&&error.message?error.message:'Could not create Stars deposit';if(status)status.textContent=text;toast(text)}
+  }
   function transactionIcon(kind,positive){if(positive)return '<svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 22l10 10 10-10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';return '<svg viewBox="0 0 48 48" fill="none"><path d="M24 40V16" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 26l10-10 10 10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
   function rowHtml(item){var amountNano=Math.floor(Number(item.amountNano)||0);var positive=amountNano>=0;var kind=String(item.kind||'adjustment');var title=escapeHtml(item.title||((kind==='deposit')?'TON deposit':'TON withdrawal'));var desc=escapeHtml(item.description||(kind==='deposit'?'Deposit':'Withdraw'));var sub=desc+' • '+dateText(item.createdAt);var status=String(item.status||'completed').toLowerCase();var amount=(positive?'+':'-')+tonText(amountNano);return '<div class="transaction-row"><span class="transaction-icon '+(positive?'in':'out')+'">'+transactionIcon(kind,positive)+'</span><span class="transaction-main"><strong>'+title+'</strong><span>'+sub+'</span></span><span class="transaction-side"><b>'+amount+'</b><em class="'+status+'">'+escapeHtml(status)+'</em></span></div>'}
   function isWalletTransaction(item){var kind=String(item&&item.kind||'').toLowerCase();return kind==='deposit'||kind==='withdraw'}
@@ -31,7 +64,7 @@ const DEPOSIT_CORE_SCRIPT = `
   function openTransactions(){setSheet('transactionsSheet',true);loadTransactions()}
   function resetWithdraw(){var status=q('withdrawStatus');var success=q('withdrawSuccess');var content=document.querySelector('.withdraw-content');if(status)status.textContent='';if(success){success.classList.remove('show');success.setAttribute('aria-hidden','true')}if(content)content.classList.remove('withdraw-done')}
   async function submitWithdraw(){var ownerId=currentUserId();var amount=q('withdrawAmountTon');var wallet=q('withdrawWalletAddress');var status=q('withdrawStatus');var success=q('withdrawSuccess');var content=document.querySelector('.withdraw-content');if(!ownerId){toast('Telegram user not found');return}if(status)status.textContent='Submitting withdrawal request';if(success){success.classList.remove('show');success.setAttribute('aria-hidden','true')}if(content)content.classList.remove('withdraw-done');try{await api('/app/api/ton/withdrawals',{userId:ownerId,amountTon:amount&&amount.value,walletAddress:wallet&&wallet.value});if(status)status.textContent='';if(content)content.classList.add('withdraw-done');if(success){success.classList.add('show');success.setAttribute('aria-hidden','false')}if(window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},500)}catch(error){if(status)status.textContent=error&&error.message?error.message:'Withdrawal failed';toast(error&&error.message?error.message:'Withdrawal failed')}}
-  function bind(){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();updateEquivalent();syncOpenState();['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){var sheet=q(id);if(sheet&&window.MutationObserver)new MutationObserver(syncOpenState).observe(sheet,{attributes:true,attributeFilter:['class','aria-hidden']})});document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet')updateEquivalent()});document.addEventListener('focusin',function(ev){if(ev.target&&['starsAmountSheet','tonWalletAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setDepositKeyboard(true)});document.addEventListener('focusout',function(ev){if(ev.target&&['starsAmountSheet','tonWalletAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setTimeout(function(){var a=document.activeElement;if(!a||!['starsAmountSheet','tonWalletAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(a.id))setDepositKeyboard(false)},80)});document.addEventListener('click',function(ev){var target=ev.target;var creditTarget=target&&target.closest&&target.closest('[data-ton-balance-display],.top-balance-pill,.ton-mini-icon');if(creditTarget){ev.preventDefault();ev.stopPropagation();openTransactions();return}var button=target&&target.closest?target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setSheet('depositSheet',true);updateEquivalent()}if(action==='close-deposit'){setDepositKeyboard(false);setSheet('depositSheet',false)}if(action==='open-withdraw'){resetWithdraw();setSheet('withdrawSheet',true)}if(action==='close-withdraw'){setDepositKeyboard(false);setSheet('withdrawSheet',false)}if(action==='submit-withdraw'){submitWithdraw()}if(action==='open-transactions'){openTransactions()}if(action==='close-transactions'){setSheet('transactionsSheet',false)}},true)}
+  function bind(){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();updateEquivalent();syncOpenState();['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){var sheet=q(id);if(sheet&&window.MutationObserver)new MutationObserver(syncOpenState).observe(sheet,{attributes:true,attributeFilter:['class','aria-hidden']})});document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet')updateEquivalent()});document.addEventListener('focusin',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setDepositKeyboard(true)});document.addEventListener('focusout',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setTimeout(function(){var a=document.activeElement;if(!a||!['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(a.id))setDepositKeyboard(false)},80)});document.addEventListener('click',function(ev){var target=ev.target;var creditTarget=target&&target.closest&&target.closest('[data-ton-balance-display],.top-balance-pill,.ton-mini-icon');if(creditTarget){ev.preventDefault();ev.stopPropagation();openTransactions();return}var button=target&&target.closest?target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setSheet('depositSheet',true);updateEquivalent()}if(action==='close-deposit'){setDepositKeyboard(false);setSheet('depositSheet',false)}if(action==='open-withdraw'){resetWithdraw();setSheet('withdrawSheet',true)}if(action==='close-withdraw'){setDepositKeyboard(false);setSheet('withdrawSheet',false)}if(action==='submit-withdraw'){submitWithdraw()}if(action==='deposit-custom-stars-sheet'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();submitStarsSheet();return}if(action==='open-transactions'){openTransactions()}if(action==='close-transactions'){setSheet('transactionsSheet',false)}},true)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
