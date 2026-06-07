@@ -7,9 +7,18 @@ const DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY = 'daily-rewards/day-future-image';
 const DAILY_REWARDS_DAY_TODAY_IMAGE_KEY = 'daily-rewards/day-today-image';
 const DAILY_REWARDS_DAY_IMAGE_KEY_PREFIX = 'daily-rewards/day-image-';
 const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'no-store';
+const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
+const DAILY_REWARDS_MAX_IMAGE_BYTES = 5_000_000;
 const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+
+type UploadableFile = {
+  name?: string;
+  type?: string;
+  size?: number;
+  arrayBuffer?: () => Promise<ArrayBuffer>;
+  stream?: () => ReadableStream;
+};
 
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
   app.get('/app/api/daily-rewards-hero-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_HERO_IMAGE_KEY));
@@ -28,14 +37,14 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
   app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
   app.post('/admin/api/upload-daily-rewards-day-image/:day', async (c) => {
     const day = dayFromParam(c.req.param('day'));
-    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400);
+    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400, { 'cache-control': 'no-store' });
     return uploadImage(c, dayImageKey(day), `/app/api/daily-rewards-day-image/${day}`, `Daily Rewards Day ${day + 1} image`);
   });
   app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, 'Daily Rewards future day image'));
   app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, 'Daily Rewards today image'));
   app.post('/admin/api/delete-daily-rewards-day-image/:day', async (c) => {
     const day = dayFromParam(c.req.param('day'));
-    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400);
+    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400, { 'cache-control': 'no-store' });
     return deleteImage(c, dayImageKey(day), `Daily Rewards Day ${day + 1} image`);
   });
 }
@@ -60,32 +69,52 @@ async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_I
   });
 }
 
-async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number) => Response }, key: string, publicUrl: string, label: string): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, publicUrl: string, label: string): Promise<Response> {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!DAILY_REWARDS_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    const value = form.get('image') as UploadableFile | null;
+    if (!isUploadableFile(value)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': 'no-store' });
+    const type = normalizeImageType(value.type, value.name);
+    if (!DAILY_REWARDS_IMAGE_TYPES.has(type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400, { 'cache-control': 'no-store' });
+    const size = Math.floor(Number(value.size) || 0);
+    if (size > DAILY_REWARDS_MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 5MB.' }, 400, { 'cache-control': 'no-store' });
     const version = String(Date.now());
-    await c.env.ASSETS.put(key, file.stream(), {
-      httpMetadata: { contentType: file.type },
+    const body = value.arrayBuffer ? await value.arrayBuffer() : value.stream!();
+    await c.env.ASSETS.put(key, body, {
+      httpMetadata: { contentType: type },
       customMetadata: { version },
     });
-    return c.json({ ok: true, url: `${publicUrl}?v=${version}` });
+    return c.json({ ok: true, label, size, type, url: `${publicUrl}?v=${version}` }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400);
+    return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400, { 'cache-control': 'no-store' });
   }
 }
 
-async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number) => Response }, key: string, label: string): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, label: string): Promise<Response> {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     await c.env.ASSETS.delete(key);
-    return c.json({ ok: true, deleted: true });
+    return c.json({ ok: true, deleted: true, label }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : `Could not delete ${label}` }, 400);
+    return c.json({ error: error instanceof Error ? error.message : `Could not delete ${label}` }, 400, { 'cache-control': 'no-store' });
   }
+}
+
+function isUploadableFile(value: UploadableFile | null): value is UploadableFile {
+  return Boolean(value && typeof value === 'object' && (typeof value.arrayBuffer === 'function' || typeof value.stream === 'function'));
+}
+
+function normalizeImageType(type: string | undefined, name: string | undefined): string {
+  const clean = String(type || '').toLowerCase();
+  if (clean === 'image/jpg') return 'image/jpeg';
+  if (clean) return clean;
+  const ext = String(name || '').split('.').pop()?.toLowerCase() || '';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'svg') return 'image/svg+xml';
+  return '';
 }
 
 function adminCookieValue(cookie: string | undefined): string {
