@@ -4,6 +4,7 @@ import { awardDepositXp } from './xp-rewards';
 import { aiBotToken } from './utils';
 
 const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
+const MIN_STARS_DEPOSIT = 2;
 
 type StarDepositRow = {
   id: string;
@@ -60,7 +61,7 @@ export async function listUserStarsDeposits(env: Env, userId: string): Promise<{
 export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckoutQuery): Promise<void> {
   const payload = String(query.invoice_payload || '').trim();
   const amount = Math.floor(Number(query.total_amount));
-  const ok = /^stars_[0-9a-f]{20}$/.test(payload) && query.currency === 'XTR' && Number.isSafeInteger(amount) && amount >= 1 && amount <= 100000;
+  const ok = /^stars_[0-9a-f]{20}$/.test(payload) && query.currency === 'XTR' && Number.isSafeInteger(amount) && amount >= MIN_STARS_DEPOSIT && amount <= 100000;
   await telegram(aiBotToken(env), 'answerPreCheckoutQuery', {
     pre_checkout_query_id: query.id,
     ok,
@@ -163,7 +164,7 @@ function formatTon(nano: number): string {
 
 function cleanStarsAmount(value: unknown): number {
   const n = Math.floor(Number(value));
-  if (!Number.isSafeInteger(n) || n < 1) throw new Error('Enter a valid Stars amount');
+  if (!Number.isSafeInteger(n) || n < MIN_STARS_DEPOSIT) throw new Error(`Minimum deposit is ${MIN_STARS_DEPOSIT} Stars`);
   if (n > 100000) throw new Error('Stars amount is too large');
   return n;
 }
@@ -180,15 +181,15 @@ function cleanDepositId(value: unknown): string {
   return id;
 }
 
-function envValue(env: Env, name: string): string {
-  return String((env as unknown as Record<string, unknown>)[name] || '').trim();
-}
-
-async function telegram<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
-  const response = await fetch('https://api.telegram.org/' + 'bot' + token + '/' + method, {
+async function telegram<T>(token: string, method: string, payload: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return response.json() as Promise<T>;
+  return await response.json() as T;
+}
+
+function envValue(env: Env, key: string): string {
+  return String((env as unknown as Record<string, unknown>)[key] || '').trim();
 }
