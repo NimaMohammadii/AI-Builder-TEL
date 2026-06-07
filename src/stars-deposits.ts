@@ -101,7 +101,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
   const token = aiBotToken(env);
-  if (!token || token.length < 20) throw new Error('Main Telegram bot token is missing');
+  if (!token || token.length < 20) throw new Error('Could not create Stars invoice');
   const tonText = formatTon(amountNano);
   const response = await telegram<TelegramInvoiceLinkResponse>(token, 'createInvoiceLink', {
     title: 'Vexa TON Balance',
@@ -111,11 +111,7 @@ async function createInvoiceLink(env: Env, id: string, stars: number, amountNano
     currency: 'XTR',
     prices: [{ label: `${tonText}`, amount: stars }],
   });
-  if (!response.ok || !response.result) {
-    const description = response.description || 'Could not create Stars invoice';
-    if (/unauthorized|not found/i.test(description)) throw new Error('Telegram Stars invoice is unauthorized. Check the main bot token used by AI_BOT_TOKEN / TELEGRAM_BOT_TOKEN.');
-    throw new Error(description);
-  }
+  if (!response.ok || !response.result) throw new Error('Could not create Stars invoice');
   return response.result;
 }
 
