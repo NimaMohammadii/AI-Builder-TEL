@@ -20,7 +20,6 @@ export const DAILY_REWARDS_SCRIPT = `
   function rewardForDay(day){var list=rewards();for(var i=0;i<list.length;i++)if(Number(list[i].day)===Number(day))return list[i];return fallbackRewards[day]}
   function claimedDays(){return new Set((rewardsData&&Array.isArray(rewardsData.claimedDays)?rewardsData.claimedDays:[]).map(function(v){return Number(v)}))}
   function claimableRewards(){return new Set((rewardsData&&Array.isArray(rewardsData.claimableRewards)?rewardsData.claimableRewards:[]).map(String))}
-  function dayImageVersion(){return String(Math.floor(Date.now()/60000))}
   function toast(msg){try{if(tg&&tg.showPopup)tg.showPopup({message:String(msg||'')});else if(tg&&tg.showAlert)tg.showAlert(String(msg||''));else console.log(msg)}catch(e){console.log(msg)}}
   function statusFor(day,today,claimed,missed){
     if(claimed.has(day))return 'claimed';
@@ -30,20 +29,16 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageHtml(day){
-    var v=dayImageVersion();
-    var primary='/app/api/daily-rewards-day-image/'+day+'.png?v='+v;
-    var fallback='/app/api/daily-rewards-day-image/'+day+'?v='+v;
-    var cached='';
-    try{cached=localStorage.getItem('vexa:daily-reward-image:'+day)||''}catch(e){}
-    return '<img class="daily-rewards-card-img" src="'+(cached||primary)+'" data-primary-src="'+primary+'" data-fallback-src="'+fallback+'" data-day="'+day+'" alt="" decoding="async" loading="lazy"/>';
+    return '<img class="daily-rewards-card-img" src="/app/api/daily-rewards-day-image/'+day+'.png" alt="" decoding="async"/>';
   }
   function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
     var today=Number(rewardsData&&rewardsData.today);if(!Number.isFinite(today))today=mondayIndex(new Date());
-    var claimed=claimedDays(),missed=rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null;
+    var trusted=!!(rewardsData&&rewardsData.trustedAccess);
+    var claimed=claimedDays(),missed=trusted?null:(rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null);
     wrap.innerHTML=[0,1,2,3,4,5,6].map(function(i){
-      var reward=rewardForDay(i),state=statusFor(i,today,claimed,missed);
-      var canClaim=state==='today'&&claimableRewards().has(String(reward&&reward.id));
+      var reward=rewardForDay(i),state=trusted&&!claimed.has(i)?'today':statusFor(i,today,claimed,missed);
+      var canClaim=claimableRewards().has(String(reward&&reward.id));
       return '<button class="daily-rewards-day '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+i+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(i+1)))+'">'+imageHtml(i)+'</button>';
     }).join('')
   }
@@ -66,26 +61,8 @@ export const DAILY_REWARDS_SCRIPT = `
   }
   function removeLegacyRewards(){document.body.classList.remove('daily-rewards-open','rewards-open');document.querySelectorAll('#dailyRewardsEntry,#dailyRewardsPage,#rewardsPage,#home .home-daily-rewards-entry,#home .home-rewards-entry,#home [data-action="open-daily-rewards"],#home [data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}})}
   function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}var finance=home.querySelector('.home-finance-split')||home.querySelector('.home-finance');var deposit=q('depositSheet');if(finance&&finance.parentNode){if(mount.parentNode!==finance.parentNode||mount.previousElementSibling!==finance)finance.parentNode.insertBefore(mount,finance.nextSibling)}else if(deposit&&deposit.parentNode){if(mount.parentNode!==deposit.parentNode||mount.nextElementSibling!==deposit)deposit.parentNode.insertBefore(mount,deposit)}else if(mount.parentNode!==home)home.appendChild(mount);return mount}
-  function refresh(force){renderDays();loadRewards(!!force).then(renderDays)}
-  function mount(){if(!ensureMount())return;refresh(true)}
-  document.addEventListener('load',function(ev){
-    var target=ev.target;
-    if(!target||!target.classList||!target.classList.contains('daily-rewards-card-img'))return;
-    var day=target.getAttribute('data-day')||'';
-    if(day)try{localStorage.setItem('vexa:daily-reward-image:'+day,target.currentSrc||target.src)}catch(e){}
-  },true);
-  document.addEventListener('error',function(ev){
-    var target=ev.target;
-    if(!target||!target.classList||!target.classList.contains('daily-rewards-card-img'))return;
-    var primary=target.getAttribute('data-primary-src')||'';
-    var fallback=target.getAttribute('data-fallback-src')||'';
-    if(primary&&target.src.indexOf(primary)===-1&&!target.getAttribute('data-tried-primary')){target.setAttribute('data-tried-primary','1');target.src=primary;return}
-    if(fallback&&!target.getAttribute('data-tried-fallback')){target.setAttribute('data-tried-fallback','1');target.src=fallback;return}
-  },true);
+  function mount(){if(!ensureMount())return;loadRewards(true).then(renderDays)}
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-day]'):null;if(!target)return;claimCard(target)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true)});
-  window.addEventListener('focus',function(){refresh(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
-  setTimeout(mount,80);setTimeout(mount,360);setTimeout(function(){refresh(true)},1500);
 })();
 `;
