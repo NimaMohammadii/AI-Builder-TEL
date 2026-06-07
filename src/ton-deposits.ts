@@ -3,7 +3,7 @@ import { adjustUserTonBalance } from './user-controls';
 import { awardDepositXp } from './xp-rewards';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
-const DEFAULT_MIN_TON = 0.1;
+const DEFAULT_MIN_TON = 1;
 
 type DepositRow = {
   id: string;
@@ -118,10 +118,9 @@ async function findMatchingTransaction(env: Env, wallet: string, row: DepositRow
   for (const tx of json.result) {
     const msg = tx.in_msg;
     if (!msg) continue;
-    const comment = String(msg.message || '').trim();
-    if (comment !== row.id) continue;
-    const value = BigInt(String(msg.value || '0'));
-    if (value < expected) continue;
+    if (String(msg.destination || '').toLowerCase() !== wallet.toLowerCase()) continue;
+    if (String(msg.value || '') !== expected.toString()) continue;
+    if (String(msg.message || '').trim() !== row.id) continue;
     return tx;
   }
   return null;
@@ -136,15 +135,11 @@ function rowToDeposit(row: DepositRow, wallet: string): TonDeposit {
     tonBalanceNano: row.ton_balance_nano,
     status: row.status,
     txHash: row.tx_hash,
-    payUrl: tonPayUrl(wallet, row.amount_nano, row.id),
+    payUrl: `ton://transfer/${wallet}?amount=${encodeURIComponent(row.amount_nano)}&text=${encodeURIComponent(row.id)}`,
     wallet,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function tonPayUrl(wallet: string, amountNano: string, comment: string): string {
-  return `ton://transfer/${encodeURIComponent(wallet)}?amount=${encodeURIComponent(amountNano)}&text=${encodeURIComponent(comment)}`;
 }
 
 async function ensureTonDepositsTable(env: Env): Promise<void> {
@@ -153,20 +148,21 @@ async function ensureTonDepositsTable(env: Env): Promise<void> {
     user_id TEXT NOT NULL,
     amount_ton TEXT NOT NULL,
     amount_nano TEXT NOT NULL,
-    ton_balance_nano INTEGER NOT NULL DEFAULT 0,
+    ton_balance_nano INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
-    tx_hash TEXT UNIQUE,
+    tx_hash TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
-  await env.DB.prepare('ALTER TABLE ton_deposits ADD COLUMN ton_balance_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
-  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_deposits_user ON ton_deposits(user_id, created_at)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_deposits_user ON ton_deposits(user_id)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_deposits_status ON ton_deposits(status)').run();
+  await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ton_deposits_tx_hash ON ton_deposits(tx_hash) WHERE tx_hash IS NOT NULL').run();
 }
 
 function treasuryWallet(env: Env): string {
-  const wallet = envValue(env, 'TON_TREASURY_WALLET');
-  if (!wallet) throw new Error('TON treasury wallet is not configured');
-  return wallet;
+  const value = envValue(env, 'TON_TREASURY_WALLET');
+  if (!value) throw new Error('TON treasury wallet is not configured');
+  return value;
 }
 
 function minDepositTon(env: Env): number {
@@ -174,36 +170,37 @@ function minDepositTon(env: Env): number {
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_MIN_TON;
 }
 
-function envValue(env: Env, name: string): string {
-  return String((env as unknown as Record<string, unknown>)[name] || '').trim();
-}
-
 function normalizeAmountTon(value: unknown): string {
-  const num = Number(String(value ?? '').replace(',', '.'));
-  if (!Number.isFinite(num) || num <= 0) throw new Error('Enter a valid TON amount');
-  return String(Math.floor(num * 1_000_000_000) / 1_000_000_000);
+  const n = Number(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid TON amount');
+  return n.toFixed(9).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function tonToNanoString(amountTon: string): string {
-  const [whole, fractionRaw = ''] = amountTon.split('.');
-  const fraction = (fractionRaw + '000000000').slice(0, 9);
-  return (BigInt(whole || '0') * 1000000000n + BigInt(fraction || '0')).toString();
+  const parts = amountTon.split('.');
+  const whole = parts[0] || '0';
+  const frac = ((parts[1] || '') + '000000000').slice(0, 9);
+  return (BigInt(whole) * 1000000000n + BigInt(frac)).toString();
 }
 
 function safeNanoNumber(value: string): number {
-  const numberValue = Number(value);
-  if (!Number.isSafeInteger(numberValue) || numberValue < 1) throw new Error('TON amount is too large');
-  return numberValue;
+  const n = Number(value);
+  if (!Number.isSafeInteger(n)) throw new Error('Amount is too large');
+  return n;
 }
 
 function cleanUserId(value: unknown): string {
-  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
-  if (!id) throw new Error('Missing user id');
-  return id;
+  const text = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80);
+  if (!text) throw new Error('Telegram user not found');
+  return text;
 }
 
 function cleanDepositId(value: unknown): string {
-  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
-  if (!id) throw new Error('Missing deposit id');
-  return id;
+  const text = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80);
+  if (!text) throw new Error('Invalid deposit id');
+  return text;
+}
+
+function envValue(env: Env, key: string): string {
+  return String((env as unknown as Record<string, unknown>)[key] || '').trim();
 }
