@@ -1,7 +1,7 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
 import { adjustUserTonBalance } from './user-controls';
 import { awardDepositXp } from './xp-rewards';
-import { aiBotToken } from './utils';
+import { gameBotToken } from './utils';
 
 const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 const MIN_STARS_DEPOSIT = 2;
@@ -62,7 +62,7 @@ export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckou
   const payload = String(query.invoice_payload || '').trim();
   const amount = Math.floor(Number(query.total_amount));
   const ok = /^stars_[0-9a-f]{20}$/.test(payload) && query.currency === 'XTR' && Number.isSafeInteger(amount) && amount >= MIN_STARS_DEPOSIT && amount <= 100000;
-  await telegram(aiBotToken(env), 'answerPreCheckoutQuery', {
+  await telegram(gameBotToken(env), 'answerPreCheckoutQuery', {
     pre_checkout_query_id: query.id,
     ok,
     error_message: ok ? undefined : 'Payment request is no longer valid.',
@@ -100,7 +100,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
-  const token = aiBotToken(env);
+  const token = gameBotToken(env);
   if (!token || token.length < 20) throw new Error('Could not create Stars invoice');
   const tonText = formatTon(amountNano);
   const response = await telegram<TelegramInvoiceLinkResponse>(token, 'createInvoiceLink', {
