@@ -113,7 +113,7 @@ async function createInvoiceLink(env: Env, id: string, stars: number, amountNano
   });
   if (!response.ok || !response.result) {
     const description = response.description || 'Could not create Stars invoice';
-    if (/not found/i.test(description)) throw new Error('Telegram bot token was not accepted for Stars invoice. Check AI_BOT_TOKEN / TELEGRAM_BOT_TOKEN secret.');
+    if (/unauthorized|not found/i.test(description)) throw new Error('Telegram Stars invoice is unauthorized. Check the main bot token used by AI_BOT_TOKEN / TELEGRAM_BOT_TOKEN.');
     throw new Error(description);
   }
   return response.result;
