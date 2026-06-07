@@ -19,7 +19,17 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function clearDepositHeight(){window.__vexaDepositHeight=0;document.documentElement.style.removeProperty('--vexa-deposit-sheet-height')}
   function forceDepositCenter(){var sheet=q('depositSheet');if(!sheet)return;lockDepositHeight();sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
   function closeDepositSheet(){var sheet=q('depositSheet');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}var home=q('home');if(home)home.style.removeProperty('overflow-y');document.body.classList.remove('deposit-open','deposit-keyboard-open');clearDepositHeight()}
-  function cleanAmount(value){var n=Number(String(value||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*NANO_PER_TON)/NANO_PER_TON:0}
+  function normalizeNumericText(value){
+    var text=String(value==null?'':value).trim();
+    var fa='۰۱۲۳۴۵۶۷۸۹';
+    var ar='٠١٢٣٤٥٦٧٨٩';
+    text=text.replace(/[۰-۹]/g,function(d){return String(fa.indexOf(d))}).replace(/[٠-٩]/g,function(d){return String(ar.indexOf(d))});
+    text=text.replace(/[٫٬،，,]/g,'.').replace(/[\u200e\u200f\u202a-\u202e\s]/g,'').replace(/[^0-9.]/g,'');
+    var first=text.indexOf('.');
+    if(first!==-1)text=text.slice(0,first+1)+text.slice(first+1).replace(/\./g,'');
+    return text;
+  }
+  function cleanAmount(value){var n=Number(normalizeNumericText(value));return Number.isFinite(n)&&n>0?Math.floor(n*NANO_PER_TON)/NANO_PER_TON:0}
   function preciseTon(value){var n=cleanAmount(value);return n?n.toFixed(9).replace(/0+$/,'').replace(/\.$/,''):'0'}
   function shortTon(value){var n=cleanAmount(value);return n?n.toFixed(4).replace(/0+$/,'').replace(/\.$/,''):'0'}
   function tonToNanoString(value){var s=preciseTon(value);var parts=s.split('.');var whole=parts[0]||'0';var frac=((parts[1]||'')+'000000000').slice(0,9);try{return (BigInt(whole)*1000000000n+BigInt(frac)).toString()}catch(e){return String(Math.floor(cleanAmount(value)*NANO_PER_TON))}}
@@ -81,12 +91,12 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     depositMode=mode==='ton'?'ton':'stars';
     var input=q('starsAmountSheet');var label=document.querySelector('#depositSheet .deposit-custom-field label');var pay=q('depositMainPayButton')||document.querySelector('#depositSheet [data-action="deposit-custom-stars-sheet"],#depositSheet [data-action="confirm-ton-payment"]');
     if(label)label.textContent=depositMode==='ton'?'TON Amount':'Custom Stars Amount';
-    if(input){input.inputMode=depositMode==='ton'?'decimal':'numeric';input.placeholder=depositMode==='ton'?'TON amount':'Stars amount';if(depositMode==='ton'&&String(input.value||'').match(/^\d+$/)&&Number(input.value)>20){input.value=''}}
+    if(input){try{input.type='text'}catch(e){}input.inputMode=depositMode==='ton'?'decimal':'numeric';input.setAttribute('inputmode',depositMode==='ton'?'decimal':'numeric');input.setAttribute('autocomplete','off');input.setAttribute('autocorrect','off');input.placeholder=depositMode==='ton'?'TON amount':'Stars amount';if(depositMode==='ton'&&String(input.value||'').match(/^\d+$/)&&Number(input.value)>20){input.value=''}}
     if(pay){pay.textContent=depositMode==='ton'?'Pay With TON':'Pay With Stars';pay.setAttribute('data-action',depositMode==='ton'?'confirm-ton-payment':'deposit-custom-stars-sheet');pay.classList.toggle('ton-mode',depositMode==='ton')}
     var box=q('depositPaymentModeSwitch');if(box){box.classList.toggle('ton',depositMode==='ton');box.setAttribute('aria-label',depositMode==='ton'?'Payment method TON':'Payment method Stars')}
     var sheet=q('depositSheet');if(sheet)sheet.classList.toggle('deposit-ton-mode',depositMode==='ton');syncModeUi();if(depositMode==='ton'&&!tonUsd)loadTonUsd();
   }
-  function syncModeUi(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!input||!out)return;if(depositMode==='ton'){var ton=cleanAmount(input.value);var usd=tonUsd&&ton?ton*tonUsd:0;out.textContent=usd?'≈ $'+usd.toFixed(2):'USD';out.classList.add('usd-mode')}else{var stars=Math.max(0,Math.floor(Number(input.value)||0));var ton=stars>0?stars*STARS_TO_NANO/NANO_PER_TON:0;out.textContent=stars>0?'≈ '+shortTon(ton)+' TON':'≈ 0 TON';out.classList.remove('usd-mode')}}
+  function syncModeUi(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!input||!out)return;if(depositMode==='ton'){var normalized=normalizeNumericText(input.value);if(input.value!==normalized&&document.activeElement!==input)input.value=normalized;var ton=cleanAmount(normalized);var usd=tonUsd&&ton?ton*tonUsd:0;out.textContent=usd?'≈ $'+usd.toFixed(2):'USD';out.classList.add('usd-mode')}else{var stars=Math.max(0,Math.floor(Number(normalizeNumericText(input.value))||0));var ton=stars>0?stars*STARS_TO_NANO/NANO_PER_TON:0;out.textContent=stars>0?'≈ '+shortTon(ton)+' TON':'≈ 0 TON';out.classList.remove('usd-mode')}}
   async function createDeposit(amount){var user=ownerId();if(!user)throw new Error('Telegram user not found');return api('/app/api/ton/deposits',{userId:user,amountTon:preciseTon(amount)})}
   async function verifyDeposit(id){
     if(!id||verifying)return;verifying=true;
@@ -94,7 +104,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     verifying=false;
   }
   async function confirmTonPayment(){
-    if(paying)return;var input=q('starsAmountSheet');var amount=cleanAmount(input&&input.value);if(!amount){toast('Enter a valid TON amount');return}paying=true;
+    if(paying)return;var input=q('starsAmountSheet');var raw=input&&input.value;var amount=cleanAmount(raw);if(!amount){toast('Enter a valid TON amount');return}if(input)input.value=preciseTon(raw);paying=true;
     try{setStatus('Preparing payment…','pending');var ui=await loadTonConnect();applyTonConnectDarkTheme();var deposit=await createDeposit(amount);savePending(deposit);closeDepositSheet();await new Promise(function(resolve){setTimeout(resolve,180)});await chooseTonWallet(ui);await ui.sendTransaction({validUntil:Math.floor(Date.now()/1000)+300,messages:[{address:deposit.wallet,amount:String(deposit.amountNano||tonToNanoString(deposit.amountTon)),payload:tonCommentPayload(deposit.id)}]});setStatus('Payment sent. Checking confirmation…','pending');setTimeout(function(){verifyDeposit(deposit.id)},4500)}catch(error){setStatus(error&&error.message?error.message:'Payment cancelled or failed','error');toast(error&&error.message?error.message:'Payment cancelled or failed')}paying=false;
   }
   function installStyles(){
