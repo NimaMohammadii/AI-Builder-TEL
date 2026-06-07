@@ -17,7 +17,6 @@ type UploadableFile = {
   type?: string;
   size?: number;
   arrayBuffer?: () => Promise<ArrayBuffer>;
-  stream?: () => ReadableStream;
 };
 
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
@@ -25,35 +24,28 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
   app.get('/app/api/daily-rewards-bottom-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_BOTTOM_IMAGE_KEY));
   app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
   app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
-  app.get('/app/api/daily-rewards-day-image/:day', async (c) => dayImageResponse(c.env, c.req.param('day')));
-  app.get('/app/api/daily-rewards-day-image/:day.png', async (c) => dayImageResponse(c.env, c.req.param('day')));
+  app.get('/app/api/daily-rewards-day-image/:day.png', async (c) => {
+    const day = dayFromParam(c.req.param('day'));
+    if (day === null) return new Response('', { status: 404, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
+    return imageFromR2(c.env, dayImageKey(day), DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL);
+  });
 
-  app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, [DAILY_REWARDS_HERO_IMAGE_KEY], '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
-  app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, [DAILY_REWARDS_BOTTOM_IMAGE_KEY], '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
-  app.post('/admin/api/upload-daily-rewards-day-future-image', async (c) => uploadImage(c, [DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY], '/app/api/daily-rewards-day-future-image.png', 'Daily Rewards future day image'));
-  app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, [DAILY_REWARDS_DAY_TODAY_IMAGE_KEY], '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
+  app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
+  app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
+  app.post('/admin/api/upload-daily-rewards-day-future-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, '/app/api/daily-rewards-day-future-image.png', 'Daily Rewards future day image'));
+  app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
   app.post('/admin/api/upload-daily-rewards-day-image/:day', async (c) => {
     const day = dayFromParam(c.req.param('day'));
     if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400, { 'cache-control': 'no-store' });
-    return uploadImage(c, dayImageKeys(day), `/app/api/daily-rewards-day-image/${day}.png`, `Daily Rewards Day ${day + 1} image`);
+    return uploadImage(c, dayImageKey(day), `/app/api/daily-rewards-day-image/${day}.png`, `Daily Rewards Day ${day + 1} image`);
   });
-  app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, [DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY], 'Daily Rewards future day image'));
-  app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, [DAILY_REWARDS_DAY_TODAY_IMAGE_KEY], 'Daily Rewards today image'));
+  app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, 'Daily Rewards future day image'));
+  app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, 'Daily Rewards today image'));
   app.post('/admin/api/delete-daily-rewards-day-image/:day', async (c) => {
     const day = dayFromParam(c.req.param('day'));
     if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400, { 'cache-control': 'no-store' });
-    return deleteImage(c, dayImageKeys(day), `Daily Rewards Day ${day + 1} image`);
+    return deleteImage(c, dayImageKey(day), `Daily Rewards Day ${day + 1} image`);
   });
-}
-
-function dayImageResponse(env: Env, rawDay: string | undefined): Promise<Response> | Response {
-  const day = dayFromParam(rawDay);
-  if (day === null) return new Response('', { status: 404, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
-  return imageFromR2(env, dayImageKeys(day), DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL);
-}
-
-function dayImageKeys(day: number): string[] {
-  return [dayImageKey(day), dayImageKey(day + 1)];
 }
 
 function dayImageKey(day: number): string {
@@ -66,23 +58,18 @@ function dayFromParam(value: string | undefined): number | null {
   return Number.isFinite(day) && day >= 0 && day <= 6 ? day : null;
 }
 
-async function imageFromR2(env: Env, keyOrKeys: string | string[], cacheControl = DAILY_REWARDS_IMAGE_CACHE_CONTROL): Promise<Response> {
-  const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
-  for (const key of keys) {
-    const object = await env.ASSETS.get(key).catch(() => null);
-    if (object) {
-      return new Response(object.body, {
-        headers: {
-          'content-type': object.httpMetadata?.contentType || 'image/png',
-          'cache-control': cacheControl,
-        },
-      });
-    }
-  }
-  return new Response('', { status: 404, headers: { 'cache-control': cacheControl === DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL ? DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL : DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
+async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_IMAGE_CACHE_CONTROL): Promise<Response> {
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) return new Response('', { status: 404, headers: { 'cache-control': cacheControl === DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL ? DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL : DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || 'image/png',
+      'cache-control': cacheControl,
+    },
+  });
 }
 
-async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, keys: string[], publicUrl: string, label: string): Promise<Response> {
+async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, publicUrl: string, label: string): Promise<Response> {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     const form = await c.req.formData();
@@ -95,20 +82,20 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
     if (size > DAILY_REWARDS_MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 5MB.' }, 413, { 'cache-control': 'no-store' });
     const version = String(Date.now());
     const body = await value.arrayBuffer!();
-    await Promise.all(keys.map((key) => c.env.ASSETS.put(key, body.slice(0), {
+    await c.env.ASSETS.put(key, body, {
       httpMetadata: { contentType: type },
       customMetadata: { version },
-    })));
+    });
     return c.json({ ok: true, label, size, type, url: `${publicUrl}?v=${version}` }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400, { 'cache-control': 'no-store' });
   }
 }
 
-async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, keys: string[], label: string): Promise<Response> {
+async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, label: string): Promise<Response> {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
-    await Promise.all(keys.map((key) => c.env.ASSETS.delete(key)));
+    await c.env.ASSETS.delete(key);
     return c.json({ ok: true, deleted: true, label }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : `Could not delete ${label}` }, 400, { 'cache-control': 'no-store' });
@@ -116,11 +103,8 @@ async function deleteImage(c: { env: Env; req: { header: (name: string) => strin
 }
 
 function firstUploadableFile(form: FormData): UploadableFile | null {
-  for (const name of ['image', 'file', 'upload']) {
-    const value = form.get(name) as UploadableFile | null;
-    if (isUploadableFile(value)) return value;
-  }
-  return null;
+  const value = form.get('image') as UploadableFile | null;
+  return isUploadableFile(value) ? value : null;
 }
 
 function isUploadableFile(value: UploadableFile | null): value is UploadableFile {
