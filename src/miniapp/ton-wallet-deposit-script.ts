@@ -2,7 +2,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
 (function(){
   var STARS_TO_NANO=5890080;
   var NANO_PER_TON=1000000000;
-  var TONCONNECT_CDN='https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js';
+  var TONCONNECT_SOURCES=['https://cdn.jsdelivr.net/npm/@tonconnect/ui@latest/dist/tonconnect-ui.min.js','https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js'];
   var tonConnectUi=null;
   var tonConnectReady=null;
   var paying=false;
@@ -35,13 +35,26 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function savePending(deposit){try{localStorage.setItem('vexa:pending-ton-wallet-deposit',JSON.stringify({id:deposit.id,userId:deposit.userId||ownerId(),amountTon:deposit.amountTon,amountNano:deposit.amountNano,wallet:deposit.wallet,status:deposit.status,createdAt:Date.now()}))}catch(e){}}
   function clearPending(){try{localStorage.removeItem('vexa:pending-ton-wallet-deposit')}catch(e){}}
   function applyTonConnectDarkTheme(){if(!tonConnectUi)return;try{tonConnectUi.uiOptions={uiPreferences:{theme:'DARK'}}}catch(e){}}
+  function loadTonConnectScript(index){
+    if(window.TON_CONNECT_UI&&window.TON_CONNECT_UI.TonConnectUI)return Promise.resolve(true);
+    if(index>=TONCONNECT_SOURCES.length)return Promise.reject(new Error('Could not load TonConnect'));
+    return new Promise(function(resolve,reject){
+      var script=document.createElement('script');
+      script.src=TONCONNECT_SOURCES[index];
+      script.async=true;
+      script.crossOrigin='anonymous';
+      script.onload=function(){resolve(true)};
+      script.onerror=function(){try{script.remove()}catch(e){};loadTonConnectScript(index+1).then(resolve).catch(reject)};
+      document.head.appendChild(script);
+    });
+  }
   function loadTonConnect(){
     if(tonConnectUi){applyTonConnectDarkTheme();return Promise.resolve(tonConnectUi)};
     if(tonConnectReady)return tonConnectReady;
     tonConnectReady=new Promise(function(resolve,reject){
-      function init(){try{tonConnectUi=new window.TON_CONNECT_UI.TonConnectUI({manifestUrl:window.location.origin+'/tonconnect-manifest.json',uiPreferences:{theme:'DARK'}});applyTonConnectDarkTheme();resolve(tonConnectUi)}catch(e){reject(e)}}
+      function init(){try{tonConnectUi=new window.TON_CONNECT_UI.TonConnectUI({manifestUrl:window.location.origin+'/tonconnect-manifest.json',uiPreferences:{theme:'DARK'}});applyTonConnectDarkTheme();resolve(tonConnectUi)}catch(e){tonConnectReady=null;reject(e)}}
       if(window.TON_CONNECT_UI&&window.TON_CONNECT_UI.TonConnectUI){init();return}
-      var script=document.createElement('script');script.src=TONCONNECT_CDN;script.async=true;script.onload=init;script.onerror=function(){reject(new Error('Could not load TonConnect'))};document.head.appendChild(script);
+      loadTonConnectScript(0).then(init).catch(function(error){tonConnectReady=null;reject(error)});
     });
     return tonConnectReady;
   }
