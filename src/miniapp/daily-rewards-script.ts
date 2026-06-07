@@ -30,7 +30,7 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageHtml(day){
-    var src='/app/api/daily-rewards-day-image/'+day+'?v='+dayImageVersion();
+    var src='/app/api/daily-rewards-day-image/'+day+'.png?v='+dayImageVersion();
     return '<img class="daily-rewards-card-img" src="'+src+'" alt="" decoding="async" loading="lazy"/>';
   }
   function renderDays(){
