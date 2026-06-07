@@ -5,6 +5,7 @@ const DAILY_REWARDS_HERO_IMAGE_KEY = 'daily-rewards/hero-image';
 const DAILY_REWARDS_BOTTOM_IMAGE_KEY = 'daily-rewards/bottom-image';
 const DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY = 'daily-rewards/day-future-image';
 const DAILY_REWARDS_DAY_TODAY_IMAGE_KEY = 'daily-rewards/day-today-image';
+const DAILY_REWARDS_DAY_IMAGE_KEY_PREFIX = 'daily-rewards/day-image-';
 const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'no-store';
 const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
@@ -15,13 +16,37 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
   app.get('/app/api/daily-rewards-bottom-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_BOTTOM_IMAGE_KEY));
   app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
   app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
+  app.get('/app/api/daily-rewards-day-image/:day', async (c) => {
+    const day = dayFromParam(c.req.param('day'));
+    if (day === null) return new Response('', { status: 404, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
+    return imageFromR2(c.env, dayImageKey(day), DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL);
+  });
 
   app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
   app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
   app.post('/admin/api/upload-daily-rewards-day-future-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, '/app/api/daily-rewards-day-future-image.png', 'Daily Rewards future day image'));
   app.post('/admin/api/upload-daily-rewards-day-today-image', async (c) => uploadImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, '/app/api/daily-rewards-day-today-image.png', 'Daily Rewards today image'));
+  app.post('/admin/api/upload-daily-rewards-day-image/:day', async (c) => {
+    const day = dayFromParam(c.req.param('day'));
+    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400);
+    return uploadImage(c, dayImageKey(day), `/app/api/daily-rewards-day-image/${day}`, `Daily Rewards Day ${day + 1} image`);
+  });
   app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, 'Daily Rewards future day image'));
   app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, 'Daily Rewards today image'));
+  app.post('/admin/api/delete-daily-rewards-day-image/:day', async (c) => {
+    const day = dayFromParam(c.req.param('day'));
+    if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400);
+    return deleteImage(c, dayImageKey(day), `Daily Rewards Day ${day + 1} image`);
+  });
+}
+
+function dayImageKey(day: number): string {
+  return `${DAILY_REWARDS_DAY_IMAGE_KEY_PREFIX}${day}`;
+}
+
+function dayFromParam(value: string | undefined): number | null {
+  const day = Math.floor(Number(value));
+  return Number.isFinite(day) && day >= 0 && day <= 6 ? day : null;
 }
 
 async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_IMAGE_CACHE_CONTROL): Promise<Response> {
