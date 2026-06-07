@@ -45,6 +45,12 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     });
     return tonConnectReady;
   }
+  async function chooseTonWallet(ui){
+    try{if(ui&&ui.connected&&ui.disconnect)await ui.disconnect()}catch(e){}
+    await new Promise(function(resolve){setTimeout(resolve,120)});
+    await ui.openModal();
+    if(!ui.connected)throw new Error('Wallet is not connected');
+  }
   async function loadTonUsd(){
     try{
       var user=ownerId();
@@ -92,8 +98,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
       var ui=await loadTonConnect();applyTonConnectDarkTheme();
       var deposit=await createDeposit(amount);savePending(deposit);closeDepositSheet();
       await new Promise(function(resolve){setTimeout(resolve,180)});
-      if(!ui.connected)await ui.openModal();
-      if(!ui.connected)throw new Error('Wallet is not connected');
+      await chooseTonWallet(ui);
       await ui.sendTransaction({validUntil:Math.floor(Date.now()/1000)+300,messages:[{address:deposit.wallet,amount:String(deposit.amountNano||tonToNanoString(deposit.amountTon)),payload:tonCommentPayload(deposit.id)}]});
       setStatus('Payment sent. Checking confirmation…','pending');setTimeout(function(){verifyDeposit(deposit.id)},4500);
     }catch(error){setStatus(error&&error.message?error.message:'Payment cancelled or failed','error');toast(error&&error.message?error.message:'Payment cancelled or failed')}
