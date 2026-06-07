@@ -22,7 +22,8 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       return '';
     }
     function targetFor(section){
-      if(section==='predictzone'||section==='crash'||section==='plinko'||section==='mines'||section==='slot'||section==='topplayers'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
+      if(section==='topplayers')return 'home';
+      if(section==='predictzone'||section==='crash'||section==='plinko'||section==='mines'||section==='slot'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
       if(section==='rewards')return 'home';
       return '';
     }
