@@ -9,7 +9,8 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   var verifying=false;
   var depositMode='stars';
   var tonUsd=0;
-  var tg=window.Telegram&&window.Telegram.WebApp;
+  var tg=window.Telegram&&window.TeleApp;
+  tg=window.Telegram&&window.Telegram.WebApp;
   function q(id){return document.getElementById(id)}
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2800)}
   function ownerId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
@@ -20,6 +21,15 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
   function preciseTon(value){var n=cleanAmount(value);return n?n.toFixed(9).replace(/0+$/,'').replace(/\.$/,''):'0'}
   function shortTon(value){var n=cleanAmount(value);return n?n.toFixed(4).replace(/0+$/,'').replace(/\.$/,''):'0'}
   function tonToNanoString(value){var s=preciseTon(value);var parts=s.split('.');var whole=parts[0]||'0';var frac=((parts[1]||'')+'000000000').slice(0,9);try{return (BigInt(whole)*1000000000n+BigInt(frac)).toString()}catch(e){return String(Math.floor(cleanAmount(value)*NANO_PER_TON))}}
+  function bytesBase64(bytes){var s='';for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s)}
+  function textBytes(text){return Array.prototype.slice.call(new TextEncoder().encode(String(text||'')))}
+  function tonCommentPayload(comment){
+    var body=[0,0,0,0].concat(textBytes(comment));
+    var cell=[0,body.length*2].concat(body);
+    var total=cell.length;
+    var boc=[0xb5,0xee,0x9c,0x72,0x01,0x01,0x01,0x01,0x00,total,0].concat(cell);
+    return bytesBase64(boc);
+  }
   async function api(path,payload){var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload||{})});var j=await r.json().catch(function(){return{error:'Invalid response'}});if(!r.ok)throw new Error(j.error||'Request failed');return j}
   function savePending(deposit){try{localStorage.setItem('vexa:pending-ton-wallet-deposit',JSON.stringify({id:deposit.id,userId:deposit.userId||ownerId(),amountTon:deposit.amountTon,amountNano:deposit.amountNano,wallet:deposit.wallet,status:deposit.status,createdAt:Date.now()}))}catch(e){}}
   function clearPending(){try{localStorage.removeItem('vexa:pending-ton-wallet-deposit')}catch(e){}}
@@ -83,7 +93,7 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
       await new Promise(function(resolve){setTimeout(resolve,180)});
       if(!ui.connected)await ui.openModal();
       if(!ui.connected)throw new Error('Wallet is not connected');
-      await ui.sendTransaction({validUntil:Math.floor(Date.now()/1000)+300,messages:[{address:deposit.wallet,amount:String(deposit.amountNano||tonToNanoString(deposit.amountTon)),payload:''}]});
+      await ui.sendTransaction({validUntil:Math.floor(Date.now()/1000)+300,messages:[{address:deposit.wallet,amount:String(deposit.amountNano||tonToNanoString(deposit.amountTon)),payload:tonCommentPayload(deposit.id)}]});
       setStatus('Payment sent. Checking confirmation…','pending');setTimeout(function(){verifyDeposit(deposit.id)},4500);
     }catch(error){setStatus(error&&error.message?error.message:'Payment cancelled or failed','error');toast(error&&error.message?error.message:'Payment cancelled or failed')}
     paying=false;
