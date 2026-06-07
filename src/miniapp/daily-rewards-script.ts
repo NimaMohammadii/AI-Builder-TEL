@@ -53,7 +53,7 @@ export const DAILY_REWARDS_SCRIPT = `
   async function claimCard(target){
     if(claiming)return;
     var day=Number(target.getAttribute('data-daily-rewards-day'))||0,rewardId=target.getAttribute('data-daily-reward-id')||'';
-    if(!target.classList.contains('can-claim')){if(target.classList.contains('locked'))toast('صبر کن تا هفته بعد');return}
+    if(!target.classList.contains('can-claim')){if(target.classList.contains('locked'))toast('Wait until next week');return}
     var id=userId();if(!id){toast('Telegram user not found');return}
     claiming=true;target.classList.add('claiming');
     try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');await loadRewards(true);renderDays()}
