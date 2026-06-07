@@ -155,7 +155,7 @@ async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Prom
   const data = q.data ?? '';
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
 
-  if (data === 'builder:miniapp') return lockedCallback(env, key, q, 'ai-miniapp');
+  if (data === 'builder:miniapp') { await lockedCallback(env, key, q, 'ai-miniapp'); return; }
   if (data === 'builder:chat' && await lockedCallback(env, key, q, 'ai-chat')) return;
   if ((data === 'builder:tts' || data.startsWith('builder:tts:')) && await lockedCallback(env, key, q, 'ai-tts')) return;
 

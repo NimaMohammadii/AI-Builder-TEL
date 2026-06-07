@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { claimDailyRewardMission, getDailyRewardsForUser } from './daily-rewards-claims';
+import { claimDailyRewardMission, claimWeeklyDailyReward, getDailyRewardsForUser } from './daily-rewards-claims';
 import { getDailyRewardsAdminPayload, getDailyRewardsPublicPayload, saveDailyRewardsSettings } from './daily-rewards-missions';
 import type { Env } from './types';
 
@@ -16,7 +16,8 @@ export function registerDailyRewardsAdminRoutes(app: Hono<{ Bindings: Env }>): v
 
   app.post('/app/api/daily-rewards/claim', async (c) => {
     try {
-      const body = await c.req.json() as { userId?: unknown; missionId?: unknown; day?: unknown };
+      const body = await c.req.json() as { userId?: unknown; missionId?: unknown; rewardId?: unknown; day?: unknown };
+      if (body.rewardId) return c.json(await claimWeeklyDailyReward(c.env, body), 200, { 'cache-control': 'no-store' });
       return c.json(await claimDailyRewardMission(c.env, body), 200, { 'cache-control': 'no-store' });
     } catch (error) {
       return c.json({ error: error instanceof Error ? error.message : 'Could not claim Daily Reward' }, 400, { 'cache-control': 'no-store' });

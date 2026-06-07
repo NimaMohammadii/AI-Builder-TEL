@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { applyDailyRewardGameDeltaBonuses } from './daily-rewards-effects';
 import { recordTonTransaction, type TonTransactionMeta } from './ton-transactions';
 
 export type UserSectionBlock = {
@@ -56,9 +57,11 @@ export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: 
 
 export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
-  await addUserTonBalance(env, id, deltaNano);
+  const baseDelta = Math.floor(Number(deltaNano) || 0);
+  const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
+  await addUserTonBalance(env, id, bonus.totalDeltaNano);
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, Math.floor(Number(deltaNano) || 0), after, { kind: 'game', title: Math.floor(Number(deltaNano) || 0) >= 0 ? 'Game reward' : 'Game bet', ...meta });
+  await recordTonTransaction(env, id, bonus.totalDeltaNano, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), dailyRewardBonusNano: bonus.bonusNano, dailyRewardEffects: bonus.applied } });
   return getUserControls(env, id);
 }
 

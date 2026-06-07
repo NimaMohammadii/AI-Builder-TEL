@@ -1,5 +1,7 @@
 import { addUserXp, getUserLevel } from './levels';
+import { adjustUserTonBalance } from './user-controls';
 import { getDailyRewardsPublicPayload } from './daily-rewards-missions';
+import { ensureDailyRewardEffectTables, grantDailyRewardEffect, rewardForDay, WEEKLY_DAILY_REWARDS } from './daily-rewards-effects';
 import type { Env } from './types';
 
 export type DailyRewardClaim = {
@@ -19,14 +21,24 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
   const payload = await getDailyRewardsPublicPayload(env);
   const weekStart = currentWeekStart();
   const claimed = await listClaimedKeys(env, userId, weekStart);
+  const claimedDays = await listClaimedRewardDays(env, userId, weekStart);
   const progress = await listProgress(env, userId, weekStart);
   const profile = await getUserLevel(env, userId);
+  const today = currentMondayDay();
+  const missedDay = firstMissedDayBeforeToday(claimedDays, today);
   return {
     ...payload,
+    rewards: WEEKLY_DAILY_REWARDS,
     weekStart,
+    weekEndsAt: currentWeekEnd(),
+    today,
     claimed: Array.from(claimed),
+    claimedDays: Array.from(claimedDays),
+    missedDay,
+    lockedUntilNextWeek: missedDay !== null,
     progress: Object.fromEntries(progress),
     claimable: claimableKeys(payload.days, progress, claimed),
+    claimableRewards: missedDay === null && !claimedDays.has(today) ? [rewardForDay(today)?.id].filter(Boolean) : [],
     profile,
   };
 }
@@ -99,6 +111,60 @@ export async function claimDailyRewardMission(env: Env, input: { userId?: unknow
   };
 }
 
+
+
+export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown; rewardId?: unknown; day?: unknown }): Promise<Record<string, unknown>> {
+  const userId = cleanUserId(input.userId);
+  const rewardId = cleanMissionId(input.rewardId);
+  const day = clampDay(input.day);
+  const today = currentMondayDay();
+  if (day !== today) throw new Error('Only today reward can be claimed');
+  await ensureDailyRewardClaimTables(env);
+  await ensureDailyRewardEffectTables(env);
+
+  const reward = rewardForDay(day);
+  if (!reward || reward.id !== rewardId) throw new Error('Reward is not active for this day');
+  const weekStart = currentWeekStart();
+  const claimedDays = await listClaimedRewardDays(env, userId, weekStart);
+  const missedDay = firstMissedDayBeforeToday(claimedDays, today);
+  if (missedDay !== null) throw new Error('Wait until next week');
+  if (day === 6 && !hasAllPreviousDaysClaimed(claimedDays, 6)) throw new Error('Weekly vault requires all previous 6 days');
+
+  const existing = await env.DB.prepare('SELECT id FROM daily_reward_claims WHERE user_id = ? AND week_start = ? AND day = ? AND mission_id = ?')
+    .bind(userId, weekStart, day, rewardId)
+    .first<{ id: string }>()
+    .catch(() => null);
+  if (existing?.id) {
+    return { ok: true, alreadyClaimed: true, claimedKey: claimKey(day, rewardId), claimedDay: day, reward, weekStart, profile: await getUserLevel(env, userId) };
+  }
+
+  const id = 'dr_' + crypto.randomUUID().replace(/-/g, '').slice(0, 28);
+  await env.DB.prepare(`INSERT INTO daily_reward_claims (id, user_id, week_start, day, mission_id, xp, claimed_at) VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`)
+    .bind(id, userId, weekStart, day, rewardId)
+    .run();
+
+  let effect: Record<string, unknown> | null = null;
+  let tonBalanceNano: number | null = null;
+  if (reward.kind === 'ton') {
+    const controls = await adjustUserTonBalance(env, userId, reward.amountNano || 0, { kind: 'adjustment', title: reward.title, referenceId: id, referenceType: 'daily_reward', metadata: { rewardId, day, weekStart } });
+    tonBalanceNano = controls.tonBalanceNano;
+  } else {
+    effect = await grantDailyRewardEffect(env, { userId, weekStart, reward, claimId: id });
+  }
+
+  return {
+    ok: true,
+    alreadyClaimed: false,
+    claimedKey: claimKey(day, rewardId),
+    claimedDay: day,
+    reward,
+    effect,
+    tonBalanceNano,
+    weekStart,
+    profile: await getUserLevel(env, userId),
+  };
+}
+
 export async function ensureDailyRewardClaimTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_reward_claims (
     id TEXT PRIMARY KEY,
@@ -121,6 +187,7 @@ export async function ensureDailyRewardClaimTables(env: Env): Promise<void> {
     PRIMARY KEY(user_id, week_start, day, progress_key)
   )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_daily_reward_progress_user_week ON daily_reward_progress(user_id, week_start)').run();
+  await ensureDailyRewardEffectTables(env);
 }
 
 async function incrementProgress(env: Env, userId: string, weekStart: string, day: number, progressKey: string, amount: number): Promise<void> {
@@ -138,6 +205,15 @@ async function listProgress(env: Env, userId: string, weekStart: string): Promis
   const map = new Map<string, number>();
   for (const row of rows.results ?? []) map.set(`${clampDay(row.day)}:${row.progress_key}`, Math.max(0, Math.floor(Number(row.value) || 0)));
   return map;
+}
+
+async function listClaimedRewardDays(env: Env, userId: string, weekStart: string): Promise<Set<number>> {
+  const rows = await env.DB.prepare('SELECT day, mission_id FROM daily_reward_claims WHERE user_id = ? AND week_start = ?')
+    .bind(userId, weekStart)
+    .all<{ day: number; mission_id: string }>()
+    .catch(() => ({ results: [] as { day: number; mission_id: string }[] }));
+  const rewardIds = new Set(WEEKLY_DAILY_REWARDS.map((reward) => reward.id));
+  return new Set((rows.results ?? []).filter((row) => rewardIds.has(String(row.mission_id))).map((row) => clampDay(row.day)));
 }
 
 async function listClaimedKeys(env: Env, userId: string, weekStart: string): Promise<Set<string>> {
@@ -232,6 +308,22 @@ function currentWeekStart(): string {
 function currentMondayDay(): number {
   const day = new Date().getUTCDay();
   return day === 0 ? 6 : day - 1;
+}
+
+function currentWeekEnd(): string {
+  const start = new Date(currentWeekStart() + 'T00:00:00.000Z');
+  start.setUTCDate(start.getUTCDate() + 7);
+  return start.toISOString();
+}
+
+function firstMissedDayBeforeToday(claimedDays: Set<number>, today: number): number | null {
+  for (let day = 0; day < today; day += 1) if (!claimedDays.has(day)) return day;
+  return null;
+}
+
+function hasAllPreviousDaysClaimed(claimedDays: Set<number>, day: number): boolean {
+  for (let index = 0; index < day; index += 1) if (!claimedDays.has(index)) return false;
+  return true;
 }
 
 function cleanUserId(value: unknown): string {

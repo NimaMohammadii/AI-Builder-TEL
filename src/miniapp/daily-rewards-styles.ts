@@ -22,4 +22,20 @@ export const DAILY_REWARDS_STYLES = `
 #home .daily-rewards-day.today .daily-rewards-day-image:before{content:"Today";position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);height:17px;padding:0 8px;border-radius:999px;background:#fff;color:#21050d;font-size:7px;font-weight:950;display:grid;place-items:center;z-index:2;box-shadow:0 8px 16px rgba(126,20,48,.18)}
 #home .daily-rewards-day strong{position:relative;z-index:1;justify-self:center;font-size:24px;font-weight:950;letter-spacing:-.05em;line-height:1;color:#fff}
 @media(max-width:380px){#home .daily-rewards-day{flex-basis:118px;width:118px;height:154px;border-radius:26px;padding:12px 11px}#home .daily-rewards-day-image{width:62px;height:62px;border-radius:22px}#home .home-daily-rewards-head h2{font-size:19px}}
+#home .daily-rewards-day{cursor:pointer;transition:transform .22s ease,opacity .22s ease,filter .22s ease}
+#home .daily-rewards-day.future,#home .daily-rewards-day.burned{opacity:.42;filter:saturate(.55) brightness(.72)}
+#home .daily-rewards-day.future .daily-rewards-day-img,#home .daily-rewards-day.burned .daily-rewards-day-img{filter:grayscale(.7) brightness(.68);opacity:.58}
+#home .daily-rewards-day.claimed{opacity:.88;filter:none}
+#home .daily-rewards-day.today.can-claim{animation:dailyRewardFloat 2.6s ease-in-out infinite;transform-origin:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 22px 54px rgba(0,0,0,.26),0 0 38px rgba(126,20,48,.28)!important}
+#home .daily-rewards-day.can-claim:active{transform:translateY(1px) scale(.985)}
+#home .daily-rewards-day.claiming{pointer-events:none;filter:brightness(1.12)}
+#home .daily-rewards-day em{position:relative;z-index:1;display:block;justify-self:center;max-width:100%;color:rgba(255,255,255,.58);font-size:8px;font-style:normal;font-weight:850;line-height:1.15;text-align:center;white-space:normal}
+#home .daily-rewards-day.burned em{color:rgba(255,213,120,.78);font-weight:950}
+#home .daily-rewards-lock{position:absolute;left:50%;top:50%;width:28px;height:28px;border-radius:11px;transform:translate(-50%,-50%);background:rgba(5,5,8,.58);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 10px 22px rgba(0,0,0,.28);z-index:4}
+#home .daily-rewards-lock:before{content:"";position:absolute;left:8px;top:6px;width:12px;height:10px;border:2px solid rgba(255,255,255,.82);border-bottom:0;border-radius:8px 8px 0 0;box-sizing:border-box}
+#home .daily-rewards-lock:after{content:"";position:absolute;left:7px;right:7px;bottom:6px;height:12px;border-radius:4px;background:rgba(255,255,255,.88)}
+#home .daily-rewards-day-image.burned:after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.18);z-index:2}
+@keyframes dailyRewardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media(prefers-reduced-motion:reduce){#home .daily-rewards-day.today.can-claim{animation:none}}
+
 `;
