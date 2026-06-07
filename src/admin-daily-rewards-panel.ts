@@ -47,7 +47,7 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
   }
   function selectedDayImage(day){return document.querySelector('[data-daily-rewards-day-image-file="'+day+'"]')}
   function dayImageType(file){
-    var type=String(file&&file.type||'').toLowerCase();
+    var type=String(file&&file.type||'').split(';')[0].trim().toLowerCase();
     if(type==='image/jpg')return 'image/jpeg';
     if(type)return type;
     var ext=String(file&&file.name||'').split('.').pop().toLowerCase();
@@ -57,26 +57,63 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     if(ext==='svg')return 'image/svg+xml';
     return '';
   }
-  function dayImageError(error){return 'Upload failed: '+(error&&error.message?error.message:'network error')}
+  function dayImageError(error){
+    var message=error&&error.message?String(error.message):'network error';
+    if(message==='Load failed'||message==='Failed to fetch'||message==='NetworkError when attempting to fetch resource.'){message='network upload failed. Please try again; the panel now retries with a compatible uploader.'}
+    return 'Upload failed: '+message;
+  }
+  function parseUploadJson(text){
+    try{return text?JSON.parse(text):{}}catch(error){return{error:'Upload failed: server did not return JSON'}}
+  }
+  function xhrUpload(url,data){
+    return new Promise(function(resolve,reject){
+      var xhr=new XMLHttpRequest();
+      xhr.open('POST',url,true);
+      xhr.withCredentials=true;
+      xhr.responseType='text';
+      xhr.onload=function(){
+        var json=parseUploadJson(xhr.responseText||'');
+        if(xhr.status>=200&&xhr.status<300)resolve(json);
+        else reject(new Error(json.error||('Upload failed: HTTP '+xhr.status)));
+      };
+      xhr.onerror=function(){reject(new Error('network upload failed'))};
+      xhr.ontimeout=function(){reject(new Error('upload timed out'))};
+      xhr.timeout=45000;
+      xhr.send(data);
+    });
+  }
+  async function postImageForm(url,data){
+    try{
+      var res=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',body:data});
+      var json=await res.json().catch(function(){return{error:'Upload failed: server did not return JSON'}});
+      if(!res.ok)throw new Error(json.error||('Upload failed: HTTP '+res.status));
+      return json;
+    }catch(error){
+      var message=error&&error.message?String(error.message):'';
+      if(message==='Load failed'||message==='Failed to fetch'||message.indexOf('NetworkError')!==-1)return xhrUpload(url,data);
+      throw error;
+    }
+  }
   async function uploadDayImage(day,label){
     var status=q('dailyRewardsAdminStatus');
     var input=selectedDayImage(day);
+    var button=document.querySelector('[data-upload-daily-rewards-day-image="'+day+'"]');
     if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first.';return}
     var file=input.files[0];
     var type=dayImageType(file);
     if(['image/png','image/jpeg','image/webp','image/svg+xml'].indexOf(type)===-1){if(status)status.textContent='Only PNG, JPG, JPEG, SVG or WebP.';return}
     if(Number(file.size||0)>5000000){if(status)status.textContent='Image must be under 5MB.';return}
     if(status)status.textContent='Uploading '+label+'...';
+    if(button)button.disabled=true;
     try{
       var data=new FormData();
       data.append('image',file,file.name||('daily-rewards-day-'+(day+1)));
-      var res=await fetch('/admin/api/upload-daily-rewards-day-image/'+day,{method:'POST',credentials:'include',body:data});
-      var json=await res.json().catch(function(){return{error:'Upload failed: server did not return JSON'}});
-      if(!res.ok)throw new Error(json.error||('Upload failed: HTTP '+res.status));
+      await postImageForm('/admin/api/upload-daily-rewards-day-image/'+day,data);
       if(status)status.textContent=label+' uploaded.';
       input.value='';
       try{window.VexaAppRefresh&&window.VexaAppRefresh.refreshImages&&window.VexaAppRefresh.refreshImages()}catch(e){}
     }catch(error){if(status)status.textContent=dayImageError(error)}
+    finally{if(button)button.disabled=false}
   }
   async function deleteDayImage(url,label){
     var status=q('dailyRewardsAdminStatus');

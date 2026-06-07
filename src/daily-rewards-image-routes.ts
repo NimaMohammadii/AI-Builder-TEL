@@ -73,15 +73,15 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     const form = await c.req.formData();
-    const value = form.get('image') as UploadableFile | null;
-    if (!isUploadableFile(value)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': 'no-store' });
+    const value = firstUploadableFile(form);
+    if (!value) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': 'no-store' });
     const type = normalizeImageType(value.type, value.name);
     if (!DAILY_REWARDS_IMAGE_TYPES.has(type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400, { 'cache-control': 'no-store' });
     const size = Math.floor(Number(value.size) || 0);
     if (size <= 0) return c.json({ error: 'Choose a non-empty image file.' }, 400, { 'cache-control': 'no-store' });
     if (size > DAILY_REWARDS_MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 5MB.' }, 413, { 'cache-control': 'no-store' });
     const version = String(Date.now());
-    const body = value.stream ? value.stream() : await value.arrayBuffer!();
+    const body = await value.arrayBuffer!();
     await c.env.ASSETS.put(key, body, {
       httpMetadata: { contentType: type },
       customMetadata: { version },
@@ -102,12 +102,20 @@ async function deleteImage(c: { env: Env; req: { header: (name: string) => strin
   }
 }
 
+function firstUploadableFile(form: FormData): UploadableFile | null {
+  for (const name of ['image', 'file', 'upload']) {
+    const value = form.get(name) as UploadableFile | null;
+    if (isUploadableFile(value)) return value;
+  }
+  return null;
+}
+
 function isUploadableFile(value: UploadableFile | null): value is UploadableFile {
-  return Boolean(value && typeof value === 'object' && (typeof value.arrayBuffer === 'function' || typeof value.stream === 'function'));
+  return Boolean(value && typeof value === 'object' && typeof value.arrayBuffer === 'function');
 }
 
 function normalizeImageType(type: string | undefined, name: string | undefined): string {
-  const clean = String(type || '').toLowerCase();
+  const clean = String(type || '').split(';')[0]!.trim().toLowerCase();
   if (clean === 'image/jpg') return 'image/jpeg';
   if (clean) return clean;
   const ext = String(name || '').split('.').pop()?.toLowerCase() || '';
