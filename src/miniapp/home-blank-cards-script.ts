@@ -1,47 +1,58 @@
 export const HOME_BLANK_CARDS_SCRIPT = `
 (function(){
   function q(id){return document.getElementById(id)}
+  var scheduled=false;
   function addStyle(){
-    var old=q('homeBlankCardsStyle');
-    if(old)old.remove();
-    var style=document.createElement('style');
-    style.id='homeBlankCardsStyle';
+    var style=q('homeBlankCardsStyle');
+    if(!style){
+      style=document.createElement('style');
+      style.id='homeBlankCardsStyle';
+      document.head.appendChild(style);
+    }
     style.textContent=[
-      '#home .home-rewards-entry,#home [data-action="open-rewards"],#rewardsPage{display:none!important;visibility:hidden!important;pointer-events:none!important;width:0!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}',
-      '#home .home-blank-cards-wrap{position:relative;margin:18px 0 0;width:100%;overflow:visible!important;box-sizing:border-box}',
+      '#dailyRewardsMount,#dailyRewardsEntry,#dailyRewardsPage,#home .home-daily-rewards-entry,#home .home-rewards-entry,#home [data-action="open-daily-rewards"],#home [data-action="open-rewards"],#home button:has(.home-daily-rewards-main),#home button:has(.home-rewards-entry-main){display:none!important;visibility:hidden!important;pointer-events:none!important;width:0!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;opacity:0!important}',
+      '#home .home-blank-cards-wrap{position:relative;margin:18px 0 0;width:100%;overflow:visible!important;box-sizing:border-box;z-index:2}',
       '#home .home-blank-cards-track{display:flex;gap:12px;width:100%;overflow-x:auto;overflow-y:visible!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-snap-type:x proximity;padding:0 2px 16px;box-sizing:border-box}',
       '#home .home-blank-cards-track::-webkit-scrollbar{display:none}',
-      '#home .home-blank-card{flex:0 0 128px;height:164px;border:1px solid rgba(255,255,255,.16)!important;border-radius:30px;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 14px 34px rgba(0,0,0,.10)!important;backdrop-filter:blur(10px) saturate(1.24)!important;-webkit-backdrop-filter:blur(10px) saturate(1.24)!important;scroll-snap-align:start;box-sizing:border-box;overflow:hidden}',
-      '#home .home-blank-card:before,#home .home-blank-card:after{display:none!important;content:none!important;background:none!important}'
+      '#home .home-blank-card{flex:0 0 128px;height:164px;border:0!important;outline:0!important;border-radius:30px;background:rgba(255,255,255,.018)!important;background-image:none!important;box-shadow:0 18px 38px rgba(0,0,0,.16)!important;backdrop-filter:blur(13px) saturate(1.26)!important;-webkit-backdrop-filter:blur(13px) saturate(1.26)!important;scroll-snap-align:start;box-sizing:border-box;overflow:hidden}',
+      '#home .home-blank-card:before,#home .home-blank-card:after{display:none!important;content:none!important;background:none!important;border:0!important;box-shadow:none!important}'
     ].join('');
-    document.head.appendChild(style);
   }
   function removeDailyPrize(){
-    document.querySelectorAll('#home .home-rewards-entry,#home [data-action="open-rewards"],#rewardsPage').forEach(function(n){try{n.remove()}catch(e){}});
+    document.querySelectorAll('#dailyRewardsMount,#dailyRewardsEntry,#dailyRewardsPage,#home .home-daily-rewards-entry,#home .home-rewards-entry,#home [data-action="open-daily-rewards"],#home [data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}});
+    document.querySelectorAll('#home button').forEach(function(b){
+      var txt=(b.textContent||'').toLowerCase();
+      if(txt.indexOf('daily prize')>-1||txt.indexOf('daily rewards')>-1||txt.indexOf('rewards hub')>-1)try{b.remove()}catch(e){}
+    });
+    document.body.classList.remove('daily-rewards-open','rewards-open');
   }
   function addBlankCards(){
     var home=q('home');
     if(!home)return;
-    if(q('homeBlankCardsWrap'))return;
-    var wrap=document.createElement('div');
-    wrap.id='homeBlankCardsWrap';
-    wrap.className='home-blank-cards-wrap';
-    var cards='';
-    for(var i=0;i<7;i++)cards+='<div class="home-blank-card" aria-hidden="true"></div>';
-    wrap.innerHTML='<div class="home-blank-cards-track">'+cards+'</div>';
-    var finance=home.querySelector('.home-finance');
-    var deposit=q('depositSheet');
-    if(finance&&finance.parentNode)finance.parentNode.insertBefore(wrap,finance.nextSibling);
-    else if(deposit&&deposit.parentNode)deposit.parentNode.insertBefore(wrap,deposit);
-    else home.appendChild(wrap);
+    var anchor=home.querySelector('.home-finance-split')||home.querySelector('.home-finance');
+    var wrap=q('homeBlankCardsWrap');
+    if(!wrap){
+      wrap=document.createElement('div');
+      wrap.id='homeBlankCardsWrap';
+      wrap.className='home-blank-cards-wrap';
+      var cards='';
+      for(var i=0;i<7;i++)cards+='<div class="home-blank-card" aria-hidden="true"></div>';
+      wrap.innerHTML='<div class="home-blank-cards-track">'+cards+'</div>';
+    }
+    if(anchor&&anchor.parentNode){
+      if(wrap.parentNode!==anchor.parentNode||wrap.previousElementSibling!==anchor)anchor.parentNode.insertBefore(wrap,anchor.nextSibling);
+    }else if(wrap.parentNode!==home){
+      home.appendChild(wrap);
+    }
   }
-  function run(){addStyle();removeDailyPrize();addBlankCards()}
+  function run(){scheduled=false;addStyle();removeDailyPrize();addBlankCards()}
+  function schedule(){if(scheduled)return;scheduled=true;setTimeout(run,0)}
   function observe(){
     if(window.__vexaHomeBlankCardsObserver)return;
     window.__vexaHomeBlankCardsObserver=true;
-    if(window.MutationObserver)new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+    if(window.MutationObserver)new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){run();observe()});else{run();observe()}
-  setTimeout(run,120);setTimeout(run,500);setTimeout(run,1200);setTimeout(run,2500);
+  setTimeout(run,50);setTimeout(run,180);setTimeout(run,600);setTimeout(run,1400);setTimeout(run,3000);
 })();
 `;
