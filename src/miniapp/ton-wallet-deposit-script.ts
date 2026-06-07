@@ -45,11 +45,45 @@ export const TON_WALLET_DEPOSIT_SCRIPT = `
     });
     return tonConnectReady;
   }
+  function waitForWalletConnection(ui){
+    if(ui&&ui.connected)return Promise.resolve(true);
+    return new Promise(function(resolve,reject){
+      var done=false;
+      var unsub=null;
+      var timer=setTimeout(function(){
+        if(done)return;
+        done=true;
+        try{if(unsub)unsub()}catch(e){}
+        reject(new Error('Wallet connection timed out'));
+      },90000);
+      function finish(ok){
+        if(done)return;
+        done=true;
+        clearTimeout(timer);
+        try{if(unsub)unsub()}catch(e){}
+        ok?resolve(true):reject(new Error('Wallet is not connected'));
+      }
+      try{
+        if(ui&&ui.onStatusChange){
+          unsub=ui.onStatusChange(function(wallet){
+            if(wallet||ui.connected)finish(true);
+          });
+        }
+      }catch(e){}
+      var checks=0;
+      var poll=setInterval(function(){
+        checks++;
+        if(done){clearInterval(poll);return}
+        if(ui&&ui.connected){clearInterval(poll);finish(true)}
+        if(checks>450){clearInterval(poll);finish(false)}
+      },200);
+    });
+  }
   async function chooseTonWallet(ui){
     try{if(ui&&ui.connected&&ui.disconnect)await ui.disconnect()}catch(e){}
-    await new Promise(function(resolve){setTimeout(resolve,120)});
+    await new Promise(function(resolve){setTimeout(resolve,160)});
     await ui.openModal();
-    if(!ui.connected)throw new Error('Wallet is not connected');
+    await waitForWalletConnection(ui);
   }
   async function loadTonUsd(){
     try{
