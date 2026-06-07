@@ -25,20 +25,25 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
   const progress = await listProgress(env, userId, weekStart);
   const profile = await getUserLevel(env, userId);
   const today = currentMondayDay();
-  const missedDay = firstMissedDayBeforeToday(claimedDays, today);
+  const trustedAccess = await hasTrustedDailyRewardsAccess(env, userId);
+  const missedDay = trustedAccess ? null : firstMissedDayBeforeToday(claimedDays, today);
+  const claimableRewards = trustedAccess
+    ? WEEKLY_DAILY_REWARDS.filter((reward) => !claimedDays.has(Number(reward.day))).map((reward) => reward.id)
+    : (missedDay === null && !claimedDays.has(today) ? [rewardForDay(today)?.id].filter(Boolean) : []);
   return {
     ...payload,
     rewards: WEEKLY_DAILY_REWARDS,
     weekStart,
     weekEndsAt: currentWeekEnd(),
     today,
+    trustedAccess,
     claimed: Array.from(claimed),
     claimedDays: Array.from(claimedDays),
     missedDay,
-    lockedUntilNextWeek: missedDay !== null,
+    lockedUntilNextWeek: !trustedAccess && missedDay !== null,
     progress: Object.fromEntries(progress),
     claimable: claimableKeys(payload.days, progress, claimed),
-    claimableRewards: missedDay === null && !claimedDays.has(today) ? [rewardForDay(today)?.id].filter(Boolean) : [],
+    claimableRewards,
     profile,
   };
 }
@@ -118,24 +123,25 @@ export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown
   const rewardId = cleanMissionId(input.rewardId);
   const day = clampDay(input.day);
   const today = currentMondayDay();
-  if (day !== today) throw new Error('Only today reward can be claimed');
   await ensureDailyRewardClaimTables(env);
   await ensureDailyRewardEffectTables(env);
+  const trustedAccess = await hasTrustedDailyRewardsAccess(env, userId);
+  if (!trustedAccess && day !== today) throw new Error('Only today reward can be claimed');
 
   const reward = rewardForDay(day);
   if (!reward || reward.id !== rewardId) throw new Error('Reward is not active for this day');
   const weekStart = currentWeekStart();
   const claimedDays = await listClaimedRewardDays(env, userId, weekStart);
   const missedDay = firstMissedDayBeforeToday(claimedDays, today);
-  if (missedDay !== null) throw new Error('Wait until next week');
-  if (day === 6 && !hasAllPreviousDaysClaimed(claimedDays, 6)) throw new Error('Weekly vault requires all previous 6 days');
+  if (!trustedAccess && missedDay !== null) throw new Error('Wait until next week');
+  if (!trustedAccess && day === 6 && !hasAllPreviousDaysClaimed(claimedDays, 6)) throw new Error('Weekly vault requires all previous 6 days');
 
   const existing = await env.DB.prepare('SELECT id FROM daily_reward_claims WHERE user_id = ? AND week_start = ? AND day = ? AND mission_id = ?')
     .bind(userId, weekStart, day, rewardId)
     .first<{ id: string }>()
     .catch(() => null);
   if (existing?.id) {
-    return { ok: true, alreadyClaimed: true, claimedKey: claimKey(day, rewardId), claimedDay: day, reward, weekStart, profile: await getUserLevel(env, userId) };
+    return { ok: true, alreadyClaimed: true, claimedKey: claimKey(day, rewardId), claimedDay: day, reward, weekStart, trustedAccess, profile: await getUserLevel(env, userId) };
   }
 
   const id = 'dr_' + crypto.randomUUID().replace(/-/g, '').slice(0, 28);
@@ -146,7 +152,7 @@ export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown
   let effect: Record<string, unknown> | null = null;
   let tonBalanceNano: number | null = null;
   if (reward.kind === 'ton') {
-    const controls = await adjustUserTonBalance(env, userId, reward.amountNano || 0, { kind: 'adjustment', title: reward.title, referenceId: id, referenceType: 'daily_reward', metadata: { rewardId, day, weekStart } });
+    const controls = await adjustUserTonBalance(env, userId, reward.amountNano || 0, { kind: 'adjustment', title: reward.title, referenceId: id, referenceType: 'daily_reward', metadata: { rewardId, day, weekStart, trustedAccess } });
     tonBalanceNano = controls.tonBalanceNano;
   } else {
     effect = await grantDailyRewardEffect(env, { userId, weekStart, reward, claimId: id });
@@ -161,6 +167,7 @@ export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown
     effect,
     tonBalanceNano,
     weekStart,
+    trustedAccess,
     profile: await getUserLevel(env, userId),
   };
 }
@@ -324,6 +331,21 @@ function firstMissedDayBeforeToday(claimedDays: Set<number>, today: number): num
 function hasAllPreviousDaysClaimed(claimedDays: Set<number>, day: number): boolean {
   for (let index = 0; index < day; index += 1) if (!claimedDays.has(index)) return false;
   return true;
+}
+
+async function hasTrustedDailyRewardsAccess(env: Env, userId: string): Promise<boolean> {
+  const id = String(userId || '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!id) return false;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_user_access_overrides (
+    user_id TEXT PRIMARY KEY,
+    trusted_access INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run().catch(() => undefined);
+  const row = await env.DB.prepare('SELECT trusted_access FROM admin_user_access_overrides WHERE user_id = ?')
+    .bind(id)
+    .first<{ trusted_access: number | boolean | null }>()
+    .catch(() => null);
+  return row?.trusted_access === 1 || row?.trusted_access === true;
 }
 
 function cleanUserId(value: unknown): string {
