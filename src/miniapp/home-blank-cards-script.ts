@@ -14,7 +14,8 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       '#home .home-blank-cards-wrap{position:relative;margin:18px 0 0;width:100%;overflow:visible!important;box-sizing:border-box;z-index:2}',
       '#home .home-blank-cards-track{display:flex;gap:12px;width:100%;max-width:100%;overflow-x:auto;overflow-y:visible!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-snap-type:x proximity;padding:0 18px 22px;box-sizing:border-box;overscroll-behavior-x:contain}',
       '#home .home-blank-cards-track::-webkit-scrollbar{display:none}',
-      '#home .home-blank-card{flex:0 0 128px;height:164px;border:0!important;outline:0!important;border-radius:28px;background:rgba(255,255,255,.026)!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 16px 42px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px) saturate(1.14)!important;-webkit-backdrop-filter:blur(3px) saturate(1.14)!important;scroll-snap-align:start;box-sizing:border-box;overflow:hidden}',
+      '#home .home-blank-card{position:relative;flex:0 0 128px;height:164px;border:0!important;outline:0!important;border-radius:28px;background:rgba(255,255,255,.026)!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 16px 42px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px) saturate(1.14)!important;-webkit-backdrop-filter:blur(3px) saturate(1.14)!important;scroll-snap-align:start;box-sizing:border-box;overflow:hidden}',
+      '#home .home-blank-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border:0!important;outline:0!important;background:transparent!important}',
       '#home .home-blank-card:before,#home .home-blank-card:after{display:none!important;content:none!important;background:none!important;border:0!important;box-shadow:none!important}'
     ].join('');
   }
@@ -26,6 +27,13 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     });
     document.body.classList.remove('daily-rewards-open','rewards-open');
   }
+  function imageUrl(day){return '/app/api/daily-rewards-day-image/'+day+'?v='+(window.__vexaDailyRewardImageVersion||Date.now())}
+  function refreshImages(){
+    document.querySelectorAll('#home .home-blank-card-img').forEach(function(img){
+      var day=img.getAttribute('data-day');
+      if(day!==null)img.src=imageUrl(day);
+    });
+  }
   function addBlankCards(){
     var home=q('home');
     if(!home)return;
@@ -36,8 +44,10 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       wrap.id='homeBlankCardsWrap';
       wrap.className='home-blank-cards-wrap';
       var cards='';
-      for(var i=0;i<7;i++)cards+='<div class="home-blank-card" aria-hidden="true"></div>';
+      for(var i=0;i<7;i++)cards+='<div class="home-blank-card" role="button" tabindex="0" data-daily-reward-card="'+i+'"><img class="home-blank-card-img" data-day="'+i+'" src="'+imageUrl(i)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\'none\'" onload="this.style.display=\'block\'"/></div>';
       wrap.innerHTML='<div class="home-blank-cards-track">'+cards+'</div>';
+    }else{
+      refreshImages();
     }
     if(anchor&&anchor.parentNode){
       if(wrap.parentNode!==anchor.parentNode||wrap.previousElementSibling!==anchor)anchor.parentNode.insertBefore(wrap,anchor.nextSibling);
