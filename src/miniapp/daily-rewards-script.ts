@@ -29,7 +29,7 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageHtml(day){
-    return '<img class="daily-rewards-card-img" src="/app/api/daily-rewards-day-image/'+day+'.png" alt="" decoding="async"/>';
+    return '<img class="daily-rewards-card-img" src="/app/api/daily-rewards-day-image/'+day+'" alt="" decoding="async"/>';
   }
   function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
