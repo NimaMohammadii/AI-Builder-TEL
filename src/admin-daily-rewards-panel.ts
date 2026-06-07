@@ -23,13 +23,13 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     renderImageForms();
     btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);
     q('dailyRewardsSave').addEventListener('click',save);
-    q('sectionDailyRewards').addEventListener('submit',function(ev){var form=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-image-form]'):null;if(!form)return;ev.preventDefault();var day=Number(form.getAttribute('data-day'));uploadDayImage(form,'/admin/api/upload-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
-    q('sectionDailyRewards').addEventListener('click',function(ev){var del=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-day-image]'):null;if(!del)return;ev.preventDefault();var day=Number(del.getAttribute('data-delete-daily-rewards-day-image'));deleteDayImage('/admin/api/delete-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
+    q('sectionDailyRewards').addEventListener('submit',function(ev){var form=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-image-form]'):null;if(form)ev.preventDefault();},true);
+    q('sectionDailyRewards').addEventListener('click',function(ev){var upload=ev.target&&ev.target.closest?ev.target.closest('[data-upload-daily-rewards-day-image]'):null;if(upload){ev.preventDefault();var uploadDay=Number(upload.getAttribute('data-upload-daily-rewards-day-image'));uploadDayImage(uploadDay,'Day '+(uploadDay+1)+' image');return}var del=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-day-image]'):null;if(!del)return;ev.preventDefault();var day=Number(del.getAttribute('data-delete-daily-rewards-day-image'));deleteDayImage('/admin/api/delete-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
     injectStyle();
   }
   function renderImageForms(){
     var wrap=q('dailyRewardsDayImageForms');if(!wrap)return;
-    wrap.innerHTML=dayNames.map(function(name,index){return '<form data-daily-rewards-image-form="1" data-day="'+index+'"><label>Day '+(index+1)+' · '+name+'</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button><button class="ghost danger" type="button" data-delete-daily-rewards-day-image="'+index+'">Delete</button></form>'}).join('');
+    wrap.innerHTML=dayNames.map(function(name,index){return '<form data-daily-rewards-image-form="1" data-day="'+index+'"><label>Day '+(index+1)+' · '+name+'</label><input data-daily-rewards-day-image-file="'+index+'" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"/><button class="ghost" type="button" data-upload-daily-rewards-day-image="'+index+'">Upload</button><button class="ghost danger" type="button" data-delete-daily-rewards-day-image="'+index+'">Delete</button></form>'}).join('');
   }
   function showPanel(btn){
     document.querySelectorAll('.admin-section').forEach(function(section){section.hidden=true;section.classList.remove('active')});
@@ -45,17 +45,38 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     style.textContent='.daily-rewards-admin-card{margin:8px 0 14px;padding:12px;border-radius:22px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-card h3{margin:0;color:#fff;font-size:14px;font-weight:850}.daily-rewards-admin-card p{margin:5px 0 11px;color:rgba(255,255,255,.52);font-size:10px;line-height:1.35}.daily-rewards-admin-images{display:grid;gap:8px}.daily-rewards-admin-images form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-images label{grid-column:1/-1;display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}.daily-rewards-admin-images input{min-width:0}.daily-rewards-admin-images button{height:36px!important;font-size:11px!important}.daily-rewards-admin-images .danger{color:#ff9b9b!important;border-color:rgba(255,90,90,.35)!important}.daily-rewards-admin-tabs{display:flex;gap:6px;overflow-x:auto;margin:8px 0 14px;padding-bottom:8px;scrollbar-width:none}.daily-rewards-admin-tabs::-webkit-scrollbar{display:none}.daily-rewards-admin-tabs button{flex:0 0 auto;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:#080808;color:#fff;padding:0 11px;font-size:11px;font-weight:800}.daily-rewards-admin-tabs button.active{background:#fff;color:#050505;border-color:#fff}.daily-rewards-admin-editor{display:grid;gap:9px}.daily-rewards-admin-slot{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-slot label{display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.daily-rewards-admin-slot select,.daily-rewards-admin-slot input{width:100%;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:#050505;color:#fff;padding:0 10px;font-size:12px;font-weight:700}.daily-rewards-admin-help{grid-column:1/-1;margin:-1px 0 0;color:rgba(255,255,255,.48);font-size:10px;line-height:1.25}.daily-rewards-admin-help b{color:rgba(255,255,255,.75)}';
     document.head.appendChild(style);
   }
-  async function uploadDayImage(form,url,label){
+  function selectedDayImage(day){return document.querySelector('[data-daily-rewards-day-image-file="'+day+'"]')}
+  function dayImageType(file){
+    var type=String(file&&file.type||'').toLowerCase();
+    if(type==='image/jpg')return 'image/jpeg';
+    if(type)return type;
+    var ext=String(file&&file.name||'').split('.').pop().toLowerCase();
+    if(ext==='jpg'||ext==='jpeg')return 'image/jpeg';
+    if(ext==='png')return 'image/png';
+    if(ext==='webp')return 'image/webp';
+    if(ext==='svg')return 'image/svg+xml';
+    return '';
+  }
+  function dayImageError(error){return 'Upload failed: '+(error&&error.message?error.message:'network error')}
+  async function uploadDayImage(day,label){
     var status=q('dailyRewardsAdminStatus');
+    var input=selectedDayImage(day);
+    if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first.';return}
+    var file=input.files[0];
+    var type=dayImageType(file);
+    if(['image/png','image/jpeg','image/webp','image/svg+xml'].indexOf(type)===-1){if(status)status.textContent='Only PNG, JPG, JPEG, SVG or WebP.';return}
+    if(Number(file.size||0)>5000000){if(status)status.textContent='Image must be under 5MB.';return}
     if(status)status.textContent='Uploading '+label+'...';
     try{
-      var data=new FormData(form);
-      var res=await fetch(url,{method:'POST',credentials:'same-origin',body:data});
-      var json=await res.json();
-      if(!res.ok)throw new Error(json.error||'Could not upload '+label);
+      var data=new FormData();
+      data.append('image',file,file.name||('daily-rewards-day-'+(day+1)));
+      var res=await fetch('/admin/api/upload-daily-rewards-day-image/'+day,{method:'POST',credentials:'include',body:data});
+      var json=await res.json().catch(function(){return{error:'Upload failed: server did not return JSON'}});
+      if(!res.ok)throw new Error(json.error||('Upload failed: HTTP '+res.status));
       if(status)status.textContent=label+' uploaded.';
-      form.reset();
-    }catch(error){if(status)status.textContent=error.message||'Could not upload '+label}
+      input.value='';
+      try{window.VexaAppRefresh&&window.VexaAppRefresh.refreshImages&&window.VexaAppRefresh.refreshImages()}catch(e){}
+    }catch(error){if(status)status.textContent=dayImageError(error)}
   }
   async function deleteDayImage(url,label){
     var status=q('dailyRewardsAdminStatus');

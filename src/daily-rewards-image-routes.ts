@@ -78,9 +78,10 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
     const type = normalizeImageType(value.type, value.name);
     if (!DAILY_REWARDS_IMAGE_TYPES.has(type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400, { 'cache-control': 'no-store' });
     const size = Math.floor(Number(value.size) || 0);
-    if (size > DAILY_REWARDS_MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 5MB.' }, 400, { 'cache-control': 'no-store' });
+    if (size <= 0) return c.json({ error: 'Choose a non-empty image file.' }, 400, { 'cache-control': 'no-store' });
+    if (size > DAILY_REWARDS_MAX_IMAGE_BYTES) return c.json({ error: 'Image must be under 5MB.' }, 413, { 'cache-control': 'no-store' });
     const version = String(Date.now());
-    const body = value.arrayBuffer ? await value.arrayBuffer() : value.stream!();
+    const body = value.stream ? value.stream() : await value.arrayBuffer!();
     await c.env.ASSETS.put(key, body, {
       httpMetadata: { contentType: type },
       customMetadata: { version },
