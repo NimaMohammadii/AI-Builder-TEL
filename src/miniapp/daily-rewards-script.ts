@@ -33,7 +33,9 @@ export const DAILY_REWARDS_SCRIPT = `
     var v=dayImageVersion();
     var primary='/app/api/daily-rewards-day-image/'+day+'.png?v='+v;
     var fallback='/app/api/daily-rewards-day-image/'+day+'?v='+v;
-    return '<img class="daily-rewards-card-img" src="'+primary+'" data-fallback-src="'+fallback+'" alt="" decoding="async" loading="lazy"/>';
+    var cached='';
+    try{cached=localStorage.getItem('vexa:daily-reward-image:'+day)||''}catch(e){}
+    return '<img class="daily-rewards-card-img" src="'+(cached||primary)+'" data-primary-src="'+primary+'" data-fallback-src="'+fallback+'" data-day="'+day+'" alt="" decoding="async" loading="lazy"/>';
   }
   function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
@@ -55,7 +57,7 @@ export const DAILY_REWARDS_SCRIPT = `
   async function claimCard(target){
     if(claiming)return;
     var day=Number(target.getAttribute('data-daily-rewards-day'))||0,rewardId=target.getAttribute('data-daily-reward-id')||'';
-    if(!target.classList.contains('can-claim')){if(target.classList.contains('locked'))toast('Wait until next week');return}
+    if(!target.classList.contains('can-claim'))return;
     var id=userId();if(!id){toast('Telegram user not found');return}
     claiming=true;target.classList.add('claiming');
     try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');await loadRewards(true);renderDays()}
@@ -66,12 +68,19 @@ export const DAILY_REWARDS_SCRIPT = `
   function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}var finance=home.querySelector('.home-finance-split')||home.querySelector('.home-finance');var deposit=q('depositSheet');if(finance&&finance.parentNode){if(mount.parentNode!==finance.parentNode||mount.previousElementSibling!==finance)finance.parentNode.insertBefore(mount,finance.nextSibling)}else if(deposit&&deposit.parentNode){if(mount.parentNode!==deposit.parentNode||mount.nextElementSibling!==deposit)deposit.parentNode.insertBefore(mount,deposit)}else if(mount.parentNode!==home)home.appendChild(mount);return mount}
   function refresh(force){renderDays();loadRewards(!!force).then(renderDays)}
   function mount(){if(!ensureMount())return;refresh(true)}
+  document.addEventListener('load',function(ev){
+    var target=ev.target;
+    if(!target||!target.classList||!target.classList.contains('daily-rewards-card-img'))return;
+    var day=target.getAttribute('data-day')||'';
+    if(day)try{localStorage.setItem('vexa:daily-reward-image:'+day,target.currentSrc||target.src)}catch(e){}
+  },true);
   document.addEventListener('error',function(ev){
     var target=ev.target;
     if(!target||!target.classList||!target.classList.contains('daily-rewards-card-img'))return;
+    var primary=target.getAttribute('data-primary-src')||'';
     var fallback=target.getAttribute('data-fallback-src')||'';
+    if(primary&&target.src.indexOf(primary)===-1&&!target.getAttribute('data-tried-primary')){target.setAttribute('data-tried-primary','1');target.src=primary;return}
     if(fallback&&!target.getAttribute('data-tried-fallback')){target.setAttribute('data-tried-fallback','1');target.src=fallback;return}
-    target.style.display='none';
   },true);
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-day]'):null;if(!target)return;claimCard(target)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true)});
