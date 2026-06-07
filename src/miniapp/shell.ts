@@ -55,6 +55,7 @@ import { CONNECT_GROUPS_USAGE_SCRIPT } from './connect-groups-usage-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { TOP_PLAYERS_HOME_CARD_SCRIPT } from './top-players-home-card-script';
+import { HOME_BLANK_CARDS_SCRIPT } from './home-blank-cards-script';
 import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
@@ -195,6 +196,7 @@ const SCRIPTS = [
   DEPOSIT_ENHANCEMENTS_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
   TOP_PLAYERS_HOME_CARD_SCRIPT,
+  HOME_BLANK_CARDS_SCRIPT,
   PLAY_ZONE_IMAGE_REFRESH_SCRIPT,
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
   PLAY_ZONE_VISIBILITY_SCRIPT,
