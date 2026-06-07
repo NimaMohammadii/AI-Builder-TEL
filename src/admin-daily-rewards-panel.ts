@@ -12,20 +12,24 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     btn.className='menu-item';
     btn.type='button';
     btn.dataset.section='DailyRewards';
-    btn.innerHTML='<strong>Daily Rewards</strong><span>Missions</span>';
+    btn.innerHTML='<strong>Daily Rewards</strong><span>Prizes & Missions</span>';
     menu.appendChild(btn);
     var section=document.createElement('section');
     section.id='sectionDailyRewards';
     section.className='admin-section';
     section.hidden=true;
-    section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Choose 6 missions for each day and set custom XP.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div class="daily-rewards-admin-images"><form id="dailyRewardsFutureImageForm"><label>Future days image</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button><button class="ghost danger" type="button" data-delete-daily-rewards-image="future">Delete</button></form><form id="dailyRewardsTodayImageForm"><label>Today image</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button><button class="ghost danger" type="button" data-delete-daily-rewards-image="today">Delete</button></form></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
+    section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Upload one prize image for each of the 7 daily cards, then choose 6 missions for each day.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div class="daily-rewards-admin-card"><h3>Daily Prize card images</h3><p>Each row controls the image shown on that day card in Home → Daily Prize.</p><div id="dailyRewardsDayImageForms" class="daily-rewards-admin-images"></div></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
     sections.appendChild(section);
+    renderImageForms();
     btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);
     q('dailyRewardsSave').addEventListener('click',save);
-    q('dailyRewardsFutureImageForm').addEventListener('submit',function(ev){ev.preventDefault();uploadDayImage(this,'/admin/api/upload-daily-rewards-day-future-image','Future days image')});
-    q('dailyRewardsTodayImageForm').addEventListener('submit',function(ev){ev.preventDefault();uploadDayImage(this,'/admin/api/upload-daily-rewards-day-today-image','Today image')});
-    q('sectionDailyRewards').addEventListener('click',function(ev){var btn=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-image]'):null;if(!btn)return;ev.preventDefault();var kind=btn.getAttribute('data-delete-daily-rewards-image');deleteDayImage(kind==='today'?'/admin/api/delete-daily-rewards-day-today-image':'/admin/api/delete-daily-rewards-day-future-image',kind==='today'?'Today image':'Future days image')},true);
+    q('sectionDailyRewards').addEventListener('submit',function(ev){var form=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-image-form]'):null;if(!form)return;ev.preventDefault();var day=Number(form.getAttribute('data-day'));uploadDayImage(form,'/admin/api/upload-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
+    q('sectionDailyRewards').addEventListener('click',function(ev){var del=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-day-image]'):null;if(!del)return;ev.preventDefault();var day=Number(del.getAttribute('data-delete-daily-rewards-day-image'));deleteDayImage('/admin/api/delete-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
     injectStyle();
+  }
+  function renderImageForms(){
+    var wrap=q('dailyRewardsDayImageForms');if(!wrap)return;
+    wrap.innerHTML=dayNames.map(function(name,index){return '<form data-daily-rewards-image-form="1" data-day="'+index+'"><label>Day '+(index+1)+' · '+name+'</label><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"/><button class="ghost" type="submit">Upload</button><button class="ghost danger" type="button" data-delete-daily-rewards-day-image="'+index+'">Delete</button></form>'}).join('');
   }
   function showPanel(btn){
     document.querySelectorAll('.admin-section').forEach(function(section){section.hidden=true;section.classList.remove('active')});
@@ -38,7 +42,7 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     if(q('dailyRewardsAdminStyle'))return;
     var style=document.createElement('style');
     style.id='dailyRewardsAdminStyle';
-    style.textContent='.daily-rewards-admin-images{display:grid;gap:8px;margin:8px 0 14px}.daily-rewards-admin-images form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-images label{grid-column:1/-1;display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}.daily-rewards-admin-images input{min-width:0}.daily-rewards-admin-images button{height:36px!important;font-size:11px!important}.daily-rewards-admin-images .danger{color:#ff9b9b!important;border-color:rgba(255,90,90,.35)!important}.daily-rewards-admin-tabs{display:flex;gap:6px;overflow-x:auto;margin:8px 0 14px;padding-bottom:8px;scrollbar-width:none}.daily-rewards-admin-tabs::-webkit-scrollbar{display:none}.daily-rewards-admin-tabs button{flex:0 0 auto;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:#080808;color:#fff;padding:0 11px;font-size:11px;font-weight:800}.daily-rewards-admin-tabs button.active{background:#fff;color:#050505;border-color:#fff}.daily-rewards-admin-editor{display:grid;gap:9px}.daily-rewards-admin-slot{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-slot label{display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.daily-rewards-admin-slot select,.daily-rewards-admin-slot input{width:100%;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:#050505;color:#fff;padding:0 10px;font-size:12px;font-weight:700}.daily-rewards-admin-help{grid-column:1/-1;margin:-1px 0 0;color:rgba(255,255,255,.48);font-size:10px;line-height:1.25}.daily-rewards-admin-help b{color:rgba(255,255,255,.75)}';
+    style.textContent='.daily-rewards-admin-card{margin:8px 0 14px;padding:12px;border-radius:22px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-card h3{margin:0;color:#fff;font-size:14px;font-weight:850}.daily-rewards-admin-card p{margin:5px 0 11px;color:rgba(255,255,255,.52);font-size:10px;line-height:1.35}.daily-rewards-admin-images{display:grid;gap:8px}.daily-rewards-admin-images form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-images label{grid-column:1/-1;display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}.daily-rewards-admin-images input{min-width:0}.daily-rewards-admin-images button{height:36px!important;font-size:11px!important}.daily-rewards-admin-images .danger{color:#ff9b9b!important;border-color:rgba(255,90,90,.35)!important}.daily-rewards-admin-tabs{display:flex;gap:6px;overflow-x:auto;margin:8px 0 14px;padding-bottom:8px;scrollbar-width:none}.daily-rewards-admin-tabs::-webkit-scrollbar{display:none}.daily-rewards-admin-tabs button{flex:0 0 auto;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:#080808;color:#fff;padding:0 11px;font-size:11px;font-weight:800}.daily-rewards-admin-tabs button.active{background:#fff;color:#050505;border-color:#fff}.daily-rewards-admin-editor{display:grid;gap:9px}.daily-rewards-admin-slot{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.daily-rewards-admin-slot label{display:block;font-size:9px;font-weight:850;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.daily-rewards-admin-slot select,.daily-rewards-admin-slot input{width:100%;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:#050505;color:#fff;padding:0 10px;font-size:12px;font-weight:700}.daily-rewards-admin-help{grid-column:1/-1;margin:-1px 0 0;color:rgba(255,255,255,.48);font-size:10px;line-height:1.25}.daily-rewards-admin-help b{color:rgba(255,255,255,.75)}';
     document.head.appendChild(style);
   }
   async function uploadDayImage(form,url,label){
@@ -84,7 +88,7 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
       var b=document.createElement('button');
       b.type='button';
       b.className=index===state.day?'active':'';
-      b.textContent=name.slice(0,3);
+      b.textContent='Day '+(index+1);
       b.onclick=function(){state.day=index;renderTabs();renderEditor()};
       wrap.appendChild(b);
     });
@@ -108,7 +112,7 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
       var row=el('div','daily-rewards-admin-slot');
       var left=el('div');
       var right=el('div');
-      left.innerHTML='<label>Mission '+(i+1)+'</label>';
+      left.innerHTML='<label>Day '+(state.day+1)+' mission '+(i+1)+'</label>';
       var select=document.createElement('select');
       select.dataset.index=String(i);
       state.definitions.forEach(function(item){
