@@ -30,8 +30,10 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageHtml(day){
-    var src='/app/api/daily-rewards-day-image/'+day+'.png?v='+dayImageVersion();
-    return '<img class="daily-rewards-card-img" src="'+src+'" alt="" decoding="async" loading="lazy"/>';
+    var v=dayImageVersion();
+    var primary='/app/api/daily-rewards-day-image/'+day+'.png?v='+v;
+    var fallback='/app/api/daily-rewards-day-image/'+day+'?v='+v;
+    return '<img class="daily-rewards-card-img" src="'+primary+'" data-fallback-src="'+fallback+'" alt="" decoding="async" loading="lazy"/>';
   }
   function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
@@ -64,7 +66,13 @@ export const DAILY_REWARDS_SCRIPT = `
   function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}var finance=home.querySelector('.home-finance-split')||home.querySelector('.home-finance');var deposit=q('depositSheet');if(finance&&finance.parentNode){if(mount.parentNode!==finance.parentNode||mount.previousElementSibling!==finance)finance.parentNode.insertBefore(mount,finance.nextSibling)}else if(deposit&&deposit.parentNode){if(mount.parentNode!==deposit.parentNode||mount.nextElementSibling!==deposit)deposit.parentNode.insertBefore(mount,deposit)}else if(mount.parentNode!==home)home.appendChild(mount);return mount}
   function refresh(force){renderDays();loadRewards(!!force).then(renderDays)}
   function mount(){if(!ensureMount())return;refresh(true)}
-  document.addEventListener('error',function(ev){var target=ev.target;if(target&&target.classList&&target.classList.contains('daily-rewards-card-img'))target.style.display='none'},true);
+  document.addEventListener('error',function(ev){
+    var target=ev.target;
+    if(!target||!target.classList||!target.classList.contains('daily-rewards-card-img'))return;
+    var fallback=target.getAttribute('data-fallback-src')||'';
+    if(fallback&&!target.getAttribute('data-tried-fallback')){target.setAttribute('data-tried-fallback','1');target.src=fallback;return}
+    target.style.display='none';
+  },true);
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-day]'):null;if(!target)return;claimCard(target)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true)});
   window.addEventListener('focus',function(){refresh(true)});
