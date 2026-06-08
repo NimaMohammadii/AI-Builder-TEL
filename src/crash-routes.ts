@@ -27,7 +27,7 @@ app.get('/app/api/crash-live', async (c) => {
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
   const nextReveal = await nextVirtualRevealMs(c.env.DB, roundId, now);
   const nextSyncMs = nextLiveSyncMs(state, bets, nextReveal, now);
-  return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),state,nextSyncMs,bets},200,{'cache-control':CACHE_NONE});
+  return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),state,nextRevealAtMs:nextReveal||0,nextSyncMs,bets},200,{'cache-control':CACHE_NONE});
 });
 
 app.post('/app/api/crash-live/bet', async (c) => {
@@ -69,7 +69,7 @@ async function nextVirtualRevealMs(db:D1Database, roundId:number, now:number){
 }
 function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:ReturnType<typeof json>[], nextReveal = 0, now = Date.now()){
   if(!state.running){
-    if(nextReveal > now)return Math.max(140, Math.min(900, nextReveal - now + 40));
+    if(nextReveal > now)return Math.max(140, nextReveal - now + 40);
     return Math.max(300, state.nextInMs + 80);
   }
   let target = 0;
@@ -80,7 +80,7 @@ function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:Return
     if(next <= state.current && next < state.stop)overdue = true;
     if(next > state.current && next < state.stop && (!target || next < target))target = next;
   }
-  if(overdue)return 180;
+  if(overdue)return 90;
   if(target)return getCrashTargetDelayMs(state,target);
   return Math.max(180, state.runMs - state.local + 80);
 }
