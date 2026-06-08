@@ -14,7 +14,7 @@ export const DAILY_REWARDS_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function currentTgUser(){var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}
   function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
+  function esc(v){return String(v||'').replace(/[&<>\"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]||ch})}
   function germanDateParts(date){try{var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'}).formatToParts(date);var out={year:'',month:'',day:'',weekday:''};parts.forEach(function(p){if(p.type in out)out[p.type]=p.value});return out}catch(e){var d=new Date(date.getTime()+60*60*1000);return {year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),weekday:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()]}}
   }
   function mondayIndex(date){var w=germanDateParts(date).weekday;return ({Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6})[w]??0}
@@ -62,8 +62,9 @@ export const DAILY_REWARDS_SCRIPT = `
     var claimed=claimedDays(),missed=trusted?null:(rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null);
     var reward=rewardForDay(today),state=trusted&&!claimed.has(today)?'today':statusFor(today,today,claimed,missed,startDay);
     var canClaim=claimableRewards().has(String(reward&&reward.id));
+    if(!canClaim){wrap.innerHTML='';return}
     var src=await cachedImageSrc(today);
-    wrap.innerHTML='<button class="daily-rewards-drop-banner '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+today+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(today+1)))+'">'+imageHtml(src)+'</button>'
+    wrap.innerHTML='<button class="daily-rewards-drop-banner '+esc(state)+' can-claim" type="button" data-daily-rewards-day="'+today+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" aria-label="'+esc((reward&&reward.title)||('Daily reward '+(today+1)))+'">'+imageHtml(src)+'</button>'
   }
   async function loadRewards(force){
     if((rewardsLoaded&&!force)||rewardsLoading)return rewardsData;
