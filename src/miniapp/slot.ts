@@ -2,7 +2,7 @@ export const SLOT_SECTION = `
 <section id="slot" class="view slot-view" style="overflow-x:hidden;max-width:100vw;transform:translateY(-10px)">
   <style>
     #slot .slot-rewards-toggle{position:absolute;opacity:0;pointer-events:none}
-    #slot .slot-rewards-card{position:absolute;left:50%;top:52px;z-index:38;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 14px;border-radius:18px;border:0!important;background:rgba(255,255,255,.035);color:rgba(255,255,255,.92);font-size:13px;font-weight:950;letter-spacing:-.02em;box-shadow:none!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease;transform:translateX(-50%)}
+    #slot .slot-rewards-card{position:absolute;left:50%;top:30px;z-index:38;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 14px;border-radius:18px;border:0!important;background:rgba(255,255,255,.035);color:rgba(255,255,255,.92);font-size:13px;font-weight:950;letter-spacing:-.02em;box-shadow:none!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease;transform:translateX(-50%)}
     #slot .slot-rewards-card:before{content:'✦';font-size:12px;color:rgba(234,190,126,.95);filter:drop-shadow(0 0 8px rgba(234,190,126,.42))}
     #slot .slot-rewards-card:active{transform:translateX(-50%) scale(.96)}
     #slot .slot-rewards-modal{position:fixed;inset:0;z-index:2147482900;display:grid;place-items:center;padding:22px;opacity:0;pointer-events:none;transition:opacity .28s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
@@ -71,7 +71,7 @@ export const SLOT_SECTION = `
   <div class="slot-live open" id="slotLive" style="margin-top:-18px!important">
     <div class="slot-live-head">
       <span class="slot-live-title">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
         <span>Live Bets</span>
       </span>
       <div class="slot-live-head-actions">
