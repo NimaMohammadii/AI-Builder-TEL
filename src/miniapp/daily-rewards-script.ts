@@ -1,7 +1,5 @@
 export const DAILY_REWARDS_SCRIPT = `
 (function(){
-  var tg=window.Telegram&&window.Telegram.WebApp;
-  var tgUser=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var rewardsLoaded=false,rewardsLoading=false,rewardsData=null,claiming=false;
   var fallbackRewards=[
     {id:'day1-ton-starter',day:0,title:'TON Starter'},
@@ -13,16 +11,18 @@ export const DAILY_REWARDS_SCRIPT = `
     {id:'day7-weekly-mega-ton',day:6,title:'Weekly Mega TON'}
   ];
   function q(id){return document.getElementById(id)}
-  function userId(){return String(tgUser.id||localStorage.getItem('ownerId')||'').trim()}
+  function currentTgUser(){var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}
+  function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
   function mondayIndex(date){var js=date.getDay();return js===0?6:js-1}
   function rewards(){return rewardsData&&Array.isArray(rewardsData.rewards)?rewardsData.rewards:fallbackRewards}
   function rewardForDay(day){var list=rewards();for(var i=0;i<list.length;i++)if(Number(list[i].day)===Number(day))return list[i];return fallbackRewards[day]}
   function claimedDays(){return new Set((rewardsData&&Array.isArray(rewardsData.claimedDays)?rewardsData.claimedDays:[]).map(function(v){return Number(v)}))}
   function claimableRewards(){return new Set((rewardsData&&Array.isArray(rewardsData.claimableRewards)?rewardsData.claimableRewards:[]).map(String))}
-  function toast(msg){try{if(tg&&tg.showPopup)tg.showPopup({message:String(msg||'')});else if(tg&&tg.showAlert)tg.showAlert(String(msg||''));else console.log(msg)}catch(e){console.log(msg)}}
-  function statusFor(day,today,claimed,missed){
+  function toast(msg){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.showPopup)tg.showPopup({message:String(msg||'')});else if(tg&&tg.showAlert)tg.showAlert(String(msg||''));else console.log(msg)}catch(e){console.log(msg)}}
+  function statusFor(day,today,claimed,missed,startDay){
     if(claimed.has(day))return 'claimed';
+    if(day<Number(startDay||0))return 'locked';
     if(missed!==null&&day>=missed)return 'locked';
     if(day<today)return 'locked';
     if(day===today)return 'today';
@@ -35,11 +35,12 @@ export const DAILY_REWARDS_SCRIPT = `
     var wrap=q('dailyRewardsDays');if(!wrap)return;
     var today=Number(rewardsData&&rewardsData.today);if(!Number.isFinite(today))today=mondayIndex(new Date());
     var trusted=!!(rewardsData&&rewardsData.trustedAccess);
+    var startDay=Number(rewardsData&&rewardsData.visitStartDay);if(!Number.isFinite(startDay))startDay=0;
     var claimed=claimedDays(),missed=trusted?null:(rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null);
     wrap.innerHTML=[0,1,2,3,4,5,6].map(function(i){
-      var reward=rewardForDay(i),state=trusted&&!claimed.has(i)?'today':statusFor(i,today,claimed,missed);
+      var reward=rewardForDay(i),state=trusted&&!claimed.has(i)?'today':statusFor(i,today,claimed,missed,startDay);
       var canClaim=claimableRewards().has(String(reward&&reward.id));
-      return '<button class="daily-rewards-day '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+i+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(i+1)))+'">'+imageHtml(i)+'</button>';
+      return '<button class="daily-rewards-day '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+i+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(i+1)))+'">'+imageHtml(i)+'</button>';
     }).join('')
   }
   async function loadRewards(force){
@@ -52,7 +53,7 @@ export const DAILY_REWARDS_SCRIPT = `
   async function claimCard(target){
     if(claiming)return;
     var day=Number(target.getAttribute('data-daily-rewards-day'))||0,rewardId=target.getAttribute('data-daily-reward-id')||'';
-    if(!target.classList.contains('can-claim'))return;
+    if(!target.classList.contains('can-claim')){var state=target.getAttribute('data-daily-reward-state')||'';if(state==='claimed')toast('Reward already claimed');else toast('This reward is locked');return}
     var id=userId();if(!id){toast('Telegram user not found');return}
     claiming=true;target.classList.add('claiming');
     try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');await loadRewards(true);renderDays()}
