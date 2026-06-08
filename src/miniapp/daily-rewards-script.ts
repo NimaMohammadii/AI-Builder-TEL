@@ -30,19 +30,24 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageUrl(day){return '/app/api/daily-rewards-day-image/'+day}
+  async function imageVersion(day){
+    try{var res=await fetch('/app/api/daily-rewards-day-image-version/'+day,{credentials:'same-origin',cache:'no-store'});var json=await res.json().catch(function(){return null});return String((json&&json.version)||'missing')}catch(e){return 'fallback'}
+  }
   async function cachedImageSrc(day){
-    var url=imageUrl(day);
-    if(rewardImageObjectUrls[day])return rewardImageObjectUrls[day];
-    if(!('caches' in window)||!window.URL||!URL.createObjectURL)return url;
+    var version=await imageVersion(day);
+    var versionedUrl=imageUrl(day)+'?v='+encodeURIComponent(version);
+    var cacheKey=String(day)+':'+version;
+    if(rewardImageObjectUrls[cacheKey])return rewardImageObjectUrls[cacheKey];
+    if(!('caches' in window)||!window.URL||!URL.createObjectURL)return versionedUrl;
     try{
-      var cache=await caches.open('vexa-daily-reward-images-v1');
-      var req=new Request(url,{credentials:'same-origin'});
+      var cache=await caches.open('vexa-daily-reward-images-v2');
+      var req=new Request(versionedUrl,{credentials:'same-origin'});
       var cached=await cache.match(req);
-      if(cached){var cachedBlob=await cached.blob();rewardImageObjectUrls[day]=URL.createObjectURL(cachedBlob);return rewardImageObjectUrls[day]}
+      if(cached){var cachedBlob=await cached.blob();rewardImageObjectUrls[cacheKey]=URL.createObjectURL(cachedBlob);return rewardImageObjectUrls[cacheKey]}
       var res=await fetch(req,{cache:'force-cache'});
-      if(res&&res.ok){await cache.put(req,res.clone());var blob=await res.blob();rewardImageObjectUrls[day]=URL.createObjectURL(blob);return rewardImageObjectUrls[day]}
+      if(res&&res.ok){await cache.put(req,res.clone());var blob=await res.blob();rewardImageObjectUrls[cacheKey]=URL.createObjectURL(blob);return rewardImageObjectUrls[cacheKey]}
     }catch(e){}
-    return url;
+    return versionedUrl;
   }
   function imageHtml(src){
     return '<span class="daily-rewards-banner-frame"><img class="daily-rewards-banner-img" src="'+esc(src)+'" alt="" decoding="async"/></span>';
