@@ -1,6 +1,7 @@
 export const DAILY_REWARDS_SCRIPT = `
 (function(){
   var rewardsLoaded=false,rewardsLoading=false,rewardsData=null,claiming=false;
+  var rewardImageObjectUrls={};
   var fallbackRewards=[
     {id:'day1-ton-starter',day:0,title:'TON Starter'},
     {id:'day2-loss-cashback',day:1,title:'Loss Cashback'},
@@ -28,10 +29,25 @@ export const DAILY_REWARDS_SCRIPT = `
     if(day===today)return 'today';
     return 'locked';
   }
-  function imageHtml(day){
-    return '<span class="daily-rewards-banner-frame"><img class="daily-rewards-banner-img" src="/app/api/daily-rewards-day-image/'+day+'" alt="" decoding="async"/></span>';
+  function imageUrl(day){return '/app/api/daily-rewards-day-image/'+day}
+  async function cachedImageSrc(day){
+    var url=imageUrl(day);
+    if(rewardImageObjectUrls[day])return rewardImageObjectUrls[day];
+    if(!('caches' in window)||!window.URL||!URL.createObjectURL)return url;
+    try{
+      var cache=await caches.open('vexa-daily-reward-images-v1');
+      var req=new Request(url,{credentials:'same-origin'});
+      var cached=await cache.match(req);
+      if(cached){var cachedBlob=await cached.blob();rewardImageObjectUrls[day]=URL.createObjectURL(cachedBlob);return rewardImageObjectUrls[day]}
+      var res=await fetch(req,{cache:'force-cache'});
+      if(res&&res.ok){await cache.put(req,res.clone());var blob=await res.blob();rewardImageObjectUrls[day]=URL.createObjectURL(blob);return rewardImageObjectUrls[day]}
+    }catch(e){}
+    return url;
   }
-  function renderDays(){
+  function imageHtml(src){
+    return '<span class="daily-rewards-banner-frame"><img class="daily-rewards-banner-img" src="'+esc(src)+'" alt="" decoding="async"/></span>';
+  }
+  async function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
     var today=Number(rewardsData&&rewardsData.today);if(!Number.isFinite(today))today=mondayIndex(new Date());
     var trusted=!!(rewardsData&&rewardsData.trustedAccess);
@@ -39,7 +55,8 @@ export const DAILY_REWARDS_SCRIPT = `
     var claimed=claimedDays(),missed=trusted?null:(rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null);
     var reward=rewardForDay(today),state=trusted&&!claimed.has(today)?'today':statusFor(today,today,claimed,missed,startDay);
     var canClaim=claimableRewards().has(String(reward&&reward.id));
-    wrap.innerHTML='<button class="daily-rewards-drop-banner '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+today+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(today+1)))+'">'+imageHtml(today)+'</button>'
+    var src=await cachedImageSrc(today);
+    wrap.innerHTML='<button class="daily-rewards-drop-banner '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+today+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(today+1)))+'">'+imageHtml(src)+'</button>'
   }
   async function loadRewards(force){
     if((rewardsLoaded&&!force)||rewardsLoading)return rewardsData;
@@ -60,7 +77,7 @@ export const DAILY_REWARDS_SCRIPT = `
   }
   function removeLegacyRewards(){document.body.classList.remove('daily-rewards-open','rewards-open');document.querySelectorAll('#dailyRewardsEntry,#dailyRewardsPage,#rewardsPage,#home .home-daily-rewards-entry,#home .home-rewards-entry,#home [data-action="open-daily-rewards"],#home [data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}})}
   function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}if(mount.parentNode!==home)home.appendChild(mount);return mount}
-  function mount(){if(!ensureMount())return;loadRewards(true).then(renderDays)}
+  function mount(){if(!ensureMount())return;loadRewards(true).then(function(){return renderDays()})}
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-day]'):null;if(!target)return;claimCard(target)},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
 })();
