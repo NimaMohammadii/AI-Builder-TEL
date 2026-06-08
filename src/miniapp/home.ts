@@ -26,6 +26,8 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
   </section>
 
+  <section class="home-empty-glass-card" aria-hidden="true"></section>
+
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-deposit"></div>
