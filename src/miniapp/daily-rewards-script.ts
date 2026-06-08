@@ -15,7 +15,9 @@ export const DAILY_REWARDS_SCRIPT = `
   function currentTgUser(){var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}
   function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
-  function mondayIndex(date){var js=date.getDay();return js===0?6:js-1}
+  function germanDateParts(date){try{var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'}).formatToParts(date);var out={year:'',month:'',day:'',weekday:''};parts.forEach(function(p){if(p.type in out)out[p.type]=p.value});return out}catch(e){var d=new Date(date.getTime()+60*60*1000);return {year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),weekday:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()]}}
+  }
+  function mondayIndex(date){var w=germanDateParts(date).weekday;return ({Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6})[w]??0}
   function rewards(){return rewardsData&&Array.isArray(rewardsData.rewards)?rewardsData.rewards:fallbackRewards}
   function rewardForDay(day){var list=rewards();for(var i=0;i<list.length;i++)if(Number(list[i].day)===Number(day))return list[i];return fallbackRewards[day]}
   function claimedDays(){return new Set((rewardsData&&Array.isArray(rewardsData.claimedDays)?rewardsData.claimedDays:[]).map(function(v){return Number(v)}))}
@@ -76,7 +78,7 @@ export const DAILY_REWARDS_SCRIPT = `
     if(!target.classList.contains('can-claim')){var state=target.getAttribute('data-daily-reward-state')||'';if(state==='claimed')toast('Reward already claimed');else toast('This reward is locked');return}
     var id=userId();if(!id){toast('Telegram user not found');return}
     claiming=true;target.classList.add('claiming');
-    try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');target.classList.add('claimed');target.classList.remove('can-claim')}
+    try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);target.classList.remove('claiming','can-claim');target.classList.add('claimed','collecting');setTimeout(function(){try{target.remove()}catch(e){}},560)}
     catch(e){toast(e&&e.message?e.message:'Could not claim reward')}
     finally{claiming=false;target.classList.remove('claiming')}
   }
