@@ -7,7 +7,7 @@ const DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY = 'daily-rewards/day-future-image';
 const DAILY_REWARDS_DAY_TODAY_IMAGE_KEY = 'daily-rewards/day-today-image';
 const DAILY_REWARDS_DAY_IMAGE_KEY_PREFIX = 'daily-rewards/day-image-';
 const DAILY_REWARDS_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
+const DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const DAILY_REWARDS_EMPTY_CACHE_CONTROL = 'public, max-age=60';
 const DAILY_REWARDS_MAX_IMAGE_BYTES = 5_000_000;
 const DAILY_REWARDS_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
