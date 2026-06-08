@@ -29,6 +29,12 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
     if (day === null) return new Response('', { status: 404, headers: { 'cache-control': DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
     return imageFromR2(c.env, dayImageKey(day), DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL);
   });
+  app.get('/app/api/daily-rewards-day-image-version/:day', async (c) => {
+    const day = dayFromParam(c.req.param('day'));
+    if (day === null) return c.json({ version: 'missing' }, 404, { 'cache-control': 'no-store' });
+    const version = await imageVersionFromR2(c.env, dayImageKey(day));
+    return c.json({ version }, 200, { 'cache-control': 'no-store' });
+  });
 
   app.post('/admin/api/upload-daily-rewards-hero-image', async (c) => uploadImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, '/app/api/daily-rewards-hero-image.png', 'Daily Rewards image'));
   app.post('/admin/api/upload-daily-rewards-bottom-image', async (c) => uploadImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, '/app/api/daily-rewards-bottom-image.png', 'Daily Rewards bottom image'));
@@ -60,6 +66,12 @@ function dayFromParam(value: string | undefined): number | null {
   return day >= 0 && day <= 6 ? day : null;
 }
 
+async function imageVersionFromR2(env: Env, key: string): Promise<string> {
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) return 'missing';
+  return String(object.customMetadata?.version || object.uploaded?.getTime?.() || Date.now());
+}
+
 async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_IMAGE_CACHE_CONTROL): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('', { status: 404, headers: { 'cache-control': cacheControl === DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL ? DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL : DAILY_REWARDS_EMPTY_CACHE_CONTROL } });
@@ -88,7 +100,7 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
       httpMetadata: { contentType: type },
       customMetadata: { version },
     });
-    return c.json({ ok: true, label, size, type, url: `${publicUrl}?v=${version}` }, 200, { 'cache-control': 'no-store' });
+    return c.json({ ok: true, label, size, type, version, url: `${publicUrl}?v=${version}` }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : `Could not upload ${label}` }, 400, { 'cache-control': 'no-store' });
   }
