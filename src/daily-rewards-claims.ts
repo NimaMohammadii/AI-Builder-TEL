@@ -36,6 +36,7 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
     rewards: WEEKLY_DAILY_REWARDS,
     weekStart,
     weekEndsAt: currentWeekEnd(),
+    timezone: 'Europe/Berlin',
     today,
     trustedAccess,
     visitStartDay,
@@ -337,17 +338,31 @@ function claimKey(day: unknown, missionId: unknown): string {
   return `${clampDay(day)}:${cleanMissionId(missionId)}`;
 }
 
+function berlinDateParts(date = new Date()): { year: string; month: string; day: string; weekday: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  }).formatToParts(date);
+  const out: { year: string; month: string; day: string; weekday: string } = { year: '', month: '', day: '', weekday: '' };
+  for (const part of parts) if (part.type in out) out[part.type as keyof typeof out] = part.value;
+  return out;
+}
+
 function currentWeekStart(): string {
-  const date = new Date();
-  const utc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = utc.getUTCDay() === 0 ? 6 : utc.getUTCDay() - 1;
+  const parts = berlinDateParts();
+  const utc = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+  const day = currentMondayDay();
   utc.setUTCDate(utc.getUTCDate() - day);
   return utc.toISOString().slice(0, 10);
 }
 
 function currentMondayDay(): number {
-  const day = new Date().getUTCDay();
-  return day === 0 ? 6 : day - 1;
+  const weekday = berlinDateParts().weekday;
+  const table: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+  return table[weekday] ?? 0;
 }
 
 function currentWeekEnd(): string {
