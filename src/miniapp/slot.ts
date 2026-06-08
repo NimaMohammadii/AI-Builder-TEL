@@ -17,16 +17,13 @@ export const SLOT_SECTION = `
 
   </div>
 
-  <div class="slot-control-panel" style="margin-top:-220px;overflow:hidden;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important;clip-path:inset(18px 0 0 0)">
-    <div class="slot-controls slot-image-controls" style="width:88%;gap:2px;overflow:hidden">
-      <button id="slotSpinButton" class="slot-image-control slot-spin-button" type="button" aria-label="Start" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important">
+  <div class="slot-control-panel" style="margin-top:-220px;overflow:visible;max-width:100vw;background:transparent!important;border:0!important;box-shadow:none!important;clip-path:inset(18px 0 0 0)">
+    <div class="slot-controls slot-image-controls" style="width:62%;gap:0;overflow:visible;display:flex;justify-content:center;align-items:center">
+      <button id="slotSpinButton" class="slot-image-control slot-spin-button" type="button" aria-label="Spin 1 TON" style="height:170px;width:100%;max-width:270px;overflow:visible;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important;margin:0 auto">
         <img id="slotSpinButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
-        <span class="slot-control-fallback">Start</span>
+        <span class="slot-control-fallback">Spin</span>
       </button>
-      <label class="slot-image-control slot-input-control" aria-label="Amount" style="height:150px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:24px!important;transform:translateX(-6px)">
-        <img id="slotInputButtonImage" class="slot-control-image" alt="" aria-hidden="true" style="inset:0;width:100%;height:100%;border:0!important;box-shadow:none!important;background:transparent!important"/>
-        <input id="slotAmount" inputmode="decimal" pattern="[0-9.]*" value="0.01" style="font-size:22px"/>
-      </label>
+      <input id="slotAmount" type="hidden" value="1" aria-hidden="true"/>
     </div>
   </div>
 
