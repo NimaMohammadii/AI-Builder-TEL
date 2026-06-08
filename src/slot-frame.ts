@@ -7,6 +7,8 @@ const CONTROL_PREFIX = 'slot-control/';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const DICE_ASSET_PREFIX = 'dice-asset/';
 const TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const SLOT_METADATA_CACHE = 'public, max-age=300, stale-while-revalidate=86400';
+
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
 
 const SLOT_SYMBOLS = [
@@ -200,7 +202,7 @@ async function slotSymbolResponse(env: Env, value: string): Promise<Response> {
 app.get('/app/api/slot-frame', async (c) => {
   const head = await c.env.ASSETS.head(KEY).catch(() => null);
   const version = head?.customMetadata?.version || '1';
-  return c.json({ ok: true, hasFrame: Boolean(head), slotFrameUrl: head ? `/app/api/uploaded-image/slot-frame.png?v=${version}` : null, version }, 200, { 'cache-control': 'no-store' });
+  return c.json({ ok: true, hasFrame: Boolean(head), slotFrameUrl: head ? `/app/api/uploaded-image/slot-frame.png?v=${version}` : null, version }, 200, { 'cache-control': SLOT_METADATA_CACHE });
 });
 
 app.get('/app/api/uploaded-image/slot-frame.png', async (c) => {
@@ -218,7 +220,7 @@ app.get('/app/api/uploaded-image/slot-frame.png', async (c) => {
 });
 
 app.get('/app/api/slot-symbols', async (c) => {
-  return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
+  return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': SLOT_METADATA_CACHE });
 });
 
 app.get('/app/api/dice-assets', async (c) => {
@@ -226,7 +228,7 @@ app.get('/app/api/dice-assets', async (c) => {
 });
 
 app.get('/app/api/slot-controls', async (c) => {
-  return c.json({ ok: true, controls: await controlPayload(c.env) }, 200, { 'cache-control': 'no-store' });
+  return c.json({ ok: true, controls: await controlPayload(c.env) }, 200, { 'cache-control': SLOT_METADATA_CACHE });
 });
 
 app.get('/app/api/uploaded-image/slot-controls/:id', async (c) => {
@@ -256,7 +258,7 @@ app.get('/app/api/uploaded-image/slot-symbols/:id.png', async (c) => {
 app.get('/app/api/slot-spin-audio', async (c) => {
   const head = await c.env.ASSETS.head(SLOT_SPIN_AUDIO_KEY).catch(() => null);
   const version = head?.customMetadata?.version || '1';
-  return c.json({ ok: true, hasAudio: Boolean(head), audioUrl: head ? slotSpinAudioUrl(version) : null, version }, 200, { 'cache-control': 'no-store' });
+  return c.json({ ok: true, hasAudio: Boolean(head), audioUrl: head ? slotSpinAudioUrl(version) : null, version }, 200, { 'cache-control': SLOT_METADATA_CACHE });
 });
 
 app.get('/app/api/uploaded-audio/slot-spin', async (c) => {

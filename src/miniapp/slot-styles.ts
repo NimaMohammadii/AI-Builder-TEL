@@ -109,13 +109,6 @@ body:has(#slot.active) .tabs {
   user-select: none;
 }
 
-.slot-symbol-fallback {
-  display: block;
-}
-
-.slot-symbol.has-image .slot-symbol-fallback {
-  display: none;
-}
 
 .slot-symbol-image {
   width: 62px;
