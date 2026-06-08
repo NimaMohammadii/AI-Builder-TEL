@@ -45,7 +45,7 @@ export const SLOT_SCRIPT = `
   function noWinResult(){var indexes=[0,1,2,3,4,5,6,7];return shuffle(indexes).slice(0,3)}
   function pairFruitResult(){var fruit=randomInt(5);var third=randomInt(symbols.length-1);if(third>=fruit)third++;return shuffle([fruit,fruit,third])}
   function tripleFruitResult(){var fruit=randomInt(5);return [fruit,fruit,fruit]}
-  function controlledResult(){var roll=randomInt(10000);if(roll<6500)return noWinResult();if(roll<8945)return pairFruitResult();if(roll<9783)return tripleFruitResult();if(roll<9958)return [symbolIndex('diamond'),symbolIndex('diamond'),symbolIndex('diamond')];if(roll<9993)return [symbolIndex('gold'),symbolIndex('gold'),symbolIndex('gold')];return [symbolIndex('lucky7'),symbolIndex('lucky7'),symbolIndex('lucky7')]}
+  function controlledResult(){var roll=randomInt(10000);if(roll<6500)return noWinResult();if(roll<9071)return pairFruitResult();if(roll<9909)return tripleFruitResult();if(roll<9989)return [symbolIndex('diamond'),symbolIndex('diamond'),symbolIndex('diamond')];if(roll<9999)return [symbolIndex('gold'),symbolIndex('gold'),symbolIndex('gold')];return [symbolIndex('lucky7'),symbolIndex('lucky7'),symbolIndex('lucky7')]}
   function randomResult(){var out=[];for(var i=0;i<reelCount;i++)out.push(randomSymbolIndex());return out}
   function slotLiveResultHtml(result){return result.map(function(symbolIndex){var symbol=symbols[symbolIndex];if(symbol&&symbol.imageUrl)return '<span class="slot-live-symbol has-image"><img src="'+cleanText(symbol.imageUrl)+'" alt="'+cleanText(symbol.label||symbol.id)+'" loading="eager" decoding="async"><span>'+cleanText(symbolFallback(symbol))+'</span></span>';return '<span class="slot-live-symbol">'+cleanText(symbolFallback(symbol))+'</span>'}).join('')}
   function renderLive(){var list=q('slotLiveList');if(!list)return;if(!liveRows.length){liveRows=[{name:'AriSpin',result:randomResult()},{name:'MayaWin',result:randomResult()},{name:'NimaLuck',result:randomResult()}]}list.innerHTML=liveRows.slice(0,24).map(function(row){return '<div class="slot-live-row is-entering"><span class="slot-live-user">'+cleanText(row.name)+'</span><span class="slot-live-result">'+slotLiveResultHtml(row.result)+'</span></div>'}).join('')}
@@ -76,7 +76,7 @@ export const SLOT_SCRIPT = `
   function isFruitSymbol(symbolId){return ['cherry','lemon','orange','grape','watermelon'].indexOf(symbolId)!==-1}
   function resultCounts(result){var counts={};result.forEach(function(symbolIndex){var symbol=symbols[symbolIndex];var id=symbol&&symbol.id;if(id)counts[id]=(counts[id]||0)+1});return counts}
   function topResultEntry(counts){var top={symbolId:'',count:0};Object.keys(counts).forEach(function(id){if(counts[id]>top.count)top={symbolId:id,count:counts[id]}});return top}
-  function resultProfile(result){var entry=topResultEntry(resultCounts(result));if(entry.count===3){if(isFruitSymbol(entry.symbolId))return{tier:'triple-fruit',multiplier:2,xp:30};if(entry.symbolId==='diamond')return{tier:'triple-diamond',multiplier:5,xp:80};if(entry.symbolId==='gold')return{tier:'triple-gold',multiplier:20,xp:150};if(entry.symbolId==='lucky7')return{tier:'triple-seven',multiplier:100,xp:300}}if(entry.count===2&&isFruitSymbol(entry.symbolId))return{tier:'pair-fruit',multiplier:.8,xp:10};return{tier:'standard',multiplier:0,xp:5}}
+  function resultProfile(result){var entry=topResultEntry(resultCounts(result));if(entry.count===3){if(isFruitSymbol(entry.symbolId))return{tier:'triple-fruit',multiplier:5,xp:30};if(entry.symbolId==='diamond')return{tier:'triple-diamond',multiplier:15,xp:80};if(entry.symbolId==='gold')return{tier:'triple-gold',multiplier:30,xp:150};if(entry.symbolId==='lucky7')return{tier:'triple-seven',multiplier:200,xp:300}}if(entry.count===2&&isFruitSymbol(entry.symbolId))return{tier:'pair-fruit',multiplier:.8,xp:10};return{tier:'standard',multiplier:0,xp:5}}
   function resultLabel(profile,deltaNano){if(deltaNano>0)return'Result +'+fromNano(deltaNano);return'Result 0.00'}
 
   function winSymbolHtml(symbol){if(symbol&&symbol.imageUrl)return '<div class="slot-win-fly-symbol"><img src="'+cleanText(symbol.imageUrl)+'" alt="'+cleanText(symbol.label||symbol.id||'win')+'"><b>'+cleanText(symbolFallback(symbol))+'</b></div>';return '<div class="slot-win-fly-symbol text-only"><b>'+cleanText(symbolFallback(symbol))+'</b></div>'}
@@ -92,8 +92,8 @@ export const SLOT_SCRIPT = `
       var glow=document.createElement('div');
       glow.style.cssText='position:absolute;left:'+centerX+'px;top:'+centerY+'px;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,rgba(255,232,150,.58),rgba(214,38,82,.32) 42%,rgba(255,255,255,.08) 58%,rgba(0,0,0,0) 74%);filter:blur(18px);opacity:0;transform:translate(-50%,-50%) scale(.55);';
       var title=document.createElement('div');
-      title.textContent='WIN '+Number(profile.multiplier||0).toFixed(2)+'x';
-      title.style.cssText='position:absolute;left:'+centerX+'px;top:'+(centerY+108)+'px;transform:translate(-50%,16px) scale(.88);opacity:0;color:#fff;font-size:22px;font-weight:1000;letter-spacing:.02em;text-shadow:0 3px 18px rgba(0,0,0,.85),0 0 24px rgba(255,218,99,.56);white-space:nowrap;';
+      title.textContent='WIN  '+Number(profile.multiplier||0).toFixed(2)+'x';
+      title.style.cssText='position:absolute;left:'+centerX+'px;top:'+(centerY+116)+'px;transform:translate(-50%,18px) scale(.92);opacity:0;color:rgba(255,255,255,.96);font-size:18px;font-weight:950;letter-spacing:.08em;text-shadow:0 3px 16px rgba(0,0,0,.85),0 0 22px rgba(255,218,99,.48);white-space:nowrap;padding:7px 16px;border-radius:999px;background:rgba(8,0,4,.48);border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 30px rgba(0,0,0,.32),0 0 28px rgba(255,201,80,.22);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
       layer.appendChild(glow);
       layer.appendChild(title);
       document.body.appendChild(layer);
@@ -113,16 +113,16 @@ export const SLOT_SCRIPT = `
         if(!img&&b)b.style.cssText='font-size:38px;line-height:1;text-shadow:0 2px 18px rgba(0,0,0,.78);';
         layer.appendChild(item);
         item.animate([
-          {left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.58)',opacity:0,filter:'blur(2px)'},
-          {left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.82)',opacity:1,filter:'blur(0)'},
-          {left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.68)',opacity:1,filter:'blur(0)'},
-          {left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.58)',opacity:1,filter:'blur(0)'},
-          {left:finals[i]+'px',top:(centerY-10)+'px',transform:'translate(-50%,-50%) scale(1.40)',opacity:0,filter:'blur(5px)'}
-        ],{duration:3400,delay:i*120,easing:'cubic-bezier(.16,.84,.22,1)',fill:'both'});
+          {offset:0,left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.58)',opacity:0,filter:'blur(2px)'},
+          {offset:.10,left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.82)',opacity:1,filter:'blur(0)'},
+          {offset:.28,left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.68)',opacity:1,filter:'blur(0)'},
+          {offset:.86,left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.58)',opacity:1,filter:'blur(0)'},
+          {offset:1,left:finals[i]+'px',top:(centerY-10)+'px',transform:'translate(-50%,-50%) scale(1.40)',opacity:0,filter:'blur(5px)'}
+        ],{duration:7200,delay:i*140,easing:'cubic-bezier(.16,.84,.22,1)',fill:'both'});
       });
-      glow.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.48)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'},{opacity:1,transform:'translate(-50%,-50%) scale(1.08)'},{opacity:0,transform:'translate(-50%,-50%) scale(1.34)'}],{duration:3600,easing:'cubic-bezier(.18,.84,.22,1)',fill:'both'});
-      title.animate([{opacity:0,transform:'translate(-50%,24px) scale(.82)'},{opacity:1,transform:'translate(-50%,0) scale(1)'},{opacity:1,transform:'translate(-50%,0) scale(1)'},{opacity:0,transform:'translate(-50%,-10px) scale(.96)'}],{duration:3300,delay:520,easing:'cubic-bezier(.2,.85,.2,1)',fill:'both'});
-      setTimeout(function(){try{layer.remove()}catch(e){}},3900);
+      glow.animate([{offset:0,opacity:0,transform:'translate(-50%,-50%) scale(.48)'},{offset:.18,opacity:1,transform:'translate(-50%,-50%) scale(1)'},{offset:.86,opacity:1,transform:'translate(-50%,-50%) scale(1.08)'},{offset:1,opacity:0,transform:'translate(-50%,-50%) scale(1.34)'}],{duration:7400,easing:'cubic-bezier(.18,.84,.22,1)',fill:'both'});
+      title.animate([{offset:0,opacity:0,transform:'translate(-50%,24px) scale(.86)'},{offset:.18,opacity:1,transform:'translate(-50%,0) scale(1)'},{offset:.86,opacity:1,transform:'translate(-50%,0) scale(1)'},{offset:1,opacity:0,transform:'translate(-50%,-10px) scale(.96)'}],{duration:7000,delay:520,easing:'cubic-bezier(.2,.85,.2,1)',fill:'both'});
+      setTimeout(function(){try{layer.remove()}catch(e){}},7800);
     }catch(e){}
   }
 
