@@ -6,13 +6,14 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var loading=false;
   var fetchGuardInstalled=false;
   var fallbackMultipliers=[5,2.4,1.8,1.35,1.15,1,.85,.85,1,1.15,1.35,1.8,2.4,5];
+  var liveMultipliers=fallbackMultipliers.slice();
   var virtualRows=[];
   var virtualTimer=null;
   var virtualRendered=false;
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles=['Arman','Nika','Sarina','Kian','Mahan','Lina','Dara','Yas','Rayan','Tina','Mehrad','Ava','Soren','Melika','Navid','Raha','Amir','Dina','Shayan','Mina','Parsa','Setareh','Bardia','Hana','Arian','Nora','Pouya','Vera','Kourosh','Saba'];
+  var plinkoVirtualProfiles=['Arman R.','Nika Hosseini','Sarina M.','Kian Moradi','Mahan Amini','Lina K.','Dara Sadeghi','Yas N.','Rayan Farzan','Tina M.','Mehrad Jafari','Ava R.','Soren Nik','Melika Azari','Navid P.','Raha Mehr','Amir Hosseini','Dina S.','Shayan Rad','Mina Kaveh','Parsa R.','Setareh Nouri','Bardia M.','Hana Sh.','Arian F.','Nora Ahmadi','Pouya N.','Vera M.','Kourosh A.','Saba Z.'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -21,7 +22,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     if(document.getElementById('plinkoLiveFeedPolishStyle'))return;
     var style=document.createElement('style');
     style.id='plinkoLiveFeedPolishStyle';
-    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
+    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
     document.head.appendChild(style);
   }
 
@@ -40,6 +41,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       var n=Number(value);
       return Number.isFinite(n)&&n>0?n:fallbackMultipliers[index];
     });
+    liveMultipliers=item.multipliers.slice();
+    fallbackMultipliers=liveMultipliers.slice();
     return data;
   }
 
@@ -69,9 +72,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var btn=dropButton();
     if(!btn)return;
     if(!btn.__plinkoGateText)btn.__plinkoGateText=btn.textContent||'Drop Ball';
-    if(on){btn.disabled=true;btn.textContent='Loading';return}
     if(btn.textContent==='Loading')btn.textContent=btn.__plinkoGateText;
-    btn.disabled=false;
   }
 
   function reloadControl(){
@@ -85,16 +86,11 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     installControlFetchGuard();
     if(ready||loading)return;
     loading=true;
-    document.body.classList.add('plinko-control-loading');
-    setDropLoading(true);
     reloadControl().then(function(){return fetch('/app/api/plinko-control',{cache:'no-store'})}).catch(function(){return null}).then(function(){
       reloadControl();
-      setTimeout(function(){
-        ready=true;
-        loading=false;
-        document.body.classList.remove('plinko-control-loading');
-        setDropLoading(false);
-      },220);
+      ready=true;
+      loading=false;
+      setDropLoading(false);
     });
   }
 
@@ -172,14 +168,15 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function virtualAmount(profileIndex,seed){
-    var base=[0.05,0.08,0.1,0.12,0.15,0.2,0.25,0.3,0.35,0.4,0.5,0.75,1,1.25,1.5,2,2.5,3,4,5];
+    var base=[0.08,0.12,0.18,0.25,0.35,0.5,0.75,1,1.25,1.5,2,2.5,3,4,5,7.5,10,12,15,20,25,30];
     var amount=base[randomIndex(seed+profileIndex*17,base.length)];
-    var cents=(randomIndex(seed+profileIndex*29,9))*0.01;
+    var cents=(randomIndex(seed+profileIndex*29,19))*0.01;
     return Math.round((amount+cents+Number.EPSILON)*100)/100;
   }
 
   function virtualMultiplier(profileIndex,seed){
-    var mult=fallbackMultipliers[randomIndex(seed+profileIndex*37,fallbackMultipliers.length)];
+    var source=liveMultipliers&&liveMultipliers.length?liveMultipliers:fallbackMultipliers;
+    var mult=source[randomIndex(seed+profileIndex*37,source.length)];
     return Math.round((mult+Number.EPSILON)*100)/100;
   }
 
