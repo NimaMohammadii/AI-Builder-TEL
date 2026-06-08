@@ -79,27 +79,50 @@ export const SLOT_SCRIPT = `
   function resultProfile(result){var entry=topResultEntry(resultCounts(result));if(entry.count===3){if(isFruitSymbol(entry.symbolId))return{tier:'triple-fruit',multiplier:2,xp:30};if(entry.symbolId==='diamond')return{tier:'triple-diamond',multiplier:5,xp:80};if(entry.symbolId==='gold')return{tier:'triple-gold',multiplier:20,xp:150};if(entry.symbolId==='lucky7')return{tier:'triple-seven',multiplier:100,xp:300}}if(entry.count===2&&isFruitSymbol(entry.symbolId))return{tier:'pair-fruit',multiplier:.8,xp:10};return{tier:'standard',multiplier:0,xp:5}}
   function resultLabel(profile,deltaNano){if(deltaNano>0)return'Result +'+fromNano(deltaNano);return'Result 0.00'}
 
-  function winSymbolHtml(symbol){if(symbol&&symbol.imageUrl)return '<span class="slot-win-symbol"><img src="'+cleanText(symbol.imageUrl)+'" alt="'+cleanText(symbol.label||symbol.id||'win')+'" decoding="async"><b>'+cleanText(symbolFallback(symbol))+'</b></span>';return '<span class="slot-win-symbol text-only"><b>'+cleanText(symbolFallback(symbol))+'</b></span>'}
+  function winSymbolHtml(symbol){if(symbol&&symbol.imageUrl)return '<div class="slot-win-fly-symbol"><img src="'+cleanText(symbol.imageUrl)+'" alt="'+cleanText(symbol.label||symbol.id||'win')+'"><b>'+cleanText(symbolFallback(symbol))+'</b></div>';return '<div class="slot-win-fly-symbol text-only"><b>'+cleanText(symbolFallback(symbol))+'</b></div>'}
   function showWinEffect(result,profile,resultNano){
     try{
-      var machine=document.querySelector('.slot-window')||document.querySelector('.slot-machine');
-      var rect=machine?machine.getBoundingClientRect():{left:window.innerWidth/2,top:window.innerHeight/2,width:1,height:1};
-      var startX=rect.left+rect.width/2,startY=rect.top+rect.height/2;
-      var endX=window.innerWidth/2,endY=Math.max(150,window.innerHeight*.43);
+      var slotWindow=document.querySelector('.slot-window')||document.querySelector('.slot-machine');
+      var rect=slotWindow?slotWindow.getBoundingClientRect():{left:window.innerWidth*.5,top:window.innerHeight*.35,width:1,height:1};
       var layer=document.createElement('div');
       layer.className='slot-win-pop-layer';
       layer.style.cssText='position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;';
+      var centerX=window.innerWidth/2;
+      var centerY=Math.max(150,window.innerHeight*.42);
       var glow=document.createElement('div');
-      glow.style.cssText='position:absolute;left:50%;top:43%;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,235,170,.42),rgba(183,28,69,.22) 42%,rgba(0,0,0,0) 72%);filter:blur(12px);opacity:0;transform:translate(-50%,-50%) scale(.55);';
-      var group=document.createElement('div');
-      group.className='slot-win-pop-group';
-      group.style.cssText='position:absolute;left:'+startX+'px;top:'+startY+'px;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 18px;border-radius:32px;background:rgba(8,0,4,.34);border:1px solid rgba(255,255,255,.18);box-shadow:0 0 42px rgba(255,212,104,.34),0 0 82px rgba(184,20,62,.30),inset 0 1px 0 rgba(255,255,255,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transform:translate(-50%,-50%) scale(.48);opacity:0;will-change:transform,opacity,filter;';
-      group.innerHTML=result.map(function(index){return winSymbolHtml(symbols[index])}).join('')+'<span style="position:absolute;left:50%;top:100%;transform:translate(-50%,8px);font-size:13px;font-weight:950;letter-spacing:.02em;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.75);white-space:nowrap;">WIN '+Number(profile.multiplier||0).toFixed(2)+'x</span>';
-      layer.appendChild(glow);layer.appendChild(group);document.body.appendChild(layer);
-      Array.prototype.forEach.call(group.querySelectorAll('.slot-win-symbol'),function(el,i){el.style.cssText='width:74px;height:74px;display:grid;place-items:center;border-radius:22px;background:rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 30px rgba(0,0,0,.32);font-size:42px;font-weight:950;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.72);overflow:hidden;animation:none;';var img=el.querySelector('img');if(img)img.style.cssText='width:82%;height:82%;object-fit:contain;display:block;filter:drop-shadow(0 10px 18px rgba(0,0,0,.42));';var b=el.querySelector('b');if(img&&b)b.style.display='none';el.animate([{transform:'translateY(18px) scale(.72) rotate(-8deg)',opacity:0},{transform:'translateY(-5px) scale(1.08) rotate(3deg)',opacity:1},{transform:'translateY(0) scale(1) rotate(0)',opacity:1}],{duration:620,delay:180+i*80,easing:'cubic-bezier(.2,.9,.2,1)',fill:'both'})});
-      glow.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.45)'},{opacity:1,transform:'translate(-50%,-50%) scale(1.08)'},{opacity:0,transform:'translate(-50%,-50%) scale(1.38)'}],{duration:1700,easing:'cubic-bezier(.2,.8,.2,1)',fill:'both'});
-      group.animate([{left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.48)',opacity:0,filter:'blur(3px)'},{left:endX+'px',top:endY+'px',transform:'translate(-50%,-50%) scale(1.08)',opacity:1,filter:'blur(0)'},{left:endX+'px',top:endY+'px',transform:'translate(-50%,-50%) scale(1)',opacity:1,filter:'blur(0)'},{left:endX+'px',top:endY+'px',transform:'translate(-50%,-50%) scale(.92)',opacity:0,filter:'blur(5px)'}],{duration:1850,easing:'cubic-bezier(.18,.86,.22,1)',fill:'both'});
-      setTimeout(function(){try{layer.remove()}catch(e){}},1950);
+      glow.style.cssText='position:absolute;left:'+centerX+'px;top:'+centerY+'px;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,rgba(255,232,150,.58),rgba(214,38,82,.32) 42%,rgba(255,255,255,.08) 58%,rgba(0,0,0,0) 74%);filter:blur(18px);opacity:0;transform:translate(-50%,-50%) scale(.55);';
+      var title=document.createElement('div');
+      title.textContent='WIN '+Number(profile.multiplier||0).toFixed(2)+'x';
+      title.style.cssText='position:absolute;left:'+centerX+'px;top:'+(centerY+108)+'px;transform:translate(-50%,16px) scale(.88);opacity:0;color:#fff;font-size:22px;font-weight:1000;letter-spacing:.02em;text-shadow:0 3px 18px rgba(0,0,0,.85),0 0 24px rgba(255,218,99,.56);white-space:nowrap;';
+      layer.appendChild(glow);
+      layer.appendChild(title);
+      document.body.appendChild(layer);
+      var finals=[centerX-104,centerX,centerX+104];
+      result.forEach(function(symbolIndex,i){
+        var symbol=symbols[symbolIndex];
+        var startX=rect.left+rect.width*((i+.5)/3);
+        var startY=rect.top+rect.height*.50;
+        var el=document.createElement('div');
+        el.innerHTML=winSymbolHtml(symbol);
+        var item=el.firstElementChild;
+        item.style.cssText='position:absolute;left:'+startX+'px;top:'+startY+'px;width:58px;height:58px;display:grid;place-items:center;border-radius:22px;background:rgba(9,0,4,.64);border:1px solid rgba(255,255,255,.20);box-shadow:0 0 24px rgba(255,224,139,.35),0 18px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18);transform:translate(-50%,-50%) scale(.72);opacity:0;will-change:left,top,transform,opacity,filter;';
+        var img=item.querySelector('img');
+        if(img)img.style.cssText='width:82%;height:82%;object-fit:contain;display:block;filter:drop-shadow(0 12px 18px rgba(0,0,0,.44));';
+        var b=item.querySelector('b');
+        if(img&&b)b.style.display='none';
+        if(!img&&b)b.style.cssText='font-size:38px;line-height:1;text-shadow:0 2px 18px rgba(0,0,0,.78);';
+        layer.appendChild(item);
+        item.animate([
+          {left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.58)',opacity:0,filter:'blur(2px)'},
+          {left:startX+'px',top:startY+'px',transform:'translate(-50%,-50%) scale(.82)',opacity:1,filter:'blur(0)'},
+          {left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.68)',opacity:1,filter:'blur(0)'},
+          {left:finals[i]+'px',top:centerY+'px',transform:'translate(-50%,-50%) scale(1.58)',opacity:1,filter:'blur(0)'},
+          {left:finals[i]+'px',top:(centerY-10)+'px',transform:'translate(-50%,-50%) scale(1.40)',opacity:0,filter:'blur(5px)'}
+        ],{duration:3400,delay:i*120,easing:'cubic-bezier(.16,.84,.22,1)',fill:'both'});
+      });
+      glow.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.48)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'},{opacity:1,transform:'translate(-50%,-50%) scale(1.08)'},{opacity:0,transform:'translate(-50%,-50%) scale(1.34)'}],{duration:3600,easing:'cubic-bezier(.18,.84,.22,1)',fill:'both'});
+      title.animate([{opacity:0,transform:'translate(-50%,24px) scale(.82)'},{opacity:1,transform:'translate(-50%,0) scale(1)'},{opacity:1,transform:'translate(-50%,0) scale(1)'},{opacity:0,transform:'translate(-50%,-10px) scale(.96)'}],{duration:3300,delay:520,easing:'cubic-bezier(.2,.85,.2,1)',fill:'both'});
+      setTimeout(function(){try{layer.remove()}catch(e){}},3900);
     }catch(e){}
   }
 
