@@ -14,9 +14,8 @@ app.get('/app/api/crash-live', async (c) => {
   const now = Date.now();
   const requestedRoundId = Number(c.req.query('roundId'));
   const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
-  const revealStartMs = roundId > state.id ? state.start + state.runMs + 400 : now;
-  const revealEndMs = roundId > state.id ? state.start + state.runMs + WAIT_WINDOW_MS : now;
-  await seedCrashVirtualUsers(c.env.DB, roundId, revealStartMs, revealEndMs);
+  const revealWindow = virtualRevealWindow(roundId,state,now);
+  await seedCrashVirtualUsers(c.env.DB, roundId, revealWindow.start, revealWindow.end);
   await revealCrashVirtualCashouts(c.env.DB, roundId, state);
   if(roundId===state.id && state.waiting){
     await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet'").bind(roundId).run().catch(() => undefined);
@@ -63,6 +62,14 @@ async function ensure(env:{DB:D1Database}){
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
 }
 function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.username,amountNano:Number(r.amount_nano||0),amountTon:ton(r.amount_nano),status:r.status,cashoutMultiplier:r.cashout_multiplier==null?null:Number(r.cashout_multiplier),targetCashoutMultiplier:r.target_cashout_multiplier==null?null:Number(r.target_cashout_multiplier),payoutNano:Number(r.payout_nano||0),payoutTon:ton(r.payout_nano),isVirtual:Number(r.is_virtual||0)===1,virtualRevealAtMs:Number(r.virtual_reveal_at_ms||0),virtualOrder:Number(r.virtual_order||0),createdAt:r.created_at,updatedAt:r.updated_at}}
+function virtualRevealWindow(roundId:number,state:ReturnType<typeof getCrashRoundState>,now:number){
+  if(roundId===state.id){
+    const end = Math.max(0,state.start-180);
+    return {start:Math.max(0,end-WAIT_WINDOW_MS),end};
+  }
+  const start = state.start + state.runMs + 400;
+  return {start,end:Math.max(start,state.start + state.runMs + WAIT_WINDOW_MS)};
+}
 async function nextVirtualRevealMs(db:D1Database, roundId:number, now:number){
   const row = await db.prepare('SELECT MIN(virtual_reveal_at_ms) AS nextReveal FROM crash_live_bets WHERE round_id=? AND is_virtual=1 AND status=\'bet\' AND COALESCE(virtual_reveal_at_ms,0)>?').bind(roundId,now).first<{nextReveal:number}>();
   return Number(row?.nextReveal||0);
