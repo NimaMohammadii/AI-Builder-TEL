@@ -2,15 +2,15 @@ export const SLOT_SECTION = `
 <section id="slot" class="view slot-view" style="overflow-x:hidden;max-width:100vw;transform:translateY(-10px)">
   <style>
     #slot .slot-rewards-toggle{position:absolute;opacity:0;pointer-events:none}
-    #slot .slot-rewards-card{position:absolute;left:18px;top:18px;z-index:38;width:40px;height:40px;display:grid;place-items:center;border-radius:18px;border:0!important;background:rgba(255,255,255,.035);color:rgba(255,255,255,.92);box-shadow:none!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease}
-    #slot .slot-rewards-card svg{width:20px;height:20px;display:block;filter:drop-shadow(0 0 10px rgba(233,189,124,.18))}
+    #slot .slot-rewards-card{position:absolute;left:6px;top:4px;z-index:38;width:38px;height:38px;display:grid;place-items:center;border-radius:17px;border:0!important;background:rgba(255,255,255,.025);color:rgba(255,255,255,.92);box-shadow:none!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease}
+    #slot .slot-rewards-card svg{width:20px;height:20px;display:block;filter:drop-shadow(0 0 10px rgba(233,189,124,.14))}
     #slot .slot-rewards-card svg path{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     #slot .slot-rewards-card:active{transform:scale(.96)}
-    #slot .slot-rewards-modal{position:fixed;inset:0;z-index:2147482900;display:grid;place-items:center;padding:22px;opacity:0;pointer-events:none;transition:opacity .28s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+    #slot .slot-rewards-modal{position:fixed;inset:0;z-index:2147482900;display:block;padding:0;opacity:0;pointer-events:none;transition:opacity .28s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
     #slot .slot-rewards-toggle:checked~.slot-rewards-modal{opacity:1;pointer-events:auto}
     #slot .slot-rewards-backdrop{position:absolute;inset:0;cursor:pointer;background:transparent!important;border:0!important;padding:0!important}
-    #slot .slot-rewards-panel{position:relative;width:min(92vw,390px);border-radius:34px;border:0!important;background:transparent!important;color:#fff;padding:18px;box-shadow:0 28px 90px rgba(0,0,0,.52),0 0 44px rgba(111,14,45,.16);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);transform:translateY(18px) scale(.96);transition:transform .36s cubic-bezier(.2,.86,.18,1),opacity .26s ease;opacity:0;overflow:hidden}
-    #slot .slot-rewards-toggle:checked~.slot-rewards-modal .slot-rewards-panel{transform:translateY(0) scale(1);opacity:1}
+    #slot .slot-rewards-panel{position:absolute;left:50vw;top:calc(50vh + 10px);width:min(92vw,390px);border-radius:34px;border:0!important;background:transparent!important;color:#fff;padding:18px;box-shadow:0 28px 90px rgba(0,0,0,.52),0 0 44px rgba(111,14,45,.16);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);transform:translate(-50%,-50%) scale(.96);transition:transform .36s cubic-bezier(.2,.86,.18,1),opacity .26s ease;opacity:0;overflow:hidden}
+    #slot .slot-rewards-toggle:checked~.slot-rewards-modal .slot-rewards-panel{transform:translate(-50%,-50%) scale(1);opacity:1}
     #slot .slot-rewards-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
     #slot .slot-rewards-title{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:1000;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 2px 18px rgba(0,0,0,.70)}
     #slot .slot-rewards-close{width:34px;height:34px;border-radius:14px;display:grid;place-items:center;border:0!important;background:rgba(255,255,255,.04);color:rgba(255,255,255,.88);font-size:20px;font-weight:800;cursor:pointer;box-shadow:none!important}
@@ -26,7 +26,7 @@ export const SLOT_SECTION = `
   </style>
   <input id="slotRewardsToggle" class="slot-rewards-toggle" type="checkbox" aria-hidden="true"/>
   <label class="slot-rewards-card" for="slotRewardsToggle" aria-label="Rewards">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 9l-8 11L4 9l8-5.5Z"/><path d="M4 9h16"/><path d="m8.2 9 3.8 11 3.8-11"/><path d="M8.2 9 12 3.5 15.8 9"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5h15v10h-15z"/><path d="M3.5 7h17v2.5h-17z"/><path d="M12 7v12.5"/><path d="M12 7c-1.2-2.8-4.8-2.6-4.8-.5 0 1.2 1.4 1.5 4.8.5Z"/><path d="M12 7c1.2-2.8 4.8-2.6 4.8-.5 0 1.2-1.4 1.5-4.8.5Z"/></svg>
   </label>
   <div class="slot-rewards-modal" aria-hidden="true">
     <label class="slot-rewards-backdrop" for="slotRewardsToggle" aria-label="Close rewards"></label>
