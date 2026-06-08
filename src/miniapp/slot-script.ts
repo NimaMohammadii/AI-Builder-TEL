@@ -1,210 +1,91 @@
 export const SLOT_SCRIPT = `
 (function(){
-  var symbols = [
-    { id: 'cherry', label: 'Cherry' },
-    { id: 'lemon', label: 'Lemon' },
-    { id: 'orange', label: 'Orange' },
-    { id: 'grape', label: 'Grape' },
-    { id: 'watermelon', label: 'Watermelon' },
-    { id: 'diamond', label: 'Diamond' },
-    { id: 'gold', label: 'Gold Star or Bell' },
-    { id: 'lucky7', label: 'Lucky 7' }
+  var symbols=[
+    {id:'cherry',label:'Cherry'},
+    {id:'lemon',label:'Lemon'},
+    {id:'orange',label:'Orange'},
+    {id:'grape',label:'Grape'},
+    {id:'watermelon',label:'Watermelon'},
+    {id:'diamond',label:'Diamond'},
+    {id:'gold',label:'Gold Star or Bell'},
+    {id:'lucky7',label:'Lucky 7'}
   ];
-  var reelCount = 3;
-  var symbolHeight = 92;
-  var restLoop = 6;
-  var preparedLoops = 18;
-  var maxSpinLoops = 10;
-  var totalSpinMs = 7600;
-  var reelStopGapMs = 800;
-  var soundStopDelayMs = 1000;
-  var NANO = 1000000000;
-  var amountNano = NANO;
-  var extraTurns = 0;
-  var activeCostNano = 0;
-  var activeFreeTurn = false;
-  var spinning = false;
-  var currentIndexes = [0, 1, 2];
-  var slotSound = null;
-  var slotAudioUrl = '';
-  var slotAudio = null;
-  var slotSoundTimer = null;
-  var slotSoundStopTimer = null;
-  var slotLiveProfiles = [
-    ['AriNova', 'AriPlay', 'AriSpin', 'AriBet', 'AriWin', 'AriMax', 'AriRush', 'AriTon', 'AriLux', 'AriPro'],
-    ['MayaStar', 'MayaSpin', 'MayaBet', 'MayaWin', 'MayaLux', 'MayaTon', 'MayaRush', 'MayaPlay', 'MayaPro', 'MayaNova'],
-    ['LiaMoon', 'LiaSpin', 'LiaBet', 'LiaWin', 'LiaLux', 'LiaTon', 'LiaRush', 'LiaPlay', 'LiaPro', 'LiaNova'],
-    ['NoraWave', 'NoraSpin', 'NoraBet', 'NoraWin', 'NoraLux', 'NoraTon', 'NoraRush', 'NoraPlay', 'NoraPro', 'NoraNova'],
-    ['ElinaFox', 'ElinaSpin', 'ElinaBet', 'ElinaWin', 'ElinaLux', 'ElinaTon', 'ElinaRush', 'ElinaPlay', 'ElinaPro', 'ElinaNova'],
-    ['RahaQueen', 'RahaSpin', 'RahaBet', 'RahaWin', 'RahaLux', 'RahaTon', 'RahaRush', 'RahaPlay', 'RahaPro', 'RahaNova'],
-    ['YaraGold', 'YaraSpin', 'YaraBet', 'YaraWin', 'YaraLux', 'YaraTon', 'YaraRush', 'YaraPlay', 'YaraPro', 'YaraNova'],
-    ['KianFlash', 'KianSpin', 'KianBet', 'KianWin', 'KianLux', 'KianRush', 'KianPlay', 'KianPro', 'KianNova'],
-    ['ArmanX', 'ArmanSpin', 'ArmanBet', 'ArmanWin', 'ArmanLux', 'ArmanTon', 'ArmanRush', 'ArmanPlay', 'ArmanPro', 'ArmanNova'],
-    ['SinaAce', 'SinaSpin', 'SinaBet', 'SinaWin', 'SinaLux', 'SinaTon', 'SinaRush', 'SinaPlay', 'SinaPro', 'SinaNova'],
-    ['RayanJet', 'RayanSpin', 'RayanBet', 'RayanWin', 'RayanLux', 'RayanTon', 'RayanRush', 'RayanPlay', 'RayanPro', 'RayanNova'],
-    ['ParsaKing', 'ParsaSpin', 'ParsaBet', 'ParsaWin', 'ParsaLux', 'ParsaTon', 'ParsaRush', 'ParsaPlay', 'ParsaPro', 'ParsaNova'],
-    ['NikaRose', 'NikaSpin', 'NikaBet', 'NikaWin', 'NikaLux', 'NikaTon', 'NikaRush', 'NikaPlay', 'NikaPro', 'NikaNova'],
-    ['AvaCloud', 'AvaSpin', 'AvaBet', 'AvaWin', 'AvaLux', 'AvaTon', 'AvaRush', 'AvaPlay', 'AvaPro', 'AvaNova'],
-    ['DariaSun', 'DariaSpin', 'DariaBet', 'DariaWin', 'DariaLux', 'DariaRush', 'DariaPlay', 'DariaPro', 'DariaNova'],
-    ['TaraBlue', 'TaraSpin', 'TaraBet', 'TaraWin', 'TaraLux', 'TaraRush', 'TaraPlay', 'TaraPro', 'TaraNova'],
-    ['AmirWolf', 'AmirSpin', 'AmirBet', 'AmirWin', 'AmirLux', 'AmirRush', 'AmirPlay', 'AmirPro', 'AmirNova'],
-    ['AliTiger', 'AliSpin', 'AliBet', 'AliWin', 'AliLux', 'AliRush', 'AliPlay', 'AliPro', 'AliNova'],
-    ['RezaStorm', 'RezaSpin', 'RezaBet', 'RezaWin', 'RezaLux', 'RezaRush', 'RezaPlay', 'RezaPro', 'RezaNova'],
-    ['AryaFire', 'AryaSpin', 'AryaBet', 'AryaWin', 'AryaLux', 'AryaRush', 'AryaPlay', 'AryaPro', 'AryaNova'],
-    ['ArvinNeo', 'ArvinSpin', 'ArvinBet', 'ArvinWin', 'ArvinLux', 'ArvinRush', 'ArvinPlay', 'ArvinPro', 'ArvinNova'],
-    ['SamanSky', 'SamanSpin', 'SamanBet', 'SamanWin', 'SamanLux', 'SamanRush', 'SamanPlay', 'SamanPro', 'SamanNova'],
-    ['RadinHero', 'RadinSpin', 'RadinBet', 'RadinWin', 'RadinLux', 'RadinRush', 'RadinPlay', 'RadinPro', 'RadinNova'],
-    ['ShayanIce', 'ShayanSpin', 'ShayanBet', 'ShayanWin', 'ShayanLux', 'ShayanRush', 'ShayanPlay', 'ShayanPro', 'ShayanNova'],
-    ['MahanBolt', 'MahanSpin', 'MahanBet', 'MahanWin', 'MahanLux', 'MahanRush', 'MahanPlay', 'MahanPro', 'MahanNova'],
-    ['NavidAce', 'NavidSpin', 'NavidBet', 'NavidWin', 'NavidLux', 'NavidRush', 'NavidPlay', 'NavidPro', 'NavidNova'],
-    ['NimaLuck', 'NimaSpin', 'NimaBet', 'NimaWin', 'NimaLux', 'NimaRush', 'NimaPlay', 'NimaPro', 'NimaNova'],
-    ['NikanFox', 'NikanSpin', 'NikanBet', 'NikanWin', 'NikanLux', 'NikanRush', 'NikanPlay', 'NikanPro', 'NikanNova'],
-    ['KavehLion', 'KavehSpin', 'KavehBet', 'KavehWin', 'KavehLux', 'KavehRush', 'KavehPlay', 'KavehPro', 'KavehNova'],
-    ['SepehrX', 'SepehrSpin', 'SepehrBet', 'SepehrWin', 'SepehrLux', 'SepehrRush', 'SepehrPlay', 'SepehrPro', 'SepehrNova'],
-    ['TahaPeak', 'TahaSpin', 'TahaBet', 'TahaWin', 'TahaLux', 'TahaRush', 'TahaPlay', 'TahaPro', 'TahaNova'],
-    ['ErfanMax', 'ErfanSpin', 'ErfanBet', 'ErfanWin', 'ErfanLux', 'ErfanRush', 'ErfanPlay', 'ErfanPro', 'ErfanNova'],
-    ['AminRock', 'AminSpin', 'AminBet', 'AminWin', 'AminLux', 'AminRush', 'AminPlay', 'AminPro', 'AminNova'],
-    ['IlyaRay', 'IlyaSpin', 'IlyaBet', 'IlyaWin', 'IlyaLux', 'IlyaRush', 'IlyaPlay', 'IlyaPro', 'IlyaNova'],
-    ['BardiaOne', 'BardiaSpin', 'BardiaBet', 'BardiaWin', 'BardiaLux', 'BardiaRush', 'BardiaPlay', 'BardiaPro', 'BardiaNova'],
-    ['HiradMoon', 'HiradSpin', 'HiradBet', 'HiradWin', 'HiradLux', 'HiradRush', 'HiradPlay', 'HiradPro', 'HiradNova'],
-    ['OmidLite', 'OmidSpin', 'OmidBet', 'OmidWin', 'OmidLux', 'OmidRush', 'OmidPlay', 'OmidPro', 'OmidNova'],
-    ['PouyaGem', 'PouyaSpin', 'PouyaBet', 'PouyaWin', 'PouyaLux', 'PouyaRush', 'PouyaPlay', 'PouyaPro', 'PouyaNova'],
-    ['KasraZen', 'KasraSpin', 'KasraBet', 'KasraWin', 'KasraLux', 'KasraRush', 'KasraPlay', 'KasraPro', 'KasraNova'],
-    ['AradTime', 'AradSpin', 'AradBet', 'AradWin', 'AradLux', 'AradRush', 'AradPlay', 'AradPro', 'AradNova'],
-    ['MehradVip', 'MehradSpin', 'MehradBet', 'MehradWin', 'MehradLux', 'MehradRush', 'MehradPlay', 'MehradPro', 'MehradNova'],
-    ['MiraPearl', 'MiraSpin', 'MiraBet', 'MiraWin', 'MiraLux', 'MiraRush', 'MiraPlay', 'MiraPro', 'MiraNova'],
-    ['LunaNight', 'LunaSpin', 'LunaBet', 'LunaWin', 'LunaLux', 'LunaRush', 'LunaPlay', 'LunaPro', 'LunaNova'],
-    ['VianDream', 'VianSpin', 'VianBet', 'VianWin', 'VianLux', 'VianRush', 'VianPlay', 'VianPro', 'VianNova'],
-    ['MinaBloom', 'MinaSpin', 'MinaBet', 'MinaWin', 'MinaLux', 'MinaRush', 'MinaPlay', 'MinaPro', 'MinaNova'],
-    ['RoyaMagic', 'RoyaSpin', 'RoyaBet', 'RoyaWin', 'RoyaLux', 'RoyaRush', 'RoyaPlay', 'RoyaPro', 'RoyaNova'],
-    ['AylinStar', 'AylinSpin', 'AylinBet', 'AylinWin', 'AylinLux', 'AylinRush', 'AylinPlay', 'AylinPro', 'AylinNova'],
-    ['ZaraGlow', 'ZaraSpin', 'ZaraBet', 'ZaraWin', 'ZaraLux', 'ZaraRush', 'ZaraPlay', 'ZaraPro', 'ZaraNova'],
-    ['NeginGem', 'NeginSpin', 'NeginBet', 'NeginWin', 'NeginLux', 'NeginRush', 'NeginPlay', 'NeginPro', 'NeginNova'],
-    ['DorsaCharm', 'DorsaSpin', 'DorsaBet', 'DorsaWin', 'DorsaLux', 'DorsaRush', 'DorsaPlay', 'DorsaPro', 'DorsaNova'],
-  ];
-  var slotLiveRows = [];
-  var slotLiveTimer = null;
-  var slotLiveRendered = '';
-  var slotLiveRealProfileIndex = -1;
-  var slotLiveEventNonce = 0;
+  var reelCount=3;
+  var symbolHeight=92;
+  var restLoop=6;
+  var preparedLoops=18;
+  var maxSpinLoops=10;
+  var totalSpinMs=7600;
+  var reelStopGapMs=800;
+  var soundStopDelayMs=1000;
+  var NANO=1000000000;
+  var amountNano=NANO;
+  var extraTurns=0;
+  var activeCostNano=0;
+  var spinning=false;
+  var currentIndexes=[0,1,2];
+  var slotSound=null,slotAudio=null,slotAudioUrl='',slotSoundTimer=null,slotSoundStopTimer=null;
+  var liveTimer=null,liveRows=[];
 
-  function q(id){
-    return document.getElementById(id);
+  function q(id){return document.getElementById(id)}
+  function fromNano(value){return (Math.max(0,Math.floor(Number(value)||0))/NANO).toFixed(2)}
+  function readPointBalance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
+  function addPointDelta(deltaNano){var delta=Math.floor(Number(deltaNano)||0);if(window.VexaTonBalance){window.VexaTonBalance.add(delta);return}window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:delta}}))}
+  function awardXP(amount,source,metadata){if(window.VexaLevel&&typeof window.VexaLevel.add==='function')window.VexaLevel.add(amount,source,metadata||{section:'slot'})}
+  function setBrand(title){var brand=q('brandTitle');if(brand)brand.textContent=title}
+  function setResultText(text){var node=q('slotResultText');if(node)node.textContent=text}
+  function setMultiplierText(value){var node=q('slotMultiplier');if(node)node.textContent=Number(value||0).toFixed(2)+'x'}
+  function cleanText(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch==='"'?'&quot;':'&#39;'})}
+
+  function currentUserName(){
+    try{var user=window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe&&window.Telegram.WebApp.initDataUnsafe.user;if(user){return String([user.first_name,user.last_name].filter(Boolean).join(' ')).replace(/[<>]/g,'').trim().slice(0,18)}}catch(e){}
+    return localStorage.getItem('slotLiveName')||'You';
   }
+  function symbolFallback(symbol){var icons={cherry:'🍒',lemon:'🍋',orange:'🍊',grape:'🍇',watermelon:'🍉',diamond:'💎',gold:'⭐',lucky7:'7️⃣'};return symbol?(icons[symbol.id]||symbol.label||symbol.id):'—'}
+  function randomSymbolIndex(){if(window.crypto&&window.crypto.getRandomValues){var values=new Uint32Array(1);window.crypto.getRandomValues(values);return values[0]%symbols.length}return Math.floor(Math.random()*symbols.length)}
+  function randomResult(){var out=[];for(var i=0;i<reelCount;i++)out.push(randomSymbolIndex());return out}
+  function slotLiveResultHtml(result){return result.map(function(symbolIndex){var symbol=symbols[symbolIndex];if(symbol&&symbol.imageUrl)return '<span class="slot-live-symbol has-image"><img src="'+cleanText(symbol.imageUrl)+'" alt="'+cleanText(symbol.label||symbol.id)+'" loading="eager" decoding="async"><span>'+cleanText(symbolFallback(symbol))+'</span></span>';return '<span class="slot-live-symbol">'+cleanText(symbolFallback(symbol))+'</span>'}).join('')}
+  function renderLive(){var list=q('slotLiveList');if(!list)return;if(!liveRows.length){liveRows=[{name:'AriSpin',result:randomResult()},{name:'MayaWin',result:randomResult()},{name:'NimaLuck',result:randomResult()}]}list.innerHTML=liveRows.slice(0,24).map(function(row){return '<div class="slot-live-row is-entering"><span class="slot-live-user">'+cleanText(row.name)+'</span><span class="slot-live-result">'+slotLiveResultHtml(row.result)+'</span></div>'}).join('')}
+  function pushSlotLiveUserResult(indexes){liveRows=liveRows.filter(function(row){return row.name!==currentUserName()});liveRows.unshift({name:currentUserName(),result:indexes});renderLive()}
+  function bindSlotLive(){renderLive();var box=q('slotLive'),toggle=q('slotLiveToggle');if(toggle&&box){toggle.onclick=function(){var open=!box.classList.contains('open');box.classList.toggle('open',open);toggle.setAttribute('aria-expanded',open?'true':'false')}}if(liveTimer)clearInterval(liveTimer);liveTimer=setInterval(function(){var names=['AriSpin','MayaWin','LiaBet','NoraLux','KianRush','SinaAce','RayanJet','ParsaKing'];liveRows.unshift({name:names[Math.floor(Math.random()*names.length)],result:randomResult()});liveRows=liveRows.slice(0,24);renderLive()},2200)}
 
-  function clamp(value, min, max){
-    return Math.max(min, Math.min(max, value));
-  }
+  function syncAmountInput(){var input=q('slotAmount');if(input)input.value='1'}
+  function refreshControls(){var button=q('slotSpinButton');var input=q('slotAmount');amountNano=NANO;if(input){input.value='1';input.disabled=true}if(button){button.disabled=spinning;var fallback=button.querySelector('.slot-control-fallback');if(fallback)fallback.textContent=spinning?'Running':extraTurns>0?'Use Extra Turn':'Spin'}}
+  function readAmountInput(){amountNano=NANO;syncAmountInput();return amountNano}
 
-  function toNano(value){
-    return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * NANO));
-  }
+  function prepareSlotSound(url){slotAudioUrl=url||'';slotAudio=null;if(!slotAudioUrl)return;slotAudio=new Audio(slotAudioUrl);slotAudio.loop=false;slotAudio.preload='auto';try{slotAudio.load()}catch(e){}}
+  function startSlotSound(){if(!slotAudioUrl)return;stopSlotSound();slotSoundTimer=setTimeout(function(){var audio=slotAudio||new Audio(slotAudioUrl);audio.loop=false;audio.preload='auto';audio.currentTime=0;slotSound=audio;audio.play().catch(function(){})},120)}
+  function scheduleSlotSoundStop(){if(slotSoundStopTimer){clearTimeout(slotSoundStopTimer);slotSoundStopTimer=null}slotSoundStopTimer=setTimeout(stopSlotSound,soundStopDelayMs)}
+  function stopSlotSound(){if(slotSoundTimer){clearTimeout(slotSoundTimer);slotSoundTimer=null}if(slotSoundStopTimer){clearTimeout(slotSoundStopTimer);slotSoundStopTimer=null}if(!slotSound)return;try{slotSound.pause();slotSound.currentTime=0}catch(e){}slotSound=null}
 
-  function fromNano(value){
-    var amount = Math.max(0, Math.floor(Number(value) || 0)) / NANO;
-    return amount.toFixed(2);
-  }
+  function createSymbol(symbol){var cell=document.createElement('div');cell.className=symbol&&symbol.imageUrl?'slot-symbol has-image':'slot-symbol';var fallback=document.createElement('span');fallback.className='slot-symbol-fallback';fallback.textContent=symbolFallback(symbol);cell.appendChild(fallback);if(symbol&&symbol.imageUrl){var img=document.createElement('img');img.className='slot-symbol-image';img.alt=symbol.label||symbol.id||'Slot symbol';img.decoding='async';img.draggable=false;img.onerror=function(){cell.classList.remove('has-image');img.remove()};img.src=symbol.imageUrl;cell.appendChild(img)}return cell}
+  function stripNode(reelIndex){return document.querySelector('[data-slot-reel="'+reelIndex+'"] .slot-reel-strip')}
+  function reelOffset(reelIndex){return reelIndex%symbols.length}
+  function stripIndexForSymbol(reelIndex,symbolIndex,loopCount){var offset=reelOffset(reelIndex);var localIndex=(symbolIndex-offset+symbols.length)%symbols.length;return loopCount*symbols.length+localIndex}
+  function symbolStep(){var sample=document.querySelector('.slot-symbol');return sample&&sample.offsetHeight?sample.offsetHeight:symbolHeight}
+  function stripY(index){var step=symbolStep();return -index*step+step}
+  function stripFragment(reelIndex,loops){var fragment=document.createDocumentFragment();var total=Math.max(18,loops*symbols.length+6);var offset=reelOffset(reelIndex);for(var i=0;i<total;i++)fragment.appendChild(createSymbol(symbols[(i+offset)%symbols.length]));return fragment}
+  function buildStrip(reelIndex,loops){var strip=stripNode(reelIndex);if(!strip)return;strip.replaceChildren(stripFragment(reelIndex,loops))}
+  function setReelPosition(reelIndex,symbolIndex,animate){var strip=stripNode(reelIndex);if(!strip)return;var index=stripIndexForSymbol(reelIndex,symbolIndex,restLoop);strip.style.transition=animate?'transform .75s linear':'none';strip.style.transform='translate3d(0,'+stripY(index)+'px,0)'}
+  function initReels(){for(var i=0;i<reelCount;i++){buildStrip(i,preparedLoops);setReelPosition(i,currentIndexes[i],false)}}
+  function refreshReels(){for(var i=0;i<reelCount;i++){buildStrip(i,preparedLoops);setReelPosition(i,currentIndexes[i],false)}}
 
-  function readPointBalance(){
-    return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0;
-  }
+  function isFruitSymbol(symbolId){return ['cherry','lemon','orange','grape','watermelon'].indexOf(symbolId)!==-1}
+  function isPremiumSymbol(symbolId){return ['diamond','gold','lucky7'].indexOf(symbolId)!==-1}
+  function resultCounts(result){var counts={};result.forEach(function(symbolIndex){var symbol=symbols[symbolIndex];var id=symbol&&symbol.id;if(id)counts[id]=(counts[id]||0)+1});return counts}
+  function topResultEntry(counts){var top={symbolId:'',count:0};Object.keys(counts).forEach(function(id){if(counts[id]>top.count)top={symbolId:id,count:counts[id]}});return top}
+  function resultProfile(result){var entry=topResultEntry(resultCounts(result));if(entry.count===3){if(isFruitSymbol(entry.symbolId))return{tier:'triple-fruit',multiplier:2,xp:30,extraTurn:false};if(entry.symbolId==='diamond')return{tier:'triple-diamond',multiplier:5,xp:80,extraTurn:false};if(entry.symbolId==='gold')return{tier:'triple-gold',multiplier:20,xp:150,extraTurn:false};if(entry.symbolId==='lucky7')return{tier:'triple-seven',multiplier:100,xp:300,extraTurn:false}}if(entry.count===2){if(isFruitSymbol(entry.symbolId))return{tier:'pair-fruit',multiplier:.2,xp:10,extraTurn:false};if(isPremiumSymbol(entry.symbolId))return{tier:'pair-premium',multiplier:0,xp:20,extraTurn:true}}return{tier:'standard',multiplier:0,xp:5,extraTurn:false}}
+  function resultLabel(profile,deltaNano){if(profile.extraTurn)return'Extra turn ready';if(deltaNano>0)return'Result +'+fromNano(deltaNano);return'Result 0.00'}
 
-  function addPointDelta(deltaNano){
-    var delta = Math.floor(Number(deltaNano) || 0);
-    if(window.VexaTonBalance){
-      window.VexaTonBalance.add(delta);
-      return;
-    }
-    window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change', { detail: { deltaNano: delta } }));
-  }
+  function finish(result){var button=q('slotSpinButton');var box=document.querySelector('.slot-machine');var profile=resultProfile(result);var active=profile.multiplier>0||profile.extraTurn;var resultNano=activeCostNano>0&&profile.multiplier>0?Math.floor(activeCostNano*profile.multiplier):0;spinning=false;scheduleSlotSoundStop();if(resultNano>0)addPointDelta(resultNano);if(profile.extraTurn)extraTurns++;setMultiplierText(profile.multiplier||0);setResultText(resultLabel(profile,resultNano));pushSlotLiveUserResult(result);if(button)button.disabled=false;if(box){box.classList.remove('is-spinning');box.classList.toggle('is-win',active)}awardXP(profile.xp,'reel-result',{section:'slot',event:'finish',tier:profile.tier,multiplier:profile.multiplier,extraTurn:profile.extraTurn});activeCostNano=0;refreshControls()}
+  function spin(){if(spinning)return;var button=q('slotSpinButton');var box=document.querySelector('.slot-machine');var result=randomResult();var pending=reelCount;readAmountInput();var activeFreeTurn=extraTurns>0;activeCostNano=activeFreeTurn?0:NANO;if(!activeFreeTurn&&readPointBalance()<activeCostNano){setResultText('Not enough TON');return}if(activeFreeTurn)extraTurns--;else addPointDelta(-activeCostNano);spinning=true;awardXP(2,'reel-start',{section:'slot',event:'spin',amountNano:activeCostNano});setResultText(activeFreeTurn?'Extra turn running':'Running 1 TON');setMultiplierText(1);startSlotSound();if(button)button.disabled=true;if(box){box.classList.remove('is-win');box.classList.add('is-spinning')}result.forEach(function(symbolIndex,reelIndex){var strip=stripNode(reelIndex);if(!strip)return;var loops=maxSpinLoops-(reelCount-reelIndex-1);var finalIndex=stripIndexForSymbol(reelIndex,symbolIndex,restLoop+loops);var duration=totalSpinMs-((reelCount-reelIndex-1)*reelStopGapMs);var y=stripY(finalIndex);strip.style.willChange='transform';strip.style.transition='transform '+duration+'ms linear';strip.style.transform='translate3d(0,'+y+'px,0)';setTimeout(function(){currentIndexes[reelIndex]=symbolIndex;setReelPosition(reelIndex,symbolIndex,false);strip.style.willChange='auto';pending--;if(pending<=0)finish(result)},duration+220)});refreshControls()}
 
-  function awardXP(amount, source, metadata){
-    if(window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'slot' });
-  }
+  function loadSlotSymbols(){fetch('/app/api/slot-symbols',{cache:'no-store'}).then(function(response){return response.json().then(function(body){return{ok:response.ok,body:body}})}).then(function(result){if(!result.ok||!result.body||!result.body.symbols)return;var byId={};result.body.symbols.forEach(function(symbol){byId[symbol.id]=symbol});symbols=symbols.map(function(symbol){var uploaded=byId[symbol.id];if(!uploaded||!uploaded.imageUrl)return{id:symbol.id,label:symbol.label};return{id:symbol.id,label:uploaded.label||symbol.label,imageUrl:uploaded.imageUrl}});refreshReels();renderLive()}).catch(function(){})}
+  function loadSlotFrame(){var img=q('slotFrameImage');if(!img)return;fetch('/app/api/slot-frame',{cache:'no-store'}).then(function(response){return response.json().then(function(body){return{ok:response.ok,body:body}})}).then(function(result){if(!result.ok||!result.body||!result.body.slotFrameUrl)return;img.onload=function(){img.classList.add('is-loaded')};img.onerror=function(){img.classList.remove('is-loaded');img.removeAttribute('src')};img.src=result.body.slotFrameUrl}).catch(function(){img.classList.remove('is-loaded')})}
+  function loadSlotControls(){fetch('/app/api/slot-controls',{cache:'no-store'}).then(function(response){return response.json().then(function(body){return{ok:response.ok,body:body}})}).then(function(result){if(!result.ok||!result.body||!result.body.controls)return;result.body.controls.forEach(function(control){if(control.id!=='spin')return;var img=q('slotSpinButtonImage');if(!img||!control.imageUrl)return;img.onload=function(){img.classList.add('is-loaded')};img.onerror=function(){img.classList.remove('is-loaded');img.removeAttribute('src')};img.src=control.imageUrl})}).catch(function(){})}
+  function loadSlotSpinAudio(){fetch('/app/api/slot-spin-audio',{cache:'no-store'}).then(function(response){return response.json().then(function(body){return{ok:response.ok,body:body}})}).then(function(result){if(!result.ok||!result.body||!result.body.audioUrl)return;prepareSlotSound(result.body.audioUrl)}).catch(function(){})}
 
-  function setBrand(title){
-    var brand = q('brandTitle');
-    if(brand) brand.textContent = title;
-  }
-
-  function setResultText(text){
-    var node = q('slotResultText');
-    if(node) node.textContent = text;
-  }
-
-  function setMultiplierText(value){
-    var node = q('slotMultiplier');
-    if(!node) return;
-    node.textContent = Number(value || 0).toFixed(2) + 'x';
-  }
-
-  function cleanText(value){
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch){
-      return ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '"' ? '&quot;' : '&#39;';
-    });
-  }
-
-
-  function slotLiveCleanName(value){
-    return String(value == null ? '' : value)
-      .replace(/[<>]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 18);
-  }
-
-  function slotLiveTelegramUser(){
-    try{
-      return (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) || null;
-    }catch(e){
-      return null;
-    }
-  }
-
-  function slotLiveAccountName(user){
-    var first = slotLiveCleanName(user && user.first_name);
-    var last = slotLiveCleanName(user && user.last_name);
-    var full = slotLiveCleanName([first, last].filter(Boolean).join(' '));
-    return full || first || slotLiveCleanName(localStorage.getItem('ownerName') || localStorage.getItem('slotLiveName') || '');
-  }
-
-  function slotLiveCurrentUserNames(){
-    var base = slotLiveAccountName(slotLiveTelegramUser() || {});
-    if(!base) return [];
-    try{ localStorage.setItem('slotLiveName', base); }catch(e){}
-    return [base];
-  }
-
-  function ensureSlotLiveRealProfile(){
-    var names = slotLiveCurrentUserNames();
-    if(!names.length) return;
-    if(slotLiveRealProfileIndex >= 0 && slotLiveProfiles[slotLiveRealProfileIndex]){
-      slotLiveProfiles[slotLiveRealProfileIndex] = names;
-      return;
-    }
-    slotLiveProfiles.unshift(names);
-    slotLiveRealProfileIndex = 0;
-  }
-
-  function slotLiveSymbolFallback(symbol){
-    var iconById = { cherry: '🍒', lemon: '🍋', orange: '🍊', grape: '🍇', watermelon: '🍉', diamond: '💎', gold: '⭐', lucky7: '7️⃣' };
-    if(!symbol) return '—';
-    return iconById[symbol.id] || symbol.label || symbol.id || '—';
-  }
-
-  function randomSlotLiveSymbolIndex(seed){
-    if(seed == null && window.crypto && window.crypto.getRandomValues){
-      var values = new Uint32Array(1);
-      window.crypto.getRandomValues(values);
-      return values[0] % symbols.length;
-    }
-    var numericSeed = Number(seed == null ? Date.now() : seed) || 0;
-    var x = Math.sin(numericSeed * 9301.77 + 49297.13) * 233280;
-    return Math.abs(Math.floor(x)) % symbols.length;
-  }
-
-  function slotLiveResult(seed){
-    var result = [];
-    for(var i = 0; i < reelCount; i++){
-    // truncated but full file replacement includes unchanged content? Wait this content is incomplete?
-`;}
+  function bind(){initReels();loadSlotFrame();loadSlotSymbols();loadSlotControls();loadSlotSpinAudio();syncAmountInput();setMultiplierText(1);setResultText('Spin 1 TON');refreshControls();bindSlotLive();var spinButton=q('slotSpinButton');if(spinButton)spinButton.addEventListener('click',spin);document.addEventListener('click',function(ev){var openButton=ev.target&&ev.target.closest?ev.target.closest('[data-game-view="slot"]'):null;if(openButton)setBrand('Slot')},true)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+`;
