@@ -4,7 +4,6 @@ import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
 import { listUserTonTransactions } from './ton-transactions';
-import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
 import type { Env } from './types';
 
@@ -49,28 +48,6 @@ app.post('/admin/api/group-ai-provider', async (c) => {
     return c.json(await setGroupAiProvider(c.env, body.provider));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not save group AI provider' }, 400);
-  }
-});
-
-app.post('/admin/api/users/credit', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const body = await c.req.json() as { userId?: unknown; credit?: unknown; tonBalanceNano?: unknown };
-    const value = body.tonBalanceNano ?? body.credit ?? 0;
-    return c.json(await setUserTonBalance(c.env, String(body.userId || ''), Number(value) || 0, { title: 'Admin balance update' }));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400);
-  }
-});
-
-app.post('/admin/api/users/credit-adjust', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const body = await c.req.json() as { userId?: unknown; delta?: unknown; deltaNano?: unknown };
-    const value = body.deltaNano ?? body.delta ?? 0;
-    return c.json(await adjustUserTonBalance(c.env, String(body.userId || ''), Number(value) || 0, { kind: 'admin', title: 'Admin balance adjustment' }));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not adjust TON balance' }, 400);
   }
 });
 

@@ -5,7 +5,7 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
   const asNano=(v)=>Math.max(0,Math.floor(Number(v)||0));
   const inputNano=(v)=>Math.floor(Math.max(0,Number(String(v||'').replace(',','.'))||0)*NANO);
   const ton=(v)=>{const n=asNano(v)/NANO;return n.toFixed(3).replace(/\\.0+$/,'').replace(/(\\.\\d*?)0+$/,'$1')+' TON'};
-  const balanceOf=(u)=>asNano((u&&u.tonBalanceNano)!=null?u.tonBalanceNano:(u&&u.credit));
+  const balanceOf=(u)=>asNano((u&&u.tonBalanceNano)!=null?u.tonBalanceNano:0);
   const levelLine=(u)=>'Level '+esc((u&&u.level)||1)+' · '+esc((u&&u.rankName)||'Starter');
   const formatLeft=(ms)=>{ms=Math.max(0,Math.floor(Number(ms)||0));const d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')};
   const tickCountdowns=()=>document.querySelectorAll('[data-expires-at]').forEach(el=>{el.textContent=formatLeft(Date.parse(el.getAttribute('data-expires-at')||'')-Date.now())});
@@ -25,7 +25,7 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
     const value=asNano(valueNano),shown=ton(value);
     const user=adminUsers.find(u=>String(u.id)===String(userId));
     const before=user?balanceOf(user):0;
-    if(user){user.tonBalanceNano=value;user.tonBalance=shown;user.credit=value}
+    if(user){user.tonBalanceNano=value;user.tonBalance=shown}
     const row=document.getElementById(userRowId(userId)),node=row&&row.querySelector('.user-top>strong');
     if(node)node.textContent=shown;
     const current=row&&row.querySelector('[data-current-ton]');
@@ -52,7 +52,7 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
       document.getElementById('statTotal').textContent=String(j.stats?.total??adminUsers.length);
       document.getElementById('statOnline').textContent=String(j.stats?.online??0);
       document.getElementById('statInactive').textContent=String(j.stats?.inactive??0);
-      setTotalTon(j.stats?.totalTonBalanceNano??j.stats?.totalCredit??adminUsers.reduce((sum,u)=>sum+balanceOf(u),0));
+      setTotalTon(j.stats?.totalTonBalanceNano??adminUsers.reduce((sum,u)=>sum+balanceOf(u),0));
       usersStatus.textContent='Updated '+new Date().toLocaleTimeString();
       renderUsers();
       if(openUser)renderUserControls(openUser);

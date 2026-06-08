@@ -19,15 +19,16 @@ export async function getUserLevel(env: Env, userIdInput: unknown): Promise<User
     await env.DB.prepare('INSERT OR IGNORE INTO user_levels (user_id, level, xp, total_xp, updated_at) VALUES (?, 1, 0, 0, CURRENT_TIMESTAMP)').bind(userId).run();
     return shapeLevel(userId, 1, 0, 0);
   }
-  const totalXp = Math.max(0, Math.floor(Number(row.total_xp) || 0));
-  if (totalXp > 0) {
-    const derived = levelFromTotalXp(totalXp);
-    if (derived.level !== Number(row.level || 1) || derived.xp !== Number(row.xp || 0)) {
-      await env.DB.prepare('UPDATE user_levels SET level = ?, xp = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').bind(derived.level, derived.xp, userId).run();
-    }
-    return shapeLevel(userId, derived.level, derived.xp, totalXp);
+  const storedTotalXp = Math.max(0, Math.floor(Number(row.total_xp) || 0));
+  const impliedTotalXp = totalXpFromLevelProgress(row.level, row.xp);
+  const totalXp = Math.max(storedTotalXp, impliedTotalXp);
+  const derived = levelFromTotalXp(totalXp);
+  if (totalXp !== storedTotalXp || derived.level !== Number(row.level || 1) || derived.xp !== Number(row.xp || 0)) {
+    await env.DB.prepare('UPDATE user_levels SET level = ?, xp = ?, total_xp = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+      .bind(derived.level, derived.xp, totalXp, userId)
+      .run();
   }
-  return shapeLevel(userId, Number(row.level || 1), Number(row.xp || 0), totalXp);
+  return shapeLevel(userId, derived.level, derived.xp, totalXp);
 }
 
 export async function addUserXp(env: Env, userIdInput: unknown, amountInput: unknown, sourceInput: unknown, metadata: unknown = null, eventIdInput: unknown = null): Promise<{ profile: UserLevel; leveledUp: boolean; previousLevel: number }> {
@@ -82,6 +83,15 @@ export async function ensureLevelTables(env: Env): Promise<void> {
 export function nextLevelXp(levelInput: unknown): number {
   const level = Math.max(1, Math.floor(Number(levelInput) || 1));
   return Math.max(100, Math.floor(100 * Math.pow(level, 1.35)));
+}
+
+
+function totalXpFromLevelProgress(levelInput: unknown, xpInput: unknown): number {
+  const level = Math.max(1, Math.min(999, Math.floor(Number(levelInput) || 1)));
+  let total = 0;
+  for (let current = 1; current < level; current += 1) total += nextLevelXp(current);
+  const xp = Math.max(0, Math.floor(Number(xpInput) || 0));
+  return total + xp;
 }
 
 function levelFromTotalXp(totalXpInput: unknown): { level: number; xp: number } {
