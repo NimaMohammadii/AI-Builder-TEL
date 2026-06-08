@@ -29,7 +29,7 @@ export const DAILY_REWARDS_SCRIPT = `
     return 'locked';
   }
   function imageHtml(day){
-    return '<span class="daily-rewards-card-frame"><img class="daily-rewards-card-img" src="/app/api/daily-rewards-day-image/'+day+'" alt="" decoding="async"/></span>';
+    return '<span class="daily-rewards-banner-frame"><img class="daily-rewards-banner-img" src="/app/api/daily-rewards-day-image/'+day+'" alt="" decoding="async"/></span>';
   }
   function renderDays(){
     var wrap=q('dailyRewardsDays');if(!wrap)return;
@@ -37,11 +37,9 @@ export const DAILY_REWARDS_SCRIPT = `
     var trusted=!!(rewardsData&&rewardsData.trustedAccess);
     var startDay=Number(rewardsData&&rewardsData.visitStartDay);if(!Number.isFinite(startDay))startDay=0;
     var claimed=claimedDays(),missed=trusted?null:(rewardsData&&rewardsData.missedDay!==null&&rewardsData.missedDay!==undefined?Number(rewardsData.missedDay):null);
-    wrap.innerHTML=[0,1,2,3,4,5,6].map(function(i){
-      var reward=rewardForDay(i),state=trusted&&!claimed.has(i)?'today':statusFor(i,today,claimed,missed,startDay);
-      var canClaim=claimableRewards().has(String(reward&&reward.id));
-      return '<button class="daily-rewards-day '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+i+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(i+1)))+'">'+imageHtml(i)+'</button>';
-    }).join('')
+    var reward=rewardForDay(today),state=trusted&&!claimed.has(today)?'today':statusFor(today,today,claimed,missed,startDay);
+    var canClaim=claimableRewards().has(String(reward&&reward.id));
+    wrap.innerHTML='<button class="daily-rewards-drop-banner '+esc(state)+' '+(canClaim?'can-claim ':'')+'" type="button" data-daily-rewards-day="'+today+'" data-daily-reward-id="'+esc(reward&&reward.id)+'" data-daily-reward-state="'+esc(state)+'" '+(canClaim?'':'aria-disabled="true"')+' aria-label="'+esc((reward&&reward.title)||('Daily reward '+(today+1)))+'">'+imageHtml(today)+'</button>'
   }
   async function loadRewards(force){
     if((rewardsLoaded&&!force)||rewardsLoading)return rewardsData;
@@ -56,12 +54,12 @@ export const DAILY_REWARDS_SCRIPT = `
     if(!target.classList.contains('can-claim')){var state=target.getAttribute('data-daily-reward-state')||'';if(state==='claimed')toast('Reward already claimed');else toast('This reward is locked');return}
     var id=userId();if(!id){toast('Telegram user not found');return}
     claiming=true;target.classList.add('claiming');
-    try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');await loadRewards(true);renderDays()}
+    try{var res=await fetch('/app/api/daily-rewards/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,day:day,rewardId:rewardId})});var json=await res.json().catch(function(){return null});if(!res.ok)throw new Error(json&&json.error?json.error:'Could not claim reward');if(json&&Number.isFinite(Number(json.tonBalanceNano))&&window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(json.tonBalanceNano),0,false);toast('Reward claimed');target.classList.add('claimed');target.classList.remove('can-claim')}
     catch(e){toast(e&&e.message?e.message:'Could not claim reward')}
     finally{claiming=false;target.classList.remove('claiming')}
   }
   function removeLegacyRewards(){document.body.classList.remove('daily-rewards-open','rewards-open');document.querySelectorAll('#dailyRewardsEntry,#dailyRewardsPage,#rewardsPage,#home .home-daily-rewards-entry,#home .home-rewards-entry,#home [data-action="open-daily-rewards"],#home [data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}})}
-  function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}var finance=home.querySelector('.home-finance-split')||home.querySelector('.home-finance');var deposit=q('depositSheet');if(finance&&finance.parentNode){if(mount.parentNode!==finance.parentNode||mount.previousElementSibling!==finance)finance.parentNode.insertBefore(mount,finance.nextSibling)}else if(deposit&&deposit.parentNode){if(mount.parentNode!==deposit.parentNode||mount.nextElementSibling!==deposit)deposit.parentNode.insertBefore(mount,deposit)}else if(mount.parentNode!==home)home.appendChild(mount);return mount}
+  function ensureMount(){var home=q('home');if(!home)return null;removeLegacyRewards();document.querySelectorAll('#homeBlankCardsWrap').forEach(function(n){try{n.remove()}catch(e){}});var mount=q('dailyRewardsMount');if(!mount){var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_SECTION||'';mount=holder.firstElementChild;if(!mount)return null}if(mount.parentNode!==home)home.appendChild(mount);return mount}
   function mount(){if(!ensureMount())return;loadRewards(true).then(renderDays)}
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-day]'):null;if(!target)return;claimCard(target)},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
