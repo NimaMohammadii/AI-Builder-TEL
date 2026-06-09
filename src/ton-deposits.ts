@@ -97,7 +97,7 @@ export async function verifyTonDeposit(env: Env, depositId: string): Promise<Ton
     metadata: { txHash },
   });
   await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
-  await applyReferralDepositReward(env, row.user_id, 'ton_deposit', row.id).catch((error) => console.warn('referral TON reward failed', error));
+  await applyReferralDepositReward(env, row.user_id, 'ton_deposit', row.id, row.ton_balance_nano).catch((error) => console.warn('referral TON reward failed', error));
   const completed = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ?').bind(id).first<DepositRow>();
   return rowToDeposit(completed ?? { ...row, status: 'completed', tx_hash: txHash }, wallet);
 }
