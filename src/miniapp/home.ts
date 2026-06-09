@@ -8,6 +8,9 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <p>Vexa is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
   </section>
 
+  <section class="home-empty-glass-card" aria-hidden="true"><img id="homeEmptyCardImage" class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
+  <script>(function(){function updateHomeCardImage(){var img=document.getElementById('homeEmptyCardImage');if(!img)return;fetch('/app/api/app-version?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){var v=(j&&j.version)?String(j.version):String(Date.now());img.src='/app/api/section-lock-image/home/code.png?v='+encodeURIComponent(v);}).catch(function(){img.src='/app/api/section-lock-image/home/code.png?v='+Date.now();});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',updateHomeCardImage);else updateHomeCardImage();})();</script>
+
   <section class="home-finance-split">
     <div class="home-finance-actions">
       <button class="home-finance-card" type="button" data-action="open-deposit">
@@ -25,9 +28,6 @@ export const HOME_SECTION = `<section id="home" class="view active">
       <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
     </div>
   </section>
-
-  <section class="home-empty-glass-card" aria-hidden="true"><img id="homeEmptyCardImage" class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
-  <script>(function(){function updateHomeCardImage(){var img=document.getElementById('homeEmptyCardImage');if(!img)return;fetch('/app/api/app-version?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){var v=(j&&j.version)?String(j.version):String(Date.now());img.src='/app/api/section-lock-image/home/code.png?v='+encodeURIComponent(v);}).catch(function(){img.src='/app/api/section-lock-image/home/code.png?v='+Date.now();});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',updateHomeCardImage);else updateHomeCardImage();})();</script>
 
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
