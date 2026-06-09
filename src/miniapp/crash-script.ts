@@ -19,7 +19,9 @@ export const CRASH_SCRIPT = `
   function setTotal(seconds){var n=q('crashTotalTime');if(n)n.textContent='Total '+Math.max(0,Math.floor(seconds))+'s'}
   function seeded(seed){var x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
   function rawRoundStop(roundId){var u=Math.max(.000001,seeded(roundId));var raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
-  function multAt(seconds){return 1+seconds*.12+seconds*seconds*.0042}
+  function baseMultAt(seconds){return 1+seconds*.12+seconds*seconds*.0042}
+  function baseStopTime(stop){var target=Math.max(1,Number(stop)||1),lo=0,hi=MAX_RUN_MS/1000;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(baseMultAt(mid)>=target)hi=mid;else lo=mid}return hi}
+  function multAt(seconds){var slowUntil=2.5,slowFactor=.33,baseSlowEnd=baseStopTime(slowUntil),slowEnd=baseSlowEnd/slowFactor,maxSeconds=MAX_RUN_MS/1000;if(seconds<=slowEnd)return baseMultAt(seconds*slowFactor);var span=Math.max(.001,maxSeconds-slowEnd),baseSpan=Math.max(.001,maxSeconds-baseSlowEnd),mapped=baseSlowEnd+Math.max(0,seconds-slowEnd)*(baseSpan/span);return baseMultAt(mapped)}
   function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
   function roundStop(roundId){return Math.min(rawRoundStop(roundId),maxReachableStop())}
   function stopTime(stop){var target=Math.max(1,Number(stop)||1),lo=0,hi=MAX_RUN_MS;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
