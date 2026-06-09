@@ -98,7 +98,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
     metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: payment.telegram_payment_charge_id ?? null },
   });
   await awardDepositXp(env, row.user_id, 'stars_deposit', row.id);
-  await applyReferralDepositReward(env, row.user_id, 'stars_deposit', row.id).catch((error) => console.warn('referral Stars reward failed', error));
+  await applyReferralDepositReward(env, row.user_id, 'stars_deposit', row.id, row.amount_nano).catch((error) => console.warn('referral Stars reward failed', error));
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
