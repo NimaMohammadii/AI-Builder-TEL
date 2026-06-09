@@ -26,7 +26,7 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
   </section>
 
-  <section class="home-empty-glass-card" aria-hidden="true"></section>
+  <section class="home-empty-glass-card" aria-hidden="true"><img class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
 
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
