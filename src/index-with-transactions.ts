@@ -3,6 +3,7 @@ import { registerAdvancedAdminRoutes } from './admin-advanced-routes';
 import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
+import { registerReferralRoutes } from './referral-routes';
 import { listUserTonTransactions } from './ton-transactions';
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
@@ -36,6 +37,7 @@ type TonGiftView = {
 registerGroupPhotoEndpoint(app);
 registerHomeImageCacheEndpoint(app);
 registerAdvancedAdminRoutes(app);
+registerReferralRoutes(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -255,7 +257,7 @@ function fragmentGiftImage(block: string): string | null {
     /data-src=["']([^"']+)["']/i,
     /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
   ]);
-  return src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : null;
+  return src ? absoluteFragmentUrl(decodeHtml(src).replace(/^["']|["']$/g, '')) : null;
 }
 
 function fragmentGiftAnimation(block: string): string | null {
@@ -268,7 +270,7 @@ function fragmentGiftAnimation(block: string): string | null {
     /name=["']twitter:player:stream["'][^>]*content=["']([^"']+)["']/i,
     /["']([^"']+\.(?:mp4|webm|mov)(?:\?[^"']*)?)["']/i,
   ]);
-  const value = src ? absoluteFragmentUrl(decodeHtml(src).replace(/^['"]|['"]$/g, '')) : '';
+  const value = src ? absoluteFragmentUrl(decodeHtml(src).replace(/^["']|["']$/g, '')) : '';
   return /\.(mp4|webm|mov)(\?|#|$)/i.test(value) ? value : null;
 }
 
@@ -328,5 +330,3 @@ function isAdmin(env: Env, key: string): boolean {
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
-
-export default app;
