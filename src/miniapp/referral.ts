@@ -62,7 +62,7 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     function q(id){return document.getElementById(id)}
     function uid(){return String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||localStorage.getItem('ownerId')||'')}
     function bot(){return 'VexaAppBOT'}
-    function refFromUrl(){try{var p=new URLSearchParams(location.search);var ref=p.get('ref')||p.get('startapp')||'';var start=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||'';ref=ref||start;return String(ref).replace(/^ref[_-]/,'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,80)}catch(e){return ''}}
+    function refFromUrl(){try{var p=new URLSearchParams(location.search);var explicit=p.get('ref')||'';var start=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||p.get('startapp')||p.get('tgWebAppStartParam')||'';var ref=String(explicit||start||'');if(ref.indexOf('ref_')===0||ref.indexOf('ref-')===0)ref=ref.slice(4);else if(!explicit)return '';return ref.replace(/[^0-9A-Za-z_-]/g,'').slice(0,80)}catch(e){return ''}}
     function linkFor(id){return 'https://t.me/'+bot()+'?startapp=ref_'+encodeURIComponent(id)}
     function formatTon(nano){var n=Math.max(0,Math.floor(Number(nano)||0));return (n/1000000000).toFixed(1).replace(/\.0$/,'')}
     async function api(path,opt){var r=await fetch(path,Object.assign({headers:{'content-type':'application/json','cache-control':'no-store'}},opt||{}));var j=await r.json().catch(function(){return{}});if(!r.ok)throw new Error(j.error||'Request failed');return j}
