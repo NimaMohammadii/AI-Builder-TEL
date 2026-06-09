@@ -101,7 +101,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   background-image: url('/app/api/home-intro-image.png') !important;
   background-size: cover !important;
   background-position: center !important;
-  background-repeat: no-repeat;
+  background-repeat: no-repeat !important;
 }
 #home .home-intro-card h2,
 #home .home-intro-card p {
@@ -190,8 +190,6 @@ const SECTIONS = [
   LIMBO_SECTION,
 ].join('');
 
-const scriptBody = (script: string): string => script.replace(/^\s*<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');
-
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
   DICE_ASSET_CACHE_SCRIPT,
@@ -219,8 +217,6 @@ const SCRIPTS = [
   PREDICT_ZONE_SETTINGS_SCRIPT,
   PREDICT_EXTRA_MARKETS_SCRIPT,
   PREDICT_ENTRY_LOADER_SCRIPT,
-  scriptBody(PREDICT_CARD_ACTIONS_SCRIPT),
-  scriptBody(FOOTBALL_PREDICT_SCRIPT),
   TELEGRAM_BACK_BUTTON_SCRIPT,
   ACTIVITY_SCRIPT,
   UPLOADED_IMAGE_CACHE_SCRIPT,
