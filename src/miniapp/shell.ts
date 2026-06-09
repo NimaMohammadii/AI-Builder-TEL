@@ -263,11 +263,10 @@ export function miniAppShellHtml(): string {
       </button>
     </header>
     ${SECTIONS}
-    <nav>
+    <nav class="tabs">
       <button class="tab active" data-view="home">Home</button>
       <button class="tab" data-view="playzone">Play</button>
       <button class="tab" data-view="predictzone">Predict</button>
-      <button class="tab" data-view="topplayers">Top</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>
