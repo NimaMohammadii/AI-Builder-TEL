@@ -28,11 +28,10 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
   </section>
 
-  <section class="home-referral-card">
-    <span class="home-referral-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M18 24h12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M26 18l6 6-6 6" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="24" r="7" stroke="currentColor" stroke-opacity=".45" stroke-width="2.6"/><circle cx="35" cy="13" r="5" fill="currentColor" opacity=".3"/><circle cx="35" cy="35" r="5" fill="currentColor" opacity=".3"/></svg></span>
+  <button class="home-referral-card" type="button" data-view="referral">
+    <span class="home-referral-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M15 26h13" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M24 19l7 7-7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="26" r="6.5" stroke="currentColor" stroke-opacity=".45" stroke-width="2.5"/><circle cx="36" cy="15" r="5.5" fill="currentColor" opacity=".25"/><circle cx="36" cy="37" r="5.5" fill="currentColor" opacity=".25"/></svg></span>
     <span class="home-referral-copy"><strong>Referral Rewards</strong><small>Invite friends and earn 0.1 TON after their first deposit.</small></span>
-    <span class="home-referral-badge">Soon</span>
-  </section>
+  </button>
 
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
