@@ -14,6 +14,9 @@ export const LEVEL_SYNC_SCRIPT = `
   var lastSmartTickAt=0;
   var playMs=0;
   var dailyChecked=false;
+  var loadingProfile=false;
+  var lastProfileLoadAt=0;
+  var playTimer=0;
   var renderedTotalXp=-1;
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,slot:1,coinflip:1,hilo:1};
   var ranks=[
@@ -79,14 +82,22 @@ export const LEVEL_SYNC_SCRIPT = `
   function flushPendingXp(){var userId=id();if(!userId||flushingXp)return;var pending=loadPendingXp();if(!pending.length)return;flushingXp=true;queue=queue.then(function(){function step(){var list=loadPendingXp();if(!list.length)return Promise.resolve();var ev=list[0];return fetch('/app/api/level/xp',{method:'POST',cache:'no-store',headers:{'content-type':'application/json','cache-control':'no-store'},body:xpBody(ev)}).then(function(r){if(!r.ok)throw new Error('xp sync failed');return r.json().catch(function(){return null})}).then(function(j){list=loadPendingXp();if(list.length&&list[0].eventId===ev.eventId)list.shift();else list=list.filter(function(x){return x.eventId!==ev.eventId});savePendingXp(list);if(j&&j.profile)render(j.profile,{authoritative:true,force:true});if(j&&j.leveledUp&&j.profile)popup(j.profile.level,j.profile.rankName);return step()})}return step()}).catch(function(){}).then(function(){flushingXp=false})}
   function add(amount,source,metadata){var userId=id();amount=Math.max(0,Math.floor(Number(amount)||0));if(!userId||!amount)return;var ev={eventId:xpEventId(),userId:userId,amount:amount,source:source||'activity',metadata:metadata||{section:section()}};var pending=loadPendingXp();pending.push(ev);savePendingXp(pending);preview(amount);flushPendingXp()}
   function awardDailyOpen(){var userId=id();if(!userId||dailyChecked)return;dailyChecked=true;try{var key=dailyStorageKey(),today=todayKey();if(localStorage.getItem(key)===today)return;localStorage.setItem(key,today);add(DAILY_XP_AMOUNT,'daily-open',{date:today});xpToast(DAILY_XP_AMOUNT)}catch(e){}}
-  function load(){var userId=id();if(!userId)return;loadPlayMs();loadCachedProfile();fetch('/app/api/level?userId='+encodeURIComponent(userId),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.json()}).then(function(p){render(p,{authoritative:true,force:true});flushPendingXp();awardDailyOpen()}).catch(function(){flushPendingXp();awardDailyOpen()})}
-  function tickPlayXp(){var now=Date.now();var elapsed=Math.max(0,Math.min(30000,now-lastTickAt));lastTickAt=now;if(!id())return;if(document.hidden)return;if(!isGameSection(section())){savePlayMs();return}if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();return}playMs+=elapsed;while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs()}
+  function load(opts){opts=opts||{};var userId=id();if(!userId)return;loadPlayMs();loadCachedProfile();var now=Date.now();if(loadingProfile)return;if(!opts.force&&lastProfileLoadAt&&now-lastProfileLoadAt<15000){flushPendingXp();awardDailyOpen();return}loadingProfile=true;lastProfileLoadAt=now;fetch('/app/api/level?userId='+encodeURIComponent(userId),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.json()}).then(function(p){render(p,{authoritative:true,force:true});flushPendingXp();awardDailyOpen()}).catch(function(){flushPendingXp();awardDailyOpen()}).then(function(){loadingProfile=false})}
+  function clearPlayTimer(){if(playTimer){clearTimeout(playTimer);playTimer=0}}
+  function schedulePlayTimer(){clearPlayTimer();if(!id()||document.hidden||!isGameSection(section()))return;var remaining=Math.max(1000,Math.min(PLAY_XP_INTERVAL_MS-playMs,ACTIVE_WINDOW_MS-(Date.now()-lastActivityAt)));if(remaining>0&&remaining<=ACTIVE_WINDOW_MS)playTimer=setTimeout(function(){playTimer=0;smartTick(true)},remaining+25)}
+  function tickPlayXp(){var now=Date.now();var elapsed=Math.max(0,Math.min(ACTIVE_WINDOW_MS,now-lastTickAt));lastTickAt=now;if(!id())return;if(document.hidden){clearPlayTimer();return}if(!isGameSection(section())){savePlayMs();clearPlayTimer();return}if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();clearPlayTimer();return}playMs+=elapsed;while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs();schedulePlayTimer()}
   function smartTick(force){var now=Date.now();if(!force&&now-lastSmartTickAt<5000)return;lastSmartTickAt=now;tickPlayXp()}
-  window.VexaLevel={add:add,load:load,openRanks:openRankModal,flushPlayXp:function(){smartTick(true)}};
-  ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section())){markActivity();smartTick(false)}},true)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs()}else{lastTickAt=Date.now();markActivity();load();smartTick(true)}});
-  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){markActivity();smartTick(true)},80)}if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
-  window.addEventListener('beforeunload',function(){smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(navigator.sendBeacon)pending.slice(0,20).forEach(function(ev){navigator.sendBeacon('/app/api/level/xp',new Blob([xpBody(ev)],{type:'application/json'}))})}catch(e){}});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();markActivity();lastTickAt=Date.now()});else{load();markActivity();lastTickAt=Date.now()}setInterval(function(){load()},30000)
+  function refreshFromUserIntent(force){markActivity();smartTick(!!force);flushPendingXp()}
+  window.VexaLevel={add:add,load:function(){load({force:true})},openRanks:openRankModal,flushPlayXp:function(){smartTick(true)}};
+  ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section()))refreshFromUserIntent(false)},true)});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs();clearPlayTimer()}else{lastTickAt=Date.now();refreshFromUserIntent(true);load({force:true})}});
+  window.addEventListener('focus',function(){lastTickAt=Date.now();refreshFromUserIntent(true);load({force:false})});
+  window.addEventListener('online',function(){flushPendingXp();load({force:true})});
+  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){refreshFromUserIntent(true)},80)}if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
+  try{new MutationObserver(function(){smartTick(true);schedulePlayTimer()}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}
+  function drainOnExit(){smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(navigator.sendBeacon)pending.slice(0,20).forEach(function(ev){navigator.sendBeacon('/app/api/level/xp',new Blob([xpBody(ev)],{type:'application/json'}))})}catch(e){}}
+  window.addEventListener('pagehide',drainOnExit);
+  window.addEventListener('beforeunload',drainOnExit);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load({force:true});markActivity();lastTickAt=Date.now();schedulePlayTimer()});else{load({force:true});markActivity();lastTickAt=Date.now();schedulePlayTimer()}
 })();
 `;
