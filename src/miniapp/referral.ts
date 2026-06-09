@@ -4,6 +4,7 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     #referral *{font-family:var(--font-main)!important;letter-spacing:0!important}
     #referral::-webkit-scrollbar{display:none}
     .referral-shell{display:grid;gap:12px;padding-top:2px}
+    #referral .referral-top-card{margin:0 0 12px}
     .referral-hero{border:0;border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(90,8,18,.11));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 44px rgba(0,0,0,.24);backdrop-filter:blur(3px) saturate(1.14);-webkit-backdrop-filter:blur(3px) saturate(1.14);padding:18px 16px;display:grid;gap:13px;color:#fff;overflow:hidden;position:relative}
     .referral-hero:before{content:"";position:absolute;inset:auto -42px -72px auto;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle,rgba(115,16,35,.32),rgba(115,16,35,0) 68%);pointer-events:none}
     .referral-hero-top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
@@ -29,6 +30,7 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     .referral-row strong{font-size:12px;font-weight:650}.referral-row span{font-size:11px;color:rgba(255,255,255,.52)}
   </style>
   <div class="referral-shell">
+    <section class="home-empty-glass-card referral-top-card" aria-hidden="true"><img id="homeEmptyCardImage" class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
     <section class="referral-hero">
       <div class="referral-hero-top">
         <span class="referral-hero-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M15 26h13" stroke="currentColor" stroke-width="3.3" stroke-linecap="round"/><path d="M24 19l7 7-7 7" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="26" r="6.5" stroke="currentColor" stroke-opacity=".45" stroke-width="2.6"/><circle cx="36" cy="15" r="5.5" fill="currentColor" opacity=".26"/><circle cx="36" cy="37" r="5.5" fill="currentColor" opacity=".26"/></svg></span>
