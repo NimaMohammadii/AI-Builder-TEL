@@ -7,7 +7,7 @@ export const XP_BAR_EFFECTS_SCRIPT = `
     if(document.getElementById(styleId))return;
     var s=document.createElement('style');
     s.id=styleId;
-    s.textContent = '#userLine>span:nth-of-type(2){width:128px!important;overflow:visible!important;position:relative!important;isolation:isolate!important}#userLine>span:nth-of-type(2)>span{position:relative!important;overflow:visible!important;transition:width 1.35s cubic-bezier(.08,.78,.12,1)!important;will-change:width,filter!important;transform:translateZ(0)!important}#userLine>span:nth-of-type(2)>span.vexa-xp-moving{filter:brightness(1.12) saturate(1.14)!important}.vexa-xp-shard{position:absolute;right:-3px;top:50%;width:3px;height:4px;border-radius:1px;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,196,220,.62));box-shadow:0 0 6px rgba(255,210,230,.48),inset 0 1px 0 rgba(255,255,255,.68);clip-path:polygon(48% 0,100% 38%,70% 100%,0 74%,18% 18%);pointer-events:none;z-index:6;animation:vexaXpShardOut .68s cubic-bezier(.12,.88,.22,1) forwards;will-change:transform,opacity}.vexa-xp-flash{position:absolute;right:-6px;top:50%;width:13px;height:13px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.78),rgba(255,190,214,.28) 38%,rgba(255,255,255,0) 74%);filter:blur(.22px);pointer-events:none;z-index:5;animation:vexaXpFlashOut .32s ease forwards;will-change:transform,opacity}.vexa-xp-spark{position:absolute;right:-3px;top:50%;width:1.2px;height:8px;border-radius:999px;background:rgba(255,255,255,.78);box-shadow:0 0 5px rgba(255,210,230,.46);pointer-events:none;z-index:7;animation:vexaXpSparkOut .38s ease forwards}@keyframes vexaXpShardOut{0%{opacity:0;transform:translate(0,-50%) scale(.25) rotate(0)}18%{opacity:.82;transform:translate(0,-50%) scale(.72) rotate(6deg)}100%{opacity:0;transform:translate(var(--dx,2px),var(--dy,-18px)) scale(.55) rotate(var(--rot,38deg))}}@keyframes vexaXpFlashOut{0%{opacity:0;transform:translateY(-50%) scale(.25)}20%{opacity:.58;transform:translateY(-50%) scale(.76)}100%{opacity:0;transform:translateY(-50%) scale(.1)}}@keyframes vexaXpSparkOut{0%{opacity:0;transform:translate(0,-50%) scaleY(.25) rotate(var(--rot,0deg))}18%{opacity:.7}100%{opacity:0;transform:translate(var(--dx,1px),var(--dy,-14px)) scaleY(.08) rotate(var(--rot,0deg))}}';
+    s.textContent = '#userLine>span:nth-of-type(2){width:128px!important;overflow:visible!important;position:relative!important;isolation:isolate!important}#userLine>span:nth-of-type(2)>span{position:relative!important;overflow:visible!important;transition:width 1.35s cubic-bezier(.08,.78,.12,1)!important;will-change:width!important;transform:translateZ(0)!important}.vexa-xp-shard{position:absolute;right:-3px;top:50%;width:3px;height:4px;border-radius:1px;background:rgba(255,255,255,.86);clip-path:polygon(48% 0,100% 38%,70% 100%,0 74%,18% 18%);pointer-events:none;z-index:6;animation:vexaXpShardOut .68s cubic-bezier(.12,.88,.22,1) forwards;will-change:transform,opacity}.vexa-xp-flash{position:absolute;right:-6px;top:50%;width:11px;height:11px;border-radius:999px;background:rgba(255,255,255,.28);pointer-events:none;z-index:5;animation:vexaXpFlashOut .28s ease forwards;will-change:transform,opacity}.vexa-xp-spark{position:absolute;right:-3px;top:50%;width:1px;height:7px;border-radius:999px;background:rgba(255,255,255,.72);pointer-events:none;z-index:7;animation:vexaXpSparkOut .36s ease forwards}@keyframes vexaXpShardOut{0%{opacity:0;transform:translate(0,-50%) scale(.25) rotate(0)}18%{opacity:.78;transform:translate(0,-50%) scale(.72) rotate(6deg)}100%{opacity:0;transform:translate(var(--dx,2px),var(--dy,-18px)) scale(.55) rotate(var(--rot,38deg))}}@keyframes vexaXpFlashOut{0%{opacity:0;transform:translateY(-50%) scale(.22)}20%{opacity:.42;transform:translateY(-50%) scale(.65)}100%{opacity:0;transform:translateY(-50%) scale(.1)}}@keyframes vexaXpSparkOut{0%{opacity:0;transform:translate(0,-50%) scaleY(.25) rotate(var(--rot,0deg))}18%{opacity:.62}100%{opacity:0;transform:translate(var(--dx,1px),var(--dy,-14px)) scaleY(.08) rotate(var(--rot,0deg))}}';
     document.head.appendChild(s);
   }
   function fillInfo(){
@@ -22,12 +22,10 @@ export const XP_BAR_EFFECTS_SCRIPT = `
     var now=Date.now();
     if(now-burstLock<160)return;
     burstLock=now;
-    fill.classList.add('vexa-xp-moving');
-    setTimeout(function(){fill.classList.remove('vexa-xp-moving')},1320);
     var flash=document.createElement('span');
     flash.className='vexa-xp-flash';
     fill.appendChild(flash);
-    setTimeout(function(){flash.remove()},420);
+    setTimeout(function(){flash.remove()},360);
     for(var i=0;i<6;i++){
       var p=document.createElement('span');
       p.className='vexa-xp-shard';
@@ -35,7 +33,7 @@ export const XP_BAR_EFFECTS_SCRIPT = `
       p.style.setProperty('--dy',((i%2===0?-1:1)*(8+Math.random()*18))+'px');
       p.style.setProperty('--rot',(-35+Math.random()*70)+'deg');
       p.style.animationDelay=(i*10)+'ms';
-      p.style.opacity=String(.58+Math.random()*.24);
+      p.style.opacity=String(.58+Math.random()*.20);
       fill.appendChild(p);
       setTimeout((function(el){return function(){el.remove()}})(p),760);
     }
