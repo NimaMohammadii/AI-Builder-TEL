@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { adjustUserTonBalance } from './user-controls';
 
 const REFERRAL_REWARD_NANO = 100_000_000; // 0.1 TON
+const DEFAULT_REFERRAL_MIN_DEPOSIT_NANO = 1_000_000_000; // 1 TON
 
 type ReferralRow = {
   invited_user_id: string;
@@ -73,11 +74,12 @@ export async function getReferralDashboard(env: Env, userIdInput: unknown): Prom
   };
 }
 
-export async function applyReferralDepositReward(env: Env, invitedUserIdInput: unknown, depositReferenceType: string, depositReferenceId: string): Promise<void> {
+export async function applyReferralDepositReward(env: Env, invitedUserIdInput: unknown, depositReferenceType: string, depositReferenceId: string, depositAmountNanoInput: unknown): Promise<void> {
   const invitedUserId = cleanUserId(invitedUserIdInput);
   const referenceType = cleanText(depositReferenceType, 60) || 'deposit';
   const referenceId = cleanText(depositReferenceId, 120) || '';
-  if (!referenceId) return;
+  const depositAmountNano = Math.floor(Number(depositAmountNanoInput) || 0);
+  if (!referenceId || depositAmountNano < referralMinDepositNano(env)) return;
   await ensureReferralTable(env);
   const row = await env.DB.prepare(`SELECT * FROM referrals WHERE invited_user_id = ? AND status = 'pending' LIMIT 1`)
     .bind(invitedUserId)
@@ -92,11 +94,11 @@ export async function applyReferralDepositReward(env: Env, invitedUserIdInput: u
   await adjustUserTonBalance(env, row.referrer_user_id, Number(row.reward_nano || REFERRAL_REWARD_NANO), {
     kind: 'referral',
     title: 'Referral reward',
-    description: 'Friend made their first deposit',
+    description: 'Friend made a qualifying first deposit',
     referenceId,
     referenceType,
     status: 'completed',
-    metadata: { invitedUserId: maskUserId(invitedUserId), rewardNano: Number(row.reward_nano || REFERRAL_REWARD_NANO) },
+    metadata: { invitedUserId: maskUserId(invitedUserId), rewardNano: Number(row.reward_nano || REFERRAL_REWARD_NANO), depositAmountNano },
   });
 }
 
@@ -114,6 +116,11 @@ async function ensureReferralTable(env: Env): Promise<void> {
   )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_user_id, created_at)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status)').run();
+}
+
+function referralMinDepositNano(env: Env): number {
+  const raw = Number((env as unknown as Record<string, unknown>).REFERRAL_MIN_DEPOSIT_NANO || DEFAULT_REFERRAL_MIN_DEPOSIT_NANO);
+  return Number.isSafeInteger(raw) && raw > 0 ? raw : DEFAULT_REFERRAL_MIN_DEPOSIT_NANO;
 }
 
 function cleanUserId(value: unknown): string {
