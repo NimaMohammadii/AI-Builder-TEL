@@ -265,7 +265,7 @@ export function miniAppShellHtml(): string {
     ${SECTIONS}
     <nav class="tabs">
       <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="playzone">Play</button>
+      <button class="tab" data-view="playzone">Play Zone</button>
       <button class="tab" data-view="predictzone">Predict</button>
     </nav>
   </main>
