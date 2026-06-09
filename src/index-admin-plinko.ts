@@ -3,7 +3,7 @@ import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plink
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
-import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageVersionKey } from './section-locks';
+import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import { registerRankCharacterRoutes } from './rank-character-routes';
