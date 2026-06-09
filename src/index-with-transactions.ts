@@ -330,3 +330,5 @@ function isAdmin(env: Env, key: string): boolean {
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
+
+export default app;
