@@ -8,8 +8,6 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <p>Vexa is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
   </section>
 
-  <section class="home-empty-glass-card" aria-hidden="true"><img id="homeEmptyCardImage" class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
-
   <section class="home-finance-split">
     <div class="home-finance-actions">
       <button class="home-finance-card" type="button" data-action="open-deposit">
