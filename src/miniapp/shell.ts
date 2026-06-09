@@ -76,6 +76,7 @@ import { SECTION_LOADING_LOCK_SCRIPT } from './section-loading-lock-script';
 import { SECTION_TRUSTED_ACCESS_SCRIPT } from './section-trusted-access-script';
 import { SECTION_LOCK_IMAGE_SPLIT_SCRIPT } from './section-lock-image-split-script';
 import { MINIAPP_AUDIO_SCRIPT } from './audio-script';
+import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
 import { PREDICT_ZONE_SETTINGS_SCRIPT } from './predict-zone-settings-script';
 import { PREDICT_EXTRA_MARKETS_SCRIPT } from './predict-extra-markets-script';
 import { PREDICT_ENTRY_LOADER_SCRIPT } from './predict-entry-loader-script';
@@ -222,6 +223,7 @@ const SCRIPTS = [
   SECTION_LOADING_LOCK_SCRIPT,
   SECTION_LOCK_IMAGE_SPLIT_SCRIPT,
   MINIAPP_AUDIO_SCRIPT,
+  XP_BAR_EFFECTS_SCRIPT,
 ].map((script) => `<script>${script}</script>`).join('');
 
 export function miniAppShellHtml(): string {
