@@ -13,7 +13,8 @@ export const MINIAPP_SCRIPT = `
   setTimeout(expandMiniApp,500);
   setTimeout(expandMiniApp,1200);
 
-  var ownerId=localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
+  var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
+  var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
   var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross'};
 
@@ -120,6 +121,31 @@ export const MINIAPP_SCRIPT = `
     }catch(e){}
   }
 
+  function referralRefFromUrl(){
+    try{
+      var p=new URLSearchParams(location.search);
+      var explicit=p.get('ref')||'';
+      var start=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||p.get('startapp')||p.get('tgWebAppStartParam')||'';
+      var raw=explicit||start||'';
+      raw=String(raw);
+      if(raw.indexOf('ref_')===0||raw.indexOf('ref-')===0)raw=raw.slice(4);
+      else if(!explicit)return '';
+      return raw.replace(/[^0-9A-Za-z_-]/g,'').slice(0,80);
+    }catch(e){return ''}
+  }
+
+  async function claimReferralIfNeeded(){
+    var ref=referralRefFromUrl();
+    var id=ownerId;
+    if(!id||!ref||ref===id)return;
+    var key='vexa-referral-claim:'+id+':'+ref;
+    try{if(localStorage.getItem(key)==='1')return}catch(e){}
+    try{
+      await api('/app/api/referral/claim',{method:'POST',body:JSON.stringify({userId:id,ref:ref})});
+      try{localStorage.setItem(key,'1')}catch(e){}
+    }catch(e){}
+  }
+
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
@@ -169,7 +195,7 @@ export const MINIAPP_SCRIPT = `
   }
 
   function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','Pause')}else{a.pause();setText('wavePlay','Play')}}
-  function saveUser(){ownerId=(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine()}
+  function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();claimReferralIfNeeded()}
 
   document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
   document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
@@ -202,6 +228,7 @@ export const MINIAPP_SCRIPT = `
   });
 
   if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
+  if(ownerId)localStorage.setItem('ownerId',ownerId);
   if(q('ownerId'))q('ownerId').value=ownerId;
   removeLegacyLeagueAndRewards();
   setTimeout(removeLegacyLeagueAndRewards,50);
@@ -212,6 +239,7 @@ export const MINIAPP_SCRIPT = `
   setHeaderGlassMode('home');
   syncTelegramBackButton('home');
   userLine();
+  claimReferralIfNeeded();
   updateTtsCharCount();
   setTimeout(openInitialTarget,250);
   setTimeout(openInitialTarget,900);
