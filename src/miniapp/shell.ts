@@ -32,6 +32,7 @@ import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION } from './home';
+import { REFERRAL_SECTION } from './referral';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
@@ -171,6 +172,7 @@ const STYLES = [
 
 const SECTIONS = [
   HOME_SECTION,
+  REFERRAL_SECTION,
   MARKET_SECTION,
   RESULTS_SECTION,
   PLAY_ZONE_SECTION,
@@ -260,17 +262,16 @@ export function miniAppShellHtml(): string {
         <b id="topTonBalance" data-ton-balance-display>0</b>
       </button>
     </header>
-    <div class="content">${SECTIONS}</div>
-    <nav class="tabs">
+    ${SECTIONS}
+    <nav>
       <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="playzone">Play Zone</button>
+      <button class="tab" data-view="playzone">Play</button>
       <button class="tab" data-view="predictzone">Predict</button>
+      <button class="tab" data-view="topplayers">Top</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>
   ${SCRIPTS}
-  ${PREDICT_CARD_ACTIONS_SCRIPT}
-  ${FOOTBALL_PREDICT_SCRIPT}
 </body>
 </html>`;
 }
