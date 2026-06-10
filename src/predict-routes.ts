@@ -6,6 +6,7 @@ import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } fr
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
+const CACHE_PREDICT_IMAGE_MANIFEST = 'public, max-age=300, stale-while-revalidate=86400';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
 const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
@@ -24,11 +25,11 @@ type RoundResult = 'up' | 'down' | 'draw' | null;
 type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
 
-app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE }));
+app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
 
-app.get('/app/api/predict-crypto-card-images', async (c) => c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE }));
+app.get('/app/api/predict-crypto-card-images', async (c) => c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
 
-app.get('/app/api/predict-button-images', async (c) => c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE }));
+app.get('/app/api/predict-button-images', async (c) => c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
 
 app.get('/app/api/predict-button-image/:side', async (c) => {
   try {
