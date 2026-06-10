@@ -133,8 +133,6 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 }
 `;
 
-const styleBody = (style: string): string => style.replace(/^\s*<style[^>]*>/i, '').replace(/<\/style>\s*$/i, '');
-
 const STYLES = [
   MINIAPP_STYLES,
   TTS_STYLES,
@@ -170,7 +168,7 @@ const STYLES = [
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
   GAME_LIVE_COUNT_STYLES,
-].map(styleBody).join('');
+].join('');
 
 const SECTIONS = [
   HOME_SECTION,
