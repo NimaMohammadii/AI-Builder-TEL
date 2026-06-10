@@ -7,13 +7,16 @@ const PREDICT_SETTINGS_SCRIPT = `
   function apply(settings){
     var root=document.getElementById('predictzone');
     if(!root)return;
-    root.classList.toggle('predict-live-bets-disabled', settings&&settings.liveBetsEnabled===false);
+    settings=settings||{liveBetsEnabled:true,hiddenCards:{}};
+    window.VexaPredictSettings=settings;
+    root.classList.toggle('predict-live-bets-disabled', settings.liveBetsEnabled===false);
+    try{window.dispatchEvent(new CustomEvent('vexa-predict-settings',{detail:settings}))}catch(e){}
   }
   function load(){
     fetch('/app/api/predict-settings',{cache:'no-store'})
       .then(function(response){return response.json()})
       .then(apply)
-      .catch(function(){apply({liveBetsEnabled:true})});
+      .catch(function(){apply({liveBetsEnabled:true,hiddenCards:{}})});
   }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',load);

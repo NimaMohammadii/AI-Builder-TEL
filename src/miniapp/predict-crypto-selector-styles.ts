@@ -1,6 +1,7 @@
 export const PREDICT_CRYPTO_SELECTOR_STYLES = `
 #predictzone .predict-detail-hidden{display:none!important}
 #predictzone .predict-crypto-grid{--predict-card-gap:3px;display:grid;gap:12px;margin:4px 0 22px;padding:0 0 96px}
+#predictzone .predict-crypto-empty{min-height:136px;border-radius:30px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);display:grid;place-items:center;padding:20px;text-align:center;color:rgba(255,255,255,.50);font-size:13px;font-weight:800}
 #predictzone .predict-crypto-card{position:relative;width:100%;height:calc((100vw - (var(--predict-card-gap) * 2)) / 3 + (var(--predict-card-gap) * 2))!important;min-height:128px!important;max-height:180px!important;border:0!important;outline:0!important;border-radius:30px!important;background:rgba(255,255,255,.035)!important;box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.14)!important;-webkit-backdrop-filter:blur(4px) saturate(1.12)!important;backdrop-filter:blur(4px) saturate(1.12)!important;display:grid;grid-template-columns:78px minmax(0,1fr) auto;align-items:center;gap:12px;padding:0 3px!important;text-align:left;color:#fff;overflow:hidden;transition:transform .18s ease!important}
 #predictzone .predict-crypto-card:active{transform:scale(.985)!important}
 #predictzone .predict-crypto-card:before{content:"";display:none!important}
