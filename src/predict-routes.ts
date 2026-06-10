@@ -9,6 +9,7 @@ const CACHE_NONE = 'no-store';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
 const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum'] as const;
+const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton'] as const;
 const ROUND_MS = 5 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -16,6 +17,7 @@ const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
 type PredictCryptoCardMarket = typeof PREDICT_CRYPTO_CARD_MARKETS[number];
+type PredictButtonSide = typeof PREDICT_BUTTON_SIDES[number];
 type TradeMarket = typeof TRADE_MARKETS[number];
 type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
@@ -25,6 +27,17 @@ type BetRow = { id: string; round_id: string; market: string; user_id: string; s
 app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE }));
 
 app.get('/app/api/predict-crypto-card-images', async (c) => c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/predict-button-images', async (c) => c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/predict-button-image/:side', async (c) => {
+  try {
+    const side = normalizePredictButtonSide(c.req.param('side').replace(/\.png$/i, ''));
+    return getPredictImageResponse(c.env, predictButtonImageKey(side));
+  } catch {
+    return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
+  }
+});
 
 app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
   try {
@@ -38,6 +51,28 @@ app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
 app.get('/admin/api/predict-crypto-card-images', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
+});
+
+app.get('/admin/api/predict-button-images', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  return c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE });
+});
+
+app.post('/admin/api/predict-button-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  try {
+    const form = await c.req.formData();
+    const side = normalizePredictButtonSide(String(form.get('side') || ''));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
+    if (!PREDICT_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400, { 'cache-control': CACHE_NONE });
+    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400, { 'cache-control': CACHE_NONE });
+    const version = String(Date.now());
+    await c.env.ASSETS.put(predictButtonImageKey(side), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload predict button image' }, 400, { 'cache-control': CACHE_NONE });
+  }
 });
 
 app.post('/admin/api/predict-crypto-card-image', async (c) => {
@@ -164,6 +199,19 @@ async function getPredictCryptoCardImages(env: Env): Promise<{ images: Record<Pr
   return { images: Object.fromEntries(entries) as Record<PredictCryptoCardMarket, { imageUrl: string }> };
 }
 
+async function getPredictButtonImages(env: Env): Promise<{ images: Record<PredictButtonSide, { imageUrl: string }> }> {
+  const entries = await Promise.all(PREDICT_BUTTON_SIDES.map(async (side) => {
+    const head = await env.ASSETS.head(predictButtonImageKey(side)).catch(() => null);
+    const version = head?.customMetadata?.version || '1';
+    return [side, { imageUrl: head ? `/app/api/predict-button-image/${side}.png?v=${version}` : '' }] as const;
+  }));
+  return { images: Object.fromEntries(entries) as Record<PredictButtonSide, { imageUrl: string }> };
+}
+
+function normalizePredictButtonSide(value: string): PredictButtonSide {
+  if ((PREDICT_BUTTON_SIDES as readonly string[]).includes(value)) return value as PredictButtonSide;
+  throw new Error('Invalid predict button');
+}
 function normalizePredictCryptoCardMarket(value: string): PredictCryptoCardMarket {
   if ((PREDICT_CRYPTO_CARD_MARKETS as readonly string[]).includes(value)) return value as PredictCryptoCardMarket;
   throw new Error('Invalid crypto card market');
@@ -286,6 +334,7 @@ async function getPredictImageResponse(env: Env, key: string): Promise<Response>
   return new Response(object.body, { headers });
 }
 function predictImageKey(market: PredictMarket): string { return `predict/${market}/question-image`; }
+function predictButtonImageKey(side: PredictButtonSide): string { return `predict/buttons/${side}-image`; }
 function normalizePredictMarket(value: string): PredictMarket {
   const market = value.trim().toLowerCase();
   if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
