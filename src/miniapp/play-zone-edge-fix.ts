@@ -1,6 +1,6 @@
 export const PLAY_ZONE_EDGE_FIX = `
 #playzone.play-zone-view{contain:layout paint!important;transform:translateZ(0)!important;will-change:scroll-position!important}
-#playzone .play-zone-stage{contain:layout paint style!important}
+#playzone .play-zone-stage{--play-card-gap:3px!important;contain:layout paint style!important}
 #playzone .game-card-shell{contain:layout paint!important;will-change:auto!important}
 #playzone .game-card-live,#playzone .play-zone-featured-card,#playzone .game-players{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 #playzone .game-card-live{background:rgba(255,255,255,.055)!important;box-shadow:0 10px 22px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.14)!important}
