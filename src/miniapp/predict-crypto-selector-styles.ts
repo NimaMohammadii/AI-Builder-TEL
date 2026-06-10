@@ -14,6 +14,7 @@ export const PREDICT_CRYPTO_SELECTOR_STYLES = `
 #predictzone .predict-crypto-copy b{font-size:18px;font-weight:850;letter-spacing:-.055em;line-height:1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #predictzone .predict-crypto-copy small{font-size:12px;font-weight:680;line-height:1.2;color:rgba(255,255,255,.52);letter-spacing:-.025em;white-space:normal}
 #predictzone .predict-crypto-price{height:34px;min-width:74px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);display:inline-flex;align-items:center;justify-content:center;padding:0 10px;margin-right:6px!important;transform:translate(-26px,44px)!important;color:rgba(255,255,255,.86);font-size:12px;font-weight:850;letter-spacing:-.035em;white-space:nowrap}
+#predictzone .predict-crypto-price[data-vexa-predict-card-price]:not([data-vexa-predict-card-price="bitcoin"]){display:none!important}
 #predictzone .predict-zone-category-menu:before{content:""!important;display:none!important}
 #predictzone .predict-zone-category-menu{margin-bottom:14px!important}
 #predictzone .predict-zone-category-card[data-predict-group],#predictzone .predict-zone-category-card[data-predict-direct]{background:rgba(255,255,255,.055)!important}
