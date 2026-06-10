@@ -23,6 +23,7 @@ import { ADMIN_USER_MENU_PANEL_SCRIPT } from './admin-user-menu-panel';
 import { ADMIN_USERS_BULK_PANEL_SCRIPT } from './admin-users-bulk-panel';
 import { ADMIN_SLOT_FRAME_PANEL_SCRIPT } from './admin-slot-frame-panel';
 import { ADMIN_DICE_ASSETS_PANEL_SCRIPT } from './admin-dice-assets-panel';
+import { ADMIN_WORLD_CUP_PANEL_SCRIPT } from './admin-world-cup-panel';
 
 const ADMIN_LAYOUT_CSS = `<style>.reset-user-btn{height:31px!important;margin-top:8px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.16)!important;color:#ffb3b3!important;font-size:12px!important;width:100%!important}.bulk-users-btn{height:36px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.22)!important;color:#ffd1d1!important;font-size:12px!important;font-weight:800!important;padding:0 14px!important;white-space:nowrap!important}.menu-panel,.menu-panel[hidden]{display:flex!important;gap:7px!important;overflow-x:auto!important;margin:4px 0 18px!important;padding:0 0 8px!important;border:0!important;background:transparent!important}.menu-item{flex:0 0 auto!important;width:auto!important;min-width:86px!important;border-radius:999px!important}.menu-item strong{display:block!important;font-size:12px!important}.menu-item span{display:none!important}</style>`;
 
@@ -40,7 +41,7 @@ export function adminHtml(): string {
 }
 
 export function adminPanelHtml(): string {
-  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_USERS_BULK_PANEL_SCRIPT + ADMIN_USER_MENU_PANEL_SCRIPT + ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT + ADMIN_TON_PANEL_SCRIPT + ADMIN_FORCE_REFRESH_PANEL_SCRIPT + ADMIN_NFT_PRICE_ICON_PANEL_SCRIPT + ADMIN_WHEEL_ASSETS_PANEL_SCRIPT + ADMIN_MARKET_PROVIDER_PANEL_SCRIPT + ADMIN_DAILY_REWARDS_PANEL_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT + ADMIN_RANK_CHARACTER_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT + ADMIN_SLOT_FRAME_PANEL_SCRIPT + ADMIN_DICE_ASSETS_PANEL_SCRIPT + ADMIN_MARKET_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_PREDICT_LOADER_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_SECTION_LOADING_PANEL_SCRIPT + ADMIN_TRUSTED_ACCESS_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
+  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_USERS_BULK_PANEL_SCRIPT + ADMIN_USER_MENU_PANEL_SCRIPT + ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT + ADMIN_TON_PANEL_SCRIPT + ADMIN_FORCE_REFRESH_PANEL_SCRIPT + ADMIN_NFT_PRICE_ICON_PANEL_SCRIPT + ADMIN_WHEEL_ASSETS_PANEL_SCRIPT + ADMIN_MARKET_PROVIDER_PANEL_SCRIPT + ADMIN_DAILY_REWARDS_PANEL_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT + ADMIN_RANK_CHARACTER_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT + ADMIN_SLOT_FRAME_PANEL_SCRIPT + ADMIN_DICE_ASSETS_PANEL_SCRIPT + ADMIN_MARKET_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_PREDICT_LOADER_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_WORLD_CUP_PANEL_SCRIPT + ADMIN_SECTION_LOADING_PANEL_SCRIPT + ADMIN_TRUSTED_ACCESS_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {

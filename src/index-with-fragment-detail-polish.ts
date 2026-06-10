@@ -2,6 +2,7 @@ import app from './index-with-tgs-overlay';
 import './predict-candle-routes';
 import './predict-extra-market-routes';
 import './predict-routes';
+import './world-cup-routes';
 import './predict-entry-loader-routes';
 import './section-lock-event-routes';
 import './crash-routes';
