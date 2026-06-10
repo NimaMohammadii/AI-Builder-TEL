@@ -266,7 +266,9 @@ export function miniAppShellHtml(): string {
         <b id="topTonBalance" data-ton-balance-display>0</b>
       </button>
     </header>
-    ${SECTIONS}
+    <div class="content">
+      ${SECTIONS}
+    </div>
     <nav class="tabs">
       <button class="tab active" data-view="home">Home</button>
       <button class="tab" data-view="playzone">Play Zone</button>
