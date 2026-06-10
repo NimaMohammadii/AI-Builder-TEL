@@ -190,6 +190,8 @@ const SECTIONS = [
   LIMBO_SECTION,
 ].join('');
 
+const scriptBody = (script: string): string => script.replace(/^\s*<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');
+
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
   DICE_ASSET_CACHE_SCRIPT,
@@ -215,8 +217,10 @@ const SCRIPTS = [
   SLOT_SCRIPT,
   WHEEL_ASSETS_SCRIPT,
   PREDICT_ZONE_SETTINGS_SCRIPT,
+  scriptBody(FOOTBALL_PREDICT_SCRIPT),
   PREDICT_EXTRA_MARKETS_SCRIPT,
   PREDICT_ENTRY_LOADER_SCRIPT,
+  scriptBody(PREDICT_CARD_ACTIONS_SCRIPT),
   TELEGRAM_BACK_BUTTON_SCRIPT,
   ACTIVITY_SCRIPT,
   UPLOADED_IMAGE_CACHE_SCRIPT,
