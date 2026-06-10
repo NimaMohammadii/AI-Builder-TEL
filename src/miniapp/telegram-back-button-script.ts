@@ -8,7 +8,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     var originalHide=back.hide&&back.hide.bind(back);
     var originalShow=back.show&&back.show.bind(back);
     var backTarget='';
-    var backSections=['crash','plinko','mines','slot','topplayers','wheel','dice','rps','referral'];
+    var backSections=['predictzone','crash','plinko','mines','slot','topplayers','wheel','dice','rps','referral'];
     function isDailyRewardsOpen(){
       var page=document.getElementById('dailyRewardsPage');
       return document.body.classList.contains('daily-rewards-open')||!!(page&&page.classList.contains('open'));
@@ -16,13 +16,16 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     function activeBackSection(){
       for(var i=0;i<backSections.length;i++){
         var node=document.getElementById(backSections[i]);
-        if(node&&node.classList.contains('active'))return backSections[i];
+        if(!node||!node.classList.contains('active'))continue;
+        if(backSections[i]==='predictzone'&&!node.classList.contains('predict-market-detail-mode'))continue;
+        return backSections[i];
       }
       if(isDailyRewardsOpen()||document.body.classList.contains('rewards-open')||document.getElementById('rewardsPage'))return 'rewards';
       return '';
     }
     function targetFor(section){
       if(section==='topplayers'||section==='referral')return 'home';
+      if(section==='predictzone')return 'predictzone';
       if(section==='crash'||section==='plinko'||section==='mines'||section==='slot'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
       if(section==='rewards')return 'home';
       return '';
@@ -38,6 +41,9 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     function closeOverlays(section){
       if(section==='predictzone'){
         var predict=document.getElementById('predictzone');
+        if(predict&&predict.classList.contains('predict-market-detail-mode')&&window.VexaPredictBack){
+          try{if(window.VexaPredictBack())return true}catch(e){}
+        }
         if(predict&&predict.classList.contains('football-match-detail-open')&&window.VexaFootballPredictBack){
           try{if(window.VexaFootballPredictBack())return true}catch(e){}
         }
@@ -86,6 +92,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     document.addEventListener('visibilitychange',syncBackButton);
     window.addEventListener('focus',syncBackButton);
     window.addEventListener('vexa-football-detail-change',syncBackButton);
+    window.addEventListener('vexa-predict-detail-change',syncBackButton);
     if(window.MutationObserver){
       backSections.forEach(function(id){
         var node=document.getElementById(id);
