@@ -9,7 +9,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
 .predict-admin-row input{height:auto!important;border-radius:14px!important;padding:8px!important;font-size:11px!important;background:#050505;color:#fff;border:1px solid rgba(255,255,255,.16)}
 .predict-admin-row button{height:32px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:#070707;color:#fff;font-weight:900;font-size:11px}
 .predict-admin-toggle{margin:12px 0 6px;padding:12px;border-radius:18px;background:rgba(255,255,255,.045);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px}
-.predict-admin-toggle strong{display:block;color:#fff;font-size:13px}.predict-admin-toggle span{display:block;margin-top:4px;color:rgba(255,255,255,.5);font-size:10.5px;line-height:1.25}
+.predict-admin-toggle strong{display:block;color:#fff;font-size:13px}.predict-admin-toggle span{display:block;margin-top:4px;color:rgba(255,255,255,.5);font-size:10.5px;line-height:1.25}.predict-admin-visibility{display:grid;gap:8px;margin:12px 0 6px}.predict-admin-visibility h3{margin:14px 0 0;color:#fff;font-size:15px}.predict-admin-visibility p{margin:0;color:rgba(255,255,255,.5);font-size:11px;line-height:1.35}.predict-admin-toggle.is-hidden{border:1px solid rgba(255,90,118,.20);background:rgba(80,0,18,.16)}
 .predict-admin-switch{position:relative;width:48px;height:28px;flex:0 0 auto;border:0!important;border-radius:999px!important;background:rgba(255,255,255,.12)!important;padding:0!important}
 .predict-admin-switch:before{content:"";position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .18s ease}
 .predict-admin-switch.on{background:rgba(120,190,255,.34)!important}.predict-admin-switch.on:before{transform:translateX(20px)}
@@ -20,7 +20,8 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
   var markets=[{id:'bitcoin',title:'Bitcoin'},{id:'ethereum',title:'Ethereum'},{id:'solana',title:'Solana'},{id:'gold',title:'Gold'},{id:'oil',title:'Oil'},{id:'football',title:'Football'},{id:'politics',title:'Politics'},{id:'fun',title:'Fun'}];
   var cryptoCardMarkets=[{id:'bitcoin',title:'Bitcoin card'},{id:'solana',title:'Solana card'},{id:'ethereum',title:'Ethereum card'},{id:'gold',title:'Gold card'},{id:'oil',title:'Oil card'}];
   var buttonSides=[{id:'up',title:'Upper button image'},{id:'down',title:'Lower button image'}];
-  var settings={},cryptoCardImages={},buttonImages={},displaySettings={liveBetsEnabled:true};
+  var cardVisibilityMarkets=[{id:'bitcoin',title:'Bitcoin'},{id:'solana',title:'Solana'},{id:'ethereum',title:'Ethereum'},{id:'gold',title:'Gold'},{id:'oil',title:'Oil'}];
+  var settings={},cryptoCardImages={},buttonImages={},displaySettings={liveBetsEnabled:true,hiddenCards:{}};
   function esc(value){return String(value==null?'':value).replace(/[&<>]/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[char]||char})}
   function withVersion(url){return url ? url + (url.indexOf('?')>=0 ? '&' : '?') + 't=' + Date.now() : ''}
   function mount(){
@@ -54,8 +55,10 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
   function renderSettings(){
     var box=document.getElementById('predictAdminSettings');if(!box)return;
     var on=displaySettings.liveBetsEnabled!==false;
-    box.innerHTML='<div class="predict-admin-toggle"><div><strong>Show live bet numbers</strong><span>Enable or hide the animated user bet numbers on the left side of the Predict chart.</span></div><button type="button" class="predict-admin-switch '+(on?'on':'')+'" aria-label="Toggle live bet numbers" id="predictLiveBetsToggle"></button></div>';
-    var toggle=document.getElementById('predictLiveBetsToggle');if(toggle)toggle.onclick=function(){savePredictSettings(!on)};
+    var hidden=displaySettings.hiddenCards||{};
+    box.innerHTML='<div class="predict-admin-toggle"><div><strong>Show live bet numbers</strong><span>Enable or hide the animated user bet numbers on the left side of the Predict chart.</span></div><button type="button" class="predict-admin-switch '+(on?'on':'')+'" aria-label="Toggle live bet numbers" id="predictLiveBetsToggle"></button></div><div class="predict-admin-visibility"><h3>Predict card visibility</h3><p>Hide a card from the user UI without deleting images or prediction data. Turn it back on any time.</p>'+cardVisibilityMarkets.map(function(market){var visible=hidden[market.id]!==true;return '<div class="predict-admin-toggle '+(visible?'':'is-hidden')+'"><div><strong>'+esc(market.title)+'</strong><span>'+(visible?'Visible in Predict UI':'Hidden from Predict UI')+'</span></div><button type="button" class="predict-admin-switch '+(visible?'on':'')+'" aria-label="Toggle '+esc(market.title)+' visibility" data-predict-visibility="'+esc(market.id)+'"></button></div>'}).join('')+'</div>';
+    var toggle=document.getElementById('predictLiveBetsToggle');if(toggle)toggle.onclick=function(){savePredictSettings({liveBetsEnabled:!on})};
+    box.querySelectorAll('[data-predict-visibility]').forEach(function(button){button.onclick=function(){var id=button.dataset.predictVisibility,nextHidden=Object.assign({},displaySettings.hiddenCards||{});nextHidden[id]=!(nextHidden[id]===true);savePredictSettings({hiddenCards:nextHidden})}});
   }
   function render(){
     renderSettings();
@@ -107,14 +110,17 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
       if(status)status.textContent='Loaded';
     }catch(error){if(status)status.textContent=error.message||'Load failed'}
   }
-  async function savePredictSettings(enabled){
+  async function savePredictSettings(patch){
     var status=document.getElementById('predictAdminStatus');
+    var next=Object.assign({},displaySettings||{},patch||{});
+    next.liveBetsEnabled=next.liveBetsEnabled!==false;
+    next.hiddenCards=next.hiddenCards||{};
     if(status)status.textContent='Saving settings...';
     try{
-      var response=await fetch('/admin/api/predict-settings',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({liveBetsEnabled:!!enabled})});
+      var response=await fetch('/admin/api/predict-settings',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(next)});
       var json=await response.json();
       if(!response.ok)throw new Error(json.error||'Save failed');
-      displaySettings=json||{liveBetsEnabled:!!enabled};
+      displaySettings=json||next;
       renderSettings();
       if(status)status.textContent='Settings saved';
     }catch(error){if(status)status.textContent=error.message||'Save failed'}

@@ -4,9 +4,12 @@ import type { Env } from './types';
 
 const CACHE_NONE = 'no-store';
 const PREDICT_SETTINGS_KEY = 'predict/settings';
+const PREDICT_CARD_VISIBILITY_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
+type PredictCardVisibilityMarket = typeof PREDICT_CARD_VISIBILITY_MARKETS[number];
 
 type PredictSettings = {
   liveBetsEnabled: boolean;
+  hiddenCards: Record<PredictCardVisibilityMarket, boolean>;
 };
 
 app.get('/app/api/predict-settings', async (c) => {
@@ -30,7 +33,11 @@ app.post('/admin/api/predict-settings', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-    const settings: PredictSettings = { liveBetsEnabled: body.liveBetsEnabled !== false };
+    const current = await getPredictSettings(c.env);
+    const settings: PredictSettings = {
+      liveBetsEnabled: body.liveBetsEnabled !== false,
+      hiddenCards: normalizeHiddenCards((body.hiddenCards as Record<string, unknown> | undefined) ?? current.hiddenCards),
+    };
     await c.env.ASSETS.put(PREDICT_SETTINGS_KEY, JSON.stringify(settings), {
       httpMetadata: { contentType: 'application/json' },
       customMetadata: { version: String(Date.now()) },
@@ -43,13 +50,25 @@ app.post('/admin/api/predict-settings', async (c) => {
 
 async function getPredictSettings(env: Env): Promise<PredictSettings> {
   const object = await env.ASSETS.get(PREDICT_SETTINGS_KEY).catch(() => null);
-  if (!object) return { liveBetsEnabled: true };
+  if (!object) return defaultPredictSettings();
   try {
     const json = JSON.parse(await object.text()) as Partial<PredictSettings>;
-    return { liveBetsEnabled: json.liveBetsEnabled !== false };
+    return {
+      liveBetsEnabled: json.liveBetsEnabled !== false,
+      hiddenCards: normalizeHiddenCards(json.hiddenCards),
+    };
   } catch {
-    return { liveBetsEnabled: true };
+    return defaultPredictSettings();
   }
+}
+
+function defaultPredictSettings(): PredictSettings {
+  return { liveBetsEnabled: true, hiddenCards: normalizeHiddenCards({}) };
+}
+
+function normalizeHiddenCards(value: unknown): Record<PredictCardVisibilityMarket, boolean> {
+  const input = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return Object.fromEntries(PREDICT_CARD_VISIBILITY_MARKETS.map((market) => [market, input[market] === true])) as Record<PredictCardVisibilityMarket, boolean>;
 }
 
 async function fetchOilPrice(): Promise<number> {
