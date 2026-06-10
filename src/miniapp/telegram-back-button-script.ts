@@ -17,7 +17,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       for(var i=0;i<backSections.length;i++){
         var node=document.getElementById(backSections[i]);
         if(!node||!node.classList.contains('active'))continue;
-        if(backSections[i]==='predictzone'&&!node.classList.contains('predict-market-detail-mode'))continue;
+        if(backSections[i]==='predictzone'&&!node.classList.contains('predict-market-detail-mode')&&!node.classList.contains('football-match-detail-open'))continue;
         return backSections[i];
       }
       if(isDailyRewardsOpen()||document.body.classList.contains('rewards-open')||document.getElementById('rewardsPage'))return 'rewards';
