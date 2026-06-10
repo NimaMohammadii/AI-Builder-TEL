@@ -12,8 +12,17 @@ const PREDICT_SETTINGS_SCRIPT = `
     root.classList.toggle('predict-live-bets-disabled', settings.liveBetsEnabled===false);
     try{window.dispatchEvent(new CustomEvent('vexa-predict-settings',{detail:settings}))}catch(e){}
   }
+  function currentUserId(){
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+    return String(user.id||localStorage.getItem('ownerId')||'').trim();
+  }
+  function settingsUrl(){
+    var uid=currentUserId();
+    return uid?'/app/api/predict-settings?userId='+encodeURIComponent(uid):'/app/api/predict-settings';
+  }
   function load(){
-    fetch('/app/api/predict-settings',{cache:'no-store'})
+    fetch(settingsUrl(),{cache:'no-store'})
       .then(function(response){return response.json()})
       .then(apply)
       .catch(function(){apply({liveBetsEnabled:true,hiddenCards:{}})});
