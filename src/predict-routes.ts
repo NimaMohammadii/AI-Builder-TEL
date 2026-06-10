@@ -8,12 +8,14 @@ const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
+const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton'] as const;
 const ROUND_MS = 5 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
+type PredictCryptoCardMarket = typeof PREDICT_CRYPTO_CARD_MARKETS[number];
 type TradeMarket = typeof TRADE_MARKETS[number];
 type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
@@ -21,6 +23,40 @@ type RoundRow = { id: string; market: string; starts_at: string; ends_at: string
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
 
 app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/predict-crypto-card-images', async (c) => c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE }));
+
+app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
+  try {
+    const market = normalizePredictCryptoCardMarket(c.req.param('market').replace(/\.png$/i, ''));
+    return getPredictImageResponse(c.env, predictCryptoCardImageKey(market));
+  } catch {
+    return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
+  }
+});
+
+app.get('/admin/api/predict-crypto-card-images', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
+});
+
+app.post('/admin/api/predict-crypto-card-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  try {
+    const form = await c.req.formData();
+    const market = normalizePredictCryptoCardMarket(String(form.get('market') || ''));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
+    if (!PREDICT_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400, { 'cache-control': CACHE_NONE });
+    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400, { 'cache-control': CACHE_NONE });
+    const version = String(Date.now());
+    await c.env.ASSETS.put(predictCryptoCardImageKey(market), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload crypto card image' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
+
 app.get('/app/api/predict-round', async (c) => {
   try {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
@@ -117,6 +153,24 @@ async function getPredictMarkets(env: Env): Promise<{ markets: Record<PredictMar
     return [market, { imageUrl: head ? `/app/api/predict-market-image/${market}.png?v=${version}` : '' }] as const;
   }));
   return { markets: Object.fromEntries(entries) as Record<PredictMarket, { imageUrl: string }> };
+}
+
+async function getPredictCryptoCardImages(env: Env): Promise<{ images: Record<PredictCryptoCardMarket, { imageUrl: string }> }> {
+  const entries = await Promise.all(PREDICT_CRYPTO_CARD_MARKETS.map(async (market) => {
+    const head = await env.ASSETS.head(predictCryptoCardImageKey(market)).catch(() => null);
+    const version = head?.customMetadata?.version || '1';
+    return [market, { imageUrl: head ? `/app/api/predict-crypto-card-image/${market}.png?v=${version}` : '' }] as const;
+  }));
+  return { images: Object.fromEntries(entries) as Record<PredictCryptoCardMarket, { imageUrl: string }> };
+}
+
+function normalizePredictCryptoCardMarket(value: string): PredictCryptoCardMarket {
+  if ((PREDICT_CRYPTO_CARD_MARKETS as readonly string[]).includes(value)) return value as PredictCryptoCardMarket;
+  throw new Error('Invalid crypto card market');
+}
+
+function predictCryptoCardImageKey(market: PredictCryptoCardMarket): string {
+  return `predict/crypto-card/${market}`;
 }
 async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
   await ensurePredictTables(env);

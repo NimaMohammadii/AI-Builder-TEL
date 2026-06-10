@@ -1,11 +1,14 @@
 export const PREDICT_CRYPTO_SELECTOR_STYLES = `
 #predictzone .predict-detail-hidden{display:none!important}
 #predictzone .predict-crypto-grid{display:grid;gap:12px;margin:4px 0 22px;padding:0 0 96px}
-#predictzone .predict-crypto-card{position:relative;width:100%;min-height:104px;border:0;border-radius:28px;background:rgba(255,255,255,.038);box-shadow:0 20px 54px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.10);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;grid-template-columns:78px minmax(0,1fr) auto;align-items:center;gap:12px;padding:14px 15px;text-align:left;color:#fff;overflow:hidden}
-#predictzone .predict-crypto-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 10%,rgba(255,255,255,.08),transparent 30%),radial-gradient(circle at 86% 16%,rgba(92,10,31,.16),transparent 34%);pointer-events:none}
+#predictzone .predict-crypto-card{position:relative;width:100%;min-height:132px;border:0;border-radius:28px;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;display:grid;grid-template-columns:78px minmax(0,1fr) auto;align-items:center;gap:12px;padding:14px 15px;text-align:left;color:#fff;overflow:hidden}
+#predictzone .predict-crypto-card:before{content:"";display:none!important}
 #predictzone .predict-crypto-card>*{position:relative;z-index:1}
+#predictzone .predict-crypto-card-upload{position:absolute!important;inset:0;z-index:0!important;display:block;background-color:transparent!important;background-position:center;background-repeat:no-repeat;background-size:contain;pointer-events:none}
 #predictzone .predict-crypto-image{width:78px;height:78px;border-radius:0;background-color:transparent!important;background-position:center;background-repeat:no-repeat;background-size:contain;box-shadow:none!important;display:block;filter:drop-shadow(0 16px 22px rgba(0,0,0,.34))}
 #predictzone .predict-crypto-image:before{content:"";display:none!important}
+#predictzone .predict-crypto-card-empty .predict-crypto-image,#predictzone .predict-crypto-card-empty .predict-crypto-copy{visibility:hidden!important;pointer-events:none!important}
+#predictzone .predict-crypto-card-empty .predict-crypto-card-upload.has-image{filter:drop-shadow(0 18px 28px rgba(0,0,0,.28))}
 #predictzone .predict-crypto-copy{display:grid;gap:6px;min-width:0}
 #predictzone .predict-crypto-copy b{font-size:18px;font-weight:850;letter-spacing:-.055em;line-height:1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #predictzone .predict-crypto-copy small{font-size:12px;font-weight:680;line-height:1.2;color:rgba(255,255,255,.52);letter-spacing:-.025em;white-space:normal}
@@ -15,5 +18,5 @@ export const PREDICT_CRYPTO_SELECTOR_STYLES = `
 #predictzone .predict-zone-category-card[data-predict-group],#predictzone .predict-zone-category-card[data-predict-direct]{background:rgba(255,255,255,.055)!important}
 #predictzone .predict-zone-category-card[data-predict-group] span,#predictzone .predict-zone-category-card[data-predict-direct] span{color:#fff!important;font-weight:850!important}
 #predictzone .predict-zone-category-card.active{background:rgba(255,255,255,.12)!important}
-@media(max-width:380px){#predictzone .predict-crypto-card{min-height:96px;border-radius:24px;grid-template-columns:68px minmax(0,1fr) auto;padding:12px;gap:10px}#predictzone .predict-crypto-image{width:68px;height:68px}#predictzone .predict-crypto-copy b{font-size:16px}#predictzone .predict-crypto-copy small{font-size:11px}#predictzone .predict-crypto-price{min-width:66px;font-size:11px;padding:0 8px}}
+@media(max-width:380px){#predictzone .predict-crypto-card{min-height:120px;border-radius:24px;grid-template-columns:68px minmax(0,1fr) auto;padding:12px;gap:10px}#predictzone .predict-crypto-image{width:68px;height:68px}#predictzone .predict-crypto-copy b{font-size:16px}#predictzone .predict-crypto-copy small{font-size:11px}#predictzone .predict-crypto-price{min-width:66px;font-size:11px;padding:0 8px}}
 `;
