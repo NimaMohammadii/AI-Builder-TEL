@@ -2,44 +2,11 @@ export const PREDICT_CARD_ACTIONS_SCRIPT = `<script>
 (function(){
   function root(){return document.getElementById('predictzone')}
   function visible(el){return !!el&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'}
-  var imageCacheName='vexa-predict-card-images-v1';
-  var objectUrls={};
-  var pending={};
-  function extractBgUrl(el){
-    var bg=(el&&el.style&&el.style.backgroundImage)||'';
-    var m=bg.match(/url\(["']?([^"')]+)["']?\)/i);
-    return m&&m[1]?m[1]:'';
-  }
-  function setBg(el,url){if(el&&url)el.style.backgroundImage='url("'+url.replace(/"/g,'')+'")'}
-  function cacheOne(el){
-    if(!el||!('caches' in window)||!window.fetch)return;
-    var raw=extractBgUrl(el);if(!raw||raw.indexOf('blob:')===0||raw.indexOf('data:')===0)return;
-    var abs;try{abs=new URL(raw,location.href).href}catch(e){return}
-    if(objectUrls[abs]){setBg(el,objectUrls[abs]);return}
-    if(pending[abs]){pending[abs].then(function(u){setBg(el,u)}).catch(function(){});return}
-    pending[abs]=caches.open(imageCacheName).then(function(cache){
-      return cache.match(abs).then(function(hit){
-        if(hit)return hit;
-        return fetch(abs,{cache:'force-cache'}).then(function(res){
-          if(res&&res.ok){try{cache.put(abs,res.clone())}catch(e){}}
-          return res;
-        });
-      });
-    }).then(function(res){return res.blob()}).then(function(blob){
-      var u=URL.createObjectURL(blob);objectUrls[abs]=u;return u;
-    }).finally(function(){delete pending[abs]});
-    pending[abs].then(function(u){setBg(el,u)}).catch(function(){});
-  }
-  function cachePredictImages(){
-    var r=root();if(!r)return;
-    r.querySelectorAll('[data-vexa-predict-upload-img],[data-vexa-predict-card-img],[data-predict-question-image]').forEach(cacheOne);
-  }
   function sync(){
     var r=root();if(!r)return;
     var grid=r.querySelector('[data-vexa-predict-group-grid],.predict-crypto-grid');
     var inList=!!grid&&visible(grid)&&grid.querySelector('.predict-crypto-card');
     r.classList.toggle('predict-card-list-mode',!!inList);
-    cachePredictImages();
     if(!inList)return;
     grid.querySelectorAll('.predict-crypto-card[data-vexa-predict-open]').forEach(function(card){
       if(card.nextElementSibling&&card.nextElementSibling.classList&&card.nextElementSibling.classList.contains('predict-card-actions'))return;
@@ -59,7 +26,6 @@ export const PREDICT_CARD_ACTIONS_SCRIPT = `<script>
       });
       card.insertAdjacentElement('afterend',actions);
     });
-    setTimeout(cachePredictImages,120);
   }
   function mount(){
     sync();
