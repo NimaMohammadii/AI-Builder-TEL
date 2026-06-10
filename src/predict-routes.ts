@@ -8,7 +8,7 @@ const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
-const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum'] as const;
+const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton'] as const;
 const ROUND_MS = 5 * 60 * 1000;
@@ -214,7 +214,7 @@ function normalizePredictButtonSide(value: string): PredictButtonSide {
 }
 function normalizePredictCryptoCardMarket(value: string): PredictCryptoCardMarket {
   if ((PREDICT_CRYPTO_CARD_MARKETS as readonly string[]).includes(value)) return value as PredictCryptoCardMarket;
-  throw new Error('Invalid crypto card market');
+  throw new Error('Invalid predict card market');
 }
 
 function predictCryptoCardImageKey(market: PredictCryptoCardMarket): string {
