@@ -1,5 +1,6 @@
 import app from './index';
 import './football-routes';
+import { hasAccessOverride } from './user-access-override-routes';
 import type { Env } from './types';
 
 const CACHE_NONE = 'no-store';
@@ -13,7 +14,11 @@ type PredictSettings = {
 };
 
 app.get('/app/api/predict-settings', async (c) => {
-  return c.json(await getPredictSettings(c.env), 200, { 'cache-control': CACHE_NONE });
+  const settings = await getPredictSettings(c.env);
+  if (await hasAccessOverride(c.env, c.req.query('userId'))) {
+    return c.json({ ...settings, trustedAccess: true, hiddenCards: visiblePredictCards() }, 200, { 'cache-control': CACHE_NONE });
+  }
+  return c.json(settings, 200, { 'cache-control': CACHE_NONE });
 });
 
 app.get('/app/api/predict-oil-price', async (c) => {
@@ -63,7 +68,11 @@ async function getPredictSettings(env: Env): Promise<PredictSettings> {
 }
 
 function defaultPredictSettings(): PredictSettings {
-  return { liveBetsEnabled: true, hiddenCards: normalizeHiddenCards({}) };
+  return { liveBetsEnabled: true, hiddenCards: visiblePredictCards() };
+}
+
+function visiblePredictCards(): Record<PredictCardVisibilityMarket, boolean> {
+  return normalizeHiddenCards({});
 }
 
 function normalizeHiddenCards(value: unknown): Record<PredictCardVisibilityMarket, boolean> {

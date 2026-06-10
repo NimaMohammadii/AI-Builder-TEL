@@ -33,6 +33,12 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
           return nativeFetch(input,init).then(function(r){return r.json()}).then(function(data){data=data||{};data.blockedSections=[];data.sectionBlocks=[];data.trustedAccess=true;return asJson(data)});
         });
       }
+      if(url.indexOf('/app/api/predict-settings')>=0){
+        return ready.then(function(){
+          if(!trusted)return nativeFetch(input,init);
+          return nativeFetch(input,init).then(function(r){return r.json()}).then(function(data){data=data||{};data.hiddenCards={bitcoin:false,solana:false,ethereum:false,gold:false,oil:false};data.trustedAccess=true;return asJson(data)});
+        });
+      }
       return nativeFetch(input,init);
     };
   }
