@@ -18,7 +18,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
 <script>
 (function(){
   var markets=[{id:'bitcoin',title:'Bitcoin'},{id:'ethereum',title:'Ethereum'},{id:'solana',title:'Solana'},{id:'gold',title:'Gold'},{id:'oil',title:'Oil'},{id:'football',title:'Football'},{id:'politics',title:'Politics'},{id:'fun',title:'Fun'}];
-  var cryptoCardMarkets=[{id:'bitcoin',title:'Bitcoin card'},{id:'solana',title:'Solana card'},{id:'ethereum',title:'Ethereum card'}];
+  var cryptoCardMarkets=[{id:'bitcoin',title:'Bitcoin card'},{id:'solana',title:'Solana card'},{id:'ethereum',title:'Ethereum card'},{id:'gold',title:'Gold card'},{id:'oil',title:'Oil card'}];
   var buttonSides=[{id:'up',title:'Upper button image'},{id:'down',title:'Lower button image'}];
   var settings={},cryptoCardImages={},buttonImages={},displaySettings={liveBetsEnabled:true};
   function esc(value){return String(value==null?'':value).replace(/[&<>]/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[char]||char})}
@@ -70,7 +70,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
     }
     var cardList=document.getElementById('predictCryptoCardImages');
     if(cardList){
-      cardList.innerHTML='<h3>Crypto card images</h3><p>These 3 uploads are only for the empty Crypto cards. Existing Predict images stay unchanged.</p>'+cryptoCardMarkets.map(function(market){
+      cardList.innerHTML='<h3>Predict card images</h3><p>These uploads are only for the empty Crypto, Gold, and Oil cards. Existing Predict images stay unchanged.</p>'+cryptoCardMarkets.map(function(market){
         var url=(cryptoCardImages[market.id]&&cryptoCardImages[market.id].imageUrl)||'';
         var preview=url?'<img src="'+esc(withVersion(url))+'" alt=""/>':'<img alt=""/>';
         return '<article class="predict-admin-row">'+preview+'<div class="predict-admin-fields"><b>'+esc(market.title)+'</b><input data-predict-card-file="'+esc(market.id)+'" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button data-predict-card-upload="'+esc(market.id)+'">Upload card image</button></div></article>';
@@ -140,18 +140,18 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
   async function uploadCryptoCardImage(id){
     var status=document.getElementById('predictAdminStatus');
     var input=document.querySelector('[data-predict-card-file="'+id+'"]');
-    if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose a crypto card image first';return;}
+    if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose a card image first';return;}
     try{
       var form=new FormData();
       form.append('market',id);
       form.append('image',input.files[0]);
-      if(status)status.textContent='Uploading crypto card image...';
+      if(status)status.textContent='Uploading card image...';
       var response=await fetch('/admin/api/predict-crypto-card-image',{method:'POST',credentials:'same-origin',body:form});
       var json=await response.json();
       if(!response.ok)throw new Error(json.error||'Upload failed');
       cryptoCardImages=json.images||{};
       render();
-      if(status)status.textContent='Crypto card image uploaded';
+      if(status)status.textContent='Card image uploaded';
     }catch(error){if(status)status.textContent=error.message||'Upload failed'}
   }
   async function uploadPredictImage(id){
