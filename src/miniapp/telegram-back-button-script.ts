@@ -8,7 +8,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     var originalHide=back.hide&&back.hide.bind(back);
     var originalShow=back.show&&back.show.bind(back);
     var backTarget='';
-    var backSections=['predictzone','crash','plinko','mines','slot','topplayers','wheel','dice','rps','referral'];
+    var backSections=['crash','plinko','mines','slot','topplayers','wheel','dice','rps','referral'];
     function isDailyRewardsOpen(){
       var page=document.getElementById('dailyRewardsPage');
       return document.body.classList.contains('daily-rewards-open')||!!(page&&page.classList.contains('open'));
@@ -23,7 +23,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     }
     function targetFor(section){
       if(section==='topplayers'||section==='referral')return 'home';
-      if(section==='predictzone'||section==='crash'||section==='plinko'||section==='mines'||section==='slot'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
+      if(section==='crash'||section==='plinko'||section==='mines'||section==='slot'||section==='wheel'||section==='dice'||section==='rps')return 'playzone';
       if(section==='rewards')return 'home';
       return '';
     }
