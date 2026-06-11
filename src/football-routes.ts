@@ -175,9 +175,9 @@ app.post('/admin/api/football-teams', async (c) => {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const name = cleanTeamName(body.name);
     const id = cleanTeamId(body.id || slugifyTeamName(name));
-    if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) throw new Error('This built-in team already exists.');
-    await c.env.DB.prepare(`INSERT INTO football_teams (id, name, custom, created_at, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = CURRENT_TIMESTAMP`).bind(id, name).run();
+    const builtIn = FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id);
+    await c.env.DB.prepare(`INSERT INTO football_teams (id, name, custom, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET name = excluded.name, custom = excluded.custom, updated_at = CURRENT_TIMESTAMP`).bind(id, name, builtIn ? 0 : 1).run();
     return c.json(await getFootballTeams(c.env), 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not save football team' }, 400, { 'cache-control': CACHE_NONE });
@@ -189,11 +189,7 @@ app.delete('/admin/api/football-teams/:id', async (c) => {
   try {
     await ensureFootballPredictTables(c.env);
     const id = cleanTeamId(c.req.param('id'));
-    if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) throw new Error('Built-in teams cannot be deleted.');
-    const used = await c.env.DB.prepare('SELECT id FROM football_matches WHERE team_a_id = ? OR team_b_id = ? LIMIT 1').bind(id, id).first<{ id: string }>();
-    if (used) throw new Error('This team is used by a match. Delete or finish that match first.');
-    await c.env.DB.prepare('DELETE FROM football_teams WHERE id = ? AND custom = 1').bind(id).run();
-    await c.env.ASSETS.delete(teamLogoKey(id)).catch(() => undefined);
+    await deleteFootballTeamEverywhere(c.env, id);
     return c.json(await getFootballTeams(c.env), 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not delete football team' }, 400, { 'cache-control': CACHE_NONE });
@@ -224,7 +220,7 @@ app.get('/admin/api/football-matches', async (c) => {
     await ensureFootballPredictTables(c.env);
     await lockStartedMatches(c.env);
     const rows = await c.env.DB.prepare('SELECT * FROM football_matches ORDER BY datetime(starts_at) DESC, datetime(created_at) DESC LIMIT 100').all<FootballMatchRow>();
-    return c.json({ ok: true, matches: await Promise.all((rows.results || []).map((row) => footballMatchJson(c.env, row, ''))) }, 200, { 'cache-control': CACHE_NONE });
+    return c.json({ ok: true, matches: await Promise.all((rows.results || []).map((row) => footballMatchJson(c.env, row, '', true))) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load football matches' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -244,7 +240,7 @@ app.post('/admin/api/football-matches', async (c) => {
     const featured = truthy(body.featured) ? 1 : 0;
     const id = 'fmatch_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
     await c.env.DB.prepare(`INSERT INTO football_matches (id, team_a_id, team_b_id, starts_at, ends_at, status, result, featured, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).bind(id, teamA, teamB, startsAt, endsAt, status, featured).run();
-    return c.json({ ok: true, match: await footballMatchJson(c.env, (await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(id).first<FootballMatchRow>())!, '') }, 200, { 'cache-control': CACHE_NONE });
+    return c.json({ ok: true, match: await footballMatchJson(c.env, (await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(id).first<FootballMatchRow>())!, '', true) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not create football match' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -262,7 +258,7 @@ app.post('/admin/api/football-matches/:id/action', async (c) => {
     else if (action === 'set_result') await settleFootballMatch(c.env, id, normalizePick(body.result));
     else throw new Error('Unknown match action');
     const match = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(id).first<FootballMatchRow>();
-    return c.json({ ok: true, match: match ? await footballMatchJson(c.env, match, '') : null }, 200, { 'cache-control': CACHE_NONE });
+    return c.json({ ok: true, match: match ? await footballMatchJson(c.env, match, '', true) : null }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not update football match' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -284,7 +280,7 @@ app.post('/admin/api/football-matches/:id/live-questions', async (c) => {
     await c.env.DB.prepare(`INSERT INTO football_live_questions (id, match_id, question_text, status, result, starts_at, expires_at, created_at, updated_at)
       VALUES (?, ?, ?, 'open', NULL, CURRENT_TIMESTAMP, datetime('now', ?), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).bind(id, matchId, text, `+${minutes} minutes`).run();
     const fresh = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(matchId).first<FootballMatchRow>();
-    return c.json({ ok: true, match: fresh ? await footballMatchJson(c.env, fresh, '') : null }, 200, { 'cache-control': CACHE_NONE });
+    return c.json({ ok: true, match: fresh ? await footballMatchJson(c.env, fresh, '', true) : null }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not create live question' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -304,7 +300,7 @@ app.post('/admin/api/football-live-questions/:id/action', async (c) => {
     else if (action === 'delete') await deleteFootballLiveQuestion(c.env, id);
     else throw new Error('Unknown live question action');
     const match = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(question.match_id).first<FootballMatchRow>();
-    return c.json({ ok: true, match: match ? await footballMatchJson(c.env, match, '') : null }, 200, { 'cache-control': CACHE_NONE });
+    return c.json({ ok: true, match: match ? await footballMatchJson(c.env, match, '', true) : null }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not update live question' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -312,8 +308,14 @@ app.post('/admin/api/football-live-questions/:id/action', async (c) => {
 
 async function getFootballTeams(env: Env): Promise<{ teams: Array<{ id: FootballTeamId; name: string; logoUrl: string; custom: boolean }> }> {
   await ensureFootballPredictTables(env);
-  const customRows = (await env.DB.prepare('SELECT * FROM football_teams ORDER BY name ASC').all<FootballTeamRow>()).results || [];
-  const base = [...FOOTBALL_TEAMS.map(([id, name]) => ({ id, name, custom: false })), ...customRows.map((row) => ({ id: cleanTeamId(row.id), name: cleanTeamName(row.name), custom: Number(row.custom || 0) === 1 }))];
+  const rows = (await env.DB.prepare('SELECT * FROM football_teams ORDER BY name ASC').all<FootballTeamRow>()).results || [];
+  const hidden = new Set(rows.filter((row) => Number(row.custom || 0) < 0).map((row) => cleanTeamId(row.id)));
+  const overrides = new Map(rows.filter((row) => Number(row.custom || 0) === 0).map((row) => [cleanTeamId(row.id), cleanTeamName(row.name)]));
+  const customRows = rows.filter((row) => Number(row.custom || 0) > 0 && !FOOTBALL_TEAMS.some(([builtInId]) => builtInId === cleanTeamId(row.id)));
+  const base = [
+    ...FOOTBALL_TEAMS.filter(([id]) => !hidden.has(id)).map(([id, name]) => ({ id, name: overrides.get(id) || name, custom: false })),
+    ...customRows.map((row) => ({ id: cleanTeamId(row.id), name: cleanTeamName(row.name), custom: true })),
+  ];
   const teams = await Promise.all(base.map(async (team) => {
     const head = await env.ASSETS.head(teamLogoKey(team.id)).catch(() => null);
     const version = head?.customMetadata?.version || '1';
@@ -338,6 +340,28 @@ async function ensureFootballPredictTables(env: Env): Promise<void> {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_football_live_question_bets_question ON football_live_question_bets(question_id)').run();
 }
 
+
+
+async function deleteFootballTeamEverywhere(env: Env, teamId: FootballTeamId): Promise<void> {
+  const id = cleanTeamId(teamId);
+  const matches = (await env.DB.prepare("SELECT id FROM football_matches WHERE (team_a_id = ? OR team_b_id = ?) AND status != 'cancelled'").bind(id, id).all<{ id: string }>()).results || [];
+  for (const match of matches) await cancelFootballMatch(env, cleanDbText(match.id, 'Match is not ready'));
+  if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) {
+    const name = FOOTBALL_TEAMS.find(([builtInId]) => builtInId === id)?.[1] || id;
+    await env.DB.prepare(`INSERT INTO football_teams (id, name, custom, created_at, updated_at) VALUES (?, ?, -1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET custom = -1, updated_at = CURRENT_TIMESTAMP`).bind(id, name).run();
+  } else {
+    await env.DB.prepare('DELETE FROM football_teams WHERE id = ?').bind(id).run();
+  }
+  await env.ASSETS.delete(teamLogoKey(id)).catch(() => undefined);
+}
+
+async function cancelFootballMatch(env: Env, matchId: string): Promise<void> {
+  const questions = (await env.DB.prepare("SELECT id FROM football_live_questions WHERE match_id = ? AND status != 'deleted'").bind(matchId).all<{ id: string }>()).results || [];
+  for (const question of questions) await deleteFootballLiveQuestion(env, cleanDbText(question.id, 'Live question is not ready'));
+  await refundFootballMatch(env, matchId);
+  await env.DB.prepare("UPDATE football_matches SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(matchId).run();
+}
 
 async function lockStartedMatches(env: Env): Promise<void> {
   await ensureFootballPredictTables(env);
@@ -437,9 +461,12 @@ async function payFootballLiveQuestionBet(env: Env, bet: FootballLiveQuestionBet
   if (!alreadyPaid && payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Football live question payout' : 'Football live question refund', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: bet.match_id, questionId: bet.question_id, pick: bet.pick, status } });
 }
 
-async function footballLiveQuestionsJson(env: Env, matchId: string, userId: string) {
+async function footballLiveQuestionsJson(env: Env, matchId: string, userId: string, includeClosed = false) {
   const cleanedUserId = cleanUserIdOptional(userId);
-  const rows = (await env.DB.prepare("SELECT * FROM football_live_questions WHERE match_id = ? AND status = 'open' AND datetime(expires_at) > datetime('now') ORDER BY datetime(expires_at) ASC, datetime(created_at) ASC LIMIT 20").bind(matchId).all<FootballLiveQuestionRow>()).results || [];
+  const query = includeClosed
+    ? "SELECT * FROM football_live_questions WHERE match_id = ? AND status != 'deleted' ORDER BY datetime(created_at) DESC LIMIT 50"
+    : "SELECT * FROM football_live_questions WHERE match_id = ? AND status = 'open' AND datetime(expires_at) > datetime('now') ORDER BY datetime(expires_at) ASC, datetime(created_at) ASC LIMIT 20";
+  const rows = (await env.DB.prepare(query).bind(matchId).all<FootballLiveQuestionRow>()).results || [];
   const userBets = cleanedUserId ? ((await env.DB.prepare("SELECT * FROM football_live_question_bets WHERE match_id = ? AND user_id = ? AND status != 'failed'").bind(matchId, cleanedUserId).all<FootballLiveQuestionBetRow>()).results || []) : [];
   return rows.map((row) => ({ id: String(row.id || ''), matchId: String(row.match_id || ''), question: String(row.question_text || ''), status: String(row.status || ''), result: row.result || null, startsAt: row.starts_at, expiresAt: row.expires_at, remainingMs: Math.max(0, Date.parse(row.expires_at) - Date.now()), userBet: (userBets.find((bet) => bet.question_id === row.id) || null) ? footballLiveQuestionBetJson(userBets.find((bet) => bet.question_id === row.id)!) : null }));
 }
@@ -447,14 +474,14 @@ async function footballLiveQuestionsJson(env: Env, matchId: string, userId: stri
 function footballLiveQuestionBetJson(bet: FootballLiveQuestionBetRow) { return { id: String(bet.id || ''), questionId: String(bet.question_id || ''), matchId: String(bet.match_id || ''), userId: String(bet.user_id || ''), pick: String(bet.pick || ''), stakeNano: Number(bet.stake_nano || 0), stakeTon: nanoToTon(Number(bet.stake_nano || 0)), status: String(bet.status || ''), payoutNano: Number(bet.payout_nano || 0), payoutTon: nanoToTon(Number(bet.payout_nano || 0)), createdAt: String(bet.created_at || ''), settledAt: bet.settled_at || null }; }
 async function getFootballLiveQuestionBet(env: Env, id: string) { const bet = await env.DB.prepare('SELECT * FROM football_live_question_bets WHERE id = ?').bind(cleanDbText(id, 'Live question bet is not ready')).first<FootballLiveQuestionBetRow>(); return bet ? footballLiveQuestionBetJson(bet) : null; }
 
-async function footballMatchJson(env: Env, row: FootballMatchRow, userId: string) {
+async function footballMatchJson(env: Env, row: FootballMatchRow, userId: string, includeClosedLiveQuestions = false) {
   const now = Date.now();
   const startsMs = Date.parse(row.starts_at);
   const status = row.status === 'open' && now >= startsMs ? 'locked' : row.status;
   const pools = await footballPoolsJson(env, row.id);
   const cleanedUserId = cleanUserIdOptional(userId);
   const userBets = cleanedUserId ? ((await env.DB.prepare('SELECT * FROM football_bets WHERE match_id = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(row.id, cleanedUserId).all<FootballBetRow>()).results || []).map(footballBetJson) : [];
-  return { id: row.id, stage: 'World Cup', time: formatMatchTime(row.starts_at), teamAId: row.team_a_id, teamBId: row.team_b_id, a: row.team_a_id, b: row.team_b_id, startsAt: row.starts_at, endsAt: row.ends_at, status, result: row.result, featured: Number(row.featured || 0) === 1, settledAt: row.settled_at, remainingMs: Math.max(0, startsMs - now), locked: status !== 'open' || now >= startsMs, pools, userBets, liveQuestions: await footballLiveQuestionsJson(env, row.id, cleanedUserId) };
+  return { id: row.id, stage: 'World Cup', time: formatMatchTime(row.starts_at), teamAId: row.team_a_id, teamBId: row.team_b_id, a: row.team_a_id, b: row.team_b_id, startsAt: row.starts_at, endsAt: row.ends_at, status, result: row.result, featured: Number(row.featured || 0) === 1, settledAt: row.settled_at, remainingMs: Math.max(0, startsMs - now), locked: status !== 'open' || now >= startsMs, pools, userBets, liveQuestions: await footballLiveQuestionsJson(env, row.id, cleanedUserId, includeClosedLiveQuestions) };
 }
 
 async function footballPoolsJson(env: Env, matchId: string) {
@@ -479,7 +506,7 @@ async function getTeamLogoResponse(env: Env, key: string): Promise<Response> {
 }
 
 function teamLogoKey(team: FootballTeamId): string { return `football/teams/${team}/logo`; }
-async function validateFootballTeam(env: Env, value: unknown): Promise<FootballTeamId> { const id = cleanTeamId(value); if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) return id; const row = await env.DB.prepare('SELECT id FROM football_teams WHERE id = ?').bind(id).first<{ id: string }>(); if (row) return id; throw new Error('Unknown football team'); }
+async function validateFootballTeam(env: Env, value: unknown): Promise<FootballTeamId> { const id = cleanTeamId(value); const row = await env.DB.prepare('SELECT id, custom FROM football_teams WHERE id = ?').bind(id).first<{ id: string; custom: number }>(); if (row && Number(row.custom || 0) < 0) throw new Error('Unknown football team'); if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) return id; if (row) return id; throw new Error('Unknown football team'); }
 function normalizePick(value: unknown): FootballPick { const pick = String(value || '').trim().toLowerCase(); if (pick === 'team_a' || pick === 'draw' || pick === 'team_b') return pick; throw new Error('Choose Team A, Draw or Team B'); }
 function normalizeLivePick(value: unknown): FootballLivePick { const pick = String(value || '').trim().toLowerCase(); if (pick === 'yes' || pick === 'no') return pick; throw new Error('Choose Yes or No'); }
 function normalizeMatchStatus(value: unknown): string { const status = String(value || '').trim().toLowerCase(); if (['open', 'locked', 'live', 'settled', 'refunded'].includes(status)) return status === 'live' ? 'locked' : status; throw new Error('Invalid match status'); }
