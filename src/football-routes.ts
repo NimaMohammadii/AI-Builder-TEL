@@ -265,6 +265,19 @@ app.post('/admin/api/football-matches/:id/action', async (c) => {
 });
 
 
+app.delete('/admin/api/football-matches/:id', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  try {
+    await ensureFootballPredictTables(c.env);
+    const id = cleanDbText(c.req.param('id'), 'Missing match id');
+    await deleteFootballMatchEverywhere(c.env, id);
+    return c.json({ ok: true }, 200, { 'cache-control': CACHE_NONE });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not delete football match' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
+
+
 app.post('/admin/api/football-matches/:id/live-questions', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
@@ -354,6 +367,20 @@ async function deleteFootballTeamEverywhere(env: Env, teamId: FootballTeamId): P
     await env.DB.prepare('DELETE FROM football_teams WHERE id = ?').bind(id).run();
   }
   await env.ASSETS.delete(teamLogoKey(id)).catch(() => undefined);
+}
+
+
+async function deleteFootballMatchEverywhere(env: Env, matchId: string): Promise<void> {
+  const id = cleanDbText(matchId, 'Match is not ready');
+  const match = await env.DB.prepare('SELECT id FROM football_matches WHERE id = ?').bind(id).first<{ id: string }>();
+  if (!match) throw new Error('Match not found');
+  const questions = (await env.DB.prepare('SELECT id FROM football_live_questions WHERE match_id = ?').bind(id).all<{ id: string }>()).results || [];
+  for (const question of questions) await refundFootballLiveQuestion(env, cleanDbText(question.id, 'Live question is not ready'));
+  await refundFootballMatch(env, id);
+  await env.DB.prepare('DELETE FROM football_live_question_bets WHERE match_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM football_live_questions WHERE match_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM football_bets WHERE match_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM football_matches WHERE id = ?').bind(id).run();
 }
 
 async function cancelFootballMatch(env: Env, matchId: string): Promise<void> {
