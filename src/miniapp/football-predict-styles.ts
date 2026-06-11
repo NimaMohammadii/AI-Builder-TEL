@@ -55,6 +55,15 @@ body:has(#predictzone.active.football-match-detail-open) #predictzone .football-
 #predictzone .football-live-question-row>b{height:34px;display:grid;place-items:center;border-radius:999px;background:rgba(92,10,31,.22);color:#fff;font-size:12px;font-weight:950;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
 #predictzone .football-live-question-row>b.is-ticking{transform:scale(1.04);color:#ffcad5}
 #predictzone .football-live-actions{display:flex;gap:6px}.football-live-actions button{height:34px;min-width:42px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:#fff;font-size:11px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+#predictzone .football-live-question-card{display:grid;gap:13px;border:1px solid rgba(143,23,56,.18);background:linear-gradient(180deg,rgba(143,23,56,.13),rgba(255,255,255,.035));cursor:default}
+#predictzone .football-live-question-card .football-match-head{margin-bottom:0}
+#predictzone .football-live-card-question{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:0 3px}
+#predictzone .football-live-card-question strong{min-width:0;color:#fff;font-size:18px;font-weight:950;letter-spacing:-.055em;line-height:1.05}
+#predictzone .football-live-card-question b{height:34px;min-width:58px;display:grid;place-items:center;padding:0 10px;border-radius:999px;background:rgba(92,10,31,.25);color:#fff;font-size:12px;font-weight:950;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+#predictzone .football-live-card-question b.is-ticking{transform:scale(1.04);color:#ffcad5}
+#predictzone .football-live-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#predictzone .football-live-card-actions button{height:44px;border:0;border-radius:999px;background:rgba(255,255,255,.065);box-shadow:0 12px 26px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.11);color:#fff;font-size:13px;font-weight:950;letter-spacing:-.035em}
+#predictzone .football-live-card-actions button:disabled{color:rgba(255,255,255,.52);background:rgba(255,255,255,.045)}
 @keyframes footballDetailIn{from{opacity:0;transform:translateX(18px) scale(.985)}to{opacity:1;transform:none}}
 @media(max-width:380px){#predictzone .football-team-logo{width:58px;height:58px}#predictzone .football-team b{font-size:12px}#predictzone .football-vs{width:42px;height:42px}#predictzone .football-pick-row button{height:39px;font-size:11px}#predictzone .football-detail-logo{width:74px!important;height:74px!important}#predictzone .football-detail-side b{font-size:18px}#predictzone .football-detail-scoreboard{grid-template-columns:1fr 50px 1fr;padding:18px 12px}#predictzone .football-detail-vs{width:50px;height:50px}#predictzone .football-detail-question strong{font-size:22px}#predictzone .football-detail-pick{height:54px;border-radius:22px}#predictzone .football-detail-pick span{font-size:11px}#predictzone .football-live-question-row{grid-template-columns:minmax(0,1fr) 52px auto;gap:6px}.football-live-actions button{min-width:36px}}
 `;
