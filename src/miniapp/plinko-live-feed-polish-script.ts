@@ -12,7 +12,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles=['Arman','Nika','Sarina','Kian','Mahan','Lina','Dara','Yas','Rayan','Tina','Mehrad','Ava','Soren','Melika','Navid','Raha','Amir','Dina','Shayan','Mina','Parsa','Setareh','Bardia','Hana','Arian','Nora','Pouya','Vera','Kourosh','Saba'];
+  var plinkoVirtualProfiles=['Amir Hosseini','Nika Rahimi','Arman Karimi','Sarina Moradi','Kian Ahmadi','Mahan Rezaei','Lina Azizi','Darya Mehrabi','Yasmin Sadeghi','Rayan Nouri','Tina Ebrahimi','Mehrad Kazemi','Ava Farhadi','Soren Maleki','Melika Amini','Navid Ghaemi','Raha Niknam','Dina Shokri','Shayan Bagheri','Mina Tavakoli','Parsa Jafari','Setareh Saeedi','Bardia Salehi','Hana Mirzaei','Arian Zarei','Nora Eskandari','Pouya Samadi','Vera Yousefi','Kourosh Danesh','Saba Pourali','Ali Rahbar','Reza Mahdavi','Sara Nikpour','Elena Mehran','Kamran Vaziri','Negar Asadi','Baran Ghasemi','Radin Safari','Pantea Sharifi','Sina Rostami','Yasna Jalali','Mitra Naderi','Aydin Fathi','Nima Darvishi','Leila Omidi','Shervin Pakzad','Tara Moini','Behnam Riazi','Rojin Naseri','Matin Peyman','Elham Nazari','Amin Khosravi','Mahtab Shiri','Saman Arya','Negin Vafa','Erfan Taheri','Shadi Mehr','Aria Hosseinzadeh','Kimia Farzan','Ramin Dehghan'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -209,7 +209,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   function buildVirtualRows(){
     var hour=currentHourStart();
     var seed=hour/1000;
-    var count=12+randomIndex(seed,7);
+    var count=24+randomIndex(seed,18);
     var indexes=shuffleVirtualProfiles(seed);
     virtualRows=[];
     for(var i=0;i<count;i++)virtualRows.push(makeVirtualRow(indexes[i%indexes.length]||i,seed+i*911));
@@ -225,7 +225,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     row.createdAt=Date.now();
     row.key='virtual-live-'+liveHourStartedAt+'-'+virtualNonce+'-'+row.createdAt;
     virtualRows.unshift(row);
-    if(virtualRows.length>24)virtualRows.length=24;
+    if(virtualRows.length>80)virtualRows.length=80;
     addHistoryData(row,row.key);
   }
 
@@ -236,7 +236,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
 
   function scheduleVirtualRows(){
     if(virtualTimer)return;
-    virtualTimer=setInterval(pushVirtualRow,12000+randomIndex(Date.now(),9000));
+    virtualTimer=setInterval(pushVirtualRow,2000);
   }
 
   function ensureVirtualRows(){
@@ -343,7 +343,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     row.appendChild(mult);
     row.appendChild(total);
     target.insertBefore(row,target.firstChild);
-    while(target.querySelectorAll('.plinko-history-row').length>50)target.removeChild(target.lastChild);
+    while(target.querySelectorAll('.plinko-history-row').length>80)target.removeChild(target.lastChild);
     updateHistoryTotal();
   }
 
