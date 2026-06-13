@@ -7,13 +7,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var fetchGuardInstalled=false;
   var fallbackMultipliers=[30,5,3.4,2,1.5,1,0.2,0.2,1,1.5,2,3.4,5,30];
   var currentPlinkoMultipliers=fallbackMultipliers.slice();
-  var virtualRows=[];
-  var virtualTimer=null;
-  var virtualRendered=false;
-  var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles=['amir','Nika','Parsa','Sarina','Arian','Melika','reza','Mina','Setareh','Arman','Darya','Kian','Pouya','Nora','Saba','Navid','Ali','Raha','Tina','Mahan','Yasmin','Sina','Ava','Shayan','Hana','Bardia','Soren','Negar','Radin','Matin','Amir Hosseini','Nika Rahimi','Parsa Jafari','Melika Amini','Arian Zarei','Mina Tavakoli','Saba Pourali','Reza Mahdavi','Sara Nikpour','Kian Ahmadi','Navid Ghaemi','Arman Karimi','Darya Mehrabi','Shayan Bagheri','Ava Farhadi','Pouya Samadi','Nora Eskandari','Setareh Saeedi','Raha Niknam','Sarina Moradi','Tina Ebrahimi','Mahan Rezaei','Sina Rostami','Negar Asadi','Radin Safari','Matin Peyman','@amirton','crypto_parsa','n1ka','tonboy','MeliKa_77','arian.win','mina_ton','saba777','realreza','pouya_x','noraaa','shayan.bet','ava_ton','king_arman','darya24','kianx','navid_pro','seti','mahdi_ton','sara88','TON Hunter','Lucky Parsa','ArianX','Mina Moon','Saba Ton','Reza Max','Nika Play','Dark Amir','Melika Gold','Pouya Win','No Name','Player 248','user_9271','TON Player','Lucky User','Guest 41','vexa_user','Moon Boy','Diamond','King','Nikaaa','پارسا','امیر','ملیکا','رضا','سارا'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -22,7 +17,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     if(document.getElementById('plinkoLiveFeedPolishStyle'))return;
     var style=document.createElement('style');
     style.id='plinkoLiveFeedPolishStyle';
-    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
+    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:clip;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
     document.head.appendChild(style);
   }
 
@@ -151,108 +146,18 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var list=document.getElementById('plinkoHistoryList');
     if(!total||!list)return;
     var realSum=0;
-    var virtualSum=0;
     list.querySelectorAll('.plinko-history-row').forEach(function(row){
       var n=row&&row.dataset?Number(row.dataset.amount):0;
-      if(!Number.isFinite(n)||n<=0)return;
-      if(row.dataset&&row.dataset.virtual==='1')virtualSum+=n;
-      else realSum+=n;
+      if(Number.isFinite(n)&&n>0)realSum+=n;
     });
     var base=liveHourlyTurnover!==null?liveHourlyTurnover:realSum;
-    total.textContent=formatTonAmount(base+virtualSum)+' TON · Past 1 hour';
-  }
-
-  function randomIndex(seed,max){
-    var numeric=Number(seed==null?Date.now():seed)||0;
-    var x=Math.sin(numeric*9301.77+49297.13)*233280;
-    return Math.abs(Math.floor(x))%Math.max(1,max);
-  }
-
-  function virtualName(profileIndex,seed){
-    if(!plinkoVirtualProfiles.length)return 'Player';
-    return plinkoVirtualProfiles[Math.abs(profileIndex+randomIndex(seed+profileIndex*101,plinkoVirtualProfiles.length))%plinkoVirtualProfiles.length];
-  }
-
-  function virtualAmount(profileIndex,seed){
-    var base=[0.05,0.08,0.1,0.12,0.15,0.2,0.25,0.3,0.35,0.4,0.5,0.75,1,1.25,1.5,2,2.5,3,4,5];
-    var amount=base[randomIndex(seed+profileIndex*17,base.length)];
-    var cents=(randomIndex(seed+profileIndex*29,9))*0.01;
-    return Math.round((amount+cents+Number.EPSILON)*100)/100;
-  }
-
-  function virtualMultiplier(profileIndex,seed){
-    var list=Array.isArray(currentPlinkoMultipliers)&&currentPlinkoMultipliers.length===14?currentPlinkoMultipliers:fallbackMultipliers;
-    var mult=list[randomIndex(seed+profileIndex*37,list.length)];
-    return Math.round((Number(mult)+Number.EPSILON)*100)/100;
-  }
-
-  function shuffleVirtualProfiles(seed){
-    var indexes=plinkoVirtualProfiles.map(function(_,index){return index});
-    for(var i=indexes.length-1;i>0;i--){
-      var j=randomIndex(seed+i*13,i+1);
-      var temp=indexes[i];indexes[i]=indexes[j];indexes[j]=temp;
-    }
-    return indexes;
-  }
-
-  function makeVirtualRow(profileIndex,seed){
-    var amount=virtualAmount(profileIndex,seed);
-    var multiplier=virtualMultiplier(profileIndex,seed);
-    return {
-      key:'virtual-'+currentHourStart()+'-'+profileIndex+'-'+Math.floor(seed),
-      name:virtualName(profileIndex,seed),
-      amount:amount,
-      multiplier:multiplier,
-      total:Math.round((amount*multiplier+Number.EPSILON)*100)/100,
-      createdAt:currentHourStart()+Math.max(0,Math.min(Date.now()-currentHourStart(),randomIndex(seed+profileIndex*53,3600000))),
-      isVirtual:true
-    };
-  }
-
-  function buildVirtualRows(){
-    var hour=currentHourStart();
-    var seed=hour/1000;
-    var count=24+randomIndex(seed,18);
-    var indexes=shuffleVirtualProfiles(seed);
-    virtualRows=[];
-    for(var i=0;i<count;i++)virtualRows.push(makeVirtualRow(indexes[i%indexes.length]||i,seed+i*911));
-    virtualRows.sort(function(a,b){return Number(a.createdAt||0)-Number(b.createdAt||0)});
-  }
-
-  function pushVirtualRow(){
-    if(!active())return;
-    syncHourlyReset();
-    virtualNonce+=1;
-    var indexes=shuffleVirtualProfiles(Date.now()+virtualNonce*977);
-    var row=makeVirtualRow(indexes[virtualNonce%Math.max(1,indexes.length)]||virtualNonce,Date.now()+virtualNonce*1307);
-    row.createdAt=Date.now();
-    row.key='virtual-live-'+liveHourStartedAt+'-'+virtualNonce+'-'+row.createdAt;
-    virtualRows.unshift(row);
-    if(virtualRows.length>80)virtualRows.length=80;
-    addHistoryData(row,row.key);
-  }
-
-  function renderVirtualRows(){
-    if(!virtualRows.length)buildVirtualRows();
-    virtualRows.forEach(function(row){addHistoryData(row,row.key)});
-  }
-
-  function scheduleVirtualRows(){
-    if(virtualTimer)return;
-    virtualTimer=setInterval(pushVirtualRow,2000);
-  }
-
-  function ensureVirtualRows(){
-    if(!virtualRendered){buildVirtualRows();renderVirtualRows();virtualRendered=true}
-    scheduleVirtualRows();
+    total.textContent=formatTonAmount(base)+' TON · Past 1 hour';
   }
 
   function currentHourStart(){return Math.floor(Date.now()/3600000)*3600000}
   function resetHistoryForHour(hourStartedAt){
     liveHourStartedAt=hourStartedAt||currentHourStart();
     liveHourlyTurnover=null;
-    virtualRows=[];
-    virtualRendered=false;
     seen={};
     var list=document.getElementById('plinkoHistoryList');
     if(list)list.innerHTML='<div class="plinko-history-empty">No bets yet</div>';
@@ -290,6 +195,12 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     return key;
   }
 
+  function displayName(value){
+    var name=cleanText(value||'Player').replace(/[.\u2026]+$/g,'').trim();
+    if(!name||/^@?plinko(?:[._-]*\d*)?$/i.test(name))name='Player';
+    return name.slice(0,32);
+  }
+
   function addHistoryData(data,key){
     var target=historyList();
     if(!target||!data)return;
@@ -308,7 +219,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
 
     var name=document.createElement('div');
     name.className='plinko-history-name';
-    name.textContent=data.name||'Player';
+    name.textContent=displayName(data.name);
 
     var amountValue=Math.max(0,Number(data.amount)||0)||1;
     amountValue=Math.round((amountValue+Number.EPSILON)*100)/100;
@@ -330,7 +241,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       row.dataset.total=String(totalValue);
       row.dataset.multiplier=String(multValue);
       if(data.createdAt!=null)row.dataset.createdAt=String(data.createdAt);
-      if(data.isVirtual)row.dataset.virtual='1';
     }
     if(totalValue>amountValue){
       row.className+=' win';
@@ -369,7 +279,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     var srcImg=source.querySelector('img');
     var srcName=source.querySelector('.plinko-live-name');
     addHistoryData({
-      name:srcName&&srcName.textContent?srcName.textContent:'Player',
+      name:displayName(srcName&&srcName.textContent?srcName.textContent:'Player'),
       photoUrl:srcImg&&srcImg.src?srcImg.src:'/app/api/uploaded-image/credit-icon.png',
       amount:amountValue,
       multiplier:multValue,
@@ -384,7 +294,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     moveFeedIntoPage();
     gatePlinkoControl();
     syncHourlyReset();
-    ensureVirtualRows();
     document.querySelectorAll('#plinkoLiveFeed .plinko-live-row').forEach(addHistory);
   }
 
@@ -407,7 +316,6 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   window.addEventListener('vexa-plinko-live-hour',function(ev){applyLiveHourDetail(ev&&ev.detail)});
-  setInterval(function(){syncHourlyReset();ensureVirtualRows()},30000);
   document.addEventListener('click',function(){setTimeout(scan,80)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80)});
 })();
