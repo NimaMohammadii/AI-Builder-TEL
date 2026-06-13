@@ -2,12 +2,26 @@ import type { Env } from './types';
 
 const ROOM_NAME = 'global';
 const USER_DELAY_MS = 6000;
-const HISTORY_KEY_PREFIX = 'plinko-live-history-';
+const HISTORY_KEY = 'plinko-live-history-v2';
+const VIRTUAL_LAST_KEY = 'plinko-live-virtual-last-at';
 const TURNOVER_KEY_PREFIX = 'plinko-live-turnover-';
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const HISTORY_WINDOW_MS = 24 * ONE_HOUR_MS;
+const VIRTUAL_INTERVAL_MS = 4200;
+const VIRTUAL_MAX_CATCHUP = 120;
 const RESULT_DEDUPE_PREFIX = 'plinko-live-result-key-';
 const RESULT_DEDUPE_MS = 2500;
-const HISTORY_LIMIT = 50;
+const HISTORY_LIMIT = 120;
+
+const VIRTUAL_PERSONAS = [
+  'Ari Stone @northdesk', 'Maya Chen · London', 'Leo Novak @chainpilot', 'Sofia Reed · Lisbon',
+  'Noah Brooks @tonlane', 'Eva Morgan · Berlin', 'Lucas Gray @dropclub', 'Nina Park · Seoul',
+  'Owen Blake @risklow', 'Lara Quinn · Dubai', 'Milo Grant @plinko24', 'Iris Hale · Toronto',
+  'Ryan Cole @fastbin', 'Emma Fox · Sydney', 'Max Ward @whalechip', 'Zara Mills · Paris',
+  'آراد نوا @aradton', 'نیلا راد · تهران', 'کیان مهر @kianrush', 'رها سام · شیراز',
+  'ماهان بیت @mahanbet', 'الینا جم · تبریز', 'پارسا وین @parsawin', 'سینا جت · کرج',
+];
+const VIRTUAL_MULTIPLIERS = [0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5];
 
 const localSockets = new Set<WebSocket>();
 const localUserLast = new Map<string, number>();
@@ -31,6 +45,7 @@ type PlinkoResult = {
   userId: string;
   name: string;
   photoUrl: string;
+  isVirtual?: boolean;
   amount: number;
   multiplier: number;
   total: number;
@@ -64,6 +79,7 @@ export class PlinkoLiveRoom {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    await this.ensureVirtualFeed();
     if (request.method === 'GET' && url.pathname.endsWith('/ws')) return this.connect(request);
     if (request.method === 'POST' && url.pathname.endsWith('/send')) return this.send(request);
     if (request.method === 'POST' && url.pathname.endsWith('/result')) return this.result(request);
@@ -79,6 +95,7 @@ export class PlinkoLiveRoom {
     this.sockets.add(server);
     server.addEventListener('close', () => this.sockets.delete(server));
     server.addEventListener('error', () => this.sockets.delete(server));
+    await this.scheduleVirtualAlarm();
     const history = await this.history();
     safeSend(server, { type: 'plinko-history', events: history.events, hourlyTurnover: history.hourlyTurnover, hourStartedAt: history.hourStartedAt });
     return new Response(null, { status: 101, webSocket: client });
@@ -112,9 +129,9 @@ export class PlinkoLiveRoom {
     await this.state.storage.put(dedupeKey, Date.now(), { expirationTtl: 30 });
 
     const history = await this.history();
-    const next = [result, ...history.events.filter((item) => item.id !== result.id)].slice(0, HISTORY_LIMIT);
+    const next = [result, ...history.events.filter((item) => item.id !== result.id)].filter(isRecentResult).slice(0, HISTORY_LIMIT);
     const hourlyTurnover = roundAmount(history.hourlyTurnover + result.amount);
-    await this.state.storage.put(historyKey(history.hourStartedAt), next);
+    await this.state.storage.put(HISTORY_KEY, next);
     await this.state.storage.put(turnoverKey(history.hourStartedAt), hourlyTurnover);
     this.publish({ type: 'plinko-result', event: result, hourlyTurnover, hourStartedAt: history.hourStartedAt });
     return json({ ok: true, event: result });
@@ -122,15 +139,51 @@ export class PlinkoLiveRoom {
 
   private async history(): Promise<PlinkoHistoryPayload> {
     const hourStartedAt = currentHourStartedAt();
-    const history = await this.state.storage.get<PlinkoResult[]>(historyKey(hourStartedAt)).catch(() => null);
-    const events = Array.isArray(history) ? history.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT) : [];
+    const history = await this.state.storage.get<PlinkoResult[]>(HISTORY_KEY).catch(() => null);
+    const events = Array.isArray(history) ? history.filter(isRecentResult).slice(0, HISTORY_LIMIT) : [];
     const storedHourlyTurnover = Number(await this.state.storage.get<number>(turnoverKey(hourStartedAt)).catch(() => 0)) || 0;
-    const historyTurnover = events.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const historyTurnover = events.filter(isCurrentHourResult).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     return {
       events,
       hourlyTurnover: roundAmount(Math.max(storedHourlyTurnover, historyTurnover)),
       hourStartedAt,
     };
+  }
+
+  async alarm(): Promise<void> {
+    await this.ensureVirtualFeed(true);
+    await this.scheduleVirtualAlarm();
+  }
+
+  private async ensureVirtualFeed(allowPublish = false): Promise<void> {
+    const now = Date.now();
+    const history = await this.history();
+    const storedLast = Number(await this.state.storage.get<number>(VIRTUAL_LAST_KEY).catch(() => 0)) || 0;
+    let nextAt = storedLast > 0 ? storedLast + VIRTUAL_INTERVAL_MS : Math.max(now - 45000, currentHourStartedAt());
+    const generated: PlinkoResult[] = [];
+    while (nextAt <= now && generated.length < VIRTUAL_MAX_CATCHUP) {
+      generated.push(makeVirtualResult(nextAt));
+      nextAt += VIRTUAL_INTERVAL_MS + Math.floor(seededUnit('gap:' + nextAt) * 2600);
+    }
+    if (!generated.length) {
+      await this.scheduleVirtualAlarm();
+      return;
+    }
+    const newestLast = generated[generated.length - 1].createdAt;
+    const next = [...generated.reverse(), ...history.events].filter(isRecentResult).filter(uniqueResultById).slice(0, HISTORY_LIMIT);
+    await this.state.storage.put(HISTORY_KEY, next);
+    await this.state.storage.put(VIRTUAL_LAST_KEY, newestLast);
+    const hourlyVirtualTurnover = generated.filter(isCurrentHourResult).reduce((sum, item) => sum + item.amount, 0);
+    if (hourlyVirtualTurnover > 0) await this.state.storage.put(turnoverKey(history.hourStartedAt), roundAmount(history.hourlyTurnover + hourlyVirtualTurnover));
+    if (allowPublish) {
+      const freshHistory = await this.history();
+      generated.slice().reverse().forEach((event) => this.publish({ type: 'plinko-result', event, hourlyTurnover: freshHistory.hourlyTurnover, hourStartedAt: freshHistory.hourStartedAt }));
+    }
+    await this.scheduleVirtualAlarm();
+  }
+
+  private async scheduleVirtualAlarm(): Promise<void> {
+    await this.state.storage.setAlarm(Date.now() + VIRTUAL_INTERVAL_MS).catch(() => undefined);
   }
 
   private publish(value: unknown): void {
@@ -199,7 +252,7 @@ async function localResult(request: Request): Promise<Response> {
   localResultLast.set(key, Date.now());
 
   pruneLocalHistory();
-  localHistory = [result, ...localHistory.filter((item) => item.id !== result.id)].filter(isCurrentHourResult).slice(0, HISTORY_LIMIT);
+  localHistory = [result, ...localHistory.filter((item) => item.id !== result.id)].filter(isRecentResult).slice(0, HISTORY_LIMIT);
   localPublish({ type: 'plinko-result', event: result, hourlyTurnover: localHourlyTurnover(), hourStartedAt: currentHourStartedAt() });
   return json({ ok: true, fallback: true, event: result });
 }
@@ -248,12 +301,12 @@ function isCurrentHourResult(item: PlinkoResult): boolean {
   return isValidResult(item) && Number(item.createdAt) >= currentHourStartedAt();
 }
 
-function currentHourStartedAt(): number {
-  return Math.floor(Date.now() / ONE_HOUR_MS) * ONE_HOUR_MS;
+function isRecentResult(item: PlinkoResult): boolean {
+  return isValidResult(item) && Number(item.createdAt) >= Date.now() - HISTORY_WINDOW_MS;
 }
 
-function historyKey(hourStartedAt: number): string {
-  return HISTORY_KEY_PREFIX + String(hourStartedAt);
+function currentHourStartedAt(): number {
+  return Math.floor(Date.now() / ONE_HOUR_MS) * ONE_HOUR_MS;
 }
 
 function turnoverKey(hourStartedAt: number): string {
@@ -267,12 +320,12 @@ function roundAmount(value: unknown): number {
 }
 
 function pruneLocalHistory(): void {
-  localHistory = localHistory.filter(isCurrentHourResult).slice(0, HISTORY_LIMIT);
+  localHistory = localHistory.filter(isRecentResult).slice(0, HISTORY_LIMIT);
 }
 
 function localHourlyTurnover(): number {
   pruneLocalHistory();
-  return roundAmount(localHistory.reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
+  return roundAmount(localHistory.filter(isCurrentHourResult).reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
 }
 
 function getRoom(env: LiveEnv): DurableObjectStub | null {
@@ -307,6 +360,41 @@ function cleanMultiplier(value: unknown): number {
   const multiplier = Number(value);
   if (!Number.isFinite(multiplier) || multiplier < 0) return 0;
   return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
+}
+
+function makeVirtualResult(createdAt: number): PlinkoResult {
+  const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * VIRTUAL_PERSONAS.length) % VIRTUAL_PERSONAS.length;
+  const amountBase = [1, 2, 3, 5, 7.5, 10, 12, 15, 20, 25, 30, 50][Math.floor(seededUnit('amount:' + createdAt) * 12)];
+  const multiplier = VIRTUAL_MULTIPLIERS[Math.floor(seededUnit('mult:' + createdAt) * VIRTUAL_MULTIPLIERS.length)] || 1;
+  const amount = roundAmount(amountBase + Math.floor(seededUnit('cents:' + createdAt) * 4) * 0.25);
+  return {
+    id: 'virtual-plinko-' + createdAt.toString(36),
+    userId: 'virtual:plinko:' + personaIndex,
+    name: VIRTUAL_PERSONAS[personaIndex],
+    photoUrl: '',
+    isVirtual: true,
+    amount,
+    multiplier,
+    total: roundAmount(amount * multiplier),
+    createdAt,
+  };
+}
+
+function seededUnit(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h += 0x6D2B79F5;
+  let t = h;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function uniqueResultById(item: PlinkoResult, index: number, list: PlinkoResult[]): boolean {
+  return list.findIndex((candidate) => candidate.id === item.id) === index;
 }
 
 function naturalResultKey(result: PlinkoResult): string {
