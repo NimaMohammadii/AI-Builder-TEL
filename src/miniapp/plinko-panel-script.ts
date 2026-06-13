@@ -3,6 +3,7 @@ export const PLINKO_PANEL_SCRIPT = `
   var NANO=1000000000;
   var inlineInputHome=null;
   function q(id){return document.getElementById(id)}
+  function ensureFirstLoadStyle(){if(document.getElementById('plinkoFirstLoadNoOverlayStyle'))return;var style=document.createElement('style');style.id='plinkoFirstLoadNoOverlayStyle';style.textContent='body.plinko-control-loading #plinko.view .plinko-stage{opacity:1!important;pointer-events:auto!important}body.plinko-control-loading #plinko.view .plinko-controls{opacity:1!important;pointer-events:auto!important}body.plinko-control-loading #plinko.view:after{display:none!important;content:none!important;opacity:0!important;pointer-events:none!important}';document.head.appendChild(style)}
   function tonToNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*NANO))}
   function readBalanceNano(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function')return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));var source=q('plinkoTonBalance')||q('topTonBalance')||q('plinkoCredit');return tonToNano(source&&source.textContent)}
   function isPlinkoActive(){var active=document.querySelector('.view.active');return !!(active&&active.id==='plinko')}
@@ -35,6 +36,6 @@ export const PLINKO_PANEL_SCRIPT = `
   window.addEventListener('focus',syncHeaderCredit);window.addEventListener('vexa-ton-balance-sync',syncHeaderCredit);window.addEventListener('vexa-credit-sync',syncHeaderCredit);window.addEventListener('vexa-credit-game-change',syncHeaderCredit);
   window.addEventListener('vexa-plinko-last-win',function(ev){setLastWin(ev&&ev.detail?ev.detail.total:0);renderStats()});
   if(window.MutationObserver){var root=q('plinko');if(root)new MutationObserver(function(){if(isPlinkoActive())syncHeaderCredit()}).observe(root,{attributes:true,attributeFilter:['class']})}
-  var start=function(){setBet(currentBet());syncHeaderCredit()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+  var start=function(){ensureFirstLoadStyle();setBet(currentBet());syncHeaderCredit()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 `;
