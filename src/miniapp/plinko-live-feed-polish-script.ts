@@ -13,7 +13,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles=['amir','Nika','Parsa','Sarina','Arian','Melika','reza','Mina','Setareh','Arman','Darya','Kian','Pouya','Nora','Saba','Navid','Ali','Raha','Tina','Mahan','Yasmin','Sina','Ava','Shayan','Hana','Bardia','Soren','Negar','Radin','Matin','Amir Hosseini','Nika Rahimi','Parsa Jafari','Melika Amini','Arian Zarei','Mina Tavakoli','Saba Pourali','Reza Mahdavi','Sara Nikpour','Kian Ahmadi','Navid Ghaemi','Arman Karimi','Darya Mehrabi','Shayan Bagheri','Ava Farhadi','Pouya Samadi','Nora Eskandari','Setareh Saeedi','Raha Niknam','Sarina Moradi','Tina Ebrahimi','Mahan Rezaei','Sina Rostami','Negar Asadi','Radin Safari','Matin Peyman','@amirton','crypto_parsa','n1ka','tonboy','MeliKa_77','arian.win','mina_ton','saba777','realreza','pouya_x','noraaa','shayan.bet','ava_ton','king_arman','darya24','kianx','navid_pro','seti','mahdi_ton','sara88','TON Hunter','Lucky Parsa','ArianX','Mina Moon','Saba Ton','Reza Max','Nika Play','Dark Amir','Melika Gold','Pouya Win','No Name','Player 248','user_9271','TON Player','Lucky User','Guest 41','vexa_user','Moon Boy','Diamond','King','Nikaaa','پارسا','امیر','ملیکا','رضا','سارا'];
+  var plinkoVirtualProfiles=['Amir @tonwhale','Nika Rahimi · TON Society','Parsa Jafari (NFT trader)','Melika Amini | TapSwap','Arian Zarei ⚡ wallet OK','Mina Tavakoli / fragment','Saba Pourali 💎','Reza Mahdavi - Whale #42','Kian Ahmadi @kianx','Navid Ghaemi TON keeper','Arman Karimi | Jetton','Darya Mehrabi @darya24','Shayan Bagheri · alpha','Ava Farhadi wallet 0:9f','Pouya Samadi - scalp','Nora Eskandari 🛡️','Sara Nikpour | miniapps','Amir Hosseini tonkeeper','مهسا / Ton Keeper','پارسا @crypto_parsa','سارا NFT Hunter','رضا TON Max','نگار Fragment Deal','حامد Whale Alert','Alex Carter @alex.ton','Maya Collins · Binance P2P','Liam Brooks wallet verified','Sofia Rivera | crypto mom','Noah Bennett ⚡','Emma Stonefield @emmaplays','Oliver Grant - EU desk','Ava Thompson NFT scout','Ethan Walker / tonkeeper','Mia Anderson 💎 TON','Lucas Miller @lucaswins','Charlotte King | Web3','James Wilson whale watch','Amelia Clark · Telegram OG','Benjamin Scott #stake','Harper Lewis miniapp pro','Henry Adams @henry_ton','Ella Young - jackpot run','Daniel Harris wallet 0:a3','Grace Martin | DeFi','Jack Turner daily player','Lily Moore (London)','Leo Cooper @leocoins','Chloe Parker · NFT flip','Max Wright | alpha calls','Ruby Hill fragment buyer','Oscar Green TON Arena','Ivy Baker @ivybets','Samuel Reed - night shift','Zoe Mitchell 💫','David Morgan wallet synced','Eva Foster | crypto desk','Ryan Bell @ryanx','Nora Price - VIP table','Adam Russell TON Club','Mila Hughes · high roller','Tyler Ward @wardbets'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -22,7 +22,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     if(document.getElementById('plinkoLiveFeedPolishStyle'))return;
     var style=document.createElement('style');
     style.id='plinkoLiveFeedPolishStyle';
-    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
+    style.textContent='#plinko.view{overflow-y:auto!important;overflow-x:hidden!important}#plinko .plinko-page{height:auto!important;min-height:100%!important;padding-bottom:calc(42px + env(safe-area-inset-bottom))!important}#plinkoLiveFeed{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}#plinkoLiveHistoryFeed{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:min(96%,374px);max-height:none;overflow:visible;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:none;flex-direction:column;z-index:2;margin:8px auto 0;padding:10px 12px 24px;box-sizing:border-box;pointer-events:auto;scrollbar-width:none;flex:0 0 auto;border:0!important;outline:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}#plinkoLiveHistoryFeed::-webkit-scrollbar{display:none}.plinko-history-list::-webkit-scrollbar{width:3px}.plinko-history-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}body:has(#plinko.active) #plinkoLiveHistoryFeed{display:flex}.plinko-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.plinko-history-title{display:inline-flex;align-items:center;gap:7px;min-width:0}.plinko-history-title svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.plinko-history-head b{color:rgba(255,255,255,.92);font-size:11px;font-weight:930;letter-spacing:.02em;text-transform:none;white-space:nowrap}.plinko-history-list{display:grid;gap:6px;max-height:570px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-right:1px}.plinko-history-empty{font-size:11px;font-weight:820;color:rgba(255,255,255,.45);padding:8px 0;text-align:center}.plinko-history-row{min-height:32px;border:0!important;outline:0!important;border-radius:999px;background:transparent!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:0 2px;color:#fff;box-shadow:none!important;box-sizing:border-box}.plinko-history-row img{display:none}.plinko-history-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:900;color:rgba(255,255,255,.92)}.plinko-history-meta{font-size:11px;font-weight:900;color:rgba(255,255,255,.70);white-space:nowrap}.plinko-history-mult{display:none}.plinko-history-total{font-size:11px;font-weight:930;color:rgba(255,255,255,.84);white-space:nowrap;text-shadow:none}.plinko-history-row.virtual{opacity:.72}.plinko-history-row.virtual .plinko-history-name:before{content:'BOT';display:inline-flex;margin-right:6px;padding:1px 5px;border-radius:999px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.48);font-size:8px;font-weight:950;vertical-align:1px}.plinko-history-row.win .plinko-history-meta{color:#78ffb3}.plinko-history-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}body.plinko-control-loading #plinko .plinko-stage{opacity:0!important;pointer-events:none!important}body.plinko-control-loading #plinko .plinko-controls{opacity:.72!important;pointer-events:none!important}body.plinko-control-loading #plinko:after{content:"Loading current Plinko...";position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}@media (max-height:740px){.plinko-history-list{max-height:570px}}';
     document.head.appendChild(style);
   }
 
@@ -212,7 +212,8 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   function buildVirtualRows(){
     var hour=currentHourStart();
     var seed=hour/1000;
-    var count=24+randomIndex(seed,18);
+    var elapsed=Math.max(0,Date.now()-hour);
+    var count=Math.min(80,12+Math.floor(elapsed/2000));
     var indexes=shuffleVirtualProfiles(seed);
     virtualRows=[];
     for(var i=0;i<count;i++)virtualRows.push(makeVirtualRow(indexes[i%indexes.length]||i,seed+i*911));
@@ -242,8 +243,10 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     virtualTimer=setInterval(pushVirtualRow,2000);
   }
 
+  function expectedVirtualCount(){return Math.min(80,12+Math.floor(Math.max(0,Date.now()-currentHourStart())/2000))}
+
   function ensureVirtualRows(){
-    if(!virtualRendered){buildVirtualRows();renderVirtualRows();virtualRendered=true}
+    if(!virtualRendered||virtualRows.length<expectedVirtualCount()){buildVirtualRows();renderVirtualRows();virtualRendered=true}
     scheduleVirtualRows();
   }
 
@@ -330,7 +333,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       row.dataset.total=String(totalValue);
       row.dataset.multiplier=String(multValue);
       if(data.createdAt!=null)row.dataset.createdAt=String(data.createdAt);
-      if(data.isVirtual)row.dataset.virtual='1';
+      if(data.isVirtual){row.dataset.virtual='1';row.className+=' virtual'}
     }
     if(totalValue>amountValue){
       row.className+=' win';
@@ -345,8 +348,19 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     row.appendChild(ton);
     row.appendChild(mult);
     row.appendChild(total);
-    target.insertBefore(row,target.firstChild);
-    while(target.querySelectorAll('.plinko-history-row').length>80)target.removeChild(target.lastChild);
+    if(data.isVirtual){
+      target.appendChild(row);
+    }else{
+      target.insertBefore(row,target.firstChild);
+    }
+    while(target.querySelectorAll('.plinko-history-row:not(.virtual)').length>80){
+      var realRows=target.querySelectorAll('.plinko-history-row:not(.virtual)');
+      if(realRows.length)realRows[realRows.length-1].remove();else break;
+    }
+    while(target.querySelectorAll('.plinko-history-row.virtual').length>80){
+      var virtualList=target.querySelectorAll('.plinko-history-row.virtual');
+      if(virtualList.length)virtualList[0].remove();else break;
+    }
     updateHistoryTotal();
   }
 
