@@ -5,14 +5,15 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var ready=false;
   var loading=false;
   var fetchGuardInstalled=false;
-  var fallbackMultipliers=[5,2.4,1.8,1.35,1.15,1,.85,.85,1,1.15,1.35,1.8,2.4,5];
+  var fallbackMultipliers=[30,5,3.4,2,1.5,1,0.2,0.2,1,1.5,2,3.4,5,30];
+  var currentPlinkoMultipliers=fallbackMultipliers.slice();
   var virtualRows=[];
   var virtualTimer=null;
   var virtualRendered=false;
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
-  var plinkoVirtualProfiles=['Amir Hosseini','Nika Rahimi','Arman Karimi','Sarina Moradi','Kian Ahmadi','Mahan Rezaei','Lina Azizi','Darya Mehrabi','Yasmin Sadeghi','Rayan Nouri','Tina Ebrahimi','Mehrad Kazemi','Ava Farhadi','Soren Maleki','Melika Amini','Navid Ghaemi','Raha Niknam','Dina Shokri','Shayan Bagheri','Mina Tavakoli','Parsa Jafari','Setareh Saeedi','Bardia Salehi','Hana Mirzaei','Arian Zarei','Nora Eskandari','Pouya Samadi','Vera Yousefi','Kourosh Danesh','Saba Pourali','Ali Rahbar','Reza Mahdavi','Sara Nikpour','Elena Mehran','Kamran Vaziri','Negar Asadi','Baran Ghasemi','Radin Safari','Pantea Sharifi','Sina Rostami','Yasna Jalali','Mitra Naderi','Aydin Fathi','Nima Darvishi','Leila Omidi','Shervin Pakzad','Tara Moini','Behnam Riazi','Rojin Naseri','Matin Peyman','Elham Nazari','Amin Khosravi','Mahtab Shiri','Saman Arya','Negin Vafa','Erfan Taheri','Shadi Mehr','Aria Hosseinzadeh','Kimia Farzan','Ramin Dehghan'];
+  var plinkoVirtualProfiles=['amir','Nika','Parsa','Sarina','Arian','Melika','reza','Mina','Setareh','Arman','Darya','Kian','Pouya','Nora','Saba','Navid','Ali','Raha','Tina','Mahan','Yasmin','Sina','Ava','Shayan','Hana','Bardia','Soren','Negar','Radin','Matin','Amir Hosseini','Nika Rahimi','Parsa Jafari','Melika Amini','Arian Zarei','Mina Tavakoli','Saba Pourali','Reza Mahdavi','Sara Nikpour','Kian Ahmadi','Navid Ghaemi','Arman Karimi','Darya Mehrabi','Shayan Bagheri','Ava Farhadi','Pouya Samadi','Nora Eskandari','Setareh Saeedi','Raha Niknam','Sarina Moradi','Tina Ebrahimi','Mahan Rezaei','Sina Rostami','Negar Asadi','Radin Safari','Matin Peyman','@amirton','crypto_parsa','n1ka','tonboy','MeliKa_77','arian.win','mina_ton','saba777','realreza','pouya_x','noraaa','shayan.bet','ava_ton','king_arman','darya24','kianx','navid_pro','seti','mahdi_ton','sara88','TON Hunter','Lucky Parsa','ArianX','Mina Moon','Saba Ton','Reza Max','Nika Play','Dark Amir','Melika Gold','Pouya Win','No Name','Player 248','user_9271','TON Player','Lucky User','Guest 41','vexa_user','Moon Boy','Diamond','King','Nikaaa','پارسا','امیر','ملیکا','رضا','سارا'];
 
 
   function active(){var view=document.querySelector('.view.active');return !!(view&&view.id==='plinko')}
@@ -40,6 +41,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
       var n=Number(value);
       return Number.isFinite(n)&&n>0?n:fallbackMultipliers[index];
     });
+    currentPlinkoMultipliers=item.multipliers.slice(0,14);
     return data;
   }
 
@@ -179,8 +181,9 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function virtualMultiplier(profileIndex,seed){
-    var mult=fallbackMultipliers[randomIndex(seed+profileIndex*37,fallbackMultipliers.length)];
-    return Math.round((mult+Number.EPSILON)*100)/100;
+    var list=Array.isArray(currentPlinkoMultipliers)&&currentPlinkoMultipliers.length===14?currentPlinkoMultipliers:fallbackMultipliers;
+    var mult=list[randomIndex(seed+profileIndex*37,list.length)];
+    return Math.round((Number(mult)+Number.EPSILON)*100)/100;
   }
 
   function shuffleVirtualProfiles(seed){
