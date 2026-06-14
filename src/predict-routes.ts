@@ -113,7 +113,7 @@ app.post('/app/api/predict-bet', async (c) => {
     const side = normalizeSide(body.side);
     userId = cleanUserId(body.userId);
     stakeNano = tonToNano(body.stakeTon);
-    const tonUsd = cleanPrice(body.tonUsdSnapshot || await fetchPrice('ton'));
+    const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
@@ -360,6 +360,7 @@ function normalizeSide(value: unknown): PredictSide { const side = String(value 
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
 function cleanPrice(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) throw new Error('Invalid price'); return n; }
+function cleanOptionalPrice(value: unknown): number { const n = Number(value); return Number.isFinite(n) && n > 0 ? n : 0; }
 function cleanDbText(value: unknown, message: string): string { const text = String(value ?? '').trim(); if (!text) throw new Error(message); return text; }
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
