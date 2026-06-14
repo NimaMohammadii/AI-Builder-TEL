@@ -7,9 +7,25 @@ import './section-lock-event-routes';
 import './crash-routes';
 import './slot-frame';
 import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
-import type { Env, TelegramUpdate } from './types';
+import type { Env, TelegramUpdate, TelegramUser } from './types';
+import { PUBLIC_BASE_URL, gameBotToken } from './utils';
 
 export { SectionLockEvents } from './section-lock-events';
+
+type RegionConfig = { code: string; label: string; language: string; timezone: string };
+
+const REGIONS: RegionConfig[] = [
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
+  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
+  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
+];
 
 const DETAIL_POLISH_SCRIPT = `
 (function(){
@@ -88,6 +104,112 @@ async function handleFastTelegramUpdate(request: Request, env: Env): Promise<Res
   return null;
 }
 
+async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (request.method !== 'POST' || url.pathname !== '/telegram/game-webhook') return null;
+  const update = await request.clone().json().catch(() => null) as TelegramUpdate | null;
+  if (!update) return Response.json({ ok: true, ignored: true });
+  const token = gameBotToken(env);
+  const callback = update.callback_query;
+  if (callback) {
+    const chatId = callback.message?.chat.id ?? callback.from.id;
+    const data = callback.data || '';
+    await telegram(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+    if (data.startsWith('region:')) {
+      const region = regionByCode(data.slice('region:'.length));
+      if (!region) {
+        await sendRegionMenu(token, chatId, 'Choose your region 🌍');
+        return Response.json({ ok: true, bot: 'game', region: false });
+      }
+      await saveGameUserRegion(env, callback.from, region);
+      await sendOpenMiniApp(token, chatId, `Region saved: ${region.label}\nLanguage: ${region.language.toUpperCase()}\nTimezone: ${region.timezone}`);
+      return Response.json({ ok: true, bot: 'game', region: region.code });
+    }
+    return Response.json({ ok: true, bot: 'game', ignored: true });
+  }
+  const message = update.message;
+  const chatId = message?.chat.id;
+  const user = message?.from;
+  if (!chatId || !user?.id) return Response.json({ ok: true, ignored: true, bot: 'game' });
+  const text = message.text?.trim() || '';
+  await trackGameChatUser(env, user).catch(() => undefined);
+  if (text === '/region') {
+    await sendRegionMenu(token, chatId, 'Change your region 🌍');
+    return Response.json({ ok: true, bot: 'game', command: 'region' });
+  }
+  const region = await getGameUserRegion(env, String(user.id));
+  if (!region || text === '/start') {
+    if (!region) await sendRegionMenu(token, chatId, 'Choose your region 🌍');
+    else await sendOpenMiniApp(token, chatId, `Your region: ${region.label}\nUse /region to change it.`);
+    return Response.json({ ok: true, bot: 'game', command: text || 'message' });
+  }
+  await sendOpenMiniApp(token, chatId, 'Open the mini app.');
+  return Response.json({ ok: true, bot: 'game' });
+}
+
+function regionByCode(code: string): RegionConfig | null {
+  const cleaned = String(code || '').trim().toUpperCase();
+  return REGIONS.find((region) => region.code === cleaned) || null;
+}
+
+async function ensureAppUserRegionColumns(env: Env): Promise<void> {
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
+}
+
+async function trackGameChatUser(env: Env, user: TelegramUser): Promise<void> {
+  await ensureAppUserRegionColumns(env);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, last_seen_at, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`)
+    .bind(String(user.id), cleanText(user.first_name, 120), cleanText(user.username, 80))
+    .run();
+}
+
+async function getGameUserRegion(env: Env, userId: string): Promise<RegionConfig | null> {
+  await ensureAppUserRegionColumns(env);
+  const row = await env.DB.prepare('SELECT region_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ region_code: string | null }>().catch(() => null);
+  return row?.region_code ? regionByCode(row.region_code) : null;
+}
+
+async function saveGameUserRegion(env: Env, user: TelegramUser, region: RegionConfig): Promise<void> {
+  await ensureAppUserRegionColumns(env);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, region_code, language_code, timezone, current_section, last_seen_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'telegram_region', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username, region_code = excluded.region_code, language_code = excluded.language_code, timezone = excluded.timezone, current_section = 'telegram_region', last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`)
+    .bind(String(user.id), cleanText(user.first_name, 120), cleanText(user.username, 80), region.code, region.language, region.timezone)
+    .run();
+}
+
+function cleanText(value: unknown, max: number): string | null {
+  const text = String(value || '').replace(/[\u0000-\u001f<>]/g, '').trim();
+  return text ? text.slice(0, max) : null;
+}
+
+async function sendRegionMenu(token: string, chatId: number, text: string): Promise<void> {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  for (let i = 0; i < REGIONS.length; i += 2) rows.push(REGIONS.slice(i, i + 2).map((region) => ({ text: region.label, callback_data: `region:${region.code}` })));
+  await telegram(token, 'sendMessage', {
+    chat_id: chatId,
+    text: `${text}\n\nYou can change it anytime with /region.`,
+    reply_markup: { inline_keyboard: rows },
+  });
+}
+
+async function sendOpenMiniApp(token: string, chatId: number, text: string): Promise<void> {
+  await telegram(token, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] },
+  });
+}
+
+async function telegram<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  return response.json() as Promise<T>;
+}
+
 function handleTonConnectManifest(request: Request): Response | null {
   const url = new URL(request.url);
   if (url.pathname !== '/tonconnect-manifest.json' && url.pathname !== '/app/api/tonconnect-manifest.json') return null;
@@ -128,6 +250,11 @@ export default {
     if (manifestRoute) return manifestRoute;
     const starsRoute = await handleStarsDepositRoute(request, env);
     if (starsRoute) return starsRoute;
+    const gameRegionResponse = await handleGameBotRegionUpdate(request, env).catch((error) => {
+      console.error('game region update failed', error);
+      return Response.json({ ok: true, recovered: true, bot: 'game' });
+    });
+    if (gameRegionResponse) return gameRegionResponse;
     const fastResponse = await handleFastTelegramUpdate(request, env).catch((error) => {
       console.error('fast telegram update failed', error);
       return Response.json({ ok: true, recovered: true });
