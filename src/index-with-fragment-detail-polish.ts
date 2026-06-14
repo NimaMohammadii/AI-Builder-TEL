@@ -13,6 +13,7 @@ import { PUBLIC_BASE_URL, gameBotToken } from './utils';
 export { SectionLockEvents } from './section-lock-events';
 
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
+type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 
 const REGIONS: RegionConfig[] = [
   { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
@@ -113,16 +114,18 @@ async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Re
   const callback = update.callback_query;
   if (callback) {
     const chatId = callback.message?.chat.id ?? callback.from.id;
+    const messageId = callback.message?.message_id ?? 0;
+    const userId = String(callback.from.id);
     const data = callback.data || '';
     await telegram(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
     if (data.startsWith('region:')) {
       const region = regionByCode(data.slice('region:'.length));
       if (!region) {
-        await sendRegionMenu(token, chatId, 'Choose your region 🌍');
+        await sendRegionMenu(env, token, chatId, userId, 'Choose your region 🌍');
         return Response.json({ ok: true, bot: 'game', region: false });
       }
       await saveGameUserRegion(env, callback.from, region);
-      await sendOpenMiniApp(token, chatId, `Region saved: ${region.label}\nLanguage: ${region.language.toUpperCase()}\nTimezone: ${region.timezone}`);
+      await editOpenMiniAppMenu(env, token, chatId, userId, messageId, `Region saved: ${region.label}\nLanguage: ${region.language.toUpperCase()}\nTimezone: ${region.timezone}`);
       return Response.json({ ok: true, bot: 'game', region: region.code });
     }
     return Response.json({ ok: true, bot: 'game', ignored: true });
@@ -131,19 +134,22 @@ async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Re
   const chatId = message?.chat.id;
   const user = message?.from;
   if (!chatId || !user?.id) return Response.json({ ok: true, ignored: true, bot: 'game' });
+  const userId = String(user.id);
   const text = message.text?.trim() || '';
   await trackGameChatUser(env, user).catch(() => undefined);
   if (text === '/region') {
-    await sendRegionMenu(token, chatId, 'Change your region 🌍');
+    await deleteTelegramMessage(token, chatId, message.message_id).catch(() => undefined);
+    await sendRegionMenu(env, token, chatId, userId, 'Change your region 🌍');
     return Response.json({ ok: true, bot: 'game', command: 'region' });
   }
-  const region = await getGameUserRegion(env, String(user.id));
+  const region = await getGameUserRegion(env, userId);
   if (!region || text === '/start') {
-    if (!region) await sendRegionMenu(token, chatId, 'Choose your region 🌍');
-    else await sendOpenMiniApp(token, chatId, `Your region: ${region.label}\nUse /region to change it.`);
+    await deleteTelegramMessage(token, chatId, message.message_id).catch(() => undefined);
+    if (!region) await sendRegionMenu(env, token, chatId, userId, 'Choose your region 🌍');
+    else await sendOpenMiniApp(env, token, chatId, userId, `Your region: ${region.label}\nUse /region to change it.`);
     return Response.json({ ok: true, bot: 'game', command: text || 'message' });
   }
-  await sendOpenMiniApp(token, chatId, 'Open the mini app.');
+  await sendOpenMiniApp(env, token, chatId, userId, 'Open the mini app.');
   return Response.json({ ok: true, bot: 'game' });
 }
 
@@ -156,6 +162,7 @@ async function ensureAppUserRegionColumns(env: Env): Promise<void> {
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN bot_menu_message_id INTEGER').run().catch(() => undefined);
 }
 
 async function trackGameChatUser(env: Env, user: TelegramUser): Promise<void> {
@@ -187,22 +194,61 @@ function cleanText(value: unknown, max: number): string | null {
   return text ? text.slice(0, max) : null;
 }
 
-async function sendRegionMenu(token: string, chatId: number, text: string): Promise<void> {
+async function sendRegionMenu(env: Env, token: string, chatId: number, userId: string, text: string): Promise<void> {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   for (let i = 0; i < REGIONS.length; i += 2) rows.push(REGIONS.slice(i, i + 2).map((region) => ({ text: region.label, callback_data: `region:${region.code}` })));
-  await telegram(token, 'sendMessage', {
+  await deleteLastGameMenu(env, token, chatId, userId);
+  const sent = await telegram<TelegramMessageResult>(token, 'sendMessage', {
     chat_id: chatId,
     text: `${text}\n\nYou can change it anytime with /region.`,
     reply_markup: { inline_keyboard: rows },
   });
+  await saveGameMenuMessageId(env, userId, sent.result?.message_id || 0);
 }
 
-async function sendOpenMiniApp(token: string, chatId: number, text: string): Promise<void> {
-  await telegram(token, 'sendMessage', {
+async function sendOpenMiniApp(env: Env, token: string, chatId: number, userId: string, text: string): Promise<void> {
+  await deleteLastGameMenu(env, token, chatId, userId);
+  const sent = await telegram<TelegramMessageResult>(token, 'sendMessage', {
     chat_id: chatId,
     text,
     reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] },
   });
+  await saveGameMenuMessageId(env, userId, sent.result?.message_id || 0);
+}
+
+async function editOpenMiniAppMenu(env: Env, token: string, chatId: number, userId: string, messageId: number, text: string): Promise<void> {
+  if (!messageId) return sendOpenMiniApp(env, token, chatId, userId, text);
+  await deleteLastGameMenu(env, token, chatId, userId, messageId);
+  const edited = await telegram<{ ok: boolean; description?: string }>(token, 'editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] },
+  });
+  if (!edited.ok) return sendOpenMiniApp(env, token, chatId, userId, text);
+  await saveGameMenuMessageId(env, userId, messageId);
+}
+
+async function deleteLastGameMenu(env: Env, token: string, chatId: number, userId: string, keepMessageId = 0): Promise<void> {
+  await ensureAppUserRegionColumns(env);
+  const row = await env.DB.prepare('SELECT bot_menu_message_id FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ bot_menu_message_id: number | null }>().catch(() => null);
+  const oldMessageId = Math.floor(Number(row?.bot_menu_message_id || 0));
+  if (oldMessageId > 0 && oldMessageId !== keepMessageId) await deleteTelegramMessage(token, chatId, oldMessageId).catch(() => undefined);
+  if (oldMessageId !== keepMessageId) await saveGameMenuMessageId(env, userId, 0);
+}
+
+async function saveGameMenuMessageId(env: Env, userId: string, messageId: number): Promise<void> {
+  await ensureAppUserRegionColumns(env);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, bot_menu_message_id, last_seen_at, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET bot_menu_message_id = excluded.bot_menu_message_id, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, Math.max(0, Math.floor(Number(messageId) || 0)))
+    .run();
+}
+
+async function deleteTelegramMessage(token: string, chatId: number, messageId: number): Promise<void> {
+  if (!messageId) return;
+  await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId });
 }
 
 async function telegram<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
