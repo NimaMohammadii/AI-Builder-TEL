@@ -15,7 +15,7 @@ export { SectionLockEvents } from './section-lock-events';
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
 
 const REGIONS: RegionConfig[] = [
-  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
   { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
   { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
   { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
@@ -23,7 +23,7 @@ const REGIONS: RegionConfig[] = [
   { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
   { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
   { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
-  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
   { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
 ];
 
