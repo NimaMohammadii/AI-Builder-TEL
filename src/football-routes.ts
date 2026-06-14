@@ -105,7 +105,7 @@ app.post('/app/api/football-bet', async (c) => {
     if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
     const match = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(matchId).first<FootballMatchRow>();
     if (!match) throw new Error('Match not found');
-    if (Date.now() >= Date.parse(match.starts_at) || match.status !== 'open') throw new Error('This match is locked.');
+    if (Date.now() >= matchStartMinuteMs(match.starts_at) || match.status !== 'open') throw new Error('This match is locked.');
     betId = 'fbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
     const inserted = await c.env.DB.prepare(`INSERT INTO football_bets (id, match_id, user_id, pick, stake_nano, status, payout_nano, created_at)
       SELECT ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
@@ -402,7 +402,7 @@ async function cancelFootballMatch(env: Env, matchId: string): Promise<void> {
 
 async function lockStartedMatches(env: Env): Promise<void> {
   await ensureFootballPredictTables(env);
-  await env.DB.prepare("UPDATE football_matches SET status = 'locked', updated_at = CURRENT_TIMESTAMP WHERE status = 'open' AND datetime(starts_at) <= datetime('now')").run();
+  await env.DB.prepare("UPDATE football_matches SET status = 'locked', updated_at = CURRENT_TIMESTAMP WHERE status = 'open' AND datetime(strftime('%Y-%m-%dT%H:%M:00Z', starts_at)) <= datetime(strftime('%Y-%m-%dT%H:%M:00Z', 'now'))").run();
 }
 
 async function settleFootballMatch(env: Env, matchId: string, result: FootballPick): Promise<void> {
@@ -513,7 +513,7 @@ async function getFootballLiveQuestionBet(env: Env, id: string) { const bet = aw
 
 async function footballMatchJson(env: Env, row: FootballMatchRow, userId: string, includeClosedLiveQuestions = false) {
   const now = Date.now();
-  const startsMs = Date.parse(row.starts_at);
+  const startsMs = matchStartMinuteMs(row.starts_at);
   const status = row.status === 'open' && now >= startsMs ? 'locked' : row.status;
   const pools = await footballPoolsJson(env, row.id);
   const cleanedUserId = cleanUserIdOptional(userId);
@@ -552,6 +552,7 @@ function normalizeGoals(value: unknown): number { const goals = Number(value ?? 
 
 function normalizeMatchStatus(value: unknown): string { const status = String(value || '').trim().toLowerCase(); if (['open', 'locked', 'live', 'settled', 'refunded'].includes(status)) return status === 'live' ? 'locked' : status; throw new Error('Invalid match status'); }
 function normalizeDateTime(value: unknown, message: string): string { const raw = String(value || '').trim(); const date = new Date(raw); if (!raw || Number.isNaN(date.getTime())) throw new Error(message); return date.toISOString(); }
+function matchStartMinuteMs(value: string): number { const parsed = Date.parse(value); if (!Number.isFinite(parsed)) return 0; const date = new Date(parsed); date.setSeconds(0, 0); return date.getTime(); }
 function formatMatchTime(value: string): string { const date = new Date(value); if (Number.isNaN(date.getTime())) return ''; return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
