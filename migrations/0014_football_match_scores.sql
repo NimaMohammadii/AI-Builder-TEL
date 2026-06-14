@@ -1,0 +1,2 @@
+ALTER TABLE football_matches ADD COLUMN team_a_goals INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE football_matches ADD COLUMN team_b_goals INTEGER NOT NULL DEFAULT 0;

@@ -62,7 +62,7 @@ const FOOTBALL_TEAMS = [
 type FootballTeamId = typeof FOOTBALL_TEAMS[number][0] | string;
 type FootballPick = 'team_a' | 'draw' | 'team_b';
 type FootballLivePick = 'yes' | 'no';
-type FootballMatchRow = { id: string; team_a_id: string; team_b_id: string; starts_at: string; ends_at: string | null; status: string; result: string | null; featured: number; created_at: string; updated_at: string; settled_at: string | null };
+type FootballMatchRow = { id: string; team_a_id: string; team_b_id: string; starts_at: string; ends_at: string | null; status: string; result: string | null; featured: number; team_a_goals?: number | null; team_b_goals?: number | null; created_at: string; updated_at: string; settled_at: string | null };
 type FootballBetRow = { id: string; match_id: string; user_id: string; pick: string; stake_nano: number; status: string; payout_nano: number; created_at: string; settled_at: string | null };
 type FootballTeamRow = { id: string; name: string; custom: number; created_at: string; updated_at: string };
 type FootballLiveQuestionRow = { id: string; match_id: string; question_text: string; status: string; result: string | null; starts_at: string; expires_at: string; created_at: string; updated_at: string; settled_at: string | null };
@@ -238,8 +238,10 @@ app.post('/admin/api/football-matches', async (c) => {
     const endsAt = body.endsAt || body.ends_at ? normalizeDateTime(body.endsAt || body.ends_at, 'Invalid end time') : null;
     const status = normalizeMatchStatus(body.status || 'open');
     const featured = truthy(body.featured) ? 1 : 0;
+    const teamAGoals = normalizeGoals(body.teamAGoals ?? body.team_a_goals ?? body.scoreA ?? body.score_a);
+    const teamBGoals = normalizeGoals(body.teamBGoals ?? body.team_b_goals ?? body.scoreB ?? body.score_b);
     const id = 'fmatch_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
-    await c.env.DB.prepare(`INSERT INTO football_matches (id, team_a_id, team_b_id, starts_at, ends_at, status, result, featured, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).bind(id, teamA, teamB, startsAt, endsAt, status, featured).run();
+    await c.env.DB.prepare(`INSERT INTO football_matches (id, team_a_id, team_b_id, starts_at, ends_at, status, result, featured, team_a_goals, team_b_goals, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).bind(id, teamA, teamB, startsAt, endsAt, status, featured, teamAGoals, teamBGoals).run();
     return c.json({ ok: true, match: await footballMatchJson(c.env, (await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(id).first<FootballMatchRow>())!, '', true) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not create football match' }, 400, { 'cache-control': CACHE_NONE });
@@ -254,6 +256,7 @@ app.post('/admin/api/football-matches/:id/action', async (c) => {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const action = String(body.action || '').trim().toLowerCase();
     if (action === 'lock') await c.env.DB.prepare("UPDATE football_matches SET status = 'locked', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'open'").bind(id).run();
+    else if (action === 'score') await c.env.DB.prepare("UPDATE football_matches SET team_a_goals = ?, team_b_goals = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(normalizeGoals(body.teamAGoals ?? body.team_a_goals ?? body.scoreA ?? body.score_a), normalizeGoals(body.teamBGoals ?? body.team_b_goals ?? body.scoreB ?? body.score_b), id).run();
     else if (action === 'refund') await refundFootballMatch(c.env, id);
     else if (action === 'set_result') await settleFootballMatch(c.env, id, normalizePick(body.result));
     else throw new Error('Unknown match action');
@@ -338,7 +341,9 @@ async function getFootballTeams(env: Env): Promise<{ teams: Array<{ id: Football
 }
 
 async function ensureFootballPredictTables(env: Env): Promise<void> {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS football_matches (id TEXT PRIMARY KEY, team_a_id TEXT NOT NULL, team_b_id TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT, status TEXT NOT NULL DEFAULT 'open', result TEXT, featured INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, settled_at TEXT)`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS football_matches (id TEXT PRIMARY KEY, team_a_id TEXT NOT NULL, team_b_id TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT, status TEXT NOT NULL DEFAULT 'open', result TEXT, featured INTEGER NOT NULL DEFAULT 0, team_a_goals INTEGER NOT NULL DEFAULT 0, team_b_goals INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, settled_at TEXT)`).run();
+  await addFootballColumnIfMissing(env, 'team_a_goals', 'INTEGER NOT NULL DEFAULT 0');
+  await addFootballColumnIfMissing(env, 'team_b_goals', 'INTEGER NOT NULL DEFAULT 0');
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_football_matches_status_start ON football_matches(status, starts_at)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_football_matches_featured_start ON football_matches(featured, starts_at)').run();
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS football_bets (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, user_id TEXT NOT NULL, pick TEXT NOT NULL, stake_nano INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active', payout_nano INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, settled_at TEXT)`).run();
@@ -354,6 +359,11 @@ async function ensureFootballPredictTables(env: Env): Promise<void> {
 }
 
 
+
+async function addFootballColumnIfMissing(env: Env, name: string, definition: string): Promise<void> {
+  const columns = (await env.DB.prepare('PRAGMA table_info(football_matches)').all<{ name: string }>()).results || [];
+  if (!columns.some((column) => column.name === name)) await env.DB.prepare(`ALTER TABLE football_matches ADD COLUMN ${name} ${definition}`).run();
+}
 
 async function deleteFootballTeamEverywhere(env: Env, teamId: FootballTeamId): Promise<void> {
   const id = cleanTeamId(teamId);
@@ -508,7 +518,9 @@ async function footballMatchJson(env: Env, row: FootballMatchRow, userId: string
   const pools = await footballPoolsJson(env, row.id);
   const cleanedUserId = cleanUserIdOptional(userId);
   const userBets = cleanedUserId ? ((await env.DB.prepare('SELECT * FROM football_bets WHERE match_id = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(row.id, cleanedUserId).all<FootballBetRow>()).results || []).map(footballBetJson) : [];
-  return { id: row.id, stage: 'World Cup', time: formatMatchTime(row.starts_at), teamAId: row.team_a_id, teamBId: row.team_b_id, a: row.team_a_id, b: row.team_b_id, startsAt: row.starts_at, endsAt: row.ends_at, status, result: row.result, featured: Number(row.featured || 0) === 1, settledAt: row.settled_at, remainingMs: Math.max(0, startsMs - now), locked: status !== 'open' || now >= startsMs, pools, userBets, liveQuestions: await footballLiveQuestionsJson(env, row.id, cleanedUserId, includeClosedLiveQuestions) };
+  const live = status === 'locked' && now >= startsMs;
+  const elapsedMinutes = live ? Math.max(1, Math.floor((now - startsMs) / 60000) + 1) : 0;
+  return { id: row.id, stage: 'World Cup', time: formatMatchTime(row.starts_at), teamAId: row.team_a_id, teamBId: row.team_b_id, a: row.team_a_id, b: row.team_b_id, startsAt: row.starts_at, endsAt: row.ends_at, status, result: row.result, featured: Number(row.featured || 0) === 1, teamAGoals: Number(row.team_a_goals || 0), teamBGoals: Number(row.team_b_goals || 0), scoreA: Number(row.team_a_goals || 0), scoreB: Number(row.team_b_goals || 0), isLive: live, matchMinute: elapsedMinutes, settledAt: row.settled_at, remainingMs: Math.max(0, startsMs - now), locked: status !== 'open' || now >= startsMs, pools, userBets, liveQuestions: await footballLiveQuestionsJson(env, row.id, cleanedUserId, includeClosedLiveQuestions) };
 }
 
 async function footballPoolsJson(env: Env, matchId: string) {
@@ -536,6 +548,8 @@ function teamLogoKey(team: FootballTeamId): string { return `football/teams/${te
 async function validateFootballTeam(env: Env, value: unknown): Promise<FootballTeamId> { const id = cleanTeamId(value); const row = await env.DB.prepare('SELECT id, custom FROM football_teams WHERE id = ?').bind(id).first<{ id: string; custom: number }>(); if (row && Number(row.custom || 0) < 0) throw new Error('Unknown football team'); if (FOOTBALL_TEAMS.some(([builtInId]) => builtInId === id)) return id; if (row) return id; throw new Error('Unknown football team'); }
 function normalizePick(value: unknown): FootballPick { const pick = String(value || '').trim().toLowerCase(); if (pick === 'team_a' || pick === 'draw' || pick === 'team_b') return pick; throw new Error('Choose Team A, Draw or Team B'); }
 function normalizeLivePick(value: unknown): FootballLivePick { const pick = String(value || '').trim().toLowerCase(); if (pick === 'yes' || pick === 'no') return pick; throw new Error('Choose Yes or No'); }
+function normalizeGoals(value: unknown): number { const goals = Number(value ?? 0); if (!Number.isFinite(goals) || goals < 0 || goals > 99) throw new Error('Invalid team goals'); return Math.floor(goals); }
+
 function normalizeMatchStatus(value: unknown): string { const status = String(value || '').trim().toLowerCase(); if (['open', 'locked', 'live', 'settled', 'refunded'].includes(status)) return status === 'live' ? 'locked' : status; throw new Error('Invalid match status'); }
 function normalizeDateTime(value: unknown, message: string): string { const raw = String(value || '').trim(); const date = new Date(raw); if (!raw || Number.isNaN(date.getTime())) throw new Error(message); return date.toISOString(); }
 function formatMatchTime(value: string): string { const date = new Date(value); if (Number.isNaN(date.getTime())) return ''; return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
