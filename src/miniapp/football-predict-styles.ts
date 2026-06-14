@@ -5,6 +5,11 @@ export const FOOTBALL_PREDICT_STYLES = `
 #predictzone .football-match-list{display:grid;gap:13px}
 #predictzone .football-match-card{position:relative;border:0;border-radius:30px;padding:15px;background:rgba(255,255,255,.038);box-shadow:0 20px 52px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.10);overflow:hidden;color:#fff;text-align:left;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #predictzone .football-match-card:active{transform:scale(.99)}
+#predictzone .football-match-card.is-live{border:1px solid rgba(143,23,56,.32);background:linear-gradient(180deg,rgba(143,23,56,.16),rgba(255,255,255,.04));box-shadow:0 24px 62px rgba(0,0,0,.34),0 0 34px rgba(143,23,56,.18),inset 0 1px 0 rgba(255,255,255,.12)}
+#predictzone .football-live-overlay{position:absolute;top:12px;right:12px;z-index:4;display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 4px;border-radius:999px;background:rgba(0,0,0,.34);box-shadow:0 12px 30px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.10);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);pointer-events:none}
+#predictzone .football-live-overlay .football-live-badge{height:24px;padding:0 8px}
+#predictzone .football-live-overlay>span:not(.football-live-badge){min-width:28px;color:#fff;font-size:11px;font-weight:950;font-variant-numeric:tabular-nums;text-align:center}
+#predictzone .football-detail-page>.football-live-overlay{position:relative;top:auto;right:auto;justify-self:end;margin-bottom:-6px}
 #predictzone .football-match-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
 #predictzone .football-match-left{display:inline-flex;align-items:center;gap:7px;min-width:0}
 #predictzone .football-match-tag{height:26px;display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.065);font-size:10px;font-weight:900;color:rgba(255,255,255,.72);letter-spacing:-.02em;white-space:nowrap}
