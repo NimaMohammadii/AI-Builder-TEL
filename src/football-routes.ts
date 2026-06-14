@@ -402,7 +402,7 @@ async function cancelFootballMatch(env: Env, matchId: string): Promise<void> {
 
 async function lockStartedMatches(env: Env): Promise<void> {
   await ensureFootballPredictTables(env);
-  await env.DB.prepare("UPDATE football_matches SET status = 'locked', updated_at = CURRENT_TIMESTAMP WHERE status = 'open' AND datetime(starts_at) <= datetime('now')").run();
+  await env.DB.prepare("UPDATE football_matches SET status = 'live', updated_at = CURRENT_TIMESTAMP WHERE status = 'open' AND datetime(starts_at) <= datetime('now')").run();
 }
 
 async function settleFootballMatch(env: Env, matchId: string, result: FootballPick): Promise<void> {
@@ -514,11 +514,11 @@ async function getFootballLiveQuestionBet(env: Env, id: string) { const bet = aw
 async function footballMatchJson(env: Env, row: FootballMatchRow, userId: string, includeClosedLiveQuestions = false) {
   const now = Date.now();
   const startsMs = Date.parse(row.starts_at);
-  const status = row.status === 'open' && now >= startsMs ? 'locked' : row.status;
+  const status = row.status === 'open' && now >= startsMs ? 'live' : row.status;
   const pools = await footballPoolsJson(env, row.id);
   const cleanedUserId = cleanUserIdOptional(userId);
   const userBets = cleanedUserId ? ((await env.DB.prepare('SELECT * FROM football_bets WHERE match_id = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(row.id, cleanedUserId).all<FootballBetRow>()).results || []).map(footballBetJson) : [];
-  const live = status === 'locked' && now >= startsMs;
+  const live = (status === 'live' || status === 'locked') && now >= startsMs;
   const elapsedMinutes = live ? Math.max(1, Math.floor((now - startsMs) / 60000) + 1) : 0;
   return { id: row.id, stage: 'World Cup', time: formatMatchTime(row.starts_at), teamAId: row.team_a_id, teamBId: row.team_b_id, a: row.team_a_id, b: row.team_b_id, startsAt: row.starts_at, endsAt: row.ends_at, status, result: row.result, featured: Number(row.featured || 0) === 1, teamAGoals: Number(row.team_a_goals || 0), teamBGoals: Number(row.team_b_goals || 0), scoreA: Number(row.team_a_goals || 0), scoreB: Number(row.team_b_goals || 0), isLive: live, matchMinute: elapsedMinutes, settledAt: row.settled_at, remainingMs: Math.max(0, startsMs - now), locked: status !== 'open' || now >= startsMs, pools, userBets, liveQuestions: await footballLiveQuestionsJson(env, row.id, cleanedUserId, includeClosedLiveQuestions) };
 }
@@ -550,7 +550,7 @@ function normalizePick(value: unknown): FootballPick { const pick = String(value
 function normalizeLivePick(value: unknown): FootballLivePick { const pick = String(value || '').trim().toLowerCase(); if (pick === 'yes' || pick === 'no') return pick; throw new Error('Choose Yes or No'); }
 function normalizeGoals(value: unknown): number { const goals = Number(value ?? 0); if (!Number.isFinite(goals) || goals < 0 || goals > 99) throw new Error('Invalid team goals'); return Math.floor(goals); }
 
-function normalizeMatchStatus(value: unknown): string { const status = String(value || '').trim().toLowerCase(); if (['open', 'locked', 'live', 'settled', 'refunded'].includes(status)) return status === 'live' ? 'locked' : status; throw new Error('Invalid match status'); }
+function normalizeMatchStatus(value: unknown): string { const status = String(value || '').trim().toLowerCase(); if (['open', 'locked', 'live', 'settled', 'refunded'].includes(status)) return status; throw new Error('Invalid match status'); }
 function normalizeDateTime(value: unknown, message: string): string { const raw = String(value || '').trim(); const date = new Date(raw); if (!raw || Number.isNaN(date.getTime())) throw new Error(message); return date.toISOString(); }
 function formatMatchTime(value: string): string { const date = new Date(value); if (Number.isNaN(date.getTime())) return ''; return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
