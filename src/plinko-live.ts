@@ -12,6 +12,7 @@ const VIRTUAL_MAX_CATCHUP = 120;
 const RESULT_DEDUPE_PREFIX = 'plinko-live-result-key-';
 const RESULT_DEDUPE_MS = 2500;
 const HISTORY_LIMIT = 120;
+const LIVE_BALL_BROADCASTS_ENABLED = false;
 
 const VIRTUAL_PERSONAS = [
   'Ari Stone @northdesk', 'Maya Chen · London', 'Leo Novak @chainpilot', 'Sofia Reed · Lisbon',
@@ -114,7 +115,7 @@ export class PlinkoLiveRoom {
     await this.state.storage.put(key, now);
 
     const event = makeBallEvent(body, userId, now);
-    this.publish({ type: 'plinko-ball', event });
+    if (LIVE_BALL_BROADCASTS_ENABLED) this.publish({ type: 'plinko-ball', event });
     return json({ ok: true, event });
   }
 
@@ -237,7 +238,7 @@ async function localSend(request: Request): Promise<Response> {
   localUserLast.set(userId, now);
 
   const event = makeBallEvent(body, userId, now);
-  localPublish({ type: 'plinko-ball', event });
+  if (LIVE_BALL_BROADCASTS_ENABLED) localPublish({ type: 'plinko-ball', event });
   return json({ ok: true, fallback: true, event });
 }
 
