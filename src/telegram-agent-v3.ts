@@ -26,6 +26,7 @@ type TtsSelection = { voiceName: string; voiceId: string; createdAt: number };
 type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loading'; expiresAt?: string | null };
 type AdminSettingRow = { value_json: string };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
+type RegionConfig = { code: string; label: string; language: string; timezone: string };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
@@ -34,6 +35,18 @@ const MAIN_MENU_TTL = 7200;
 const LOCKS_KEY = 'admin:section-locks';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
+const REGIONS: RegionConfig[] = [
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
+  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
+  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
+];
 const TTS_VOICES: TtsVoice[] = [
   { name: 'Liam', id: 'TX3LPaxmHKxFdv7VOQHJ' },
   { name: 'Noah', id: '1SM7GgM6IMuvQlz2BwM3' },
@@ -72,8 +85,8 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
     return;
   }
 
-  if (update.callback_query) return onCallback(env, key, update.callback_query);
-  if (update.message) return onMessage(env, key, update.message);
+  if (update.callback_query) return onCallback(env, key, bot.id, update.callback_query);
+  if (update.message) return onMessage(env, key, bot.id, update.message);
 }
 
 const flowRuntimeDeps = {
@@ -83,17 +96,21 @@ const flowRuntimeDeps = {
   renderTemplate,
 };
 
-async function onMessage(env: Env, key: string, message: TelegramMessage): Promise<void> {
+async function onMessage(env: Env, key: string, botId: string, message: TelegramMessage): Promise<void> {
   const chatId = message.chat.id;
   const userId = String(message.from?.id ?? chatId);
   const text = message.text?.trim() ?? '';
   const chatKey = `builder-ai-chat:${userId}`;
   const historyKey = `builder-ai-history:${userId}`;
 
+  if (text === '/region') return regionMenu(key, chatId, 'Change your region 🌍');
+
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await clearTtsState(env, userId);
+    const region = await getUserRegion(env, botId, userId);
+    if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
     await mainMenu(env, key, chatId);
     return;
   }
@@ -149,11 +166,20 @@ async function onMessage(env: Env, key: string, message: TelegramMessage): Promi
   await agent(env, key, chatId, userId, text);
 }
 
-async function onCallback(env: Env, key: string, q: TelegramCallbackQuery): Promise<void> {
+async function onCallback(env: Env, key: string, botId: string, q: TelegramCallbackQuery): Promise<void> {
   const chatId = q.message?.chat.id ?? q.from.id;
   const userId = String(q.from.id);
   const data = q.data ?? '';
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
+
+  if (data.startsWith('region:')) {
+    const region = regionByCode(data.slice('region:'.length));
+    if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
+    await saveUserRegion(env, botId, userId, region);
+    await tg(key, 'sendMessage', { chat_id: chatId, text: `Region saved: ${region.label}\nLanguage: ${region.language.toUpperCase()}\nTimezone: ${region.timezone}` });
+    await mainMenu(env, key, chatId);
+    return;
+  }
 
   if (data === 'builder:miniapp') { await lockedCallback(env, key, q, 'ai-miniapp'); return; }
   if (data === 'builder:chat' && await lockedCallback(env, key, q, 'ai-chat')) return;
@@ -374,6 +400,41 @@ async function mainMenu(env: Env, key: string, chatId: number): Promise<void> {
   if (messageId) {
     await env.BOT_CACHE.put(mainMenuKey(chatId), String(messageId), { expirationTtl: MAIN_MENU_TTL }).catch(() => undefined);
   }
+}
+
+async function regionMenu(key: string, chatId: number, text: string): Promise<void> {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  for (let i = 0; i < REGIONS.length; i += 2) rows.push(REGIONS.slice(i, i + 2).map((region) => ({ text: region.label, callback_data: `region:${region.code}` })));
+  await tg(key, 'sendMessage', {
+    chat_id: chatId,
+    text: `${text}\n\nYou can change it anytime with /region.`,
+    reply_markup: { inline_keyboard: rows },
+  });
+}
+
+function regionByCode(code: string): RegionConfig | null {
+  const cleaned = String(code || '').trim().toUpperCase();
+  return REGIONS.find((region) => region.code === cleaned) ?? null;
+}
+
+async function getUserRegion(env: Env, botId: string, userId: string): Promise<RegionConfig | null> {
+  try {
+    const row = await env.DB.prepare('SELECT state_json FROM bot_users WHERE bot_id = ? AND telegram_user_id = ?').bind(botId, userId).first<{ state_json: string | null }>();
+    const state = safeParseJson<{ region?: { code?: string } }>(row?.state_json || '{}', {});
+    return state.region?.code ? regionByCode(state.region.code) : null;
+  } catch { return null; }
+}
+
+async function saveUserRegion(env: Env, botId: string, userId: string, region: RegionConfig): Promise<void> {
+  const row = await env.DB.prepare('SELECT state_json FROM bot_users WHERE bot_id = ? AND telegram_user_id = ?').bind(botId, userId).first<{ state_json: string | null }>().catch(() => null);
+  const state = safeParseJson<Record<string, unknown>>(row?.state_json || '{}', {});
+  state.region = { code: region.code, label: region.label, language: region.language, timezone: region.timezone, updatedAt: new Date().toISOString() };
+  await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, state_json, last_seen_at, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET state_json = excluded.state_json, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`)
+    .bind(botId, userId, JSON.stringify(state))
+    .run();
+  await env.BOT_CACHE.put(`user-region:${userId}`, JSON.stringify(state.region), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => undefined);
 }
 
 async function deleteLastMainMenu(env: Env, key: string, chatId: number): Promise<void> {
