@@ -14,9 +14,11 @@ export const FOOTBALL_PREDICT_STYLES = `
 body:has(#predictzone.active.football-match-detail-open) #brandTitle{display:inline-flex!important;align-items:center!important;gap:8px!important;max-width:none!important;overflow:visible!important}
 #brandTitle .football-header-live-badge{height:26px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border-radius:999px;background:rgba(92,10,31,.26);color:#8f1738;box-shadow:0 0 18px rgba(92,10,31,.18),inset 0 1px 0 rgba(255,255,255,.08);vertical-align:middle;transform:translateY(1px);font-size:10px!important;font-weight:950!important;letter-spacing:.04em!important;line-height:1!important;text-transform:uppercase}
 #brandTitle .football-header-live-badge .football-live-dot{width:7px;height:7px;border-radius:50%;background:#8f1738;box-shadow:0 0 0 0 rgba(143,23,56,.52);animation:footballLivePulse 1.15s ease-in-out infinite;flex:0 0 auto}
-body:has(#predictzone.active.football-match-detail-open) #predictzone .football-detail-page{padding-top:0!important;margin-top:-2px}
+body:has(#predictzone.active.football-match-detail-open) #predictzone .football-detail-page{padding-top:34px!important;margin-top:0}
 @keyframes footballLivePulse{0%,100%{transform:scale(.86);box-shadow:0 0 0 0 rgba(143,23,56,.42);opacity:.72}50%{transform:scale(1.12);box-shadow:0 0 0 7px rgba(143,23,56,0);opacity:1}}
 #predictzone .football-match-time{font-size:10px;font-weight:850;color:rgba(255,255,255,.44);white-space:nowrap}
+#predictzone .football-minute-pill{height:26px;display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.07);color:#fff;font-size:10px;font-weight:950;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+#predictzone .football-team-goals{margin-top:-5px;font-size:10px;font-weight:900;color:rgba(255,255,255,.52);letter-spacing:-.02em}
 #predictzone .football-balance-pill{height:35px!important;min-width:0!important;padding:0 12px!important;background:rgba(255,255,255,.055)!important;border:0!important;box-shadow:0 14px 34px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.14)!important}
 #predictzone .football-balance-pill .ton-mini-icon{width:24px!important;height:24px!important}.football-balance-pill .ton-mini-icon img{width:24px!important;height:24px!important}.football-balance-pill b{font-size:13px!important;font-weight:820!important;color:#fff!important}
 #predictzone .football-teams{display:grid;grid-template-columns:1fr 48px 1fr;align-items:center;gap:8px}
