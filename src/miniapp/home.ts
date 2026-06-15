@@ -3,16 +3,16 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     #home::-webkit-scrollbar{display:none}
     #home .home-finance-split{align-items:start!important}
-    #home .home-finance-actions{display:grid!important;grid-template-rows:134px 134px 134px!important;grid-auto-rows:134px!important;align-content:start!important;gap:10px!important}
-    #home .home-finance-actions>.home-finance-card{height:134px!important;min-height:134px!important;max-height:134px!important;margin:0!important;box-sizing:border-box!important}
-    #home .home-referral-card{width:auto!important;border-radius:28px!important;padding:14px 12px!important;display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;gap:6px!important;background:rgba(255,255,255,.026)!important}
+    #home .home-finance-actions{display:grid!important;grid-template-rows:118px 118px 118px!important;grid-auto-rows:118px!important;align-content:start!important;gap:10px!important}
+    #home .home-finance-actions>.home-finance-card{height:118px!important;min-height:118px!important;max-height:118px!important;margin:0!important;box-sizing:border-box!important}
+    #home .home-referral-card{width:auto!important;border-radius:28px!important;padding:12px 10px!important;display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;gap:5px!important;background:rgba(255,255,255,.026)!important}
     #home .home-referral-card .home-referral-copy{display:contents!important}
-    #home .home-referral-card .home-referral-icon{width:34px!important;height:34px!important;min-width:34px!important;border-radius:15px!important;background:rgba(255,255,255,.06)!important}
-    #home .home-referral-card .home-referral-icon svg{width:26px!important;height:26px!important}
-    #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:206px 206px!important;gap:10px!important;align-items:start!important}
-    #home .home-finance-visual{height:206px!important;min-height:206px!important;max-height:206px!important}
-    #home .home-finance-extra-visual{height:206px!important;min-height:206px!important;max-height:206px!important;margin:0!important;border-radius:28px!important;overflow:hidden!important;background:rgba(255,255,255,.026)!important;padding:3px!important;box-sizing:border-box!important}
-    #home .home-finance-extra-visual img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:25px!important;display:block!important}
+    #home .home-referral-card .home-referral-icon{width:32px!important;height:32px!important;min-width:32px!important;border-radius:14px!important;background:rgba(255,255,255,.06)!important}
+    #home .home-referral-card .home-referral-icon svg{width:24px!important;height:24px!important}
+    #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:184px 184px!important;gap:6px!important;align-items:start!important}
+    #home .home-finance-visual{height:184px!important;min-height:184px!important;max-height:184px!important}
+    #home .home-finance-extra-visual{height:184px!important;min-height:184px!important;max-height:184px!important;margin:0!important;border-radius:0!important;overflow:visible!important;background:transparent!important;padding:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-sizing:border-box!important}
+    #home .home-finance-extra-visual img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:0!important;display:block!important;background:transparent!important;box-shadow:none!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.22))}
   </style>
   <section class="home-intro-card">
     <h2>Welcome to Vexa</h2>
