@@ -4,11 +4,9 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home::-webkit-scrollbar{display:none}
     #home .home-finance-split{align-items:start!important}
     #home .home-finance-actions{display:grid!important;grid-template-rows:118px 118px 118px!important;grid-auto-rows:118px!important;align-content:start!important;gap:10px!important}
-    #home .home-finance-actions>.home-finance-card{height:118px!important;min-height:118px!important;max-height:118px!important;margin:0!important;box-sizing:border-box!important}
-    #home .home-referral-card{width:auto!important;border-radius:28px!important;padding:12px 10px!important;display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;gap:5px!important;background:rgba(255,255,255,.026)!important}
-    #home .home-referral-card .home-referral-copy{display:contents!important}
-    #home .home-referral-card .home-referral-icon{width:32px!important;height:32px!important;min-width:32px!important;border-radius:14px!important;background:rgba(255,255,255,.06)!important}
-    #home .home-referral-card .home-referral-icon svg{width:24px!important;height:24px!important}
+    #home .home-finance-actions>.home-finance-card{height:118px!important;min-height:118px!important;max-height:118px!important;margin:0!important;box-sizing:border-box!important;padding:0!important;display:block!important;overflow:hidden!important;position:relative!important;border-radius:28px!important;background:rgba(255,255,255,.026)!important}
+    #home .home-action-card-image{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:28px!important;display:block!important;background:transparent!important}
+    #home .home-finance-card>.home-finance-icon,#home .home-finance-card>strong,#home .home-finance-card>span:not(.home-action-card-image){display:none!important}
     #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:184px 184px!important;gap:6px!important;align-items:start!important}
     #home .home-finance-visual{height:184px!important;min-height:184px!important;max-height:184px!important}
     #home .home-finance-extra-visual{height:184px!important;min-height:184px!important;max-height:184px!important;margin:0!important;border-radius:0!important;overflow:visible!important;background:transparent!important;padding:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-sizing:border-box!important}
@@ -22,19 +20,13 @@ export const HOME_SECTION = `<section id="home" class="view active">
   <section class="home-finance-split">
     <div class="home-finance-actions">
       <button class="home-finance-card" type="button" data-action="open-deposit">
-        <span class="home-finance-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 22l10 10 10-10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="34" width="32" height="6" rx="3" fill="currentColor" opacity=".34"/></svg></span>
-        <strong>Deposit</strong>
-        <span>Add TON balance</span>
+        <img class="home-action-card-image" src="/app/api/section-lock-image/home-deposit-card/locked.png" alt="" decoding="async" onerror="this.style.display='none'"/>
       </button>
       <button class="home-finance-card" type="button" data-action="open-withdraw">
-        <span class="home-finance-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 40V16" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M14 26l10-10 10 10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="8" width="32" height="6" rx="3" fill="currentColor" opacity=".34"/></svg></span>
-        <strong>Withdraw</strong>
-        <span>Send TON out</span>
+        <img class="home-action-card-image" src="/app/api/section-lock-image/home-withdraw-card/locked.png" alt="" decoding="async" onerror="this.style.display='none'"/>
       </button>
       <button class="home-finance-card home-referral-card" type="button" data-view="referral">
-        <span class="home-finance-icon home-referral-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="25" r="9" fill="currentColor" opacity=".92"/><circle cx="43" cy="21" r="7" fill="currentColor" opacity=".42"/><circle cx="41" cy="43" r="8" fill="currentColor" opacity=".28"/><path d="M12 48c1.7-9 6.1-14 12-14s10.3 5 12 14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M36 32c3.9.8 7 3.7 9 8" stroke="currentColor" stroke-opacity=".42" stroke-width="3.4" stroke-linecap="round"/><path d="M34.5 23.5l7.5-2.5M32.5 30.5l7.5 8.5" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/><path d="M49 10l1.45 4.05 4.05 1.45-4.05 1.45L49 21l-1.45-4.05-4.05-1.45 4.05-1.45L49 10z" fill="currentColor" opacity=".9"/></svg></span>
-        <strong>Referral</strong>
-        <span>Earn 0.1 TON</span>
+        <img class="home-action-card-image" src="/app/api/section-lock-image/home-referral-card/locked.png" alt="" decoding="async" onerror="this.style.display='none'"/>
       </button>
     </div>
     <div class="home-finance-visual-stack">
