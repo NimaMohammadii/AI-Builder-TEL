@@ -2,13 +2,14 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
 (function(){
   var CACHE_NAME='vexa-home-images-v1';
   var URL_PATH='/app/api/home-intro-image.png';
+  var FINANCE_BOTTOM_PATH='/app/api/section-lock-image/home/code.png';
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   var state=window.__vexaHomeIntroImageState=window.__vexaHomeIntroImageState||{objectUrl:'',promise:null,loaded:false};
   function installCss(){
     if(document.getElementById('vexaHomeIntroNoCssReload'))return;
     var style=document.createElement('style');
     style.id='vexaHomeIntroNoCssReload';
-    style.textContent='#home .home-intro-card{background-image:none!important;background-color:transparent!important}#home .home-intro-card h2,#home .home-intro-card p{display:none!important}#home .home-intro-image-frame{display:block!important;width:100%!important;height:100%!important;min-height:144px!important;overflow:hidden!important;border:0!important;border-radius:24px!important;background:transparent!important;box-shadow:none!important}#home img.home-intro-image{display:block!important;width:100%!important;height:100%!important;min-height:144px!important;object-fit:cover!important;object-position:center!important;border:0!important;border-radius:23px!important;background:transparent!important;box-shadow:none!important}';
+    style.textContent='#home .home-intro-card{background-image:none!important;background-color:transparent!important}#home .home-intro-card h2,#home .home-intro-card p{display:none!important}#home .home-intro-image-frame{display:block!important;width:100%!important;height:100%!important;min-height:144px!important;overflow:hidden!important;border:0!important;border-radius:24px!important;background:transparent!important;box-shadow:none!important}#home img.home-intro-image{display:block!important;width:100%!important;height:100%!important;min-height:144px!important;object-fit:cover!important;object-position:center!important;border:0!important;border-radius:23px!important;background:transparent!important;box-shadow:none!important}#home .home-finance-actions{grid-template-rows:repeat(3,1fr)!important}#home .home-referral-mini{width:auto!important;min-height:92px!important;margin:0!important;border-radius:28px!important;padding:12px 10px!important;display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;gap:6px!important;background:rgba(255,255,255,.026)!important}#home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:minmax(178px,1fr) minmax(74px,.42fr)!important;gap:10px!important;align-items:stretch!important}#home .home-finance-extra-visual{min-height:74px!important;margin:0!important}#home .home-finance-extra-visual img{object-fit:cover!important;object-position:center!important}';
     document.head.appendChild(style);
   }
   function card(){return document.querySelector('#home .home-intro-card')}
@@ -21,6 +22,10 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
       img=c.querySelector('img.home-intro-image');
     }
     return img;
+  }
+  function ensureFinanceBottom(){
+    var img=document.querySelector('#home .home-finance-extra-visual img');
+    if(img&&img.getAttribute('src')!==FINANCE_BOTTOM_PATH)img.src=FINANCE_BOTTOM_PATH;
   }
   function imageBlob(){
     if(state.promise)return state.promise;
@@ -50,6 +55,7 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
   }
   function load(){
     installCss();
+    ensureFinanceBottom();
     var img=ensureImg();
     if(!img)return;
     if(state.objectUrl){pin(img,state.objectUrl,URL_PATH);return;}
