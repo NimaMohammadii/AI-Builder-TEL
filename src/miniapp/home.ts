@@ -20,16 +20,21 @@ export const HOME_SECTION = `<section id="home" class="view active">
         <strong>Withdraw</strong>
         <span>Send TON out</span>
       </button>
+      <button class="home-finance-card home-referral-card" type="button" data-view="referral">
+        <span class="home-finance-icon home-referral-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="25" r="9" fill="currentColor" opacity=".92"/><circle cx="43" cy="21" r="7" fill="currentColor" opacity=".42"/><circle cx="41" cy="43" r="8" fill="currentColor" opacity=".28"/><path d="M12 48c1.7-9 6.1-14 12-14s10.3 5 12 14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M36 32c3.9.8 7 3.7 9 8" stroke="currentColor" stroke-opacity=".42" stroke-width="3.4" stroke-linecap="round"/><path d="M34.5 23.5l7.5-2.5M32.5 30.5l7.5 8.5" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/><path d="M49 10l1.45 4.05 4.05 1.45-4.05 1.45L49 21l-1.45-4.05-4.05-1.45 4.05-1.45L49 10z" fill="currentColor" opacity=".9"/></svg></span>
+        <strong>Referral</strong>
+        <span>Earn 0.1 TON</span>
+      </button>
     </div>
-    <div class="home-finance-visual">
-      <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+    <div class="home-finance-visual-stack">
+      <div class="home-finance-visual">
+        <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+      </div>
+      <div class="home-finance-extra-visual" aria-label="Home finance extra image">
+        <img src="/app/api/home-finance-bottom-image.png" alt="" decoding="async"/>
+      </div>
     </div>
   </section>
-
-  <button class="home-referral-card" type="button" data-view="referral">
-    <span class="home-referral-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="25" r="9" fill="currentColor" opacity=".92"/><circle cx="43" cy="21" r="7" fill="currentColor" opacity=".42"/><circle cx="41" cy="43" r="8" fill="currentColor" opacity=".28"/><path d="M12 48c1.7-9 6.1-14 12-14s10.3 5 12 14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M36 32c3.9.8 7 3.7 9 8" stroke="currentColor" stroke-opacity=".42" stroke-width="3.4" stroke-linecap="round"/><path d="M34.5 23.5l7.5-2.5M32.5 30.5l7.5 8.5" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/><path d="M49 10l1.45 4.05 4.05 1.45-4.05 1.45L49 21l-1.45-4.05-4.05-1.45 4.05-1.45L49 10z" fill="currentColor" opacity=".9"/></svg></span>
-    <span class="home-referral-copy"><strong>Referral Rewards</strong><small>Invite friends and earn 0.1 TON after their first deposit.</small></span>
-  </button>
 
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
