@@ -40,6 +40,9 @@ export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'ima
 const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeUrl'>> = [
   { id: 'global-loading', label: 'Global Mini App Loading', description: 'Put the entire mini app into loading mode' },
   { id: 'home', label: 'Home', description: 'Main landing section' },
+  { id: 'home-deposit-card', label: 'Home Deposit Card', description: 'Image used on the Home deposit action card' },
+  { id: 'home-withdraw-card', label: 'Home Withdraw Card', description: 'Image used on the Home withdraw action card' },
+  { id: 'home-referral-card', label: 'Home Referral Card', description: 'Image used on the Home referral action card' },
   { id: 'connect', label: 'Connect', description: 'Full connect section' },
   { id: 'connect-bot-card', label: 'Connect Bot Card', description: 'Only the BotFather token card inside Connect' },
   { id: 'ai-miniapp', label: 'AI Bot Mini App', description: 'Open Mini App button in the AI bot' },
@@ -223,108 +226,53 @@ async function writeLocks(env: Env, locks: Record<string, SavedSectionLock>): Pr
 }
 
 async function readSetting<T>(env: Env, name: string): Promise<T | null> {
-  try {
-    await ensureAdminSettingsTable(env);
-    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(name).first<AdminSettingRow>();
-    if (row?.value_json) return JSON.parse(row.value_json) as T;
-  } catch (error) {
-    console.warn('read admin setting from D1 failed', error);
-  }
-  return env.BOT_CACHE.get(name, 'json').catch(() => null) as Promise<T | null>;
+  await ensureAdminSettingsTable(env);
+  const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(name).first<AdminSettingRow>();
+  if (!row?.value_json) return null;
+  try { return JSON.parse(row.value_json) as T; } catch { return null; }
 }
 
 async function ensureAdminSettingsTable(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
     name TEXT PRIMARY KEY,
     value_json TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`).run();
 }
 
-function normalizeSavedLocks(raw: Record<string, boolean | SavedSectionLock>): Record<string, SavedSectionLock> {
-  const out: Record<string, SavedSectionLock> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (typeof value === 'boolean') out[key] = { locked: value, mode: value ? 'locked' : 'open', expiresAt: null };
-    else out[key] = { ...(value ?? {}), expiresAt: normalizeExpiresAt((value ?? {}).expiresAt) };
-  }
-  return out;
+function ensureSection(sectionId: string): string {
+  const cleaned = cleanSection(sectionId);
+  const exists = DEFAULT_SECTIONS.some((section) => section.id === cleaned);
+  if (!exists) throw new Error('Unknown section');
+  return cleaned;
+}
+
+function cleanSection(sectionId: string): string {
+  return String(sectionId || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+}
+
+function cleanCode(code: unknown): string {
+  return String(code || '').trim();
+}
+
+function normalizeExpiresAt(input: unknown): string | null {
+  const text = String(input || '').trim();
+  if (!text) return null;
+  const parsed = Date.parse(text);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
 }
 
 function normalizeMode(item: SavedSectionLock | undefined): SectionLockMode {
-  if (item?.expiresAt && Date.parse(item.expiresAt) <= Date.now()) return 'open';
-  if (item?.mode === 'code') return 'code';
-  if (item?.mode === 'loading') return 'loading';
-  if (item?.mode === 'locked') return 'locked';
-  return item?.locked ? 'locked' : 'open';
+  if (!item) return 'open';
+  if (item.mode === 'loading' || item.mode === 'code' || item.mode === 'locked') return item.mode;
+  return item.locked ? 'locked' : 'open';
 }
 
-function ensureSection(value: unknown): string {
-  const normalized = cleanSection(value);
-  if (!DEFAULT_SECTIONS.some((section) => section.id === normalized)) throw new Error('Unknown section');
+function normalizeSavedLocks(stored: Record<string, boolean | SavedSectionLock>): Record<string, SavedSectionLock> {
+  const normalized: Record<string, SavedSectionLock> = {};
+  for (const [id, value] of Object.entries(stored || {})) {
+    if (typeof value === 'boolean') normalized[id] = { locked: value, mode: value ? 'locked' : 'open', expiresAt: null };
+    else if (value && typeof value === 'object') normalized[id] = value;
+  }
   return normalized;
-}
-
-function cleanSection(value: unknown): string {
-  return String(value ?? '').replace(/[^a-zA-Z0-9_-]/g, '').trim().slice(0, 40);
-}
-
-function cleanCode(value: unknown): string {
-  return String(value ?? '').trim().slice(0, 80);
-}
-
-function normalizeExpiresAt(value: unknown): string | null {
-  const raw = String(value ?? '').trim();
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-type AdminTimedLockBody = {
-  sectionId?: unknown;
-  locked?: unknown;
-  code?: unknown;
-  expiresAt?: unknown;
-};
-
-app.post('/admin/api/section-locks-timed', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
-  try {
-    return c.json(await setSectionLock(c.env, String(body.sectionId ?? ''), Boolean(body.locked), body.expiresAt ?? null));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400);
-  }
-});
-
-app.post('/admin/api/section-locks/loading-timed', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
-  try {
-    return c.json(await setSectionLoadingLock(c.env, String(body.sectionId ?? ''), body.expiresAt ?? null));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save loading lock' }, 400);
-  }
-});
-
-app.post('/admin/api/section-locks/code-timed', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = await c.req.json().catch(() => ({})) as AdminTimedLockBody;
-  try {
-    return c.json(await setSectionCodeLock(c.env, String(body.sectionId ?? ''), String(body.code ?? ''), body.expiresAt ?? null));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400);
-  }
-});
-
-function adminCookieValue(cookie: string | undefined) {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-function isAdmin(env: Env, key: string): boolean {
-  return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
-}
-
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
