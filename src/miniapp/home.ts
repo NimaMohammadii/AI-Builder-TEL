@@ -27,7 +27,7 @@ export const HOME_SECTION = `<section id="home" class="view active">
   </section>
 
   <button class="home-referral-card" type="button" data-view="referral">
-    <span class="home-referral-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M15 26h13" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M24 19l7 7-7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="26" r="6.5" stroke="currentColor" stroke-opacity=".45" stroke-width="2.5"/><circle cx="36" cy="15" r="5.5" fill="currentColor" opacity=".25"/><circle cx="36" cy="37" r="5.5" fill="currentColor" opacity=".25"/></svg></span>
+    <span class="home-referral-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="25" r="9" fill="currentColor" opacity=".92"/><circle cx="43" cy="21" r="7" fill="currentColor" opacity=".42"/><circle cx="41" cy="43" r="8" fill="currentColor" opacity=".28"/><path d="M12 48c1.7-9 6.1-14 12-14s10.3 5 12 14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M36 32c3.9.8 7 3.7 9 8" stroke="currentColor" stroke-opacity=".42" stroke-width="3.4" stroke-linecap="round"/><path d="M34.5 23.5l7.5-2.5M32.5 30.5l7.5 8.5" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/><path d="M49 10l1.45 4.05 4.05 1.45-4.05 1.45L49 21l-1.45-4.05-4.05-1.45 4.05-1.45L49 10z" fill="currentColor" opacity=".9"/></svg></span>
     <span class="home-referral-copy"><strong>Referral Rewards</strong><small>Invite friends and earn 0.1 TON after their first deposit.</small></span>
   </button>
 
