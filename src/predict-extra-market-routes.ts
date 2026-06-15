@@ -5,7 +5,8 @@ import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } fr
 
 const CACHE_NONE = 'no-store';
 const EXTRA_MARKETS = ['ethereum', 'solana', 'gold', 'oil'] as const;
-const ROUND_MS = 5 * 60 * 1000;
+const DEFAULT_ROUND_MS = 5 * 60 * 1000;
+const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
@@ -96,7 +97,7 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
   const userControls = cleanedUserId ? await getUserControls(env, cleanedUserId) : null;
   const now = Date.now();
   const ends = Date.parse(String(round.ends_at || ''));
-  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
+  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), durationMs: roundMsForMarket(normalizeExtraMarket(round.market)), startPrice: Number(round.start_price || 0), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
 }
 async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (id TEXT PRIMARY KEY, market TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, start_price REAL NOT NULL, end_price REAL, status TEXT NOT NULL DEFAULT 'open', result TEXT, settled_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
@@ -110,9 +111,10 @@ async function getOrCreateCurrentRound(env: Env, market: ExtraMarket): Promise<R
   const now = Date.now();
   const existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
   if (existing) return existing;
-  const startMs = Math.floor(now / ROUND_MS) * ROUND_MS;
+  const roundMs = roundMsForMarket(market);
+  const startMs = Math.floor(now / roundMs) * roundMs;
   const startsAt = new Date(startMs).toISOString();
-  const endsAt = new Date(startMs + ROUND_MS).toISOString();
+  const endsAt = new Date(startMs + roundMs).toISOString();
   const id = `pr_${market}_${startMs}`;
   const startPrice = await fetchPrice(market);
   await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
@@ -180,14 +182,15 @@ async function userBetsJson(env: Env, roundId: string, userId: string) { return 
 async function recentUserBetsJson(env: Env, market: string, userId: string) { return ((await env.DB.prepare('SELECT * FROM predict_bets WHERE market = ? AND user_id = ? ORDER BY datetime(created_at) DESC LIMIT 20').bind(cleanDbText(market, 'Prediction market is not ready'), userId).all<BetRow>()).results || []).map(betJson); }
 async function getBet(env: Env, id: string) { const b = await env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(cleanDbText(id, 'Prediction bet is not ready')).first<BetRow>(); return b ? betJson(b) : null; }
 async function fetchPrice(market: ExtraMarket | 'ton'): Promise<number> {
-  const spotSymbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'TONUSDT';
   const oil = market === 'oil';
+  const spotSymbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'TONUSDT';
   const url = oil ? 'https://fapi.binance.com/fapi/v1/ticker/price?symbol=CLUSDT' : `https://api.binance.com/api/v3/ticker/price?symbol=${spotSymbol}`;
   const res = await fetch(url, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error('Price feed is unavailable');
   const data = await res.json() as { price?: string };
   return cleanPrice(data.price);
 }
+function roundMsForMarket(market: ExtraMarket): number { return market === 'oil' ? OIL_ROUND_MS : DEFAULT_ROUND_MS; }
 function isExtraMarket(value: string): boolean { const market = value.trim().toLowerCase(); return market === 'ethereum' || market === 'eth' || market === 'solana' || market === 'sol' || market === 'gold' || market === 'paxg' || market === 'oil' || market === 'cl' || market === 'clusdt'; }
 function normalizeExtraMarket(value: string): ExtraMarket { const market = value.trim().toLowerCase(); if (market === 'ethereum' || market === 'eth') return 'ethereum'; if (market === 'solana' || market === 'sol') return 'solana'; if (market === 'gold' || market === 'paxg') return 'gold'; if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil'; throw new Error('Invalid predict market'); }
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
