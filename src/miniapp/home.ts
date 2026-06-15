@@ -2,7 +2,6 @@ export const HOME_SECTION = `<section id="home" class="view active">
   <style>
     #home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     #home::-webkit-scrollbar{display:none}
-    #home .home-finance-extra-visual{display:none!important}
   </style>
   <section class="home-intro-card">
     <h2>Welcome to Vexa</h2>
@@ -30,6 +29,9 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <div class="home-finance-visual-stack">
       <div class="home-finance-visual">
         <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+      </div>
+      <div class="home-finance-extra-visual">
+        <img src="/app/api/section-lock-image/home/locked.png" alt="" decoding="async" onerror="this.closest('.home-finance-extra-visual').style.display='none'"/>
       </div>
     </div>
   </section>
