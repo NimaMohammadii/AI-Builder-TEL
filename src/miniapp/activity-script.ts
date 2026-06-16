@@ -47,11 +47,18 @@ const DAILY_REWARDS_BOOTSTRAP = `
     if(/Madrid|Mexico|Buenos_Aires|Bogota|Santiago|Lima/i.test(tz))return 'es';
     return '';
   }
+  function langFromTrace(text){
+    var lines=String(text||'').split(String.fromCharCode(10));
+    for(var i=0;i<lines.length;i++){
+      var line=lines[i]||'';
+      if(line.indexOf('loc=')===0)return countryToLang(line.slice(4,6));
+    }
+    return '';
+  }
   function loadDailyInfoLang(){
     if(dailyInfoLangReady)return Promise.resolve(dailyInfoLang);
     return fetch('/cdn-cgi/trace',{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(text){
-      var m=String(text||'').match(/(?:^|\n)loc=([A-Za-z]{2})/);
-      dailyInfoLang=countryToLang(m&&m[1])||timezoneToLang()||'en';
+      dailyInfoLang=langFromTrace(text)||timezoneToLang()||'en';
       dailyInfoLangReady=true;
       return dailyInfoLang;
     }).catch(function(){dailyInfoLang=timezoneToLang()||'en';dailyInfoLangReady=true;return dailyInfoLang});
@@ -97,7 +104,7 @@ const DAILY_REWARDS_BOOTSTRAP = `
       if(dailyInfoTranslated&&!dailyInfoLangReady)loadDailyInfoLang().then(renderDailyInfo);
       return;
     }
-    var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual'):null;
+    var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual,[data-action="open-daily-guide"]'):null;
     if(!target)return;
     ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
     openDailyInfo();
