@@ -7,6 +7,7 @@ const VOICE_AI_STYLE = `
     right: 16px;
     bottom: 94px;
     z-index: 9000;
+    min-width: 132px;
     border: 0;
     border-radius: 999px;
     padding: 13px 16px;
@@ -16,86 +17,20 @@ const VOICE_AI_STYLE = `
     box-shadow: 0 18px 42px rgba(0, 0, 0, .38);
   }
 
-  .vexa-voice-ai-sheet {
-    position: fixed;
-    inset: 0;
-    z-index: 10050;
-    display: none;
-    align-items: flex-end;
-    justify-content: center;
-    padding: 18px;
-    background: rgba(0, 0, 0, .52);
+  .vexa-voice-ai-button.listening {
+    background: linear-gradient(135deg, #8f1d3d, #d14363);
   }
 
-  .vexa-voice-ai-sheet.open {
-    display: flex;
+  .vexa-voice-ai-button.thinking {
+    background: rgba(42, 42, 52, .92);
   }
 
-  .vexa-voice-ai-card {
-    width: min(100%, 430px);
-    border-radius: 28px;
-    padding: 18px;
-    color: #fff;
-    background: rgba(18, 7, 10, .96);
-    border: 1px solid rgba(255, 255, 255, .12);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
-  }
-
-  .vexa-voice-ai-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .vexa-voice-ai-top h3 {
-    margin: 0;
-    font-size: 18px;
-  }
-
-  .vexa-voice-ai-close {
-    width: 38px;
-    height: 38px;
-    border: 0;
-    border-radius: 999px;
-    color: #fff;
-    background: rgba(255, 255, 255, .08);
-    font-size: 20px;
-  }
-
-  .vexa-voice-ai-record {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 16px;
-    padding: 18px;
-    border: 0;
-    border-radius: 18px;
-    text-align: center;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 900;
+  .vexa-voice-ai-button.speaking {
     background: linear-gradient(135deg, #5b0f24, #8f1d3d);
-  }
-
-  .vexa-voice-ai-record.listening {
-    background: linear-gradient(135deg, #9f1d3f, #d14363);
-  }
-
-  .vexa-voice-ai-status {
-    min-height: 22px;
-    margin: 12px 2px 0;
-    color: rgba(255, 255, 255, .72);
-    font-size: 13px;
   }
 
   .vexa-voice-ai-player {
     display: none;
-    width: 100%;
-    margin-top: 14px;
-  }
-
-  .vexa-voice-ai-player.ready {
-    display: block;
   }
 </style>
 `;
@@ -106,42 +41,43 @@ const VOICE_AI_SCRIPT = `
   var audioUrl = '';
   var recorder = null;
   var streamRef = null;
+  var audioContext = null;
+  var analyser = null;
+  var source = null;
   var chunks = [];
-  var isListening = false;
+  var active = false;
+  var state = 'idle';
+  var startedAt = 0;
+  var lastVoiceAt = 0;
+  var frameId = 0;
   var maxTimer = null;
+
+  var MIN_RECORD_MS = 900;
+  var SILENCE_MS = 1100;
+  var MAX_RECORD_MS = 9000;
+  var VOICE_LEVEL = 18;
 
   function byId(id) {
     return document.getElementById(id);
   }
 
-  function setStatus(text) {
-    var node = byId('vexaVoiceAiStatus');
-    if (node) node.textContent = text;
+  function button() {
+    return byId('vexaVoiceAiButton');
   }
 
-  function setSheet(open) {
-    var sheet = byId('vexaVoiceAiSheet');
-    if (!sheet) return;
-    sheet.classList.toggle('open', !!open);
-    sheet.setAttribute('aria-hidden', open ? 'false' : 'true');
+  function player() {
+    return byId('vexaVoiceAiPlayer');
   }
 
-  function setListening(value) {
-    isListening = !!value;
-    var button = byId('vexaVoiceAiRecord');
-    if (!button) return;
-    button.classList.toggle('listening', isListening);
-    button.textContent = isListening ? 'Listening...' : 'Start Talking';
-  }
+  function setState(nextState, text) {
+    state = nextState;
+    var btn = button();
+    if (!btn) return;
 
-  function cleanupStream() {
-    if (maxTimer) clearTimeout(maxTimer);
-    maxTimer = null;
-
-    if (streamRef) {
-      streamRef.getTracks().forEach(function(track){ track.stop(); });
-      streamRef = null;
-    }
+    btn.classList.toggle('listening', state === 'listening');
+    btn.classList.toggle('thinking', state === 'thinking');
+    btn.classList.toggle('speaking', state === 'speaking');
+    btn.textContent = text;
   }
 
   function recorderOptions() {
@@ -152,50 +88,111 @@ const VOICE_AI_SCRIPT = `
     return {};
   }
 
-  async function startConversation() {
-    if (isListening) return;
+  function stopMonitor() {
+    if (frameId) cancelAnimationFrame(frameId);
+    frameId = 0;
+
+    if (maxTimer) clearTimeout(maxTimer);
+    maxTimer = null;
+  }
+
+  function cleanupStream() {
+    stopMonitor();
+
+    if (streamRef) {
+      streamRef.getTracks().forEach(function(track){ track.stop(); });
+      streamRef = null;
+    }
+
+    if (audioContext) {
+      audioContext.close().catch(function(){});
+      audioContext = null;
+    }
+
+    analyser = null;
+    source = null;
+  }
+
+  function monitorVoice() {
+    if (!analyser || state !== 'listening') return;
+
+    var data = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(data);
+
+    var total = 0;
+    for (var i = 0; i < data.length; i++) {
+      total += Math.abs(data[i] - 128);
+    }
+
+    var level = total / data.length;
+    var now = Date.now();
+
+    if (level > VOICE_LEVEL) lastVoiceAt = now;
+
+    if (now - startedAt > MIN_RECORD_MS && now - lastVoiceAt > SILENCE_MS) {
+      stopListening();
+      return;
+    }
+
+    frameId = requestAnimationFrame(monitorVoice);
+  }
+
+  async function startListening() {
+    if (!active || state === 'listening' || state === 'thinking' || state === 'speaking') return;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
-      setStatus('Microphone is not available.');
+      active = false;
+      setState('idle', 'Mic Not Available');
       return;
     }
 
     try {
       streamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunks = [];
-      recorder = new MediaRecorder(streamRef, recorderOptions());
+      startedAt = Date.now();
+      lastVoiceAt = startedAt;
 
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source = audioContext.createMediaStreamSource(streamRef);
+      source.connect(analyser);
+
+      recorder = new MediaRecorder(streamRef, recorderOptions());
       recorder.ondataavailable = function(event) {
         if (event.data && event.data.size > 0) chunks.push(event.data);
       };
-
       recorder.onstop = function() {
         cleanupStream();
-        setListening(false);
         sendAudio();
       };
 
       recorder.start();
-      setListening(true);
-      setStatus('Speak now. I will answer after you stop.');
-
-      maxTimer = setTimeout(stopConversation, 9000);
+      setState('listening', 'Listening...');
+      frameId = requestAnimationFrame(monitorVoice);
+      maxTimer = setTimeout(stopListening, MAX_RECORD_MS);
     } catch (error) {
       cleanupStream();
-      setListening(false);
-      setStatus('Microphone permission denied.');
+      active = false;
+      setState('idle', 'Mic Denied');
     }
   }
 
-  function stopConversation() {
+  function stopListening() {
     if (!recorder || recorder.state === 'inactive') return;
-    setStatus('Thinking...');
+    setState('thinking', 'Thinking...');
     recorder.stop();
   }
 
   async function sendAudio() {
+    if (!active) {
+      setState('idle', 'AI Voice');
+      return;
+    }
+
     if (!chunks.length) {
-      setStatus('No voice recorded.');
+      setState('idle', 'AI Voice');
+      active = false;
       return;
     }
 
@@ -218,26 +215,55 @@ const VOICE_AI_SCRIPT = `
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       audioUrl = URL.createObjectURL(audioBlob);
 
-      var player = byId('vexaVoiceAiPlayer');
-      player.src = audioUrl;
-      player.classList.add('ready');
-      setStatus('Answer ready. Tap Start Talking again to continue.');
-      player.play().catch(function(){});
+      var audioPlayer = player();
+      audioPlayer.src = audioUrl;
+      setState('speaking', 'AI Speaking...');
+      audioPlayer.play().catch(function(){
+        setState('idle', 'Tap To Continue');
+      });
     } catch (error) {
-      setStatus(error && error.message ? error.message : 'Voice AI failed.');
+      active = false;
+      setState('idle', 'AI Voice');
     }
   }
 
-  function boot() {
-    var button = byId('vexaVoiceAiButton');
-    var record = byId('vexaVoiceAiRecord');
-    if (!button || !record) return;
+  function stopAll() {
+    active = false;
+    cleanupStream();
 
-    button.addEventListener('click', function(){ setSheet(true); });
-    byId('vexaVoiceAiClose').addEventListener('click', function(){ setSheet(false); });
-    record.addEventListener('click', function(){
-      if (isListening) stopConversation();
-      else startConversation();
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+
+    var audioPlayer = player();
+    if (audioPlayer) audioPlayer.pause();
+
+    setState('idle', 'AI Voice');
+  }
+
+  function boot() {
+    var btn = button();
+    var audioPlayer = player();
+    if (!btn || !audioPlayer) return;
+
+    btn.addEventListener('click', function(){
+      if (active) {
+        stopAll();
+        return;
+      }
+
+      active = true;
+      startListening();
+    });
+
+    audioPlayer.addEventListener('ended', function(){
+      if (!active) {
+        setState('idle', 'AI Voice');
+        return;
+      }
+
+      setState('idle', 'Listening Again...');
+      setTimeout(startListening, 350);
     });
   }
 
@@ -249,17 +275,7 @@ const VOICE_AI_SCRIPT = `
 
 const VOICE_AI_HTML = `
 <button id="vexaVoiceAiButton" class="vexa-voice-ai-button" type="button">AI Voice</button>
-<div id="vexaVoiceAiSheet" class="vexa-voice-ai-sheet" aria-hidden="true">
-  <div class="vexa-voice-ai-card">
-    <div class="vexa-voice-ai-top">
-      <h3>AI Voice</h3>
-      <button id="vexaVoiceAiClose" class="vexa-voice-ai-close" type="button">×</button>
-    </div>
-    <button id="vexaVoiceAiRecord" class="vexa-voice-ai-record" type="button">Start Talking</button>
-    <div id="vexaVoiceAiStatus" class="vexa-voice-ai-status">Tap Start Talking, speak, then I answer.</div>
-    <audio id="vexaVoiceAiPlayer" class="vexa-voice-ai-player" controls></audio>
-  </div>
-</div>
+<audio id="vexaVoiceAiPlayer" class="vexa-voice-ai-player"></audio>
 `;
 
 export function miniAppHtml(): string {
