@@ -1,5 +1,5 @@
 import app from './index';
-import { plainAiReply } from './ai';
+import { aiReply } from './ai';
 import type { Env } from './types';
 import { OPENAI_BASE_URL } from './utils';
 
@@ -15,8 +15,17 @@ type TranscriptionResult = {
 };
 
 const VOICE_AI_ELEVENLABS_VOICE_ID = 'TX3LPaxmHKxFdv7VOQHJ';
+const VOICE_AI_TRANSCRIBE_MODEL = 'gpt-4o-mini-transcribe';
 const VOICE_AI_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const VOICE_AI_MAX_REPLY_CHARS = 1200;
+const VOICE_AI_PROMPT = [
+  'You are a live voice assistant inside a Telegram Mini App.',
+  'The input is a speech transcript and may contain transcription mistakes.',
+  'Detect the user language from the transcript and reply in that same language.',
+  'If the user explicitly asks to speak another language, switch to that requested language.',
+  'If the transcript mixes languages accidentally, prefer the dominant language and keep the answer natural.',
+  'Keep the answer short, conversational, and easy to understand when spoken aloud.',
+].join('\n');
 
 app.post('/app/api/voice-ai', async (c) => {
   const env = c.env as EnvWithVoiceAi;
@@ -46,7 +55,7 @@ app.post('/app/api/voice-ai', async (c) => {
 
   try {
     const transcript = await transcribeAudio(env, file);
-    const reply = await plainAiReply(env, transcript);
+    const reply = await aiReply(env, VOICE_AI_PROMPT, transcript);
     const audio = await createSpeech(env, reply.slice(0, VOICE_AI_MAX_REPLY_CHARS));
 
     return new Response(audio, {
@@ -64,7 +73,8 @@ app.post('/app/api/voice-ai', async (c) => {
 async function transcribeAudio(env: EnvWithVoiceAi, file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file, file.name || 'voice.webm');
-  form.append('model', 'whisper-1');
+  form.append('model', VOICE_AI_TRANSCRIBE_MODEL);
+  form.append('response_format', 'json');
 
   const response = await fetch(`${OPENAI_BASE_URL}/audio/transcriptions`, {
     method: 'POST',
