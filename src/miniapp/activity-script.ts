@@ -17,13 +17,32 @@ const DAILY_REWARDS_BOOTSTRAP = `
     document.head.appendChild(style);
   }
   function mountDailyInfo(){
-    if(document.getElementById('dailyrewardsinfo'))return;
+    var current=document.getElementById('dailyrewardsinfo');
+    if(current)return current;
     var main=document.querySelector('main.app')||document.body;
     var holder=document.createElement('div');
     holder.innerHTML=window.DAILY_REWARDS_INFO_SECTION||'';
     var section=holder.firstElementChild;
     if(section)main.insertBefore(section,document.querySelector('.tabs')||null);
+    return section;
   }
+  function openDailyInfo(){
+    var section=mountDailyInfo();
+    if(!section)return;
+    document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
+    section.classList.add('active');
+    document.querySelectorAll('.tab').forEach(function(n){n.classList.remove('active')});
+    var title=document.getElementById('brandTitle');
+    if(title)title.textContent='Daily Rewards';
+    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.BackButton){try{window.Telegram.WebApp.BackButton.show()}catch(e){}}
+    if(window.__vexaDailyInfoRender)window.__vexaDailyInfoRender();
+  }
+  document.addEventListener('click',function(ev){
+    var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual'):null;
+    if(!target)return;
+    ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
+    openDailyInfo();
+  },true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountDailyInfo);else mountDailyInfo();
 })();
 `;
