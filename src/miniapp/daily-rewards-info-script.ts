@@ -18,6 +18,7 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
     es:['Reclama 0.05 TON como recompensa inicial garantizada.','Obtén 20% de cashback en pérdidas durante 24 horas después de reclamar.','Reclama 0.30 TON como impulso garantizado de saldo.','Recibe 3 jugadas sin riesgo para juegos seleccionados.','Obtén 2 jugadas gratis en slots. Las ganancias son tuyas y las pérdidas no descuentan saldo.','Desbloquea un día de recompensa más fuerte con potencial extra de ganar.','Llega al último día para la mayor oportunidad de recompensa semanal.']
   };
   var translated=false;
+  var imgCache={};
   function q(id){return document.getElementById(id)}
   function detectedLang(){
     var tg=window.Telegram&&window.Telegram.WebApp;
@@ -35,8 +36,8 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   }
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
   function textFor(i){var l=detectedLang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
-  function img(day){return '/app/api/daily-rewards-day-image/'+(day-1)+'?v='+Date.now()}
-  function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
+  function img(day){var key=String(day);if(!imgCache[key])imgCache[key]='/app/api/daily-rewards-day-image/'+(day-1);return imgCache[key]}
+  function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
   function bind(){var b=q('dailyInfoTranslate');if(b&&!b.__bound){b.__bound=true;b.onclick=function(){translated=!translated;b.textContent=translated?'English':'Translate';render()}}render()}
   window.__vexaDailyInfoRender=render;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
