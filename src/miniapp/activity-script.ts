@@ -11,6 +11,8 @@ const DAILY_REWARDS_BOOTSTRAP = `
   window.DAILY_REWARDS_INFO_SECTION = ${JSON.stringify(DAILY_REWARDS_INFO_SECTION)};
   var dailyInfoLang='en';
   var dailyInfoLangReady=false;
+  var dailyInfoRendered=false;
+  var homeScrollTop=0;
   var dailyInfoRows=[
     {title:'TON Starter',en:'Claim 0.05 TON as a guaranteed starter reward.',fa:'دریافت ۰.۰۵ تون به‌عنوان جایزه شروع تضمینی.',de:'Erhalte 0,05 TON als garantierte Starter-Belohnung.',tr:'Garantili başlangıç ödülü olarak 0.05 TON al.',ar:'احصل على 0.05 TON كمكافأة بداية مضمونة.',ru:'Получи 0.05 TON как гарантированную стартовую награду.',es:'Reclama 0.05 TON como recompensa inicial garantizada.'},
     {title:'Loss Cashback',en:'Get 20% cashback on your losses for 24 hours after claiming.',fa:'دریافت ۲۰٪ کش‌بک روی باخت‌ها تا ۲۴ ساعت بعد از کلیم.',de:'Erhalte 20 % Cashback auf Verluste für 24 Stunden nach dem Claim.',tr:'Claim sonrası 24 saat boyunca kayıplarda %20 cashback al.',ar:'احصل على استرداد 20% من الخسائر لمدة 24 ساعة بعد المطالبة.',ru:'Получи 20% кэшбэк с проигрышей на 24 часа после получения.',es:'Obtén 20% de cashback en pérdidas durante 24 horas después de reclamar.'},
@@ -69,7 +71,7 @@ const DAILY_REWARDS_BOOTSTRAP = `
     var holder=document.createElement('div');
     holder.innerHTML=window.DAILY_REWARDS_INFO_SECTION||'';
     var section=holder.firstElementChild;
-    if(section)main.insertBefore(section,document.querySelector('.tabs')||null);
+    if(section)main.appendChild(section);
     return section;
   }
   function dailyInfoText(row){var l=dailyInfoLang||'en';return row[l]||row.en}
@@ -77,20 +79,21 @@ const DAILY_REWARDS_BOOTSTRAP = `
     var box=document.getElementById('dailyInfoList');
     if(!box)return;
     box.innerHTML=dailyInfoRows.map(function(row,i){var day=i+1;return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="/app/api/daily-rewards-day-image/'+i+'" alt="" decoding="async" loading="lazy"></div><div class="daily-info-main"><em class="daily-info-day">Day '+day+'</em><b>'+row.title+'</b><small>'+dailyInfoText(row)+'</small></div></div>'}).join('');
+    dailyInfoRendered=true;
   }
   function openDailyInfo(){
     var section=mountDailyInfo();
     if(!section)return;
-    document.querySelectorAll('.view').forEach(function(n){if(n.id!=='home'&&n.id!=='dailyrewardsinfo')n.classList.remove('active')});
     var home=document.getElementById('home');
-    if(home)home.classList.add('active');
-    section.classList.add('active');
-    document.querySelectorAll('.tab').forEach(function(n){n.classList.remove('active')});
-    var title=document.getElementById('brandTitle');
-    if(title)title.textContent='Daily Rewards';
+    if(home){homeScrollTop=home.scrollTop||0;home.classList.add('active')}
+    if(!dailyInfoRendered)renderDailyInfo();
+    section.setAttribute('aria-hidden','false');
     if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.BackButton){try{window.Telegram.WebApp.BackButton.show()}catch(e){}}
-    renderDailyInfo();
-    loadDailyInfoLang().then(renderDailyInfo);
+    if(home)home.scrollTop=homeScrollTop;
+    section.classList.remove('active');
+    section.getBoundingClientRect();
+    requestAnimationFrame(function(){section.classList.add('active');if(home)home.scrollTop=homeScrollTop});
+    loadDailyInfoLang().then(function(){renderDailyInfo();if(home)home.scrollTop=homeScrollTop});
   }
   window.__vexaOpenDailyInfo=openDailyInfo;
   window.__vexaDailyInfoRender=renderDailyInfo;
