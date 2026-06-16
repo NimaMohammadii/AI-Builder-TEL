@@ -14,6 +14,7 @@ export type DailyRewardClaim = {
 };
 
 type ProgressMap = Map<string, number>;
+type SavedUserRegion = { code: string; label: string; language: string; timezone: string; updatedAt?: string };
 
 export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Promise<Record<string, unknown>> {
   const userId = cleanUserId(userIdInput);
@@ -25,6 +26,7 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
   const progress = await listProgress(env, userId, weekStart);
   const profile = await getUserLevel(env, userId);
   const today = currentMondayDay();
+  const selectedRegion = await getSavedUserRegion(env, userId);
   const trustedAccess = await hasTrustedDailyRewardsAccess(env, userId);
   const visitStartDay = trustedAccess ? 0 : await getOrCreateDailyRewardWeekStartDay(env, userId, weekStart, today);
   const missedDay = trustedAccess ? null : firstMissedDayFromStart(claimedDays, today, visitStartDay);
@@ -36,7 +38,8 @@ export async function getDailyRewardsForUser(env: Env, userIdInput: unknown): Pr
     rewards: WEEKLY_DAILY_REWARDS,
     weekStart,
     weekEndsAt: currentWeekEnd(),
-    timezone: 'Europe/Berlin',
+    timezone: selectedRegion?.timezone || 'Europe/Berlin',
+    userRegion: selectedRegion,
     today,
     trustedAccess,
     visitStartDay,
@@ -381,6 +384,44 @@ function hasRequiredPreviousDaysClaimed(claimedDays: Set<number>, startDay: numb
   const start = clampDay(startDay);
   for (let index = start; index < day; index += 1) if (!claimedDays.has(index)) return false;
   return true;
+}
+
+async function getSavedUserRegion(env: Env, userId: string): Promise<SavedUserRegion | null> {
+  const id = String(userId || '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!id) return null;
+  const cached = await env.BOT_CACHE.get(`user-region:${id}`).catch(() => null);
+  const cachedRegion = parseSavedUserRegion(cached);
+  if (cachedRegion) return cachedRegion;
+  const row = await env.DB.prepare('SELECT state_json FROM bot_users WHERE telegram_user_id = ? ORDER BY updated_at DESC LIMIT 1')
+    .bind(id)
+    .first<{ state_json: string | null }>()
+    .catch(() => null);
+  const dbRegion = parseSavedUserRegion(row?.state_json || null);
+  if (dbRegion) await env.BOT_CACHE.put(`user-region:${id}`, JSON.stringify(dbRegion), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => undefined);
+  return dbRegion;
+}
+
+function parseSavedUserRegion(raw: unknown): SavedUserRegion | null {
+  if (!raw) return null;
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const source = (parsed && typeof parsed === 'object' && 'region' in parsed) ? (parsed as { region?: unknown }).region : parsed;
+    if (!source || typeof source !== 'object') return null;
+    const region = source as Record<string, unknown>;
+    const code = String(region.code || '').trim().toUpperCase();
+    const language = String(region.language || '').trim().toLowerCase();
+    const timezone = String(region.timezone || '').trim();
+    if (!code || !language) return null;
+    return {
+      code,
+      label: String(region.label || code).trim(),
+      language,
+      timezone: timezone || 'UTC',
+      updatedAt: String(region.updatedAt || '').trim() || undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function hasTrustedDailyRewardsAccess(env: Env, userId: string): Promise<boolean> {
