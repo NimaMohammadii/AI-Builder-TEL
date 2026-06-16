@@ -2,6 +2,65 @@ import { miniAppShellHtml } from './miniapp/shell';
 
 const VOICE_AI_STYLE = `
 <style id="vexaVoiceAiStyle">
+  .vexa-region-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: radial-gradient(circle at top, rgba(115, 24, 48, .42), rgba(0, 0, 0, .92) 58%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .vexa-region-gate.open {
+    display: flex;
+  }
+
+  .vexa-region-card {
+    width: min(100%, 430px);
+    border-radius: 28px;
+    padding: 20px;
+    color: #fff;
+    background: rgba(18, 7, 10, .96);
+    border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
+  }
+
+  .vexa-region-card h2 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -.04em;
+  }
+
+  .vexa-region-card p {
+    margin: 8px 0 16px;
+    color: rgba(255, 255, 255, .68);
+    font-size: 13px;
+  }
+
+  .vexa-region-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .vexa-region-option {
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 18px;
+    padding: 13px 10px;
+    color: #fff;
+    background: rgba(255, 255, 255, .055);
+    font-size: 14px;
+    font-weight: 850;
+  }
+
+  .vexa-region-option:active {
+    transform: scale(.98);
+  }
+
   .vexa-voice-ai-button {
     position: fixed;
     right: 16px;
@@ -52,6 +111,8 @@ const VOICE_AI_SCRIPT = `
   var frameId = 0;
   var maxTimer = null;
 
+  var REGION_KEY = 'vexa_region';
+  var LANGUAGE_KEY = 'vexa_language_code';
   var MIN_RECORD_MS = 1800;
   var SILENCE_MS = 2600;
   var MAX_RECORD_MS = 18000;
@@ -69,6 +130,14 @@ const VOICE_AI_SCRIPT = `
     return byId('vexaVoiceAiPlayer');
   }
 
+  function selectedRegion() {
+    return localStorage.getItem(REGION_KEY) || 'global';
+  }
+
+  function selectedLanguageCode() {
+    return localStorage.getItem(LANGUAGE_KEY) || 'en';
+  }
+
   function setState(nextState, text) {
     state = nextState;
     var btn = button();
@@ -78,6 +147,30 @@ const VOICE_AI_SCRIPT = `
     btn.classList.toggle('thinking', state === 'thinking');
     btn.classList.toggle('speaking', state === 'speaking');
     btn.textContent = text;
+  }
+
+  function showRegionGate() {
+    var gate = byId('vexaRegionGate');
+    if (!gate) return;
+    gate.classList.add('open');
+  }
+
+  function hideRegionGate() {
+    var gate = byId('vexaRegionGate');
+    if (!gate) return;
+    gate.classList.remove('open');
+  }
+
+  function setupRegionGate() {
+    if (!localStorage.getItem(REGION_KEY)) showRegionGate();
+
+    document.querySelectorAll('[data-vexa-region]').forEach(function(item){
+      item.addEventListener('click', function(){
+        localStorage.setItem(REGION_KEY, item.getAttribute('data-vexa-region') || 'global');
+        localStorage.setItem(LANGUAGE_KEY, item.getAttribute('data-vexa-language') || 'en');
+        hideRegionGate();
+      });
+    });
   }
 
   function recorderOptions() {
@@ -210,6 +303,8 @@ const VOICE_AI_SCRIPT = `
       var blob = new Blob(chunks, { type: 'audio/webm' });
       var form = new FormData();
       form.append('audio', blob, 'voice.webm');
+      form.append('region', selectedRegion());
+      form.append('languageCode', selectedLanguageCode());
 
       var response = await fetch('/app/api/voice-ai', {
         method: 'POST',
@@ -256,7 +351,14 @@ const VOICE_AI_SCRIPT = `
     var audioPlayer = player();
     if (!btn || !audioPlayer) return;
 
+    setupRegionGate();
+
     btn.addEventListener('click', function(){
+      if (!localStorage.getItem(REGION_KEY)) {
+        showRegionGate();
+        return;
+      }
+
       if (active) {
         stopAll();
         return;
@@ -284,6 +386,23 @@ const VOICE_AI_SCRIPT = `
 `;
 
 const VOICE_AI_HTML = `
+<div id="vexaRegionGate" class="vexa-region-gate" aria-modal="true" role="dialog">
+  <div class="vexa-region-card">
+    <h2>Select your region</h2>
+    <p>AI voice will always answer in your region language.</p>
+    <div class="vexa-region-grid">
+      <button class="vexa-region-option" type="button" data-vexa-region="global" data-vexa-language="en">Global</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="iran" data-vexa-language="fa">Iran</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="turkey" data-vexa-language="tr">Turkey</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="germany" data-vexa-language="de">Germany</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="arabic" data-vexa-language="ar">Arabic</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="russia" data-vexa-language="ru">Russia</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="spain" data-vexa-language="es">Spain</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="brazil" data-vexa-language="pt">Brazil</button>
+      <button class="vexa-region-option" type="button" data-vexa-region="france" data-vexa-language="fr">France</button>
+    </div>
+  </div>
+</div>
 <button id="vexaVoiceAiButton" class="vexa-voice-ai-button" type="button">AI Voice</button>
 <audio id="vexaVoiceAiPlayer" class="vexa-voice-ai-player"></audio>
 `;
