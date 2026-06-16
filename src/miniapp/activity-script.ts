@@ -9,7 +9,6 @@ const DAILY_REWARDS_BOOTSTRAP = `
 (function(){
   window.DAILY_REWARDS_SECTION = ${JSON.stringify(DAILY_REWARDS_SECTION)};
   window.DAILY_REWARDS_INFO_SECTION = ${JSON.stringify(DAILY_REWARDS_INFO_SECTION)};
-  var dailyInfoTranslated=false;
   var dailyInfoLang='en';
   var dailyInfoLangReady=false;
   var dailyInfoRows=[
@@ -39,12 +38,12 @@ const DAILY_REWARDS_BOOTSTRAP = `
   }
   function timezoneToLang(){
     var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
-    if(/Tehran/i.test(tz))return 'fa';
-    if(/Berlin|Vienna|Zurich|Vaduz/i.test(tz))return 'de';
-    if(/Istanbul/i.test(tz))return 'tr';
-    if(/Moscow|Volgograd|Yekaterinburg|Novosibirsk/i.test(tz))return 'ru';
-    if(/Dubai|Riyadh|Qatar|Kuwait|Bahrain|Muscat|Baghdad|Cairo/i.test(tz))return 'ar';
-    if(/Madrid|Mexico|Buenos_Aires|Bogota|Santiago|Lima/i.test(tz))return 'es';
+    if(tz.indexOf('Tehran')>=0)return 'fa';
+    if(tz.indexOf('Berlin')>=0||tz.indexOf('Vienna')>=0||tz.indexOf('Zurich')>=0||tz.indexOf('Vaduz')>=0)return 'de';
+    if(tz.indexOf('Istanbul')>=0)return 'tr';
+    if(tz.indexOf('Moscow')>=0||tz.indexOf('Volgograd')>=0||tz.indexOf('Yekaterinburg')>=0||tz.indexOf('Novosibirsk')>=0)return 'ru';
+    if(tz.indexOf('Dubai')>=0||tz.indexOf('Riyadh')>=0||tz.indexOf('Qatar')>=0||tz.indexOf('Kuwait')>=0||tz.indexOf('Bahrain')>=0||tz.indexOf('Muscat')>=0||tz.indexOf('Baghdad')>=0||tz.indexOf('Cairo')>=0)return 'ar';
+    if(tz.indexOf('Madrid')>=0||tz.indexOf('Mexico')>=0||tz.indexOf('Buenos_Aires')>=0||tz.indexOf('Bogota')>=0||tz.indexOf('Santiago')>=0||tz.indexOf('Lima')>=0)return 'es';
     return '';
   }
   function langFromTrace(text){
@@ -73,43 +72,35 @@ const DAILY_REWARDS_BOOTSTRAP = `
     if(section)main.insertBefore(section,document.querySelector('.tabs')||null);
     return section;
   }
-  function dailyInfoText(row){var l=dailyInfoLang||'en';return dailyInfoTranslated&&row[l]?row[l]:row.en}
+  function dailyInfoText(row){var l=dailyInfoLang||'en';return row[l]||row.en}
   function renderDailyInfo(){
     var box=document.getElementById('dailyInfoList');
     if(!box)return;
     box.innerHTML=dailyInfoRows.map(function(row,i){var day=i+1;return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="/app/api/daily-rewards-day-image/'+i+'" alt="" decoding="async" loading="lazy"></div><div class="daily-info-main"><em class="daily-info-day">Day '+day+'</em><b>'+row.title+'</b><small>'+dailyInfoText(row)+'</small></div></div>'}).join('');
-    var btn=document.getElementById('dailyInfoTranslate');
-    if(btn)btn.textContent=dailyInfoTranslated?'English':'Translate';
   }
   function openDailyInfo(){
     var section=mountDailyInfo();
     if(!section)return;
-    document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
+    document.querySelectorAll('.view').forEach(function(n){if(n.id!=='home'&&n.id!=='dailyrewardsinfo')n.classList.remove('active')});
+    var home=document.getElementById('home');
+    if(home)home.classList.add('active');
     section.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.remove('active')});
     var title=document.getElementById('brandTitle');
     if(title)title.textContent='Daily Rewards';
     if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.BackButton){try{window.Telegram.WebApp.BackButton.show()}catch(e){}}
     renderDailyInfo();
-    loadDailyInfoLang().then(function(){if(dailyInfoTranslated)renderDailyInfo()});
+    loadDailyInfoLang().then(renderDailyInfo);
   }
   window.__vexaOpenDailyInfo=openDailyInfo;
   window.__vexaDailyInfoRender=renderDailyInfo;
   document.addEventListener('click',function(ev){
-    var translate=ev.target&&ev.target.closest?ev.target.closest('#dailyInfoTranslate'):null;
-    if(translate){
-      ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
-      dailyInfoTranslated=!dailyInfoTranslated;
-      renderDailyInfo();
-      if(dailyInfoTranslated&&!dailyInfoLangReady)loadDailyInfoLang().then(renderDailyInfo);
-      return;
-    }
     var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual,[data-action="open-daily-guide"]'):null;
     if(!target)return;
     ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
     openDailyInfo();
   },true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mountDailyInfo();renderDailyInfo();loadDailyInfoLang()});else{mountDailyInfo();renderDailyInfo();loadDailyInfoLang()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mountDailyInfo();loadDailyInfoLang().then(renderDailyInfo)});else{mountDailyInfo();loadDailyInfoLang().then(renderDailyInfo)}
 })();
 `;
 
