@@ -69,6 +69,10 @@ const VOICE_AI_SCRIPT = `
     return byId('vexaVoiceAiPlayer');
   }
 
+  function telegramInitData() {
+    return window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp.initData || '' : '';
+  }
+
   function setState(nextState, text) {
     state = nextState;
     var btn = button();
@@ -210,6 +214,7 @@ const VOICE_AI_SCRIPT = `
       var blob = new Blob(chunks, { type: 'audio/webm' });
       var form = new FormData();
       form.append('audio', blob, 'voice.webm');
+      form.append('initData', telegramInitData());
 
       var response = await fetch('/app/api/voice-ai', {
         method: 'POST',
