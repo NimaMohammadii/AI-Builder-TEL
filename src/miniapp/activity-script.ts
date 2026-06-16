@@ -4,7 +4,6 @@ import { DAILY_REWARDS_STYLES } from './daily-rewards-styles';
 import { DAILY_REWARDS_POLISH_STYLES } from './daily-rewards-polish-styles';
 import { DAILY_REWARDS_SCRIPT } from './daily-rewards-script';
 import { DAILY_REWARDS_INFO_SECTION } from './daily-rewards-info';
-import { DAILY_REWARDS_INFO_SCRIPT } from './daily-rewards-info-script';
 
 const DAILY_REWARDS_BOOTSTRAP = `
 (function(){
@@ -37,6 +36,7 @@ const DAILY_REWARDS_BOOTSTRAP = `
     if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.BackButton){try{window.Telegram.WebApp.BackButton.show()}catch(e){}}
     if(window.__vexaDailyInfoRender)window.__vexaDailyInfoRender();
   }
+  window.__vexaOpenDailyInfo=openDailyInfo;
   document.addEventListener('click',function(ev){
     var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual'):null;
     if(!target)return;
@@ -47,4 +47,4 @@ const DAILY_REWARDS_BOOTSTRAP = `
 })();
 `;
 
-export const ACTIVITY_SCRIPT = DAILY_REWARDS_BOOTSTRAP + ACTIVITY_CORE_SCRIPT + DAILY_REWARDS_SCRIPT + DAILY_REWARDS_INFO_SCRIPT;
+export const ACTIVITY_SCRIPT = DAILY_REWARDS_BOOTSTRAP + ACTIVITY_CORE_SCRIPT + DAILY_REWARDS_SCRIPT;
