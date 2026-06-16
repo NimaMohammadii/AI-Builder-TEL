@@ -5,16 +5,7 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     #referral::-webkit-scrollbar{display:none}
     .referral-shell{display:grid;gap:12px;padding-top:2px}
     #referral .referral-top-card{margin:0 0 12px}
-    .referral-hero{border:0;border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(90,8,18,.11));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 44px rgba(0,0,0,.24);backdrop-filter:blur(3px) saturate(1.14);-webkit-backdrop-filter:blur(3px) saturate(1.14);padding:18px 16px;display:grid;gap:13px;color:#fff;overflow:hidden;position:relative}
-    .referral-hero:before{content:"";position:absolute;inset:auto -42px -72px auto;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle,rgba(115,16,35,.32),rgba(115,16,35,0) 68%);pointer-events:none}
-    .referral-hero-top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
-    .referral-hero-icon{width:52px;height:52px;min-width:52px;border-radius:21px;display:grid;place-items:center;color:rgba(255,255,255,.9);background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 12px 28px rgba(0,0,0,.2)}
-    .referral-hero-icon svg{width:34px;height:34px;display:block}
-    .referral-hero h2{margin:0;font-size:24px;line-height:1;font-weight:800;color:#fff}
-    .referral-hero p{margin:4px 0 0;font-size:12px;line-height:1.35;font-weight:500;color:rgba(255,255,255,.56)}
-    .referral-reward-pill{position:relative;z-index:1;border-radius:20px;background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .referral-reward-pill span{font-size:11px;font-weight:600;color:rgba(255,255,255,.55)}
-    .referral-reward-pill strong{font-size:18px;line-height:1;font-weight:800;color:#fff;white-space:nowrap}
+    .referral-hero{display:none!important}
     .referral-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .referral-stat{border:0;border-radius:22px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.065),0 12px 28px rgba(0,0,0,.18);padding:12px;color:#fff;display:grid;gap:5px;text-align:center}
     .referral-stat strong{font-size:18px;line-height:1;font-weight:800;color:#fff}
@@ -31,13 +22,6 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
   </style>
   <div class="referral-shell">
     <section class="home-empty-glass-card referral-top-card" aria-hidden="true"><img id="referralTopCardImage" class="home-empty-glass-card-image" src="/app/api/section-lock-image/home/code.png?v=home-card" alt="" decoding="async" loading="eager"/></section>
-    <section class="referral-hero">
-      <div class="referral-hero-top">
-        <span class="referral-hero-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M15 26h13" stroke="currentColor" stroke-width="3.3" stroke-linecap="round"/><path d="M24 19l7 7-7 7" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="26" r="6.5" stroke="currentColor" stroke-opacity=".45" stroke-width="2.6"/><circle cx="36" cy="15" r="5.5" fill="currentColor" opacity=".26"/><circle cx="36" cy="37" r="5.5" fill="currentColor" opacity=".26"/></svg></span>
-        <span><h2>Referral Rewards</h2><p>Invite friends and earn TON after their first deposit.</p></span>
-      </div>
-      <div class="referral-reward-pill"><span>Reward per valid friend</span><strong>0.1 TON</strong></div>
-    </section>
     <section class="referral-stats">
       <div class="referral-stat"><strong id="referralInvitedCount">0</strong><span>Invited</span></div>
       <div class="referral-stat"><strong id="referralRewardedCount">0</strong><span>Rewarded</span></div>
@@ -72,7 +56,7 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     function refreshTopCardImage(){fetch('/app/api/section-locks',{cache:'no-store',headers:{'cache-control':'no-store'}}).then(function(r){return r.json()}).then(function(data){var sections=data&&data.sections||[];var home=sections.find(function(s){return s&&s.id==='home'});var url=home&&(home.codeImageUrl||home.lockedImageUrl||home.imageUrl);var img=q('referralTopCardImage');if(img&&url&&img.getAttribute('src')!==url)img.setAttribute('src',url)}).catch(function(){})}
     function shareFallback(link,text){var share='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text||'🚀 Join me on Vexa FLOW');try{if(tg&&typeof tg.openTelegramLink==='function'){tg.openTelegramLink(share);return}}catch(e){}location.href=share}
     function setShareText(text){var b=q('referralShareButton');if(!b)return;b.textContent=text;setTimeout(function(){b.textContent='Share'},1400)}
-    function shareReferral(){var id=uid();if(!id)return;var link=linkFor(id);setShareText('Preparing');api('/app/api/referral/share',{method:'POST',body:JSON.stringify({userId:id,name:name()})}).then(function(data){var invite=data.inviteUrl||link;if(data.preparedMessageId&&tg&&typeof tg.shareMessage==='function'){try{var sent=tg.shareMessage(data.preparedMessageId);if(sent&&typeof sent.then==='function')sent.catch(function(){shareFallback(invite,data.fallbackText)});setShareText('Choose Chat');return}catch(e){}}shareFallback(invite,data.fallbackText)}).catch(function(){shareFallback(link,'🚀 Join me on Vexa FLOW\\n🎁 Play TON games and earn rewards.')})}
+    function shareReferral(){var id=uid();if(!id)return;var link=linkFor(id);setShareText('Preparing');api('/app/api/referral/share',{method:'POST',body:JSON.stringify({userId:id,name:name()})}).then(function(data){var invite=data.inviteUrl||link;if(data.preparedMessageId&&tg&&typeof tg.shareMessage==='function'){try{var sent=tg.shareMessage(data.preparedMessageId);if(sent&&typeof sent.then==='function')sent.catch(function(){shareFallback(invite,data.fallbackText)});setShareText('Choose Chat');return}catch(e){}}shareFallback(invite,data.fallbackText)}).catch(function(){shareFallback(link,'🚀 Join me on Vexa FLOW\n🎁 Play TON games and earn rewards.')})}
     async function claimIfNeeded(id){var ref=refFromUrl();if(!id||!ref||ref===id)return;try{await api('/app/api/referral/claim',{method:'POST',body:JSON.stringify({userId:id,ref:ref})})}catch(e){}}
     function renderList(items){var box=q('referralList');if(!box)return;if(!items||!items.length){box.innerHTML='<p class="referral-note">No referrals yet</p>';return}box.innerHTML=items.slice(0,8).map(function(item){return '<div class="referral-row"><strong>'+String(item.invitedUserId||'Friend')+'</strong><span>'+(item.status==='rewarded'?'Rewarded':'Pending')+'</span></div>'}).join('')}
     async function load(){refreshTopCardImage();var id=uid();var link=linkFor(id||'');var linkBox=q('referralLinkBox');if(linkBox)linkBox.textContent=id?link:'Telegram user not found';if(id)localStorage.setItem('ownerId',id);await claimIfNeeded(id);if(!id)return;try{var data=await api('/app/api/referral?userId='+encodeURIComponent(id));if(q('referralInvitedCount'))q('referralInvitedCount').textContent=String(data.invitedCount||0);if(q('referralRewardedCount'))q('referralRewardedCount').textContent=String(data.rewardedCount||0);if(q('referralEarnedTon'))q('referralEarnedTon').textContent=formatTon(data.earnedNano||0);renderList(data.referrals||[])}catch(e){}}
