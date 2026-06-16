@@ -40,7 +40,7 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </button>
     </div>
     <div class="home-finance-visual-stack">
-      <button class="home-finance-visual" type="button" data-view="dailyrewardsinfo" aria-label="Open daily rewards guide">
+      <button class="home-finance-visual" type="button" data-action="open-daily-guide" aria-label="Open daily rewards guide">
         <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
       </button>
       <div class="home-finance-extra-visual">
