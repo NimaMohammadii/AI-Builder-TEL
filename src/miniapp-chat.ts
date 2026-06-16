@@ -52,10 +52,10 @@ const VOICE_AI_SCRIPT = `
   var frameId = 0;
   var maxTimer = null;
 
-  var MIN_RECORD_MS = 900;
-  var SILENCE_MS = 1100;
-  var MAX_RECORD_MS = 9000;
-  var VOICE_LEVEL = 18;
+  var MIN_RECORD_MS = 1800;
+  var SILENCE_MS = 2600;
+  var MAX_RECORD_MS = 18000;
+  var VOICE_LEVEL = 10;
 
   function byId(id) {
     return document.getElementById(id);
