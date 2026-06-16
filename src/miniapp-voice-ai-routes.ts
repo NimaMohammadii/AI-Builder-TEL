@@ -14,18 +14,29 @@ type TranscriptionResult = {
   };
 };
 
+type VoiceRegion = {
+  code: string;
+  label: string;
+  language: string;
+  languageCode: string;
+};
+
 const VOICE_AI_ELEVENLABS_VOICE_ID = 'TX3LPaxmHKxFdv7VOQHJ';
 const VOICE_AI_TRANSCRIBE_MODEL = 'gpt-4o-mini-transcribe';
 const VOICE_AI_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const VOICE_AI_MAX_REPLY_CHARS = 1200;
-const VOICE_AI_PROMPT = [
-  'You are a live voice assistant inside a Telegram Mini App.',
-  'The input is a speech transcript and may contain transcription mistakes.',
-  'Detect the user language from the transcript and reply in that same language.',
-  'If the user explicitly asks to speak another language, switch to that requested language.',
-  'If the transcript mixes languages accidentally, prefer the dominant language and keep the answer natural.',
-  'Keep the answer short, conversational, and easy to understand when spoken aloud.',
-].join('\n');
+
+const VOICE_REGIONS: Record<string, VoiceRegion> = {
+  global: { code: 'global', label: 'Global', language: 'English', languageCode: 'en' },
+  iran: { code: 'iran', label: 'Iran', language: 'Persian / Farsi', languageCode: 'fa' },
+  turkey: { code: 'turkey', label: 'Turkey', language: 'Turkish', languageCode: 'tr' },
+  germany: { code: 'germany', label: 'Germany', language: 'German', languageCode: 'de' },
+  arabic: { code: 'arabic', label: 'Arabic', language: 'Arabic', languageCode: 'ar' },
+  russia: { code: 'russia', label: 'Russia', language: 'Russian', languageCode: 'ru' },
+  spain: { code: 'spain', label: 'Spain', language: 'Spanish', languageCode: 'es' },
+  brazil: { code: 'brazil', label: 'Brazil', language: 'Portuguese', languageCode: 'pt' },
+  france: { code: 'france', label: 'France', language: 'French', languageCode: 'fr' },
+};
 
 app.post('/app/api/voice-ai', async (c) => {
   const env = c.env as EnvWithVoiceAi;
@@ -40,6 +51,7 @@ app.post('/app/api/voice-ai', async (c) => {
 
   const form = await c.req.formData().catch(() => null);
   const file = form?.get('audio');
+  const region = resolveRegion(form);
 
   if (!(file instanceof File)) {
     return c.json({ error: 'Audio file is required.' }, 400);
@@ -54,8 +66,8 @@ app.post('/app/api/voice-ai', async (c) => {
   }
 
   try {
-    const transcript = await transcribeAudio(env, file);
-    const reply = await aiReply(env, VOICE_AI_PROMPT, transcript);
+    const transcript = await transcribeAudio(env, file, region.languageCode);
+    const reply = await aiReply(env, voicePrompt(region), transcript);
     const audio = await createSpeech(env, reply.slice(0, VOICE_AI_MAX_REPLY_CHARS));
 
     return new Response(audio, {
@@ -70,11 +82,39 @@ app.post('/app/api/voice-ai', async (c) => {
   }
 });
 
-async function transcribeAudio(env: EnvWithVoiceAi, file: File): Promise<string> {
+function resolveRegion(form: FormData | null): VoiceRegion {
+  const rawRegion = String(form?.get('region') || '').trim().toLowerCase();
+  const rawLanguageCode = String(form?.get('languageCode') || '').trim().toLowerCase();
+
+  if (rawRegion && VOICE_REGIONS[rawRegion]) {
+    return VOICE_REGIONS[rawRegion];
+  }
+
+  const byLanguage = Object.values(VOICE_REGIONS).find((item) => item.languageCode === rawLanguageCode);
+  return byLanguage || VOICE_REGIONS.global;
+}
+
+function voicePrompt(region: VoiceRegion): string {
+  return [
+    'You are a live voice assistant inside a Telegram Mini App.',
+    'The input is a speech transcript and may contain transcription mistakes.',
+    `The user selected region: ${region.label}.`,
+    `Always reply in this region language: ${region.language}.`,
+    'Do not switch language just because the transcription looks mixed or noisy.',
+    'Only switch language if the user clearly asks for translation or asks you to speak another language.',
+    'Keep the answer short, conversational, and easy to understand when spoken aloud.',
+  ].join('\n');
+}
+
+async function transcribeAudio(env: EnvWithVoiceAi, file: File, languageCode: string): Promise<string> {
   const form = new FormData();
   form.append('file', file, file.name || 'voice.webm');
   form.append('model', VOICE_AI_TRANSCRIBE_MODEL);
   form.append('response_format', 'json');
+
+  if (languageCode) {
+    form.append('language', languageCode);
+  }
 
   const response = await fetch(`${OPENAI_BASE_URL}/audio/transcriptions`, {
     method: 'POST',
