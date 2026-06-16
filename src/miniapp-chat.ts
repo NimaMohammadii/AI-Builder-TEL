@@ -62,12 +62,13 @@ const VOICE_AI_STYLE = `
     font-size: 20px;
   }
 
-  .vexa-voice-ai-pick {
+  .vexa-voice-ai-record {
     display: block;
     width: 100%;
     box-sizing: border-box;
     margin-top: 16px;
     padding: 18px;
+    border: 0;
     border-radius: 18px;
     text-align: center;
     color: #fff;
@@ -76,8 +77,8 @@ const VOICE_AI_STYLE = `
     background: linear-gradient(135deg, #5b0f24, #8f1d3d);
   }
 
-  .vexa-voice-ai-file {
-    display: none;
+  .vexa-voice-ai-record.listening {
+    background: linear-gradient(135deg, #9f1d3f, #d14363);
   }
 
   .vexa-voice-ai-status {
@@ -103,6 +104,11 @@ const VOICE_AI_SCRIPT = `
 <script id="vexaVoiceAiScript">
 (function(){
   var audioUrl = '';
+  var recorder = null;
+  var streamRef = null;
+  var chunks = [];
+  var isListening = false;
+  var maxTimer = null;
 
   function byId(id) {
     return document.getElementById(id);
@@ -120,16 +126,83 @@ const VOICE_AI_SCRIPT = `
     sheet.setAttribute('aria-hidden', open ? 'false' : 'true');
   }
 
-  async function sendSelectedFile(event) {
-    var input = event.target;
-    var file = input && input.files && input.files[0];
-    if (!file) return;
+  function setListening(value) {
+    isListening = !!value;
+    var button = byId('vexaVoiceAiRecord');
+    if (!button) return;
+    button.classList.toggle('listening', isListening);
+    button.textContent = isListening ? 'Listening...' : 'Start Talking';
+  }
 
-    setStatus('Thinking...');
+  function cleanupStream() {
+    if (maxTimer) clearTimeout(maxTimer);
+    maxTimer = null;
+
+    if (streamRef) {
+      streamRef.getTracks().forEach(function(track){ track.stop(); });
+      streamRef = null;
+    }
+  }
+
+  function recorderOptions() {
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return {};
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return { mimeType: 'audio/webm;codecs=opus' };
+    if (MediaRecorder.isTypeSupported('audio/webm')) return { mimeType: 'audio/webm' };
+    if (MediaRecorder.isTypeSupported('audio/mp4')) return { mimeType: 'audio/mp4' };
+    return {};
+  }
+
+  async function startConversation() {
+    if (isListening) return;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      setStatus('Microphone is not available.');
+      return;
+    }
 
     try {
+      streamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = [];
+      recorder = new MediaRecorder(streamRef, recorderOptions());
+
+      recorder.ondataavailable = function(event) {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+      };
+
+      recorder.onstop = function() {
+        cleanupStream();
+        setListening(false);
+        sendAudio();
+      };
+
+      recorder.start();
+      setListening(true);
+      setStatus('Speak now. I will answer after you stop.');
+
+      maxTimer = setTimeout(stopConversation, 9000);
+    } catch (error) {
+      cleanupStream();
+      setListening(false);
+      setStatus('Microphone permission denied.');
+    }
+  }
+
+  function stopConversation() {
+    if (!recorder || recorder.state === 'inactive') return;
+    setStatus('Thinking...');
+    recorder.stop();
+  }
+
+  async function sendAudio() {
+    if (!chunks.length) {
+      setStatus('No voice recorded.');
+      return;
+    }
+
+    try {
+      var blob = new Blob(chunks, { type: 'audio/webm' });
       var form = new FormData();
-      form.append('audio', file, file.name || 'voice.webm');
+      form.append('audio', blob, 'voice.webm');
 
       var response = await fetch('/app/api/voice-ai', {
         method: 'POST',
@@ -141,29 +214,31 @@ const VOICE_AI_SCRIPT = `
         throw new Error(data.error || 'Voice AI failed');
       }
 
-      var blob = await response.blob();
+      var audioBlob = await response.blob();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
-      audioUrl = URL.createObjectURL(blob);
+      audioUrl = URL.createObjectURL(audioBlob);
 
       var player = byId('vexaVoiceAiPlayer');
       player.src = audioUrl;
       player.classList.add('ready');
-      setStatus('Answer ready.');
+      setStatus('Answer ready. Tap Start Talking again to continue.');
       player.play().catch(function(){});
     } catch (error) {
       setStatus(error && error.message ? error.message : 'Voice AI failed.');
-    } finally {
-      input.value = '';
     }
   }
 
   function boot() {
     var button = byId('vexaVoiceAiButton');
-    if (!button) return;
+    var record = byId('vexaVoiceAiRecord');
+    if (!button || !record) return;
 
     button.addEventListener('click', function(){ setSheet(true); });
     byId('vexaVoiceAiClose').addEventListener('click', function(){ setSheet(false); });
-    byId('vexaVoiceAiFile').addEventListener('change', sendSelectedFile);
+    record.addEventListener('click', function(){
+      if (isListening) stopConversation();
+      else startConversation();
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
@@ -180,9 +255,8 @@ const VOICE_AI_HTML = `
       <h3>AI Voice</h3>
       <button id="vexaVoiceAiClose" class="vexa-voice-ai-close" type="button">×</button>
     </div>
-    <label class="vexa-voice-ai-pick" for="vexaVoiceAiFile">Choose Voice</label>
-    <input id="vexaVoiceAiFile" class="vexa-voice-ai-file" type="file" accept="audio/*" />
-    <div id="vexaVoiceAiStatus" class="vexa-voice-ai-status">Choose a voice file.</div>
+    <button id="vexaVoiceAiRecord" class="vexa-voice-ai-record" type="button">Start Talking</button>
+    <div id="vexaVoiceAiStatus" class="vexa-voice-ai-status">Tap Start Talking, speak, then I answer.</div>
     <audio id="vexaVoiceAiPlayer" class="vexa-voice-ai-player" controls></audio>
   </div>
 </div>
