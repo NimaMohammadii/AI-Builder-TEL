@@ -19,9 +19,22 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   };
   var translated=false;
   function q(id){return document.getElementById(id)}
-  function lang(){var tg=window.Telegram&&window.Telegram.WebApp;var l=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.language_code)||navigator.language||'en';return String(l).toLowerCase().split('-')[0]}
+  function detectedLang(){
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var raw=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.language_code)||navigator.language||'en';
+    var l=String(raw).toLowerCase().split('-')[0];
+    if(dict[l])return l;
+    var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+    if(/Berlin|Vienna|Zurich/i.test(tz))return 'de';
+    if(/Tehran/i.test(tz))return 'fa';
+    if(/Istanbul/i.test(tz))return 'tr';
+    if(/Moscow|Volgograd|Yekaterinburg|Novosibirsk/i.test(tz))return 'ru';
+    if(/Dubai|Riyadh|Qatar|Kuwait|Bahrain|Muscat|Baghdad|Cairo/i.test(tz))return 'ar';
+    if(/Madrid|Mexico|Buenos_Aires|Bogota|Santiago|Lima/i.test(tz))return 'es';
+    return dict[l]?l:'de';
+  }
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
-  function textFor(i){var l=lang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
+  function textFor(i){var l=detectedLang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
   function img(day){return '/app/api/daily-rewards-day-image/'+(day-1)+'?v='+Date.now()}
   function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
   function bind(){var b=q('dailyInfoTranslate');if(b&&!b.__bound){b.__bound=true;b.onclick=function(){translated=!translated;b.textContent=translated?'English':'Translate';render()}}render()}
