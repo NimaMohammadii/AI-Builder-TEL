@@ -21,17 +21,16 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   var imgCache={};
   function q(id){return document.getElementById(id)}
   function detectedLang(){
-    var tg=window.Telegram&&window.Telegram.WebApp;
-    var raw=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.language_code)||navigator.language||'en';
-    var l=String(raw).toLowerCase().split('-')[0];
-    if(dict[l])return l;
     var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
-    if(/Berlin|Vienna|Zurich/i.test(tz))return 'de';
+    if(/Berlin|Vienna|Zurich|Amsterdam|Brussels|Luxembourg|Copenhagen|Stockholm|Oslo|Paris|Rome/i.test(tz))return 'de';
     if(/Tehran/i.test(tz))return 'fa';
     if(/Istanbul/i.test(tz))return 'tr';
     if(/Moscow|Volgograd|Yekaterinburg|Novosibirsk/i.test(tz))return 'ru';
     if(/Dubai|Riyadh|Qatar|Kuwait|Bahrain|Muscat|Baghdad|Cairo/i.test(tz))return 'ar';
     if(/Madrid|Mexico|Buenos_Aires|Bogota|Santiago|Lima/i.test(tz))return 'es';
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var raw=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.language_code)||navigator.language||'en';
+    var l=String(raw).toLowerCase().split('-')[0];
     return dict[l]?l:'de';
   }
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
