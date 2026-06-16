@@ -5,7 +5,6 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     #referral::-webkit-scrollbar{display:none}
     .referral-shell{display:grid;gap:12px;padding-top:2px}
     #referral .referral-top-card{margin:0 0 12px}
-    .referral-hero{display:none!important}
     .referral-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .referral-stat{border:0;border-radius:22px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px 0 rgba(255,255,255,.065),0 12px 28px rgba(0,0,0,.18);padding:12px;color:#fff;display:grid;gap:5px;text-align:center}
     .referral-stat strong{font-size:18px;line-height:1;font-weight:800;color:#fff}
@@ -43,7 +42,6 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
   </div>
   <script>
   (function(){
-    if(window.__vexaReferralReady)return;window.__vexaReferralReady=true;
     var tg=window.Telegram&&window.Telegram.WebApp;
     function q(id){return document.getElementById(id)}
     function uid(){return String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||localStorage.getItem('ownerId')||'')}
@@ -60,9 +58,9 @@ export const REFERRAL_SECTION = `<section id="referral" class="view referral-vie
     async function claimIfNeeded(id){var ref=refFromUrl();if(!id||!ref||ref===id)return;try{await api('/app/api/referral/claim',{method:'POST',body:JSON.stringify({userId:id,ref:ref})})}catch(e){}}
     function renderList(items){var box=q('referralList');if(!box)return;if(!items||!items.length){box.innerHTML='<p class="referral-note">No referrals yet</p>';return}box.innerHTML=items.slice(0,8).map(function(item){return '<div class="referral-row"><strong>'+String(item.invitedUserId||'Friend')+'</strong><span>'+(item.status==='rewarded'?'Rewarded':'Pending')+'</span></div>'}).join('')}
     async function load(){refreshTopCardImage();var id=uid();var link=linkFor(id||'');var linkBox=q('referralLinkBox');if(linkBox)linkBox.textContent=id?link:'Telegram user not found';if(id)localStorage.setItem('ownerId',id);await claimIfNeeded(id);if(!id)return;try{var data=await api('/app/api/referral?userId='+encodeURIComponent(id));if(q('referralInvitedCount'))q('referralInvitedCount').textContent=String(data.invitedCount||0);if(q('referralRewardedCount'))q('referralRewardedCount').textContent=String(data.rewardedCount||0);if(q('referralEarnedTon'))q('referralEarnedTon').textContent=formatTon(data.earnedNano||0);renderList(data.referrals||[])}catch(e){}}
-    document.addEventListener('click',function(ev){var id=uid();if(!id)return;var link=linkFor(id);if(ev.target&&ev.target.closest&&ev.target.closest('#referralCopyButton')){ev.preventDefault();try{navigator.clipboard&&navigator.clipboard.writeText(link)}catch(e){}var b=q('referralCopyButton');if(b){b.textContent='Copied';setTimeout(function(){b.textContent='Copy Link'},1200)}}if(ev.target&&ev.target.closest&&ev.target.closest('#referralShareButton')){ev.preventDefault();shareReferral()}},true);
-    document.addEventListener('click',function(){setTimeout(function(){if(document.getElementById('referral')&&document.getElementById('referral').classList.contains('active'))load()},80)},true);
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else setTimeout(load,100);
+    window.__vexaReferralLoad=load;
+    if(!window.__vexaReferralClickBound){window.__vexaReferralClickBound=true;document.addEventListener('click',function(ev){var id=uid();if(!id)return;var link=linkFor(id);if(ev.target&&ev.target.closest&&ev.target.closest('#referralCopyButton')){ev.preventDefault();try{navigator.clipboard&&navigator.clipboard.writeText(link)}catch(e){}var b=q('referralCopyButton');if(b){b.textContent='Copied';setTimeout(function(){b.textContent='Copy Link'},1200)}}if(ev.target&&ev.target.closest&&ev.target.closest('#referralShareButton')){ev.preventDefault();shareReferral()}},true);document.addEventListener('click',function(){setTimeout(function(){if(document.getElementById('referral')&&document.getElementById('referral').classList.contains('active')&&window.__vexaReferralLoad)window.__vexaReferralLoad()},80)},true)}
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else setTimeout(load,100);setTimeout(load,450);setTimeout(load,1000);
   })();
   </script>
 </section>`;
