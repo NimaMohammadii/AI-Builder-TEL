@@ -113,6 +113,18 @@ const VOICE_AI_SCRIPT = `
     source = null;
   }
 
+  function createVoiceMonitor(stream) {
+    var AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return false;
+
+    audioContext = new AudioCtor();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    return true;
+  }
+
   function monitorVoice() {
     if (!analyser || state !== 'listening') return;
 
@@ -152,12 +164,6 @@ const VOICE_AI_SCRIPT = `
       startedAt = Date.now();
       lastVoiceAt = startedAt;
 
-      audioContext = new AudioContext();
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source = audioContext.createMediaStreamSource(streamRef);
-      source.connect(analyser);
-
       recorder = new MediaRecorder(streamRef, recorderOptions());
       recorder.ondataavailable = function(event) {
         if (event.data && event.data.size > 0) chunks.push(event.data);
@@ -169,12 +175,16 @@ const VOICE_AI_SCRIPT = `
 
       recorder.start();
       setState('listening', 'Listening...');
-      frameId = requestAnimationFrame(monitorVoice);
+
+      if (createVoiceMonitor(streamRef)) {
+        frameId = requestAnimationFrame(monitorVoice);
+      }
+
       maxTimer = setTimeout(stopListening, MAX_RECORD_MS);
     } catch (error) {
       cleanupStream();
       active = false;
-      setState('idle', 'Mic Denied');
+      setState('idle', 'Mic Error');
     }
   }
 
