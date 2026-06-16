@@ -29,106 +29,20 @@ const DAILY_REWARDS_BOOTSTRAP = `
     style.textContent=${JSON.stringify(DAILY_REWARDS_STYLES + '\n' + DAILY_REWARDS_POLISH_STYLES)};
     document.head.appendChild(style);
   }
-  function countryToLang(country){
-    country=String(country||'').toUpperCase();
-    if(['IR','AF','TJ'].indexOf(country)>=0)return 'fa';
-    if(['DE','AT','CH','LI'].indexOf(country)>=0)return 'de';
-    if(country==='TR')return 'tr';
-    if(['RU','BY','KZ','KG'].indexOf(country)>=0)return 'ru';
-    if(['AE','SA','QA','KW','BH','OM','IQ','EG','JO','LB','SY','YE'].indexOf(country)>=0)return 'ar';
-    if(['ES','MX','AR','CO','CL','PE','VE','EC','BO','UY','PY','GT','CR','PA','DO'].indexOf(country)>=0)return 'es';
-    return '';
-  }
-  function timezoneToLang(){
-    var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
-    if(tz.indexOf('Tehran')>=0)return 'fa';
-    if(tz.indexOf('Berlin')>=0||tz.indexOf('Vienna')>=0||tz.indexOf('Zurich')>=0||tz.indexOf('Vaduz')>=0)return 'de';
-    if(tz.indexOf('Istanbul')>=0)return 'tr';
-    if(tz.indexOf('Moscow')>=0||tz.indexOf('Volgograd')>=0||tz.indexOf('Yekaterinburg')>=0||tz.indexOf('Novosibirsk')>=0)return 'ru';
-    if(tz.indexOf('Dubai')>=0||tz.indexOf('Riyadh')>=0||tz.indexOf('Qatar')>=0||tz.indexOf('Kuwait')>=0||tz.indexOf('Bahrain')>=0||tz.indexOf('Muscat')>=0||tz.indexOf('Baghdad')>=0||tz.indexOf('Cairo')>=0)return 'ar';
-    if(tz.indexOf('Madrid')>=0||tz.indexOf('Mexico')>=0||tz.indexOf('Buenos_Aires')>=0||tz.indexOf('Bogota')>=0||tz.indexOf('Santiago')>=0||tz.indexOf('Lima')>=0)return 'es';
-    return '';
-  }
-  function langFromTrace(text){
-    var lines=String(text||'').split(String.fromCharCode(10));
-    for(var i=0;i<lines.length;i++){
-      var line=lines[i]||'';
-      if(line.indexOf('loc=')===0)return countryToLang(line.slice(4,6));
-    }
-    return '';
-  }
-  function loadDailyInfoLang(){
-    if(dailyInfoLangReady)return Promise.resolve(dailyInfoLang);
-    return fetch('/cdn-cgi/trace',{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(text){
-      dailyInfoLang=langFromTrace(text)||timezoneToLang()||'en';
-      dailyInfoLangReady=true;
-      return dailyInfoLang;
-    }).catch(function(){dailyInfoLang=timezoneToLang()||'en';dailyInfoLangReady=true;return dailyInfoLang});
-  }
-  function mountDailyInfo(){
-    var current=document.getElementById('dailyrewardsinfo');
-    if(current)return current;
-    var main=document.querySelector('main.app')||document.body;
-    var holder=document.createElement('div');
-    holder.innerHTML=window.DAILY_REWARDS_INFO_SECTION||'';
-    var section=holder.firstElementChild;
-    if(section)main.appendChild(section);
-    return section;
-  }
+  function pingBack(){try{window.dispatchEvent(new Event('vexa-daily-info-change'))}catch(e){}}
+  function countryToLang(country){country=String(country||'').toUpperCase();if(['IR','AF','TJ'].indexOf(country)>=0)return 'fa';if(['DE','AT','CH','LI'].indexOf(country)>=0)return 'de';if(country==='TR')return 'tr';if(['RU','BY','KZ','KG'].indexOf(country)>=0)return 'ru';if(['AE','SA','QA','KW','BH','OM','IQ','EG','JO','LB','SY','YE'].indexOf(country)>=0)return 'ar';if(['ES','MX','AR','CO','CL','PE','VE','EC','BO','UY','PY','GT','CR','PA','DO'].indexOf(country)>=0)return 'es';return ''}
+  function timezoneToLang(){var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){};if(tz.indexOf('Tehran')>=0)return 'fa';if(tz.indexOf('Berlin')>=0||tz.indexOf('Vienna')>=0||tz.indexOf('Zurich')>=0||tz.indexOf('Vaduz')>=0)return 'de';if(tz.indexOf('Istanbul')>=0)return 'tr';if(tz.indexOf('Moscow')>=0||tz.indexOf('Volgograd')>=0||tz.indexOf('Yekaterinburg')>=0||tz.indexOf('Novosibirsk')>=0)return 'ru';if(tz.indexOf('Dubai')>=0||tz.indexOf('Riyadh')>=0||tz.indexOf('Qatar')>=0||tz.indexOf('Kuwait')>=0||tz.indexOf('Bahrain')>=0||tz.indexOf('Muscat')>=0||tz.indexOf('Baghdad')>=0||tz.indexOf('Cairo')>=0)return 'ar';if(tz.indexOf('Madrid')>=0||tz.indexOf('Mexico')>=0||tz.indexOf('Buenos_Aires')>=0||tz.indexOf('Bogota')>=0||tz.indexOf('Santiago')>=0||tz.indexOf('Lima')>=0)return 'es';return ''}
+  function langFromTrace(text){var lines=String(text||'').split(String.fromCharCode(10));for(var i=0;i<lines.length;i++){var line=lines[i]||'';if(line.indexOf('loc=')===0)return countryToLang(line.slice(4,6));}return ''}
+  function loadDailyInfoLang(){if(dailyInfoLangReady)return Promise.resolve(dailyInfoLang);return fetch('/cdn-cgi/trace',{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(text){dailyInfoLang=langFromTrace(text)||timezoneToLang()||'en';dailyInfoLangReady=true;return dailyInfoLang;}).catch(function(){dailyInfoLang=timezoneToLang()||'en';dailyInfoLangReady=true;return dailyInfoLang})}
+  function mountDailyInfo(){var current=document.getElementById('dailyrewardsinfo');if(current)return current;var main=document.querySelector('main.app')||document.body;var holder=document.createElement('div');holder.innerHTML=window.DAILY_REWARDS_INFO_SECTION||'';var section=holder.firstElementChild;if(section)main.appendChild(section);return section}
   function dailyInfoText(row){var l=dailyInfoLang||'en';return row[l]||row.en}
-  function renderDailyInfo(){
-    var box=document.getElementById('dailyInfoList');
-    if(!box)return;
-    box.innerHTML=dailyInfoRows.map(function(row,i){var day=i+1;return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="/app/api/daily-rewards-day-image/'+i+'" alt="" decoding="async" loading="lazy"></div><div class="daily-info-main"><em class="daily-info-day">Day '+day+'</em><b>'+row.title+'</b><small>'+dailyInfoText(row)+'</small></div></div>'}).join('');
-    dailyInfoRendered=true;
-  }
-  function closeDailyInfo(){
-    var section=document.getElementById('dailyrewardsinfo');
-    if(!section||!section.classList.contains('active'))return false;
-    if(dailyInfoCloseTimer)clearTimeout(dailyInfoCloseTimer);
-    section.classList.add('is-closing');
-    section.classList.remove('active');
-    section.setAttribute('aria-hidden','true');
-    var title=document.getElementById('brandTitle');
-    if(title)title.textContent='Home';
-    document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')==='home')});
-    dailyInfoCloseTimer=setTimeout(function(){section.classList.remove('is-closing');},220);
-    var tg=window.Telegram&&window.Telegram.WebApp;
-    if(tg&&tg.BackButton){setTimeout(function(){try{tg.BackButton.hide()}catch(e){}},230)}
-    return true;
-  }
-  function openDailyInfo(){
-    var section=mountDailyInfo();
-    if(!section)return;
-    if(dailyInfoCloseTimer)clearTimeout(dailyInfoCloseTimer);
-    var home=document.getElementById('home');
-    if(home){homeScrollTop=home.scrollTop||0;home.classList.add('active')}
-    if(!dailyInfoRendered)renderDailyInfo();
-    section.setAttribute('aria-hidden','false');
-    section.classList.remove('active','is-closing');
-    if(home)home.scrollTop=homeScrollTop;
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        section.classList.add('active');
-        if(home)home.scrollTop=homeScrollTop;
-      });
-    });
-    var tg=window.Telegram&&window.Telegram.WebApp;
-    if(tg&&tg.BackButton){try{tg.BackButton.show()}catch(e){}}
-    loadDailyInfoLang().then(function(){renderDailyInfo();if(home)home.scrollTop=homeScrollTop});
-  }
+  function renderDailyInfo(){var box=document.getElementById('dailyInfoList');if(!box)return;box.innerHTML=dailyInfoRows.map(function(row,i){var day=i+1;return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="/app/api/daily-rewards-day-image/'+i+'" alt="" decoding="async" loading="lazy"></div><div class="daily-info-main"><em class="daily-info-day">Day '+day+'</em><b>'+row.title+'</b><small>'+dailyInfoText(row)+'</small></div></div>'}).join('');dailyInfoRendered=true}
+  function closeDailyInfo(){var section=document.getElementById('dailyrewardsinfo');if(!section||!section.classList.contains('active'))return false;if(dailyInfoCloseTimer)clearTimeout(dailyInfoCloseTimer);section.classList.add('is-closing');section.classList.remove('active');section.setAttribute('aria-hidden','true');var title=document.getElementById('brandTitle');if(title)title.textContent='Home';document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')==='home')});dailyInfoCloseTimer=setTimeout(function(){section.classList.remove('is-closing');pingBack()},220);pingBack();return true}
+  function openDailyInfo(){var section=mountDailyInfo();if(!section)return;if(dailyInfoCloseTimer)clearTimeout(dailyInfoCloseTimer);var home=document.getElementById('home');if(home){homeScrollTop=home.scrollTop||0;home.classList.add('active')}if(!dailyInfoRendered)renderDailyInfo();section.setAttribute('aria-hidden','false');section.classList.remove('active','is-closing');if(home)home.scrollTop=homeScrollTop;requestAnimationFrame(function(){requestAnimationFrame(function(){section.classList.add('active');if(home)home.scrollTop=homeScrollTop;pingBack()})});loadDailyInfoLang().then(function(){renderDailyInfo();if(home)home.scrollTop=homeScrollTop})}
   window.__vexaOpenDailyInfo=openDailyInfo;
   window.__vexaCloseDailyInfo=closeDailyInfo;
   window.__vexaDailyInfoRender=renderDailyInfo;
-  document.addEventListener('click',function(ev){
-    var target=ev.target&&ev.target.closest?ev.target.closest('#home .home-finance-visual,[data-action="open-daily-guide"]'):null;
-    if(!target)return;
-    ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
-    openDailyInfo();
-  },true);
-  var tg=window.Telegram&&window.Telegram.WebApp;
-  if(tg&&tg.onEvent){try{tg.onEvent('backButtonClicked',function(){if(closeDailyInfo())return;})}catch(e){}}
-  if(tg&&tg.BackButton&&tg.BackButton.onClick){try{tg.BackButton.onClick(function(){if(closeDailyInfo())return;})}catch(e){}}
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-action="open-daily-guide"]'):null;if(!target)return;ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();openDailyInfo()},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mountDailyInfo();loadDailyInfoLang().then(renderDailyInfo)});else{mountDailyInfo();loadDailyInfoLang().then(renderDailyInfo)}
 })();
 `;
