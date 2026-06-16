@@ -4,6 +4,7 @@ import { DAILY_REWARDS_STYLES } from './daily-rewards-styles';
 import { DAILY_REWARDS_POLISH_STYLES } from './daily-rewards-polish-styles';
 import { DAILY_REWARDS_SCRIPT } from './daily-rewards-script';
 import { DAILY_REWARDS_INFO_SECTION } from './daily-rewards-info';
+import { DAILY_REWARDS_INFO_SCRIPT } from './daily-rewards-info-script';
 
 const DAILY_REWARDS_BOOTSTRAP = `
 (function(){
@@ -25,9 +26,15 @@ const DAILY_REWARDS_BOOTSTRAP = `
     if(section)main.insertBefore(section,document.querySelector('.tabs')||null);
     return section;
   }
+  function loadDailyInfoRenderer(){
+    if(window.__vexaDailyInfoScriptLoaded)return;
+    window.__vexaDailyInfoScriptLoaded=true;
+    try{new Function(${JSON.stringify(DAILY_REWARDS_INFO_SCRIPT)})();}catch(e){console.error('Daily Rewards info script failed',e)}
+  }
   function openDailyInfo(){
     var section=mountDailyInfo();
     if(!section)return;
+    loadDailyInfoRenderer();
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     section.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.remove('active')});
@@ -43,7 +50,7 @@ const DAILY_REWARDS_BOOTSTRAP = `
     ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
     openDailyInfo();
   },true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountDailyInfo);else mountDailyInfo();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mountDailyInfo();loadDailyInfoRenderer()});else{mountDailyInfo();loadDailyInfoRenderer()}
 })();
 `;
 
