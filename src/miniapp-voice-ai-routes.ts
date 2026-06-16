@@ -19,6 +19,12 @@ type VoiceRegion = {
   label: string;
   language: string;
   languageCode: string;
+  locked: boolean;
+};
+
+type RegionRow = {
+  region_code: string | null;
+  language_code: string | null;
 };
 
 const VOICE_AI_ELEVENLABS_VOICE_ID = 'TX3LPaxmHKxFdv7VOQHJ';
@@ -27,15 +33,24 @@ const VOICE_AI_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const VOICE_AI_MAX_REPLY_CHARS = 1200;
 
 const VOICE_REGIONS: Record<string, VoiceRegion> = {
-  global: { code: 'global', label: 'Global', language: 'English', languageCode: 'en' },
-  iran: { code: 'iran', label: 'Iran', language: 'Persian / Farsi', languageCode: 'fa' },
-  turkey: { code: 'turkey', label: 'Turkey', language: 'Turkish', languageCode: 'tr' },
-  germany: { code: 'germany', label: 'Germany', language: 'German', languageCode: 'de' },
-  arabic: { code: 'arabic', label: 'Arabic', language: 'Arabic', languageCode: 'ar' },
-  russia: { code: 'russia', label: 'Russia', language: 'Russian', languageCode: 'ru' },
-  spain: { code: 'spain', label: 'Spain', language: 'Spanish', languageCode: 'es' },
-  brazil: { code: 'brazil', label: 'Brazil', language: 'Portuguese', languageCode: 'pt' },
-  france: { code: 'france', label: 'France', language: 'French', languageCode: 'fr' },
+  US: { code: 'US', label: 'United States', language: 'English', languageCode: 'en', locked: true },
+  TR: { code: 'TR', label: 'Turkey', language: 'Turkish', languageCode: 'tr', locked: true },
+  DE: { code: 'DE', label: 'Germany', language: 'German', languageCode: 'de', locked: true },
+  AE: { code: 'AE', label: 'UAE', language: 'Arabic', languageCode: 'ar', locked: true },
+  SA: { code: 'SA', label: 'Saudi Arabia', language: 'Arabic', languageCode: 'ar', locked: true },
+  RU: { code: 'RU', label: 'Russia', language: 'Russian', languageCode: 'ru', locked: true },
+  IN: { code: 'IN', label: 'India', language: 'English', languageCode: 'en', locked: true },
+  BR: { code: 'BR', label: 'Brazil', language: 'Portuguese', languageCode: 'pt', locked: true },
+  IR: { code: 'IR', label: 'Iran', language: 'Persian / Farsi', languageCode: 'fa', locked: true },
+  OTHER: { code: 'OTHER', label: 'Other', language: 'English', languageCode: 'en', locked: true },
+};
+
+const FALLBACK_REGION: VoiceRegion = {
+  code: 'AUTO',
+  label: 'Auto',
+  language: 'the user language',
+  languageCode: '',
+  locked: false,
 };
 
 app.post('/app/api/voice-ai', async (c) => {
@@ -51,7 +66,7 @@ app.post('/app/api/voice-ai', async (c) => {
 
   const form = await c.req.formData().catch(() => null);
   const file = form?.get('audio');
-  const region = resolveRegion(form);
+  const region = await resolveRegion(env, form);
 
   if (!(file instanceof File)) {
     return c.json({ error: 'Audio file is required.' }, 400);
@@ -82,23 +97,59 @@ app.post('/app/api/voice-ai', async (c) => {
   }
 });
 
-function resolveRegion(form: FormData | null): VoiceRegion {
-  const rawRegion = String(form?.get('region') || '').trim().toLowerCase();
-  const rawLanguageCode = String(form?.get('languageCode') || '').trim().toLowerCase();
+async function resolveRegion(env: EnvWithVoiceAi, form: FormData | null): Promise<VoiceRegion> {
+  const userId = readTelegramUserId(String(form?.get('initData') || ''));
 
-  if (rawRegion && VOICE_REGIONS[rawRegion]) {
-    return VOICE_REGIONS[rawRegion];
+  if (!userId) {
+    return FALLBACK_REGION;
   }
 
-  const byLanguage = Object.values(VOICE_REGIONS).find((item) => item.languageCode === rawLanguageCode);
-  return byLanguage || VOICE_REGIONS.global;
+  const row = await env.DB.prepare('SELECT region_code, language_code FROM app_users WHERE telegram_user_id = ?')
+    .bind(userId)
+    .first<RegionRow>()
+    .catch(() => null);
+
+  const regionCode = String(row?.region_code || '').trim().toUpperCase();
+  const languageCode = String(row?.language_code || '').trim().toLowerCase();
+
+  if (regionCode && VOICE_REGIONS[regionCode]) {
+    return VOICE_REGIONS[regionCode];
+  }
+
+  const byLanguage = Object.values(VOICE_REGIONS).find((item) => item.languageCode === languageCode);
+  return byLanguage || FALLBACK_REGION;
+}
+
+function readTelegramUserId(initData: string): string {
+  if (!initData) return '';
+
+  try {
+    const params = new URLSearchParams(initData);
+    const rawUser = params.get('user') || '';
+    if (!rawUser) return '';
+
+    const user = JSON.parse(rawUser) as { id?: number | string };
+    const id = String(user.id || '').trim();
+    return /^\d+$/.test(id) ? id : '';
+  } catch {
+    return '';
+  }
 }
 
 function voicePrompt(region: VoiceRegion): string {
+  if (!region.locked) {
+    return [
+      'You are a live voice assistant inside a Telegram Mini App.',
+      'The input is a speech transcript and may contain transcription mistakes.',
+      'Reply in the user language.',
+      'Keep the answer short, conversational, and easy to understand when spoken aloud.',
+    ].join('\n');
+  }
+
   return [
     'You are a live voice assistant inside a Telegram Mini App.',
     'The input is a speech transcript and may contain transcription mistakes.',
-    `The user selected region: ${region.label}.`,
+    `The user selected region in the bot: ${region.label}.`,
     `Always reply in this region language: ${region.language}.`,
     'Do not switch language just because the transcription looks mixed or noisy.',
     'Only switch language if the user clearly asks for translation or asks you to speak another language.',
