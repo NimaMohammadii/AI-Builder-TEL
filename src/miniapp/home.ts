@@ -10,7 +10,8 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-finance-card strong{display:block!important;font-size:18px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.055em!important;text-align:center!important}
     #home .home-finance-card span:not(.home-finance-icon){display:block!important;font-size:11px!important;line-height:1.25!important;font-weight:650!important;color:rgba(255,255,255,.58)!important;text-align:center!important}
     #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:184px 184px!important;gap:6px!important;align-items:start!important}
-    #home .home-finance-visual{height:184px!important;min-height:184px!important;max-height:184px!important}
+    #home .home-finance-visual{height:184px!important;min-height:184px!important;max-height:184px!important;border:0!important;background:transparent!important;padding:0!important;display:grid!important;place-items:center!important;cursor:pointer!important}
+    #home .home-finance-visual img{pointer-events:none!important}
     #home .home-finance-extra-visual{height:184px!important;min-height:184px!important;max-height:184px!important;margin:0!important;border-radius:0!important;overflow:visible!important;background:transparent!important;padding:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-sizing:border-box!important}
     #home .home-finance-extra-visual img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;border-radius:0!important;display:block!important;background:transparent!important;box-shadow:none!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.22))}
   </style>
@@ -38,9 +39,9 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </button>
     </div>
     <div class="home-finance-visual-stack">
-      <div class="home-finance-visual">
+      <button class="home-finance-visual" type="button" data-view="dailyrewardsinfo" aria-label="Open daily rewards guide">
         <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
-      </div>
+      </button>
       <div class="home-finance-extra-visual">
         <img src="/app/api/section-lock-image/home/locked.png" alt="" decoding="async" onerror="this.closest('.home-finance-extra-visual').style.display='none'"/>
       </div>
