@@ -85,24 +85,31 @@ body > #transactionsSheet .deposit-title h3,
 }
 body > #transactionsSheet .deposit-close,
 #transactionsSheet .deposit-close{
-  width:38px!important;
-  height:38px!important;
-  min-width:38px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
   padding:0!important;
-  border:0!important;
-  background:rgba(255,255,255,.035)!important;
-  color:#fff!important;
+  border:1px solid rgba(255,255,255,.105)!important;
+  border-radius:999px!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.095),rgba(255,255,255,.026))!important;
+  color:rgba(255,255,255,.78)!important;
   display:grid!important;
   place-items:center!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;
-  backdrop-filter:blur(6px)!important;
-  -webkit-backdrop-filter:blur(6px)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 26px rgba(0,0,0,.18)!important;
+  backdrop-filter:blur(10px) saturate(1.14)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(1.14)!important;
 }
 body > #transactionsSheet .deposit-close svg,
 #transactionsSheet .deposit-close svg{
-  width:20px!important;
-  height:20px!important;
+  width:14px!important;
+  height:14px!important;
   display:block!important;
+  opacity:.86!important;
+}
+body > #transactionsSheet .deposit-close svg path,
+#transactionsSheet .deposit-close svg path{
+  stroke-width:1.75!important;
+  stroke-linecap:round!important;
 }
 body > #transactionsSheet .deposit-copy,
 #transactionsSheet .deposit-copy{
