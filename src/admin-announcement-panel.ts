@@ -29,6 +29,7 @@ export const ADMIN_ANNOUNCEMENT_PANEL_SCRIPT = `<script>
       throw e;
     }finally{clearTimeout(timer)}
   }
+  async function live(){try{await post('/admin/api/section-lock-events/broadcast',{})}catch(e){}}
   var draftId='';
   document.addEventListener('click',async function(e){
     var b=e.target&&e.target.closest?e.target.closest('[data-ann]'):null;if(!b)return;
@@ -48,11 +49,15 @@ export const ADMIN_ANNOUNCEMENT_PANEL_SCRIPT = `<script>
       if(act==='publish'){
         if(!draftId)throw new Error('Generate preview first.');
         status('Publishing...');
-        status(JSON.stringify(await post('/admin/api/vexa-voice/publish',{draftId:draftId,regions:regions()}),null,2));
+        var published=await post('/admin/api/vexa-voice/publish',{draftId:draftId,regions:regions()});
+        await live();
+        status(JSON.stringify(Object.assign({live:true},published),null,2));
       }
       if(act==='disable'){
         status('Disabling...');
-        status(JSON.stringify(await post('/admin/api/vexa-voice/admin-message',{enabled:false,regions:regions()}),null,2));
+        var disabled=await post('/admin/api/vexa-voice/admin-message',{enabled:false,regions:regions()});
+        await live();
+        status(JSON.stringify(Object.assign({live:true},disabled),null,2));
       }
     }catch(err){status(err&&err.message?err.message:'Failed')}finally{lock(false)}
   },true);
