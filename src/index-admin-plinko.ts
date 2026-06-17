@@ -1,6 +1,7 @@
 import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { getPlinkoVirtualUsers, resetPlinkoVirtualUsers, savePlinkoVirtualUsers } from './plinko-virtual-users';
+import { getCrashVirtualUsers, resetCrashVirtualUsers, saveCrashVirtualUsers } from './crash-virtual-users-config';
 import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from './slot-virtual-users';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
@@ -270,6 +271,26 @@ app.post('/admin/api/plinko-virtual-users/reset', async (c) => {
   return c.json(await resetPlinkoVirtualUsers(c.env));
 });
 
+
+
+app.get('/admin/api/crash-virtual-users', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await getCrashVirtualUsers(c.env));
+});
+
+app.post('/admin/api/crash-virtual-users', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    return c.json(await saveCrashVirtualUsers(c.env, await c.req.json()));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save Crash virtual users' }, 400);
+  }
+});
+
+app.post('/admin/api/crash-virtual-users/reset', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await resetCrashVirtualUsers(c.env));
+});
 
 app.get('/admin/api/slot-virtual-users', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
