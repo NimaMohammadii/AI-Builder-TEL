@@ -4,6 +4,7 @@ import './predict-extra-market-routes';
 import './predict-routes';
 import './predict-entry-loader-routes';
 import './section-lock-event-routes';
+import './vexa-voice-message-routes';
 import './crash-routes';
 import './slot-frame';
 import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
@@ -17,25 +18,15 @@ type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; de
 
 const REGIONS: RegionConfig[] = [
   { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
-  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
-  { code: 'UA', label: '🇺🇦 Ukraine', language: 'uk', timezone: 'Europe/Kyiv' },
-  { code: 'CN', label: '🇨🇳 China', language: 'zh', timezone: 'Asia/Shanghai' },
-  { code: 'GB', label: '🇬🇧 United Kingdom', language: 'en', timezone: 'Europe/London' },
-  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
-  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
-  { code: 'AU', label: '🇦🇺 Australia', language: 'en', timezone: 'Australia/Sydney' },
-  { code: 'JP', label: '🇯🇵 Japan', language: 'ja', timezone: 'Asia/Tokyo' },
-  { code: 'KR', label: '🇰🇷 South Korea', language: 'ko', timezone: 'Asia/Seoul' },
-  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
-  { code: 'AE', label: '🇦🇪 Middle East', language: 'ar', timezone: 'Asia/Dubai' },
   { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
   { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
-  { code: 'ID', label: '🇮🇩 Indonesia', language: 'id', timezone: 'Asia/Jakarta' },
-  { code: 'EU', label: '🇪🇺 Europe', language: 'en', timezone: 'Europe/Berlin' },
-  { code: 'ASIA', label: '🌏 Asia', language: 'en', timezone: 'Asia/Singapore' },
-  { code: 'AM', label: '🌎 Americas', language: 'en', timezone: 'America/New_York' },
-  { code: 'AF', label: '🌍 Africa', language: 'en', timezone: 'Africa/Lagos' },
-  { code: 'OTHER', label: '🌐 Other', language: 'en', timezone: 'UTC' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
 ];
 
 const DETAIL_POLISH_SCRIPT = `
@@ -261,68 +252,26 @@ async function deleteTelegramMessage(token: string, chatId: number, messageId: n
   await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId });
 }
 
+function handleTonConnectManifest(request: Request): Response | null {
+  const url = new URL(request.url);
+  const origin = url.origin;
+  if (url.pathname !== '/tonconnect-manifest.json' && url.pathname !== '/app/api/tonconnect-manifest.json') return null;
+  return Response.json({ url: origin, name: 'Vexa FLOW', iconUrl: `${origin}/app/api/credit-icon.png` }, { headers: { 'cache-control': 'public, max-age=3600' } });
+}
+
 async function telegram<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
   return response.json() as Promise<T>;
 }
 
-function handleTonConnectManifest(request: Request): Response | null {
-  const url = new URL(request.url);
-  if (url.pathname !== '/tonconnect-manifest.json' && url.pathname !== '/app/api/tonconnect-manifest.json') return null;
-  const origin = url.origin;
-  return Response.json({
-    url: `${origin}/app`,
-    name: 'Vexa FLOW',
-    iconUrl: `${origin}/app/api/credit-icon.png`,
-  }, {
-    headers: {
-      'cache-control': 'no-store',
-      'access-control-allow-origin': '*',
-      'content-type': 'application/json; charset=utf-8',
-    },
-  });
-}
-
-async function handleStarsDepositRoute(request: Request, env: Env): Promise<Response | null> {
-  const url = new URL(request.url);
-  if (url.pathname !== '/app/api/stars/deposits') return null;
-  try {
-    if (request.method === 'POST') {
-      const body = await request.json().catch(() => ({})) as { userId?: string; stars?: unknown };
-      return Response.json(await createStarsDeposit(env, String(body.userId || ''), body.stars), { headers: { 'cache-control': 'no-store' } });
-    }
-    if (request.method === 'GET') {
-      return Response.json(await listUserStarsDeposits(env, String(url.searchParams.get('userId') || '')), { headers: { 'cache-control': 'no-store' } });
-    }
-    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: { 'cache-control': 'no-store' } });
-  } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Stars deposit failed' }, { status: 400, headers: { 'cache-control': 'no-store' } });
-  }
-}
-
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const manifestRoute = handleTonConnectManifest(request);
-    if (manifestRoute) return manifestRoute;
-    const starsRoute = await handleStarsDepositRoute(request, env);
-    if (starsRoute) return starsRoute;
-    const gameRegionResponse = await handleGameBotRegionUpdate(request, env).catch((error) => {
-      console.error('game region update failed', error);
-      return Response.json({ ok: true, recovered: true, bot: 'game' });
-    });
-    if (gameRegionResponse) return gameRegionResponse;
-    const fastResponse = await handleFastTelegramUpdate(request, env).catch((error) => {
-      console.error('fast telegram update failed', error);
-      return Response.json({ ok: true, recovered: true });
-    });
-    if (fastResponse) return fastResponse;
-    const response = await app.fetch(request, env, ctx);
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) return response;
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    headers.set('cache-control', 'no-store');
-    return new Response(html.replace('</body>', `<script>${DETAIL_POLISH_SCRIPT}</script></body>`), { status: response.status, headers });
-  },
+app.fetch = async (request: Request, env: Env, ctx: ExecutionContext) => {
+  const manifest = handleTonConnectManifest(request);
+  if (manifest) return manifest;
+  const fast = await handleFastTelegramUpdate(request, env);
+  if (fast) return fast;
+  const gameRegion = await handleGameBotRegionUpdate(request, env);
+  if (gameRegion) return gameRegion;
+  return app.request(request, env, ctx);
 };
+
+export default app;
