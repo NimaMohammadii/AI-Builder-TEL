@@ -17,48 +17,37 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
     ru:['Получи 0.05 TON как гарантированную стартовую награду.','Получи 20% кэшбэк с проигрышей на 24 часа после получения.','Получи 0.30 TON как гарантированный буст баланса.','Получи 3 безрисковые игры для выбранных игр.','Получи 2 бесплатные игры в слоты. Выигрыш остается, проигрыш не списывается.','Открой более сильный день наград с дополнительным потенциалом выигрыша.','Дойди до последнего дня ради крупнейшего недельного шанса на награду.'],
     es:['Reclama 0.05 TON como recompensa inicial garantizada.','Obtén 20% de cashback en pérdidas durante 24 horas después de reclamar.','Reclama 0.30 TON como impulso garantizado de saldo.','Recibe 3 jugadas sin riesgo para juegos seleccionados.','Obtén 2 jugadas gratis en slots. Las ganancias son tuyas y las pérdidas no descuentan saldo.','Desbloquea un día de recompensa más fuerte con potencial extra de ganar.','Llega al último día para la mayor oportunidad de recompensa semanal.']
   };
-  var translated=false;
+  var translated=true;
   var imgCache={};
   var regionLang='';
   var regionReady=false;
+  var regionPromise=null;
+  var CACHE_KEY='vexa:selectedLanguageCode';
   function q(id){return document.getElementById(id)}
-  function countryToLang(country){
-    country=String(country||'').toUpperCase();
-    if(['IR','AF','TJ'].indexOf(country)>=0)return 'fa';
-    if(['DE','AT','CH','LI'].indexOf(country)>=0)return 'de';
-    if(['TR'].indexOf(country)>=0)return 'tr';
-    if(['RU','BY','KZ','KG'].indexOf(country)>=0)return 'ru';
-    if(['AE','SA','QA','KW','BH','OM','IQ','EG','JO','LB','SY','YE'].indexOf(country)>=0)return 'ar';
-    if(['ES','MX','AR','CO','CL','PE','VE','EC','BO','UY','PY','GT','CR','PA','DO'].indexOf(country)>=0)return 'es';
-    return '';
-  }
-  function timezoneToLang(){
-    var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
-    if(/Tehran/i.test(tz))return 'fa';
-    if(/Berlin|Vienna|Zurich|Vaduz/i.test(tz))return 'de';
-    if(/Istanbul/i.test(tz))return 'tr';
-    if(/Moscow|Volgograd|Yekaterinburg|Novosibirsk/i.test(tz))return 'ru';
-    if(/Dubai|Riyadh|Qatar|Kuwait|Bahrain|Muscat|Baghdad|Cairo/i.test(tz))return 'ar';
-    if(/Madrid|Mexico|Buenos_Aires|Bogota|Santiago|Lima/i.test(tz))return 'es';
-    return '';
-  }
+  function currentTgUser(){try{var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}catch(e){return {}}}
+  function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
+  function cachedLang(){try{var l=String(localStorage.getItem(CACHE_KEY)||'').trim().toLowerCase();return /^[a-z]{2,3}$/.test(l)?l:''}catch(e){return ''}}
+  function saveLang(lang){try{if(/^[a-z]{2,3}$/.test(lang))localStorage.setItem(CACHE_KEY,lang)}catch(e){}}
   function loadRegionLang(){
-    if(regionReady)return Promise.resolve(regionLang);
-    return fetch('/cdn-cgi/trace',{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(text){
-      var m=String(text||'').match(/(?:^|\n)loc=([A-Za-z]{2})/);
-      regionLang=countryToLang(m&&m[1])||timezoneToLang()||'en';
-      regionReady=true;
-      return regionLang;
-    }).catch(function(){regionLang=timezoneToLang()||'en';regionReady=true;return regionLang});
+    if(regionReady)return Promise.resolve(regionLang||'en');
+    if(regionPromise)return regionPromise;
+    var id=userId();
+    var url='/app/api/daily-rewards'+(id?'?userId='+encodeURIComponent(id):'');
+    regionPromise=fetch(url,{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(json){
+      var lang=String((json&&json.locale&&json.locale.languageCode)||'').trim().toLowerCase();
+      if(!/^[a-z]{2,3}$/.test(lang))lang='en';
+      regionLang=lang;regionReady=true;saveLang(lang);return regionLang;
+    }).catch(function(){regionLang=cachedLang()||'en';regionReady=true;return regionLang});
+    return regionPromise;
   }
-  function detectedLang(){return regionReady?(regionLang||'en'):(timezoneToLang()||'en')}
+  function detectedLang(){return regionReady?(regionLang||'en'):(cachedLang()||'en')}
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
   function textFor(i){var l=detectedLang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
   function img(day){var key=String(day);if(!imgCache[key])imgCache[key]='/app/api/daily-rewards-day-image/'+(day-1);return imgCache[key]}
   function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
-  function bind(){var b=q('dailyInfoTranslate');if(b&&!b.__bound){b.__bound=true;b.onclick=function(){translated=!translated;b.textContent=translated?'English':'Translate';render();if(translated&&!regionReady)loadRegionLang().then(render)}}render();loadRegionLang().then(function(){if(translated)render()})}
+  function bind(){var cached=cachedLang();if(cached){regionLang=cached;regionReady=true;render()}else{var box=q('dailyInfoList');if(box)box.innerHTML=''}loadRegionLang().then(render)}
   window.__vexaDailyInfoRender=render;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(){setTimeout(function(){if(q('dailyrewardsinfo')&&q('dailyrewardsinfo').classList.contains('active'))bind()},90)},true);
+  document.addEventListener('click',function(){setTimeout(function(){if(q('dailyrewardsinfo')&&q('dailyrewardsinfo').classList.contains('active'))bind()},20)},true);
 })();
 `;
