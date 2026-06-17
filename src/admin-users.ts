@@ -21,7 +21,12 @@ type AdminUserRow = {
   source: string | null;
 };
 
-type BulkDeleteResult = { ok: true; deleted: Record<string, number>; kvDeleted: number };
+type ClientResetState = { resetVersion: string; resetAllVersion: string };
+type BulkDeleteResult = { ok: true; deleted: Record<string, number>; kvDeleted: number; resetAllVersion: string };
+
+const CLIENT_RESET_PREFIX = 'miniapp-client-reset:';
+const CLIENT_RESET_ALL_KEY = 'miniapp-client-reset:all';
+const CLIENT_RESET_TTL_SECONDS = 180 * 24 * 60 * 60;
 
 export async function trackTelegramBotUser(env: Env, botId: string, update: TelegramUpdate): Promise<void> {
   const from = update.message?.from ?? update.callback_query?.from ?? update.pre_checkout_query?.from;
@@ -43,7 +48,7 @@ export async function trackTelegramBotUser(env: Env, botId: string, update: Tele
   }
 }
 
-export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; tonBalanceNano: number } | { ok: false; error: string }> {
+export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; tonBalanceNano: number; resetVersion: string; resetAllVersion: string } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
   if (!userId) return { ok: false, error: 'Missing user id' };
   const username = cleanText(payload.username, 80);
@@ -53,6 +58,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
   try {
     await ensureTonBalanceColumn(env);
     const controls = await getUserControls(env, userId);
+    const resetState = await getClientResetState(env, userId);
     const tonBalanceNano = Math.max(0, Math.floor(Number(controls.tonBalanceNano ?? 0) || 0));
     await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -66,7 +72,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
       .run();
     await recordDailyRewardEvent(env, { userId, eventType: 'open_app' }).catch((error) => console.warn('daily rewards open_app progress failed', error));
     await recordDailyRewardEvent(env, { userId, eventType: 'open_section', section }).catch((error) => console.warn('daily rewards open_section progress failed', error));
-    return { ok: true, tonBalanceNano };
+    return { ok: true, tonBalanceNano, ...resetState };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };
@@ -125,14 +131,15 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
   return { users, stats: { total: users.length, online, inactive: users.length - online, aiBot, gameBot, userBot, totalTonBalanceNano } };
 }
 
-export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promise<{ ok: true; userId: string; deleted: Record<string, number>; kvDeleted: number }> {
+export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promise<{ ok: true; userId: string; deleted: Record<string, number>; kvDeleted: number; resetVersion: string }> {
   const userId = cleanUserId(userIdInput);
   const deleted: Record<string, number> = {};
   for (const [table, column] of userTableDeletes()) {
     deleted[table] = await safeDelete(env, table, column, userId);
   }
   const kvDeleted = await deleteUserKv(env, userId);
-  return { ok: true, userId, deleted, kvDeleted };
+  const resetVersion = await markClientReset(env, userId);
+  return { ok: true, userId, deleted, kvDeleted, resetVersion };
 }
 
 export async function resetAllUsersEverywhere(env: Env): Promise<BulkDeleteResult> {
@@ -141,7 +148,8 @@ export async function resetAllUsersEverywhere(env: Env): Promise<BulkDeleteResul
     deleted[table] = await safeDeleteAll(env, table);
   }
   const kvDeleted = await deleteAllUserKv(env);
-  return { ok: true, deleted, kvDeleted };
+  const resetAllVersion = await markAllClientReset(env);
+  return { ok: true, deleted, kvDeleted, resetAllVersion };
 }
 
 function userTableDeletes(): Array<[string, string]> {
@@ -225,6 +233,31 @@ async function deleteAllUserKv(env: Env): Promise<number> {
   let count = 0;
   for (const prefix of prefixes) count += await deleteKvByPrefix(env, prefix);
   return count;
+}
+
+async function getClientResetState(env: Env, userId: string): Promise<ClientResetState> {
+  const cleanId = cleanUserId(userId);
+  const [resetVersion, resetAllVersion] = await Promise.all([
+    env.BOT_CACHE.get(`${CLIENT_RESET_PREFIX}${cleanId}`).catch(() => ''),
+    env.BOT_CACHE.get(CLIENT_RESET_ALL_KEY).catch(() => ''),
+  ]);
+  return { resetVersion: resetVersion || '', resetAllVersion: resetAllVersion || '' };
+}
+
+async function markClientReset(env: Env, userId: string): Promise<string> {
+  const version = resetVersion();
+  await env.BOT_CACHE.put(`${CLIENT_RESET_PREFIX}${userId}`, version, { expirationTtl: CLIENT_RESET_TTL_SECONDS }).catch(() => undefined);
+  return version;
+}
+
+async function markAllClientReset(env: Env): Promise<string> {
+  const version = resetVersion();
+  await env.BOT_CACHE.put(CLIENT_RESET_ALL_KEY, version, { expirationTtl: CLIENT_RESET_TTL_SECONDS }).catch(() => undefined);
+  return version;
+}
+
+function resetVersion(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 async function deleteKvByPrefix(env: Env, prefix: string): Promise<number> {
