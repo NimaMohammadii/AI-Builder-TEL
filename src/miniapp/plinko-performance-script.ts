@@ -2,6 +2,7 @@ export const PLINKO_PERFORMANCE_SCRIPT = `
 (function(){
   var activeDrops=0;
   var lastDropAt=0;
+  var playTimer=0;
   var MAX_SMOOTH_DROPS=3;
   var DROP_COOLDOWN_MS=420;
   var DROP_LIFETIME_MS=4300;
@@ -14,8 +15,22 @@ export const PLINKO_PERFORMANCE_SCRIPT = `
     clearTimeout(n.__vexaTimer);
     n.__vexaTimer=setTimeout(function(){n.style.display='none'},2400);
   }
+  function ensureStyle(){
+    if(q('plinkoPerformanceGuardStyle'))return;
+    var style=document.createElement('style');
+    style.id='plinkoPerformanceGuardStyle';
+    style.textContent='#plinkoCanvasV2,#plinko .plinko-stage{contain:layout paint style;transform:translateZ(0)}#plinkoLiveHistoryFeed{contain:layout paint style;content-visibility:auto;contain-intrinsic-size:374px 220px}.plinko-history-list{contain:layout paint style;content-visibility:auto;contain-intrinsic-size:350px 220px}body.plinko-animation-active #plinkoLiveHistoryFeed{content-visibility:hidden!important;pointer-events:none!important}';
+    document.head.appendChild(style);
+  }
   function isPlinkoVisible(){var view=q('plinko');return !!(view&&view.classList.contains('active'))}
-  function releaseDrop(){activeDrops=Math.max(0,activeDrops-1)}
+  function setPlaying(){
+    if(!isPlinkoVisible())return;
+    document.body.classList.add('plinko-animation-active');
+    clearTimeout(playTimer);
+    playTimer=setTimeout(function(){document.body.classList.remove('plinko-animation-active')},DROP_LIFETIME_MS+500);
+  }
+  function releaseDrop(){activeDrops=Math.max(0,activeDrops-1);if(activeDrops===0&&!isPlinkoVisible())document.body.classList.remove('plinko-animation-active')}
+  ensureStyle();
   document.addEventListener('click',function(ev){
     var button=ev.target&&ev.target.closest&&ev.target.closest('[data-action="drop-plinko-ball"]');
     if(!button||!isPlinkoVisible())return;
@@ -33,10 +48,11 @@ export const PLINKO_PERFORMANCE_SCRIPT = `
     }
     lastDropAt=now;
     activeDrops+=1;
+    setPlaying();
     button.classList.add('plinko-drop-active');
     setTimeout(function(){button.classList.remove('plinko-drop-active')},180);
     setTimeout(releaseDrop,DROP_LIFETIME_MS);
   },true);
-  document.addEventListener('visibilitychange',function(){if(document.hidden)activeDrops=0});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){activeDrops=0;document.body.classList.remove('plinko-animation-active');clearTimeout(playTimer)}});
 })();
 `;
