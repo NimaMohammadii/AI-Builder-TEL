@@ -13,6 +13,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   var virtualNonce=0;
   var liveHourStartedAt=0;
   var liveHourlyTurnover=null;
+  var plinkoVirtualConfigLoaded=false;
   var plinkoVirtualProfiles=['amir','Nika','Parsa','Sarina','Arian','Melika','reza','Mina','Setareh','Arman','Darya','Kian','Pouya','Nora','Saba','Navid','Ali','Raha','Tina','Mahan','Yasmin','Sina','Ava','Shayan','Hana','Bardia','Soren','Negar','Radin','Matin','Amir Hosseini','Nika Rahimi','Parsa Jafari','Melika Amini','Arian Zarei','Mina Tavakoli','Saba Pourali','Reza Mahdavi','Sara Nikpour','Kian Ahmadi','Navid Ghaemi','Arman Karimi','Darya Mehrabi','Shayan Bagheri','Ava Farhadi','Pouya Samadi','Nora Eskandari','Setareh Saeedi','Raha Niknam','Sarina Moradi','Tina Ebrahimi','Mahan Rezaei','Sina Rostami','Negar Asadi','Radin Safari','Matin Peyman','@amirton','crypto_parsa','n1ka','tonboy','MeliKa_77','arian.win','mina_ton','saba777','realreza','pouya_x','noraaa','shayan.bet','ava_ton','king_arman','darya24','kianx','navid_pro','seti','mahdi_ton','sara88','TON Hunter','Lucky Parsa','ArianX','Mina Moon','Saba Ton','Reza Max','Nika Play','Dark Amir','Melika Gold','Pouya Win','No Name','Player 248','user_9271','TON Player','Lucky User','Guest 41','vexa_user','Moon Boy','Diamond','King','Nikaaa','پارسا','امیر','ملیکا','رضا','سارا'];
 
 
@@ -168,16 +169,34 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     return Math.abs(Math.floor(x))%Math.max(1,max);
   }
 
+  function virtualProfile(profileIndex,seed){
+    if(!plinkoVirtualProfiles.length)return {name:'Player',amount:1};
+    var item=plinkoVirtualProfiles[Math.abs(profileIndex+randomIndex(seed+profileIndex*101,plinkoVirtualProfiles.length))%plinkoVirtualProfiles.length];
+    if(typeof item==='string')return {name:item,amount:null};
+    return item||{name:'Player',amount:1};
+  }
+
   function virtualName(profileIndex,seed){
-    if(!plinkoVirtualProfiles.length)return 'Player';
-    return plinkoVirtualProfiles[Math.abs(profileIndex+randomIndex(seed+profileIndex*101,plinkoVirtualProfiles.length))%plinkoVirtualProfiles.length];
+    return virtualProfile(profileIndex,seed).name||'Player';
   }
 
   function virtualAmount(profileIndex,seed){
+    var profile=virtualProfile(profileIndex,seed);
+    if(profile.amount!=null){var fixed=Number(profile.amount);if(Number.isFinite(fixed)&&fixed>0)return Math.round((fixed+Number.EPSILON)*100)/100}
     var base=[0.05,0.08,0.1,0.12,0.15,0.2,0.25,0.3,0.35,0.4,0.5,0.75,1,1.25,1.5,2,2.5,3,4,5];
     var amount=base[randomIndex(seed+profileIndex*17,base.length)];
     var cents=(randomIndex(seed+profileIndex*29,9))*0.01;
     return Math.round((amount+cents+Number.EPSILON)*100)/100;
+  }
+
+  function loadVirtualConfig(){
+    if(plinkoVirtualConfigLoaded||typeof fetch!=='function')return;
+    plinkoVirtualConfigLoaded=true;
+    fetch('/app/api/plinko-virtual-users',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(data){
+      if(!data||!Array.isArray(data.users)||!data.users.length)return;
+      plinkoVirtualProfiles=data.users.map(function(user){return {name:String(user.name||'Player'),amount:Number(user.amount)||1}});
+      virtualRows=[];virtualRendered=false;
+    }).catch(function(){});
   }
 
   function virtualMultiplier(profileIndex,seed){
@@ -243,6 +262,7 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   function ensureVirtualRows(){
+    loadVirtualConfig();
     if(!virtualRendered){buildVirtualRows();renderVirtualRows();virtualRendered=true}
     scheduleVirtualRows();
   }
