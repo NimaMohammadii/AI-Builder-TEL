@@ -41,7 +41,8 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
 
   function hideToast(){var n=q('vexaVoiceMessageToast');if(n)n.classList.remove('open')}
   async function markPlayed(message){try{await fetch('/app/api/vexa-voice/played',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:message.eventId,messageKey:message.messageKey,initData:initData()})})}catch(e){}}
-  async function fetchMessage(eventId){if(eventId!=='admin_message')return null;var r=await fetch('/app/api/vexa-voice/message',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:eventId,initData:initData()}),cache:'no-store'});var j=await r.json().catch(function(){return{ok:false}});return j&&j.ok?j:null}
+  async function fetchAdminMessage(path,eventId){var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:eventId,initData:initData()}),cache:'no-store'});var j=await r.json().catch(function(){return{ok:false}});return j&&j.ok?j:null}
+  async function fetchMessage(eventId){if(eventId!=='admin_message')return null;return await fetchAdminMessage('/app/api/vexa-voice/user-message',eventId)||await fetchAdminMessage('/app/api/vexa-voice/message',eventId)}
   function enqueue(message){if(!message||!message.url)return;queue.push(message);playNext()}
   function playNext(){if(busy||!queue.length)return;var message=queue.shift();busy=true;current=message;if(message.requiresTap){showToast(message);return}playMessage(message,false)}
   function playMessage(message,fromTap){ensureUi();current=message;audio.src=message.url;var p=audio.play();if(p&&typeof p.catch==='function'){p.then(function(){if(fromTap)hideToast()}).catch(function(){showToast(message)})}else if(fromTap){hideToast()}}
