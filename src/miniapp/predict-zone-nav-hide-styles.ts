@@ -2,6 +2,9 @@ export const PREDICT_ZONE_NAV_HIDE_STYLES = `
 /* Predict keeps the shared chrome on its landing card grid, then switches to Telegram-native back navigation inside a selected prediction card. */
 body:has(#predictzone.active) .top{display:flex!important}
 body:has(#predictzone.active) .tabs{display:grid!important}
+body:has(#predictzone.active) .content{overflow:visible!important}
+body:has(#predictzone.active) #predictzone{overflow-x:visible!important}
+body:has(#predictzone.active) #predictzone .predict-zone-category-menu{overflow-x:auto!important;overflow-y:visible!important}
 body:has(#predictzone.active) #predictzone .predict-zone-back{display:none!important}
 body:has(#predictzone.active.predict-market-detail-mode) .tabs,
 body:has(#predictzone.active.football-match-detail-open) .tabs{display:none!important}
