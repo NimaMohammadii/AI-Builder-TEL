@@ -138,8 +138,8 @@ const FINANCE_CLOSE_BUTTON_SCRIPT = `
   function apply(){
     var style=document.getElementById('vexa-finance-close-minimal-style');
     if(!style){style=document.createElement('style');style.id='vexa-finance-close-minimal-style';document.head.appendChild(style)}
-    style.textContent='#depositSheet .deposit-close,#withdrawSheet .deposit-close{width:54px!important;height:54px!important;min-width:54px!important;border-radius:999px!important;background:rgba(255,255,255,.032)!important;border:1px solid rgba(255,255,255,.045)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 14px 34px rgba(0,0,0,.18)!important;color:rgba(255,255,255,.74)!important;display:grid!important;place-items:center!important;padding:0!important}#depositSheet .deposit-close svg,#withdrawSheet .deposit-close svg{width:18px!important;height:18px!important;display:block!important;opacity:.82!important;color:currentColor!important}#depositSheet .deposit-close svg path,#withdrawSheet .deposit-close svg path{stroke:currentColor!important;stroke-width:2.05!important;stroke-linecap:round!important}#depositSheet .deposit-close:active,#withdrawSheet .deposit-close:active{transform:scale(.96)!important;background:rgba(255,255,255,.055)!important}';
-    ['depositSheet','withdrawSheet'].forEach(function(id){var b=document.querySelector('#'+id+' .deposit-close');if(!b)return;b.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" stroke="currentColor" stroke-width="2.05" stroke-linecap="round"/></svg>'});
+    style.textContent='#depositSheet .deposit-close,#withdrawSheet .deposit-close{width:42px!important;height:42px!important;min-width:42px!important;border-radius:999px!important;background:linear-gradient(135deg,rgba(255,255,255,.105),rgba(255,255,255,.028))!important;border:1px solid rgba(255,255,255,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -10px 22px rgba(255,255,255,.025),0 14px 34px rgba(0,0,0,.24)!important;color:rgba(255,255,255,.78)!important;display:grid!important;place-items:center!important;padding:0!important;-webkit-backdrop-filter:blur(14px) saturate(1.22)!important;backdrop-filter:blur(14px) saturate(1.22)!important}#depositSheet .deposit-close svg,#withdrawSheet .deposit-close svg{width:15px!important;height:15px!important;display:block!important;opacity:.86!important;color:currentColor!important}#depositSheet .deposit-close svg path,#withdrawSheet .deposit-close svg path{stroke:currentColor!important;stroke-width:1.85!important;stroke-linecap:round!important}#depositSheet .deposit-close:active,#withdrawSheet .deposit-close:active{transform:scale(.94)!important;background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.045))!important}';
+    ['depositSheet','withdrawSheet'].forEach(function(id){var b=document.querySelector('#'+id+' .deposit-close');if(!b)return;b.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.25 8.25l7.5 7.5M15.75 8.25l-7.5 7.5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/></svg>'});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
   document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-deposit"],[data-action="open-withdraw"]');if(a)setTimeout(apply,20)},true);
@@ -258,36 +258,24 @@ export function miniAppShellHtml(): string {
   <style>${STYLES}</style>
 </head>
 <body>
-  <div id="vexaBoot" class="vexa-boot">
-    <div class="vexa-boot-card">
-      <img class="vexa-boot-logo" src="${GAME_BOT_PROFILE_IMAGE}" alt="Vexa App"/>
-    </div>
-  </div>
-  <main class="app">
+  <div id="bootLoader" class="boot-loader" aria-hidden="false"><div class="boot-loader-card"><div class="boot-loader-logo">V</div><div class="boot-loader-bar"><span></span></div></div></div>
+  <div class="app">
     <header class="top">
-      <div class="brand">
-        <img class="logo" src="${GAME_BOT_PROFILE_IMAGE}" alt="Vexa App"/>
-        <div>
-          <div style="display:flex;align-items:center;gap:9px;min-width:0">
-            <h1 id="brandTitle">Vexa FLOW</h1>
-            <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)">Starter</div>
-          </div>
-          <p id="userLine">AI Bot Control</p>
-        </div>
+      <div>
+        <p class="eyebrow">VEXA</p>
+        <h1>AI Builder</h1>
       </div>
-      <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
-        <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
-        <b id="topTonBalance" data-ton-balance-display>0</b>
-      </button>
+      <div class="status-pill">Online</div>
     </header>
-    ${SECTIONS}
+    <main class="content">${SECTIONS}</main>
     <nav class="tabs">
       <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="playzone">Play Zone</button>
+      <button class="tab" data-view="playzone">Play</button>
       <button class="tab" data-view="predictzone">Predict</button>
+      <button class="tab" data-view="market">Market</button>
+      <button class="tab" data-view="referral">Referral</button>
     </nav>
-  </main>
-  <div id="toast" class="toast"></div>
+  </div>
   ${SCRIPTS}
 </body>
 </html>`;
