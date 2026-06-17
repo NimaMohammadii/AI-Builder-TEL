@@ -1,3 +1,5 @@
+import { getCrashVirtualUsers, type CrashVirtualUser } from './crash-virtual-users-config';
+
 const NANO = 1000000000;
 const HOUSE_EDGE = .04;
 const WAIT_BETWEEN_MS = 10000;
@@ -31,17 +33,20 @@ export async function ensureCrashVirtualColumns(db:D1Database){
 export async function seedCrashVirtualUsers(db:D1Database, roundId:number, revealStartMs = Date.now(), revealEndMs = revealStartMs){
   const found = await db.prepare('SELECT COUNT(*) AS n FROM crash_live_bets WHERE round_id=? AND is_virtual=1').bind(roundId).first<{n:number}>();
   if(Number(found?.n||0)>0)return;
-  const count = 60 + Math.floor(rand(roundId,1)*41);
   const stop = roundStop(roundId);
   const hourSlot = Math.floor(Date.now()/HOUR_MS);
+  const configuredUsers = await loadConfiguredUsers(db);
+  const count = configuredUsers.length || (60 + Math.floor(rand(roundId,1)*41));
   const revealWindow = Math.max(0, revealEndMs - revealStartMs);
   const stmt = db.prepare("INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,target_cashout_multiplier,virtual_reveal_at_ms,virtual_order,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 1, ?, ?, ?, datetime(?/1000, 'unixepoch'), datetime(?/1000, 'unixepoch'))");
   const batch=[];
   for(let i=0;i<count;i++){
     const risk = rand(roundId,100+i);
-    const amount = amountNano(roundId,i,risk);
-    const target = targetCashout(roundId,i,risk,stop);
-    const username = scheduledName(roundId,hourSlot,i);
+    const configured = configuredUsers[i];
+    const option = configured ? pickConfiguredBet(configured, roundId, i) : null;
+    const amount = option ? Math.max(1, Math.floor(option.amount * NANO)) : amountNano(roundId,i,risk);
+    const target = option ? option.cashoutMultiplier : targetCashout(roundId,i,risk,stop);
+    const username = configured ? configured.name : scheduledName(roundId,hourSlot,i);
     const revealAt = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
     batch.push(stmt.bind(roundId,'virtual_'+hourSlot+'_'+roundId+'_'+i,username,amount,target,revealAt,i + 1,revealAt,revealAt));
   }
@@ -107,6 +112,15 @@ export function getCrashTargetDelayMs(state:CrashRoundState,target:number){
   return Math.max(90, stopTime(target)-(Date.now()-state.start)+70);
 }
 
+async function loadConfiguredUsers(db:D1Database): Promise<CrashVirtualUser[]>{
+  const env = { DB: db, BOT_CACHE: { get: async () => null, put: async () => undefined } } as any;
+  try { return (await getCrashVirtualUsers(env)).users; } catch (error) { console.warn('load crash virtual users failed', error); return []; }
+}
+function pickConfiguredBet(user:CrashVirtualUser, roundId:number, index:number){
+  const bets = Array.isArray(user.bets) ? user.bets : [];
+  if(!bets.length)return null;
+  return bets[Math.floor(rand(roundId,5000+index)*bets.length)%bets.length];
+}
 function rand(a:number,b:number){const x=Math.sin(a*9301.777+b*49297.31)*233280;return x-Math.floor(x)}
 function scheduledName(roundId:number,hourSlot:number,i:number){
   const base=Math.floor(rand(hourSlot,17)*NAMES.length);
