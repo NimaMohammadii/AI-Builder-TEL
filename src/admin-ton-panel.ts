@@ -78,11 +78,14 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
       const blockMap={};(c.sectionBlocks||[]).forEach(item=>{blockMap[item.sectionId]=item});
       const groups=Array.isArray(g.groups)?g.groups:[];
       const groupsHtml='<div class="user-groups"><div class="mini-status"><b>Groups:</b> '+groups.length+' · AI '+(g.groupAiDisabled?'disabled':'active')+'</div><button class="section-block '+(g.groupAiDisabled?'blocked':'')+'" data-user-groups-ai type="button">'+(g.groupAiDisabled?'Enable all user groups AI':'Disable all user groups AI')+'</button>'+(!groups.length?'<div class="mini-status">No groups found.</div>':groups.map(gr=>'<div class="mini-status" style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><b>'+esc(gr.title||gr.username||gr.chatId)+'</b><br/><small>'+esc(gr.chatId)+' · '+ton(gr.tonSpentNano||0)+' · AI '+(gr.aiDisabled?'disabled':'active')+'</small><div class="section-user-blocks"><button class="section-block '+(gr.aiDisabled?'blocked':'')+'" data-group-ai="'+esc(gr.chatId)+'" type="button">'+(gr.aiDisabled?'Enable this group':'Disable this group')+'</button><button class="section-block blocked" data-group-leave="'+esc(gr.chatId)+'" type="button">Remove bot from group</button></div></div>').join(''))+'</div>';
-      panel.innerHTML='<div class="mini-status">'+levelLine(user)+'</div><div class="mini-status">Current TON: <b data-current-ton>'+ton(current)+'</b></div><div class="credit-tools"><button data-ton-minus>-</button><input data-ton-value type="number" min="0" step="0.001" placeholder="TON amount" value=""/><button data-ton-plus>+</button></div><input data-block-days type="number" min="0" step="0.01" placeholder="Block days, 0 forever"/><div class="section-user-blocks">'+Object.keys(sectionLabels).map(id=>{const b=blockMap[id];return '<div><button class="section-block '+(b?'blocked':'')+'" data-user-section="'+id+'">'+sectionLabels[id]+' '+(b?'Blocked':'Open')+'</button>'+(b?'<small class="mini-status">'+(b.expiresAt?'<span data-expires-at="'+esc(b.expiresAt)+'">'+formatLeft(b.remainingMs)+'</span>':'forever')+'</small>':'')+'</div>'}).join('')+'</div>'+groupsHtml+'<p class="mini-status" data-user-status></p>';
+      const winChance=Math.max(0,Math.min(100,Math.round(Number(c.winChancePercent??50))));
+      panel.innerHTML='<div class="mini-status">'+levelLine(user)+'</div><div class="mini-status">Current TON: <b data-current-ton>'+ton(current)+'</b></div><div class="credit-tools"><button data-ton-minus>-</button><input data-ton-value type="number" min="0" step="0.001" placeholder="TON amount" value=""/><button data-ton-plus>+</button></div><div class="mini-status"><b>Game win chance:</b> '+winChance+'%</div><div class="credit-tools"><button data-win-chance-preset="0">0%</button><input data-win-chance-value type="number" min="0" max="100" step="1" value="'+winChance+'"/><button data-win-chance-preset="100">100%</button></div><button class="save-credit" data-win-chance-save type="button">Set win chance</button><input data-block-days type="number" min="0" step="0.01" placeholder="Block days, 0 forever"/><div class="section-user-blocks">'+Object.keys(sectionLabels).map(id=>{const b=blockMap[id];return '<div><button class="section-block '+(b?'blocked':'')+'" data-user-section="'+id+'">'+sectionLabels[id]+' '+(b?'Blocked':'Open')+'</button>'+(b?'<small class="mini-status">'+(b.expiresAt?'<span data-expires-at="'+esc(b.expiresAt)+'">'+formatLeft(b.remainingMs)+'</span>':'forever')+'</small>':'')+'</div>'}).join('')+'</div>'+groupsHtml+'<p class="mini-status" data-user-status></p>';
       tickCountdowns();
       panel.querySelector('[data-ton-minus]').onclick=()=>adjustCredit(userId,-inputNano(panel.querySelector('[data-ton-value]').value));
       panel.querySelector('[data-ton-plus]').onclick=()=>adjustCredit(userId,inputNano(panel.querySelector('[data-ton-value]').value));
       panel.querySelectorAll('[data-user-section]').forEach(btn=>btn.onclick=()=>blockSection(userId,btn.getAttribute('data-user-section'),!btn.classList.contains('blocked')));
+      panel.querySelectorAll('[data-win-chance-preset]').forEach(btn=>btn.onclick=()=>setWinChance(userId,Number(btn.getAttribute('data-win-chance-preset'))));
+      const winSave=panel.querySelector('[data-win-chance-save]');if(winSave)winSave.onclick=()=>setWinChance(userId,Number((panel.querySelector('[data-win-chance-value]')||{}).value));
       const allBtn=panel.querySelector('[data-user-groups-ai]');if(allBtn)allBtn.onclick=()=>setUserGroupsAi(userId,!g.groupAiDisabled);
       panel.querySelectorAll('[data-group-ai]').forEach(btn=>{const gr=groups.find(x=>String(x.chatId)===String(btn.getAttribute('data-group-ai')))||{};btn.onclick=()=>setGroupAi(userId,btn.getAttribute('data-group-ai'),!gr.aiDisabled)});
       panel.querySelectorAll('[data-group-leave]').forEach(btn=>btn.onclick=()=>leaveGroup(userId,btn.getAttribute('data-group-leave')));
@@ -103,6 +106,19 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
       if(status)status.textContent='TON balance updated: '+shown;
     }catch(e){if(status)status.textContent=e.message||'Could not update TON balance'}
   };
+
+  async function setWinChance(userId,value){
+    const panel=document.querySelector('[data-manage-panel="'+userId+'"]'),status=panel&&panel.querySelector('[data-user-status]');
+    const winChancePercent=Math.max(0,Math.min(100,Math.round(Number(value)||0)));
+    if(status)status.textContent='Saving win chance...';
+    try{
+      const r=await fetch('/admin/api/users/win-chance',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({userId,winChancePercent})});
+      const j=await r.json().catch(()=>({error:'Invalid response'}));
+      if(!r.ok)throw new Error(j.error||'Could not update win chance');
+      if(status)status.textContent='Win chance saved: '+j.winChancePercent+'%';
+      renderUserControls(userId);
+    }catch(e){if(status)status.textContent=e.message||'Could not update win chance'}
+  }
 
   blockSection=async function(userId,sectionId,blocked){
     const panel=document.querySelector('[data-manage-panel="'+userId+'"]'),status=panel&&panel.querySelector('[data-user-status]');
