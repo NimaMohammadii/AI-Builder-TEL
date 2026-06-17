@@ -11,6 +11,11 @@ export const XP_BAR_EFFECTS_SCRIPT = `
     if(!menu)return;
     try{menu.scrollLeft=0;menu.scrollTo({left:0,behavior:'auto'})}catch(e){menu.scrollLeft=0}
   }
+  function resetPredictSoon(){
+    setTimeout(resetPredictMenuScroll,20);
+    setTimeout(resetPredictMenuScroll,90);
+    setTimeout(resetPredictMenuScroll,220);
+  }
   function injectStyle(){
     if(!document.getElementById(styleId)){
       var s=document.createElement('style');
@@ -25,17 +30,17 @@ export const XP_BAR_EFFECTS_SCRIPT = `
       node.textContent=css;
     });
     ['depositSheet','withdrawSheet'].forEach(function(id){var b=document.querySelector('#'+id+' .deposit-close');if(!b)return;b.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.6 7.6l8.8 8.8M16.4 7.6l-8.8 8.8" stroke="currentColor" stroke-width="2.05" stroke-linecap="round" stroke-linejoin="round"/></svg>'});
-    resetPredictMenuScroll();
+    resetPredictSoon();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',injectStyle);else injectStyle();
   document.addEventListener('click',function(ev){
     var a=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-deposit"],[data-action="open-withdraw"]');
     if(a){setTimeout(injectStyle,20);setTimeout(injectStyle,80)}
     var tab=ev.target&&ev.target.closest&&ev.target.closest('[data-view="predictzone"],.tab');
-    if(tab)setTimeout(resetPredictMenuScroll,80);
+    if(tab)resetPredictSoon();
   },true);
-  var mo=new MutationObserver(function(){var p=document.getElementById('predictzone');if(p&&p.classList.contains('active')){setTimeout(resetPredictMenuScroll,30)}});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){mo.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})});
-  else mo.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+  var mo=new MutationObserver(function(){var p=document.getElementById('predictzone');if(p&&p.classList.contains('active'))resetPredictSoon()});
+  function watch(){try{mo.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
 })();
 `;
