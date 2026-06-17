@@ -25,8 +25,10 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   var regionLang='';
   var regionReady=false;
   var regionPromise=null;
+  var lastRefreshAt=0;
   var CACHE_PREFIX='vexa:selectedLanguageCode:';
   function q(id){return document.getElementById(id)}
+  function isOpen(){var page=q('dailyrewardsinfo');return !!(page&&page.classList.contains('active'))}
   function currentTgUser(){try{var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}catch(e){return {}}}
   function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
   function cacheKey(){var id=userId();return CACHE_PREFIX+(id||'guest')}
@@ -37,8 +39,8 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
     if(regionPromise&&!force)return regionPromise;
     if(force)regionPromise=null;
     var id=userId();
-    var url='/app/api/daily-rewards'+(id?'?userId='+encodeURIComponent(id):'');
-    regionPromise=fetch(url,{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(json){
+    var url='/app/api/daily-rewards'+(id?'?userId='+encodeURIComponent(id)+'&':'?')+'_localeTs='+Date.now();
+    regionPromise=fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'cache-control':'no-store'}}).then(function(r){return r.ok?r.json():null}).then(function(json){
       var lang=String((json&&json.locale&&json.locale.languageCode)||'').trim().toLowerCase();
       if(!/^[a-z]{2,3}$/.test(lang))lang='en';
       regionLang=lang;regionReady=true;saveLang(lang);return regionLang;
@@ -50,9 +52,14 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   function textFor(i){var l=detectedLang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
   function img(day){var key=String(day);if(!imgCache[key])imgCache[key]='/app/api/daily-rewards-day-image/'+(day-1);return imgCache[key]}
   function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
-  function bind(){var cached=cachedLang();if(cached){regionLang=cached;regionReady=false;render()}else{var box=q('dailyInfoList');if(box)box.innerHTML=''}loadRegionLang(true).then(render)}
+  function refresh(force){var now=Date.now();if(!force&&now-lastRefreshAt<900)return;lastRefreshAt=now;var cached=cachedLang();if(cached&&!regionReady){regionLang=cached;render()}else if(!cached){var box=q('dailyInfoList');if(box&&!regionReady)box.innerHTML=''}regionReady=false;loadRegionLang(true).then(render)}
+  function bind(){refresh(true)}
   window.__vexaDailyInfoRender=render;
+  window.__vexaDailyInfoRefresh=function(){refresh(true)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(){setTimeout(function(){if(q('dailyrewardsinfo')&&q('dailyrewardsinfo').classList.contains('active'))bind()},20)},true);
+  document.addEventListener('click',function(){setTimeout(function(){if(isOpen())refresh(true)},20)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true)});
+  window.addEventListener('focus',function(){refresh(true)});
+  window.addEventListener('pageshow',function(){refresh(true)});
 })();
 `;
