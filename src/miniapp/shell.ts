@@ -133,6 +133,19 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 }
 `;
 
+const FINANCE_CLOSE_BUTTON_SCRIPT = `
+(function(){
+  function apply(){
+    var style=document.getElementById('vexa-finance-close-minimal-style');
+    if(!style){style=document.createElement('style');style.id='vexa-finance-close-minimal-style';document.head.appendChild(style)}
+    style.textContent='#depositSheet .deposit-close,#withdrawSheet .deposit-close{width:54px!important;height:54px!important;min-width:54px!important;border-radius:999px!important;background:rgba(255,255,255,.032)!important;border:1px solid rgba(255,255,255,.045)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 14px 34px rgba(0,0,0,.18)!important;color:rgba(255,255,255,.74)!important;display:grid!important;place-items:center!important;padding:0!important}#depositSheet .deposit-close svg,#withdrawSheet .deposit-close svg{width:18px!important;height:18px!important;display:block!important;opacity:.82!important;color:currentColor!important}#depositSheet .deposit-close svg path,#withdrawSheet .deposit-close svg path{stroke:currentColor!important;stroke-width:2.05!important;stroke-linecap:round!important}#depositSheet .deposit-close:active,#withdrawSheet .deposit-close:active{transform:scale(.96)!important;background:rgba(255,255,255,.055)!important}';
+    ['depositSheet','withdrawSheet'].forEach(function(id){var b=document.querySelector('#'+id+' .deposit-close');if(!b)return;b.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" stroke="currentColor" stroke-width="2.05" stroke-linecap="round"/></svg>'});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+  document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-deposit"],[data-action="open-withdraw"]');if(a)setTimeout(apply,20)},true);
+})();
+`;
+
 const STYLES = [
   MINIAPP_STYLES,
   TTS_STYLES,
@@ -199,6 +212,7 @@ const SCRIPTS = [
   TON_BALANCE_SCRIPT,
   CONNECT_GROUPS_USAGE_SCRIPT,
   DEPOSIT_ENHANCEMENTS_SCRIPT,
+  FINANCE_CLOSE_BUTTON_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
   TOP_PLAYERS_HOME_CARD_SCRIPT,
   HOME_BLANK_CARDS_SCRIPT,
