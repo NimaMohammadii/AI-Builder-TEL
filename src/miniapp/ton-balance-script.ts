@@ -10,6 +10,7 @@ export const TON_BALANCE_SCRIPT = `
   var pendingUserId='';
   var flushTimer=0;
   var lastLocalMutationAt=0;
+  var winChancePercent=50;
   function clean(value){var n=Math.floor(Number(value));return Number.isFinite(n)&&n>=0?n:0}
   function formatTonNumber(value){var raw=clean(value);var ton=raw/NANO_PER_TON;return ton.toFixed(2)}
   function formatTon(value){return formatTonNumber(value)}
@@ -42,6 +43,8 @@ export const TON_BALANCE_SCRIPT = `
     var r=await fetch('/app/api/user-controls?userId='+encodeURIComponent(u.id),{headers:{'accept':'application/json'},cache:'no-store'});
     var j=await r.json().catch(function(){return null});
     if(!r.ok)throw new Error(j&&j.error?j.error:'Could not load TON balance');
+    var chance=Number(j&&j.winChancePercent);
+    if(Number.isFinite(chance))setWinChance(chance);
     var server=Number(j&&j.tonBalanceNano);
     return Number.isFinite(server)?server:NaN;
   }
@@ -98,6 +101,11 @@ export const TON_BALANCE_SCRIPT = `
     return optimistic;
   }
   function add(deltaNano){return pushDelta(deltaNano)}
+  function setWinChance(value){var n=Math.round(Number(value));winChancePercent=Number.isFinite(n)?Math.max(0,Math.min(100,n)):50;try{localStorage.setItem('vexaWinChancePercent',String(winChancePercent))}catch(e){}return winChancePercent}
+  function readWinChance(){try{var stored=localStorage.getItem('vexaWinChancePercent');if(stored!==null)setWinChance(stored)}catch(e){}return winChancePercent}
+  function decideWin(){return Math.random()*100<readWinChance()}
+  readWinChance();
+  window.VexaGameChance={read:readWinChance,set:setWinChance,decideWin:decideWin};
   window.VexaTonBalance={read:read,write:write,add:add,flush:function(){return flushPending(true)},render:function(){return render(read())},load:load,format:formatTon,rate:NANO_PER_TON,parse:parseTonText,plinkoUnitNano:PLINKO_UNIT_NANO};
   window.addEventListener('vexa-ton-balance-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.deltaNano!==undefined?ev.detail.deltaNano:ev.detail.delta);if(Number.isFinite(delta)&&delta!==0){pushDelta(delta);return}var balance=Number(ev.detail.tonBalanceNano);if(Number.isFinite(balance))write(balance,0,true)});
   window.addEventListener('vexa-credit-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.delta);if(Number.isFinite(delta)&&delta!==0)pushDelta(Math.trunc(delta*PLINKO_UNIT_NANO))});

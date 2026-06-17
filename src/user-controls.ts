@@ -12,6 +12,7 @@ export type UserSectionBlock = {
 export type UserControls = {
   userId: string;
   tonBalanceNano: number;
+  winChancePercent: number;
   blockedSections: string[];
   sectionBlocks: UserSectionBlock[];
 };
@@ -21,10 +22,11 @@ const VALID_SECTIONS = new Set(['home', 'connect', 'connect-bot-card', 'flow', '
 type StoredUserControls = {
   userId?: string;
   blockedSections?: unknown;
+  winChancePercent?: unknown;
 };
 
 type StoredSectionBlock = { sectionId?: unknown; blocked?: unknown; expiresAt?: unknown };
-type UserControlRow = { blocked_sections_json: string };
+type UserControlRow = { blocked_sections_json: string; win_chance_percent?: number | null };
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
@@ -33,6 +35,7 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   return {
     userId: id,
     tonBalanceNano: await readUserTonBalance(env, id),
+    winChancePercent: normalizeWinChance(saved?.winChancePercent),
     blockedSections: sectionBlocks.filter((item) => item.blocked).map((item) => item.sectionId),
     sectionBlocks,
   };
@@ -90,34 +93,42 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
   const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
   const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
   if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
-  await saveSectionControls(env, id, next);
+  await saveControls(env, id, next, current.winChancePercent);
   return getUserControls(env, id);
 }
 
-export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
+export async function setUserWinChance(env: Env, userId: string, winChancePercent: number): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  const current = await getUserControls(env, id);
+  await saveControls(env, id, current.sectionBlocks, normalizeWinChance(winChancePercent));
+  return getUserControls(env, id);
+}
+
+export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
   const controls = await getUserControls(env, userId);
-  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
+  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, winChancePercent: controls.winChancePercent, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
 }
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
     await ensureUserControlsTable(env);
     const row = await env.DB.prepare('SELECT blocked_sections_json FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
-    if (row?.blocked_sections_json) return { userId, blockedSections: JSON.parse(row.blocked_sections_json) };
+    if (row) return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent };
   } catch (error) {
     console.warn('read user section controls from D1 failed', error);
   }
   return env.BOT_CACHE.get(key(userId), 'json').catch(() => null) as Promise<StoredUserControls | null>;
 }
 
-async function saveSectionControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[]): Promise<void> {
+async function saveControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[], winChancePercent: number): Promise<void> {
   await ensureUserControlsTable(env);
-  await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, updated_at)
-    VALUES (?, ?, CURRENT_TIMESTAMP)
+  await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, win_chance_percent, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(user_id) DO UPDATE SET
       blocked_sections_json = excluded.blocked_sections_json,
+      win_chance_percent = excluded.win_chance_percent,
       updated_at = CURRENT_TIMESTAMP`)
-    .bind(userId, JSON.stringify(normalizeSectionBlocks(sectionBlocks)))
+    .bind(userId, JSON.stringify(normalizeSectionBlocks(sectionBlocks)), normalizeWinChance(winChancePercent))
     .run();
 }
 
@@ -125,8 +136,10 @@ async function ensureUserControlsTable(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_controls (
     user_id TEXT PRIMARY KEY,
     blocked_sections_json TEXT NOT NULL DEFAULT '[]',
+    win_chance_percent INTEGER NOT NULL DEFAULT 50,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
+  await env.DB.prepare('ALTER TABLE user_controls ADD COLUMN win_chance_percent INTEGER NOT NULL DEFAULT 50').run().catch(() => undefined);
 }
 
 export async function ensureTonBalanceColumn(env: Env): Promise<void> {
@@ -189,6 +202,12 @@ function normalizeExpiresAt(value: unknown): string | null {
 
 function normalizeNano(value: unknown): number {
   return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function normalizeWinChance(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, n));
 }
 
 function key(userId: string): string {
