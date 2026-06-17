@@ -121,6 +121,7 @@ const VEXA_VOICE_MESSAGE_SCRIPT = `
     watchClicks();
     watchFinanceSuccess();
     window.VexaVoiceMessage={trigger:trigger,admin:function(){trigger('admin_message')}};
+    setTimeout(function(){trigger('admin_message')},900);
     setTimeout(function(){triggerForView(activeViewId())},1000);
   }
 
