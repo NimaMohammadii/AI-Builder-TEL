@@ -58,24 +58,28 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/vexa-voice/preview', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-    const env = c.env as EnvWithVexaVoice;
-    if (!env.ELEVENLABS_API_KEY) return c.json({ error: 'ElevenLabs API key is not configured.' }, 500);
-    const body = await readJson<{ title?: unknown; text?: unknown; language?: unknown; regions?: unknown }>(c);
-    const text = cleanText(body.text, 700);
-    if (!text) return c.json({ error: 'Write message text first.' }, 400);
-    const title = cleanText(body.title, 90) || 'Vexa wants to say something';
-    const language = normalizeVexaVoiceLanguage(body.language);
-    const regions = normalizeRegions(body.regions);
-    const id = 'adm_' + Date.now();
-    const version = String(Date.now());
-    const r2Key = `vexa-voice/admin/${id}.mp3`;
-    const audio = await createSpeech(env, text);
-    await env.ASSETS.put(r2Key, audio, { httpMetadata: { contentType: 'audio/mpeg' }, customMetadata: { version, language, title } });
-    const draft: AdminDraft = { id, title, text, language, regions, r2Key, version, createdAt: new Date().toISOString() };
-    await env.BOT_CACHE.put(ADMIN_DRAFT_PREFIX + id, JSON.stringify(draft), { expirationTtl: 86400 });
-    await env.BOT_CACHE.put(ADMIN_AUDIO_PREFIX + id, JSON.stringify({ id, r2Key, version, contentType: 'audio/mpeg' }), { expirationTtl: 86400 * 30 });
-    return c.json({ ok: true, draftId: id, title, language, regions, previewUrl: `/app/api/vexa-voice/custom-audio/${id}.mp3?v=${version}` }, 200, { 'cache-control': VOICE_INDEX_CACHE });
+    try {
+      if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+      const env = c.env as EnvWithVexaVoice;
+      if (!env.ELEVENLABS_API_KEY) return c.json({ error: 'ElevenLabs API key is not configured.' }, 500);
+      const body = await readJson<{ title?: unknown; text?: unknown; language?: unknown; regions?: unknown }>(c);
+      const text = cleanText(body.text, 700);
+      if (!text) return c.json({ error: 'Write message text first.' }, 400);
+      const title = cleanText(body.title, 90) || 'Vexa wants to say something';
+      const language = normalizeVexaVoiceLanguage(body.language);
+      const regions = normalizeRegions(body.regions);
+      const id = 'adm_' + Date.now();
+      const version = String(Date.now());
+      const r2Key = `vexa-voice/admin/${id}.mp3`;
+      const audio = await createSpeech(env, text);
+      await env.ASSETS.put(r2Key, audio, { httpMetadata: { contentType: 'audio/mpeg' }, customMetadata: { version, language, title } });
+      const draft: AdminDraft = { id, title, text, language, regions, r2Key, version, createdAt: new Date().toISOString() };
+      await env.BOT_CACHE.put(ADMIN_DRAFT_PREFIX + id, JSON.stringify(draft), { expirationTtl: 86400 });
+      await env.BOT_CACHE.put(ADMIN_AUDIO_PREFIX + id, JSON.stringify({ id, r2Key, version, contentType: 'audio/mpeg' }), { expirationTtl: 86400 * 30 });
+      return c.json({ ok: true, draftId: id, title, language, regions, previewUrl: `/app/api/vexa-voice/custom-audio/${id}.mp3?v=${version}` }, 200, { 'cache-control': VOICE_INDEX_CACHE });
+    } catch (error) {
+      return c.json({ error: error instanceof Error ? error.message : 'Could not generate preview.' }, 500, { 'cache-control': VOICE_INDEX_CACHE });
+    }
   });
 
   app.post('/admin/api/vexa-voice/publish', async (c) => {
@@ -157,46 +161,16 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   });
 }
 
-async function audioFromR2(env: EnvWithVexaVoice, key: string, contentType: string): Promise<Response> {
-  const object = await env.ASSETS.get(key).catch(() => null);
-  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || contentType, 'cache-control': VOICE_AUDIO_CACHE, 'accept-ranges': 'bytes' } });
-}
-
-async function ensureVoiceTables(env: EnvWithVexaVoice): Promise<void> {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vexa_voice_assets (event_id TEXT NOT NULL, language_code TEXT NOT NULL, label TEXT NOT NULL, display_text TEXT NOT NULL, prompt_text TEXT NOT NULL, r2_key TEXT, version TEXT, content_type TEXT, autoplay INTEGER NOT NULL DEFAULT 1, requires_tap INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id, language_code))`).run();
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vexa_voice_user_events (user_id TEXT NOT NULL, event_id TEXT NOT NULL, played_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, event_id))`).run();
-}
-
-async function seedVoiceMessages(env: EnvWithVexaVoice): Promise<void> {
-  await ensureVoiceTables(env);
-  for (const message of VEXA_VOICE_MESSAGES) for (const language of VEXA_VOICE_LANGUAGES) await env.DB.prepare(`INSERT INTO vexa_voice_assets (event_id, language_code, label, display_text, prompt_text, autoplay, requires_tap, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, language_code) DO UPDATE SET label = excluded.label, display_text = excluded.display_text, prompt_text = excluded.prompt_text, autoplay = excluded.autoplay, requires_tap = excluded.requires_tap, updated_at = CURRENT_TIMESTAMP`).bind(message.eventId, language, message.label, message.displayText, message.texts[language], message.autoplay ? 1 : 0, message.requiresTap ? 1 : 0).run();
-}
-
+async function audioFromR2(env: EnvWithVexaVoice, key: string, contentType: string): Promise<Response> { const object = await env.ASSETS.get(key).catch(() => null); if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } }); return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || contentType, 'cache-control': VOICE_AUDIO_CACHE, 'accept-ranges': 'bytes' } }); }
+async function ensureVoiceTables(env: EnvWithVexaVoice): Promise<void> { await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vexa_voice_assets (event_id TEXT NOT NULL, language_code TEXT NOT NULL, label TEXT NOT NULL, display_text TEXT NOT NULL, prompt_text TEXT NOT NULL, r2_key TEXT, version TEXT, content_type TEXT, autoplay INTEGER NOT NULL DEFAULT 1, requires_tap INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id, language_code))`).run(); await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vexa_voice_user_events (user_id TEXT NOT NULL, event_id TEXT NOT NULL, played_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, event_id))`).run(); }
+async function seedVoiceMessages(env: EnvWithVexaVoice): Promise<void> { await ensureVoiceTables(env); for (const message of VEXA_VOICE_MESSAGES) for (const language of VEXA_VOICE_LANGUAGES) await env.DB.prepare(`INSERT INTO vexa_voice_assets (event_id, language_code, label, display_text, prompt_text, autoplay, requires_tap, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, language_code) DO UPDATE SET label = excluded.label, display_text = excluded.display_text, prompt_text = excluded.prompt_text, autoplay = excluded.autoplay, requires_tap = excluded.requires_tap, updated_at = CURRENT_TIMESTAMP`).bind(message.eventId, language, message.label, message.displayText, message.texts[language], message.autoplay ? 1 : 0, message.requiresTap ? 1 : 0).run(); }
 async function listVoiceMessages(env: EnvWithVexaVoice): Promise<{ ok: true; messages: VoiceAssetRow[] }> { await ensureVoiceTables(env); const rows = await env.DB.prepare('SELECT * FROM vexa_voice_assets ORDER BY event_id, language_code').all<VoiceAssetRow>(); return { ok: true, messages: rows.results ?? [] }; }
 async function getVoiceAsset(env: EnvWithVexaVoice, eventId: string, language: VexaVoiceLanguage): Promise<VoiceAssetRow | null> { await ensureVoiceTables(env); return env.DB.prepare('SELECT * FROM vexa_voice_assets WHERE event_id = ? AND language_code = ?').bind(eventId, language).first<VoiceAssetRow>().catch(() => null); }
 async function hasUserPlayedEvent(env: EnvWithVexaVoice, userId: string, eventKey: string): Promise<boolean> { await ensureVoiceTables(env); const row = await env.DB.prepare('SELECT event_id FROM vexa_voice_user_events WHERE user_id = ? AND event_id = ?').bind(userId, eventKey).first<{ event_id: string }>().catch(() => null); return Boolean(row?.event_id); }
 async function voiceLanguageForUser(env: EnvWithVexaVoice, userId: string): Promise<VexaVoiceLanguage> { if (!userId) return 'en'; const row = await env.DB.prepare('SELECT region_code, language_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<RegionRow>().catch(() => null); return vexaVoiceLanguageForRegion(row?.region_code, row?.language_code); }
-
-async function messageRegionKey(env: EnvWithVexaVoice, userId: string, language: VexaVoiceLanguage): Promise<string> {
-  if (!userId) return language === 'fa' ? 'IR' : language === 'tr' ? 'TR' : language === 'ru' ? 'RU' : 'EN';
-  const row = await env.DB.prepare('SELECT region_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ region_code: string | null }>().catch(() => null);
-  const region = String(row?.region_code || '').toUpperCase();
-  if (region === 'IR' || region === 'TR' || region === 'RU') return region;
-  return 'EN';
-}
-
-async function currentAdminMessage(env: EnvWithVexaVoice, regionKey: string): Promise<AdminMessage | null> {
-  const keys = [ADMIN_REGION_MESSAGE_PREFIX + regionKey, ADMIN_REGION_MESSAGE_PREFIX + 'ALL', ADMIN_CURRENT_MESSAGE_KEY];
-  for (const key of keys) {
-    const raw = await env.BOT_CACHE.get(key).catch(() => null);
-    if (!raw) continue;
-    try { const parsed = JSON.parse(raw) as AdminMessage; const id = cleanEventKey(parsed.id); if (id) return { ...parsed, id, title: cleanText(parsed.title, 120) || 'Vexa wants to say something', eventId: 'admin_message' }; } catch {}
-  }
-  return null;
-}
-
-async function createSpeech(env: EnvWithVexaVoice, text: string): Promise<ArrayBuffer> { const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VEXA_VOICE_ID}`, { method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY || '', 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: VEXA_VOICE_MODEL, voice_settings: { stability: 0.5, similarity_boost: 0.75 } }) }); if (!response.ok) throw new Error(`ElevenLabs failed with ${response.status}`); return response.arrayBuffer(); }
+async function messageRegionKey(env: EnvWithVexaVoice, userId: string, language: VexaVoiceLanguage): Promise<string> { if (!userId) return language === 'fa' ? 'IR' : language === 'tr' ? 'TR' : language === 'ru' ? 'RU' : 'EN'; const row = await env.DB.prepare('SELECT region_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ region_code: string | null }>().catch(() => null); const region = String(row?.region_code || '').toUpperCase(); if (region === 'IR' || region === 'TR' || region === 'RU') return region; return 'EN'; }
+async function currentAdminMessage(env: EnvWithVexaVoice, regionKey: string): Promise<AdminMessage | null> { const keys = [ADMIN_REGION_MESSAGE_PREFIX + regionKey, ADMIN_REGION_MESSAGE_PREFIX + 'ALL', ADMIN_CURRENT_MESSAGE_KEY]; for (const key of keys) { const raw = await env.BOT_CACHE.get(key).catch(() => null); if (!raw) continue; try { const parsed = JSON.parse(raw) as AdminMessage; const id = cleanEventKey(parsed.id); if (id) return { ...parsed, id, title: cleanText(parsed.title, 120) || 'Vexa wants to say something', eventId: 'admin_message' }; } catch {} } return null; }
+async function createSpeech(env: EnvWithVexaVoice, text: string): Promise<ArrayBuffer> { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30000); try { const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VEXA_VOICE_ID}`, { method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY || '', 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: VEXA_VOICE_MODEL, voice_settings: { stability: 0.5, similarity_boost: 0.75 } }), signal: controller.signal }); if (!response.ok) { const detail = await response.text().catch(() => ''); throw new Error(`ElevenLabs failed with ${response.status}${detail ? ': ' + detail.slice(0, 160) : ''}`); } return response.arrayBuffer(); } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') throw new Error('ElevenLabs generation timed out. Try shorter text.'); throw error; } finally { clearTimeout(timer); } }
 async function readJson<T extends Record<string, unknown>>(c: any): Promise<T> { return c.req.json().catch(() => ({})) as Promise<T>; }
 function readTelegramUserId(initData: string): string { if (!initData) return ''; try { const rawUser = new URLSearchParams(initData).get('user') || ''; const user = rawUser ? JSON.parse(rawUser) as { id?: number | string } : {}; const id = String(user.id || '').trim(); return /^\d+$/.test(id) ? id : ''; } catch { return ''; } }
 function normalizeRegions(value: unknown): string[] { const raw = Array.isArray(value) ? value : [value || 'ALL']; const out = raw.map((item) => String(item || '').trim().toUpperCase()).filter((item) => REGION_KEYS.has(item)); return out.length ? Array.from(new Set(out)) : ['ALL']; }
