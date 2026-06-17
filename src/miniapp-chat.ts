@@ -2,33 +2,6 @@ import { miniAppShellHtml } from './miniapp/shell';
 
 const VOICE_AI_STYLE = `
 <style id="vexaVoiceAiStyle">
-  .vexa-voice-ai-button {
-    position: fixed;
-    right: 16px;
-    bottom: 94px;
-    z-index: 9000;
-    min-width: 132px;
-    border: 0;
-    border-radius: 999px;
-    padding: 13px 16px;
-    background: rgba(86, 16, 35, .92);
-    color: #fff;
-    font-weight: 900;
-    box-shadow: 0 18px 42px rgba(0, 0, 0, .38);
-  }
-
-  .vexa-voice-ai-button.listening {
-    background: linear-gradient(135deg, #8f1d3d, #d14363);
-  }
-
-  .vexa-voice-ai-button.thinking {
-    background: rgba(42, 42, 52, .92);
-  }
-
-  .vexa-voice-ai-button.speaking {
-    background: linear-gradient(135deg, #5b0f24, #8f1d3d);
-  }
-
   .vexa-voice-ai-player {
     display: none;
   }
@@ -289,7 +262,6 @@ const VOICE_AI_SCRIPT = `
 `;
 
 const VOICE_AI_HTML = `
-<button id="vexaVoiceAiButton" class="vexa-voice-ai-button" type="button">AI Voice</button>
 <audio id="vexaVoiceAiPlayer" class="vexa-voice-ai-player"></audio>
 `;
 
