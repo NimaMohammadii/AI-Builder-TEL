@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { DEFAULT_PLINKO_VIRTUAL_USERS, getPlinkoVirtualUsers, type PlinkoVirtualUser } from './plinko-virtual-users';
 
 const ROOM_NAME = 'global';
 const USER_DELAY_MS = 6000;
@@ -14,14 +15,6 @@ const RESULT_DEDUPE_MS = 2500;
 const HISTORY_LIMIT = 120;
 const LIVE_BALL_BROADCASTS_ENABLED = false;
 
-const VIRTUAL_PERSONAS = [
-  'Ari Stone @northdesk', 'Maya Chen · London', 'Leo Novak @chainpilot', 'Sofia Reed · Lisbon',
-  'Noah Brooks @tonlane', 'Eva Morgan · Berlin', 'Lucas Gray @dropclub', 'Nina Park · Seoul',
-  'Owen Blake @risklow', 'Lara Quinn · Dubai', 'Milo Grant @plinko24', 'Iris Hale · Toronto',
-  'Ryan Cole @fastbin', 'Emma Fox · Sydney', 'Max Ward @whalechip', 'Zara Mills · Paris',
-  'آراد نوا @aradton', 'نیلا راد · تهران', 'کیان مهر @kianrush', 'رها سام · شیراز',
-  'ماهان بیت @mahanbet', 'الینا جم · تبریز', 'پارسا وین @parsawin', 'سینا جت · کرج',
-];
 const VIRTUAL_MULTIPLIERS = [0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5];
 
 const localSockets = new Set<WebSocket>();
@@ -162,8 +155,9 @@ export class PlinkoLiveRoom {
     const storedLast = Number(await this.state.storage.get<number>(VIRTUAL_LAST_KEY).catch(() => 0)) || 0;
     let nextAt = storedLast > 0 ? storedLast + VIRTUAL_INTERVAL_MS : Math.max(now - 45000, currentHourStartedAt());
     const generated: PlinkoResult[] = [];
+    const virtualUsers = await virtualUsersForResult(this.env);
     while (nextAt <= now && generated.length < VIRTUAL_MAX_CATCHUP) {
-      generated.push(makeVirtualResult(nextAt));
+      generated.push(makeVirtualResult(nextAt, virtualUsers));
       nextAt += VIRTUAL_INTERVAL_MS + Math.floor(seededUnit('gap:' + nextAt) * 2600);
     }
     if (!generated.length) {
@@ -363,15 +357,15 @@ function cleanMultiplier(value: unknown): number {
   return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
-function makeVirtualResult(createdAt: number): PlinkoResult {
-  const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * VIRTUAL_PERSONAS.length) % VIRTUAL_PERSONAS.length;
-  const amountBase = [1, 2, 3, 5, 7.5, 10, 12, 15, 20, 25, 30, 50][Math.floor(seededUnit('amount:' + createdAt) * 12)];
+function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users): PlinkoResult {
+  const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * users.length) % users.length;
+  const persona = users[personaIndex] || DEFAULT_PLINKO_VIRTUAL_USERS.users[0];
   const multiplier = VIRTUAL_MULTIPLIERS[Math.floor(seededUnit('mult:' + createdAt) * VIRTUAL_MULTIPLIERS.length)] || 1;
-  const amount = roundAmount(amountBase + Math.floor(seededUnit('cents:' + createdAt) * 4) * 0.25);
+  const amount = roundAmount(persona.amount);
   return {
     id: 'virtual-plinko-' + createdAt.toString(36),
     userId: 'virtual:plinko:' + personaIndex,
-    name: VIRTUAL_PERSONAS[personaIndex],
+    name: persona.name,
     photoUrl: '',
     isVirtual: true,
     amount,
@@ -379,6 +373,17 @@ function makeVirtualResult(createdAt: number): PlinkoResult {
     total: roundAmount(amount * multiplier),
     createdAt,
   };
+}
+
+async function virtualUsersForResult(env?: Env): Promise<PlinkoVirtualUser[]> {
+  if (!env) return DEFAULT_PLINKO_VIRTUAL_USERS.users;
+  try {
+    const config = await getPlinkoVirtualUsers(env);
+    return config.users.length ? config.users : DEFAULT_PLINKO_VIRTUAL_USERS.users;
+  } catch (error) {
+    console.warn('load plinko virtual users failed', error);
+    return DEFAULT_PLINKO_VIRTUAL_USERS.users;
+  }
 }
 
 function seededUnit(seed: string): number {

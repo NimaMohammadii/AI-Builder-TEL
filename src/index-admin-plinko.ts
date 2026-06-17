@@ -1,5 +1,6 @@
 import app from './index-admin';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
+import { getPlinkoVirtualUsers, resetPlinkoVirtualUsers, savePlinkoVirtualUsers } from './plinko-virtual-users';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
@@ -23,6 +24,7 @@ registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
+app.get('/app/api/plinko-virtual-users', async (c) => c.json(await getPlinkoVirtualUsers(c.env)));
 
 app.get('/app/api/plinko-control-image/:kind', async (c) => {
   const kind = normalizePlinkoControlImageKind(c.req.param('kind'));
@@ -244,6 +246,26 @@ app.post('/admin/api/plinko-control', async (c) => {
 app.post('/admin/api/plinko-control/reset', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetPlinkoControl(c.env));
+});
+
+
+app.get('/admin/api/plinko-virtual-users', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await getPlinkoVirtualUsers(c.env));
+});
+
+app.post('/admin/api/plinko-virtual-users', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    return c.json(await savePlinkoVirtualUsers(c.env, await c.req.json()));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not save Plinko virtual users' }, 400);
+  }
+});
+
+app.post('/admin/api/plinko-virtual-users/reset', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json(await resetPlinkoVirtualUsers(c.env));
 });
 
 app.post('/admin/api/upload-mines-tile-image', async (c) => {
