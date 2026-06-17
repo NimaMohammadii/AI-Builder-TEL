@@ -28,6 +28,8 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   var regionLang='en';
   var regionPromise=null;
   var lastRefreshAt=0;
+  var pollTimer=0;
+  var POLL_MS=3000;
   function q(id){return document.getElementById(id)}
   function isOpen(){var page=q('dailyrewardsinfo');return !!(page&&page.classList.contains('active'))}
   function currentTgUser(){try{var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}catch(e){return {}}}
@@ -40,24 +42,29 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
       var locale=json&&json.locale?json.locale:{};
       var lang=String(locale.languageCode||'').trim().toLowerCase();
       if(!/^[a-z]{2,3}$/.test(lang))lang='en';
+      var changed=lang!==regionLang;
       regionLang=lang;
       try{window.__vexaCurrentRegionCode=String(locale.regionCode||'');window.__vexaCurrentLanguageCode=lang}catch(e){}
-      return lang;
-    }).catch(function(){regionLang='en';return regionLang}).then(function(lang){regionPromise=null;return lang});
+      return {lang:lang,changed:changed};
+    }).catch(function(){return {lang:regionLang||'en',changed:false}}).then(function(result){regionPromise=null;return result});
     return regionPromise;
   }
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
   function textFor(i){var l=regionLang||'en';return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
   function img(day){var key=String(day);if(!imgCache[key])imgCache[key]='/app/api/daily-rewards-day-image/'+(day-1);return imgCache[key]}
   function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
-  function refresh(force){var now=Date.now();if(!force&&now-lastRefreshAt<900)return;lastRefreshAt=now;var box=q('dailyInfoList');if(box)box.innerHTML='';loadRegionLang().then(render)}
-  function bind(){refresh(true)}
+  function refresh(force){var now=Date.now();if(!force&&now-lastRefreshAt<900)return;lastRefreshAt=now;if(force){var box=q('dailyInfoList');if(box)box.innerHTML=''}loadRegionLang().then(function(result){if(force||result.changed)render()})}
+  function poll(){if(document.hidden||!isOpen())return;refresh(false)}
+  function startPolling(){if(pollTimer)return;pollTimer=setInterval(poll,POLL_MS)}
+  function stopPolling(){if(!pollTimer)return;clearInterval(pollTimer);pollTimer=0}
+  function syncPolling(){if(!document.hidden&&isOpen())startPolling();else stopPolling()}
+  function bind(){refresh(true);syncPolling()}
   window.__vexaDailyInfoRender=render;
-  window.__vexaDailyInfoRefresh=function(){refresh(true)};
+  window.__vexaDailyInfoRefresh=function(){refresh(true);syncPolling()};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(){setTimeout(function(){if(isOpen())refresh(true)},20)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true)});
-  window.addEventListener('focus',function(){refresh(true)});
-  window.addEventListener('pageshow',function(){refresh(true)});
+  document.addEventListener('click',function(){setTimeout(function(){if(isOpen())refresh(true);syncPolling()},20)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(true);syncPolling()});
+  window.addEventListener('focus',function(){refresh(true);syncPolling()});
+  window.addEventListener('pageshow',function(){refresh(true);syncPolling()});
 })();
 `;
