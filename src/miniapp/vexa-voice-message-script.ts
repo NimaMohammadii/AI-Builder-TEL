@@ -6,6 +6,7 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
   var busy=false;
   var queue=[];
   var lastLiveHit=0;
+  var liveSource=null;
 
   function q(id){return document.getElementById(id)}
   function initData(){return tg&&tg.initData?tg.initData:''}
@@ -41,16 +42,8 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
 
   function hideToast(){var n=q('vexaVoiceMessageToast');if(n)n.classList.remove('open')}
 
-  async function markPlayed(message){
-    try{await fetch('/app/api/vexa-voice/played',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:message.eventId,messageKey:message.messageKey,initData:initData()})})}catch(e){}
-  }
-
-  async function fetchMessage(eventId){
-    var r=await fetch('/app/api/vexa-voice/message',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:eventId,initData:initData()}),cache:'no-store'});
-    var j=await r.json().catch(function(){return{ok:false}});
-    return j&&j.ok?j:null;
-  }
-
+  async function markPlayed(message){try{await fetch('/app/api/vexa-voice/played',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:message.eventId,messageKey:message.messageKey,initData:initData()})})}catch(e){}}
+  async function fetchMessage(eventId){var r=await fetch('/app/api/vexa-voice/message',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:eventId,initData:initData()}),cache:'no-store'});var j=await r.json().catch(function(){return{ok:false}});return j&&j.ok?j:null}
   function enqueue(message){if(!message||!message.url)return;queue.push(message);playNext()}
   function playNext(){if(busy||!queue.length)return;var message=queue.shift();busy=true;current=message;if(message.requiresTap){showToast(message);return}playMessage(message,false)}
   function playMessage(message,fromTap){ensureUi();current=message;audio.src=message.url;var p=audio.play();if(p&&typeof p.catch==='function'){p.then(function(){if(fromTap)hideToast()}).catch(function(){showToast(message)})}else if(fromTap){hideToast()}}
@@ -58,23 +51,31 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
 
   function activeViewId(){var n=document.querySelector('.view.active');return n&&n.id||''}
   function triggerForView(id){if(id==='playzone')trigger('playzone_intro');if(id==='predictzone')trigger('predict_intro')}
-
   function watchClicks(){document.addEventListener('click',function(ev){var target=ev.target;var btn=target&&target.closest?target.closest('button'):null;if(!btn)return;var view=btn.getAttribute('data-view')||'';var action=btn.getAttribute('data-action')||'';if(view==='playzone'||view==='predictzone')setTimeout(function(){triggerForView(view)},320);if(action==='open-daily-guide')setTimeout(function(){trigger('daily_rewards_intro')},320)},true)}
-
   function watchFinanceSuccess(){var depositStatus=q('depositStatus');var withdrawSuccess=q('withdrawSuccess');if(depositStatus){new MutationObserver(function(){if(depositStatus.classList.contains('success')||/payment received/i.test(depositStatus.textContent||''))trigger('first_deposit')}).observe(depositStatus,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']})}if(withdrawSuccess){new MutationObserver(function(){if(withdrawSuccess.classList.contains('show')||withdrawSuccess.getAttribute('aria-hidden')==='false')trigger('first_withdraw')}).observe(withdrawSuccess,{attributes:true,attributeFilter:['class','aria-hidden']})}}
 
   function onLive(){var now=Date.now();if(now-lastLiveHit<1200)return;lastLiveHit=now;trigger('admin_message')}
+  function connectLiveFallback(){
+    if(liveSource||typeof EventSource==='undefined')return;
+    try{
+      liveSource=new EventSource('/app/api/section-lock-events');
+      liveSource.addEventListener('locks',onLive);
+      liveSource.onerror=function(){try{liveSource.close()}catch(e){}liveSource=null;setTimeout(connectLiveFallback,5000)};
+    }catch(e){}
+  }
 
   function boot(){
     ensureUi();
     watchClicks();
     watchFinanceSuccess();
     window.addEventListener('vexa-live-event',onLive);
+    connectLiveFallback();
     window.VexaVoiceMessage={trigger:trigger,admin:function(){trigger('admin_message')}};
     setTimeout(function(){trigger('admin_message')},900);
     setTimeout(function(){triggerForView(activeViewId())},1000);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)connectLiveFallback()});
 })();
 `;
