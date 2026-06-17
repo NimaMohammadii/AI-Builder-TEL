@@ -8,59 +8,18 @@ export const ADMIN_ANNOUNCEMENT_PANEL_SCRIPT = `<script>
     document.head.appendChild(css);
     var s=document.createElement('section');
     s.id='announcementPanel';
-    s.innerHTML='<h3>Vexa Admin Message</h3><p>Write text, generate audio preview, listen, then approve and send by region.</p><input id="annTitle" value="Vexa wants to say something" placeholder="Small popup title"><textarea id="annText" placeholder="Write the message text here..."></textarea><div class="ann-grid"><select id="annLang"><option value="en">English</option><option value="fa">Persian</option><option value="tr">Turkish</option><option value="ru">Russian</option></select><button type="button" data-ann="preview">Generate Preview</button></div><div class="ann-regions"><label><input type="checkbox" value="ALL" checked>All</label><label><input type="checkbox" value="EN">EN</label><label><input type="checkbox" value="IR">IR</label><label><input type="checkbox" value="TR">TR</label><label><input type="checkbox" value="RU">RU</label></div><audio id="annPlayer" controls hidden></audio><div class="ann-grid"><button class="primary" type="button" data-ann="publish">Approve & Send</button><button type="button" data-ann="disable">Disable Message</button></div><div id="announcementStatus"></div>';
+    s.innerHTML='<h3>Vexa Admin Message</h3><p>Write text, generate audio preview, listen, then approve and send.</p><input id="annTitle" value="Vexa wants to say something" placeholder="Small popup title"><input id="annUserId" inputmode="numeric" placeholder="Telegram User ID — optional"><textarea id="annText" placeholder="Write the message text here..."></textarea><div class="ann-grid"><select id="annLang"><option value="en">English</option><option value="fa">Persian</option><option value="tr">Turkish</option><option value="ru">Russian</option></select><button type="button" data-ann="preview">Generate Preview</button></div><div class="ann-regions"><label><input type="checkbox" value="ALL" checked>All</label><label><input type="checkbox" value="EN">EN</label><label><input type="checkbox" value="IR">IR</label><label><input type="checkbox" value="TR">TR</label><label><input type="checkbox" value="RU">RU</label></div><audio id="annPlayer" controls hidden></audio><div class="ann-grid"><button class="primary" type="button" data-ann="publish">Approve & Send</button><button type="button" data-ann="disable">Disable Message</button></div><div id="announcementStatus"></div>';
     var target=document.querySelector('main')||document.querySelector('.admin-content')||document.body;
     target.appendChild(s);
   }
   function regions(){var a=[];document.querySelectorAll('#announcementPanel input[type=checkbox]:checked').forEach(function(x){a.push(x.value)});return a.length?a:['ALL']}
+  function userId(){return (q('annUserId')&&q('annUserId').value||'').replace(/[^0-9]/g,'').trim()}
   function status(t){var n=q('announcementStatus');if(n)n.textContent=t}
   function lock(v){document.querySelectorAll('#announcementPanel button').forEach(function(b){b.disabled=!!v})}
-  async function post(path,body){
-    var controller=new AbortController();
-    var timer=setTimeout(function(){controller.abort()},45000);
-    try{
-      var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{}),signal:controller.signal});
-      var txt=await r.text();
-      var j={};try{j=txt?JSON.parse(txt):{}}catch(e){j={error:txt||'Bad response'}}
-      if(!r.ok)throw new Error((j&&j.error?j.error:'Request failed')+' (HTTP '+r.status+')');
-      return j;
-    }catch(e){
-      if(e&&e.name==='AbortError')throw new Error('Generation timed out. Try shorter text or check ElevenLabs key/plan.');
-      throw e;
-    }finally{clearTimeout(timer)}
-  }
+  async function post(path,body){var controller=new AbortController();var timer=setTimeout(function(){controller.abort()},45000);try{var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{}),signal:controller.signal});var txt=await r.text();var j={};try{j=txt?JSON.parse(txt):{}}catch(e){j={error:txt||'Bad response'}}if(!r.ok)throw new Error((j&&j.error?j.error:'Request failed')+' (HTTP '+r.status+')');return j}catch(e){if(e&&e.name==='AbortError')throw new Error('Generation timed out. Try shorter text or check ElevenLabs key/plan.');throw e}finally{clearTimeout(timer)}}
   async function live(){try{await post('/admin/api/section-lock-events/broadcast',{})}catch(e){}}
   var draftId='';
-  document.addEventListener('click',async function(e){
-    var b=e.target&&e.target.closest?e.target.closest('[data-ann]'):null;if(!b)return;
-    try{
-      var act=b.getAttribute('data-ann');
-      lock(true);
-      if(act==='preview'){
-        var text=q('annText').value.trim();
-        if(!text)throw new Error('Write the message text first.');
-        status('Generating preview... this can take 5-20 seconds.');
-        var res=await post('/admin/api/vexa-voice/preview',{title:q('annTitle').value,text:text,language:q('annLang').value,regions:regions()});
-        draftId=res.draftId||'';
-        var p=q('annPlayer');p.hidden=false;p.src=res.previewUrl;p.load();
-        p.play().catch(function(){});
-        status('Preview ready. Listen first, then approve.');
-      }
-      if(act==='publish'){
-        if(!draftId)throw new Error('Generate preview first.');
-        status('Publishing...');
-        var published=await post('/admin/api/vexa-voice/publish',{draftId:draftId,regions:regions()});
-        await live();
-        status(JSON.stringify(Object.assign({live:true},published),null,2));
-      }
-      if(act==='disable'){
-        status('Disabling...');
-        var disabled=await post('/admin/api/vexa-voice/admin-message',{enabled:false,regions:regions()});
-        await live();
-        status(JSON.stringify(Object.assign({live:true},disabled),null,2));
-      }
-    }catch(err){status(err&&err.message?err.message:'Failed')}finally{lock(false)}
-  },true);
+  document.addEventListener('click',async function(e){var b=e.target&&e.target.closest?e.target.closest('[data-ann]'):null;if(!b)return;try{var act=b.getAttribute('data-ann');var uid=userId();lock(true);if(act==='preview'){var text=q('annText').value.trim();if(!text)throw new Error('Write the message text first.');status('Generating preview... this can take 5-20 seconds.');var res=await post('/admin/api/vexa-voice/preview',{title:q('annTitle').value,text:text,language:q('annLang').value,regions:regions()});draftId=res.draftId||'';var p=q('annPlayer');p.hidden=false;p.src=res.previewUrl;p.load();p.play().catch(function(){});status('Preview ready. Listen first, then approve.')}if(act==='publish'){if(!draftId)throw new Error('Generate preview first.');status('Publishing...');var published=uid?await post('/admin/api/vexa-voice/user-publish',{draftId:draftId,targetUserId:uid}):await post('/admin/api/vexa-voice/publish',{draftId:draftId,regions:regions()});await live();status(JSON.stringify(Object.assign({live:true},published),null,2))}if(act==='disable'){status('Disabling...');var disabled=uid?await post('/admin/api/vexa-voice/user-disable',{targetUserId:uid}):await post('/admin/api/vexa-voice/admin-message',{enabled:false,regions:regions()});await live();status(JSON.stringify(Object.assign({live:true},disabled),null,2))}}catch(err){status(err&&err.message?err.message:'Failed')}finally{lock(false)}},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensure);else ensure();
 })();
 </script>`;
