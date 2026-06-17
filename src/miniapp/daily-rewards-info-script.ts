@@ -25,37 +25,32 @@ export const DAILY_REWARDS_INFO_SCRIPT = `
   };
   var translated=true;
   var imgCache={};
-  var regionLang='';
-  var regionReady=false;
+  var regionLang='en';
   var regionPromise=null;
   var lastRefreshAt=0;
-  var CACHE_PREFIX='vexa:selectedLanguageCode:';
   function q(id){return document.getElementById(id)}
   function isOpen(){var page=q('dailyrewardsinfo');return !!(page&&page.classList.contains('active'))}
   function currentTgUser(){try{var tg=window.Telegram&&window.Telegram.WebApp;return (tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{}}catch(e){return {}}}
   function userId(){var u=currentTgUser();return String((u&&u.id)||localStorage.getItem('ownerId')||'').trim()}
-  function cacheKey(){var id=userId();return CACHE_PREFIX+(id||'guest')}
-  function cachedLang(){try{var l=String(localStorage.getItem(cacheKey())||'').trim().toLowerCase();return /^[a-z]{2,3}$/.test(l)?l:''}catch(e){return ''}}
-  function saveLang(lang){try{if(/^[a-z]{2,3}$/.test(lang)){localStorage.setItem(cacheKey(),lang);localStorage.removeItem('vexa:selectedLanguageCode')}}catch(e){}}
-  function loadRegionLang(force){
-    if(regionReady&&!force)return Promise.resolve(regionLang||'en');
-    if(regionPromise&&!force)return regionPromise;
-    if(force)regionPromise=null;
+  function loadRegionLang(){
+    if(regionPromise)return regionPromise;
     var id=userId();
     var url='/app/api/daily-rewards'+(id?'?userId='+encodeURIComponent(id)+'&':'?')+'_localeTs='+Date.now();
-    regionPromise=fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'cache-control':'no-store'}}).then(function(r){return r.ok?r.json():null}).then(function(json){
-      var lang=String((json&&json.locale&&json.locale.languageCode)||'').trim().toLowerCase();
+    regionPromise=fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'cache-control':'no-store','pragma':'no-cache'}}).then(function(r){return r.ok?r.json():null}).then(function(json){
+      var locale=json&&json.locale?json.locale:{};
+      var lang=String(locale.languageCode||'').trim().toLowerCase();
       if(!/^[a-z]{2,3}$/.test(lang))lang='en';
-      regionLang=lang;regionReady=true;saveLang(lang);return regionLang;
-    }).catch(function(){regionLang=cachedLang()||'en';regionReady=true;return regionLang});
+      regionLang=lang;
+      try{window.__vexaCurrentRegionCode=String(locale.regionCode||'');window.__vexaCurrentLanguageCode=lang}catch(e){}
+      return lang;
+    }).catch(function(){regionLang='en';return regionLang}).then(function(lang){regionPromise=null;return lang});
     return regionPromise;
   }
-  function detectedLang(){return regionReady?(regionLang||'en'):(cachedLang()||'en')}
   function esc(v){return String(v||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch})}
-  function textFor(i){var l=detectedLang();return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
+  function textFor(i){var l=regionLang||'en';return translated&&dict[l]&&dict[l][i]?dict[l][i]:items[i].en}
   function img(day){var key=String(day);if(!imgCache[key])imgCache[key]='/app/api/daily-rewards-day-image/'+(day-1);return imgCache[key]}
   function render(){var box=q('dailyInfoList');if(!box)return;box.innerHTML=items.map(function(it,i){return '<div class="daily-info-row '+(i===0?'today':'')+'"><div class="daily-info-img"><img src="'+img(it.day)+'" alt="" decoding="async" loading="lazy" onerror="this.style.display=\\'none\\';this.parentNode.innerHTML=\\'<span>Day '+it.day+'</span>\\'"/></div><div class="daily-info-main"><em class="daily-info-day">Day '+it.day+'</em><b>'+esc(it.title)+'</b><small>'+esc(textFor(i))+'</small></div></div>'}).join('')}
-  function refresh(force){var now=Date.now();if(!force&&now-lastRefreshAt<900)return;lastRefreshAt=now;var cached=cachedLang();if(cached&&!regionReady){regionLang=cached;render()}else if(!cached){var box=q('dailyInfoList');if(box&&!regionReady)box.innerHTML=''}regionReady=false;loadRegionLang(true).then(render)}
+  function refresh(force){var now=Date.now();if(!force&&now-lastRefreshAt<900)return;lastRefreshAt=now;var box=q('dailyInfoList');if(box)box.innerHTML='';loadRegionLang().then(render)}
   function bind(){refresh(true)}
   window.__vexaDailyInfoRender=render;
   window.__vexaDailyInfoRefresh=function(){refresh(true)};
