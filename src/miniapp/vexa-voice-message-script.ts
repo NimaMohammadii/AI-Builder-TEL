@@ -5,6 +5,8 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
   var current=null;
   var busy=false;
   var queue=[];
+  var liveSource=null;
+  var lastLiveHit='';
 
   function q(id){return document.getElementById(id)}
   function initData(){return tg&&tg.initData?tg.initData:''}
@@ -112,15 +114,31 @@ export const VEXA_VOICE_MESSAGE_SCRIPT = `
     }
   }
 
+  function connectLive(){
+    if(liveSource||typeof EventSource==='undefined')return;
+    try{
+      liveSource=new EventSource('/app/api/section-lock-events');
+      liveSource.addEventListener('locks',function(ev){
+        var key=String(ev&&ev.data||'');
+        if(key&&key===lastLiveHit)return;
+        lastLiveHit=key;
+        trigger('admin_message');
+      });
+      liveSource.onerror=function(){try{liveSource.close()}catch(e){}liveSource=null;setTimeout(connectLive,5000)};
+    }catch(e){}
+  }
+
   function boot(){
     ensureUi();
     watchClicks();
     watchFinanceSuccess();
+    connectLive();
     window.VexaVoiceMessage={trigger:trigger,admin:function(){trigger('admin_message')}};
     setTimeout(function(){trigger('admin_message')},900);
     setTimeout(function(){triggerForView(activeViewId())},1000);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)connectLive()});
 })();
 `;
