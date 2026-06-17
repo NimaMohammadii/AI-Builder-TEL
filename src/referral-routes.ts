@@ -2,10 +2,13 @@ import type { Hono } from 'hono';
 import type { Env } from './types';
 import { getReferralDashboard, registerReferral } from './referrals';
 import { gameBotToken } from './utils';
+import { registerVexaVoiceMessageRoutes } from './vexa-voice-message-api';
 
 type PreparedInlineMessageResponse = { ok: boolean; result?: { id?: string }; description?: string };
 
 export function registerReferralRoutes(app: Hono<{ Bindings: Env }>): void {
+  registerVexaVoiceMessageRoutes(app as never);
+
   app.get('/app/api/referral', async (c) => {
     try {
       const userId = c.req.query('userId') || '';
@@ -31,7 +34,7 @@ export function registerReferralRoutes(app: Hono<{ Bindings: Env }>): void {
       const userId = cleanReferralUserId(body.userId);
       const name = cleanReferralName(body.name);
       const inviteUrl = await referralMiniAppUrl(c.env, userId);
-      const messageText = `<b>🚀 Join me on Vexa FLOW</b>\n\n🎁 Play TON games, unlock rewards, and start earning.\n\n🤖 Tap the button below to open the app.`;
+      const messageText = `<b>\ud83d\ude80 Join me on Vexa FLOW</b>\n\n\ud83c\udf81 Play TON games, unlock rewards, and start earning.\n\n\ud83e\udd16 Tap the button below to open the app.`;
       const fallbackText = `${name} invited you to Vexa FLOW. Open the app and start playing TON games.`;
       const token = gameBotToken(c.env);
       const numericUserId = Number(userId);
@@ -49,7 +52,7 @@ export function registerReferralRoutes(app: Hono<{ Bindings: Env }>): void {
             disable_web_page_preview: true,
           },
           reply_markup: {
-            inline_keyboard: [[{ text: '🚀 Open Vexa App', url: inviteUrl }]],
+            inline_keyboard: [[{ text: '\ud83d\ude80 Open Vexa App', url: inviteUrl }]],
           },
         },
         allow_user_chats: true,
