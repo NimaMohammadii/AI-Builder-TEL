@@ -36,45 +36,4 @@ const PREDICT_SETTINGS_SCRIPT = `
 })();
 `;
 
-const PREDICT_MARKET_LOCK_SCRIPT = `
-(function(){
-  function ready(fn){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',fn):fn()}
-  ready(function(){
-    var root=document.getElementById('predictzone');
-    if(!root||root.dataset.predictMarketLockReady==='1')return;
-    root.dataset.predictMarketLockReady='1';
-    var lockedSelector='#predictzone [data-predict-market="politics"],#predictzone [data-predict-market="fun"],#predictzone [data-vexa-predict-market="politics"],#predictzone [data-vexa-predict-market="fun"]';
-    function trusted(){return window.VexaTrustedAccess===true}
-    function refresh(){
-      var open=trusted();
-      root.classList.toggle('predict-zone-trusted-access',open);
-      root.querySelectorAll('[data-predict-market="politics"],[data-predict-market="fun"],[data-vexa-predict-market="politics"],[data-vexa-predict-market="fun"]').forEach(function(tab){
-        tab.classList.toggle('predict-market-locked',!open);
-        if(open){tab.removeAttribute('aria-disabled')}else{tab.setAttribute('aria-disabled','true')}
-      });
-    }
-    function onClick(event){
-      var tab=event.target&&event.target.closest?event.target.closest(lockedSelector):null;
-      if(!tab)return;
-      refresh();
-      if(trusted())return;
-      event.preventDefault();
-      event.stopPropagation();
-      if(event.stopImmediatePropagation)event.stopImmediatePropagation();
-    }
-    if(!document.getElementById('predictMarketLockStyle')){
-      var style=document.createElement('style');
-      style.id='predictMarketLockStyle';
-      style.textContent='#predictzone.predict-zone-trusted-access .predict-zone-category-card[data-predict-market="politics"] span:after,#predictzone.predict-zone-trusted-access .predict-zone-category-card[data-predict-market="fun"] span:after,#predictzone.predict-zone-trusted-access .predict-zone-category-card[data-vexa-predict-market="politics"] span:after,#predictzone.predict-zone-trusted-access .predict-zone-category-card[data-vexa-predict-market="fun"] span:after{display:none!important}#predictzone:not(.predict-zone-trusted-access) .predict-zone-category-card[data-predict-market="politics"],#predictzone:not(.predict-zone-trusted-access) .predict-zone-category-card[data-predict-market="fun"],#predictzone:not(.predict-zone-trusted-access) .predict-zone-category-card[data-vexa-predict-market="politics"],#predictzone:not(.predict-zone-trusted-access) .predict-zone-category-card[data-vexa-predict-market="fun"]{cursor:not-allowed}';
-      document.head.appendChild(style);
-    }
-    refresh();
-    root.addEventListener('click',onClick,true);
-    window.addEventListener('vexa-section-locks-updated',refresh);
-    window.addEventListener('vexa-predict-settings',function(){setTimeout(refresh,0)});
-    window.addEventListener('focus',refresh);
-  });
-})();
-`;
-
-export const PREDICT_ZONE_SETTINGS_SCRIPT = PREDICT_SETTINGS_SCRIPT + PREDICT_TOOLBAR_SCRIPT + PREDICT_MARKET_LOCK_SCRIPT + PREDICT_CANDLE_SCRIPT + PREDICT_HISTORY_SCRIPT;
+export const PREDICT_ZONE_SETTINGS_SCRIPT = PREDICT_SETTINGS_SCRIPT + PREDICT_TOOLBAR_SCRIPT + PREDICT_CANDLE_SCRIPT + PREDICT_HISTORY_SCRIPT;
