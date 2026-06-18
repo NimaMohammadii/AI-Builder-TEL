@@ -168,11 +168,26 @@ export const GAME_LIVE_COUNT_SCRIPT = `
         var source='';
         try{source=String(fn)}catch(e){}
         if(source.indexOf('makeVirtualLiveRow')>=0&&source.indexOf('renderLive')>=0){
-          return nativeSetInterval(function(){
-            var slot=document.getElementById('slot');
-            if(document.hidden||!slot||!slot.classList.contains('active'))return;
-            return fn();
-          },delay);
+          var lastWarm=0;
+          var openBound=false;
+          function slotActive(){var slot=document.getElementById('slot');return !!(slot&&slot.classList.contains('active')&&!document.hidden)}
+          function run(force){
+            if(document.hidden)return;
+            var now=Date.now();
+            if(slotActive()){lastWarm=now;return fn()}
+            if(force)return;
+            if(now-lastWarm>=8800){lastWarm=now;return fn()}
+          }
+          if(!openBound){
+            openBound=true;
+            document.addEventListener('click',function(ev){
+              var open=ev.target&&ev.target.closest&&ev.target.closest('[data-game-view="slot"],[data-view="slot"]');
+              if(open)setTimeout(function(){run(true);setTimeout(function(){run(true)},260)},120);
+            },true);
+            document.addEventListener('visibilitychange',function(){if(!document.hidden&&slotActive())run(true)});
+            window.addEventListener('focus',function(){if(slotActive())run(true)});
+          }
+          return nativeSetInterval(function(){run(false)},delay);
         }
       }
       return nativeSetInterval.apply(window,arguments);
