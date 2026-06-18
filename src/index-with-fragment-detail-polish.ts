@@ -84,7 +84,7 @@ const DETAIL_POLISH_SCRIPT = `
     document.addEventListener('click',function(){setTimeout(polishDetail,120);setTimeout(cleanup,500)},true);
     document.addEventListener('keydown',function(){setTimeout(cleanup,120)},true);
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){addStyle();setTimeout(polishDetail,600)});else{addStyle();setTimeout(polishDetail,600)}
-    setInterval(function(){if(!isMarketActive())return;polishDetail();cleanup()},1200);
+    function schedulePolish(){if(schedulePolish.timer)clearTimeout(schedulePolish.timer);if(!isMarketActive())return;schedulePolish.timer=setTimeout(function(){schedulePolish.timer=0;polishDetail();cleanup();schedulePolish()},1200)}document.addEventListener('visibilitychange',function(){if(!document.hidden){polishDetail();cleanup();schedulePolish()}});document.addEventListener('click',function(){setTimeout(function(){polishDetail();cleanup();schedulePolish()},120)},true);schedulePolish();
   }catch(e){}
 })();
 `;

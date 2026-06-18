@@ -256,9 +256,10 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
     virtualRows.forEach(function(row){addHistoryData(row,row.key)});
   }
 
-  function scheduleVirtualRows(){
-    if(virtualTimer)return;
-    virtualTimer=setInterval(pushVirtualRow,2000);
+  function clearVirtualTimer(){if(virtualTimer){clearTimeout(virtualTimer);virtualTimer=0}}
+  function scheduleVirtualRows(delay){
+    if(virtualTimer||!active())return;
+    virtualTimer=setTimeout(function(){virtualTimer=0;if(!active())return;pushVirtualRow();scheduleVirtualRows(2000)},Math.max(250,delay||2000));
   }
 
   function ensureVirtualRows(){
@@ -427,8 +428,9 @@ export const PLINKO_LIVE_FEED_POLISH_SCRIPT = `
   }
 
   window.addEventListener('vexa-plinko-live-hour',function(ev){applyLiveHourDetail(ev&&ev.detail)});
-  setInterval(function(){syncHourlyReset();ensureVirtualRows()},30000);
+  function scheduleHourlyReset(){var delay=3600000-(Date.now()%3600000)+250;if(scheduleHourlyReset.timer)clearTimeout(scheduleHourlyReset.timer);scheduleHourlyReset.timer=setTimeout(function(){syncHourlyReset();if(active())ensureVirtualRows();scheduleHourlyReset()},delay)}
+  scheduleHourlyReset();
   document.addEventListener('click',function(){setTimeout(scan,80)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(scan,80);else clearVirtualTimer()});
 })();
 `;

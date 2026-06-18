@@ -27,7 +27,8 @@ export const CRASH_BACK_BUTTON_SCRIPT = `
     document.addEventListener('click',function(){setTimeout(sync,80);setTimeout(sync,260)},true);
     var obs=new MutationObserver(sync);
     try{obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}
-    setInterval(sync,900);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});
+    window.addEventListener('focus',sync);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();

@@ -503,7 +503,17 @@ function updatePlinkoChrome() {
     console.warn('plinko chrome skipped', e);
   }
 }
-if (!plinkoChromeTimer) plinkoChromeTimer = setInterval(updatePlinkoChrome, 500);
+function schedulePlinkoChromeUpdate(delay) {
+  if (plinkoChromeTimer) clearTimeout(plinkoChromeTimer);
+  plinkoChromeTimer = setTimeout(function () {
+    plinkoChromeTimer = null;
+    updatePlinkoChrome();
+  }, delay || 80);
+}
+document.addEventListener('click', function () { schedulePlinkoChromeUpdate(80); schedulePlinkoChromeUpdate(260); }, true);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) updatePlinkoChrome(); });
+if (window.MutationObserver) new MutationObserver(updatePlinkoChrome).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+updatePlinkoChrome();
 function plinkoHaptic(type) {
   try {
     var h = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback;
