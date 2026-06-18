@@ -3,6 +3,53 @@ import { CRASH_LIVE_D1_SCRIPT } from './crash-live-d1-script';
 import { CRASH_BACK_BUTTON_SCRIPT } from './crash-back-button-script';
 import { CRASH_BREAK_FX_SCRIPT } from './crash-break-fx-script';
 
+const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
+(function(){
+  function install(){
+    var el=document.getElementById('crashMultiplier');
+    if(!el||el.__vexaCrashSmoothText)return;
+    el.__vexaCrashSmoothText=true;
+    var desc=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+    if(!desc||!desc.get||!desc.set)return;
+    var internal=false;
+    var target=1;
+    var display=1;
+    var raf=0;
+    var last=0;
+    function parse(value){var n=Number(String(value||'').replace(/x/i,''));return Number.isFinite(n)&&n>0?n:1}
+    function format(value){return Math.max(1,Number(value)||1).toFixed(2)+'x'}
+    function paint(value){internal=true;var text=format(value);desc.set.call(el,text);el.setAttribute('data-crash-text',text);internal=false}
+    function frame(ts){
+      raf=0;
+      if(!last)last=ts;
+      var dt=Math.min(50,ts-last);
+      last=ts;
+      if(target<=1.005||target<display){display=target;paint(display);return}
+      var diff=target-display;
+      var rate=target<1.12?.42:target<1.35?.72:target<2?1.18:2.05;
+      var move=diff*(1-Math.exp(-rate*dt/1000));
+      if(move<.00055)move=.00055;
+      display=Math.min(target,display+move);
+      paint(display);
+      if(Math.abs(target-display)>.003)raf=requestAnimationFrame(frame);
+    }
+    Object.defineProperty(el,'textContent',{
+      configurable:true,
+      get:function(){return desc.get.call(el)},
+      set:function(value){
+        if(internal){desc.set.call(el,value);return}
+        var next=parse(value);
+        if(next<=1.005||next<target-.02){target=next;display=next;last=0;paint(display);return}
+        target=next;
+        if(!raf){last=0;raf=requestAnimationFrame(frame)}
+      }
+    });
+    paint(parse(desc.get.call(el)||'1'));
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
+`;
+
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <div class="crash-page">
     <div class="crash-stage">
@@ -47,6 +94,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
       <div class="crash-live-list" id="crashLiveList"><div class="crash-live-empty">No bets yet</div></div>
     </div>
   </div>
+  <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
   <script>${CRASH_LIVE_D1_SCRIPT}</script>
   <script>${CRASH_BACK_BUTTON_SCRIPT}</script>
