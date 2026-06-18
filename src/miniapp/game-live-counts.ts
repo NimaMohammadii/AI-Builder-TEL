@@ -159,26 +159,53 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var counts={};
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
   var profiles=${JSON.stringify(livePlayerProfiles)};
+  function installLowPowerTimerGuard(){
+    if(window.__vexaLowPowerTimerGuard||typeof window.setInterval!=='function')return;
+    window.__vexaLowPowerTimerGuard=true;
+    var nativeSetInterval=window.setInterval.bind(window);
+    window.setInterval=function(fn,delay){
+      if(delay===2200&&typeof fn==='function'){
+        var source='';
+        try{source=String(fn)}catch(e){}
+        if(source.indexOf('makeVirtualLiveRow')>=0&&source.indexOf('renderLive')>=0){
+          return nativeSetInterval(function(){
+            var slot=document.getElementById('slot');
+            if(document.hidden||!slot||!slot.classList.contains('active'))return;
+            return fn();
+          },delay);
+        }
+      }
+      return nativeSetInterval.apply(window,arguments);
+    };
+  }
+  installLowPowerTimerGuard();
   function hash(id){var sum=0;String(id||'').split('').forEach(function(ch){sum+=ch.charCodeAt(0)});return sum}
   function baseRangeForHour(hour){for(var i=0;i<ranges.length;i++){var r=ranges[i];if(hour>=r.start&&hour<=r.end)return r}return ranges[0]}
   function rangeForGameHour(id,hour){var base=baseRangeForHour(hour);var profile=profiles[id]||{offset:0,width:0,phase:hash(id)%113};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {start:base.start,end:base.end,min:low,max:high}}
   function ranged(id,date){date=date||new Date();var r=rangeForGameHour(id,date.getHours());var width=r.max-r.min+1;var bucket=Math.floor(date.getTime()/90000);var h=hash(id);var phase=(profiles[id]&&profiles[id].phase)||h;var wave=Math.floor((Math.sin((bucket+phase)*1.618)+1)*width*.22);var drift=(bucket*37+h*13+phase*7)%width;return r.min+((drift+wave)%width)}
   function seed(id){return ranged(id)}
+  function isPlayZoneActive(){var root=document.getElementById('playzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
   function inCurrentRange(id,value){var r=rangeForGameHour(id,(new Date()).getHours());var n=Math.floor(Number(value));return isFinite(n)&&n>=r.min&&n<=r.max}
   function cardValue(id){var el=document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b');var n=parseInt(el&&el.textContent,10);return isFinite(n)?n:null}
   function count(id){var fromCard=cardValue(id);if(fromCard!==null&&inCurrentRange(id,fromCard)){counts[id]=fromCard;return fromCard}if(!counts[id]||!inCurrentRange(id,counts[id]))counts[id]=seed(id);return counts[id]}
-  function cardNodes(id){if(cardCountsVisible[id]===false)return [];return Array.prototype.slice.call(document.querySelectorAll('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b'))}
+  function cardNodes(id){if(!isPlayZoneActive()||cardCountsVisible[id]===false)return [];return Array.prototype.slice.call(document.querySelectorAll('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b'))}
   function setCount(id,value){var fallback=seed(id);var n=Math.floor(Number(value));if(!isFinite(n))n=fallback;var r=rangeForGameHour(id,(new Date()).getHours());n=Math.max(r.min,Math.min(r.max,n));counts[id]=n;cardNodes(id).forEach(function(el){if(el.textContent!==String(n)){el.classList.add('is-counting');el.textContent=String(n);setTimeout(function(){el.classList.remove('is-counting')},180)}});renderBadge();return n}
   function activeGame(){var root=document.querySelector('.view.active');if(!root)return '';var id=root.id||'';return games[id]?id:''}
   function badges(title){return Array.prototype.slice.call(title.querySelectorAll('[data-game-online-badge],[data-dice-online-badge]'))}
   function stripBadges(title,keep){badges(title).forEach(function(node){if(node!==keep)node.remove()})}
   function titleText(title){return String(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent||'').trim()}
   function renderBadge(){var title=document.getElementById('brandTitle');if(!title)return;var id=activeGame();if(!id){stripBadges(title);return}var label=games[id]||'';if(titleText(title)!==label){stripBadges(title);return}var n=count(id);var badge=title.querySelector('[data-game-online-badge="'+id+'"]');stripBadges(title,badge);if(!badge){badge=document.createElement('span');badge.className='game-online-badge '+id+'-online-badge';badge.setAttribute('data-game-online-badge',id);var dot=document.createElement('i');var value=document.createElement('b');badge.appendChild(dot);badge.appendChild(value);title.appendChild(badge)}badge.setAttribute('aria-label',n+' live online');var b=badge.querySelector('b');if(b&&b.textContent!==String(n))b.textContent=String(n)}
-  function refreshCounts(){Object.keys(games).forEach(function(id){setCount(id,seed(id))})}
-  function syncCards(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current))counts[id]=current;else setCount(id,count(id))});renderBadge()}
+  function refreshCounts(){if(document.hidden)return;Object.keys(games).forEach(function(id){if(isPlayZoneActive())setCount(id,seed(id));else counts[id]=seed(id)});renderBadge()}
+  function syncCards(){if(document.hidden)return;if(!isPlayZoneActive()&&!activeGame()){renderBadge();return}Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current))counts[id]=current;else setCount(id,count(id))});renderBadge()}
   window.VexaLiveGameCounts={get:count,setCount:setCount,sync:syncCards,refresh:refreshCounts,renderBadge:renderBadge};
   document.addEventListener('click',function(){setTimeout(syncCards,220)},true);
-  if(window.MutationObserver){new MutationObserver(renderBadge).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class']})}
+  if(window.MutationObserver){
+    var observer=new MutationObserver(function(){if(!document.hidden)renderBadge()});
+    var title=document.getElementById('brandTitle');
+    var play=document.getElementById('playzone');
+    if(title)observer.observe(title,{childList:true,characterData:true,subtree:true});
+    if(play)observer.observe(play,{attributes:true,attributeFilter:['class']});
+  }
   syncCards();
   setInterval(refreshCounts,90000);
 })();
