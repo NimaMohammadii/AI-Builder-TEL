@@ -13,6 +13,7 @@ export const AUDIO_CONTROL_OVERRIDE_SCRIPT = `
   function block(e){if(!e)return;e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation()}
   function set(btn,on){btn.classList.toggle('is-playing',!!on);btn.innerHTML=on?stopSvg():playSvg();btn.setAttribute('aria-label',on?'Stop music':'Play music')}
   function make(){
+    if(document.hidden)return;
     css();
     document.querySelectorAll('#miniAppAudioBox').forEach(function(n){n.remove()});
     var btn=document.getElementById('miniAppAudioButton')||document.getElementById('vexaAudioControl');
@@ -25,6 +26,7 @@ export const AUDIO_CONTROL_OVERRIDE_SCRIPT = `
     ['pointerup','touchend','mouseup'].forEach(function(n){btn.addEventListener(n,function(e){block(e);var a=document.getElementById('miniAppAudioPlayer');if(a&&!a.paused){if(window.VexaMiniappAudio&&window.VexaMiniappAudio.stop)window.VexaMiniappAudio.stop();else a.pause();set(btn,false)}else{if(window.VexaMiniappAudio&&window.VexaMiniappAudio.play)window.VexaMiniappAudio.play();setTimeout(function(){var x=document.getElementById('miniAppAudioPlayer');set(btn,x&&!x.paused&&!x.ended)},350)}},{capture:true,passive:false})});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',make);else make();
-  setInterval(make,1000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)make()});
+  setInterval(function(){var a=document.getElementById('miniAppAudioPlayer');if(a&&!a.paused&&!a.ended)make()},5000);
 })();
 `;
