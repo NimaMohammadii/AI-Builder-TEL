@@ -843,7 +843,7 @@ export const WHEEL_SECTION = `
           spinButton.textContent = 'Spinning...';
           if (resultStat) resultStat.textContent = 'Spinning';
           changeBalance(-betNano);
-          var win = window.VexaGameChance && typeof window.VexaGameChance.decideWin === 'function' ? window.VexaGameChance.decideWin() : Math.random() * 100 < chance;
+          var win = window.VexaGameChance && typeof window.VexaGameChance.decideNative === 'function' ? window.VexaGameChance.decideNative(chance) : Math.random() * 100 < chance;
           var start = angle;
           var target = chooseTargetOffset(win, chance);
           var turns = (Math.PI * 2) * (5 + Math.floor(Math.random() * 3));

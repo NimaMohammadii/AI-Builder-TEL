@@ -103,7 +103,7 @@ export const MINES_SCRIPT = `
     if(!state.active||state.ended)return;
     var i=Number(cell.getAttribute('data-mine-cell'));
     if(!Number.isFinite(i)||state.safe[i]||cell.classList.contains('revealed'))return;
-    if(window.VexaGameChance&&typeof window.VexaGameChance.decideWin==='function'){var wantSafe=window.VexaGameChance.decideWin();if(wantSafe&&state.bombs[i]){delete state.bombs[i];var repl=0;while(repl<size&&(state.safe[repl]||repl===i||state.bombs[repl]))repl++;if(repl<size)state.bombs[repl]=true}else if(!wantSafe&&!state.bombs[i]){state.bombs[i]=true}}
+    if(window.VexaGameChance&&typeof window.VexaGameChance.decideWin==='function'){var wantSafe=window.VexaGameChance.decideWin();if(wantSafe===null||wantSafe===undefined)wantSafe=state.bombs[i]?false:true;if(wantSafe&&state.bombs[i]){delete state.bombs[i];var repl=0;while(repl<size&&(state.safe[repl]||repl===i||state.bombs[repl]))repl++;if(repl<size)state.bombs[repl]=true}else if(!wantSafe&&!state.bombs[i]){state.bombs[i]=true}}
     if(state.bombs[i]){
       sound('mine');
       state.active=false;
