@@ -92,10 +92,12 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function flipDigit(el,text){el.classList.add('is-counting');setTimeout(function(){el.textContent=text;el.classList.remove('is-counting')},135)}
   function animateNumber(el,value){if(!el)return;var from=String(parseInt(el.textContent,10)||0).padStart(3,'0');var to=String(value).padStart(3,'0');var order=[2,1,0];order.forEach(function(index,step){if(from.charAt(index)===to.charAt(index))return;setTimeout(function(){var current=String(parseInt(el.textContent,10)||0).padStart(3,'0').split('');current[index]=to.charAt(index);flipDigit(el,String(parseInt(current.join(''),10)))},step*170)})}
   function tickCounters(){if(!isPlayZoneActive())return;document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){var shell=el.closest&&el.closest('.game-card-shell[data-game-view]');var id=shell&&shell.getAttribute('data-game-view');var next=nextCount(id,el.textContent);animateNumber(el,next);setTimeout(function(){if(window.VexaLiveGameCounts&&window.VexaLiveGameCounts.setCount&&isPlayZoneActive())window.VexaLiveGameCounts.setCount(id,next)},560)})}
-  function startCounters(){if(countersStarted)return;countersStarted=true;counterTimer=setInterval(function(){if(isPlayZoneActive())tickCounters()},3000)}
+  function stopCounters(){if(counterTimer){clearTimeout(counterTimer);counterTimer=null}countersStarted=false}
+  function scheduleCounterTick(delay){if(counterTimer)clearTimeout(counterTimer);if(!isPlayZoneActive()){stopCounters();return}counterTimer=setTimeout(function(){counterTimer=null;if(!isPlayZoneActive()){stopCounters();return}tickCounters();scheduleCounterTick(3000)},Math.max(250,delay||3000))}
+  function startCounters(){if(countersStarted)return;countersStarted=true;scheduleCounterTick(3000)}
   dropOldCaches();refresh(false);
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"]');if(b)setTimeout(function(){refresh(false);tickCounters()},80)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden&&isPlayZoneActive())tickCounters()});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&isPlayZoneActive()){tickCounters();startCounters()}else stopCounters()});
   window.VexaRefreshPlayZoneImages=function(){return refresh(false)};
 })();
 `;

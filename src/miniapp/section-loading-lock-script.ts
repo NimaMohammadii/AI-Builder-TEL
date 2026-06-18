@@ -62,12 +62,14 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   function timerKey(id,targetId){return id==='global-loading'?'global-loading:'+targetId:id}
   function startPercent(id,box,item,targetId){
     var key=timerKey(id,targetId||'');
-    if(progressTimers[key])clearInterval(progressTimers[key]);
+    if(progressTimers[key])clearTimeout(progressTimers[key]);
     function tick(){
-      if(!box||!box.isConnected){clearInterval(progressTimers[key]);progressTimers[key]=0;updateBodyState();return}
+      if(!box||!box.isConnected){clearTimeout(progressTimers[key]);progressTimers[key]=0;updateBodyState();return}
       updatePercent(id,box,item);
     }
-    tick();progressTimers[key]=setInterval(tick,1000);
+    tick();
+    function schedule(){progressTimers[key]=setTimeout(function(){progressTimers[key]=0;if(!box||!box.isConnected){updateBodyState();return}tick();schedule()},1000)}
+    schedule();
   }
   function scheduleExpireCheck(id,item,targetId){
     var key=timerKey(id,targetId||'');
@@ -86,7 +88,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     style();
     var sig=sigFor(id,item,viewId);
     var current=sec.querySelector(':scope > .section-loading-mode');
-    if(current&&signatures[sec.id]!==sig){current.remove();current=null;Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0||k===id){clearInterval(progressTimers[k]);progressTimers[k]=0}})}
+    if(current&&signatures[sec.id]!==sig){current.remove();current=null;Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0||k===id){clearTimeout(progressTimers[k]);progressTimers[k]=0}})}
     if(!current){var old=sec.querySelector(':scope > .section-locked-view');if(old)old.remove();var v=document.createElement('div');v.className='section-locked-view section-loading-mode';v.innerHTML=html(id,item);sec.appendChild(v);current=v;startPercent(id,v.querySelector('.section-loading-mode-box'),item,sec.id)}
     painted[sec.id]=1;signatures[sec.id]=sig;sec.classList.add('is-section-locked');
     if(pending)sec.classList.add('is-section-loading-pending');
@@ -105,7 +107,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     sec.classList.remove('is-section-loading-pending');
     sec.classList.remove('is-section-locked');
     painted[sec.id]=0;signatures[sec.id]='';
-    Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearInterval(progressTimers[k]);progressTimers[k]=0}});
+    Object.keys(progressTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearTimeout(progressTimers[k]);progressTimers[k]=0}});
     Object.keys(expireTimers).forEach(function(k){if(k.indexOf(sec.id)>=0){clearTimeout(expireTimers[k]);expireTimers[k]=0}});
   }
   function clearOld(){

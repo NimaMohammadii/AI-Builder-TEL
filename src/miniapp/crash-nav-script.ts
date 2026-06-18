@@ -37,7 +37,8 @@ export const CRASH_NAV_SCRIPT = `
   }
   document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('[data-crash-back="1"]');if(b&&isCrash()){ev.preventDefault();ev.stopPropagation();showPlayZone()}},true);
   var obs=new MutationObserver(function(){updateBack();patchClosePill()});
-  function bind(){obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});updateBack();patchClosePill();setInterval(function(){updateBack();patchClosePill()},600)}
+  function smartSync(){updateBack();patchClosePill()}
+  function bind(){obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});smartSync();document.addEventListener('click',function(){setTimeout(smartSync,80);setTimeout(smartSync,260)},true);document.addEventListener('visibilitychange',function(){if(!document.hidden)smartSync()});window.addEventListener('focus',smartSync)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;

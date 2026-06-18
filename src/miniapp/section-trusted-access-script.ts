@@ -44,6 +44,6 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
   }
   document.addEventListener('visibilitychange',function(){if(!document.hidden)readTrusted()});
   document.addEventListener('click',function(){readTrusted()},true);
-  setInterval(function(){if(trusted)removeLockViews()},1500);
+  if(window.MutationObserver){new MutationObserver(function(){if(trusted)removeLockViews()}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']})}
 })();
 `;

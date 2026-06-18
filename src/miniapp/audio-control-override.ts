@@ -27,6 +27,7 @@ export const AUDIO_CONTROL_OVERRIDE_SCRIPT = `
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',make);else make();
   document.addEventListener('visibilitychange',function(){if(!document.hidden)make()});
-  setInterval(function(){var a=document.getElementById('miniAppAudioPlayer');if(a&&!a.paused&&!a.ended)make()},5000);
+  document.addEventListener('play',function(e){if(e.target&&e.target.id==='miniAppAudioPlayer')make()},true);
+  document.addEventListener('pause',function(e){if(e.target&&e.target.id==='miniAppAudioPlayer')make()},true);
 })();
 `;

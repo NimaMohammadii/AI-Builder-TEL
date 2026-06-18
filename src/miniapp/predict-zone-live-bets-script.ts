@@ -22,8 +22,8 @@ export const PREDICT_ZONE_LIVE_BETS_SCRIPT = `
     wrap.appendChild(item);
     window.setTimeout(function(){try{item.remove()}catch(e){}},1500);
   }
-  function start(){if(timer)return;spawn();timer=window.setInterval(spawn,850)}
-  function stop(){if(timer){clearInterval(timer);timer=0}}
+  function start(){if(timer||!active())return;spawn();timer=window.setTimeout(function loop(){timer=0;if(!active())return;spawn();timer=window.setTimeout(loop,850)},850)}
+  function stop(){if(timer){clearTimeout(timer);timer=0}}
   function sync(){if(active())start();else stop()}
   document.addEventListener('visibilitychange',sync);
   document.addEventListener('click',function(){setTimeout(sync,80)},true);

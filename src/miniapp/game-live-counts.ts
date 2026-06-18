@@ -159,41 +159,6 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var counts={};
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
   var profiles=${JSON.stringify(livePlayerProfiles)};
-  function installLowPowerTimerGuard(){
-    if(window.__vexaLowPowerTimerGuard||typeof window.setInterval!=='function')return;
-    window.__vexaLowPowerTimerGuard=true;
-    var nativeSetInterval=window.setInterval.bind(window);
-    window.setInterval=function(fn,delay){
-      if(delay===2200&&typeof fn==='function'){
-        var source='';
-        try{source=String(fn)}catch(e){}
-        if(source.indexOf('makeVirtualLiveRow')>=0&&source.indexOf('renderLive')>=0){
-          var lastWarm=0;
-          var openBound=false;
-          function slotActive(){var slot=document.getElementById('slot');return !!(slot&&slot.classList.contains('active')&&!document.hidden)}
-          function run(force){
-            if(document.hidden)return;
-            var now=Date.now();
-            if(slotActive()){lastWarm=now;return fn()}
-            if(force)return;
-            if(now-lastWarm>=8800){lastWarm=now;return fn()}
-          }
-          if(!openBound){
-            openBound=true;
-            document.addEventListener('click',function(ev){
-              var open=ev.target&&ev.target.closest&&ev.target.closest('[data-game-view="slot"],[data-view="slot"]');
-              if(open)setTimeout(function(){run(true);setTimeout(function(){run(true)},260)},120);
-            },true);
-            document.addEventListener('visibilitychange',function(){if(!document.hidden&&slotActive())run(true)});
-            window.addEventListener('focus',function(){if(slotActive())run(true)});
-          }
-          return nativeSetInterval(function(){run(false)},delay);
-        }
-      }
-      return nativeSetInterval.apply(window,arguments);
-    };
-  }
-  installLowPowerTimerGuard();
   function hash(id){var sum=0;String(id||'').split('').forEach(function(ch){sum+=ch.charCodeAt(0)});return sum}
   function baseRangeForHour(hour){for(var i=0;i<ranges.length;i++){var r=ranges[i];if(hour>=r.start&&hour<=r.end)return r}return ranges[0]}
   function rangeForGameHour(id,hour){var base=baseRangeForHour(hour);var profile=profiles[id]||{offset:0,width:0,phase:hash(id)%113};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {start:base.start,end:base.end,min:low,max:high}}
@@ -221,7 +186,15 @@ export const GAME_LIVE_COUNT_SCRIPT = `
     if(title)observer.observe(title,{childList:true,characterData:true,subtree:true});
     if(play)observer.observe(play,{attributes:true,attributeFilter:['class']});
   }
+  function msUntilNextLiveBucket(){return 90000-(Date.now()%90000)+120}
+  function scheduleSmartRefresh(){
+    if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);
+    if(document.hidden)return;
+    scheduleSmartRefresh.timer=setTimeout(function(){refreshCounts();scheduleSmartRefresh()},msUntilNextLiveBucket());
+  }
+  document.addEventListener('visibilitychange',function(){if(document.hidden){if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);scheduleSmartRefresh.timer=0}else{refreshCounts();scheduleSmartRefresh()}});
+  window.addEventListener('focus',function(){refreshCounts();scheduleSmartRefresh()});
   syncCards();
-  setInterval(refreshCounts,90000);
+  scheduleSmartRefresh();
 })();
 `;

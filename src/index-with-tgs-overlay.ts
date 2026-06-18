@@ -133,7 +133,7 @@ const TGS_OVERLAY_SCRIPT = `
     window.VexaPolishFragmentCards = polishFragmentCards;
     document.addEventListener('click', function(){ setTimeout(scanDetailTgs, 160); setTimeout(polishFragmentCards, 220); }, true);
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){injectStyle();setTimeout(polishFragmentCards,900)});else {injectStyle();setTimeout(polishFragmentCards,900)}
-    setInterval(function(){if(!isMarketActive())return;polishFragmentCards()},2500);
+    function schedulePolish(){if(schedulePolish.timer)clearTimeout(schedulePolish.timer);if(!isMarketActive())return;schedulePolish.timer=setTimeout(function(){schedulePolish.timer=0;polishFragmentCards();schedulePolish()},2500)}document.addEventListener('visibilitychange',function(){if(!document.hidden){polishFragmentCards();schedulePolish()}});document.addEventListener('click',function(){setTimeout(function(){polishFragmentCards();schedulePolish()},160)},true);schedulePolish();
   } catch (e) {}
 })();
 `;
