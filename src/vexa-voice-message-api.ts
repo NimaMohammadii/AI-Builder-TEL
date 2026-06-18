@@ -5,7 +5,7 @@ type EnvWithVexaVoice = Env & { ELEVENLABS_API_KEY?: string };
 type AppLike = { get: (path: string, handler: (c: any) => Promise<Response> | Response) => unknown; post: (path: string, handler: (c: any) => Promise<Response> | Response) => unknown };
 type VoiceAssetRow = { event_id: string; label: string; language_code: string; display_text: string; prompt_text: string; r2_key: string | null; version: string | null; content_type: string | null; autoplay: number; requires_tap: number };
 type RegionRow = { region_code: string | null; language_code: string | null };
-type AdminMessage = { id: string; title: string; eventId: 'admin_message'; audioId?: string; language?: VexaVoiceLanguage; r2Key?: string; version?: string };
+type AdminMessage = { id: string; title: string; eventId: 'admin_message'; audioId?: string; language?: VexaVoiceLanguage; r2Key?: string; version?: string; expiresAt?: string | null };
 type AdminDraft = { id: string; title: string; text: string; language: VexaVoiceLanguage; regions: string[]; r2Key: string; version: string; createdAt: string };
 
 const VEXA_VOICE_ID = 'TX3LPaxmHKxFdv7VOQHJ';
@@ -85,16 +85,23 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   app.post('/admin/api/vexa-voice/publish', async (c) => {
     if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     const env = c.env as EnvWithVexaVoice;
-    const body = await readJson<{ draftId?: unknown; regions?: unknown }>(c);
+    const body = await readJson<{ draftId?: unknown; regions?: unknown; ttlMinutes?: unknown; deliverMiniApp?: unknown; deliverBotChat?: unknown }>(c);
     const draftId = cleanEventKey(body.draftId);
     const raw = draftId ? await env.BOT_CACHE.get(ADMIN_DRAFT_PREFIX + draftId).catch(() => null) : null;
     if (!raw) return c.json({ error: 'Preview not found. Generate again.' }, 404);
     const draft = JSON.parse(raw) as AdminDraft;
     const regions = normalizeRegions(body.regions || draft.regions);
-    const message: AdminMessage = { id: draft.id, title: draft.title, eventId: 'admin_message', audioId: draft.id, language: draft.language, r2Key: draft.r2Key, version: draft.version };
-    for (const region of regions) await env.BOT_CACHE.put(ADMIN_REGION_MESSAGE_PREFIX + region, JSON.stringify(message));
-    if (regions.includes('ALL')) await env.BOT_CACHE.put(ADMIN_CURRENT_MESSAGE_KEY, JSON.stringify(message));
-    return c.json({ ok: true, sentTo: regions, id: draft.id, title: draft.title }, 200, { 'cache-control': VOICE_INDEX_CACHE });
+    const ttlSeconds = ttlSecondsFromMinutes(body.ttlMinutes);
+    const expiresAt = ttlSeconds ? new Date(Date.now() + ttlSeconds * 1000).toISOString() : null;
+    const message: AdminMessage = { id: draft.id, title: draft.title, eventId: 'admin_message', audioId: draft.id, language: draft.language, r2Key: draft.r2Key, version: draft.version, expiresAt };
+    const deliverMiniApp = body.deliverMiniApp !== false;
+    const deliverBotChat = body.deliverBotChat === true;
+    if (deliverMiniApp) {
+      for (const region of regions) await putMaybeExpiring(env, ADMIN_REGION_MESSAGE_PREFIX + region, message, ttlSeconds);
+      if (regions.includes('ALL')) await putMaybeExpiring(env, ADMIN_CURRENT_MESSAGE_KEY, message, ttlSeconds);
+    }
+    const botDelivery = deliverBotChat ? await sendDraftToBotChats(env, draft, regions) : { attempted: 0, sent: 0, failed: 0 };
+    return c.json({ ok: true, sentTo: deliverMiniApp ? regions : [], botDelivery, expiresAt, id: draft.id, title: draft.title }, 200, { 'cache-control': VOICE_INDEX_CACHE });
   });
 
   app.post('/admin/api/vexa-voice/admin-message', async (c) => {
@@ -169,7 +176,15 @@ async function getVoiceAsset(env: EnvWithVexaVoice, eventId: string, language: V
 async function hasUserPlayedEvent(env: EnvWithVexaVoice, userId: string, eventKey: string): Promise<boolean> { await ensureVoiceTables(env); const row = await env.DB.prepare('SELECT event_id FROM vexa_voice_user_events WHERE user_id = ? AND event_id = ?').bind(userId, eventKey).first<{ event_id: string }>().catch(() => null); return Boolean(row?.event_id); }
 async function voiceLanguageForUser(env: EnvWithVexaVoice, userId: string): Promise<VexaVoiceLanguage> { if (!userId) return 'en'; const row = await env.DB.prepare('SELECT region_code, language_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<RegionRow>().catch(() => null); return vexaVoiceLanguageForRegion(row?.region_code, row?.language_code); }
 async function messageRegionKey(env: EnvWithVexaVoice, userId: string, language: VexaVoiceLanguage): Promise<string> { if (!userId) return language === 'fa' ? 'IR' : language === 'tr' ? 'TR' : language === 'ru' ? 'RU' : 'EN'; const row = await env.DB.prepare('SELECT region_code FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ region_code: string | null }>().catch(() => null); const region = String(row?.region_code || '').toUpperCase(); if (region === 'IR' || region === 'TR' || region === 'RU') return region; return 'EN'; }
-async function currentAdminMessage(env: EnvWithVexaVoice, regionKey: string): Promise<AdminMessage | null> { const keys = [ADMIN_REGION_MESSAGE_PREFIX + regionKey, ADMIN_REGION_MESSAGE_PREFIX + 'ALL', ADMIN_CURRENT_MESSAGE_KEY]; for (const key of keys) { const raw = await env.BOT_CACHE.get(key).catch(() => null); if (!raw) continue; try { const parsed = JSON.parse(raw) as AdminMessage; const id = cleanEventKey(parsed.id); if (id) return { ...parsed, id, title: cleanText(parsed.title, 120) || 'Vexa wants to say something', eventId: 'admin_message' }; } catch {} } return null; }
+async function currentAdminMessage(env: EnvWithVexaVoice, regionKey: string): Promise<AdminMessage | null> { const keys = [ADMIN_REGION_MESSAGE_PREFIX + regionKey, ADMIN_REGION_MESSAGE_PREFIX + 'ALL', ADMIN_CURRENT_MESSAGE_KEY]; for (const key of keys) { const raw = await env.BOT_CACHE.get(key).catch(() => null); if (!raw) continue; try { const parsed = JSON.parse(raw) as AdminMessage; if (parsed.expiresAt && Date.parse(parsed.expiresAt) <= Date.now()) { await env.BOT_CACHE.delete(key).catch(() => undefined); continue; } const id = cleanEventKey(parsed.id); if (id) return { ...parsed, id, title: cleanText(parsed.title, 120) || 'Vexa wants to say something', eventId: 'admin_message' }; } catch {} } return null; }
+
+function ttlSecondsFromMinutes(value: unknown): number { const minutes = Math.floor(Number(value) || 0); if (minutes <= 0) return 0; return Math.min(minutes, 60 * 24 * 30) * 60; }
+async function putMaybeExpiring(env: EnvWithVexaVoice, key: string, value: unknown, ttlSeconds: number): Promise<void> { const payload = JSON.stringify(value); if (ttlSeconds > 0) await env.BOT_CACHE.put(key, payload, { expirationTtl: ttlSeconds }); else await env.BOT_CACHE.put(key, payload); }
+async function sendDraftToBotChats(env: EnvWithVexaVoice, draft: AdminDraft, regions: string[]): Promise<{ attempted: number; sent: number; failed: number }> { const token = env.GAME_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN; if (!token) return { attempted: 0, sent: 0, failed: 0 }; const users = await botDeliveryUsers(env, regions); let sent = 0, failed = 0; for (const userId of users) { try { await sendDraftVoice(env, token, userId, draft); sent++; } catch { failed++; } } return { attempted: users.length, sent, failed }; }
+async function botDeliveryUsers(env: EnvWithVexaVoice, regions: string[]): Promise<string[]> { const all = regions.includes('ALL'); const rows = await env.DB.prepare('SELECT telegram_user_id, region_code, language_code FROM app_users ORDER BY last_seen_at DESC LIMIT 500').all<{ telegram_user_id: string; region_code: string | null; language_code: string | null }>().catch(() => ({ results: [] })); return (rows.results || []).filter((row) => all || regions.includes(regionKeyFromRow(row.region_code, row.language_code))).map((row) => String(row.telegram_user_id || '')).filter((id) => /^\d+$/.test(id)); }
+function regionKeyFromRow(regionCode: unknown, languageCode: unknown): string { const region = String(regionCode || '').toUpperCase(); if (region === 'IR' || region === 'TR' || region === 'RU') return region; const lang = normalizeVexaVoiceLanguage(languageCode); if (lang === 'fa') return 'IR'; if (lang === 'tr') return 'TR'; if (lang === 'ru') return 'RU'; return 'EN'; }
+async function sendDraftVoice(env: EnvWithVexaVoice, token: string, chatId: string, draft: AdminDraft): Promise<void> { const object = await env.ASSETS.get(draft.r2Key); if (!object) throw new Error('Audio not found'); const form = new FormData(); form.append('chat_id', chatId); form.append('caption', draft.title); form.append('voice', new Blob([await object.arrayBuffer()], { type: 'audio/mpeg' }), draft.id + '.mp3'); const response = await fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form }); if (!response.ok) throw new Error('Telegram failed'); const json = await response.json().catch(() => ({})) as { ok?: boolean }; if (!json.ok) throw new Error('Telegram rejected'); }
+
 async function createSpeech(env: EnvWithVexaVoice, text: string): Promise<ArrayBuffer> { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30000); try { const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VEXA_VOICE_ID}`, { method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY || '', 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: VEXA_VOICE_MODEL, voice_settings: { stability: 0.5, similarity_boost: 0.75 } }), signal: controller.signal }); if (!response.ok) { const detail = await response.text().catch(() => ''); throw new Error(`ElevenLabs failed with ${response.status}${detail ? ': ' + detail.slice(0, 160) : ''}`); } return response.arrayBuffer(); } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') throw new Error('ElevenLabs generation timed out. Try shorter text.'); throw error; } finally { clearTimeout(timer); } }
 async function readJson<T extends Record<string, unknown>>(c: any): Promise<T> { return c.req.json().catch(() => ({})) as Promise<T>; }
 function readTelegramUserId(initData: string): string { if (!initData) return ''; try { const rawUser = new URLSearchParams(initData).get('user') || ''; const user = rawUser ? JSON.parse(rawUser) as { id?: number | string } : {}; const id = String(user.id || '').trim(); return /^\d+$/.test(id) ? id : ''; } catch { return ''; } }
