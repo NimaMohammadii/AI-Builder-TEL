@@ -20,12 +20,12 @@ const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
     function format(value){return Math.max(1,Number(value)||1).toFixed(2)+'x'}
     function paint(value){internal=true;var text=format(value);desc.set.call(el,text);el.setAttribute('data-crash-text',text);internal=false}
     function speedFor(value){
-      if(value<1.35)return .22;
-      if(value<1.75)return .32;
-      if(value<2.15)return .46;
-      if(value<2.5)return .64;
-      if(value<4)return 1.45;
-      return 3.2;
+      if(value<1.35)return .30;
+      if(value<1.75)return .44;
+      if(value<2.15)return .62;
+      if(value<2.5)return .86;
+      if(value<4)return 1.9;
+      return 4.2;
     }
     function frame(ts){
       raf=0;
@@ -36,15 +36,14 @@ const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
       var diff=target-display;
       if(diff>0){
         var maxStep=speedFor(display)*dt/1000;
-        var easeStep=diff*(1-Math.exp(-3.4*dt/1000));
-        var minStep=display<2.5?.0015:.003;
+        var easeStep=diff*(1-Math.exp(-5.2*dt/1000));
+        var minStep=display<2.5?.0025:.006;
         display=Math.min(target,display+Math.max(minStep,Math.min(maxStep,easeStep)));
-        paint(display);
       }else{
         display=target;
-        paint(display);
       }
-      if(target-display>.0008)raf=requestAnimationFrame(frame);
+      paint(display);
+      if(target>1.005&&target>=display)raf=requestAnimationFrame(frame);
     }
     Object.defineProperty(el,'textContent',{
       configurable:true,
