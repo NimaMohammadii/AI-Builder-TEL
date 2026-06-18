@@ -112,7 +112,7 @@ export async function publicUserControls(env: Env, userId: string): Promise<{ us
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
     await ensureUserControlsTable(env);
-    const row = await env.DB.prepare('SELECT blocked_sections_json FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
+    const row = await env.DB.prepare('SELECT blocked_sections_json, win_chance_percent FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
     if (row) return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent };
   } catch (error) {
     console.warn('read user section controls from D1 failed', error);
