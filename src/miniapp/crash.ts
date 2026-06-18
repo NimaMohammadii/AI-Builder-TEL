@@ -19,19 +19,32 @@ const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
     function parse(value){var n=Number(String(value||'').replace(/x/i,''));return Number.isFinite(n)&&n>0?n:1}
     function format(value){return Math.max(1,Number(value)||1).toFixed(2)+'x'}
     function paint(value){internal=true;var text=format(value);desc.set.call(el,text);el.setAttribute('data-crash-text',text);internal=false}
+    function speedFor(value){
+      if(value<1.35)return .22;
+      if(value<1.75)return .32;
+      if(value<2.15)return .46;
+      if(value<2.5)return .64;
+      if(value<4)return 1.45;
+      return 3.2;
+    }
     function frame(ts){
       raf=0;
       if(!last)last=ts;
-      var dt=Math.min(50,ts-last);
+      var dt=Math.min(34,Math.max(8,ts-last));
       last=ts;
-      if(target<=1.005||target<display){display=target;paint(display);return}
+      if(target<=1.005||target<display-.015){display=target;paint(display);last=0;return}
       var diff=target-display;
-      var rate=target<1.12?.42:target<1.35?.72:target<2?1.18:2.05;
-      var move=diff*(1-Math.exp(-rate*dt/1000));
-      if(move<.00055)move=.00055;
-      display=Math.min(target,display+move);
-      paint(display);
-      if(Math.abs(target-display)>.003)raf=requestAnimationFrame(frame);
+      if(diff>0){
+        var maxStep=speedFor(display)*dt/1000;
+        var easeStep=diff*(1-Math.exp(-3.4*dt/1000));
+        var minStep=display<2.5?.0015:.003;
+        display=Math.min(target,display+Math.max(minStep,Math.min(maxStep,easeStep)));
+        paint(display);
+      }else{
+        display=target;
+        paint(display);
+      }
+      if(target-display>.0008)raf=requestAnimationFrame(frame);
     }
     Object.defineProperty(el,'textContent',{
       configurable:true,
@@ -39,9 +52,9 @@ const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
       set:function(value){
         if(internal){desc.set.call(el,value);return}
         var next=parse(value);
-        if(next<=1.005||next<target-.02){target=next;display=next;last=0;paint(display);return}
+        if(next<=1.005||next<target-.015){target=next;display=next;last=0;paint(display);return}
         target=next;
-        if(!raf){last=0;raf=requestAnimationFrame(frame)}
+        if(!raf)raf=requestAnimationFrame(frame);
       }
     });
     paint(parse(desc.get.call(el)||'1'));
