@@ -55,9 +55,9 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
     const ev=expected(item);
     document.getElementById('plinkoTotalChance').textContent='Total '+round(total)+'%';
     document.getElementById('plinkoExpectedReturn').textContent='Expected '+ev.toFixed(2)+'x';
-    document.getElementById('plinkoHouseRows').innerHTML=item.multipliers.map((m,i)=>'<div class="plinko-house-row"><strong>#'+(i+1)+'</strong><div><label>Multiplier</label><input data-mult="'+i+'" type="number" step="0.01" min="0.01" value="'+esc(m)+'"/></div><div><label>Chance %</label><input data-weight="'+i+'" type="number" step="0.1" min="0" value="'+esc(round(item.weights[i]))+'"/></div></div>').join('');
+    document.getElementById('plinkoHouseRows').innerHTML=item.multipliers.map((m,i)=>'<div class="plinko-house-row"><strong>#'+(i+1)+'</strong><div><label>Multiplier</label><input data-mult="'+i+'" type="number" step="0.01" min="0.01" value="'+esc(m)+'"/></div><div><label>Chance %</label><input data-weight="'+i+'" type="number" step="0.1" min="0" max="100" value="'+esc(round(item.weights[i]))+'"/></div></div>').join('');
     document.querySelectorAll('[data-mult]').forEach(input=>input.oninput=()=>{item.multipliers[Number(input.dataset.mult)]=Number(input.value)>0?Number(input.value):0.01;updateSummary();});
-    document.querySelectorAll('[data-weight]').forEach(input=>input.oninput=()=>{item.weights[Number(input.dataset.weight)]=Number(input.value||0);updateSummary();});
+    document.querySelectorAll('[data-weight]').forEach(input=>input.oninput=()=>{item.weights[Number(input.dataset.weight)]=Math.max(0,Math.min(100,Number(input.value||0)));input.value=String(item.weights[Number(input.dataset.weight)]);updateSummary();});
   }
   function updateSummary(){const item=current();const total=item.weights.reduce((a,b)=>a+Number(b||0),0);document.getElementById('plinkoTotalChance').textContent='Total '+round(total)+'%';document.getElementById('plinkoExpectedReturn').textContent='Expected '+expected(item).toFixed(2)+'x';}
   function round(n){return Math.round(Number(n||0)*10)/10}
@@ -82,7 +82,7 @@ export const ADMIN_PLINKO_CONTROL_SCRIPT = `<script>
   }
   function cleanConfig(){return ensureShape(config)}
   async function savePlinkoControl(){
-    const status=document.getElementById('plinkoControlStatus'); status.textContent='Saving...';
+    const status=document.getElementById('plinkoControlStatus'); const total=current().weights.reduce((a,b)=>a+Number(b||0),0); if(Math.abs(total-100)>.05){status.textContent='Total chance must be exactly 100% before saving.';return;} status.textContent='Saving...';
     try{const r=await fetch('/admin/api/plinko-control',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(cleanConfig())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Could not save');config=ensureShape(j);render();status.textContent='Saved. Mini app syncs when opened.';}
     catch(e){status.textContent=e.message||'Could not save'}
   }

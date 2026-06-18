@@ -47,6 +47,7 @@ export async function getPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
 
 export async function savePlinkoControl(env: Env, value: unknown): Promise<PlinkoControlConfig> {
   const config = normalizePlinkoConfig(value);
+  validatePlinkoChanceTotal(config);
   config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
   return config;
@@ -104,7 +105,7 @@ function normalizePlinkoConfig(input: any): PlinkoControlConfig {
   const item = input?.rows?.['13']?.low ?? input?.rows?.['11']?.low ?? input?.rows?.['9']?.low ?? input?.rows?.['7']?.low;
   out.rows['13'].low = {
     multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows['13'].low.multipliers, 0.01, 1000),
-    weights: normalizeNumberArray(item?.weights, expected, base.rows['13'].low.weights, 0, 100000),
+    weights: normalizeNumberArray(item?.weights, expected, base.rows['13'].low.weights, 0, 100),
   };
   return out;
 }
@@ -120,4 +121,12 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+function validatePlinkoChanceTotal(config: PlinkoControlConfig): void {
+  const weights = config.rows['13'].low.weights;
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (Math.abs(total - 100) > 0.05) {
+    throw new Error('Plinko house chances must total exactly 100%.');
+  }
 }
