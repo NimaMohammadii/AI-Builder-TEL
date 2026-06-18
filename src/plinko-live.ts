@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { DEFAULT_PLINKO_CONTROL, getPlinkoControl } from './plinko-control';
 import { DEFAULT_PLINKO_VIRTUAL_USERS, getPlinkoVirtualUsers, type PlinkoVirtualUser } from './plinko-virtual-users';
 
 const ROOM_NAME = 'global';
@@ -14,8 +15,6 @@ const RESULT_DEDUPE_PREFIX = 'plinko-live-result-key-';
 const RESULT_DEDUPE_MS = 2500;
 const HISTORY_LIMIT = 120;
 const LIVE_BALL_BROADCASTS_ENABLED = false;
-
-const VIRTUAL_MULTIPLIERS = [0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5];
 
 const localSockets = new Set<WebSocket>();
 const localUserLast = new Map<string, number>();
@@ -156,8 +155,9 @@ export class PlinkoLiveRoom {
     let nextAt = storedLast > 0 ? storedLast + VIRTUAL_INTERVAL_MS : Math.max(now - 45000, currentHourStartedAt());
     const generated: PlinkoResult[] = [];
     const virtualUsers = await virtualUsersForResult(this.env);
+    const virtualMultipliers = await virtualMultipliersForResult(this.env);
     while (nextAt <= now && generated.length < VIRTUAL_MAX_CATCHUP) {
-      generated.push(makeVirtualResult(nextAt, virtualUsers));
+      generated.push(makeVirtualResult(nextAt, virtualUsers, virtualMultipliers));
       nextAt += VIRTUAL_INTERVAL_MS + Math.floor(seededUnit('gap:' + nextAt) * 2600);
     }
     if (!generated.length) {
@@ -357,10 +357,10 @@ function cleanMultiplier(value: unknown): number {
   return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
-function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users): PlinkoResult {
+function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users, multipliers = DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers): PlinkoResult {
   const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * users.length) % users.length;
   const persona = users[personaIndex] || DEFAULT_PLINKO_VIRTUAL_USERS.users[0];
-  const multiplier = VIRTUAL_MULTIPLIERS[Math.floor(seededUnit('mult:' + createdAt) * VIRTUAL_MULTIPLIERS.length)] || 1;
+  const multiplier = multipliers[Math.floor(seededUnit('mult:' + createdAt) * multipliers.length)] || 1;
   const amount = roundAmount(persona.amount);
   return {
     id: 'virtual-plinko-' + createdAt.toString(36),
@@ -383,6 +383,18 @@ async function virtualUsersForResult(env?: Env): Promise<PlinkoVirtualUser[]> {
   } catch (error) {
     console.warn('load plinko virtual users failed', error);
     return DEFAULT_PLINKO_VIRTUAL_USERS.users;
+  }
+}
+
+async function virtualMultipliersForResult(env?: Env): Promise<number[]> {
+  if (!env) return DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
+  try {
+    const config = await getPlinkoControl(env);
+    const multipliers = config.rows['13'].low.multipliers;
+    return multipliers.length ? multipliers : DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
+  } catch (error) {
+    console.warn('load plinko multipliers failed', error);
+    return DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
   }
 }
 
