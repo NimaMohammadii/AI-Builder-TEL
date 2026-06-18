@@ -4,7 +4,8 @@ export const TON_BALANCE_SCRIPT = `
   var PENDING_PREFIX='vexa:pending-ton-delta:';
   var NANO_PER_TON=1000000000;
   var PLINKO_UNIT_NANO=NANO_PER_TON;
-  var FLUSH_MS=30000;
+  var FLUSH_MS=3000;
+  var PENDING_MAX_AGE_MS=5*60*1000;
   var syncing=false;
   var pendingDelta=0;
   var pendingUserId='';
@@ -16,20 +17,29 @@ export const TON_BALANCE_SCRIPT = `
   function formatTon(value){return formatTonNumber(value)}
   function plinkoUnits(value){return Math.max(0,Math.floor(clean(value)/PLINKO_UNIT_NANO))}
   function parseTonText(text){var value=String(text||'').replace(/TON/i,'').trim();if(!value)return NaN;return Math.floor(Number(value)*NANO_PER_TON)}
-  function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=localStorage.getItem('ownerId')||String((u&&u.id)||'');return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
+  function user(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var tgId=String((u&&u.id)||'').trim();var stored=String(localStorage.getItem('ownerId')||'').trim();var id=tgId||stored;if(tgId&&stored&&tgId!==stored){try{Object.keys(localStorage).forEach(function(k){if(k.indexOf(PENDING_PREFIX)===0)localStorage.removeItem(k)});localStorage.removeItem(KEY)}catch(e){}}if(tgId)try{localStorage.setItem('ownerId',tgId)}catch(e){}return {id:String(id||'').trim(),username:u&&u.username?String(u.username):null,firstName:u&&u.first_name?String(u.first_name):null}}
   function pendingKey(){var u=user();return u.id?PENDING_PREFIX+u.id:''}
   function loadPending(){
     var u=user();
     if(!u.id)return 0;
     if(pendingUserId===u.id)return Math.floor(Number(pendingDelta)||0);
     pendingUserId=u.id;
-    try{pendingDelta=Math.floor(Number(localStorage.getItem(pendingKey())||0)||0)}catch(e){pendingDelta=0}
+    try{
+      var raw=localStorage.getItem(pendingKey())||'';
+      var parsed=null;
+      if(raw&&raw.charAt(0)==='{')parsed=JSON.parse(raw);
+      if(raw&&!parsed){localStorage.removeItem(pendingKey());pendingDelta=0;return pendingDelta}
+      var amount=parsed?Number(parsed.delta):0;
+      var updatedAt=parsed?Number(parsed.updatedAt||0):0;
+      if(!updatedAt||Date.now()-updatedAt>PENDING_MAX_AGE_MS){localStorage.removeItem(pendingKey());pendingDelta=0}
+      else pendingDelta=Math.floor(Number(amount)||0);
+    }catch(e){pendingDelta=0}
     return pendingDelta;
   }
   function savePending(){
     var key=pendingKey();
     if(!key)return;
-    try{var value=Math.floor(Number(pendingDelta)||0);if(value)localStorage.setItem(key,String(value));else localStorage.removeItem(key)}catch(e){}
+    try{var value=Math.floor(Number(pendingDelta)||0);if(value)localStorage.setItem(key,JSON.stringify({delta:value,updatedAt:Date.now()}));else localStorage.removeItem(key)}catch(e){}
   }
   function hasPending(){return Math.floor(Number(loadPending())||0)!==0}
   function readDomBalance(){var nodes=document.querySelectorAll('[data-ton-balance-display],#topTonBalance,#plinkoTonBalance,#minesTonBalance');for(var i=0;i<nodes.length;i++){var raw=nodes[i].getAttribute('data-ton-balance-raw');if(raw!==null){var r=clean(raw);if(Number.isFinite(r))return r}var n=parseTonText(nodes[i].textContent);if(Number.isFinite(n)&&n>=0)return n}return 0}
@@ -50,7 +60,7 @@ export const TON_BALANCE_SCRIPT = `
   }
   async function load(){
     loadPending();
-    if(hasPending()){scheduleFlush(FLUSH_MS);return write(read(),0,false)}
+    if(hasPending()){scheduleFlush(1000);return write(read(),0,false)}
     try{
       var server=await fetchServerBalance();
       if(Number.isFinite(server))return write(server,0,false);
@@ -97,7 +107,7 @@ export const TON_BALANCE_SCRIPT = `
     loadPending();
     pendingDelta+=value;
     savePending();
-    scheduleFlush(FLUSH_MS);
+    scheduleFlush(1000);
     return optimistic;
   }
   function add(deltaNano){return pushDelta(deltaNano)}
