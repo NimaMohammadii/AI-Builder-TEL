@@ -21,7 +21,8 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
   var cryptoCardMarkets=[{id:'bitcoin',title:'Bitcoin card'},{id:'solana',title:'Solana card'},{id:'ethereum',title:'Ethereum card'},{id:'gold',title:'Gold card'},{id:'oil',title:'Oil card'}];
   var buttonSides=[{id:'up',title:'Upper button image'},{id:'down',title:'Lower button image'}];
   var cardVisibilityMarkets=[{id:'bitcoin',title:'Bitcoin'},{id:'solana',title:'Solana'},{id:'ethereum',title:'Ethereum'},{id:'gold',title:'Gold'},{id:'oil',title:'Oil'}];
-  var settings={},cryptoCardImages={},buttonImages={},displaySettings={liveBetsEnabled:true,hiddenCards:{}};
+  var lockableMarkets=[{id:'politics',title:'Politics'},{id:'fun',title:'Fun'}];
+  var settings={},cryptoCardImages={},buttonImages={},displaySettings={liveBetsEnabled:true,hiddenCards:{},lockedMarkets:{politics:true,fun:true}};
   function esc(value){return String(value==null?'':value).replace(/[&<>]/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[char]||char})}
   function withVersion(url){return url ? url + (url.indexOf('?')>=0 ? '&' : '?') + 't=' + Date.now() : ''}
   function mount(){
@@ -56,8 +57,10 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
     var box=document.getElementById('predictAdminSettings');if(!box)return;
     var on=displaySettings.liveBetsEnabled!==false;
     var hidden=displaySettings.hiddenCards||{};
-    box.innerHTML='<div class="predict-admin-toggle"><div><strong>Show live bet numbers</strong><span>Enable or hide the animated user bet numbers on the left side of the Predict chart.</span></div><button type="button" class="predict-admin-switch '+(on?'on':'')+'" aria-label="Toggle live bet numbers" id="predictLiveBetsToggle"></button></div><div class="predict-admin-visibility"><h3>Predict card visibility</h3><p>Hide a card from the user UI without deleting images or prediction data. Turn it back on any time.</p>'+cardVisibilityMarkets.map(function(market){var visible=hidden[market.id]!==true;return '<div class="predict-admin-toggle '+(visible?'':'is-hidden')+'"><div><strong>'+esc(market.title)+'</strong><span>'+(visible?'Visible in Predict UI':'Hidden from Predict UI')+'</span></div><button type="button" class="predict-admin-switch '+(visible?'on':'')+'" aria-label="Toggle '+esc(market.title)+' visibility" data-predict-visibility="'+esc(market.id)+'"></button></div>'}).join('')+'</div>';
+    var locked=displaySettings.lockedMarkets||{};
+    box.innerHTML='<div class="predict-admin-toggle"><div><strong>Show live bet numbers</strong><span>Enable or hide the animated user bet numbers on the left side of the Predict chart.</span></div><button type="button" class="predict-admin-switch '+(on?'on':'')+'" aria-label="Toggle live bet numbers" id="predictLiveBetsToggle"></button></div><div class="predict-admin-visibility"><h3>Predict tab locks</h3><p>Lock or unlock Politics and Fun for normal users. Trusted-access users always bypass these locks.</p>'+lockableMarkets.map(function(market){var isLocked=locked[market.id]===true;return '<div class="predict-admin-toggle '+(isLocked?'is-hidden':'')+'"><div><strong>'+esc(market.title)+'</strong><span>'+(isLocked?'Locked for normal users':'Open for normal users')+'</span></div><button type="button" class="predict-admin-switch '+(isLocked?'':'on')+'" aria-label="Toggle '+esc(market.title)+' lock" data-predict-lock="'+esc(market.id)+'"></button></div>'}).join('')+'<h3>Predict card visibility</h3><p>Hide a card from the user UI without deleting images or prediction data. Turn it back on any time.</p>'+cardVisibilityMarkets.map(function(market){var visible=hidden[market.id]!==true;return '<div class="predict-admin-toggle '+(visible?'':'is-hidden')+'"><div><strong>'+esc(market.title)+'</strong><span>'+(visible?'Visible in Predict UI':'Hidden from Predict UI')+'</span></div><button type="button" class="predict-admin-switch '+(visible?'on':'')+'" aria-label="Toggle '+esc(market.title)+' visibility" data-predict-visibility="'+esc(market.id)+'"></button></div>'}).join('')+'</div>';
     var toggle=document.getElementById('predictLiveBetsToggle');if(toggle)toggle.onclick=function(){savePredictSettings({liveBetsEnabled:!on})};
+    box.querySelectorAll('[data-predict-lock]').forEach(function(button){button.onclick=function(){var id=button.dataset.predictLock,nextLocked=Object.assign({},displaySettings.lockedMarkets||{});nextLocked[id]=!(nextLocked[id]===true);savePredictSettings({lockedMarkets:nextLocked})}});
     box.querySelectorAll('[data-predict-visibility]').forEach(function(button){button.onclick=function(){var id=button.dataset.predictVisibility,nextHidden=Object.assign({},displaySettings.hiddenCards||{});nextHidden[id]=!(nextHidden[id]===true);savePredictSettings({hiddenCards:nextHidden})}});
   }
   function render(){
@@ -105,7 +108,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
       if(cardResponse.ok)cryptoCardImages=cardJson.images||{};
       var settingsResponse=await fetch('/admin/api/predict-settings',{credentials:'same-origin',cache:'no-store'});
       var settingsJson=await settingsResponse.json();
-      if(settingsResponse.ok)displaySettings=settingsJson||displaySettings;
+      if(settingsResponse.ok)displaySettings=Object.assign({liveBetsEnabled:true,hiddenCards:{},lockedMarkets:{politics:true,fun:true}},settingsJson||{});
       render();
       if(status)status.textContent='Loaded';
     }catch(error){if(status)status.textContent=error.message||'Load failed'}
@@ -115,6 +118,7 @@ export const ADMIN_PREDICT_PANEL_SCRIPT = `
     var next=Object.assign({},displaySettings||{},patch||{});
     next.liveBetsEnabled=next.liveBetsEnabled!==false;
     next.hiddenCards=next.hiddenCards||{};
+    next.lockedMarkets=next.lockedMarkets||{};
     if(status)status.textContent='Saving settings...';
     try{
       var response=await fetch('/admin/api/predict-settings',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(next)});
