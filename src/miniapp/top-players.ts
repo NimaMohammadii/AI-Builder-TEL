@@ -1,28 +1,5 @@
 export const TOP_PLAYERS_SECTION = `<section id="topplayers" class="view top-players-view">
-  <div class="top-players-page">
-    <button class="top-players-back" type="button" data-view="home" aria-label="Back">‹</button>
-    <div class="top-players-hero">
-      <div class="top-players-copy">
-        <h2>Top Players</h2>
-        <p>Weekly ranking of the strongest players in Vexa. Live data will be connected soon.</p>
-      </div>
-      <div class="top-players-hero-image" aria-hidden="true"><img src="/app/api/top-players-hero-image.png?v=1" alt="" loading="lazy" decoding="async"/></div>
-    </div>
-    <div class="top-players-filters" aria-label="Top players filters">
-      <button class="top-filter-card" type="button" aria-label="Top players count"><b>Top 10</b><i aria-hidden="true">⌄</i></button>
-      <button class="top-filter-card" type="button" aria-label="Top players ranking type"><b>Level</b><i aria-hidden="true">⌄</i></button>
-    </div>
-    <div class="top-players-list" aria-label="Top players list">
-      <div class="top-player-row top-one"><span class="top-player-rank">1</span><span class="top-player-avatar">A</span><span class="top-player-main"><strong>Arman</strong><small>Crash Master</small></span><span class="top-player-score">128.4 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">2</span><span class="top-player-avatar">N</span><span class="top-player-main"><strong>Nika</strong><small>Auto Cashout Pro</small></span><span class="top-player-score">96.2 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">3</span><span class="top-player-avatar">K</span><span class="top-player-main"><strong>Kian</strong><small>Play Zone Elite</small></span><span class="top-player-score">84.7 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">4</span><span class="top-player-avatar">M</span><span class="top-player-main"><strong>Mira</strong><small>Daily Streak</small></span><span class="top-player-score">73.1 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">5</span><span class="top-player-avatar">S</span><span class="top-player-main"><strong>Sina</strong><small>Fast Cashout</small></span><span class="top-player-score">61.8 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">6</span><span class="top-player-avatar">L</span><span class="top-player-main"><strong>Luna</strong><small>Risk Hunter</small></span><span class="top-player-score">54.3 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">7</span><span class="top-player-avatar">R</span><span class="top-player-main"><strong>Radin</strong><small>Steady Player</small></span><span class="top-player-score">48.9 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">8</span><span class="top-player-avatar">D</span><span class="top-player-main"><strong>Daria</strong><small>Hot Streak</small></span><span class="top-player-score">43.6 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">9</span><span class="top-player-avatar">E</span><span class="top-player-main"><strong>Elin</strong><small>Smart Builder</small></span><span class="top-player-score">39.4 TON</span></div>
-      <div class="top-player-row"><span class="top-player-rank">10</span><span class="top-player-avatar">V</span><span class="top-player-main"><strong>Vana</strong><small>Weekly Climber</small></span><span class="top-player-score">35.8 TON</span></div>
-    </div>
+  <div class="top-players-page top-players-page-empty">
+    <div class="top-players-empty-space" aria-label="Top Players empty page"></div>
   </div>
 </section>`;
