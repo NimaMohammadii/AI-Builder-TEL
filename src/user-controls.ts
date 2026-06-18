@@ -52,9 +52,10 @@ export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano
 
 export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
+  const before = await readUserTonBalance(env, id);
   await addUserTonBalance(env, id, deltaNano);
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, Math.floor(Number(deltaNano) || 0), after, meta);
+  await recordTonTransaction(env, id, after - before, after, meta);
   return getUserControls(env, id);
 }
 
@@ -62,9 +63,10 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
   const id = cleanUserId(userId);
   const baseDelta = Math.floor(Number(deltaNano) || 0);
   const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
+  const before = await readUserTonBalance(env, id);
   await addUserTonBalance(env, id, bonus.totalDeltaNano);
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, bonus.totalDeltaNano, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), dailyRewardBonusNano: bonus.bonusNano, dailyRewardEffects: bonus.applied } });
+  await recordTonTransaction(env, id, after - before, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta, dailyRewardBonusNano: bonus.bonusNano, dailyRewardEffects: bonus.applied } });
   return getUserControls(env, id);
 }
 
