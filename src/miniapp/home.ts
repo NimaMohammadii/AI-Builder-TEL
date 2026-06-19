@@ -56,7 +56,7 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <div class="deposit-panel card">
       <div class="pad">
         <div class="title deposit-title">
-          <div class="deposit-title-main"><img class="deposit-credit-icon" src="/app/api/credit-icon.png" alt="" decoding="async"/><h3>Charge TON Balance</h3></div>
+          <div class="deposit-title-main"><span class="deposit-wallet-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M10 17.5c0-3 2.4-5.5 5.5-5.5h20.2c2.1 0 3.8 1.7 3.8 3.8v3.1" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M8 20.5c0-3.2 2.6-5.8 5.8-5.8h22.4c3.2 0 5.8 2.6 5.8 5.8v15.7c0 3.2-2.6 5.8-5.8 5.8H13.8C10.6 42 8 39.4 8 36.2V20.5Z" stroke="currentColor" stroke-width="3"/><path d="M32 27h10v8H32c-2.2 0-4-1.8-4-4s1.8-4 4-4Z" stroke="currentColor" stroke-width="3"/><circle cx="33" cy="31" r="1.6" fill="currentColor"/></svg></span><h3>Charge TON Balance</h3></div>
           <button class="ghost deposit-close" type="button" data-action="close-deposit" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
         </div>
         <p class="deposit-copy">Your balance will be charged as TON after Telegram confirms the payment</p>
@@ -80,9 +80,8 @@ export const HOME_SECTION = `<section id="home" class="view active">
         document.head.appendChild(style);
       }
       function methodImg(type){
-        var stamp=Date.now();
         var src=type==='ton'?'/app/api/credit-icon.png':('/app/api/deposit-method-icon/'+(type==='nft'?'nft':'stars')+'.png');
-        return '<img src="'+src+'?v='+stamp+'" alt="" decoding="async" loading="eager">';
+        return '<img src="'+src+'" alt="" decoding="async" loading="eager">';
       }
       function ensurePicker(){
         addStyle();

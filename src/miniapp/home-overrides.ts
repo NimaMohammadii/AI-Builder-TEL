@@ -14,7 +14,7 @@ export const HOME_OVERRIDES = `
   backdrop-filter:blur(4px) saturate(1.12)!important;
   -webkit-backdrop-filter:blur(4px) saturate(1.12)!important;
 }
-body.deposit-open #home .home-intro-card,body.withdraw-open #home .home-intro-card,body.transactions-open #home .home-intro-card{opacity:0!important;filter:blur(14px);transform:scale(.98);transition:opacity .16s ease,filter .16s ease,transform .16s ease;pointer-events:none!important}
+body.deposit-open #home .home-intro-card,body.withdraw-open #home .home-intro-card{opacity:0!important;filter:blur(14px);transform:scale(.98);transition:opacity .16s ease,filter .16s ease,transform .16s ease;pointer-events:none!important}
 #connect .card .pad{padding:0!important}
 #connect .card .title{margin:0 0 12px!important}
 #connect .card h3{margin:0;font-size:24px!important;line-height:1.04!important;font-weight:850!important;letter-spacing:-.055em!important}
@@ -33,6 +33,7 @@ body.deposit-open #home .home-intro-card,body.withdraw-open #home .home-intro-ca
 #home .deposit-title{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:0 0 14px!important;gap:12px!important}
 #home .deposit-title-main{display:flex;align-items:center;gap:10px;min-width:0}
 #home .deposit-credit-icon,.withdraw-title-icon{width:34px;height:34px;border-radius:50%;object-fit:cover;filter:drop-shadow(0 8px 18px rgba(255,255,255,.12));display:grid;place-items:center;background:rgba(255,255,255,.055);color:#fff;flex:0 0 auto}.withdraw-title-icon svg{width:24px;height:24px}
+#home .deposit-wallet-icon{width:38px;height:38px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 24px rgba(0,0,0,.22);color:#fff;flex:0 0 auto}#home .deposit-wallet-icon svg{width:25px;height:25px;display:block}
 #home .deposit-title h3{font-size:20px!important;line-height:1.05!important;font-weight:900!important;letter-spacing:-.055em!important;white-space:nowrap}
 #home .deposit-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;background:rgba(255,255,255,.035)!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important}
 #home .deposit-close svg{width:20px;height:20px;display:block}
