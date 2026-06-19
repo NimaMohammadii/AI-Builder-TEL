@@ -67,6 +67,67 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
   </div>
 
+  <script>
+    (function(){
+      function q(id){return document.getElementById(id)}
+      function sheet(){return q('depositSheet')}
+      function addStyle(){
+        if(q('vexaDepositMethodPickerStyle'))return;
+        var style=document.createElement('style');
+        style.id='vexaDepositMethodPickerStyle';
+        style.textContent='#depositSheet .deposit-method-screen{display:none!important;width:min(100%,370px)!important;margin:0 auto 2px!important}#depositSheet.deposit-choosing .deposit-method-screen{display:grid!important;gap:10px!important}#depositSheet.deposit-choosing .deposit-copy:not(.deposit-method-copy),#depositSheet.deposit-choosing .deposit-custom-field,#depositSheet.deposit-choosing .deposit-action-row,#depositSheet.deposit-choosing #depositMainPayButton,#depositSheet.deposit-choosing .ton-wallet-status,#depositSheet.deposit-choosing .deposit-status-inline,#depositSheet.deposit-choosing .deposit-stars-logo{display:none!important}.deposit-method-copy{margin:0 0 12px!important;text-align:center!important;color:rgba(255,255,255,.58)!important;font-size:13px!important;font-weight:760!important;line-height:1.35!important}.deposit-method-option{appearance:none!important;-webkit-appearance:none!important;width:100%!important;min-height:76px!important;border:0!important;border-radius:25px!important;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 36px rgba(0,0,0,.24)!important;color:#fff!important;padding:10px 12px!important;display:grid!important;grid-template-columns:58px minmax(0,1fr) 24px!important;gap:12px!important;align-items:center!important;text-align:left!important}.deposit-method-option:active{transform:scale(.988)!important}.deposit-method-image{width:58px!important;height:58px!important;border-radius:22px!important;display:grid!important;place-items:center!important;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.18),rgba(255,255,255,.055) 52%,rgba(92,8,20,.18))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 12px 26px rgba(0,0,0,.22)!important;overflow:hidden!important}.deposit-method-image svg{width:36px!important;height:36px!important;display:block!important}.deposit-method-copybox{min-width:0!important;display:grid!important;gap:5px!important}.deposit-method-copybox strong{font-size:17px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.045em!important;color:#fff!important}.deposit-method-copybox span{font-size:11.5px!important;line-height:1.25!important;font-weight:720!important;color:rgba(255,255,255,.54)!important}.deposit-method-arrow{font-size:24px!important;line-height:1!important;color:rgba(255,255,255,.34)!important;text-align:right!important}#depositSheet .deposit-action-row{width:min(100%,370px)!important;grid-template-columns:1fr!important;margin:0 auto 18px!important}#depositSheet .deposit-action-row .deposit-pay-button,#depositSheet #depositMainPayButton{width:100%!important}#depositPaymentModeSwitch{display:none!important}.deposit-nft-soon{min-height:18px!important;text-align:center!important;margin:8px 0 0!important;color:#ffcf6b!important;font-size:11px!important;font-weight:800!important}';
+        document.head.appendChild(style);
+      }
+      function methodSvg(type){
+        if(type==='ton')return '<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" fill="rgba(0,136,255,.24)"/><path d="M17 18h30L32 47 17 18z" fill="currentColor"/><path d="M24 23h16l-8 16-8-16z" fill="rgba(255,255,255,.22)"/></svg>';
+        if(type==='nft')return '<svg viewBox="0 0 64 64" fill="none"><path d="M32 8l20 11.5v25L32 56 12 44.5v-25L32 8z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M22 25h20M22 33h13M22 41h17" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".72"/></svg>';
+        return '<svg viewBox="0 0 64 64" fill="none"><path d="M32 7l5 15 15-5-9 13 14 7-16 1 6 15-15-10-15 10 6-15-16-1 14-7-9-13 15 5 5-15z" fill="currentColor"/></svg>';
+      }
+      function ensurePicker(){
+        addStyle();
+        var s=sheet();if(!s)return;
+        var title=s.querySelector('.deposit-title');if(!title)return;
+        if(!s.querySelector('.deposit-method-screen')){
+          var box=document.createElement('div');
+          box.className='deposit-method-screen';
+          box.innerHTML='<p class="deposit-copy deposit-method-copy">Choose how you want to deposit</p>'+
+            '<button class="deposit-method-option" type="button" data-action="choose-deposit-method" data-method="stars"><span class="deposit-method-image">'+methodSvg('stars')+'</span><span class="deposit-method-copybox"><strong>Pay with Stars</strong><span>Fast Telegram Stars payment</span></span><span class="deposit-method-arrow">›</span></button>'+
+            '<button class="deposit-method-option" type="button" data-action="choose-deposit-method" data-method="ton"><span class="deposit-method-image">'+methodSvg('ton')+'</span><span class="deposit-method-copybox"><strong>Pay with TON</strong><span>Deposit directly with TON wallet</span></span><span class="deposit-method-arrow">›</span></button>'+
+            '<button class="deposit-method-option" type="button" data-action="choose-deposit-method" data-method="nft"><span class="deposit-method-image">'+methodSvg('nft')+'</span><span class="deposit-method-copybox"><strong>NFT</strong><span>NFT deposit option</span></span><span class="deposit-method-arrow">›</span></button>'+
+            '<p id="depositNftSoon" class="deposit-nft-soon"></p>';
+          title.insertAdjacentElement('afterend',box);
+        }
+        var pay=q('depositMainPayButton')||s.querySelector('[data-action="deposit-custom-stars-sheet"],[data-action="confirm-ton-payment"]');
+        if(pay)pay.id='depositMainPayButton';
+      }
+      function showPicker(){
+        ensurePicker();
+        var s=sheet();if(!s)return;
+        s.classList.add('deposit-choosing');
+        var msg=q('depositNftSoon');if(msg)msg.textContent='';
+      }
+      function pickMode(method){
+        ensurePicker();
+        var s=sheet();if(!s)return;
+        if(method==='nft'){
+          var msg=q('depositNftSoon');if(msg)msg.textContent='NFT deposits will be available soon';
+          return;
+        }
+        var target=document.querySelector('#depositPaymentModeSwitch button[data-mode="'+(method==='ton'?'ton':'stars')+'"]');
+        if(target)target.click();
+        s.classList.remove('deposit-choosing');
+      }
+      document.addEventListener('click',function(ev){
+        var btn=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!btn)return;
+        var action=btn.getAttribute('data-action');
+        if(action==='open-deposit'||action==='connect-deposit')setTimeout(showPicker,90);
+        if(action==='choose-deposit-method'){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();pickMode(btn.getAttribute('data-method'))}
+        if(action==='close-deposit')setTimeout(function(){var s=sheet();if(s)s.classList.remove('deposit-choosing')},380);
+      },true);
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(ensurePicker,240)});else setTimeout(ensurePicker,240);
+    })();
+  </script>
+
   <div id="withdrawSheet" class="deposit-sheet withdraw-sheet" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-withdraw"></div>
     <div class="deposit-panel card">
