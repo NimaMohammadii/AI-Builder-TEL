@@ -1,12 +1,18 @@
 import app from './index';
 
 const okImages = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const iconCache = 'public, max-age=31536000, immutable';
 
 app.get('/app/api/deposit-method-icon/:method', async (c) => {
+  const url = new URL(c.req.url);
+  if (url.search) {
+    url.search = '';
+    return Response.redirect(url.toString(), 302);
+  }
   const method = cleanMethod(c.req.param('method'));
   const object = await c.env.ASSETS.get(`deposit-method/${method}`).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': 'public, max-age=31536000, immutable' } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': iconCache } });
 });
 
 app.post('/admin/api/upload-deposit-method-icon', async (c) => {
