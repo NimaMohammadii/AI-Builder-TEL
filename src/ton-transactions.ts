@@ -148,8 +148,8 @@ export async function listUserTonWalletTransactions(env: Env, userId: string, li
       .bind(safeUserId, safeLimit)
       .all<TonTransactionRow>()
       .then((rows) => rows.results ?? []),
-    readWalletSourceRows<TonDepositSourceRow>(env, `SELECT id, user_id, amount_ton, ton_balance_nano, status, tx_hash, created_at, updated_at FROM ton_deposits WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
-    readWalletSourceRows<StarsDepositSourceRow>(env, `SELECT id, user_id, stars_amount, amount_nano, status, created_at, updated_at FROM stars_deposits WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
+    readWalletSourceRows<TonDepositSourceRow>(env, `SELECT id, user_id, amount_ton, ton_balance_nano, status, tx_hash, created_at, updated_at FROM ton_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
+    readWalletSourceRows<StarsDepositSourceRow>(env, `SELECT id, user_id, stars_amount, amount_nano, status, created_at, updated_at FROM stars_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
     readWalletSourceRows<WithdrawalSourceRow>(env, `SELECT id, user_id, wallet_address, amount_nano, status, created_at, updated_at FROM ton_withdrawals WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
   ]);
 
