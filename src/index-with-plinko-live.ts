@@ -1,5 +1,6 @@
 import './miniapp-voice-ai-routes';
 import './deposit-method-icon-routes';
+import './withdrawal-admin-routes';
 
 export { SectionLockEvents } from './section-lock-events';
 export { PlinkoLiveRoom } from './plinko-live';
