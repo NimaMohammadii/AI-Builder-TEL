@@ -11,6 +11,14 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
     block.innerHTML='<div class="image-current"><img id="plinkoBallPreview" src="/app/api/uploaded-image/plinko-ball.png" alt=""/><div><strong>Plinko ball image</strong><p class="muted small-text">Shown only as the falling ball inside Plinko. This is separate from the TON balance icon.</p></div></div><label>Upload Plinko ball image</label><input id="plinkoBallFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadPlinkoBall" type="button">Upload Plinko ball</button><p id="plinkoBallUploadStatus" class="status"></p>';
     section.appendChild(block);
   }
+  function ensureDepositMethodIconsPanel(){
+    const section=document.getElementById('sectionImages');
+    if(!section||document.getElementById('depositMethodIconsBlock'))return;
+    const block=document.createElement('div');
+    block.id='depositMethodIconsBlock';
+    block.innerHTML='<h3>Deposit method icons</h3><p class="muted small-text">Upload the images used for Stars and NFT inside the Deposit method picker. TON uses the main credit/TON icon.</p><div class="image-current"><img id="depositMethodStarsPreview" src="/app/api/deposit-method-icon/stars.png?t='+Date.now()+'" alt=""/><div><strong>Stars payment icon</strong><p class="muted small-text">Shown on the Pay with Stars row.</p></div></div><label>Upload Stars icon</label><input id="depositMethodStarsFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadDepositMethodStars" type="button">Upload Stars icon</button><div class="image-current"><img id="depositMethodNftPreview" src="/app/api/deposit-method-icon/nft.png?t='+Date.now()+'" alt=""/><div><strong>NFT payment icon</strong><p class="muted small-text">Shown on the NFT row.</p></div></div><label>Upload NFT icon</label><input id="depositMethodNftFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"/><button class="primary" id="uploadDepositMethodNft" type="button">Upload NFT icon</button><p id="depositMethodIconsStatus" class="status"></p>';
+    section.appendChild(block);
+  }
   function ensureMinesTilesPanel(){
     const section=document.getElementById('sectionImages');
     if(!section||document.getElementById('minesTilesUploadBlock'))return;
@@ -37,6 +45,8 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       const data=await r.json();
       if(data.creditIconUrl){const preview=document.getElementById('preview');preload(data.creditIconUrl);if(preview)preview.src=data.creditIconUrl;}
       if(data.plinkoBallUrl){const previewBall=document.getElementById('plinkoBallPreview');preload(data.plinkoBallUrl);if(previewBall)previewBall.src=data.plinkoBallUrl;}
+      if(data.depositStarsIconUrl){const p=document.getElementById('depositMethodStarsPreview');preload(data.depositStarsIconUrl);if(p)p.src=data.depositStarsIconUrl;}
+      if(data.depositNftIconUrl){const p=document.getElementById('depositMethodNftPreview');preload(data.depositNftIconUrl);if(p)p.src=data.depositNftIconUrl;}
       if(data.minesSafeUrl){const p=document.getElementById('minesSafePreview');preload(data.minesSafeUrl);if(p)p.src=data.minesSafeUrl;}
       if(data.minesBombUrl){const p=document.getElementById('minesBombPreview');preload(data.minesBombUrl);if(p)p.src=data.minesBombUrl;}
       const map={YouRock:data.rpsYouRockUrl,YouPaper:data.rpsYouPaperUrl,YouScissors:data.rpsYouScissorsUrl,BotRock:data.rpsBotRockUrl,BotPaper:data.rpsBotPaperUrl,BotScissors:data.rpsBotScissorsUrl};
@@ -65,6 +75,18 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
       const form=new FormData();form.append('icon',file.files[0]);
       try{const r=await fetch('/admin/upload-credit-icon',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}const url=j.creditIconUrl||('/app/api/credit-icon.png?t='+Date.now());preload(url);const preview=document.getElementById('preview');if(preview)preview.src=url;if(status)status.textContent='Image uploaded to R2.';refreshPreview();}
       catch(e){if(status)status.textContent=e&&e.message?e.message:'Upload request failed.';}
+    };
+  }
+  function wireDepositMethodIcon(kind,inputId,buttonId){
+    const upload=document.getElementById(buttonId),file=document.getElementById(inputId),status=document.getElementById('depositMethodIconsStatus');
+    if(!upload||!file||upload.dataset.cachedUpload==='1')return;
+    upload.dataset.cachedUpload='1';
+    upload.onclick=async()=>{
+      if(!file.files||!file.files[0]){if(status)status.textContent='Choose an image first.';return}
+      if(!allowed.includes(file.files[0].type)){if(status)status.textContent='Only PNG, JPG, JPEG or WebP files are allowed.';return}
+      if(status)status.textContent='Uploading '+kind+' icon...';
+      const form=new FormData();form.append('method',kind);form.append('image',file.files[0]);
+      try{const r=await fetch('/admin/api/upload-deposit-method-icon',{method:'POST',body:form,credentials:'same-origin'});const j=await r.json().catch(()=>({error:'Upload failed'}));if(!r.ok){if(status)status.textContent=j.error||'Upload failed';return}const url=j.url||('/app/api/deposit-method-icon/'+kind+'.png?v='+Date.now());preload(url);const preview=document.getElementById(kind==='nft'?'depositMethodNftPreview':'depositMethodStarsPreview');if(preview)preview.src=url+(url.indexOf('?')>=0?'&':'?')+'preview='+Date.now();if(status)status.textContent=kind+' icon uploaded to R2.';refreshPreview();}catch(e){if(status)status.textContent=e&&e.message?e.message:'Upload request failed.';}
     };
   }
   function wirePlinkoBall(){
@@ -120,9 +142,12 @@ export const ADMIN_UPLOAD_CACHE_SCRIPT = `
   }
   function install(){
     ensurePlinkoBallPanel();
+    ensureDepositMethodIconsPanel();
     ensureMinesTilesPanel();
     ensureRpsHandsPanel();
     wireCreditIcon();
+    wireDepositMethodIcon('stars','depositMethodStarsFile','uploadDepositMethodStars');
+    wireDepositMethodIcon('nft','depositMethodNftFile','uploadDepositMethodNft');
     wirePlinkoBall();
     wireMinesTile('uploadMinesSafe','minesSafeFile','safe');
     wireMinesTile('uploadMinesBomb','minesBombFile','bomb');
