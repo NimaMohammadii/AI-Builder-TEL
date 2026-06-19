@@ -31,6 +31,38 @@ type TonTransactionRow = {
   created_at: string;
 };
 
+
+type TonDepositSourceRow = {
+  id: string;
+  user_id: string;
+  amount_ton: string;
+  ton_balance_nano: number;
+  status: string;
+  tx_hash: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type StarsDepositSourceRow = {
+  id: string;
+  user_id: string;
+  stars_amount: number;
+  amount_nano: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type WithdrawalSourceRow = {
+  id: string;
+  user_id: string;
+  wallet_address: string;
+  amount_nano: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TonTransaction = {
   id: string;
   userId: string;
@@ -102,9 +134,83 @@ export async function listUserTonTransactions(env: Env, userId: string, limit = 
   await ensureTonTransactionsTable(env);
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 50)));
   const rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
-    .bind(userId, safeLimit)
+    .bind(cleanUserId(userId), safeLimit)
     .all<TonTransactionRow>();
   return { transactions: (rows.results ?? []).map(rowToTransaction) };
+}
+
+export async function listUserTonWalletTransactions(env: Env, userId: string, limit = 100): Promise<{ transactions: TonTransaction[] }> {
+  await ensureTonTransactionsTable(env);
+  const safeUserId = cleanUserId(userId);
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 100)));
+  const [ledgerRows, tonDepositRows, starDepositRows, withdrawalRows] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
+      .bind(safeUserId, safeLimit)
+      .all<TonTransactionRow>()
+      .then((rows) => rows.results ?? []),
+    readWalletSourceRows<TonDepositSourceRow>(env, `SELECT id, user_id, amount_ton, ton_balance_nano, status, tx_hash, created_at, updated_at FROM ton_deposits WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
+    readWalletSourceRows<StarsDepositSourceRow>(env, `SELECT id, user_id, stars_amount, amount_nano, status, created_at, updated_at FROM stars_deposits WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
+    readWalletSourceRows<WithdrawalSourceRow>(env, `SELECT id, user_id, wallet_address, amount_nano, status, created_at, updated_at FROM ton_withdrawals WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
+  ]);
+
+  const bySource = new Map<string, TonTransaction>();
+  for (const row of ledgerRows) {
+    const item = rowToTransaction(row);
+    const sourceKey = sourceKeyFor(item.referenceType, item.referenceId);
+    if (sourceKey) bySource.set(sourceKey, item);
+  }
+
+  const merged = ledgerRows.map(rowToTransaction);
+  for (const row of tonDepositRows) pushSourceTransaction(merged, bySource, tonDepositToTransaction(row));
+  for (const row of starDepositRows) pushSourceTransaction(merged, bySource, starsDepositToTransaction(row));
+  for (const row of withdrawalRows) pushSourceTransaction(merged, bySource, withdrawalToTransaction(row));
+
+  merged.sort((a, b) => transactionTime(b) - transactionTime(a) || b.id.localeCompare(a.id));
+  return { transactions: merged.slice(0, safeLimit) };
+}
+
+
+async function readWalletSourceRows<T>(env: Env, sql: string, userId: string, limit: number): Promise<T[]> {
+  return env.DB.prepare(sql).bind(userId, limit).all<T>().then((rows) => rows.results ?? []).catch(() => []);
+}
+
+function pushSourceTransaction(items: TonTransaction[], bySource: Map<string, TonTransaction>, item: TonTransaction): void {
+  const key = sourceKeyFor(item.referenceType, item.referenceId);
+  if (key && bySource.has(key)) return;
+  if (key) bySource.set(key, item);
+  items.push(item);
+}
+
+function sourceKeyFor(referenceType: string | null | undefined, referenceId: string | null | undefined): string {
+  return referenceType && referenceId ? `${referenceType}:${referenceId}` : '';
+}
+
+function tonDepositToTransaction(row: TonDepositSourceRow): TonTransaction {
+  const amountNano = Number(row.ton_balance_nano || 0);
+  return sourceTransaction(row.id, row.user_id, 'deposit', 'TON wallet deposit', `${row.amount_ton} TON wallet payment`, amountNano, row.status, 'ton_deposit', row.id, row.created_at, { txHash: row.tx_hash });
+}
+
+function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
+  const amountNano = Number(row.amount_nano || 0);
+  return sourceTransaction(row.id, row.user_id, 'deposit', 'Stars purchase', `${Number(row.stars_amount || 0)} Stars converted to TON balance`, amountNano, row.status, 'stars_deposit', row.id, row.created_at, { starsAmount: row.stars_amount });
+}
+
+function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
+  const amountNano = -Math.abs(Number(row.amount_nano || 0));
+  return sourceTransaction(row.id, row.user_id, 'withdraw', 'TON withdrawal', 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, row.status, 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address });
+}
+
+function sourceTransaction(id: string, userId: string, kind: TonTransactionKind, title: string, description: string, amountNano: number, status: string, referenceType: string, referenceId: string, createdAt: string, metadata: Record<string, unknown>): TonTransaction {
+  return { id, userId, kind, title, description, amountNano, balanceAfterNano: 0, status, referenceId, referenceType, metadata, createdAt };
+}
+
+function transactionTime(item: TonTransaction): number {
+  const value = Date.parse(item.createdAt || '');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function shortWallet(wallet: string): string {
+  return wallet.length > 14 ? wallet.slice(0, 6) + '...' + wallet.slice(-6) : wallet;
 }
 
 function rowToTransaction(row: TonTransactionRow): TonTransaction {
@@ -178,4 +284,8 @@ function parseJson(value: string | null): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function cleanUserId(value: unknown): string {
+  return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
 }

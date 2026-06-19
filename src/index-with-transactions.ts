@@ -4,7 +4,7 @@ import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
 import { registerReferralRoutes } from './referral-routes';
-import { listUserTonTransactions } from './ton-transactions';
+import { listUserTonTransactions, listUserTonWalletTransactions } from './ton-transactions';
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
 import type { Env } from './types';
@@ -116,10 +116,10 @@ app.get('/app/api/ton/history', async (c) => {
     const userId = String(c.req.query('userId') || '');
     const limit = Number(c.req.query('limit') || 50);
     const walletOnly = String(c.req.query('wallet') || '') === '1';
-    const result = await listUserTonTransactions(c.env, userId, limit);
-    return c.json(walletOnly ? {
-      transactions: result.transactions.filter((item) => item.kind === 'deposit' || item.kind === 'withdraw'),
-    } : result);
+    const result = walletOnly
+      ? await listUserTonWalletTransactions(c.env, userId, limit)
+      : await listUserTonTransactions(c.env, userId, limit);
+    return c.json(result, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load history' }, 400);
   }
