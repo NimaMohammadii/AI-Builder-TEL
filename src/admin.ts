@@ -29,7 +29,7 @@ import { ADMIN_SLOT_VIRTUAL_USERS_SCRIPT } from './admin-slot-virtual-users-pane
 import { ADMIN_DICE_ASSETS_PANEL_SCRIPT } from './admin-dice-assets-panel';
 import { ADMIN_ANNOUNCEMENT_PANEL_SCRIPT } from './admin-announcement-panel';
 
-const ADMIN_LAYOUT_CSS = `<style>.reset-user-btn{height:31px!important;margin-top:8px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.16)!important;color:#ffb3b3!important;font-size:12px!important;width:100%!important}.bulk-users-btn{height:36px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.22)!important;color:#ffd1d1!important;font-size:12px!important;font-weight:800!important;padding:0 14px!important;white-space:nowrap!important}.menu-panel,.menu-panel[hidden]{display:flex!important;gap:7px!important;overflow-x:auto!important;margin:4px 0 18px!important;padding:0 0 8px!important;border:0!important;background:transparent!important}.menu-item{flex:0 0 auto!important;width:auto!important;min-width:86px!important;border-radius:999px!important}.menu-item strong{display:block!important;font-size:12px!important}.menu-item span{display:none!important}</style>`;
+const ADMIN_LAYOUT_CSS = `<style>.reset-user-btn{height:31px!important;margin-top:8px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.16)!important;color:#ffb3b3!important;font-size:12px!important;width:100%!important}.bulk-users-btn{height:36px!important;border:0!important;border-radius:999px!important;background:rgba(255,80,80,.22)!important;color:#ffd1d1!important;font-size:12px!important;font-weight:800!important;padding:0 14px!important;white-space:nowrap!important}.menu-panel,.menu-panel[hidden]{display:flex!important;gap:7px!important;overflow-x:auto!important;margin:4px 0 18px!important;padding:0 0 8px!important;border:0!important;background:transparent!important}.menu-item{flex:0 0 auto!important;width:auto!important;min-width:86px!important;border-radius:999px!important}.menu-item strong{display:block!important;font-size:12px!important}.menu-item span{display:none!important}.withdrawals-shortcut{display:flex!important;align-items:center!important;justify-content:center!important;height:42px!important;margin:0 0 12px!important;border-radius:999px!important;background:rgba(255,255,255,.08)!important;color:#fff!important;text-decoration:none!important;font-weight:900!important;font-size:13px!important}</style>`;
 
 function adminPanelWithFixes(): string {
   return mobileAdminPanelHtml()
@@ -37,6 +37,7 @@ function adminPanelWithFixes(): string {
     .replace(/Credit and section access/g, 'TON Balance and section access')
     .replace(/Manage credit/g, 'Manage TON balance')
     .replace('Manage images used inside the mini app. For now this section contains the credit icon.', 'Manage images used inside the mini app, including the credit icon, Slot game frame, and Dice game images.')
+    .replace('<section class="section admin-section active" id="sectionUsers"', '<a class="withdrawals-shortcut" href="/admin/withdrawals">Withdrawals</a><section class="section admin-section active" id="sectionUsers"')
     .replace('loadUsers();loadLocks();setInterval(loadUsers,15000);', 'loadUsers();loadLocks();');
 }
 
