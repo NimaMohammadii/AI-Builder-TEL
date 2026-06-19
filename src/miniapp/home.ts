@@ -69,13 +69,14 @@ export const HOME_SECTION = `<section id="home" class="view active">
 
   <script>
     (function(){
+      var isTransitioning=false;
       function q(id){return document.getElementById(id)}
       function sheet(){return q('depositSheet')}
       function addStyle(){
         if(q('vexaDepositMethodPickerStyle'))return;
         var style=document.createElement('style');
         style.id='vexaDepositMethodPickerStyle';
-        style.textContent='#depositSheet .deposit-method-screen{display:none!important;width:min(100%,370px)!important;margin:0 auto 2px!important}#depositSheet.deposit-choosing .deposit-method-screen{display:grid!important;gap:10px!important}#depositSheet.deposit-choosing .deposit-copy:not(.deposit-method-copy),#depositSheet.deposit-choosing .deposit-custom-field,#depositSheet.deposit-choosing .deposit-action-row,#depositSheet.deposit-choosing #depositMainPayButton,#depositSheet.deposit-choosing .ton-wallet-status,#depositSheet.deposit-choosing .deposit-status-inline,#depositSheet.deposit-choosing .deposit-stars-logo{display:none!important}.deposit-method-copy{margin:0 0 12px!important;text-align:center!important;color:rgba(255,255,255,.58)!important;font-size:13px!important;font-weight:760!important;line-height:1.35!important}.deposit-method-option{appearance:none!important;-webkit-appearance:none!important;width:100%!important;min-height:76px!important;border:0!important;border-radius:25px!important;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 36px rgba(0,0,0,.24)!important;color:#fff!important;padding:10px 12px!important;display:grid!important;grid-template-columns:58px minmax(0,1fr) 24px!important;gap:12px!important;align-items:center!important;text-align:left!important}.deposit-method-option:active{transform:scale(.988)!important}.deposit-method-image{width:58px!important;height:58px!important;border-radius:0!important;display:grid!important;place-items:center!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}.deposit-method-image img{width:54px!important;height:54px!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 10px 18px rgba(0,0,0,.28))}.deposit-method-copybox{min-width:0!important;display:grid!important;gap:5px!important}.deposit-method-copybox strong{font-size:17px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.045em!important;color:#fff!important}.deposit-method-copybox span{font-size:11.5px!important;line-height:1.25!important;font-weight:720!important;color:rgba(255,255,255,.54)!important}.deposit-method-arrow{font-size:24px!important;line-height:1!important;color:rgba(255,255,255,.34)!important;text-align:right!important}#depositSheet .deposit-action-row{width:min(100%,370px)!important;grid-template-columns:1fr!important;margin:0 auto 18px!important}#depositSheet .deposit-action-row .deposit-pay-button,#depositSheet #depositMainPayButton{width:100%!important}#depositPaymentModeSwitch{display:none!important}.deposit-nft-soon{min-height:18px!important;text-align:center!important;margin:8px 0 0!important;color:#ffcf6b!important;font-size:11px!important;font-weight:800!important}';
+        style.textContent='#depositSheet .deposit-method-screen{display:none!important;width:min(100%,370px)!important;margin:0 auto 2px!important;position:relative!important}#depositSheet.deposit-choosing .deposit-method-screen{display:grid!important;gap:10px!important}#depositSheet.deposit-choosing .deposit-copy:not(.deposit-method-copy),#depositSheet.deposit-choosing .deposit-custom-field,#depositSheet.deposit-choosing .deposit-action-row,#depositSheet.deposit-choosing #depositMainPayButton,#depositSheet.deposit-choosing .ton-wallet-status,#depositSheet.deposit-choosing .deposit-status-inline,#depositSheet.deposit-choosing .deposit-stars-logo{display:none!important}.deposit-method-copy{margin:0 0 12px!important;text-align:center!important;color:rgba(255,255,255,.58)!important;font-size:13px!important;font-weight:760!important;line-height:1.35!important;transition:opacity .22s ease,transform .22s ease}.deposit-method-option{appearance:none!important;-webkit-appearance:none!important;width:100%!important;min-height:76px!important;border:0!important;border-radius:25px!important;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 36px rgba(0,0,0,.24)!important;color:#fff!important;padding:10px 12px!important;display:grid!important;grid-template-columns:58px minmax(0,1fr) 24px!important;gap:12px!important;align-items:center!important;text-align:left!important;transform-origin:center!important;will-change:transform,opacity,filter!important}.deposit-method-option:active{transform:scale(.988)!important}.deposit-method-image{width:58px!important;height:58px!important;border-radius:0!important;display:grid!important;place-items:center!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}.deposit-method-image img{width:54px!important;height:54px!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 10px 18px rgba(0,0,0,.28))}.deposit-method-copybox{min-width:0!important;display:grid!important;gap:5px!important}.deposit-method-copybox strong{font-size:17px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.045em!important;color:#fff!important}.deposit-method-copybox span{font-size:11.5px!important;line-height:1.25!important;font-weight:720!important;color:rgba(255,255,255,.54)!important}.deposit-method-arrow{font-size:24px!important;line-height:1!important;color:rgba(255,255,255,.34)!important;text-align:right!important}#depositSheet .deposit-action-row{width:min(100%,370px)!important;grid-template-columns:1fr!important;margin:0 auto 18px!important}#depositSheet .deposit-action-row .deposit-pay-button,#depositSheet #depositMainPayButton{width:100%!important}#depositPaymentModeSwitch{display:none!important}.deposit-nft-soon{min-height:18px!important;text-align:center!important;margin:8px 0 0!important;color:#ffcf6b!important;font-size:11px!important;font-weight:800!important}.deposit-method-screen.vexa-leaving .deposit-method-copy{opacity:0!important;transform:translateY(-8px)!important}.deposit-method-screen.vexa-leaving:after{content:""!important;position:absolute!important;inset:-12px -8px!important;border-radius:30px!important;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.16) 48%,transparent 62%)!important;transform:translateX(-120%)!important;animation:vexaDepositSweep .54s cubic-bezier(.2,.9,.2,1) forwards!important;pointer-events:none!important}.deposit-method-option.vexa-selected{animation:vexaDepositSelect .52s cubic-bezier(.16,1,.3,1) forwards!important;z-index:4!important}.deposit-method-option.vexa-selected .deposit-method-image img{animation:vexaDepositIconFly .52s cubic-bezier(.16,1,.3,1) forwards!important}.deposit-method-option.vexa-fade{animation:vexaDepositFade .34s ease forwards!important}.deposit-transitioning .deposit-method-option{pointer-events:none!important}.deposit-paying-reveal .deposit-custom-field,.deposit-paying-reveal .deposit-action-row,.deposit-paying-reveal #depositMainPayButton,.deposit-paying-reveal .ton-wallet-status,.deposit-paying-reveal .deposit-status-inline{animation:vexaPaymentIn .42s cubic-bezier(.16,1,.3,1) both!important}@keyframes vexaDepositSelect{0%{transform:scale(1);filter:none}45%{transform:scale(1.035) translateY(-2px);filter:brightness(1.2)}100%{transform:scale(.82) translateY(-18px);opacity:0;filter:blur(10px) brightness(1.35)}}@keyframes vexaDepositIconFly{0%{transform:scale(1) rotate(0)}55%{transform:scale(1.22) rotate(-6deg)}100%{transform:scale(.55) translateY(-20px) rotate(8deg);opacity:0}}@keyframes vexaDepositFade{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.94) translateY(12px);filter:blur(6px)}}@keyframes vexaPaymentIn{0%{opacity:0;transform:translateY(18px) scale(.97);filter:blur(8px)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}@keyframes vexaDepositSweep{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}';
         document.head.appendChild(style);
       }
       function methodImg(type){
@@ -103,26 +104,44 @@ export const HOME_SECTION = `<section id="home" class="view active">
       function showPicker(){
         ensurePicker();
         var s=sheet();if(!s)return;
+        s.classList.remove('deposit-paying-reveal');
         s.classList.add('deposit-choosing');
+        var screen=s.querySelector('.deposit-method-screen');if(screen)screen.classList.remove('vexa-leaving');
+        Array.prototype.forEach.call(s.querySelectorAll('.deposit-method-option'),function(item){item.classList.remove('vexa-selected','vexa-fade')});
         var msg=q('depositNftSoon');if(msg)msg.textContent='';
+        isTransitioning=false;
       }
-      function pickMode(method){
-        ensurePicker();
+      function finishMode(method){
         var s=sheet();if(!s)return;
         if(method==='nft'){
           var msg=q('depositNftSoon');if(msg)msg.textContent='NFT deposits will be available soon';
+          setTimeout(showPicker,520);
           return;
         }
         var target=document.querySelector('#depositPaymentModeSwitch button[data-mode="'+(method==='ton'?'ton':'stars')+'"]');
         if(target)target.click();
         s.classList.remove('deposit-choosing');
+        s.classList.add('deposit-paying-reveal');
+        setTimeout(function(){s.classList.remove('deposit-paying-reveal');isTransitioning=false},760);
       }
+      function animateMode(method,btn){
+        ensurePicker();
+        var s=sheet();if(!s||isTransitioning)return;
+        isTransitioning=true;
+        s.classList.add('deposit-transitioning');
+        var screen=s.querySelector('.deposit-method-screen');if(screen)screen.classList.add('vexa-leaving');
+        Array.prototype.forEach.call(s.querySelectorAll('.deposit-method-option'),function(item){
+          if(item===btn)item.classList.add('vexa-selected');else item.classList.add('vexa-fade');
+        });
+        setTimeout(function(){s.classList.remove('deposit-transitioning');finishMode(method)},520);
+      }
+      function pickMode(method,btn){animateMode(method,btn)}
       document.addEventListener('click',function(ev){
         var btn=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!btn)return;
         var action=btn.getAttribute('data-action');
         if(action==='open-deposit'||action==='connect-deposit')setTimeout(showPicker,90);
-        if(action==='choose-deposit-method'){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();pickMode(btn.getAttribute('data-method'))}
-        if(action==='close-deposit')setTimeout(function(){var s=sheet();if(s)s.classList.remove('deposit-choosing')},380);
+        if(action==='choose-deposit-method'){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();pickMode(btn.getAttribute('data-method'),btn)}
+        if(action==='close-deposit')setTimeout(function(){var s=sheet();if(s){s.classList.remove('deposit-choosing','deposit-transitioning','deposit-paying-reveal');isTransitioning=false}},380);
       },true);
       if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(ensurePicker,240)});else setTimeout(ensurePicker,240);
     })();
