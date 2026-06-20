@@ -1,8 +1,11 @@
+import { mnemonicToPrivateKey } from '@ton/crypto';
+import { Address, internal, SendMode, TonClient, WalletContractV4 } from '@ton/ton';
 import type { Env } from './types';
 import { adjustUserTonBalance, getUserControls } from './user-controls';
 
 const TON_NANO = 1_000_000_000;
 const MIN_WITHDRAW_NANO = 1_000_000; // 0.001 TON
+const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 
 type WithdrawRow = {
   id: string;
@@ -152,28 +155,67 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
 }
 
 async function callWithdrawalPayout(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
-  const payoutUrl = envValue(env, 'TON_WITHDRAW_PAYOUT_URL');
-  const payoutToken = envValue(env, 'TON_WITHDRAW_PAYOUT_TOKEN');
-  if (!payoutUrl) throw new Error('TON_WITHDRAW_PAYOUT_URL is not configured');
-  const response = await fetch(payoutUrl, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(payoutToken ? { authorization: 'Bearer ' + payoutToken } : {}),
-    },
-    body: JSON.stringify({
-      withdrawalId: row.id,
-      userId: row.user_id,
-      to: row.wallet_address,
-      amountNano: String(Math.floor(Number(row.amount_nano || 0))),
-      comment: 'Vexa withdrawal ' + row.id,
-    }),
+  return sendWithdrawalFromConfiguredWallet(env, row);
+}
+
+async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
+  const mnemonic = withdrawalMnemonic(env);
+  const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS');
+  if (!configuredAddress) throw new Error('TON_WITHDRAW_WALLET_ADDRESS is not configured');
+
+  const client = new TonClient({
+    endpoint: `${TONCENTER_BASE}/jsonRPC`,
+    apiKey: envValue(env, 'TONCENTER_API_KEY') || undefined,
   });
-  const json = await response.json().catch(() => null) as { txHash?: unknown; error?: unknown } | null;
-  if (!response.ok) throw new Error(String(json?.error || 'Payout service failed'));
-  const txHash = cleanText(json?.txHash, 180);
-  if (!txHash) throw new Error('Payout service did not return txHash');
-  return { txHash };
+  const keyPair = await mnemonicToPrivateKey(mnemonic);
+  const wallet = WalletContractV4.create({ workchain: 0, publicKey: keyPair.publicKey });
+  const derivedAddress = wallet.address.toString({ bounceable: false });
+  if (!sameTonAddress(configuredAddress, wallet.address.toString()) && !sameTonAddress(configuredAddress, derivedAddress)) {
+    throw new Error('TON_WITHDRAW_WALLET_ADDRESS does not match TON_WITHDRAW_MNEMONIC wallet');
+  }
+
+  const openedWallet = client.open(wallet);
+  const seqno = await openedWallet.getSeqno();
+  const amountNano = Math.floor(Number(row.amount_nano || 0));
+  if (!Number.isSafeInteger(amountNano) || amountNano <= 0) throw new Error('Invalid withdrawal amount');
+
+  await openedWallet.sendTransfer({
+    secretKey: keyPair.secretKey,
+    seqno,
+    sendMode: SendMode.PAY_GAS_SEPARATELY,
+    messages: [
+      internal({
+        to: row.wallet_address,
+        value: BigInt(amountNano),
+        body: 'Vexa withdrawal ' + row.id,
+        bounce: false,
+      }),
+    ],
+  });
+
+  const nextSeqno = await waitForWalletSeqno(openedWallet, seqno);
+  const txHash = await findLatestWalletTxHash(client, wallet.address.toString(), row.id);
+  return { txHash: txHash || `ton-withdraw:${row.id}:seqno:${nextSeqno}` };
+}
+
+async function waitForWalletSeqno(openedWallet: { getSeqno(): Promise<number> }, previousSeqno: number): Promise<number> {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    await delay(2500);
+    const seqno = await openedWallet.getSeqno();
+    if (seqno > previousSeqno) return seqno;
+  }
+  throw new Error('TON withdrawal was sent but not confirmed by wallet seqno');
+}
+
+async function findLatestWalletTxHash(client: TonClient, walletAddress: string, withdrawalId: string): Promise<string | null> {
+  try {
+    const txs = await client.getTransactions(walletAddress, { limit: 10 });
+    const tagged = txs.find((tx) => String(tx.inMessage?.body || tx.description || '').includes(withdrawalId));
+    const tx = tagged || txs[0];
+    return tx?.hash()?.toString('hex') || null;
+  } catch {
+    return null;
+  }
 }
 
 async function ensureTonWithdrawalsTable(env: Env): Promise<void> {
@@ -267,4 +309,24 @@ function cleanError(error: unknown): string {
 
 function envValue(env: Env, key: string): string {
   return String((env as unknown as Record<string, unknown>)[key] || '').trim();
+}
+
+function withdrawalMnemonic(env: Env): string[] {
+  const value = envValue(env, 'TON_WITHDRAW_MNEMONIC');
+  if (!value) throw new Error('TON_WITHDRAW_MNEMONIC is not configured');
+  const words = value.replace(/[\n,]+/g, ' ').split(/\s+/).map((word) => word.trim()).filter(Boolean);
+  if (words.length !== 24) throw new Error('TON_WITHDRAW_MNEMONIC must contain 24 words');
+  return words;
+}
+
+function sameTonAddress(left: string, right: string): boolean {
+  try {
+    return Address.parse(left).equals(Address.parse(right));
+  } catch {
+    return left.trim().toLowerCase() === right.trim().toLowerCase();
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

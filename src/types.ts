@@ -11,6 +11,10 @@ export type Env = {
   OPENAI_API_KEY: string;
   XAI_API_KEY?: string;
   TON_GIFT_MARKET_URL?: string;
+  TONCENTER_API_KEY?: string;
+  TON_WITHDRAW_MNEMONIC?: string;
+  TON_WITHDRAW_PAYOUT_TOKEN?: string;
+  TON_WITHDRAW_WALLET_ADDRESS?: string;
   ADMIN_KEY: string;
 };
 
