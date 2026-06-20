@@ -1,7 +1,7 @@
 import type { Env } from './types';
 
 export const APP_NAME = 'AI Builder TEL';
-export const PUBLIC_BASE_URL = 'https://builder-tel.vexaagent.workers.dev';
+export const PUBLIC_BASE_URL = 'https://v.vexaagent.workers.dev';
 export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 export const OPENAI_MODEL = 'gpt-5.4-mini';
 

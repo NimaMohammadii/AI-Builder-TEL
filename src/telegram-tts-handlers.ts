@@ -10,7 +10,7 @@ type TtsCharge = { characters: number; amountNano: number; amountTon: string };
 const TTS_TTL = 900;
 const DEMO_TEXT = 'This is a short demo from Vexa Text to Speech.';
 const TTS_CHARACTER_PRICE_NANO = 120_000;
-const BUILDER_APP_URL = 'https://builder-tel.vexaagent.workers.dev/builder';
+const BUILDER_APP_URL = 'https://v.vexaagent.workers.dev/builder';
 const PAYMENT_APP_URL = `${BUILDER_APP_URL}?open=deposit`;
 const VOICES = [
   ['Liam', 'TX3LPaxmHKxFdv7VOQHJ'], ['Noah', '1SM7GgM6IMuvQlz2BwM3'], ['Ava', 'tnSpp4vdxKPjI9w0GnoV'],
