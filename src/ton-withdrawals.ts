@@ -1,5 +1,4 @@
-import { mnemonicToPrivateKey } from '@ton/crypto';
-import { Address, internal, SendMode, TonClient, WalletContractV4 } from '@ton/ton';
+import type { TonClient } from '@ton/ton';
 import type { Env } from './types';
 import { adjustUserTonBalance, getUserControls } from './user-controls';
 
@@ -163,6 +162,7 @@ async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): P
   const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS');
   if (!configuredAddress) throw new Error('TON_WITHDRAW_WALLET_ADDRESS is not configured');
 
+  const { mnemonicToPrivateKey, internal, SendMode, TonClient, WalletContractV4 } = await loadTonSdk();
   const client = new TonClient({
     endpoint: `${TONCENTER_BASE}/jsonRPC`,
     apiKey: envValue(env, 'TONCENTER_API_KEY') || undefined,
@@ -170,7 +170,7 @@ async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): P
   const keyPair = await mnemonicToPrivateKey(mnemonic);
   const wallet = WalletContractV4.create({ workchain: 0, publicKey: keyPair.publicKey });
   const derivedAddress = wallet.address.toString({ bounceable: false });
-  if (!sameTonAddress(configuredAddress, wallet.address.toString()) && !sameTonAddress(configuredAddress, derivedAddress)) {
+  if (!(await sameTonAddress(configuredAddress, wallet.address.toString())) && !(await sameTonAddress(configuredAddress, derivedAddress))) {
     throw new Error('TON_WITHDRAW_WALLET_ADDRESS does not match TON_WITHDRAW_MNEMONIC wallet');
   }
 
@@ -319,11 +319,39 @@ function withdrawalMnemonic(env: Env): string[] {
   return words;
 }
 
-function sameTonAddress(left: string, right: string): boolean {
+async function sameTonAddress(left: string, right: string): Promise<boolean> {
   try {
+    const { Address } = await loadTonSdk();
     return Address.parse(left).equals(Address.parse(right));
   } catch {
     return left.trim().toLowerCase() === right.trim().toLowerCase();
+  }
+}
+
+
+async function loadTonSdk(): Promise<{
+  mnemonicToPrivateKey: typeof import('@ton/crypto').mnemonicToPrivateKey;
+  Address: typeof import('@ton/ton').Address;
+  internal: typeof import('@ton/ton').internal;
+  SendMode: typeof import('@ton/ton').SendMode;
+  TonClient: typeof import('@ton/ton').TonClient;
+  WalletContractV4: typeof import('@ton/ton').WalletContractV4;
+}> {
+  ensureWindowCompatForTonSdk();
+  const [cryptoSdk, tonSdk] = await Promise.all([import('@ton/crypto'), import('@ton/ton')]);
+  return {
+    mnemonicToPrivateKey: cryptoSdk.mnemonicToPrivateKey,
+    Address: tonSdk.Address,
+    internal: tonSdk.internal,
+    SendMode: tonSdk.SendMode,
+    TonClient: tonSdk.TonClient,
+    WalletContractV4: tonSdk.WalletContractV4,
+  };
+}
+
+function ensureWindowCompatForTonSdk(): void {
+  if (typeof globalThis.window === 'undefined') {
+    Object.defineProperty(globalThis, 'window', { value: globalThis, configurable: true });
   }
 }
 
