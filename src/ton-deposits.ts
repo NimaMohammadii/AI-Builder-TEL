@@ -173,9 +173,27 @@ function minDepositTon(env: Env): number {
 }
 
 function normalizeAmountTon(value: unknown): string {
-  const n = Number(String(value ?? '').replace(',', '.'));
+  const raw = normalizeDecimalText(value);
+  if (!raw) throw new Error('Enter a valid TON amount');
+  const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid TON amount');
-  return n.toFixed(9).replace(/0+$/, '').replace(/\.$/, '');
+  return raw;
+}
+
+function normalizeDecimalText(value: unknown): string {
+  const fa = '۰۱۲۳۴۵۶۷۸۹';
+  const ar = '٠١٢٣٤٥٦٧٨٩';
+  let text = String(value ?? '').trim();
+  text = text.replace(/[۰-۹]/g, (digit) => String(fa.indexOf(digit))).replace(/[٠-٩]/g, (digit) => String(ar.indexOf(digit)));
+  text = text.replace(/[٫٬،，,]/g, '.').replace(/[\u200e\u200f\u202a-\u202e\s]/g, '').replace(/[^0-9.]/g, '');
+  const first = text.indexOf('.');
+  if (first !== -1) text = text.slice(0, first + 1) + text.slice(first + 1).replace(/\./g, '');
+  if (text.startsWith('.')) text = '0' + text;
+  const [wholeRaw = '0', fracRaw = ''] = text.split('.');
+  const whole = wholeRaw.replace(/^0+(?=\d)/, '') || '0';
+  const frac = fracRaw.slice(0, 9).replace(/0+$/, '');
+  const normalized = frac ? `${whole}.${frac}` : whole;
+  return /^0(?:\.0*)?$/.test(normalized) ? '' : normalized;
 }
 
 function tonToNanoString(amountTon: string): string {
