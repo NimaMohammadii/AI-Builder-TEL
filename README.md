@@ -181,7 +181,7 @@ Telegram user
 Current Worker URL:
 
 ```text
-https://builder-tel.vexaagent.workers.dev
+https://v.vexaagent.workers.dev
 ```
 
 If your deployed Worker URL changes, update `PUBLIC_BASE_URL` in `src/utils.ts`.

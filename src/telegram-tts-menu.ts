@@ -176,7 +176,7 @@ function ttsKey(userId: string): string { return `builder-tts:${userId}`; }
 function ttsOutputKey(userId: string): string { return `builder-tts-output:${userId}`; }
 
 async function mainMenu(token: string, chatId: number): Promise<void> {
-  await telegram(token, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: 'https://builder-tel.vexaagent.workers.dev/builder' } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } });
+  await telegram(token, 'sendMessage', { chat_id: chatId, text: 'AI Builder TEL', reply_markup: { inline_keyboard: [[{ text: 'Open Mini App', web_app: { url: 'https://v.vexaagent.workers.dev/builder' } }], [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] } });
 }
 
 async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
