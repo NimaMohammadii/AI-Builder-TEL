@@ -3,7 +3,9 @@ import type { Env } from './types';
 import { adjustUserTonBalance, getUserControls } from './user-controls';
 
 const TON_NANO = 1_000_000_000;
-const MIN_WITHDRAW_NANO = 1_000_000; // 0.001 TON
+const MIN_WITHDRAW_NANO = 10 * TON_NANO;
+const MAX_WITHDRAW_NANO = 100 * TON_NANO;
+const DAILY_WITHDRAW_LIMIT_NANO = 100 * TON_NANO;
 const DEFAULT_TON_WITHDRAW_WALLET_ADDRESS = 'UQBM3omem7qMV3hoELAxiFEBRlldbRfRoHGKHobgdq0yUxvs';
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 
@@ -42,12 +44,14 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   const userId = cleanUserId(userIdInput);
   const wallet = cleanWallet(walletInput);
   const amountNano = tonToNano(amountTonInput);
-  if (amountNano < MIN_WITHDRAW_NANO) throw new Error('Minimum withdrawal is 0.001 TON');
+  if (amountNano < MIN_WITHDRAW_NANO) throw new Error('Minimum withdrawal is 10 TON');
+  if (amountNano > MAX_WITHDRAW_NANO) throw new Error('Maximum withdrawal is 100 TON');
 
   const controls = await getUserControls(env, userId);
   if (controls.tonBalanceNano < amountNano) throw new Error('Not enough TON balance');
 
   await ensureTonWithdrawalsTable(env);
+  await enforceDailyWithdrawalLimit(env, userId, amountNano);
   const id = 'wd_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 
   await env.DB.prepare(`INSERT INTO ton_withdrawals (id, user_id, wallet_address, amount_nano, status, created_at, updated_at)
@@ -152,6 +156,27 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
 
   const updated = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   return rowToWithdrawal(updated ?? { ...row, status: 'rejected' });
+}
+
+
+async function enforceDailyWithdrawalLimit(env: Env, userId: string, amountNano: number): Promise<void> {
+  const row = await env.DB.prepare(`SELECT COALESCE(SUM(amount_nano), 0) AS totalNano
+    FROM ton_withdrawals
+    WHERE user_id = ?
+      AND status != 'rejected'
+      AND date(created_at) = date('now')`)
+    .bind(userId)
+    .first<{ totalNano: number | string | null }>();
+  const usedTodayNano = Number(row?.totalNano || 0);
+  if (usedTodayNano + amountNano > DAILY_WITHDRAW_LIMIT_NANO) {
+    const remainingNano = Math.max(0, DAILY_WITHDRAW_LIMIT_NANO - usedTodayNano);
+    throw new Error(`Daily withdrawal limit is 100 TON. Remaining today: ${formatTonAmount(remainingNano)} TON`);
+  }
+}
+
+function formatTonAmount(nano: number): string {
+  const amount = nano / TON_NANO;
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 async function callWithdrawalPayout(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
