@@ -25,12 +25,13 @@ export const ADMIN_FOOTBALL_PANEL_SCRIPT = `
   function teamOptions(selected){return teams.map(function(t){return '<option value="'+esc(t.id)+'" '+(t.id===selected?'selected':'')+'>'+esc(t.name)+'</option>'}).join('')}
   function localDateTimeToIso(date,time,label){if(!date||!time)throw new Error(label||'Choose date and time');var parsed=new Date(date+'T'+time);if(Number.isNaN(parsed.getTime()))throw new Error(label||'Invalid date and time');return parsed.toISOString()}
   function localMatchTime(value){var date=new Date(value);if(Number.isNaN(date.getTime()))return String(value||'');return date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
-  function activate(button){
+  function statusEl(){return document.querySelector('#sectionFootballTeams.active #footballTeamStatus')||document.querySelector('#sectionFootballAdmin.active #footballAdminStatus')||document.getElementById('footballAdminStatus')||document.getElementById('footballTeamStatus')}
+  function activate(button,sectionId){
     document.querySelectorAll('.menu-item').forEach(function(item){item.classList.toggle('active',item===button)});
-    document.querySelectorAll('.admin-section').forEach(function(section){section.classList.toggle('active',section.id==='sectionFootballAdmin')});
+    document.querySelectorAll('.admin-section').forEach(function(section){section.classList.toggle('active',section.id===sectionId)});
     var title=document.getElementById('adminTitle'),sub=document.getElementById('adminSubtitle'),menu=document.getElementById('adminMenu');
-    if(title)title.textContent='Football';
-    if(sub)sub.textContent='Manage Football Predict teams and matches.';
+    if(title)title.textContent=sectionId==='sectionFootballTeams'?'Football Teams':'Football Matches';
+    if(sub)sub.textContent=sectionId==='sectionFootballTeams'?'Manage team names and logos away from match creation.':'Create and manage Football Predict matches.';
     if(menu)menu.hidden=true;
     loadFootballAdmin();
   }
@@ -42,18 +43,35 @@ export const ADMIN_FOOTBALL_PANEL_SCRIPT = `
       button.className='menu-item';
       button.type='button';
       button.dataset.section='footballAdmin';
-      button.innerHTML='<strong>Football</strong><span>Predict matches</span>';
+      button.innerHTML='<strong>Football Matches</strong><span>Create and manage matches</span>';
       menu.appendChild(button);
-      button.onclick=function(){activate(button)};
+      button.onclick=function(){activate(button,'sectionFootballAdmin')};
+    }
+    if(menu&&!document.querySelector('[data-section="footballTeams"]')){
+      var teamButton=document.createElement('button');
+      teamButton.className='menu-item';
+      teamButton.type='button';
+      teamButton.dataset.section='footballTeams';
+      teamButton.innerHTML='<strong>Football Teams</strong><span>Team names and logos</span>';
+      menu.appendChild(teamButton);
+      teamButton.onclick=function(){activate(teamButton,'sectionFootballTeams')};
     }
     if(main&&!document.getElementById('sectionFootballAdmin')){
       var section=document.createElement('section');
       section.className='section admin-section';
       section.id='sectionFootballAdmin';
-      section.innerHTML='<div class="football-admin"><div class="football-admin-hero"><div><h2>Football / Predict</h2><p class="muted small-text">Match creation is now separate from team logo management, with clearer actions for each match.</p></div><button class="ghost secondary" id="refreshFootballAdmin">Refresh data</button></div><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Create Match</h3><p>Select teams, schedule kick-off, set initial score and publish the match.</p></div></div><form id="footballMatchForm" class="football-admin-match-form"><label>Team A<select id="footballTeamA"></select></label><label>Team B<select id="footballTeamB"></select></label><label>Date<input id="footballMatchDate" type="date"/></label><label>Start Time<input id="footballMatchStart" type="time"/></label><label>End Time (optional)<input id="footballMatchEnd" type="time"/></label><label>Status<select id="footballMatchStatus"><option value="open">Open</option><option value="locked">Locked / Live</option></select></label><label>Team A goals<input id="footballMatchTeamAGoals" type="number" min="0" value="0"/></label><label>Team B goals<input id="footballMatchTeamBGoals" type="number" min="0" value="0"/></label><label class="wide football-admin-check"><input id="footballMatchFeatured" type="checkbox"/> Featured match</label><button class="primary" type="submit">Create Match</button></form></section><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Matches</h3><p>Save scores, lock matches, settle winners, refunds, and live questions.</p></div></div><div id="footballMatchList" class="football-admin-list"><div class="empty">Loading matches...</div></div></section><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Team Logos</h3><p>Create teams and upload logos here, separate from match creation.</p></div></div><form id="footballTeamForm" class="football-admin-match-form"><label class="wide">New team name<input id="footballTeamName" type="text" placeholder="Team name"/></label><button class="primary" type="submit">Create Team</button></form><div id="footballAdminList" class="football-admin-list"><div class="empty">Loading teams...</div></div></section><p id="footballAdminStatus" class="football-admin-status"></p></div>'; 
+      section.innerHTML='<div class="football-admin"><div class="football-admin-hero"><div><h2>Football / Matches</h2><p class="muted small-text">Create matches without the team logo cards taking up this workspace.</p></div><button class="ghost secondary" id="refreshFootballAdmin">Refresh data</button></div><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Create Match</h3><p>Select teams, schedule kick-off, set initial score and publish the match.</p></div></div><form id="footballMatchForm" class="football-admin-match-form"><label>Team A<select id="footballTeamA"></select></label><label>Team B<select id="footballTeamB"></select></label><label>Date<input id="footballMatchDate" type="date"/></label><label>Start Time<input id="footballMatchStart" type="time"/></label><label>End Time (optional)<input id="footballMatchEnd" type="time"/></label><label>Status<select id="footballMatchStatus"><option value="open">Open</option><option value="locked">Locked / Live</option></select></label><label>Team A goals<input id="footballMatchTeamAGoals" type="number" min="0" value="0"/></label><label>Team B goals<input id="footballMatchTeamBGoals" type="number" min="0" value="0"/></label><label class="wide football-admin-check"><input id="footballMatchFeatured" type="checkbox"/> Featured match</label><button class="primary" type="submit">Create Match</button></form></section><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Matches</h3><p>Save scores, lock matches, settle winners, refunds, and live questions.</p></div></div><div id="footballMatchList" class="football-admin-list"><div class="empty">Loading matches...</div></div></section><p id="footballAdminStatus" class="football-admin-status"></p></div>';
       main.appendChild(section);
       document.getElementById('refreshFootballAdmin').onclick=loadFootballAdmin;
       document.getElementById('footballMatchForm').onsubmit=createMatch;
+    }
+    if(main&&!document.getElementById('sectionFootballTeams')){
+      var teamSection=document.createElement('section');
+      teamSection.className='section admin-section';
+      teamSection.id='sectionFootballTeams';
+      teamSection.innerHTML='<div class="football-admin"><div class="football-admin-hero"><div><h2>Football / Teams</h2><p class="muted small-text">Create teams and upload logos in this dedicated area, separate from match creation.</p></div><button class="ghost secondary" id="refreshFootballTeams">Refresh teams</button></div><section class="football-admin-card"><div class="football-admin-card-head"><div><h3>Team Logos</h3><p>Manage the card list here so it does not crowd the Create Match page.</p></div></div><form id="footballTeamForm" class="football-admin-match-form"><label class="wide">New team name<input id="footballTeamName" type="text" placeholder="Team name"/></label><button class="primary" type="submit">Create Team</button></form><div id="footballAdminList" class="football-admin-list"><div class="empty">Loading teams...</div></div></section><p id="footballTeamStatus" class="football-admin-status"></p></div>';
+      main.appendChild(teamSection);
+      document.getElementById('refreshFootballTeams').onclick=loadFootballAdmin;
       document.getElementById('footballTeamForm').onsubmit=createTeam;
     }
   }
@@ -82,7 +100,7 @@ export const ADMIN_FOOTBALL_PANEL_SCRIPT = `
     list.querySelectorAll('[data-live-action]').forEach(function(btn){btn.onclick=function(){liveQuestionAction(btn.dataset.qid,btn.dataset.liveAction)}});
   }
   async function loadFootballAdmin(){
-    var status=document.getElementById('footballAdminStatus');if(status)status.textContent='Loading...';
+    var status=document.getElementById('footballAdminStatus'),teamStatus=document.getElementById('footballTeamStatus');if(status)status.textContent='Loading...';if(teamStatus)teamStatus.textContent='Loading...';
     try{
       var response=await fetch('/admin/api/football-teams',{credentials:'same-origin',cache:'no-store'});
       var json=await response.json();
@@ -90,33 +108,33 @@ export const ADMIN_FOOTBALL_PANEL_SCRIPT = `
       teams=json.teams||[];renderTeams();
       var mres=await fetch('/admin/api/football-matches',{credentials:'same-origin',cache:'no-store'});
       var mj=await mres.json();if(!mres.ok)throw new Error(mj.error||'Match load failed');
-      matches=mj.matches||[];renderMatches();if(status)status.textContent='Loaded';
-    }catch(error){if(status)status.textContent=error.message||'Load failed'}
+      matches=mj.matches||[];renderMatches();if(status)status.textContent='Loaded';if(teamStatus)teamStatus.textContent='Loaded';
+    }catch(error){if(status)status.textContent=error.message||'Load failed';if(teamStatus)teamStatus.textContent=error.message||'Load failed'}
   }
 
   async function createTeam(event){
-    event.preventDefault();var status=document.getElementById('footballAdminStatus');
+    event.preventDefault();var status=statusEl();
     try{var name=document.getElementById('footballTeamName').value;if(status)status.textContent='Creating team...';var response=await fetch('/admin/api/football-teams',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name:name})});var json=await response.json();if(!response.ok)throw new Error(json.error||'Create team failed');teams=json.teams||[];renderTeams();document.getElementById('footballTeamName').value='';if(status)status.textContent='Team created'}catch(error){if(status)status.textContent=error.message||'Create team failed'}
   }
   async function deleteTeam(id){
-    var status=document.getElementById('footballAdminStatus');if(!confirm('Delete this team and cancel its matches? Active predictions will be refunded.'))return;
+    var status=statusEl();if(!confirm('Delete this team and cancel its matches? Active predictions will be refunded.'))return;
     try{if(status)status.textContent='Deleting team...';var response=await fetch('/admin/api/football-teams/'+encodeURIComponent(id),{method:'DELETE',credentials:'same-origin'});var json=await response.json();if(!response.ok)throw new Error(json.error||'Delete failed');teams=json.teams||[];renderTeams();if(status)status.textContent='Team deleted'}catch(error){if(status)status.textContent=error.message||'Delete failed'}
   }
   async function saveMatchScore(event,form){
-    event.preventDefault();var status=document.getElementById('footballAdminStatus');
+    event.preventDefault();var status=statusEl();
     try{var fd=new FormData(form),id=form.getAttribute('data-score-form');if(status)status.textContent='Saving goals...';var response=await fetch('/admin/api/football-matches/'+encodeURIComponent(id)+'/action',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action:'score',teamAGoals:fd.get('teamAGoals'),teamBGoals:fd.get('teamBGoals')})});var json=await response.json();if(!response.ok)throw new Error(json.error||'Save goals failed');if(status)status.textContent='Goals saved';loadFootballAdmin()}catch(error){if(status)status.textContent=error.message||'Save goals failed'}
   }
   async function createLiveQuestion(event,form){
-    event.preventDefault();var status=document.getElementById('footballAdminStatus');
+    event.preventDefault();var status=statusEl();
     try{var fd=new FormData(form),id=form.getAttribute('data-live-form');if(status)status.textContent='Creating live question...';var response=await fetch('/admin/api/football-matches/'+encodeURIComponent(id)+'/live-questions',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({question:fd.get('question'),timerMinutes:fd.get('minutes')})});var json=await response.json();if(!response.ok)throw new Error(json.error||'Create live question failed');if(status)status.textContent='Live question created';loadFootballAdmin()}catch(error){if(status)status.textContent=error.message||'Create live question failed'}
   }
   async function liveQuestionAction(id,action,result){
-    var status=document.getElementById('footballAdminStatus');
+    var status=statusEl();
     if(action==='delete'&&!confirm('Delete this live question? Active answers will be refunded.'))return;
     try{if(status)status.textContent='Updating live question...';var response=await fetch('/admin/api/football-live-questions/'+encodeURIComponent(id)+'/action',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action:action,result:result})});var json=await response.json();if(!response.ok)throw new Error(json.error||'Update live question failed');if(status)status.textContent='Live question updated';loadFootballAdmin()}catch(error){if(status)status.textContent=error.message||'Update live question failed'}
   }
   async function createMatch(event){
-    event.preventDefault();var status=document.getElementById('footballAdminStatus');
+    event.preventDefault();var status=statusEl();
     try{
       var date=document.getElementById('footballMatchDate').value,start=document.getElementById('footballMatchStart').value,end=document.getElementById('footballMatchEnd').value;
       var payload={teamAId:document.getElementById('footballTeamA').value,teamBId:document.getElementById('footballTeamB').value,startsAt:localDateTimeToIso(date,start,'Start time is required'),endsAt:end?localDateTimeToIso(date,end,'Invalid end time'):'',status:document.getElementById('footballMatchStatus').value,featured:document.getElementById('footballMatchFeatured').checked,teamAGoals:document.getElementById('footballMatchTeamAGoals').value,teamBGoals:document.getElementById('footballMatchTeamBGoals').value};
@@ -127,15 +145,15 @@ export const ADMIN_FOOTBALL_PANEL_SCRIPT = `
     }catch(error){if(status)status.textContent=error.message||'Create failed'}
   }
   async function matchAction(id,action,result){
-    var status=document.getElementById('footballAdminStatus');
+    var status=statusEl();
     try{if(status)status.textContent='Updating match...';var response=await fetch('/admin/api/football-matches/'+encodeURIComponent(id)+'/action',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action:action,result:result})});var json=await response.json();if(!response.ok)throw new Error(json.error||'Update failed');if(status)status.textContent='Updated';loadFootballAdmin()}catch(error){if(status)status.textContent=error.message||'Update failed'}
   }
   async function deleteMatch(id){
-    var status=document.getElementById('footballAdminStatus');if(!confirm('Permanently delete this match, its predictions and live questions? Active stakes will be refunded.'))return;
+    var status=statusEl();if(!confirm('Permanently delete this match, its predictions and live questions? Active stakes will be refunded.'))return;
     try{if(status)status.textContent='Deleting match...';var response=await fetch('/admin/api/football-matches/'+encodeURIComponent(id),{method:'DELETE',credentials:'same-origin'});var json=await response.json();if(!response.ok)throw new Error(json.error||'Delete failed');if(status)status.textContent='Match deleted';loadFootballAdmin()}catch(error){if(status)status.textContent=error.message||'Delete failed'}
   }
   async function uploadFootballLogo(id){
-    var status=document.getElementById('footballAdminStatus');
+    var status=statusEl();
     var input=document.querySelector('[data-football-file="'+id+'"]');
     if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image first';return;}
     try{
