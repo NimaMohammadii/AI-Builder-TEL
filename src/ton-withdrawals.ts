@@ -109,20 +109,13 @@ export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown)
     await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'paid', tx_hash = ?, paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
       .bind(payout.txHash, id)
       .run();
-    await adjustUserTonBalance(env, row.user_id, 0, {
-      kind: 'withdraw',
-      title: 'TON withdrawal paid',
-      description: 'Paid to ' + shortWallet(row.wallet_address),
-      referenceId: id,
-      referenceType: 'ton_withdrawal',
-      status: 'paid',
-      metadata: { walletAddress: row.wallet_address, txHash: payout.txHash },
-    });
+    await markWithdrawalTransaction(env, id, 'approved', 'TON withdrawal approved', 'Approved to ' + shortWallet(row.wallet_address), { walletAddress: row.wallet_address, txHash: payout.txHash, sourceStatus: 'paid' });
   } catch (error) {
     const message = cleanError(error);
     await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'failed', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
       .bind(message, id)
       .run();
+    await markWithdrawalTransaction(env, id, 'failed', 'TON withdrawal', 'Withdrawal payout failed: ' + message, { walletAddress: row.wallet_address, errorMessage: message }).catch(() => undefined);
     throw new Error(message);
   }
 
@@ -158,6 +151,15 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
   return rowToWithdrawal(updated ?? { ...row, status: 'rejected' });
 }
 
+
+async function markWithdrawalTransaction(env: Env, withdrawalId: string, status: string, title: string, description: string, metadata: Record<string, unknown>): Promise<void> {
+  await env.DB.prepare(`UPDATE ton_transactions
+    SET status = ?, title = ?, description = ?, metadata_json = ?
+    WHERE reference_type = 'ton_withdrawal' AND reference_id = ? AND kind = 'withdraw'`)
+    .bind(status, title, description, JSON.stringify(metadata).slice(0, 2000), withdrawalId)
+    .run()
+    .catch(() => undefined);
+}
 
 async function enforceDailyWithdrawalLimit(env: Env, userId: string, amountNano: number): Promise<void> {
   const row = await env.DB.prepare(`SELECT COALESCE(SUM(amount_nano), 0) AS totalNano
