@@ -162,17 +162,13 @@ async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): P
   const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS');
   if (!configuredAddress) throw new Error('TON_WITHDRAW_WALLET_ADDRESS is not configured');
 
-  const { mnemonicToPrivateKey, internal, SendMode, TonClient, WalletContractV4 } = await loadTonSdk();
+  const { mnemonicToPrivateKey, internal, SendMode, TonClient } = await loadTonSdk();
   const client = new TonClient({
     endpoint: `${TONCENTER_BASE}/jsonRPC`,
     apiKey: envValue(env, 'TONCENTER_API_KEY') || undefined,
   });
   const keyPair = await mnemonicToPrivateKey(mnemonic);
-  const wallet = WalletContractV4.create({ workchain: 0, publicKey: keyPair.publicKey });
-  const derivedAddress = wallet.address.toString({ bounceable: false });
-  if (!(await sameTonAddress(configuredAddress, wallet.address.toString())) && !(await sameTonAddress(configuredAddress, derivedAddress))) {
-    throw new Error('TON_WITHDRAW_WALLET_ADDRESS does not match TON_WITHDRAW_MNEMONIC wallet');
-  }
+  const wallet = await createWithdrawalWalletForAddress(configuredAddress, keyPair.publicKey);
 
   const openedWallet = client.open(wallet);
   const seqno = await openedWallet.getSeqno();
@@ -196,6 +192,38 @@ async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): P
   const nextSeqno = await waitForWalletSeqno(openedWallet, seqno);
   const txHash = await findLatestWalletTxHash(client, wallet.address.toString(), row.id);
   return { txHash: txHash || `ton-withdraw:${row.id}:seqno:${nextSeqno}` };
+}
+
+type TonWalletContract = {
+  address: { toString(options?: { bounceable?: boolean }): string };
+};
+
+async function createWithdrawalWalletForAddress(configuredAddress: string, publicKey: unknown): Promise<TonWalletContract> {
+  const tonSdk = await loadTonSdk();
+  const candidates = [
+    createWalletCandidate(tonSdk.WalletContractV4, 'v4r2', publicKey),
+    createWalletCandidate(tonSdk.WalletContractV3R2, 'v3r2', publicKey),
+    createWalletCandidate(tonSdk.WalletContractV3R1, 'v3r1', publicKey),
+    createWalletCandidate(tonSdk.WalletContractV2R2, 'v2r2', publicKey),
+    createWalletCandidate(tonSdk.WalletContractV2R1, 'v2r1', publicKey),
+  ].filter((candidate): candidate is { version: string; wallet: TonWalletContract } => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    if (await walletMatchesAddress(configuredAddress, candidate.wallet)) return candidate.wallet;
+  }
+
+  const derivedAddresses = candidates.map((candidate) => `${candidate.version}: ${candidate.wallet.address.toString({ bounceable: false })}`).join('; ');
+  throw new Error(`TON_WITHDRAW_WALLET_ADDRESS does not match TON_WITHDRAW_MNEMONIC wallet. Derived wallets: ${derivedAddresses}`);
+}
+
+function createWalletCandidate(contract: unknown, version: string, publicKey: unknown): { version: string; wallet: TonWalletContract } | null {
+  if (!contract || typeof (contract as { create?: unknown }).create !== 'function') return null;
+  const wallet = (contract as { create(options: { workchain: number; publicKey: unknown }): TonWalletContract }).create({ workchain: 0, publicKey });
+  return { version, wallet };
+}
+
+async function walletMatchesAddress(configuredAddress: string, wallet: TonWalletContract): Promise<boolean> {
+  return (await sameTonAddress(configuredAddress, wallet.address.toString())) || (await sameTonAddress(configuredAddress, wallet.address.toString({ bounceable: false })));
 }
 
 async function waitForWalletSeqno(openedWallet: { getSeqno(): Promise<number> }, previousSeqno: number): Promise<number> {
@@ -336,6 +364,10 @@ async function loadTonSdk(): Promise<{
   SendMode: typeof import('@ton/ton').SendMode;
   TonClient: typeof import('@ton/ton').TonClient;
   WalletContractV4: typeof import('@ton/ton').WalletContractV4;
+  WalletContractV3R2?: unknown;
+  WalletContractV3R1?: unknown;
+  WalletContractV2R2?: unknown;
+  WalletContractV2R1?: unknown;
 }> {
   ensureWindowCompatForTonSdk();
   const [cryptoSdk, tonSdk] = await Promise.all([import('@ton/crypto'), import('@ton/ton')]);
@@ -346,6 +378,10 @@ async function loadTonSdk(): Promise<{
     SendMode: tonSdk.SendMode,
     TonClient: tonSdk.TonClient,
     WalletContractV4: tonSdk.WalletContractV4,
+    WalletContractV3R2: (tonSdk as unknown as { WalletContractV3R2?: unknown }).WalletContractV3R2,
+    WalletContractV3R1: (tonSdk as unknown as { WalletContractV3R1?: unknown }).WalletContractV3R1,
+    WalletContractV2R2: (tonSdk as unknown as { WalletContractV2R2?: unknown }).WalletContractV2R2,
+    WalletContractV2R1: (tonSdk as unknown as { WalletContractV2R1?: unknown }).WalletContractV2R1,
   };
 }
 
