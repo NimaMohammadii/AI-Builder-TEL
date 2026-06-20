@@ -4,6 +4,7 @@ import { adjustUserTonBalance, getUserControls } from './user-controls';
 
 const TON_NANO = 1_000_000_000;
 const MIN_WITHDRAW_NANO = 1_000_000; // 0.001 TON
+const DEFAULT_TON_WITHDRAW_WALLET_ADDRESS = 'UQBM3omem7qMV3hoELAxiFEBRlldbRfRoHGKHobgdq0yUxvs';
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 
 type WithdrawRow = {
@@ -159,8 +160,7 @@ async function callWithdrawalPayout(env: Env, row: WithdrawRow): Promise<{ txHas
 
 async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
   const mnemonic = withdrawalMnemonic(env);
-  const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS');
-  if (!configuredAddress) throw new Error('TON_WITHDRAW_WALLET_ADDRESS is not configured');
+  const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS') || DEFAULT_TON_WITHDRAW_WALLET_ADDRESS;
 
   const { mnemonicToPrivateKey, internal, SendMode, TonClient } = await loadTonSdk();
   const client = new TonClient({
@@ -201,6 +201,7 @@ type TonWalletContract = {
 async function createWithdrawalWalletForAddress(configuredAddress: string, publicKey: unknown): Promise<TonWalletContract> {
   const tonSdk = await loadTonSdk();
   const candidates = [
+    createWalletCandidate(tonSdk.WalletContractV5R1, 'v5r1', publicKey),
     createWalletCandidate(tonSdk.WalletContractV4, 'v4r2', publicKey),
     createWalletCandidate(tonSdk.WalletContractV3R2, 'v3r2', publicKey),
     createWalletCandidate(tonSdk.WalletContractV3R1, 'v3r1', publicKey),
@@ -363,6 +364,7 @@ async function loadTonSdk(): Promise<{
   internal: typeof import('@ton/ton').internal;
   SendMode: typeof import('@ton/ton').SendMode;
   TonClient: typeof import('@ton/ton').TonClient;
+  WalletContractV5R1?: unknown;
   WalletContractV4: typeof import('@ton/ton').WalletContractV4;
   WalletContractV3R2?: unknown;
   WalletContractV3R1?: unknown;
@@ -377,6 +379,7 @@ async function loadTonSdk(): Promise<{
     internal: tonSdk.internal,
     SendMode: tonSdk.SendMode,
     TonClient: tonSdk.TonClient,
+    WalletContractV5R1: (tonSdk as unknown as { WalletContractV5R1?: unknown }).WalletContractV5R1,
     WalletContractV4: tonSdk.WalletContractV4,
     WalletContractV3R2: (tonSdk as unknown as { WalletContractV3R2?: unknown }).WalletContractV3R2,
     WalletContractV3R1: (tonSdk as unknown as { WalletContractV3R1?: unknown }).WalletContractV3R1,
