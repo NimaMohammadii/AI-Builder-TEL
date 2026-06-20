@@ -173,18 +173,9 @@ function minDepositTon(env: Env): number {
 }
 
 function normalizeAmountTon(value: unknown): string {
-  let raw = String(value ?? '').trim();
-  raw = raw.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
-  raw = raw.replace(/[٫٬،，,]/g, '.').replace(/[^0-9.]/g, '');
-  const firstDot = raw.indexOf('.');
-  if (firstDot !== -1) raw = raw.slice(0, firstDot + 1) + raw.slice(firstDot + 1).replace(/\./g, '');
-  if (!raw || raw === '.') throw new Error('Enter a valid TON amount');
-  const [wholeRaw, fracRaw = ''] = raw.split('.');
-  const whole = (wholeRaw || '0').replace(/^0+(?=\d)/, '') || '0';
-  const frac = fracRaw.slice(0, 9).replace(/0+$/, '');
-  const amount = frac ? `${whole}.${frac}` : whole;
-  if (BigInt(whole) === 0n && !/[1-9]/.test(frac)) throw new Error('Enter a valid TON amount');
-  return amount;
+  const n = Number(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid TON amount');
+  return n.toFixed(9).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function tonToNanoString(amountTon: string): string {
