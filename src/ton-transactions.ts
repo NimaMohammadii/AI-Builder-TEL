@@ -163,7 +163,7 @@ export async function listUserTonWalletTransactions(env: Env, userId: string, li
   const merged = ledgerRows.map(rowToTransaction);
   for (const row of tonDepositRows) pushSourceTransaction(merged, bySource, tonDepositToTransaction(row));
   for (const row of starDepositRows) pushSourceTransaction(merged, bySource, starsDepositToTransaction(row));
-  for (const row of withdrawalRows) pushSourceTransaction(merged, bySource, withdrawalToTransaction(row));
+  for (const row of withdrawalRows) pushSourceTransaction(merged, bySource, withdrawalToTransaction(row), { refreshExisting: true });
 
   merged.sort((a, b) => transactionTime(b) - transactionTime(a) || b.id.localeCompare(a.id));
   return { transactions: merged.slice(0, safeLimit) };
@@ -174,11 +174,22 @@ async function readWalletSourceRows<T>(env: Env, sql: string, userId: string, li
   return env.DB.prepare(sql).bind(userId, limit).all<T>().then((rows) => rows.results ?? []).catch(() => []);
 }
 
-function pushSourceTransaction(items: TonTransaction[], bySource: Map<string, TonTransaction>, item: TonTransaction): void {
+function pushSourceTransaction(items: TonTransaction[], bySource: Map<string, TonTransaction>, item: TonTransaction, options: { refreshExisting?: boolean } = {}): void {
   const key = sourceKeyFor(item.referenceType, item.referenceId);
-  if (key && bySource.has(key)) return;
+  const existing = key ? bySource.get(key) : undefined;
+  if (existing) {
+    if (options.refreshExisting) refreshSourceTransaction(existing, item);
+    return;
+  }
   if (key) bySource.set(key, item);
   items.push(item);
+}
+
+function refreshSourceTransaction(existing: TonTransaction, source: TonTransaction): void {
+  existing.status = source.status;
+  existing.title = source.title;
+  existing.description = source.description;
+  existing.metadata = { ...(existing.metadata || {}), ...(source.metadata || {}) };
 }
 
 function sourceKeyFor(referenceType: string | null | undefined, referenceId: string | null | undefined): string {
@@ -197,7 +208,16 @@ function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
 
 function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
   const amountNano = -Math.abs(Number(row.amount_nano || 0));
-  return sourceTransaction(row.id, row.user_id, 'withdraw', 'TON withdrawal', 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, row.status, 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address });
+  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, withdrawalHistoryStatus(row.status), 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
+}
+
+function withdrawalTitle(status: string): string {
+  return withdrawalHistoryStatus(status) === 'approved' ? 'TON withdrawal approved' : 'TON withdrawal';
+}
+
+function withdrawalHistoryStatus(status: string): string {
+  const normalized = String(status || '').toLowerCase();
+  return normalized === 'paid' ? 'approved' : normalized;
 }
 
 function sourceTransaction(id: string, userId: string, kind: TonTransactionKind, title: string, description: string, amountNano: number, status: string, referenceType: string, referenceId: string, createdAt: string, metadata: Record<string, unknown>): TonTransaction {
