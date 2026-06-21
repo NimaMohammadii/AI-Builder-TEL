@@ -25,7 +25,7 @@ const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
-const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
+const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int().optional(), section: z.string().max(40).optional(), deltas: z.array(z.object({ deltaNano: z.number().int(), section: z.string().max(40).optional() })).max(100).optional() });
 const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBalanceNano: z.number().int().nonnegative() });
 const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userWinChanceSchema = z.object({ userId: z.string().min(1).max(80), winChancePercent: z.number().int().min(0).max(100) });
@@ -44,7 +44,12 @@ app.get('/setup-webhook', async (c) => {
 app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c.json(await trackAppUser(c.env, c.req.valid('json'))));
 app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSchema), async (c) => {
   const body = c.req.valid('json');
-  try { return c.json(await applyGameTonBalanceDelta(c.env, body.userId, body.deltaNano)); }
+  try {
+    const deltas = body.deltas?.length ? body.deltas : [{ deltaNano: body.deltaNano ?? 0, section: body.section }];
+    let controls = await getUserControls(c.env, body.userId);
+    for (const item of deltas) controls = await applyGameTonBalanceDelta(c.env, body.userId, item.deltaNano, { metadata: { section: item.section || 'unknown' } });
+    return c.json(controls);
+  }
   catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); }
 });
 

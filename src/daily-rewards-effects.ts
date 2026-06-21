@@ -79,7 +79,7 @@ export async function grantDailyRewardEffect(env: Env, input: { userId: string; 
   return { effectType: reward.kind, expiresAt, remainingCount, remainingNano, percent, metadata };
 }
 
-export async function applyDailyRewardGameDeltaBonuses(env: Env, userId: string, deltaNano: number): Promise<{ totalDeltaNano: number; bonusNano: number; applied: Array<{ effectType: string; bonusNano: number }> }> {
+export async function applyDailyRewardGameDeltaBonuses(env: Env, userId: string, deltaNano: number, options: { gameSection?: string } = {}): Promise<{ totalDeltaNano: number; bonusNano: number; applied: Array<{ effectType: string; bonusNano: number }> }> {
   const baseDelta = Math.floor(Number(deltaNano) || 0);
   if (!baseDelta) return { totalDeltaNano: 0, bonusNano: 0, applied: [] };
   await ensureDailyRewardEffectTables(env).catch(() => undefined);
@@ -87,7 +87,7 @@ export async function applyDailyRewardGameDeltaBonuses(env: Env, userId: string,
   let bonusNano = 0;
   if (baseDelta < 0) {
     const loss = Math.abs(baseDelta);
-    const riskFree = await firstUsableEffect(env, userId, ['risk_free', 'free_slot']);
+    const riskFree = await firstUsableEffect(env, userId, lossRefundEffectTypes(options.gameSection));
     if (riskFree) {
       bonusNano += loss;
       applied.push({ effectType: riskFree.effect_type, bonusNano: loss });
@@ -119,6 +119,11 @@ export async function applyDailyRewardGameDeltaBonuses(env: Env, userId: string,
 }
 
 type EffectRow = { id: string; effect_type: string; percent: number | null; remaining_count: number | null; remaining_nano: number | null };
+
+function lossRefundEffectTypes(gameSection: unknown): string[] {
+  const section = String(gameSection || '').trim().toLowerCase();
+  return section === 'slot' ? ['risk_free', 'free_slot'] : ['risk_free'];
+}
 
 async function firstUsableEffect(env: Env, userId: string, types: string[]): Promise<EffectRow | null> {
   if (!types.length) return null;
