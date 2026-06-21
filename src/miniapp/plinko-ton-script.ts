@@ -18,6 +18,7 @@ export const PLINKO_TON_SCRIPT = `
   function betNano(){var input=q('plinkoBet');var nano=toNano(input&&input.value);if(nano<1)nano=1;return nano}
   function setBetNano(nano){var input=q('plinkoBet');if(input)input.value=toTon(Math.max(1,Math.floor(Number(nano)||1)))}
   function currentMultipliers(){return (multipliers[rows]&&multipliers[rows][risk])||multipliers[7].medium}
+  function chooseResultIndex(arr){var forced=window.VexaGameChance&&typeof window.VexaGameChance.decideWin==='function'?window.VexaGameChance.decideWin():null;if(forced===null||forced===undefined)return Math.floor(Math.random()*arr.length);var wantWin=!!forced,candidates=[];for(var i=0;i<arr.length;i++){var mult=Number(arr[i])||0;if(wantWin?mult>=1:mult<1)candidates.push(i)}if(!candidates.length){for(var j=0;j<arr.length;j++)candidates.push(j)}return candidates[Math.floor(Math.random()*candidates.length)]}
   function round(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
   function draw(ball){
     var canvas=q('plinkoCanvasV2');if(!canvas)return;
@@ -47,7 +48,7 @@ export const PLINKO_TON_SCRIPT = `
   function drop(){
     if(running){toast('Wait for current ball');return}
     var bet=betNano();if(readBalance()<bet){toast('Not enough TON balance');return}
-    running=true;addBalance(-bet);var arr=currentMultipliers();var index=Math.floor(Math.random()*arr.length);var win=Math.max(0,Math.floor(bet*(Number(arr[index])||0)));animate(index,win)
+    running=true;addBalance(-bet);var arr=currentMultipliers();var index=chooseResultIndex(arr);var win=Math.max(0,Math.floor(bet*(Number(arr[index])||0)));animate(index,win)
   }
   function normalizeInput(){var input=q('plinkoBet');if(!input)return;input.setAttribute('inputmode','decimal');input.setAttribute('step','0.01');if(!input.value||Number(input.value)>1000)input.value='0.01';else input.value=toTon(toNano(input.value))}
   document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest&&ev.target.closest('button');if(!button)return;var action=button.getAttribute('data-action');if(action==='drop-plinko-ball'){ev.preventDefault();ev.stopImmediatePropagation();drop();return}if(action==='plinko-risk'){risk=button.getAttribute('data-risk')||'medium';document.querySelectorAll('[data-risk]').forEach(function(x){x.classList.toggle('active',x===button)});draw();return}if(action==='plinko-rows'){rows=rows===7?9:rows===9?11:7;var el=q('plinkoRowsValue');if(el)el.textContent=String(rows);draw();return}if(action==='plinko-bet-half'){ev.preventDefault();setBetNano(Math.max(1,Math.floor(betNano()/2)));return}if(action==='plinko-bet-double'){ev.preventDefault();setBetNano(Math.max(1,Math.min(readBalance(),betNano()*2)));return}},true);
