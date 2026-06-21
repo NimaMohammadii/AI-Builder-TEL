@@ -62,7 +62,8 @@ export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: 
 export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
   const baseDelta = Math.floor(Number(deltaNano) || 0);
-  const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
+  const gameSection = cleanGameSection(meta.metadata && (meta.metadata as Record<string, unknown>).section);
+  const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta, { gameSection }).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
   const before = await readUserTonBalance(env, id);
   await addUserTonBalance(env, id, bonus.totalDeltaNano);
   const after = await readUserTonBalance(env, id);
@@ -210,6 +211,10 @@ function normalizeWinChance(value: unknown): number {
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, n));
+}
+
+function cleanGameSection(value: unknown): string {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
 }
 
 function key(userId: string): string {
