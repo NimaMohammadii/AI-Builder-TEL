@@ -437,6 +437,9 @@ export const PUMP_SECTION = `
       }
 
       function hiddenBurstPoint() {
+        var forced = window.VexaGameChance && typeof window.VexaGameChance.decideWin === 'function' ? window.VexaGameChance.decideWin() : null;
+        if (forced === true) return 24;
+        if (forced === false) return 1.01;
         var roll = Math.random();
         var point = 1.18 + Math.pow(roll, 1.9) * 6.2;
         if (Math.random() < .055) point += 4 + Math.random() * 8;

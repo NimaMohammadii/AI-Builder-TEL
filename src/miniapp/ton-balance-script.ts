@@ -106,9 +106,9 @@ export const TON_BALANCE_SCRIPT = `
   function add(deltaNano){return pushDelta(deltaNano)}
   function setWinChance(value){var n=Math.round(Number(value));winChancePercent=Number.isFinite(n)?Math.max(0,Math.min(100,n)):50;try{localStorage.setItem('vexaWinChancePercent',String(winChancePercent))}catch(e){}return winChancePercent}
   function readWinChance(){try{var stored=localStorage.getItem('vexaWinChancePercent');if(stored!==null)setWinChance(stored)}catch(e){}return winChancePercent}
-  function hasCustomChance(){return readWinChance()!==50}
-  function decideWin(){return hasCustomChance()?Math.random()*100<readWinChance():null}
-  function decideNative(nativeChance){var chance=Number(nativeChance);if(!Number.isFinite(chance))chance=50;return hasCustomChance()?!!decideWin():Math.random()*100<Math.max(0,Math.min(100,chance))}
+  function hasCustomChance(){return true}
+  function decideWin(){return Math.random()*100<readWinChance()}
+  function decideNative(nativeChance){return !!decideWin()}
   readWinChance();
   window.VexaGameChance={read:readWinChance,set:setWinChance,isCustom:hasCustomChance,decideWin:decideWin,decideNative:decideNative};
   window.VexaTonBalance={read:read,write:write,add:add,flush:function(){return flushPending(true)},render:function(){return render(read())},load:load,format:formatTon,rate:NANO_PER_TON,parse:parseTonText,plinkoUnitNano:PLINKO_UNIT_NANO};
