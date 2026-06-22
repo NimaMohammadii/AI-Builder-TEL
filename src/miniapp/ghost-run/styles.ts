@@ -1,4 +1,7 @@
 export const GHOST_RUN_STYLES = `
+body:has(#ghostrun.active) .tabs {
+  display: none !important;
+}
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
   background: transparent !important;
