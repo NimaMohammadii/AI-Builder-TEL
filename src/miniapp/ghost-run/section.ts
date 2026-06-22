@@ -12,9 +12,7 @@ export const GHOST_RUN_SECTION = `
   <div class="ghost-run-screen" data-ghost-state="idle">
     <div class="ghost-run-scene" aria-label="Ghost Run 2D forest scene">
       <div class="ghost-run-sky"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-1"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-2"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-3"></div>
+      <div class="ghost-run-uploaded-background"></div>
       <div class="ghost-run-moon"></div>
       <div class="ghost-run-stars"></div>
       <div class="ghost-run-layer ghost-run-layer-far"></div>
