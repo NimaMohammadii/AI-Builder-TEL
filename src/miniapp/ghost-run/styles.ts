@@ -281,6 +281,7 @@ body:has(#ghostrun.active) .tabs {
   width: 86px;
   height: 100px;
   animation: ghostRunFloat 1.35s ease-in-out infinite;
+  background: url('/app/api/ghost-run-asset/ghost.png') center/contain no-repeat;
 }
 #ghostrun .ghost-run-ghost-glow {
   position: absolute;
@@ -429,6 +430,14 @@ body:has(#ghostrun.active) .tabs {
   background: linear-gradient(180deg, #8d1438, #4c071d);
   color: #fff;
   box-shadow: 0 18px 42px rgba(94, 10, 32, .34), inset 0 1px 0 rgba(255,255,255,.24);
+}
+
+#ghostrun .ghost-run-ghost-body,
+#ghostrun .ghost-run-ghost-glow {
+  display: none;
+}
+#ghostrun .ghost-run-ghost {
+  filter: drop-shadow(0 0 18px rgba(220,235,255,.30)) drop-shadow(0 14px 24px rgba(0,0,0,.40));
 }
 #ghostrun .ghost-run-screen[data-ghost-state='won'] .ghost-run-ghost { animation: ghostRunWon .75s ease-out both; }
 #ghostrun .ghost-run-screen[data-ghost-state='lost'] .ghost-run-ghost { animation: ghostRunLost .72s ease-in both; }

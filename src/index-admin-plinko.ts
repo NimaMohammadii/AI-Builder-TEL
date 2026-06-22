@@ -21,7 +21,7 @@ const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
-const GHOST_RUN_ASSET_KINDS = new Set(['ground', 'moon', 'tree1', 'tree2', 'tree3', 'house1', 'house2', 'house3']);
+const GHOST_RUN_ASSET_KINDS = new Set(['ground', 'moon', 'ghost', 'tree1', 'tree2', 'tree3', 'house1', 'house2', 'house3']);
 
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
@@ -456,5 +456,8 @@ function ghostRunAssetKey(kind: string): string {
 function defaultGhostRunAssetSvg(kind: string): string {
   if (kind === 'moon') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><radialGradient id="g" cx="40%" cy="32%"><stop stop-color="#fff"/><stop offset=".55" stop-color="#f2e8d6"/><stop offset="1" stop-color="#b68866"/></radialGradient></defs><circle cx="80" cy="80" r="58" fill="url(#g)"/><circle cx="61" cy="64" r="9" fill="#9d755d" opacity=".22"/><circle cx="95" cy="91" r="13" fill="#9d755d" opacity=".18"/></svg>`;
   if (kind === 'ground') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180" preserveAspectRatio="none"><rect width="900" height="180" fill="#050101"/><path d="M0 38 C110 12 190 58 310 31 C455 -2 540 58 690 30 C790 12 840 20 900 8 V180 H0Z" fill="#210713"/><path d="M0 75 C160 55 260 88 420 62 C560 38 720 92 900 54 V180 H0Z" fill="#090202"/></svg>`;
+  if (kind === 'ghost') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112"><defs><radialGradient id="g" cx="38%" cy="25%"><stop stop-color="#fff"/><stop offset=".55" stop-color="#eef3ff"/><stop offset="1" stop-color="#bfc9e0"/></radialGradient></defs><path d="M12 91V43C12 20 28 8 48 8s36 12 36 35v48c-8-9-16-9-24 0-8-9-16-9-24 0-8-9-16-9-24 0Z" fill="url(#g)"/><circle cx="36" cy="48" r="5" fill="#180616"/><circle cx="60" cy="48" r="5" fill="#180616"/></svg>`;
+  if (kind.startsWith('tree')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><path d="M86 74h18v176H86z" fill="#100708"/><path d="M95 8 28 118h38L16 198h158l-50-80h36Z" fill="#07110a"/><path d="M95 26 46 109h32l-38 63h108l-39-63h32Z" fill="#102317" opacity=".78"/></svg>`;
+  if (kind.startsWith('house')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160"><path d="M22 72 110 12l88 60v72H22Z" fill="#11070c"/><path d="M10 76 110 4l100 72-14 20-86-62-86 62Z" fill="#2b0a18"/><rect x="48" y="92" width="38" height="32" rx="4" fill="#f0b15a" opacity=".75"/><rect x="132" y="84" width="34" height="60" rx="5" fill="#050203"/></svg>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 220"></svg>`;
 }
