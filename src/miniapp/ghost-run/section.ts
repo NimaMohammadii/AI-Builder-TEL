@@ -6,15 +6,15 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
-    #ghostrun .ghost-run-ground{height:192px!important;left:-100%!important;right:-100%!important;background-size:auto 112%!important;background-repeat:repeat-x!important;background-position:0 bottom!important;z-index:5!important;animation:ghostRunUploadedGround 3.2s linear infinite!important}
+    #ghostrun .ghost-run-ground{height:192px!important;left:-100%!important;right:-100%!important;background-size:auto 122%!important;background-repeat:repeat-x!important;background-position:0 bottom!important;z-index:5!important;animation:ghostRunUploadedGround 3.2s linear infinite!important}
     #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ground{animation-duration:1.45s!important}
     #ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:block!important;z-index:9!important;background-repeat:repeat-x!important;background-size:auto 100%!important;visibility:visible!important}
     #ghostrun .ghost-run-uploaded-tree-1{bottom:112px!important;height:230px!important;background-position:0 bottom!important;opacity:.94!important;z-index:9!important}
     #ghostrun .ghost-run-uploaded-tree-2{bottom:112px!important;height:248px!important;background-position:420px bottom!important;opacity:.72!important;z-index:8!important}
     #ghostrun .ghost-run-uploaded-tree-3{bottom:112px!important;height:268px!important;background-position:840px bottom!important;opacity:.52!important;z-index:7!important}
-    #ghostrun .ghost-run-uploaded-house-1{bottom:112px!important;height:164px!important;background-position:140px bottom!important;opacity:.96!important;z-index:10!important}
-    #ghostrun .ghost-run-uploaded-house-2{bottom:112px!important;height:176px!important;background-position:560px bottom!important;opacity:.74!important;z-index:8!important}
-    #ghostrun .ghost-run-uploaded-house-3{bottom:112px!important;height:188px!important;background-position:980px bottom!important;opacity:.54!important;z-index:7!important}
+    #ghostrun .ghost-run-uploaded-house-1{bottom:112px!important;height:164px!important;background-position:0 bottom!important;opacity:.96!important;z-index:10!important}
+    #ghostrun .ghost-run-uploaded-house-2{bottom:112px!important;height:176px!important;background-position:280px bottom!important;opacity:.82!important;z-index:9!important}
+    #ghostrun .ghost-run-uploaded-house-3{bottom:112px!important;height:188px!important;background-position:560px bottom!important;opacity:.66!important;z-index:8!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
