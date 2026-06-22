@@ -16,6 +16,7 @@ import type { Env } from './types';
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const GHOST_RUN_ASSET_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
@@ -58,8 +59,8 @@ app.post('/admin/api/upload-plinko-control-image', async (c) => {
 app.get('/app/api/ghost-run-asset/:kind', async (c) => {
   const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
   const object = await c.env.ASSETS.get(ghostRunAssetKey(kind)).catch(() => null);
-  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
 });
 
 app.post('/admin/api/upload-ghost-run-asset', async (c) => {
