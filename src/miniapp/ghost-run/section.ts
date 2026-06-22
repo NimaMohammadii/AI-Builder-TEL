@@ -7,11 +7,16 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
-    #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .18s ease-out, transform .18s ease-out!important}
-    #ghostrun .ghost-run-move-button{height:62px!important;border:0!important;border-radius:999px!important;font-size:16px!important;font-weight:1000!important;letter-spacing:-.02em!important;box-shadow:0 18px 42px rgba(255,255,255,.10),0 0 34px rgba(105,13,37,.18)!important}
-    #ghostrun .ghost-run-back-button{grid-column:1!important;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.06))!important;color:#fff!important;border:1px solid rgba(255,255,255,.08)!important}
-    #ghostrun .ghost-run-forward-button{grid-column:2!important;background:linear-gradient(180deg,#fff,#d9d9d9)!important;color:#070205!important}
-    #ghostrun .ghost-run-move-button:active{transform:scale(.985)!important}
+    #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
+    #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
+    #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
+    #ghostrun .ghost-run-move-button:after{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:42px!important;height:42px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.10)!important;transform:translate(-50%,-50%)!important}
+    #ghostrun .ghost-run-back-button{grid-column:1!important}
+    #ghostrun .ghost-run-forward-button{grid-column:2!important}
+    #ghostrun .ghost-run-back-button:before{transform:translate(-34%,-50%) rotate(-45deg)!important}
+    #ghostrun .ghost-run-forward-button:before{transform:translate(-66%,-50%) rotate(135deg)!important}
+    #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(255,255,255,.055)!important;transform:scale(.985)!important}
+    #ghostrun .ghost-run-move-button:disabled{opacity:.28!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}#ghostrun .ghost-run-ghost{width:58px!important;height:70px!important;bottom:72px!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
@@ -64,9 +69,9 @@ export const GHOST_RUN_SECTION = `
         <span>Win Preview</span>
         <strong><em data-ghost-preview>0.10</em> TON</strong>
       </div>
-      <button class="ghost-run-move-button ghost-run-back-button" type="button" data-ghost-back>Back</button>
-      <button class="ghost-run-move-button ghost-run-forward-button" type="button" data-ghost-forward>Forward</button>
-      <p class="ghost-run-note">Move forward to slowly grow the multiplier.</p>
+      <button class="ghost-run-move-button ghost-run-back-button" type="button" aria-label="Move back" data-ghost-back></button>
+      <button class="ghost-run-move-button ghost-run-forward-button" type="button" aria-label="Move forward" data-ghost-forward></button>
+      <p class="ghost-run-note">Hold to move. Forward slowly grows the multiplier.</p>
     </div>
   </div>
   <script>
@@ -81,10 +86,10 @@ export const GHOST_RUN_SECTION = `
     var messageEl=root.querySelector('[data-ghost-message]');
     var previewEl=root.querySelector('[data-ghost-preview]');
     var betEl=root.querySelector('[data-ghost-bet]');
-    var position=16, minPosition=8, maxPosition=76;
+    var position=16, minPosition=8, maxPosition=76, direction=0, raf=0, lastTime=0;
     function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
     function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}
-    function multiplier(){return 1+Math.max(0,position-16)*0.012}
+    function multiplier(){return 1+Math.max(0,position-16)*0.007}
     function render(){
       var value=multiplier();
       root.style.setProperty('--ghost-x',position+'%');
@@ -92,11 +97,45 @@ export const GHOST_RUN_SECTION = `
       if(previewEl)previewEl.textContent=(bet()*value).toFixed(2);
       if(backButton)backButton.disabled=position<=minPosition;
       if(forwardButton)forwardButton.disabled=position>=maxPosition;
+      setState(position<=16?'idle':'running','');
     }
-    function moveForward(){position=Math.min(maxPosition,position+4);setState('running','');render()}
-    function moveBack(){position=Math.max(minPosition,position-4);setState(position<=16?'idle':'running','');render()}
-    forwardButton&&forwardButton.addEventListener('click',moveForward);
-    backButton&&backButton.addEventListener('click',moveBack);
+    function stopHold(){
+      direction=0;lastTime=0;
+      if(raf)window.cancelAnimationFrame(raf);
+      raf=0;
+      if(forwardButton)forwardButton.removeAttribute('data-holding');
+      if(backButton)backButton.removeAttribute('data-holding');
+      render();
+    }
+    function step(now){
+      if(!direction)return;
+      if(!lastTime)lastTime=now;
+      var dt=Math.min(32,now-lastTime)/1000;
+      lastTime=now;
+      position=Math.max(minPosition,Math.min(maxPosition,position+(direction*28*dt)));
+      render();
+      if(position<=minPosition||position>=maxPosition){stopHold();return}
+      raf=window.requestAnimationFrame(step);
+    }
+    function startHold(dir,button){
+      direction=dir;
+      if(button)button.setAttribute('data-holding','1');
+      if(dir>0&&backButton)backButton.removeAttribute('data-holding');
+      if(dir<0&&forwardButton)forwardButton.removeAttribute('data-holding');
+      if(raf)window.cancelAnimationFrame(raf);
+      lastTime=0;
+      raf=window.requestAnimationFrame(step);
+    }
+    function bindHold(button,dir){
+      if(!button)return;
+      button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});
+      button.addEventListener('pointerup',stopHold);
+      button.addEventListener('pointercancel',stopHold);
+      button.addEventListener('pointerleave',stopHold);
+      button.addEventListener('contextmenu',function(e){e.preventDefault()});
+    }
+    bindHold(forwardButton,1);
+    bindHold(backButton,-1);
     render();
   })();
   </script>
