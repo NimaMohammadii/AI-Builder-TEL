@@ -8,7 +8,21 @@ body:has(#ghostrun.active) .tabs {
   display: none !important;
 }
 body:has(#ghostrun.active) .top {
+  position: relative;
+  z-index: 20;
   background: #000 !important;
+}
+body:has(#ghostrun.active) .top::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc((22px + env(safe-area-inset-top)) * -1);
+  bottom: -16px;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: #000;
+  z-index: -1;
+  pointer-events: none;
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
