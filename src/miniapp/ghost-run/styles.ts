@@ -281,7 +281,7 @@ body:has(#ghostrun.active) .tabs {
   width: 86px;
   height: 100px;
   animation: ghostRunFloat 1.35s ease-in-out infinite;
-  background: url('/app/api/ghost-run-asset/ghost.png') center/contain no-repeat;
+  background: url('/app/api/ghost-run-asset/ghostIdle.png') center/contain no-repeat;
 }
 #ghostrun .ghost-run-ghost-glow {
   position: absolute;
@@ -426,6 +426,9 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-rock { animation-duration: 2.7s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-plant { animation-duration: 3.1s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-mushroom { animation-duration: 3.5s; }
+#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ghost {
+  background-image: url('/app/api/ghost-run-asset/ghostMove.png');
+}
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-main-button {
   background: linear-gradient(180deg, #8d1438, #4c071d);
   color: #fff;
