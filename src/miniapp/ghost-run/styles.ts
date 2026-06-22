@@ -84,7 +84,7 @@ body:has(#ghostrun.active) .tabs {
   opacity: .9;
 }
 #ghostrun .ghost-run-layer-far {
-  bottom: 92px;
+  bottom: 110px;
   height: 174px;
   opacity: .58;
   background-size: 220px 170px;
@@ -97,7 +97,7 @@ body:has(#ghostrun.active) .tabs {
   animation: ghostRunForestFar 18s linear infinite;
 }
 #ghostrun .ghost-run-layer-mid {
-  bottom: 76px;
+  bottom: 94px;
   height: 218px;
   opacity: .82;
   background-size: 190px 215px;
@@ -113,7 +113,7 @@ body:has(#ghostrun.active) .tabs {
 }
 #ghostrun .ghost-run-near-realism {
   z-index: 2;
-  bottom: 70px;
+  bottom: 94px;
   height: 210px;
   opacity: .70;
   background-size: 170px 210px;
@@ -126,7 +126,7 @@ body:has(#ghostrun.active) .tabs {
   animation: ghostRunForestRealism 7.2s linear infinite;
 }
 #ghostrun .ghost-run-layer-near {
-  bottom: 62px;
+  bottom: 88px;
   height: 250px;
   opacity: .99;
   background-size: 126px 242px;
@@ -140,22 +140,44 @@ body:has(#ghostrun.active) .tabs {
 }
 #ghostrun .ghost-run-rock {
   position: absolute;
-  z-index: 8;
-  bottom: 72px;
+  z-index: 10;
+  bottom: 101px;
   border-radius: 42% 58% 36% 64%;
-  background: linear-gradient(145deg, #242022, #080607 70%);
-  box-shadow: inset 8px 7px 12px rgba(255,255,255,.045), inset -8px -10px 14px rgba(0,0,0,.68), 0 10px 18px rgba(0,0,0,.38);
+  background: linear-gradient(145deg, #2b2526, #080607 70%);
+  box-shadow: inset 8px 7px 12px rgba(255,255,255,.055), inset -8px -10px 14px rgba(0,0,0,.72), 0 9px 14px rgba(0,0,0,.50);
   animation: ghostRunRocks 4.8s linear infinite;
 }
-#ghostrun .ghost-run-rock-a { left: 62%; width: 48px; height: 28px; animation-delay: -1.2s; }
-#ghostrun .ghost-run-rock-b { left: 82%; bottom: 76px; width: 34px; height: 21px; opacity: .78; animation-delay: -3.1s; }
+#ghostrun .ghost-run-rock:after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: -4px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.40);
+  filter: blur(3px);
+}
+#ghostrun .ghost-run-rock-a { left: 62%; width: 50px; height: 30px; animation-delay: -1.2s; }
+#ghostrun .ghost-run-rock-b { left: 82%; bottom: 104px; width: 35px; height: 22px; opacity: .82; animation-delay: -3.1s; }
 #ghostrun .ghost-run-plant {
   position: absolute;
-  z-index: 9;
-  bottom: 76px;
+  z-index: 11;
+  bottom: 103px;
   width: 42px;
   height: 54px;
   animation: ghostRunPlants 5.4s linear infinite;
+}
+#ghostrun .ghost-run-plant:after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 4px;
+  bottom: -3px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.36);
+  filter: blur(3px);
 }
 #ghostrun .ghost-run-plant i {
   position: absolute;
@@ -172,11 +194,11 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-plant i:nth-child(2){ transform: rotate(4deg); height: 52px; }
 #ghostrun .ghost-run-plant i:nth-child(3){ transform: rotate(26deg); height: 34px; left: 25px; }
 #ghostrun .ghost-run-plant-a { left: 76%; animation-delay: -1.7s; }
-#ghostrun .ghost-run-plant-b { left: 93%; bottom: 74px; transform: scale(.72); opacity: .82; animation-delay: -4.2s; }
+#ghostrun .ghost-run-plant-b { left: 93%; bottom: 101px; transform: scale(.72); opacity: .82; animation-delay: -4.2s; }
 #ghostrun .ghost-run-mushroom {
   position: absolute;
-  z-index: 9;
-  bottom: 76px;
+  z-index: 11;
+  bottom: 103px;
   left: 68%;
   width: 22px;
   height: 24px;
@@ -209,21 +231,45 @@ body:has(#ghostrun.active) .tabs {
   left: -20%;
   right: -20%;
   bottom: 0;
-  height: 96px;
+  height: 126px;
   background:
-    radial-gradient(ellipse at 20% 0%, rgba(115, 14, 38, .34), transparent 42%),
-    linear-gradient(180deg, rgba(26, 5, 12, .96), #020101 76%);
-  box-shadow: 0 -24px 50px rgba(0,0,0,.46), inset 0 1px 0 rgba(120,20,44,.28);
+    radial-gradient(ellipse at 18% 12%, rgba(145, 19, 48, .30), transparent 30%),
+    radial-gradient(ellipse at 72% 16%, rgba(71, 13, 29, .35), transparent 34%),
+    linear-gradient(180deg, rgba(42, 11, 19, .98) 0%, rgba(20, 6, 10, .99) 26%, #050202 78%);
+  box-shadow: 0 -20px 42px rgba(0,0,0,.45), inset 0 2px 0 rgba(155,36,64,.25), inset 0 12px 28px rgba(0,0,0,.32);
 }
 #ghostrun .ghost-run-ground:before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(90deg, transparent 0 26px, rgba(90,12,28,.22) 27px 34px, transparent 35px 88px),
-    radial-gradient(ellipse at bottom, rgba(255,255,255,.055) 0 3px, transparent 4px);
-  background-size: 120px 100%, 68px 42px;
+    linear-gradient(180deg, rgba(178,52,80,.18) 0 2px, rgba(0,0,0,.18) 3px 9px, transparent 10px),
+    radial-gradient(ellipse at 12% 17%, rgba(255,255,255,.09) 0 2px, transparent 3px),
+    radial-gradient(ellipse at 28% 24%, rgba(0,0,0,.38) 0 9px, transparent 10px),
+    radial-gradient(ellipse at 45% 14%, rgba(255,255,255,.06) 0 2px, transparent 3px),
+    radial-gradient(ellipse at 67% 26%, rgba(0,0,0,.40) 0 11px, transparent 12px),
+    radial-gradient(ellipse at 82% 18%, rgba(255,255,255,.07) 0 2px, transparent 3px),
+    linear-gradient(90deg, transparent 0 24px, rgba(90,12,28,.22) 25px 33px, transparent 34px 88px);
+  background-size: 100% 100%, 118px 58px, 148px 62px, 96px 52px, 170px 62px, 120px 56px, 120px 100%;
+  background-position: 0 0, 6px 18px, 34px 19px, 12px 34px, 52px 24px, 80px 37px, 0 0;
   animation: ghostRunGround 1.8s linear infinite;
+}
+#ghostrun .ghost-run-ground:after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34px;
+  background:
+    linear-gradient(180deg, rgba(180,42,72,.24) 0 2px, rgba(0,0,0,.45) 3px 4px, transparent 5px),
+    radial-gradient(ellipse at 18% 5px, rgba(58,92,45,.52) 0 8px, transparent 9px),
+    radial-gradient(ellipse at 36% 8px, rgba(25,48,24,.60) 0 7px, transparent 8px),
+    radial-gradient(ellipse at 59% 6px, rgba(48,80,38,.50) 0 9px, transparent 10px),
+    radial-gradient(ellipse at 78% 7px, rgba(30,56,28,.58) 0 7px, transparent 8px);
+  background-size: 100% 100%, 160px 32px, 132px 32px, 180px 32px, 145px 32px;
+  background-position: 0 0, 10px 0, 42px 0, 78px 0, 112px 0;
+  opacity: .82;
 }
 #ghostrun .ghost-run-fog {
   position: absolute;
@@ -236,8 +282,8 @@ body:has(#ghostrun.active) .tabs {
   filter: blur(12px);
   pointer-events: none;
 }
-#ghostrun .ghost-run-fog-a { bottom: 42px; animation: ghostRunFogA 8s ease-in-out infinite alternate; opacity: .42; }
-#ghostrun .ghost-run-fog-b { bottom: 8px; animation: ghostRunFogB 11s ease-in-out infinite alternate; opacity: .30; }
+#ghostrun .ghost-run-fog-a { bottom: 60px; animation: ghostRunFogA 8s ease-in-out infinite alternate; opacity: .36; }
+#ghostrun .ghost-run-fog-b { bottom: 20px; animation: ghostRunFogB 11s ease-in-out infinite alternate; opacity: .24; }
 #ghostrun .ghost-run-hud {
   position: absolute;
   z-index: 24;
@@ -277,7 +323,7 @@ body:has(#ghostrun.active) .tabs {
   position: absolute;
   z-index: 18;
   left: 16%;
-  bottom: 74px;
+  bottom: 108px;
   width: 86px;
   height: 100px;
   animation: ghostRunFloat 1.35s ease-in-out infinite;
@@ -341,8 +387,8 @@ body:has(#ghostrun.active) .tabs {
   opacity: .0;
   animation: ghostRunEyes 4.4s ease-in-out infinite;
 }
-#ghostrun .ghost-run-danger-a { right: 18%; bottom: 178px; }
-#ghostrun .ghost-run-danger-b { right: 26%; bottom: 142px; animation-delay: 1.8s; }
+#ghostrun .ghost-run-danger-a { right: 18%; bottom: 196px; }
+#ghostrun .ghost-run-danger-b { right: 26%; bottom: 162px; animation-delay: 1.8s; }
 #ghostrun .ghost-run-shadow-fade {
   position: absolute;
   z-index: 28;
@@ -437,7 +483,7 @@ body:has(#ghostrun.active) .tabs {
 @keyframes ghostRunForestMid { to { background-position: -190px bottom; } }
 @keyframes ghostRunForestRealism { to { background-position: -170px bottom; } }
 @keyframes ghostRunForestNear { to { background-position: -126px bottom; } }
-@keyframes ghostRunGround { to { background-position: -120px 0, -68px 0; } }
+@keyframes ghostRunGround { to { background-position: 0 0, -118px 18px, -148px 19px, -96px 34px, -170px 24px, -120px 37px, -120px 0; } }
 @keyframes ghostRunRocks { from { transform: translateX(180px); } to { transform: translateX(-520px); } }
 @keyframes ghostRunPlants { from { transform: translateX(170px); } to { transform: translateX(-520px); } }
 @keyframes ghostRunMushroom { from { transform: translateX(190px); } to { transform: translateX(-540px); } }
@@ -450,7 +496,7 @@ body:has(#ghostrun.active) .tabs {
 @keyframes ghostRunLost { 0% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 70% { opacity: .45; transform: translateY(-10px) scale(.9); filter: blur(2px); } 100% { opacity: 0; transform: translateY(-34px) scale(.68); filter: blur(9px); } }
 @media (max-width: 380px) {
   #ghostrun .ghost-run-scene { height: 56dvh; min-height: 306px; border-radius: 0; }
-  #ghostrun .ghost-run-ghost { left: 13%; bottom: 68px; width: 76px; height: 90px; }
+  #ghostrun .ghost-run-ghost { left: 13%; bottom: 94px; width: 76px; height: 90px; }
   #ghostrun .ghost-run-controls { padding-left: 12px; padding-right: 12px; gap: 8px; }
   #ghostrun .ghost-run-main-button { height: 58px; }
 }
