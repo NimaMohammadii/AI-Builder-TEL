@@ -37,8 +37,13 @@ body:has(#ghostrun.active) .tabs {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 72% 18%, rgba(255,255,255,.10), transparent 0 3px, transparent 4px),
-    radial-gradient(circle at 24% 28%, rgba(255,255,255,.12), transparent 0 2px, transparent 3px),
+    radial-gradient(circle at 8% 16%, rgba(255,255,255,.45) 0 .8px, transparent 1.7px),
+    radial-gradient(circle at 17% 9%, rgba(255,255,255,.25) 0 1px, transparent 2px),
+    radial-gradient(circle at 29% 22%, rgba(255,255,255,.34) 0 .9px, transparent 1.8px),
+    radial-gradient(circle at 41% 12%, rgba(255,255,255,.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 58% 26%, rgba(255,255,255,.38) 0 1px, transparent 2px),
+    radial-gradient(circle at 76% 10%, rgba(255,255,255,.28) 0 .9px, transparent 1.8px),
+    radial-gradient(circle at 91% 21%, rgba(255,255,255,.36) 0 1px, transparent 2px),
     radial-gradient(circle at 50% 18%, rgba(75, 8, 25, .45), transparent 42%),
     linear-gradient(180deg, #05030a 0%, #100611 55%, #030102 100%);
 }
@@ -57,12 +62,16 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-stars {
   position: absolute;
   inset: 0;
-  opacity: .42;
+  opacity: .48;
   background-image:
-    radial-gradient(circle, rgba(255,255,255,.7) 0 1px, transparent 1.5px),
-    radial-gradient(circle, rgba(255,255,255,.35) 0 1px, transparent 1.5px);
-  background-size: 82px 64px, 118px 92px;
-  background-position: 8px 20px, 42px 6px;
+    radial-gradient(circle at 13% 34%, rgba(255,255,255,.60) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 22% 18%, rgba(255,255,255,.28) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 36% 28%, rgba(255,255,255,.48) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 49% 15%, rgba(255,255,255,.24) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 64% 33%, rgba(255,255,255,.50) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 83% 26%, rgba(255,255,255,.34) 0 1px, transparent 1.8px);
+  background-size: 280px 150px;
+  background-position: 11px 8px;
 }
 #ghostrun .ghost-run-layer {
   position: absolute;
@@ -75,70 +84,75 @@ body:has(#ghostrun.active) .tabs {
   opacity: .9;
 }
 #ghostrun .ghost-run-layer-far {
-  bottom: 78px;
-  height: 178px;
-  opacity: .50;
-  background-size: 180px 160px;
+  bottom: 92px;
+  height: 174px;
+  opacity: .58;
+  background-size: 220px 170px;
   background-image:
-    radial-gradient(ellipse at 42% 62%, rgba(25, 9, 18, .95) 0 22px, transparent 23px),
-    linear-gradient(145deg, transparent 0 52%, #130812 53% 100%),
-    linear-gradient(215deg, transparent 0 52%, #130812 53% 100%),
-    linear-gradient(90deg, transparent 0 17px, #130812 18px 29px, transparent 30px 80px);
+    radial-gradient(ellipse at 28% 54%, rgba(29, 11, 20, .95) 0 30px, transparent 31px),
+    radial-gradient(ellipse at 67% 50%, rgba(25, 9, 18, .90) 0 24px, transparent 25px),
+    linear-gradient(145deg, transparent 0 51%, #140812 52% 100%),
+    linear-gradient(215deg, transparent 0 51%, #140812 52% 100%),
+    linear-gradient(90deg, transparent 0 18px, #120711 19px 34px, transparent 35px 88px, #10060f 89px 101px, transparent 102px 220px);
   animation: ghostRunForestFar 18s linear infinite;
 }
 #ghostrun .ghost-run-layer-mid {
-  bottom: 54px;
-  height: 208px;
-  opacity: .76;
-  background-size: 132px 200px;
+  bottom: 76px;
+  height: 218px;
+  opacity: .82;
+  background-size: 190px 215px;
   background-image:
-    radial-gradient(ellipse at 40% 56%, rgba(37, 13, 25, .98) 0 28px, transparent 29px),
-    linear-gradient(148deg, transparent 0 48%, #1b0914 49% 100%),
-    linear-gradient(212deg, transparent 0 48%, #1b0914 49% 100%),
-    linear-gradient(90deg, transparent 0 20px, #16070f 21px 35px, transparent 36px 86px);
+    linear-gradient(135deg, transparent 0 46%, rgba(38,12,24,.92) 47% 58%, transparent 59%),
+    linear-gradient(225deg, transparent 0 46%, rgba(38,12,24,.92) 47% 58%, transparent 59%),
+    linear-gradient(180deg, transparent 0 58%, rgba(18,7,13,.95) 59% 77%, transparent 78%),
+    radial-gradient(ellipse at 28% 58%, rgba(42, 14, 28, .98) 0 38px, transparent 39px),
+    radial-gradient(ellipse at 68% 57%, rgba(35, 12, 24, .92) 0 32px, transparent 33px),
+    linear-gradient(90deg, transparent 0 20px, #14070f 21px 38px, transparent 39px 102px, #11060d 103px 119px, transparent 120px 190px);
   filter: drop-shadow(0 0 18px rgba(55, 6, 19, .20));
   animation: ghostRunForestMid 9.5s linear infinite;
 }
 #ghostrun .ghost-run-near-realism {
   z-index: 2;
-  bottom: 36px;
+  bottom: 70px;
   height: 210px;
-  opacity: .62;
-  background-size: 150px 210px;
+  opacity: .70;
+  background-size: 170px 210px;
   background-image:
-    radial-gradient(ellipse at 22% 92%, rgba(20, 25, 16, .62) 0 12px, transparent 13px),
-    radial-gradient(ellipse at 60% 94%, rgba(25, 31, 18, .58) 0 15px, transparent 16px),
-    linear-gradient(90deg, transparent 0 12px, rgba(9, 13, 8, .72) 13px 18px, transparent 19px 55px, rgba(12, 16, 10, .62) 56px 62px, transparent 63px 150px);
-  filter: blur(.2px);
+    radial-gradient(ellipse at 22% 95%, rgba(18, 28, 15, .74) 0 14px, transparent 15px),
+    radial-gradient(ellipse at 58% 96%, rgba(24, 34, 18, .68) 0 18px, transparent 19px),
+    radial-gradient(ellipse at 83% 95%, rgba(14, 22, 13, .72) 0 12px, transparent 13px),
+    linear-gradient(90deg, transparent 0 12px, rgba(8, 13, 8, .86) 13px 19px, transparent 20px 55px, rgba(12, 16, 10, .74) 56px 64px, transparent 65px 170px);
+  filter: blur(.15px);
   animation: ghostRunForestRealism 7.2s linear infinite;
 }
 #ghostrun .ghost-run-layer-near {
-  bottom: 28px;
-  height: 245px;
-  opacity: .98;
-  background-size: 108px 232px;
+  bottom: 62px;
+  height: 250px;
+  opacity: .99;
+  background-size: 126px 242px;
   background-image:
-    radial-gradient(ellipse at 46% 50%, rgba(9, 3, 7, .96) 0 30px, transparent 31px),
-    linear-gradient(150deg, transparent 0 46%, #090307 47% 100%),
-    linear-gradient(210deg, transparent 0 46%, #090307 47% 100%),
-    linear-gradient(90deg, transparent 0 24px, #070205 25px 42px, transparent 43px 82px);
+    radial-gradient(ellipse at 40% 49%, rgba(9, 3, 7, .98) 0 34px, transparent 35px),
+    radial-gradient(ellipse at 72% 47%, rgba(7, 2, 5, .95) 0 26px, transparent 27px),
+    linear-gradient(150deg, transparent 0 46%, #080206 47% 100%),
+    linear-gradient(210deg, transparent 0 46%, #080206 47% 100%),
+    linear-gradient(90deg, transparent 0 24px, #060204 25px 44px, transparent 45px 88px, #050103 89px 102px, transparent 103px 126px);
   animation: ghostRunForestNear 5.6s linear infinite;
 }
 #ghostrun .ghost-run-rock {
   position: absolute;
-  z-index: 6;
-  bottom: 50px;
+  z-index: 8;
+  bottom: 72px;
   border-radius: 42% 58% 36% 64%;
-  background: linear-gradient(145deg, #1b1618, #070506 70%);
-  box-shadow: inset 8px 7px 12px rgba(255,255,255,.035), inset -8px -10px 14px rgba(0,0,0,.64), 0 12px 22px rgba(0,0,0,.34);
+  background: linear-gradient(145deg, #242022, #080607 70%);
+  box-shadow: inset 8px 7px 12px rgba(255,255,255,.045), inset -8px -10px 14px rgba(0,0,0,.68), 0 10px 18px rgba(0,0,0,.38);
   animation: ghostRunRocks 4.8s linear infinite;
 }
 #ghostrun .ghost-run-rock-a { left: 62%; width: 48px; height: 28px; animation-delay: -1.2s; }
-#ghostrun .ghost-run-rock-b { left: 82%; bottom: 54px; width: 34px; height: 21px; opacity: .72; animation-delay: -3.1s; }
+#ghostrun .ghost-run-rock-b { left: 82%; bottom: 76px; width: 34px; height: 21px; opacity: .78; animation-delay: -3.1s; }
 #ghostrun .ghost-run-plant {
   position: absolute;
-  z-index: 7;
-  bottom: 57px;
+  z-index: 9;
+  bottom: 76px;
   width: 42px;
   height: 54px;
   animation: ghostRunPlants 5.4s linear infinite;
@@ -150,19 +164,19 @@ body:has(#ghostrun.active) .tabs {
   width: 10px;
   height: 48px;
   border-radius: 999px 999px 4px 4px;
-  background: linear-gradient(180deg, rgba(48, 68, 36, .88), rgba(8, 14, 8, .96));
+  background: linear-gradient(180deg, rgba(58, 82, 43, .95), rgba(8, 14, 8, .98));
   transform-origin: bottom center;
-  box-shadow: inset 2px 0 0 rgba(255,255,255,.04), 0 0 12px rgba(44,80,40,.10);
+  box-shadow: inset 2px 0 0 rgba(255,255,255,.055), 0 0 12px rgba(44,80,40,.12);
 }
 #ghostrun .ghost-run-plant i:nth-child(1){ transform: rotate(-24deg); height: 38px; left: 11px; }
 #ghostrun .ghost-run-plant i:nth-child(2){ transform: rotate(4deg); height: 52px; }
 #ghostrun .ghost-run-plant i:nth-child(3){ transform: rotate(26deg); height: 34px; left: 25px; }
 #ghostrun .ghost-run-plant-a { left: 76%; animation-delay: -1.7s; }
-#ghostrun .ghost-run-plant-b { left: 93%; bottom: 48px; transform: scale(.72); opacity: .78; animation-delay: -4.2s; }
+#ghostrun .ghost-run-plant-b { left: 93%; bottom: 74px; transform: scale(.72); opacity: .82; animation-delay: -4.2s; }
 #ghostrun .ghost-run-mushroom {
   position: absolute;
-  z-index: 7;
-  bottom: 58px;
+  z-index: 9;
+  bottom: 76px;
   left: 68%;
   width: 22px;
   height: 24px;
@@ -419,10 +433,10 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-screen[data-ghost-state='won'] .ghost-run-ghost { animation: ghostRunWon .75s ease-out both; }
 #ghostrun .ghost-run-screen[data-ghost-state='lost'] .ghost-run-ghost { animation: ghostRunLost .72s ease-in both; }
 #ghostrun .ghost-run-screen[data-ghost-state='lost'] .ghost-run-ghost-body { filter: brightness(.65) saturate(.6); }
-@keyframes ghostRunForestFar { to { background-position: -180px bottom; } }
-@keyframes ghostRunForestMid { to { background-position: -132px bottom; } }
-@keyframes ghostRunForestRealism { to { background-position: -150px bottom; } }
-@keyframes ghostRunForestNear { to { background-position: -108px bottom; } }
+@keyframes ghostRunForestFar { to { background-position: -220px bottom; } }
+@keyframes ghostRunForestMid { to { background-position: -190px bottom; } }
+@keyframes ghostRunForestRealism { to { background-position: -170px bottom; } }
+@keyframes ghostRunForestNear { to { background-position: -126px bottom; } }
 @keyframes ghostRunGround { to { background-position: -120px 0, -68px 0; } }
 @keyframes ghostRunRocks { from { transform: translateX(180px); } to { transform: translateX(-520px); } }
 @keyframes ghostRunPlants { from { transform: translateX(170px); } to { transform: translateX(-520px); } }
