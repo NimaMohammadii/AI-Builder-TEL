@@ -56,21 +56,12 @@ app.post('/admin/api/upload-plinko-control-image', async (c) => {
 });
 
 
-app.get('/app/api/ghost-run-asset/:kind.png', async (c) => {
-  return serveGhostRunAsset(c, c.req.param('kind'));
-});
-
 app.get('/app/api/ghost-run-asset/:kind', async (c) => {
-  return serveGhostRunAsset(c, c.req.param('kind'));
-});
-
-async function serveGhostRunAsset(c: { env: Env; req: { param: (name: string) => string } }, rawKind: string): Promise<Response> {
-  const kind = normalizeGhostRunAssetKind(rawKind);
+  const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
   const object = await c.env.ASSETS.get(ghostRunAssetKey(kind)).catch(() => null);
-  const headers = { 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL, 'x-content-type-options': 'nosniff' };
-  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { ...headers, 'content-type': 'image/svg+xml; charset=utf-8' } });
-  return new Response(object.body, { headers: { ...headers, 'content-type': object.httpMetadata?.contentType || 'image/png' } });
-}
+  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
+});
 
 app.post('/admin/api/upload-ghost-run-asset', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -453,7 +444,7 @@ export { PlinkoLiveRoom };
 export default app;
 
 function normalizeGhostRunAssetKind(value: string): string {
-  const clean = String(value || '').replace(/\.(png|jpe?g|webp|svg)$/i, '').trim().toLowerCase();
+  const clean = String(value || '').replace(/\.png$/i, '').trim().toLowerCase();
   if (!GHOST_RUN_ASSET_KINDS.has(clean)) throw new Error('Invalid Ghost Run asset kind.');
   return clean;
 }
@@ -466,7 +457,7 @@ function defaultGhostRunAssetSvg(kind: string): string {
   if (kind === 'moon') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><radialGradient id="g" cx="40%" cy="32%"><stop stop-color="#fff"/><stop offset=".55" stop-color="#f2e8d6"/><stop offset="1" stop-color="#b68866"/></radialGradient></defs><circle cx="80" cy="80" r="58" fill="url(#g)"/><circle cx="61" cy="64" r="9" fill="#9d755d" opacity=".22"/><circle cx="95" cy="91" r="13" fill="#9d755d" opacity=".18"/></svg>`;
   if (kind === 'ground') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180" preserveAspectRatio="none"><rect width="900" height="180" fill="#050101"/><path d="M0 38 C110 12 190 58 310 31 C455 -2 540 58 690 30 C790 12 840 20 900 8 V180 H0Z" fill="#210713"/><path d="M0 75 C160 55 260 88 420 62 C560 38 720 92 900 54 V180 H0Z" fill="#090202"/></svg>`;
   if (kind === 'ghost') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112"><defs><radialGradient id="g" cx="38%" cy="25%"><stop stop-color="#fff"/><stop offset=".55" stop-color="#eef3ff"/><stop offset="1" stop-color="#bfc9e0"/></radialGradient></defs><path d="M12 91V43C12 20 28 8 48 8s36 12 36 35v48c-8-9-16-9-24 0-8-9-16-9-24 0-8-9-16-9-24 0Z" fill="url(#g)"/><circle cx="36" cy="48" r="5" fill="#180616"/><circle cx="60" cy="48" r="5" fill="#180616"/></svg>`;
-  if (kind.startsWith('tree')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><defs><linearGradient id="t" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#244c2c"/><stop offset="1" stop-color="#08130b"/></linearGradient></defs><path d="M84 72h20v178H84z" fill="#24100a"/><path d="M94 7 25 118h39L14 202h152l-51-84h40Z" fill="url(#t)"/><path d="M94 30 47 108h31l-36 61h104l-38-61h32Z" fill="#3f7a44" opacity=".46"/></svg>`;
-  if (kind.startsWith('house')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160"><path d="M22 72 110 12l88 60v72H22Z" fill="#2a1018"/><path d="M10 76 110 4l100 72-14 20-86-62-86 62Z" fill="#6b1735"/><rect x="48" y="92" width="38" height="32" rx="4" fill="#ffc36a"/><rect x="132" y="84" width="34" height="60" rx="5" fill="#080306"/><circle cx="154" cy="111" r="2" fill="#f0b15a"/></svg>`;
+  if (kind.startsWith('tree')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><path d="M86 74h18v176H86z" fill="#100708"/><path d="M95 8 28 118h38L16 198h158l-50-80h36Z" fill="#07110a"/><path d="M95 26 46 109h32l-38 63h108l-39-63h32Z" fill="#102317" opacity=".78"/></svg>`;
+  if (kind.startsWith('house')) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160"><path d="M22 72 110 12l88 60v72H22Z" fill="#11070c"/><path d="M10 76 110 4l100 72-14 20-86-62-86 62Z" fill="#2b0a18"/><rect x="48" y="92" width="38" height="32" rx="4" fill="#f0b15a" opacity=".75"/><rect x="132" y="84" width="34" height="60" rx="5" fill="#050203"/></svg>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 220"></svg>`;
 }
