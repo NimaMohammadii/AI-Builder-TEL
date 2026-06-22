@@ -4,6 +4,15 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-scene{border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
+    #ghostrun .ghost-run-ground{height:172px!important;left:-80%!important;right:-80%!important;background-size:auto 100%!important;background-repeat:repeat-x!important;background-position:0 bottom!important;z-index:5!important;animation:ghostRunUploadedGround 3.2s linear infinite!important}
+    #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ground{animation-duration:1.45s!important}
+    #ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:block!important;z-index:9!important;background-repeat:repeat-x!important;background-position:0 bottom!important;background-size:auto 100%!important;opacity:1!important;visibility:visible!important}
+    #ghostrun .ghost-run-uploaded-tree-1{bottom:138px!important;height:230px!important}
+    #ghostrun .ghost-run-uploaded-tree-2{bottom:132px!important;height:260px!important}
+    #ghostrun .ghost-run-uploaded-tree-3{bottom:126px!important;height:292px!important}
+    #ghostrun .ghost-run-uploaded-house-1{bottom:136px!important;height:164px!important}
+    #ghostrun .ghost-run-uploaded-house-2{bottom:130px!important;height:184px!important}
+    #ghostrun .ghost-run-uploaded-house-3{bottom:124px!important;height:204px!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
