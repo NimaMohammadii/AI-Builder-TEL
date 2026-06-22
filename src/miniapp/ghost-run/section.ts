@@ -8,8 +8,6 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     #ghostrun .ghost-run-uploaded-background{animation:none!important;animation-play-state:paused!important;background-position:var(--ghost-bg-x,0px) center!important;will-change:background-position!important}
-    #ghostrun .ghost-run-uploaded-background-2{background-position:calc(var(--ghost-bg-x,0px) * 1.18) center!important}
-    #ghostrun .ghost-run-uploaded-background-3{background-position:calc(var(--ghost-bg-x,0px) * 1.36) center!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
     #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
     #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
@@ -25,9 +23,7 @@ export const GHOST_RUN_SECTION = `
   <div class="ghost-run-screen" data-ghost-state="idle">
     <div class="ghost-run-scene" aria-label="Ghost Run 2D forest scene">
       <div class="ghost-run-sky"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-1"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-2"></div>
-      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-3"></div>
+      <div class="ghost-run-uploaded-background"></div>
       <div class="ghost-run-moon"></div>
       <div class="ghost-run-stars"></div>
       <div class="ghost-run-layer ghost-run-layer-far"></div>
