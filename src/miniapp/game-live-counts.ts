@@ -8,6 +8,7 @@ const liveGameLabels: Record<string, string> = {
   hilo: 'Chicken Cross',
   coinflip: 'Pump',
   slot: 'Slot',
+  ghostrun: 'Ghost Run',
 };
 
 const hiddenCardPlayerCounts = new Set(['hilo', 'coinflip']);
@@ -25,6 +26,7 @@ const livePlayerProfiles: Record<string, LivePlayerProfile> = {
   hilo: { offset: -44, width: 20, phase: 79 },
   coinflip: { offset: 10, width: -12, phase: 89 },
   slot: { offset: 46, width: 28, phase: 101 },
+  ghostrun: { offset: 34, width: 18, phase: 109 },
 };
 
 const livePlayerRanges: LivePlayerRange[] = [

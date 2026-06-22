@@ -17,7 +17,7 @@ export type UserControls = {
   sectionBlocks: UserSectionBlock[];
 };
 
-const VALID_SECTIONS = new Set(['home', 'connect', 'connect-bot-card', 'flow', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'rps', 'limbo', 'tower', 'slot', 'coinflip', 'hilo']);
+const VALID_SECTIONS = new Set(['home', 'connect', 'connect-bot-card', 'flow', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'rps', 'limbo', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
 
 type StoredUserControls = {
   userId?: string;

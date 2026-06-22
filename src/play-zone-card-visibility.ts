@@ -10,6 +10,7 @@ export const PLAY_ZONE_CARD_ITEMS = [
   { id: 'crash', label: 'Crash' },
   { id: 'hilo', label: 'Chicken Cross' },
   { id: 'coinflip', label: 'Pump' },
+  { id: 'ghostrun', label: 'Ghost Run' },
 ] as const;
 
 export type PlayZoneCardId = typeof PLAY_ZONE_CARD_ITEMS[number]['id'];

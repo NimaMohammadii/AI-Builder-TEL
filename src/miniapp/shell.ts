@@ -50,6 +50,7 @@ import { DICE_ASSET_CACHE_SCRIPT } from './dice-asset-cache-script';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { LIMBO_SECTION } from './limbo';
+import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { CONNECT_GROUPS_USAGE_SCRIPT } from './connect-groups-usage-script';
@@ -181,6 +182,7 @@ const STYLES = [
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
   GAME_LIVE_COUNT_STYLES,
+  GHOST_RUN_STYLES,
 ].join('');
 
 const SECTIONS = [
@@ -201,6 +203,7 @@ const SECTIONS = [
   RPS_SECTION,
   PUMP_SECTION,
   LIMBO_SECTION,
+  GHOST_RUN_SECTION,
 ].join('');
 
 const scriptBody = (script: string): string => script.replace(/^\s*<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');

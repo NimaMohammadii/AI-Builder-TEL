@@ -67,6 +67,7 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'tower', label: 'Tower', description: 'Tower game card image' },
   { id: 'coinflip', label: 'Pump', description: 'Pump game card and access image' },
   { id: 'hilo', label: 'Hi-Lo', description: 'Hi-Lo game card image' },
+  { id: 'ghostrun', label: 'Ghost Run', description: 'Ghost Run game card image' },
 ];
 
 export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {

@@ -10,6 +10,7 @@ const playZoneGames = [
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
   ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
   ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
+  ['ghostrun', 'Ghost Run', 'Run through the dark and survive', 'Play'],
 ] as const;
 
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
