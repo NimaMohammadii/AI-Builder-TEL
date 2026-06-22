@@ -1,19 +1,18 @@
 export const GHOST_RUN_SECTION = `
 <section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">
   <style>
-    #ghostrun .ghost-run-scene{width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;border-radius:0!important;box-shadow:inset 0 18px 26px rgba(0,0,0,.42)!important}
-    #ghostrun .ghost-run-scene:before{content:'';position:absolute;z-index:30;left:0;right:0;top:0;height:34px;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.58),rgba(0,0,0,.24) 48%,transparent 100%)}
+    #ghostrun .ghost-run-scene{border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-ground{height:172px!important;left:-80%!important;right:-80%!important;background-size:auto 100%!important;background-repeat:repeat-x!important;background-position:0 bottom!important;z-index:5!important;animation:ghostRunUploadedGround 3.2s linear infinite!important}
     #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ground{animation-duration:1.45s!important}
-    #ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:block!important;background-repeat:repeat-x!important;background-position:var(--ghost-art-offset,0) bottom!important;background-size:var(--ghost-art-tile,420px) auto!important;opacity:var(--ghost-art-opacity,.82)!important;visibility:visible!important;filter:drop-shadow(0 14px 16px rgba(0,0,0,.32)) saturate(.86) brightness(.82)!important}
-    #ghostrun .ghost-run-uploaded-tree-1{z-index:4!important;left:-55%!important;right:-55%!important;bottom:146px!important;height:154px!important;--ghost-art-tile:520px;--ghost-art-offset:0;--ghost-art-opacity:.52}
-    #ghostrun .ghost-run-uploaded-tree-2{z-index:5!important;left:-50%!important;right:-50%!important;bottom:138px!important;height:178px!important;--ghost-art-tile:470px;--ghost-art-offset:180px;--ghost-art-opacity:.60}
-    #ghostrun .ghost-run-uploaded-tree-3{z-index:6!important;left:-45%!important;right:-45%!important;bottom:130px!important;height:204px!important;--ghost-art-tile:430px;--ghost-art-offset:74px;--ghost-art-opacity:.68}
-    #ghostrun .ghost-run-uploaded-house-1{z-index:5!important;left:-58%!important;right:-58%!important;bottom:144px!important;height:108px!important;--ghost-art-tile:560px;--ghost-art-offset:286px;--ghost-art-opacity:.56}
-    #ghostrun .ghost-run-uploaded-house-2{z-index:6!important;left:-52%!important;right:-52%!important;bottom:136px!important;height:124px!important;--ghost-art-tile:520px;--ghost-art-offset:38px;--ghost-art-opacity:.62}
-    #ghostrun .ghost-run-uploaded-house-3{z-index:7!important;left:-48%!important;right:-48%!important;bottom:128px!important;height:140px!important;--ghost-art-tile:490px;--ghost-art-offset:224px;--ghost-art-opacity:.68}
+    #ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:block!important;z-index:9!important;background-repeat:repeat-x!important;background-position:0 bottom!important;background-size:auto 100%!important;opacity:1!important;visibility:visible!important}
+    #ghostrun .ghost-run-uploaded-tree-1{bottom:138px!important;height:230px!important}
+    #ghostrun .ghost-run-uploaded-tree-2{bottom:132px!important;height:260px!important}
+    #ghostrun .ghost-run-uploaded-tree-3{bottom:126px!important;height:292px!important}
+    #ghostrun .ghost-run-uploaded-house-1{bottom:136px!important;height:164px!important}
+    #ghostrun .ghost-run-uploaded-house-2{bottom:130px!important;height:184px!important}
+    #ghostrun .ghost-run-uploaded-house-3{bottom:124px!important;height:204px!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
