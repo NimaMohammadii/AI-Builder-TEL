@@ -470,8 +470,44 @@ body:has(#ghostrun.active) .tabs {
 /* Admin-uploaded Ghost Run art replaces generated scene pieces. */
 
 #ghostrun .ghost-run-scene {
-  background: url('/app/api/ghost-run-asset/background.png') center center / cover no-repeat, linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%) !important;
+  background: linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%) !important;
 }
+#ghostrun .ghost-run-uploaded-background {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-repeat: repeat-x;
+  background-position: 0 center;
+  background-size: auto 100%;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: paused;
+  will-change: background-position;
+}
+#ghostrun .ghost-run-uploaded-background-1 {
+  background-image: url('/app/api/ghost-run-asset/background.png');
+  animation-name: ghostRunUploadedBackground1;
+  animation-duration: 18s;
+}
+#ghostrun .ghost-run-uploaded-background-2 {
+  background-image: url('/app/api/ghost-run-asset/background2.png');
+  animation-name: ghostRunUploadedBackground2;
+  animation-duration: 13s;
+  opacity: .82;
+}
+#ghostrun .ghost-run-uploaded-background-3 {
+  background-image: url('/app/api/ghost-run-asset/background3.png');
+  animation-name: ghostRunUploadedBackground3;
+  animation-duration: 8.5s;
+  opacity: .72;
+}
+#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background {
+  animation-play-state: running;
+}
+#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background-1 { animation-duration: 10.5s; }
+#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background-2 { animation-duration: 7.5s; }
+#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background-3 { animation-duration: 5.2s; }
 #ghostrun .ghost-run-sky,
 #ghostrun .ghost-run-stars {
   background: transparent !important;
@@ -525,6 +561,9 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-house-2 { animation-duration: 4.6s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-house-3 { animation-duration: 3.7s; }
 @keyframes ghostRunUploadedGround { to { background-position: -420px bottom; } }
+@keyframes ghostRunUploadedBackground1 { to { background-position: -900px center; } }
+@keyframes ghostRunUploadedBackground2 { to { background-position: -1100px center; } }
+@keyframes ghostRunUploadedBackground3 { to { background-position: -1300px center; } }
 @keyframes ghostRunUploadedTree1 { to { background-position: -360px bottom; } }
 @keyframes ghostRunUploadedTree2 { to { background-position: -430px bottom; } }
 @keyframes ghostRunUploadedTree3 { to { background-position: -520px bottom; } }
