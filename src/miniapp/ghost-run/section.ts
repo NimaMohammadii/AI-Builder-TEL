@@ -3,10 +3,10 @@ export const GHOST_RUN_SECTION = `
   <style>
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
     #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important}
-    #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important;background:linear-gradient(180deg,#050309 0%,#0b0409 48%,#020101 100%)!important}
+    #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
-    #ghostrun .ghost-run-sky,#ghostrun .ghost-run-stars,#ghostrun .ghost-run-uploaded-background,#ghostrun .ghost-run-layer,#ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important;background:none!important;animation:none!important}
+    #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
