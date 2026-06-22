@@ -1,8 +1,12 @@
 export const GHOST_RUN_STYLES = `
+:root:has(#ghostrun.active),
+html:has(#ghostrun.active),
 body:has(#ghostrun.active),
 body:has(#ghostrun.active) .app,
-body:has(#ghostrun.active) .content {
+body:has(#ghostrun.active) .content,
+body:has(#ghostrun.active) .view.active {
   background: #000 !important;
+  background-color: #000 !important;
 }
 body:has(#ghostrun.active) .tabs {
   display: none !important;
@@ -11,18 +15,7 @@ body:has(#ghostrun.active) .top {
   position: relative;
   z-index: 20;
   background: #000 !important;
-}
-body:has(#ghostrun.active) .top::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: calc((22px + env(safe-area-inset-top)) * -1);
-  bottom: -16px;
-  width: 100vw;
-  transform: translateX(-50%);
-  background: #000;
-  z-index: -1;
-  pointer-events: none;
+  background-color: #000 !important;
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
