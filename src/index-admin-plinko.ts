@@ -20,6 +20,7 @@ const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
+const GHOST_RUN_ASSET_KINDS = new Set(['ground', 'moon', 'tree1', 'tree2', 'tree3', 'house1', 'house2', 'house3']);
 
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
@@ -50,6 +51,31 @@ app.post('/admin/api/upload-plinko-control-image', async (c) => {
     return c.json({ ok: true, kind, url: `/app/api/plinko-control-image/${kind}.png?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Plinko control image' }, 400);
+  }
+});
+
+
+app.get('/app/api/ghost-run-asset/:kind', async (c) => {
+  const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
+  const object = await c.env.ASSETS.get(ghostRunAssetKey(kind)).catch(() => null);
+  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+});
+
+app.post('/admin/api/upload-ghost-run-asset', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const kind = normalizeGhostRunAssetKind(String(form.get('kind') || 'ground'));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(ghostRunAssetKey(kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, kind, url: `/app/api/ghost-run-asset/${kind}.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Ghost Run asset' }, 400);
   }
 });
 
@@ -415,3 +441,19 @@ function isAdminRequest(c: { env: Env; req: { header: (name: string) => string |
 export { PlinkoLiveRoom };
 
 export default app;
+
+function normalizeGhostRunAssetKind(value: string): string {
+  const clean = String(value || '').replace(/\.png$/i, '').trim().toLowerCase();
+  if (!GHOST_RUN_ASSET_KINDS.has(clean)) throw new Error('Invalid Ghost Run asset kind.');
+  return clean;
+}
+
+function ghostRunAssetKey(kind: string): string {
+  return `ghost-run-assets/${kind}`;
+}
+
+function defaultGhostRunAssetSvg(kind: string): string {
+  if (kind === 'moon') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><radialGradient id="g" cx="40%" cy="32%"><stop stop-color="#fff"/><stop offset=".55" stop-color="#f2e8d6"/><stop offset="1" stop-color="#b68866"/></radialGradient></defs><circle cx="80" cy="80" r="58" fill="url(#g)"/><circle cx="61" cy="64" r="9" fill="#9d755d" opacity=".22"/><circle cx="95" cy="91" r="13" fill="#9d755d" opacity=".18"/></svg>`;
+  if (kind === 'ground') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180" preserveAspectRatio="none"><rect width="900" height="180" fill="#050101"/><path d="M0 38 C110 12 190 58 310 31 C455 -2 540 58 690 30 C790 12 840 20 900 8 V180 H0Z" fill="#210713"/><path d="M0 75 C160 55 260 88 420 62 C560 38 720 92 900 54 V180 H0Z" fill="#090202"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 220"></svg>`;
+}
