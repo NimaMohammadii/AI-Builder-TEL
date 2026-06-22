@@ -7,6 +7,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
+    #ghostrun .ghost-run-uploaded-background{animation:none!important;animation-play-state:paused!important;background-position:var(--ghost-bg-x,0px) center!important;will-change:background-position!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
     #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
     #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
@@ -71,7 +72,7 @@ export const GHOST_RUN_SECTION = `
       </div>
       <button class="ghost-run-move-button ghost-run-back-button" type="button" aria-label="Move back" data-ghost-back></button>
       <button class="ghost-run-move-button ghost-run-forward-button" type="button" aria-label="Move forward" data-ghost-forward></button>
-      <p class="ghost-run-note">Hold to move. Forward slowly grows the multiplier.</p>
+      <p class="ghost-run-note">Hold to move. The scene moves only near the edges.</p>
     </div>
   </div>
   <script>
@@ -86,18 +87,19 @@ export const GHOST_RUN_SECTION = `
     var messageEl=root.querySelector('[data-ghost-message]');
     var previewEl=root.querySelector('[data-ghost-preview]');
     var betEl=root.querySelector('[data-ghost-bet]');
-    var position=16, minPosition=8, maxPosition=76, direction=0, raf=0, lastTime=0;
+    var position=16, minPosition=10, leftEdge=18, rightEdge=68, maxPosition=76, backgroundOffset=0, distance=0, direction=0, raf=0, lastTime=0;
     function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
     function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}
-    function multiplier(){return 1+Math.max(0,position-16)*0.007}
+    function multiplier(){return 1+(Math.max(0,position-16)*0.004)+(distance*0.00045)}
     function render(){
       var value=multiplier();
       root.style.setProperty('--ghost-x',position+'%');
+      root.style.setProperty('--ghost-bg-x',backgroundOffset.toFixed(1)+'px');
       if(multiplierEl)multiplierEl.textContent=value.toFixed(2)+'x';
       if(previewEl)previewEl.textContent=(bet()*value).toFixed(2);
-      if(backButton)backButton.disabled=position<=minPosition;
+      if(backButton)backButton.disabled=position<=minPosition&&backgroundOffset>=0;
       if(forwardButton)forwardButton.disabled=position>=maxPosition;
-      setState(position<=16?'idle':'running','');
+      setState(position>16||backgroundOffset<0?'moving':'idle','');
     }
     function stopHold(){
       direction=0;lastTime=0;
@@ -112,9 +114,25 @@ export const GHOST_RUN_SECTION = `
       if(!lastTime)lastTime=now;
       var dt=Math.min(32,now-lastTime)/1000;
       lastTime=now;
-      position=Math.max(minPosition,Math.min(maxPosition,position+(direction*28*dt)));
+      if(direction>0){
+        if(position<rightEdge){
+          position=Math.min(rightEdge,position+(22*dt));
+        }else{
+          backgroundOffset-=42*dt;
+          distance+=42*dt;
+        }
+      }else{
+        if(position>leftEdge){
+          position=Math.max(leftEdge,position-(24*dt));
+        }else if(backgroundOffset<0){
+          var reverse=42*dt;
+          backgroundOffset=Math.min(0,backgroundOffset+reverse);
+          distance=Math.max(0,distance-reverse);
+        }else{
+          position=Math.max(minPosition,position-(20*dt));
+        }
+      }
       render();
-      if(position<=minPosition||position>=maxPosition){stopHold();return}
       raf=window.requestAnimationFrame(step);
     }
     function startHold(dir,button){
