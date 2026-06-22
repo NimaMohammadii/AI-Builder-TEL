@@ -3,7 +3,7 @@ export const GHOST_RUN_SECTION = `
   <style>
     #ghostrun .ghost-run-scene{border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
-    #ghostrun .ghost-run-shadow-fade{height:138px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.54) 42%,#000 100%)!important}
+    #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">

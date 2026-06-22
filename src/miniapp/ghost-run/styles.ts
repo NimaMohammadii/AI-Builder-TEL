@@ -4,7 +4,7 @@ body:has(#ghostrun.active) .tabs {
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
-  background: #000 !important;
+  background: transparent !important;
   padding: 0 !important;
   overflow: hidden !important;
   color: #fff !important;
@@ -16,18 +16,22 @@ body:has(#ghostrun.active) .tabs {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 50% 46%, rgba(90, 12, 28, .20), transparent 34%), #000;
+  background: transparent;
   overflow: hidden;
   isolation: isolate;
 }
 #ghostrun .ghost-run-scene {
   position: relative;
-  height: min(54dvh, 430px);
-  min-height: 310px;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  height: min(58dvh, 460px);
+  min-height: 330px;
   overflow: hidden;
-  border-radius: 0 0 34px 34px;
+  border-radius: 0;
   background: linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%);
-  box-shadow: 0 28px 60px rgba(0, 0, 0, .72);
+  box-shadow: none;
 }
 #ghostrun .ghost-run-sky {
   position: absolute;
@@ -330,9 +334,9 @@ body:has(#ghostrun.active) .tabs {
   z-index: 28;
   left: 0;
   right: 0;
-  bottom: -1px;
-  height: 112px;
-  background: linear-gradient(180deg, transparent 0%, rgba(12,2,6,.64) 48%, #000 100%);
+  bottom: -28px;
+  height: 72px;
+  background: linear-gradient(180deg, transparent 0%, rgba(12,2,6,.46) 52%, rgba(0,0,0,.88) 100%);
   pointer-events: none;
 }
 #ghostrun .ghost-run-shadow-fade:after {
@@ -340,7 +344,7 @@ body:has(#ghostrun.active) .tabs {
   position: absolute;
   left: 20px;
   right: 20px;
-  bottom: 12px;
+  bottom: 4px;
   height: 2px;
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, rgba(105, 13, 37, .75), transparent);
@@ -354,9 +358,7 @@ body:has(#ghostrun.active) .tabs {
   gap: 10px;
   align-content: start;
   padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
-  background:
-    radial-gradient(circle at 50% 0%, rgba(105, 13, 37, .26), transparent 34%),
-    linear-gradient(180deg, #000 0%, #030102 100%);
+  background: transparent;
 }
 #ghostrun .ghost-run-control-card {
   min-height: 70px;
@@ -433,7 +435,7 @@ body:has(#ghostrun.active) .tabs {
 @keyframes ghostRunWon { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-18px) scale(1.08); } }
 @keyframes ghostRunLost { 0% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 70% { opacity: .45; transform: translateY(-10px) scale(.9); filter: blur(2px); } 100% { opacity: 0; transform: translateY(-34px) scale(.68); filter: blur(9px); } }
 @media (max-width: 380px) {
-  #ghostrun .ghost-run-scene { height: 52dvh; min-height: 288px; border-radius: 0 0 28px 28px; }
+  #ghostrun .ghost-run-scene { height: 56dvh; min-height: 306px; border-radius: 0; }
   #ghostrun .ghost-run-ghost { left: 13%; bottom: 68px; width: 76px; height: 90px; }
   #ghostrun .ghost-run-controls { padding-left: 12px; padding-right: 12px; gap: 8px; }
   #ghostrun .ghost-run-main-button { height: 58px; }
