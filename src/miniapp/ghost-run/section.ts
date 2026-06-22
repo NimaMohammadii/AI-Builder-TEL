@@ -7,7 +7,12 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
-    @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
+    #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .18s ease-out, transform .18s ease-out!important}
+    #ghostrun .ghost-run-move-button{height:62px!important;border:0!important;border-radius:999px!important;font-size:16px!important;font-weight:1000!important;letter-spacing:-.02em!important;box-shadow:0 18px 42px rgba(255,255,255,.10),0 0 34px rgba(105,13,37,.18)!important}
+    #ghostrun .ghost-run-back-button{grid-column:1!important;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.06))!important;color:#fff!important;border:1px solid rgba(255,255,255,.08)!important}
+    #ghostrun .ghost-run-forward-button{grid-column:2!important;background:linear-gradient(180deg,#fff,#d9d9d9)!important;color:#070205!important}
+    #ghostrun .ghost-run-move-button:active{transform:scale(.985)!important}
+    @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}#ghostrun .ghost-run-ghost{width:58px!important;height:70px!important;bottom:72px!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
     <div class="ghost-run-scene" aria-label="Ghost Run 2D forest scene">
@@ -59,8 +64,9 @@ export const GHOST_RUN_SECTION = `
         <span>Win Preview</span>
         <strong><em data-ghost-preview>0.10</em> TON</strong>
       </div>
-      <button class="ghost-run-main-button" type="button" data-ghost-action>Start Run</button>
-      <p class="ghost-run-note">Cash out before the ghost vanishes.</p>
+      <button class="ghost-run-move-button ghost-run-back-button" type="button" data-ghost-back>Back</button>
+      <button class="ghost-run-move-button ghost-run-forward-button" type="button" data-ghost-forward>Forward</button>
+      <p class="ghost-run-note">Move forward to slowly grow the multiplier.</p>
     </div>
   </div>
   <script>
@@ -69,36 +75,29 @@ export const GHOST_RUN_SECTION = `
     if(!root||root.dataset.ghostReady==='1')return;
     root.dataset.ghostReady='1';
     var screen=root.querySelector('.ghost-run-screen');
-    var button=root.querySelector('[data-ghost-action]');
+    var forwardButton=root.querySelector('[data-ghost-forward]');
+    var backButton=root.querySelector('[data-ghost-back]');
     var multiplierEl=root.querySelector('[data-ghost-multiplier]');
     var messageEl=root.querySelector('[data-ghost-message]');
     var previewEl=root.querySelector('[data-ghost-preview]');
     var betEl=root.querySelector('[data-ghost-bet]');
-    var timer=0, startTime=0, crashAt=0, running=false, ended=false;
+    var position=16, minPosition=8, maxPosition=76;
     function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
     function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}
-    function setMultiplier(value){var text=value.toFixed(2)+'x';if(multiplierEl)multiplierEl.textContent=text;if(previewEl)previewEl.textContent=(bet()*value).toFixed(2)}
-    function nextCrash(){return 1.18+Math.pow(Math.random(),1.75)*7.2}
-    function tick(){
-      if(!running)return;
-      var elapsed=(Date.now()-startTime)/1000;
-      var current=1+elapsed*0.42+elapsed*elapsed*0.055;
-      setMultiplier(current);
-      if(current>=crashAt){
-        running=false;ended=true;setMultiplier(current);setState('lost','');button.textContent='Play Again';return;
-      }
-      timer=window.requestAnimationFrame(tick);
+    function multiplier(){return 1+Math.max(0,position-16)*0.012}
+    function render(){
+      var value=multiplier();
+      root.style.setProperty('--ghost-x',position+'%');
+      if(multiplierEl)multiplierEl.textContent=value.toFixed(2)+'x';
+      if(previewEl)previewEl.textContent=(bet()*value).toFixed(2);
+      if(backButton)backButton.disabled=position<=minPosition;
+      if(forwardButton)forwardButton.disabled=position>=maxPosition;
     }
-    function start(){
-      if(timer)window.cancelAnimationFrame(timer);
-      running=true;ended=false;startTime=Date.now();crashAt=nextCrash();setMultiplier(1);setState('running','');button.textContent='Cash Out';tick();
-    }
-    function cashout(){
-      if(!running){start();return}
-      running=false;ended=true;if(timer)window.cancelAnimationFrame(timer);setState('won','');button.textContent='Play Again';
-    }
-    button&&button.addEventListener('click',function(){if(!running&&ended){start();return}running?cashout():start()});
-    setMultiplier(1);
+    function moveForward(){position=Math.min(maxPosition,position+4);setState('running','');render()}
+    function moveBack(){position=Math.max(minPosition,position-4);setState(position<=16?'idle':'running','');render()}
+    forwardButton&&forwardButton.addEventListener('click',moveForward);
+    backButton&&backButton.addEventListener('click',moveBack);
+    render();
   })();
   </script>
 </section>
