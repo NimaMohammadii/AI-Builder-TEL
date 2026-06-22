@@ -468,6 +468,14 @@ body:has(#ghostrun.active) .tabs {
 }
 
 /* Admin-uploaded Ghost Run art replaces generated scene pieces. */
+
+#ghostrun .ghost-run-scene {
+  background: url('/app/api/ghost-run-asset/background.png') center center / cover no-repeat, linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%) !important;
+}
+#ghostrun .ghost-run-sky,
+#ghostrun .ghost-run-stars {
+  background: transparent !important;
+}
 #ghostrun .ghost-run-moon {
   background: url('/app/api/ghost-run-asset/moon.png') center/contain no-repeat !important;
   border: 0 !important;
