@@ -7,6 +7,9 @@ body:has(#ghostrun.active) .content {
 body:has(#ghostrun.active) .tabs {
   display: none !important;
 }
+body:has(#ghostrun.active) .top {
+  background: #000 !important;
+}
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
   background: #000 !important;
