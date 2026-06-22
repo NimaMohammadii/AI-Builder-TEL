@@ -1,10 +1,17 @@
 export const GHOST_RUN_STYLES = `
+body:has(#ghostrun.active),
+body:has(#ghostrun.active) .app,
+body:has(#ghostrun.active) .content {
+  background: #000 !important;
+}
+body:has(#ghostrun.active) .orb,
+body:has(#ghostrun.active) .grain,
 body:has(#ghostrun.active) .tabs {
   display: none !important;
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
-  background: transparent !important;
+  background: #000 !important;
   padding: 0 !important;
   overflow: hidden !important;
   color: #fff !important;
@@ -16,7 +23,7 @@ body:has(#ghostrun.active) .tabs {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: #000;
   overflow: hidden;
   isolation: isolate;
 }
@@ -30,22 +37,13 @@ body:has(#ghostrun.active) .tabs {
   min-height: 330px;
   overflow: hidden;
   border-radius: 0;
-  background: linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%);
+  background: #000;
   box-shadow: none;
 }
 #ghostrun .ghost-run-sky {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 8% 16%, rgba(255,255,255,.45) 0 .8px, transparent 1.7px),
-    radial-gradient(circle at 17% 9%, rgba(255,255,255,.25) 0 1px, transparent 2px),
-    radial-gradient(circle at 29% 22%, rgba(255,255,255,.34) 0 .9px, transparent 1.8px),
-    radial-gradient(circle at 41% 12%, rgba(255,255,255,.18) 0 1px, transparent 2px),
-    radial-gradient(circle at 58% 26%, rgba(255,255,255,.38) 0 1px, transparent 2px),
-    radial-gradient(circle at 76% 10%, rgba(255,255,255,.28) 0 .9px, transparent 1.8px),
-    radial-gradient(circle at 91% 21%, rgba(255,255,255,.36) 0 1px, transparent 2px),
-    radial-gradient(circle at 50% 18%, rgba(75, 8, 25, .45), transparent 42%),
-    linear-gradient(180deg, #05030a 0%, #100611 55%, #030102 100%);
+  background: #000;
 }
 #ghostrun .ghost-run-moon {
   position: absolute;
@@ -470,7 +468,7 @@ body:has(#ghostrun.active) .tabs {
 /* Admin-uploaded Ghost Run art replaces generated scene pieces. */
 
 #ghostrun .ghost-run-scene {
-  background: transparent !important;
+  background: #000 !important;
 }
 #ghostrun .ghost-run-uploaded-background {
   position: absolute;
@@ -494,6 +492,7 @@ body:has(#ghostrun.active) .tabs {
   animation-play-state: running;
 }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background { animation-duration: 10.5s; }
+#ghostrun .ghost-run-uploaded-background,
 #ghostrun .ghost-run-sky,
 #ghostrun .ghost-run-stars,
 #ghostrun .ghost-run-fog,
