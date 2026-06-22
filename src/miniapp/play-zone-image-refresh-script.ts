@@ -1,6 +1,6 @@
 export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
 (function(){
-  var games=['mines','plinko','crash','wheel','dice','rps','slot','coinflip','hilo'];
+  var games=['mines','plinko','crash','wheel','dice','rps','slot','coinflip','hilo','ghostrun'];
   var legacyAds=['playzone-row-ad-1','playzone-row-ad-2','playzone-row-ad-3','playzone-row-ad-right','playzone-row-ad-left'];
   var all=games.concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v13';
@@ -84,7 +84,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     }
     return Promise.resolve(refreshFromCache());
   }
-  var countProfiles={mines:{offset:-36,width:18},plinko:{offset:24,width:32},rps:{offset:-12,width:-8},wheel:{offset:58,width:24},dice:{offset:-28,width:14},crash:{offset:72,width:38},hilo:{offset:-44,width:20},coinflip:{offset:10,width:-12},slot:{offset:46,width:28}};
+  var countProfiles={mines:{offset:-36,width:18},plinko:{offset:24,width:32},rps:{offset:-12,width:-8},wheel:{offset:58,width:24},dice:{offset:-28,width:14},crash:{offset:72,width:38},hilo:{offset:-44,width:20},coinflip:{offset:10,width:-12},slot:{offset:46,width:28},ghostrun:{offset:34,width:18}};
   var countRanges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
   function baseCountRange(hour){for(var i=0;i<countRanges.length;i++){var r=countRanges[i];if(hour>=r.start&&hour<=r.end)return r}return countRanges[0]}
   function gameCountRange(id){var base=baseCountRange((new Date()).getHours());var profile=countProfiles[id]||{offset:0,width:0};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {min:low,max:high}}
