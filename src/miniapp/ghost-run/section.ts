@@ -3,26 +3,18 @@ export const GHOST_RUN_SECTION = `
   <style>
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
     #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important}
-    #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important;background:#030206!important}
+    #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important}
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
-    #ghostrun .ghost-run-background-track{position:absolute!important;inset:0 auto 0 0!important;z-index:1!important;display:flex!important;width:400vw!important;width:400dvw!important;height:100%!important;pointer-events:none!important;animation:ghostRunBackgroundTrack 18s linear infinite!important;animation-play-state:paused!important;will-change:transform!important}
-    #ghostrun .ghost-run-uploaded-background{display:block!important;visibility:visible!important;position:relative!important;inset:auto!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;flex:0 0 100vw!important;flex-basis:100dvw!important;width:100vw!important;width:100dvw!important;height:100%!important;z-index:auto!important;background-repeat:no-repeat!important;background-size:cover!important;background-position:center center!important;opacity:1!important;animation:none!important;transform:none!important;will-change:auto!important}
-    #ghostrun .ghost-run-uploaded-background-copy{background-image:url('/app/api/ghost-run-asset/background.png')!important}
-    #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-background-track{animation-play-state:running!important;animation-duration:10.5s!important}
-    @keyframes ghostRunBackgroundTrack{from{transform:translateX(0)}to{transform:translateX(-300vw)}}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:0!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
     <div class="ghost-run-scene" aria-label="Ghost Run 2D forest scene">
       <div class="ghost-run-sky"></div>
-      <div class="ghost-run-background-track">
-        <div class="ghost-run-uploaded-background ghost-run-uploaded-background-1"></div>
-        <div class="ghost-run-uploaded-background ghost-run-uploaded-background-2"></div>
-        <div class="ghost-run-uploaded-background ghost-run-uploaded-background-3"></div>
-        <div class="ghost-run-uploaded-background ghost-run-uploaded-background-copy"></div>
-      </div>
+      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-1"></div>
+      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-2"></div>
+      <div class="ghost-run-uploaded-background ghost-run-uploaded-background-3"></div>
       <div class="ghost-run-moon"></div>
       <div class="ghost-run-stars"></div>
       <div class="ghost-run-layer ghost-run-layer-far"></div>
