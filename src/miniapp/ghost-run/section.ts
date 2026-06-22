@@ -7,12 +7,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
-    #ghostrun .ghost-run-uploaded-background{animation:none!important;animation-play-state:paused!important;overflow:hidden!important;background:none!important;will-change:auto!important}
-    #ghostrun .ghost-run-background-track{position:absolute!important;inset:0 auto 0 0!important;width:400vw!important;height:100%!important;display:flex!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
-    #ghostrun .ghost-run-background-frame{width:100vw!important;height:100%!important;flex:0 0 100vw!important;background-repeat:no-repeat!important;background-position:center center!important;background-size:cover!important}
-    #ghostrun .ghost-run-background-frame-1{background-image:url('/app/api/ghost-run-asset/background1.png')!important}
-    #ghostrun .ghost-run-background-frame-2{background-image:url('/app/api/ghost-run-asset/background2.png')!important}
-    #ghostrun .ghost-run-background-frame-3{background-image:url('/app/api/ghost-run-asset/background3.png')!important}
+    #ghostrun .ghost-run-uploaded-background{animation:none!important;animation-play-state:paused!important;background-position:var(--ghost-bg-x,0px) center!important;will-change:background-position!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
     #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
     #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
@@ -28,7 +23,7 @@ export const GHOST_RUN_SECTION = `
   <div class="ghost-run-screen" data-ghost-state="idle">
     <div class="ghost-run-scene" aria-label="Ghost Run 2D forest scene">
       <div class="ghost-run-sky"></div>
-      <div class="ghost-run-uploaded-background"><div class="ghost-run-background-track"><div class="ghost-run-background-frame ghost-run-background-frame-1"></div><div class="ghost-run-background-frame ghost-run-background-frame-2"></div><div class="ghost-run-background-frame ghost-run-background-frame-3"></div><div class="ghost-run-background-frame ghost-run-background-frame-1"></div></div></div>
+      <div class="ghost-run-uploaded-background"></div>
       <div class="ghost-run-moon"></div>
       <div class="ghost-run-stars"></div>
       <div class="ghost-run-layer ghost-run-layer-far"></div>
@@ -99,11 +94,7 @@ export const GHOST_RUN_SECTION = `
     function render(){
       var value=multiplier();
       root.style.setProperty('--ghost-x',position+'%');
-      var scene=root.querySelector('.ghost-run-scene');
-      var sceneWidth=(scene&&scene.clientWidth)||window.innerWidth||360;
-      var cycleWidth=Math.max(1,sceneWidth*3);
-      var cycleOffset=((backgroundOffset%cycleWidth)+cycleWidth)%cycleWidth;
-      root.style.setProperty('--ghost-bg-x',(-cycleOffset).toFixed(1)+'px');
+      root.style.setProperty('--ghost-bg-x',backgroundOffset.toFixed(1)+'px');
       if(multiplierEl)multiplierEl.textContent=value.toFixed(2)+'x';
       if(previewEl)previewEl.textContent=(bet()*value).toFixed(2);
       if(backButton)backButton.disabled=position<=minPosition&&backgroundOffset>=0;
