@@ -470,7 +470,7 @@ body:has(#ghostrun.active) .tabs {
 /* Admin-uploaded Ghost Run art replaces generated scene pieces. */
 
 #ghostrun .ghost-run-scene {
-  background: linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%) !important;
+  background: transparent !important;
 }
 #ghostrun .ghost-run-uploaded-background {
   position: absolute;
@@ -509,7 +509,11 @@ body:has(#ghostrun.active) .tabs {
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background-2 { animation-duration: 7.5s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background-3 { animation-duration: 5.2s; }
 #ghostrun .ghost-run-sky,
-#ghostrun .ghost-run-stars {
+#ghostrun .ghost-run-stars,
+#ghostrun .ghost-run-fog,
+#ghostrun .ghost-run-shadow-fade,
+#ghostrun .ghost-run-danger {
+  display: none !important;
   background: transparent !important;
 }
 #ghostrun .ghost-run-moon {
