@@ -501,19 +501,10 @@ body:has(#ghostrun.active) .top {
   will-change: background-position;
 }
 #ghostrun .ghost-run-uploaded-background {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background-repeat: repeat-x;
-  background-position: 0 center;
-  background-size: auto 100%;
+  background-image: url('/app/api/ghost-run-asset/background.png');
   animation-name: ghostRunUploadedBackground;
   animation-duration: 18s;
 }
-#ghostrun .ghost-run-uploaded-background-1 { background-image: url('/app/api/ghost-run-asset/background1.png'); }
-#ghostrun .ghost-run-uploaded-background-2 { background-image: url('/app/api/ghost-run-asset/background2.png'); }
-#ghostrun .ghost-run-uploaded-background-3 { background-image: url('/app/api/ghost-run-asset/background3.png'); }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background {
   animation-play-state: running;
 }
