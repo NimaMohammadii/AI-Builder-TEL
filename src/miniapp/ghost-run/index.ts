@@ -36,7 +36,7 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-result button{display:none!important}
 #ghostrun .ghost-run-result strong{font-size:28px!important;font-weight:1000!important;color:#fff!important;text-shadow:0 10px 24px rgba(0,0,0,.52)!important;margin-bottom:8px!important}
 #ghostrun .ghost-run-result span{font-size:14px!important;font-weight:850!important;color:rgba(255,255,255,.82)!important;text-shadow:0 8px 20px rgba(0,0,0,.44)!important}
-@keyframes ghostRunGraveTransform{0%{opacity:1;transform:translate3d(0,0,0) scale(1) rotate(0);filter:drop-shadow(0 0 18px rgba(255,255,255,.22))}26%{opacity:.84;transform:translate3d(0,-15px,0) scale(1.08) rotate(-2deg);filter:blur(.4px) drop-shadow(0 0 30px rgba(255,255,255,.25))}48%{opacity:.18;transform:translate3d(0,8px,0) scale(.62) rotate(3deg);filter:blur(4px) drop-shadow(0 0 42px rgba(255,255,255,.36))}49%{opacity:0;transform:translate3d(0,18px,0) scale(.45)}50%{opacity:0;transform:translate3d(0,22px,0) scale(.72)}72%{opacity:1;transform:translate3d(0,-7px,0) scale(1.08)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@keyframes ghostRunGraveTransform{0%{opacity:1;transform:translate3d(0,0,0) scale(1) rotate(0);filter:drop-shadow(0 0 18px rgba(255,255,255,.22))}26%{opacity:.84;transform:translate3d(0,-18px,0) scale(1.08) rotate(-2deg);filter:blur(.4px) drop-shadow(0 0 30px rgba(255,255,255,.25))}48%{opacity:.18;transform:translate3d(0,-4px,0) scale(.62) rotate(3deg);filter:blur(4px) drop-shadow(0 0 42px rgba(255,255,255,.36))}49%{opacity:0;transform:translate3d(0,2px,0) scale(.45)}50%{opacity:0;transform:translate3d(0,0,0) scale(.72)}72%{opacity:1;transform:translate3d(0,-26px,0) scale(1.08)}100%{opacity:1;transform:translate3d(0,-20px,0) scale(1)}}
 @keyframes ghostRunGraveFlash{0%{opacity:0;transform:scale(.45)}40%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1.55)}}
 @keyframes ghostRunGraveDust{0%{opacity:0;transform:translateX(-50%) scale(.2)}35%{opacity:.75;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(1.65)}}
 </style>`;
@@ -73,7 +73,7 @@ function patchGhostRunSection(section: string): string {
         "#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost:before{content:''!important;position:absolute!important;inset:-22px!important;border-radius:50%!important;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,.10) 28%,transparent 66%)!important;filter:blur(7px)!important;animation:ghostRunGraveFlash .72s ease-out both!important;pointer-events:none!important}",
         "#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost:after{content:''!important;position:absolute!important;left:50%!important;bottom:-10px!important;width:92px!important;height:18px!important;transform:translateX(-50%)!important;border-radius:50%!important;background:radial-gradient(ellipse,rgba(255,255,255,.22),transparent 70%)!important;filter:blur(4px)!important;animation:ghostRunGraveDust .9s ease-out both!important;pointer-events:none!important}",
         "@keyframes ghostRunMoveBob{0%{margin-bottom:0}100%{margin-bottom:5px}}",
-        "@keyframes ghostRunGraveTransform{0%{opacity:1;transform:translate3d(0,0,0) scale(1) rotate(0);filter:drop-shadow(0 0 18px rgba(255,255,255,.22))}26%{opacity:.84;transform:translate3d(0,-15px,0) scale(1.08) rotate(-2deg);filter:blur(.4px) drop-shadow(0 0 30px rgba(255,255,255,.25))}48%{opacity:.18;transform:translate3d(0,8px,0) scale(.62) rotate(3deg);filter:blur(4px) drop-shadow(0 0 42px rgba(255,255,255,.36))}49%{opacity:0;transform:translate3d(0,18px,0) scale(.45)}50%{opacity:0;transform:translate3d(0,22px,0) scale(.72)}72%{opacity:1;transform:translate3d(0,-7px,0) scale(1.08)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}",
+        "@keyframes ghostRunGraveTransform{0%{opacity:1;transform:translate3d(0,0,0) scale(1) rotate(0);filter:drop-shadow(0 0 18px rgba(255,255,255,.22))}26%{opacity:.84;transform:translate3d(0,-18px,0) scale(1.08) rotate(-2deg);filter:blur(.4px) drop-shadow(0 0 30px rgba(255,255,255,.25))}48%{opacity:.18;transform:translate3d(0,-4px,0) scale(.62) rotate(3deg);filter:blur(4px) drop-shadow(0 0 42px rgba(255,255,255,.36))}49%{opacity:0;transform:translate3d(0,2px,0) scale(.45)}50%{opacity:0;transform:translate3d(0,0,0) scale(.72)}72%{opacity:1;transform:translate3d(0,-26px,0) scale(1.08)}100%{opacity:1;transform:translate3d(0,-20px,0) scale(1)}}",
         "@keyframes ghostRunGraveFlash{0%{opacity:0;transform:scale(.45)}40%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1.55)}}",
         "@keyframes ghostRunGraveDust{0%{opacity:0;transform:translateX(-50%) scale(.2)}35%{opacity:.75;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(1.65)}}"
       ].join("\\n");
@@ -95,14 +95,14 @@ function patchGhostRunSection(section: string): string {
     }`;
 
   patched = replaceBlock(patched, 'function cssUrl(url){', '    function loadAssetUrls', safeAssetLoader);
-  patched = patched.replace("if(fear>=65)return 'Azrael's shadow is closing in';", "if(fear>=65)return \"Azrael's shadow is closing in\";");
+  patched = patched.replace("if(fear>=65)return 'Azrael's shadow is closing in';", "if(fear>=65)return \"Fear is closing in\";");
   patched = patched.replace(
     "var root=document.currentScript&&document.currentScript.closest('#ghostrun');\n    if(!root||root.dataset.ghostReady==='1')return;\n    root.dataset.ghostReady='1';",
     "var script=document.currentScript;\n    var root=(script&&script.closest&&script.closest('#ghostrun'))||document.getElementById('ghostrun');\n    if(!root)return;\n    root.dataset.ghostReady=String(Date.now());"
   );
   patched = patched.replace(
     "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];",
-    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'تبدیل به قبر شدی':'You Turned Into a Grave',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'روح خیلی ترسیده':'The ghost is terrified',shadow:fa?'ترس دارد نزدیک می‌شود':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
+    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'باختی':'You Lost',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'خیلی ترسیدی':'Too much fear',shadow:fa?'ترس نزدیکه':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
   );
   patched = patched.replace(
     "if(startButton)startButton.disabled=(roundActive&&!settled);",
@@ -114,11 +114,11 @@ function patchGhostRunSection(section: string): string {
   );
   patched = patched.replace(
     "function warningText(){if(fear>=100)return 'The Reaper Caught You';if(fear>=85)return 'Retreat or Claim — The Reaper is near';if(fear>=65)return 'Azrael\\'s shadow is closing in';if(fear>=40)return 'Fear is rising';return ''}",
-    "function warningText(){if(fear>=100)return label('caught');if(fear>=85)return label('near');if(fear>=65)return label('shadow');if(fear>=40)return label('fear');return ''}"
+    "function warningText(){if(fear>=100)return label('lost');if(fear>=85)return label('near');if(fear>=65)return label('shadow');if(fear>=40)return label('fear');return ''}"
   );
   patched = patched.replace(
     "setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='Lost '+nanoToTon(activeBetNano).toFixed(2)+' TON';",
-    "setState('caught',label('caught'),1);if(resultTitle)resultTitle.textContent=label('caught');if(resultDetail)resultDetail.textContent=label('lost')+' '+nanoToTon(activeBetNano).toFixed(2);"
+    "setState('caught',label('lost'),1);if(resultTitle)resultTitle.textContent=label('lost');if(resultDetail)resultDetail.textContent=nanoToTon(activeBetNano).toFixed(2);"
   );
   patched = patched.replace(
     "setState('claimed','Escaped the curse',direction);var payoutNano=Math.max(0,Math.floor(activeBetNano*multiplierValue));changeBalance(payoutNano);if(resultTitle)resultTitle.textContent='Escaped Before the Curse';if(resultDetail)resultDetail.textContent='Won '+nanoToTon(payoutNano).toFixed(2)+' TON at '+multiplierValue.toFixed(2)+'x';",
