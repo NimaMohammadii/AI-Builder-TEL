@@ -203,12 +203,37 @@ export const GHOST_RUN_SECTION = `
     }
     function bindHold(button,dir){
       if(!button)return;
-      button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});
-      button.addEventListener('pointerup',stopHold);
-      button.addEventListener('pointercancel',stopHold);
-      button.addEventListener('pointerleave',stopHold);
+      var activePointer=null;
+      function begin(e){
+        if(button.disabled)return;
+        if(e&&e.button!==undefined&&e.button!==0)return;
+        if(e&&e.cancelable!==false)e.preventDefault();
+        activePointer=e&&e.pointerId!==undefined?e.pointerId:null;
+        try{if(activePointer!==null&&button.setPointerCapture)button.setPointerCapture(activePointer)}catch(_e){}
+        startHold(dir,button);
+      }
+      function end(e){
+        if(e&&activePointer!==null&&e.pointerId!==undefined&&e.pointerId!==activePointer)return;
+        activePointer=null;
+        stopHold();
+      }
+      if(window.PointerEvent){
+        button.addEventListener('pointerdown',begin,{passive:false});
+        button.addEventListener('pointerup',end);
+        button.addEventListener('pointercancel',end);
+        button.addEventListener('lostpointercapture',end);
+      }else{
+        button.addEventListener('touchstart',begin,{passive:false});
+        button.addEventListener('touchend',end);
+        button.addEventListener('touchcancel',end);
+        button.addEventListener('mousedown',begin);
+      }
+      button.addEventListener('mouseleave',end);
       button.addEventListener('contextmenu',function(e){e.preventDefault()});
     }
+    document.addEventListener('mouseup',stopHold);
+    document.addEventListener('touchend',stopHold);
+    document.addEventListener('touchcancel',stopHold);
     bindHold(forwardButton,1);
     bindHold(backButton,-1);
     window.addEventListener('resize',render);
