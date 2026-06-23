@@ -25,9 +25,14 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-claim-button{display:none!important}
 #ghostrun .ghost-run-start-button{grid-column:1 / 3!important;height:60px!important;border-radius:999px!important;font-weight:1000!important;letter-spacing:-.02em!important}
 #ghostrun .ghost-run-note{display:none!important}
+#ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important;pointer-events:none!important}
+#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:14px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+#ghostrun .ghost-run-fear-top{grid-column:1!important;grid-row:1!important;margin:0!important;display:flex!important;align-items:center!important;gap:10px!important;justify-content:space-between!important}
+#ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}
+#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:27px!important;font-weight:1000!important;line-height:1!important;letter-spacing:-.05em!important;color:#fff!important;text-shadow:0 10px 24px rgba(0,0,0,.48)!important}
+#ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}
 #ghostrun .ghost-run-screen[data-round-active='1'] .ghost-run-start-button{border-color:rgba(255,255,255,.20)!important;color:#fff!important}
 #ghostrun .ghost-run-reaper{display:none!important;visibility:hidden!important;opacity:0!important}
-#ghostrun .ghost-run-screen[data-ghost-state='claimed'] .ghost-run-state,#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-state{display:none!important;opacity:0!important}
 #ghostrun .ghost-run-screen[data-ghost-state='claimed'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='won'] .ghost-run-ghost{filter:drop-shadow(0 0 18px rgba(220,235,255,.30)) drop-shadow(0 14px 24px rgba(0,0,0,.40))!important;animation:none!important;opacity:1!important;transform:translate3d(0,0,0) scale(1)!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost{animation:ghostRunGraveTransform 1.05s cubic-bezier(.18,.9,.18,1) both!important;opacity:1!important;filter:drop-shadow(0 0 22px rgba(255,255,255,.18)) drop-shadow(0 18px 26px rgba(0,0,0,.56))!important;background-position:center bottom!important;background-size:contain!important;background-repeat:no-repeat!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost:before{content:''!important;position:absolute!important;inset:-22px!important;border-radius:50%!important;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,.10) 28%,transparent 66%)!important;filter:blur(7px)!important;animation:ghostRunGraveFlash .72s ease-out both!important;pointer-events:none!important}
@@ -62,8 +67,12 @@ function patchGhostRunSection(section: string): string {
       style.textContent=[
         "#ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;pointer-events:auto!important}",
         "#ghostrun .ghost-run-move-button,#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;pointer-events:auto!important;touch-action:none!important;cursor:pointer!important}",
+        "#ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important}",
+        "#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:14px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}",
+        "#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:27px!important;font-weight:1000!important;line-height:1!important;letter-spacing:-.05em!important;color:#fff!important}",
+        "#ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}",
+        "#ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}",
         "#ghostrun .ghost-run-reaper{display:none!important;visibility:hidden!important;opacity:0!important}",
-        "#ghostrun .ghost-run-screen[data-ghost-state='claimed'] .ghost-run-state,#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-state{display:none!important;opacity:0!important}",
         "#ghostrun .ghost-run-result{display:flex!important;align-items:center!important;justify-content:center!important;gap:12px!important;background:rgba(255,255,255,.08)!important;background-image:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 22px 60px rgba(0,0,0,.28)!important;backdrop-filter:blur(2px) saturate(1.15)!important;-webkit-backdrop-filter:blur(2px) saturate(1.15)!important;pointer-events:none!important}",
         "#ghostrun .ghost-run-result strong{display:inline!important;margin:0!important;line-height:1!important}",
         "#ghostrun .ghost-run-result span{display:inline!important;margin:0!important;font-size:20px!important;line-height:1!important}",
@@ -103,6 +112,10 @@ function patchGhostRunSection(section: string): string {
   patched = patched.replace(
     "var root=document.currentScript&&document.currentScript.closest('#ghostrun');\n    if(!root||root.dataset.ghostReady==='1')return;\n    root.dataset.ghostReady='1';",
     "var script=document.currentScript;\n    var root=(script&&script.closest&&script.closest('#ghostrun'))||document.getElementById('ghostrun');\n    if(!root)return;\n    root.dataset.ghostReady=String(Date.now());"
+  );
+  patched = patched.replace(
+    "var multiplierEl=root.querySelector('[data-ghost-multiplier]');",
+    "var multiplierEl=root.querySelector('[data-ghost-multiplier]');var fearWrap=root.querySelector('.ghost-run-fear-wrap');if(fearWrap&&multiplierEl&&!fearWrap.contains(multiplierEl))fearWrap.appendChild(multiplierEl);"
   );
   patched = patched.replace(
     "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];",
