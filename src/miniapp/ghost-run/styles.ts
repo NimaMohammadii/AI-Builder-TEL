@@ -237,26 +237,30 @@ body:has(#ghostrun.active) .top {
   bottom: 0;
   height: 96px;
   background:
-    radial-gradient(ellipse at 20% 0%, rgba(115, 14, 38, .34), transparent 42%),
-    linear-gradient(180deg, rgba(26, 5, 12, .96), #020101 76%);
-  box-shadow: 0 -24px 50px rgba(0,0,0,.46), inset 0 1px 0 rgba(120,20,44,.28);
+    radial-gradient(ellipse at 20% 15%, rgba(54, 44, 42, .72) 0 18px, transparent 19px),
+    radial-gradient(ellipse at 55% 22%, rgba(46, 38, 38, .64) 0 16px, transparent 17px),
+    linear-gradient(180deg, #1a0912, #050202 64%);
+  box-shadow: inset 0 18px 20px rgba(255,255,255,.03), 0 -10px 22px rgba(105,13,37,.12);
 }
 #ghostrun .ghost-run-ground:before {
   content: '';
   position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(90deg, transparent 0 26px, rgba(90,12,28,.22) 27px 34px, transparent 35px 88px),
-    radial-gradient(ellipse at bottom, rgba(255,255,255,.055) 0 3px, transparent 4px);
-  background-size: 120px 100%, 68px 42px;
-  animation: ghostRunGround 1.8s linear infinite;
+  left: 0;
+  right: 0;
+  top: -18px;
+  height: 28px;
+  background:
+    linear-gradient(90deg, transparent 0 10px, rgba(64,13,28,.95) 11px 28px, transparent 29px 48px),
+    linear-gradient(180deg, rgba(105,13,37,.88), rgba(33,8,17,.4));
+  background-size: 72px 28px, 100% 100%;
+  animation: ghostRunGround 2.2s linear infinite;
 }
 #ghostrun .ghost-run-fog {
   position: absolute;
-  z-index: 14;
-  left: -25%;
-  right: -25%;
-  height: 120px;
+  z-index: 11;
+  left: -10%;
+  right: -10%;
+  height: 56px;
   border-radius: 50%;
   background: radial-gradient(ellipse, rgba(255,255,255,.10), rgba(255,255,255,.03) 46%, transparent 72%);
   filter: blur(12px);
@@ -399,17 +403,15 @@ body:has(#ghostrun.active) .top {
   gap: 10px;
   align-content: start;
   padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
-  background: radial-gradient(ellipse at 50% 100%, rgba(48, 3, 17, .34), rgba(12, 0, 5, .10) 42%, transparent 72%);
+  background: transparent;
 }
 #ghostrun .ghost-run-control-card {
   min-height: 70px;
   border-radius: 22px;
   padding: 13px 14px;
-  background: transparent;
-  border: 0;
-  box-shadow: 0 18px 38px rgba(0,0,0,.24), 0 0 34px rgba(255,255,255,.035);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-  backdrop-filter: blur(18px) saturate(1.35);
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.035));
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 18px 34px rgba(0,0,0,.28);
 }
 #ghostrun .ghost-run-control-card span,
 #ghostrun .ghost-run-note {
@@ -427,10 +429,6 @@ body:has(#ghostrun.active) .top {
   color: #fff;
 }
 #ghostrun .ghost-run-control-card em { font-style: normal; }
-#ghostrun .ghost-run-bet-card input { width: 74px; border:0; outline:0; padding:0; background:transparent; color:#fff; font:inherit; letter-spacing:inherit; text-align:left; }
-#ghostrun .ghost-run-bet-card input::-webkit-outer-spin-button,
-#ghostrun .ghost-run-bet-card input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-#ghostrun .ghost-run-bet-card input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 #ghostrun .ghost-run-main-button {
   grid-column: 1 / 3;
   height: 62px;
@@ -495,13 +493,14 @@ body:has(#ghostrun.active) .top {
 @media (max-width: 380px) {
   #ghostrun .ghost-run-scene { height: 56dvh; min-height: 306px; border-radius: 0; }
   #ghostrun .ghost-run-ghost { left: 13%; bottom: 68px; width: 76px; height: 90px; }
-  #ghostrun .ghost-run-controls { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  #ghostrun .ghost-run-controls { padding-left: 13px; padding-right: 13px; gap: 8px; }
+  #ghostrun .ghost-run-control-card { min-height: 64px; border-radius: 20px; padding: 12px; }
   #ghostrun .ghost-run-main-button { height: 58px; }
 }
 
-/* Admin-uploaded Ghost Run art replaces generated scene pieces. */
-
-#ghostrun .ghost-run-scene {
+/* Ghost Run uploaded image replacement layer. */
+#ghostrun .ghost-run-scene,
+#ghostrun .ghost-run-sky {
   background: #000 !important;
   background-color: #000 !important;
   background-image: none !important;
@@ -660,15 +659,10 @@ body:has(#ghostrun.active) .top {
 }
 #ghostrun .ghost-run-state:empty { opacity: 0; }
 #ghostrun .ghost-run-curse-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 22;
-  pointer-events: none;
-  opacity: calc(var(--ghost-fear, 0%) / 120%);
-  background:
-    radial-gradient(circle at 50% 50%, transparent 36%, rgba(0,0,0,.50) 100%),
-    linear-gradient(180deg, rgba(90,8,30,.05), rgba(0,0,0,.28));
-  transition: opacity .18s linear;
+  display: none !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
 }
 #ghostrun .ghost-run-reaper {
   position: absolute;
@@ -690,20 +684,20 @@ body:has(#ghostrun.active) .top {
 #ghostrun .ghost-run-screen[data-ghost-state='idle'][style*='--ghost-fear'],
 #ghostrun .ghost-run-screen[data-ghost-state='movingForward'],
 #ghostrun .ghost-run-screen[data-ghost-state='movingBack'] { transition: filter .18s linear; }
-#ghostrun .ghost-run-screen[data-danger-stage='4'] .ghost-run-background-strip { filter: brightness(.82) saturate(.88); }
-#ghostrun .ghost-run-screen[data-danger-stage='5'] .ghost-run-background-strip { filter: brightness(.70) saturate(.82); }
-#ghostrun .ghost-run-screen[data-danger-stage='6'] .ghost-run-background-strip { filter: brightness(.58) saturate(.76); }
+#ghostrun .ghost-run-screen[data-danger-stage='4'] .ghost-run-background-strip,
+#ghostrun .ghost-run-screen[data-danger-stage='5'] .ghost-run-background-strip,
+#ghostrun .ghost-run-screen[data-danger-stage='6'] .ghost-run-background-strip { filter: none !important; }
 #ghostrun .ghost-run-screen[data-fear-tier='haunted'] .ghost-run-reaper { opacity: .34; transform: translate3d(28px,6px,0) scale(.9); }
 #ghostrun .ghost-run-screen[data-fear-tier='critical'] .ghost-run-reaper,
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-reaper { opacity: .9; transform: translate3d(0,0,0) scale(1); }
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-reaper { z-index: 30; right: 28%; opacity: 1; animation: ghostRunReaperAttack 1.15s cubic-bezier(.2,.8,.2,1) both; }
-#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-curse-overlay { z-index: 29; opacity: .92; background: radial-gradient(circle at 46% 58%, rgba(90,8,30,.18), rgba(0,0,0,.92) 68%); }
+#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-curse-overlay { display:none !important; opacity:0 !important; background:transparent !important; }
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost { animation: ghostRunLost 1.05s .38s ease-in both !important; }
 #ghostrun .ghost-run-result { position:absolute; z-index:34; left:50%; top:50%; width:min(86vw,360px); transform:translate(-50%,-44%) scale(.96); padding:24px 18px; border-radius:26px; background:rgba(0,0,0,.72); border:1px solid rgba(255,255,255,.10); box-shadow:0 30px 90px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.10); text-align:center; opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s ease; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
-#ghostrun .ghost-run-result[data-visible='1'] { opacity:1; transform:translate(-50%,-50%) scale(1); }
+#ghostrun .ghost-run-result[data-visible='1'] { opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto !important; }
 #ghostrun .ghost-run-result strong { display:block; color:#fff; font-size:24px; font-weight:1000; letter-spacing:-.04em; margin-bottom:8px; }
 #ghostrun .ghost-run-result span { display:block; color:rgba(255,226,233,.82); font-size:14px; font-weight:850; }
-#ghostrun .ghost-run-result button { margin-top:16px; height:44px; min-width:138px; border:0; border-radius:999px; background:linear-gradient(180deg,#f4f0ed,#c9c0bd); color:#12070b; font-size:14px; font-weight:1000; }
+#ghostrun .ghost-run-result button { margin-top:16px; height:44px; min-width:138px; border:0; border-radius:999px; background:linear-gradient(180deg,#f4f0ed,#c9c0bd); color:#12070b; font-size:14px; font-weight:1000; pointer-events:auto !important; cursor:pointer; }
 #ghostrun .ghost-run-start-button { background: linear-gradient(180deg, rgba(70,6,25,.82), rgba(24,1,9,.92)) !important; color:#fff !important; box-shadow:0 18px 42px rgba(50,2,18,.30), inset 0 1px 0 rgba(255,255,255,.12) !important; }
 #ghostrun .ghost-run-claim-button { background: transparent !important; background-color: transparent !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; color: rgba(255,255,255,.92) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 #ghostrun .ghost-run-claim-button:disabled,
