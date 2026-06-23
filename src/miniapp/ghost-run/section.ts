@@ -131,7 +131,7 @@ export const GHOST_RUN_SECTION = `
       ].join("\\n");
     }
     function loadAssetUrls(){
-      fetch('/app/api/ghost-run-assets',{cache:'no-cache'})
+      fetch('/app/api/ghost-run-assets',{cache:'force-cache'})
         .then(function(r){return r.ok?r.json():null})
         .then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)})
         .catch(function(){});

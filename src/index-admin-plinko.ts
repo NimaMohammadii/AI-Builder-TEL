@@ -19,6 +19,7 @@ const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 // Ghost Run scene art is referenced by stable CSS URLs, so keep it browser-cached
 // instead of re-downloading every time the user opens the game.
 const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
@@ -67,7 +68,7 @@ app.get('/app/api/ghost-run-asset/:kind', async (c) => {
 
 app.get('/app/api/ghost-run-assets', async (c) => {
   const manifest = await getGhostRunAssetManifest(c.env);
-  return c.json(manifest, 200, { 'cache-control': 'no-cache, must-revalidate' });
+  return c.json(manifest, 200, { 'cache-control': GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL });
 });
 
 app.post('/admin/api/upload-ghost-run-asset', async (c) => {
