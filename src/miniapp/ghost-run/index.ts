@@ -25,15 +25,26 @@ function patchGhostRunSection(section: string): string {
       var style=document.getElementById('ghostRunVersionedAssetStyle');
       if(!style){style=document.createElement('style');style.id='ghostRunVersionedAssetStyle';document.head.appendChild(style)}
       style.textContent=[
-        "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;transition:left .08s linear,transform .24s ease,filter .24s ease,opacity .24s ease!important}",
-        "#ghostrun .ghost-run-screen[data-ghost-state='moving'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostmove)+"!important;animation:ghostRunCharacterSwitch .42s ease-in-out infinite alternate!important;filter:drop-shadow(0 0 16px rgba(255,255,255,.18))!important}",
-        "#ghostrun .ghost-run-screen[data-ghost-state='idle'] .ghost-run-ghost{animation:none!important;transform:translate3d(0,0,0) scale(1)!important}",
-        "@keyframes ghostRunCharacterSwitch{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-5px,0) scale(1.045)}}"
+        "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;transition:left .08s linear,transform .28s cubic-bezier(.2,.8,.2,1),filter .28s ease,opacity .18s ease!important}",
+        "#ghostrun .ghost-run-screen[data-ghost-state='idle'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;animation:ghostRunIdleBreath 1.8s ease-in-out infinite!important;transform:translate3d(0,0,0) scale(1)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.10))!important}",
+        "#ghostrun .ghost-run-screen[data-ghost-state='moving'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostmove)+"!important;animation:ghostRunMoveBob .38s ease-in-out infinite alternate!important;filter:drop-shadow(0 0 16px rgba(255,255,255,.18))!important}",
+        "#ghostrun .ghost-run-screen[data-ghost-direction='back'] .ghost-run-ghost{transform:translate3d(0,-4px,0) scaleX(-1) scale(1.045)!important}",
+        "#ghostrun .ghost-run-screen[data-ghost-direction='forward'] .ghost-run-ghost{transform:translate3d(0,-4px,0) scaleX(1) scale(1.045)!important}",
+        "@keyframes ghostRunIdleBreath{0%,100%{filter:drop-shadow(0 0 9px rgba(255,255,255,.10))}50%{filter:drop-shadow(0 0 15px rgba(255,255,255,.16))}}",
+        "@keyframes ghostRunMoveBob{0%{margin-bottom:0}100%{margin-bottom:5px}}"
       ].join("\\n");
     }
     `;
 
   patched = replaceBlock(patched, 'function cssUrl(url){', '    function loadAssetUrls', safeAssetLoader);
+  patched = patched.replace(
+    "function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}",
+    "function setState(state,msg,dir){if(screen){screen.setAttribute('data-ghost-state',state);screen.setAttribute('data-ghost-direction',dir<0?'back':'forward')}if(messageEl)messageEl.textContent=msg||''}"
+  );
+  patched = patched.replace(
+    "setState(position>16||distance>0?'moving':'idle','');",
+    "setState(direction?'moving':'idle','',direction);"
+  );
   return patched;
 }
 
