@@ -88,6 +88,10 @@ function patchGhostRunSection(section: string): string {
     "var script=document.currentScript;\n    var root=(script&&script.closest&&script.closest('#ghostrun'))||document.getElementById('ghostrun');\n    if(!root)return;\n    root.dataset.ghostReady=String(Date.now());"
   );
   patched = patched.replace(
+    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];",
+    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'عزرائیل گرفتت':'The Reaper Caught You',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Curse',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'عزرائیل نزدیکه':'Retreat or Claim — The Reaper is near',shadow:fa?'سایه عزرائیل نزدیک می‌شود':\"Azrael's shadow is closing in\",fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
+  );
+  patched = patched.replace(
     "if(startButton)startButton.disabled=(roundActive&&!settled);",
     "if(startButton){startButton.disabled=false;startButton.textContent=(roundActive&&!settled)?label('cashout'):'Place Bet'}if(screen)screen.setAttribute('data-round-active',(roundActive&&!settled)?'1':'0');"
   );
@@ -97,7 +101,7 @@ function patchGhostRunSection(section: string): string {
   );
   patched = patched.replace(
     "function warningText(){if(fear>=100)return 'The Reaper Caught You';if(fear>=85)return 'Retreat or Claim — The Reaper is near';if(fear>=65)return 'Azrael\\'s shadow is closing in';if(fear>=40)return 'Fear is rising';return ''}",
-    "function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'عزرائیل گرفتت':'The Reaper Caught You',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Curse',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'عزرائیل نزدیکه':'Retreat or Claim — The Reaper is near',shadow:fa?'سایه عزرائیل نزدیک می‌شود':\"Azrael's shadow is closing in\",fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}function warningText(){if(fear>=100)return label('caught');if(fear>=85)return label('near');if(fear>=65)return label('shadow');if(fear>=40)return label('fear');return ''}"
+    "function warningText(){if(fear>=100)return label('caught');if(fear>=85)return label('near');if(fear>=65)return label('shadow');if(fear>=40)return label('fear');return ''}"
   );
   patched = patched.replace(
     "setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='Lost '+nanoToTon(activeBetNano).toFixed(2)+' TON';",
