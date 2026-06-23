@@ -4,7 +4,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
     #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important}
     #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important;background:#030206!important}
-    #ghostrun .ghost-run-controls{margin-top:-1px!important}
+    #ghostrun .ghost-run-controls{margin-top:-1px!important;position:relative!important;z-index:80!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     #ghostrun .ghost-run-background-strip{position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:700vw!important;width:700dvw!important;height:100%!important;z-index:1!important;display:flex!important;pointer-events:none!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
@@ -17,7 +17,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-background-panel-6{background-image:url('/app/api/ghost-run-asset/background6.png')!important}
     #ghostrun .ghost-run-background-panel-copy{background-image:url('/app/api/ghost-run-asset/background.png')!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
-    #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
+    #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;z-index:90!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important;cursor:pointer!important}
     #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
     #ghostrun .ghost-run-move-button:after{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:42px!important;height:42px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.10)!important;transform:translate(-50%,-50%)!important}
     #ghostrun .ghost-run-back-button{grid-column:1!important}
@@ -94,7 +94,7 @@ export const GHOST_RUN_SECTION = `
   <script>
   (function(){
     var root=document.currentScript&&document.currentScript.closest('#ghostrun');
-    if(!root||root.dataset.ghostReady==='1')return;
+    if(!root)return;
     root.dataset.ghostReady='1';
     var screen=root.querySelector('.ghost-run-screen');
     var forwardButton=root.querySelector('[data-ghost-forward]');
@@ -201,16 +201,25 @@ export const GHOST_RUN_SECTION = `
       lastTime=0;
       raf=window.requestAnimationFrame(step);
     }
+    function eventPoint(e){return e&&e.touches&&e.touches[0]?e.touches[0]:e}
     function bindHold(button,dir){
       if(!button)return;
-      button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});
-      button.addEventListener('pointerup',stopHold);
-      button.addEventListener('pointercancel',stopHold);
-      button.addEventListener('pointerleave',stopHold);
+      function start(e){if(e&&e.cancelable)e.preventDefault();if(e&&e.pointerId!=null&&button.setPointerCapture){try{button.setPointerCapture(e.pointerId)}catch(_){}}startHold(dir,button)}
+      function end(e){if(e&&e.cancelable)e.preventDefault();stopHold()}
+      button.addEventListener('pointerdown',start);
+      button.addEventListener('pointerup',end);
+      button.addEventListener('pointercancel',end);
+      button.addEventListener('pointerleave',end);
+      button.addEventListener('touchstart',start,{passive:false});
+      button.addEventListener('touchend',end,{passive:false});
+      button.addEventListener('touchcancel',end,{passive:false});
+      button.addEventListener('mousedown',start);
+      window.addEventListener('mouseup',end);
       button.addEventListener('contextmenu',function(e){e.preventDefault()});
     }
     bindHold(forwardButton,1);
     bindHold(backButton,-1);
+    window.addEventListener('blur',stopHold);
     window.addEventListener('resize',render);
     loadAssetUrls();
     render();
