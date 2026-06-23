@@ -104,6 +104,38 @@ export const GHOST_RUN_SECTION = `
     var previewEl=root.querySelector('[data-ghost-preview]');
     var betEl=root.querySelector('[data-ghost-bet]');
     var position=16, minPosition=10, leftEdge=18, rightEdge=68, backgroundOffset=0, distance=0, direction=0, raf=0, lastTime=0;
+    function cssUrl(url){return "url('"+String(url||'').replace(/['\\]/g,'')+"')"}
+    function injectAssetUrls(urls){
+      if(!urls)return;
+      var style=document.getElementById('ghostRunVersionedAssetStyle');
+      if(!style){style=document.createElement('style');style.id='ghostRunVersionedAssetStyle';document.head.appendChild(style)}
+      style.textContent=[
+        "#ghostrun .ghost-run-background-panel-1{background-image:"+cssUrl(urls.background)+"!important}",
+        "#ghostrun .ghost-run-background-panel-2{background-image:"+cssUrl(urls.background2)+"!important}",
+        "#ghostrun .ghost-run-background-panel-3{background-image:"+cssUrl(urls.background3)+"!important}",
+        "#ghostrun .ghost-run-background-panel-4{background-image:"+cssUrl(urls.background4)+"!important}",
+        "#ghostrun .ghost-run-background-panel-5{background-image:"+cssUrl(urls.background5)+"!important}",
+        "#ghostrun .ghost-run-background-panel-6{background-image:"+cssUrl(urls.background6)+"!important}",
+        "#ghostrun .ghost-run-background-panel-copy{background-image:"+cssUrl(urls.background)+"!important}",
+        "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important}",
+        "#ghostrun .ghost-run-screen[data-ghost-state='moving'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostmove)+"!important}",
+        "#ghostrun .ghost-run-uploaded-background{background-image:"+cssUrl(urls.background)+"!important}",
+        "#ghostrun .ghost-run-moon{background:"+cssUrl(urls.moon)+" center/contain no-repeat!important}",
+        "#ghostrun .ghost-run-ground{background:"+cssUrl(urls.ground)+" 0 bottom / auto 100% repeat-x!important}",
+        "#ghostrun .ghost-run-uploaded-tree-1{background-image:"+cssUrl(urls.tree1)+"!important}",
+        "#ghostrun .ghost-run-uploaded-tree-2{background-image:"+cssUrl(urls.tree2)+"!important}",
+        "#ghostrun .ghost-run-uploaded-tree-3{background-image:"+cssUrl(urls.tree3)+"!important}",
+        "#ghostrun .ghost-run-uploaded-house-1{background-image:"+cssUrl(urls.house1)+"!important}",
+        "#ghostrun .ghost-run-uploaded-house-2{background-image:"+cssUrl(urls.house2)+"!important}",
+        "#ghostrun .ghost-run-uploaded-house-3{background-image:"+cssUrl(urls.house3)+"!important}"
+      ].join("\\n");
+    }
+    function loadAssetUrls(){
+      fetch('/app/api/ghost-run-assets',{cache:'no-cache'})
+        .then(function(r){return r.ok?r.json():null})
+        .then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)})
+        .catch(function(){});
+    }
     function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
     function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}
     function viewportWidth(){return Math.max(1,window.innerWidth||document.documentElement.clientWidth||360)}
@@ -180,6 +212,7 @@ export const GHOST_RUN_SECTION = `
     bindHold(forwardButton,1);
     bindHold(backButton,-1);
     window.addEventListener('resize',render);
+    loadAssetUrls();
     render();
   })();
   </script>

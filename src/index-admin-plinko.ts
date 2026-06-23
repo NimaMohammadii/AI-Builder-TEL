@@ -61,9 +61,13 @@ app.post('/admin/api/upload-plinko-control-image', async (c) => {
 app.get('/app/api/ghost-run-asset/:kind', async (c) => {
   const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
   const object = await c.env.ASSETS.get(ghostRunAssetKey(kind)).catch(() => null);
-  const cacheControl = kind.startsWith('background') ? 'no-store' : GHOST_RUN_ASSET_CACHE_CONTROL;
-  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': cacheControl } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': cacheControl } });
+  if (!object) return new Response(defaultGhostRunAssetSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': GHOST_RUN_ASSET_CACHE_CONTROL } });
+});
+
+app.get('/app/api/ghost-run-assets', async (c) => {
+  const manifest = await getGhostRunAssetManifest(c.env);
+  return c.json(manifest, 200, { 'cache-control': 'no-cache, must-revalidate' });
 });
 
 app.post('/admin/api/upload-ghost-run-asset', async (c) => {
@@ -454,6 +458,18 @@ function normalizeGhostRunAssetKind(value: string): string {
 
 function ghostRunAssetKey(kind: string): string {
   return `ghost-run-assets/${kind}`;
+}
+
+async function getGhostRunAssetManifest(env: Env): Promise<{ ok: true; urls: Record<string, string> }> {
+  const kinds = Array.from(GHOST_RUN_ASSET_KINDS);
+  const heads = await Promise.all(kinds.map((kind) => env.ASSETS.head(ghostRunAssetKey(kind)).catch(() => null)));
+  const urls: Record<string, string> = {};
+  kinds.forEach((kind, index) => {
+    const head = heads[index];
+    const version = head?.customMetadata?.version || head?.uploaded?.getTime?.() || 'default';
+    urls[kind] = `/app/api/ghost-run-asset/${kind}.png?v=${encodeURIComponent(String(version))}`;
+  });
+  return { ok: true, urls };
 }
 
 function defaultGhostRunAssetSvg(kind: string): string {
