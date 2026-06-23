@@ -7,6 +7,7 @@ body:has(#ghostrun.active) .content,
 body:has(#ghostrun.active) .view.active {
   background: #000 !important;
   background-color: #000 !important;
+  background-image: none !important;
 }
 body:has(#ghostrun.active) .tabs {
   display: none !important;
@@ -16,6 +17,7 @@ body:has(#ghostrun.active) .top {
   z-index: 20;
   background: #000 !important;
   background-color: #000 !important;
+  background-image: none !important;
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
@@ -31,7 +33,7 @@ body:has(#ghostrun.active) .top {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: #000;
   overflow: hidden;
   isolation: isolate;
 }
@@ -45,7 +47,7 @@ body:has(#ghostrun.active) .top {
   min-height: 330px;
   overflow: hidden;
   border-radius: 0;
-  background: linear-gradient(180deg, #030206 0%, #09040a 42%, #080205 100%);
+  background: #000;
   box-shadow: none;
 }
 #ghostrun .ghost-run-sky {
@@ -485,7 +487,9 @@ body:has(#ghostrun.active) .top {
 /* Admin-uploaded Ghost Run art replaces generated scene pieces. */
 
 #ghostrun .ghost-run-scene {
-  background: transparent !important;
+  background: #000 !important;
+  background-color: #000 !important;
+  background-image: none !important;
 }
 #ghostrun .ghost-run-uploaded-background {
   position: absolute;
@@ -509,7 +513,9 @@ body:has(#ghostrun.active) .top {
   animation-play-state: running;
 }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-background { animation-duration: 10.5s; }
-#ghostrun .ghost-run-sky,
+#ghostrun .ghost-run-sky {
+  background: #000 !important;
+}
 #ghostrun .ghost-run-stars,
 #ghostrun .ghost-run-fog,
 #ghostrun .ghost-run-shadow-fade,
