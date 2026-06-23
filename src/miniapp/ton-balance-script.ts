@@ -10,7 +10,11 @@ export const TON_BALANCE_SCRIPT = `
   var pendingEvents=[];
   var pendingUserId='';
   var lastLocalMutationAt=0;
+  var lastBalanceLoadAt=0;
+  var flushTimer=0;
   var winChancePercent=50;
+  var LOAD_STALE_MS=60000;
+  var FLUSH_DELAY_MS=2500;
   function clean(value){var n=Math.floor(Number(value));return Number.isFinite(n)&&n>=0?n:0}
   function formatTonNumber(value){var raw=clean(value);var ton=raw/NANO_PER_TON;return ton.toFixed(2)}
   function formatTon(value){return formatTonNumber(value)}
@@ -66,13 +70,24 @@ export const TON_BALANCE_SCRIPT = `
   async function load(){
     loadPending();
     if(hasPending())return flushPending(false);
+    var now=Date.now();
+    if(lastBalanceLoadAt&&now-lastBalanceLoadAt<LOAD_STALE_MS)return write(read(),0,false);
+    lastBalanceLoadAt=now;
     try{
       var server=await fetchServerBalance();
       if(Number.isFinite(server))return write(server,0,false);
     }catch(e){}
     return write(read(),0,false);
   }
+  function clearFlushTimer(){if(flushTimer){clearTimeout(flushTimer);flushTimer=0}}
+  function scheduleFlush(force){
+    if(force){clearFlushTimer();return flushPending(true)}
+    if(flushTimer||syncing||!hasPending())return read();
+    flushTimer=setTimeout(function(){flushTimer=0;flushPending(false)},FLUSH_DELAY_MS);
+    return read();
+  }
   async function flushPending(force){
+    if(force)clearFlushTimer();
     var u=user();
     if(!u.id)return read();
     loadPending();
@@ -94,7 +109,7 @@ export const TON_BALANCE_SCRIPT = `
       savePending();
     }
     syncing=false;
-    if(hasPending()&&!document.hidden)flushPending(false);
+    if(hasPending()&&!document.hidden)scheduleFlush(false);
     return read();
   }
   async function pushDelta(delta,section){
@@ -108,7 +123,7 @@ export const TON_BALANCE_SCRIPT = `
     loadPending();
     pendingEvents.push({deltaNano:value,section:normalizeSection(section)||activeSection()});pendingDelta=pendingSum();
     savePending();
-    flushPending(false);
+    scheduleFlush(false);
     return optimistic;
   }
   function add(deltaNano,section){return pushDelta(deltaNano,section)}
@@ -123,7 +138,7 @@ export const TON_BALANCE_SCRIPT = `
   window.addEventListener('vexa-ton-balance-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.deltaNano!==undefined?ev.detail.deltaNano:ev.detail.delta);if(Number.isFinite(delta)&&delta!==0){pushDelta(delta,ev.detail.section);return}var balance=Number(ev.detail.tonBalanceNano);if(Number.isFinite(balance))write(balance,0,true)});
   window.addEventListener('vexa-credit-game-change',function(ev){if(!ev||!ev.detail)return;var delta=Number(ev.detail.delta);if(Number.isFinite(delta)&&delta!==0)pushDelta(Math.trunc(delta*PLINKO_UNIT_NANO),ev.detail.section)});
   window.addEventListener('vexa-ton-balance-sync',function(ev){if(!ev||!ev.detail)return;var balance=Number(ev.detail.tonBalanceNano);if(Number.isFinite(balance)&&!hasPending())render(balance)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden)flushPending(true);else if(hasPending())flushPending(false);else load()});
+  document.addEventListener('visibilitychange',function(){if(document.hidden)flushPending(true);else if(hasPending())scheduleFlush(false);else load()});
   window.addEventListener('beforeunload',function(){flushPending(true)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
 })();
