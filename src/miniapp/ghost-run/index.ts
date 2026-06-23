@@ -27,11 +27,11 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-note{display:none!important}
 #ghostrun .ghost-run-screen[data-round-active='1'] .ghost-run-start-button{border-color:rgba(255,255,255,.20)!important;color:#fff!important}
 #ghostrun .ghost-run-screen[data-ghost-state='claimed'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='won'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='lost'] .ghost-run-ghost{filter:drop-shadow(0 0 18px rgba(220,235,255,.30)) drop-shadow(0 14px 24px rgba(0,0,0,.40))!important;animation:none!important;opacity:1!important;transform:translate3d(0,0,0) scale(1)!important}
-#ghostrun .ghost-run-result{background:rgba(255,255,255,.015)!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;padding:18px 14px!important;border-radius:24px!important;pointer-events:none!important}
+#ghostrun .ghost-run-result{background:rgba(255,255,255,.08)!important;background-image:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:0!important;outline:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 22px 60px rgba(0,0,0,.28)!important;backdrop-filter:blur(2px) saturate(1.15)!important;-webkit-backdrop-filter:blur(2px) saturate(1.15)!important;padding:18px 14px!important;border-radius:24px!important;pointer-events:none!important}
 #ghostrun .ghost-run-result[data-visible='1']{pointer-events:none!important}
 #ghostrun .ghost-run-result button{display:none!important}
 #ghostrun .ghost-run-result strong{font-size:28px!important;font-weight:1000!important;color:#fff!important;text-shadow:0 10px 24px rgba(0,0,0,.52)!important;margin-bottom:8px!important}
-#ghostrun .ghost-run-result span{font-size:14px!important;font-weight:850!important;color:rgba(255,255,255,.78)!important;text-shadow:0 8px 20px rgba(0,0,0,.44)!important}
+#ghostrun .ghost-run-result span{font-size:14px!important;font-weight:850!important;color:rgba(255,255,255,.82)!important;text-shadow:0 8px 20px rgba(0,0,0,.44)!important}
 </style>`;
   patched = patched.replace('<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">', '<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">' + controlPolishCss);
 
@@ -54,7 +54,7 @@ function patchGhostRunSection(section: string): string {
       style.textContent=[
         "#ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;pointer-events:auto!important}",
         "#ghostrun .ghost-run-move-button,#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;pointer-events:auto!important;touch-action:none!important;cursor:pointer!important}",
-        "#ghostrun .ghost-run-result{background:rgba(255,255,255,.015)!important;background-image:none!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;pointer-events:none!important}",
+        "#ghostrun .ghost-run-result{background:rgba(255,255,255,.08)!important;background-image:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 22px 60px rgba(0,0,0,.28)!important;backdrop-filter:blur(2px) saturate(1.15)!important;-webkit-backdrop-filter:blur(2px) saturate(1.15)!important;pointer-events:none!important}",
         "#ghostrun .ghost-run-result button{display:none!important}",
         "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;transition:left .08s linear,transform .28s cubic-bezier(.2,.8,.2,1),filter .28s ease,opacity .18s ease!important}",
         "#ghostrun .ghost-run-screen[data-ghost-state='idle'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;animation:none!important;transform:translate3d(0,0,0) scale(1)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.10))!important}",
