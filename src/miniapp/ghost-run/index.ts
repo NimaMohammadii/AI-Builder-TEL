@@ -8,8 +8,22 @@ function replaceBlock(source: string, startToken: string, endToken: string, repl
   return source.slice(0, start) + replacement + source.slice(end);
 }
 
+function addBlackPageChrome(section: string): string {
+  const blackChromeCss = `<style>
+body:has(#ghostrun.view.active),
+body:has(#ghostrun.view.active) .app,
+body:has(#ghostrun.view.active) .content,
+body:has(#ghostrun.view.active) #ghostrun{background:#000!important}
+body:has(#ghostrun.view.active)::before,
+body:has(#ghostrun.view.active)::after,
+body:has(#ghostrun.view.active) .app::before,
+body:has(#ghostrun.view.active) .app::after{background:#000!important;opacity:1!important;filter:none!important}
+</style>`;
+  return section.replace('<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">', '<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">' + blackChromeCss);
+}
+
 function patchGhostRunSection(section: string): string {
-  let patched = section;
+  let patched = addBlackPageChrome(section);
 
   const safeAssetLoader = `function cssUrl(url){var clean=String(url||'').split("'").join('').split(')') .join('').split('"').join('');return "url('"+clean+"')"}
     function setVersionedBackground(selector,url){var el=root.querySelector(selector);if(el&&url)el.style.setProperty('background-image',cssUrl(url),'important')}
