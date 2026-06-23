@@ -7,11 +7,14 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-controls{margin-top:-1px!important}
     #ghostrun .ghost-run-shadow-fade{bottom:-28px!important;height:72px!important;background:linear-gradient(180deg,transparent 0%,rgba(12,2,6,.46) 52%,rgba(0,0,0,.88) 100%)!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
-    #ghostrun .ghost-run-background-strip{position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:400vw!important;width:400dvw!important;height:100%!important;z-index:1!important;display:flex!important;pointer-events:none!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
+    #ghostrun .ghost-run-background-strip{position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:700vw!important;width:700dvw!important;height:100%!important;z-index:1!important;display:flex!important;pointer-events:none!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
     #ghostrun .ghost-run-background-panel{flex:0 0 100vw!important;flex-basis:100dvw!important;width:100vw!important;width:100dvw!important;height:100%!important;background-repeat:no-repeat!important;background-size:cover!important;background-position:center center!important}
     #ghostrun .ghost-run-background-panel-1{background-image:url('/app/api/ghost-run-asset/background.png')!important}
     #ghostrun .ghost-run-background-panel-2{background-image:url('/app/api/ghost-run-asset/background2.png')!important}
     #ghostrun .ghost-run-background-panel-3{background-image:url('/app/api/ghost-run-asset/background3.png')!important}
+    #ghostrun .ghost-run-background-panel-4{background-image:url('/app/api/ghost-run-asset/background4.png')!important}
+    #ghostrun .ghost-run-background-panel-5{background-image:url('/app/api/ghost-run-asset/background5.png')!important}
+    #ghostrun .ghost-run-background-panel-6{background-image:url('/app/api/ghost-run-asset/background6.png')!important}
     #ghostrun .ghost-run-background-panel-copy{background-image:url('/app/api/ghost-run-asset/background.png')!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
     #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
@@ -32,6 +35,9 @@ export const GHOST_RUN_SECTION = `
         <div class="ghost-run-background-panel ghost-run-background-panel-1"></div>
         <div class="ghost-run-background-panel ghost-run-background-panel-2"></div>
         <div class="ghost-run-background-panel ghost-run-background-panel-3"></div>
+        <div class="ghost-run-background-panel ghost-run-background-panel-4"></div>
+        <div class="ghost-run-background-panel ghost-run-background-panel-5"></div>
+        <div class="ghost-run-background-panel ghost-run-background-panel-6"></div>
         <div class="ghost-run-background-panel ghost-run-background-panel-copy"></div>
       </div>
       <div class="ghost-run-moon"></div>
@@ -101,7 +107,7 @@ export const GHOST_RUN_SECTION = `
     function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
     function setState(state,msg){if(screen)screen.setAttribute('data-ghost-state',state);if(messageEl)messageEl.textContent=msg||''}
     function viewportWidth(){return Math.max(1,window.innerWidth||document.documentElement.clientWidth||360)}
-    function cycleLength(){return 3*viewportWidth()}
+    function cycleLength(){return 6*viewportWidth()}
     function normalizeBackgroundOffset(){
       var cycle=cycleLength();
       while(backgroundOffset<=-cycle)backgroundOffset+=cycle;
