@@ -14,8 +14,13 @@ export const CRASH_BREAK_FX_SCRIPT = `
   function state(){if(!active())return 'inactive';var label=q('crashNextRound'),txt=String((label&&label.textContent)||'');if(/Crashed/i.test(txt))return 'crashed';if(/Round starts/i.test(txt))return 'waiting';return 'running'}
   function roundKey(){var n=q('crashMultiplier');return String((n&&n.textContent)||'')+'|'+String(Date.now()).slice(0,-3)}
   function sync(){var s=state(),n=q('crashMultiplier');if(s==='inactive'){lastState='inactive';crashedLock=false;return}unlock();if(s==='running'){crashedLock=false;if(n)n.classList.remove('crash-broken');if(lastState!=='running'){var k=roundKey();if(k!==lastStartKey&&canPlay()){lastStartKey=k;startSound()}}}if(s==='crashed'&&!crashedLock){crashedLock=true;triggerBreak()}if(s==='waiting'&&lastState==='crashed')crashedLock=true;if(s==='waiting'&&n)n.classList.remove('crash-broken');lastState=s}
-  function unlockAndSync(){if(!active())return;unlock();setTimeout(sync,30);setTimeout(sync,180);setTimeout(sync,420);setTimeout(sync,800)}
-  var scheduleTimer=0;function schedule(){if(scheduleTimer)clearTimeout(scheduleTimer);scheduleTimer=0;if(document.hidden)return;sync();scheduleTimer=setTimeout(schedule,active()?500:2500)}
-  document.addEventListener('pointerdown',unlockAndSync,true);document.addEventListener('touchstart',unlockAndSync,true);document.addEventListener('click',unlockAndSync,true);document.addEventListener('visibilitychange',function(){if(!document.hidden)schedule()});schedule();
+  function unlockAndSync(){if(!active())return;unlock();sync()}
+  function scheduleSync(delay){setTimeout(function(){if(!document.hidden)sync()},delay||0)}
+  document.addEventListener('pointerdown',unlockAndSync,true);document.addEventListener('touchstart',unlockAndSync,true);document.addEventListener('click',unlockAndSync,true);
+  window.addEventListener('vexa-round-ended',function(){scheduleSync(0)});
+  window.addEventListener('vexa-crash-visible',function(){scheduleSync(0)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)scheduleSync(0)});
+  if(window.MutationObserver){var label=q('crashNextRound');if(label)new MutationObserver(function(){sync()}).observe(label,{childList:true,characterData:true,subtree:true})}
+  scheduleSync(0);
 })();
 `;
