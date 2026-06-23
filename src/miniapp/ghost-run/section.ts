@@ -89,16 +89,17 @@ export const GHOST_RUN_SECTION = `
     </div>
 
     <div class="ghost-run-controls" aria-label="Ghost Run controls">
-      <div class="ghost-run-control-card ghost-run-bet-card">
+      <label class="ghost-run-control-card ghost-run-bet-card">
         <span>Bet Amount</span>
-        <strong><em data-ghost-bet>0.10</em> TON</strong>
-      </div>
+        <strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/> TON</strong>
+      </label>
       <div class="ghost-run-control-card ghost-run-win-card">
         <span>Win Preview</span>
         <strong><em data-ghost-preview>0.10</em> TON</strong>
       </div>
       <button class="ghost-run-move-button ghost-run-back-button" type="button" aria-label="Move back" data-ghost-back></button>
       <button class="ghost-run-move-button ghost-run-forward-button" type="button" aria-label="Move forward" data-ghost-forward></button>
+      <button class="ghost-run-main-button ghost-run-start-button" type="button" data-ghost-start>Place Bet</button>
       <button class="ghost-run-main-button ghost-run-claim-button" type="button" data-ghost-claim>Claim Escape</button>
       <p class="ghost-run-note">Push for multiplier, retreat to calm the curse, or claim before Azrael catches you.</p>
     </div>
@@ -112,6 +113,8 @@ export const GHOST_RUN_SECTION = `
     var forwardButton=root.querySelector('[data-ghost-forward]');
     var backButton=root.querySelector('[data-ghost-back]');
     var claimButton=root.querySelector('[data-ghost-claim]');
+    var startButton=root.querySelector('[data-ghost-start]');
+    var betInput=root.querySelector('[data-ghost-bet-input]');
     var multiplierEl=root.querySelector('[data-ghost-multiplier]');
     var messageEl=root.querySelector('[data-ghost-message]');
     var previewEl=root.querySelector('[data-ghost-preview]');
@@ -123,7 +126,7 @@ export const GHOST_RUN_SECTION = `
     var resultDetail=root.querySelector('[data-ghost-result-detail]');
     var resetButton=root.querySelector('[data-ghost-reset]');
     var position=16, minPosition=10, leftEdge=18, rightEdge=68, backgroundOffset=0, distance=0, direction=0, raf=0, lastTime=0;
-    var fear=0, multiplierValue=1, retreatCharge=0, state='idle';
+    var fear=0, multiplierValue=1, retreatCharge=0, state='idle', activeBetNano=0, roundActive=false, settled=false;
     var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];
     function cssUrl(url){return "url('"+String(url||'').replace(/['\\]/g,'')+"')"}
     function setVersionedBackground(selector,url){var el=root.querySelector(selector);if(el&&url)el.style.setProperty('background-image',cssUrl(url),'important')}
@@ -144,7 +147,11 @@ export const GHOST_RUN_SECTION = `
       ].join("\n");
     }
     function loadAssetUrls(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)}).catch(function(){});}
-    function bet(){return Number(betEl&&betEl.textContent||0.10)||0.10}
+    function tonToNano(v){var n=Number(String(v||'').replace(',','.'));return Number.isFinite(n)?Math.max(0,Math.floor(n*1000000000)):0}
+    function nanoToTon(n){return (Math.max(0,Math.floor(Number(n)||0))/1000000000)}
+    function readBalance(){return window.VexaTonBalance&&window.VexaTonBalance.read?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
+    function changeBalance(delta){if(window.VexaTonBalance&&window.VexaTonBalance.add)window.VexaTonBalance.add(Math.floor(Number(delta)||0),'ghostrun');else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(delta)||0),section:'ghostrun'}}))}
+    function bet(){return nanoToTon(activeBetNano||tonToNano(betInput&&betInput.value||0.10)||100000000)}
     function viewportWidth(){return Math.max(1,window.innerWidth||document.documentElement.clientWidth||360)}
     function cycleLength(){return 6*viewportWidth()}
     function normalizeBackgroundOffset(){var cycle=cycleLength();while(backgroundOffset<=-cycle)backgroundOffset+=cycle;while(backgroundOffset>0)backgroundOffset-=cycle;}
@@ -162,20 +169,24 @@ export const GHOST_RUN_SECTION = `
       if(fearBar)fearBar.style.width=fear.toFixed(1)+'%';
       if(fearLabel)fearLabel.textContent=Math.round(fear)+'%';
       if(screen)screen.setAttribute('data-fear-tier',fear>=85?'critical':fear>=65?'haunted':fear>=40?'uneasy':'calm');
-      if(backButton)backButton.disabled=(state==='claimed'||state==='caught'||(position<=minPosition&&distance<=0));
-      if(forwardButton)forwardButton.disabled=(state==='claimed'||state==='caught');
-      if(claimButton)claimButton.disabled=(state==='claimed'||state==='caught');
+      if(betEl)betEl.textContent=bet().toFixed(2);
+      if(backButton)backButton.disabled=(!roundActive||state==='claimed'||state==='caught'||(position<=minPosition&&distance<=0));
+      if(forwardButton)forwardButton.disabled=(!roundActive||state==='claimed'||state==='caught');
+      if(claimButton)claimButton.disabled=(!roundActive||state==='claimed'||state==='caught');
+      if(startButton)startButton.disabled=(roundActive&&!settled);
+      if(betInput)betInput.disabled=(roundActive&&!settled);
       if(messageEl&&state!=='claimed'&&state!=='caught')messageEl.textContent=warningText();
     }
     function stopHold(){direction=0;lastTime=0;if(raf)window.cancelAnimationFrame(raf);raf=0;if(forwardButton)forwardButton.removeAttribute('data-holding');if(backButton)backButton.removeAttribute('data-holding');if(state!=='claimed'&&state!=='caught')setState('idle',warningText(),direction);render();}
-    function endCaught(){stopHold();setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='You Lost';if(result)result.setAttribute('data-visible','1');setTimeout(function(){render()},20)}
+    function endCaught(){if(settled)return;settled=true;roundActive=false;stopHold();setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='Lost '+nanoToTon(activeBetNano).toFixed(2)+' TON';if(result)result.setAttribute('data-visible','1');setTimeout(function(){render()},20)}
 
-    function resetRound(){stopHold();position=16;backgroundOffset=0;distance=0;fear=0;multiplierValue=1;retreatCharge=0;direction=0;state='idle';if(result)result.removeAttribute('data-visible');setState('idle','',1);render()}
-    function claim(){if(state==='claimed'||state==='caught'||fear>=100)return;stopHold();setState('claimed','Escaped the curse',direction);var payout=bet()*multiplierValue;if(resultTitle)resultTitle.textContent='Escaped Before the Curse';if(resultDetail)resultDetail.textContent='Won '+payout.toFixed(2)+' TON at '+multiplierValue.toFixed(2)+'x';if(result)result.setAttribute('data-visible','1');render()}
+    function resetRound(){stopHold();position=16;backgroundOffset=0;distance=0;fear=0;multiplierValue=1;retreatCharge=0;direction=0;state='idle';roundActive=false;settled=false;activeBetNano=0;if(result)result.removeAttribute('data-visible');setState('idle','Place a bet to start',1);render()}
+    function startRound(){if(roundActive&&!settled)return;var amount=tonToNano(betInput&&betInput.value||0);if(amount<=0){setState('idle','Enter a valid bet',1);return}if(readBalance()<amount){setState('idle','Not enough TON balance',1);return}resetRound();activeBetNano=amount;roundActive=true;settled=false;changeBalance(-amount);setState('idle','Bet placed — move forward or claim',1);render()}
+    function claim(){if(!roundActive||settled||state==='claimed'||state==='caught'||fear>=100)return;settled=true;roundActive=false;stopHold();setState('claimed','Escaped the curse',direction);var payoutNano=Math.max(0,Math.floor(activeBetNano*multiplierValue));changeBalance(payoutNano);if(resultTitle)resultTitle.textContent='Escaped Before the Curse';if(resultDetail)resultDetail.textContent='Won '+nanoToTon(payoutNano).toFixed(2)+' TON at '+multiplierValue.toFixed(2)+'x';if(result)result.setAttribute('data-visible','1');render()}
     function step(now){if(!direction||state==='claimed'||state==='caught')return;if(!lastTime)lastTime=now;var dt=Math.min(48,now-lastTime)/1000;lastTime=now;setState(direction>0?'movingForward':'movingBack','',direction);if(direction>0){if(position<rightEdge){position=Math.min(rightEdge,position+(22*dt))}else{var forward=42*dt;backgroundOffset-=forward;distance+=forward}}else{if(position>leftEdge){position=Math.max(leftEdge,position-(24*dt))}else if(distance>0){var reverse=42*dt;backgroundOffset+=reverse;distance=Math.max(0,distance-reverse)}else{position=Math.max(minPosition,position-(20*dt))}}updateMultiplier(dt);updateFear(dt);render();if(fear>=100){endCaught();return}raf=window.requestAnimationFrame(step)}
-    function startHold(dir,button){if(state==='claimed'||state==='caught')return;direction=dir;if(button)button.setAttribute('data-holding','1');if(dir>0&&backButton)backButton.removeAttribute('data-holding');if(dir<0&&forwardButton)forwardButton.removeAttribute('data-holding');if(raf)window.cancelAnimationFrame(raf);lastTime=0;raf=window.requestAnimationFrame(step)}
+    function startHold(dir,button){if(!roundActive){setState('idle','Place a bet first',dir);return}if(state==='claimed'||state==='caught')return;direction=dir;if(button)button.setAttribute('data-holding','1');if(dir>0&&backButton)backButton.removeAttribute('data-holding');if(dir<0&&forwardButton)forwardButton.removeAttribute('data-holding');if(raf)window.cancelAnimationFrame(raf);lastTime=0;raf=window.requestAnimationFrame(step)}
     function bindHold(button,dir){if(!button)return;button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});button.addEventListener('pointerup',stopHold);button.addEventListener('pointercancel',stopHold);button.addEventListener('pointerleave',stopHold);button.addEventListener('contextmenu',function(e){e.preventDefault()})}
-    bindHold(forwardButton,1);bindHold(backButton,-1);if(claimButton)claimButton.addEventListener('click',claim);if(resetButton)resetButton.addEventListener('click',resetRound);window.addEventListener('resize',render);loadAssetUrls();setState('idle','',1);render();
+    bindHold(forwardButton,1);bindHold(backButton,-1);if(startButton)startButton.addEventListener('click',startRound);if(claimButton)claimButton.addEventListener('click',claim);if(resetButton)resetButton.addEventListener('click',resetRound);if(betInput)betInput.addEventListener('input',render);window.addEventListener('resize',render);loadAssetUrls();setState('idle','',1);render();
   })();
   </script>
 </section>
