@@ -27,8 +27,11 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-note{display:none!important}
 #ghostrun .ghost-run-screen[data-round-active='1'] .ghost-run-start-button{border-color:rgba(255,255,255,.20)!important;color:#fff!important}
 #ghostrun .ghost-run-screen[data-ghost-state='claimed'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='won'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='lost'] .ghost-run-ghost{filter:drop-shadow(0 0 18px rgba(220,235,255,.30)) drop-shadow(0 14px 24px rgba(0,0,0,.40))!important;animation:none!important;opacity:1!important;transform:translate3d(0,0,0) scale(1)!important}
-#ghostrun .ghost-run-result[data-visible='1']{pointer-events:auto!important}
-#ghostrun .ghost-run-result[data-visible='1'] button{pointer-events:auto!important;cursor:pointer!important}
+#ghostrun .ghost-run-result{background:rgba(255,255,255,.015)!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;padding:18px 14px!important;border-radius:24px!important;pointer-events:none!important}
+#ghostrun .ghost-run-result[data-visible='1']{pointer-events:none!important}
+#ghostrun .ghost-run-result button{display:none!important}
+#ghostrun .ghost-run-result strong{font-size:28px!important;font-weight:1000!important;color:#fff!important;text-shadow:0 10px 24px rgba(0,0,0,.52)!important;margin-bottom:8px!important}
+#ghostrun .ghost-run-result span{font-size:14px!important;font-weight:850!important;color:rgba(255,255,255,.78)!important;text-shadow:0 8px 20px rgba(0,0,0,.44)!important}
 </style>`;
   patched = patched.replace('<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">', '<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">' + controlPolishCss);
 
@@ -51,6 +54,8 @@ function patchGhostRunSection(section: string): string {
       style.textContent=[
         "#ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;pointer-events:auto!important}",
         "#ghostrun .ghost-run-move-button,#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;pointer-events:auto!important;touch-action:none!important;cursor:pointer!important}",
+        "#ghostrun .ghost-run-result{background:rgba(255,255,255,.015)!important;background-image:none!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;pointer-events:none!important}",
+        "#ghostrun .ghost-run-result button{display:none!important}",
         "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;transition:left .08s linear,transform .28s cubic-bezier(.2,.8,.2,1),filter .28s ease,opacity .18s ease!important}",
         "#ghostrun .ghost-run-screen[data-ghost-state='idle'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;animation:none!important;transform:translate3d(0,0,0) scale(1)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.10))!important}",
         "#ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='movingBack'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostmove)+"!important;animation:ghostRunMoveBob .38s ease-in-out infinite alternate!important;filter:drop-shadow(0 0 16px rgba(255,255,255,.18))!important}",
@@ -84,11 +89,23 @@ function patchGhostRunSection(section: string): string {
   );
   patched = patched.replace(
     "if(startButton)startButton.disabled=(roundActive&&!settled);",
-    "if(startButton){startButton.disabled=false;startButton.textContent=(roundActive&&!settled)?'Cash Out':'Place Bet'}if(screen)screen.setAttribute('data-round-active',(roundActive&&!settled)?'1':'0');"
+    "if(startButton){startButton.disabled=false;startButton.textContent=(roundActive&&!settled)?label('cashout'):'Place Bet'}if(screen)screen.setAttribute('data-round-active',(roundActive&&!settled)?'1':'0');"
   );
   patched = patched.replace(
     "function startRound(){if(roundActive&&!settled)return;var amount=tonToNano(betInput&&betInput.value||0);",
     "function startRound(){if(roundActive&&!settled){claim();return}var amount=tonToNano(betInput&&betInput.value||0);"
+  );
+  patched = patched.replace(
+    "function warningText(){if(fear>=100)return 'The Reaper Caught You';if(fear>=85)return 'Retreat or Claim — The Reaper is near';if(fear>=65)return 'Azrael\\'s shadow is closing in';if(fear>=40)return 'Fear is rising';return ''}",
+    "function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'عزرائیل گرفتت':'The Reaper Caught You',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Curse',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'عزرائیل نزدیکه':'Retreat or Claim — The Reaper is near',shadow:fa?'سایه عزرائیل نزدیک می‌شود':\"Azrael's shadow is closing in\",fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}function warningText(){if(fear>=100)return label('caught');if(fear>=85)return label('near');if(fear>=65)return label('shadow');if(fear>=40)return label('fear');return ''}"
+  );
+  patched = patched.replace(
+    "setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='Lost '+nanoToTon(activeBetNano).toFixed(2)+' TON';",
+    "setState('caught',label('caught'),1);if(resultTitle)resultTitle.textContent=label('caught');if(resultDetail)resultDetail.textContent=label('lost')+' '+nanoToTon(activeBetNano).toFixed(2);"
+  );
+  patched = patched.replace(
+    "setState('claimed','Escaped the curse',direction);var payoutNano=Math.max(0,Math.floor(activeBetNano*multiplierValue));changeBalance(payoutNano);if(resultTitle)resultTitle.textContent='Escaped Before the Curse';if(resultDetail)resultDetail.textContent='Won '+nanoToTon(payoutNano).toFixed(2)+' TON at '+multiplierValue.toFixed(2)+'x';",
+    "setState('claimed',label('escaped'),direction);var payoutNano=Math.max(0,Math.floor(activeBetNano*multiplierValue));changeBalance(payoutNano);if(resultTitle)resultTitle.textContent=label('escaped');if(resultDetail)resultDetail.textContent=label('won')+' '+nanoToTon(payoutNano).toFixed(2)+' '+label('at')+' '+multiplierValue.toFixed(2)+'x';"
   );
   patched = patched.replace(
     "function bindHold(button,dir){if(!button)return;button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});button.addEventListener('pointerup',stopHold);button.addEventListener('pointercancel',stopHold);button.addEventListener('pointerleave',stopHold);button.addEventListener('contextmenu',function(e){e.preventDefault()})}",
