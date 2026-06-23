@@ -1,6 +1,10 @@
 export const PLAY_ZONE_VISIBILITY_SCRIPT = `
 (function(){
   var endpoint='/app/api/play-zone-cards';
+  var CACHE_MS=60000;
+  var lastRefreshAt=0;
+  var inFlight=null;
+  var lastPayload=null;
   function currentUserId(){
     var tg=window.Telegram&&window.Telegram.WebApp;
     var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
@@ -19,6 +23,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     }
   }
   function apply(payload){
+    lastPayload=payload||lastPayload;
     var hidden={};
     (payload&&payload.cards||[]).forEach(function(card){hidden[String(card.id)]=card.visible===false});
     document.querySelectorAll('#playzone [data-play-zone-card-id]').forEach(function(card){
@@ -26,17 +31,22 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
       setCard(card,!hidden[id]);
     });
   }
-  function refresh(){
-    if(window.VexaTrustedAccess===true){apply({cards:[]});return}
+  function refresh(force){
+    if(window.VexaTrustedAccess===true){apply({cards:[]});return Promise.resolve({cards:[]})}
+    var now=Date.now();
+    if(!force&&lastPayload&&lastRefreshAt&&now-lastRefreshAt<CACHE_MS){apply(lastPayload);return Promise.resolve(lastPayload)}
+    if(inFlight)return inFlight;
     var uid=currentUserId();
     var url=endpoint+(uid?'?userId='+encodeURIComponent(uid):'');
-    fetch(url,{credentials:'same-origin',cache:'no-store'})
+    inFlight=fetch(url,{credentials:'same-origin',cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
-      .then(function(j){if(j)apply(j)})
-      .catch(function(){});
+      .then(function(j){if(j){lastRefreshAt=Date.now();apply(j)}return j||lastPayload})
+      .catch(function(){return lastPayload})
+      .finally(function(){inFlight=null});
+    return inFlight;
   }
-  window.VexaRefreshPlayZoneCards=refresh;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else refresh();
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
+  window.VexaRefreshPlayZoneCards=function(){return refresh(true)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){refresh(false)});else refresh(false);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(false)});
 })();
 `;
