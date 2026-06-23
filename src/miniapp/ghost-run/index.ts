@@ -26,10 +26,10 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-start-button{grid-column:1 / 3!important;height:60px!important;border-radius:999px!important;font-weight:1000!important;letter-spacing:-.02em!important}
 #ghostrun .ghost-run-note{display:none!important}
 #ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important;pointer-events:none!important}
-#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:14px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:12px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
 #ghostrun .ghost-run-fear-top{grid-column:1!important;grid-row:1!important;margin:0!important;display:flex!important;align-items:center!important;gap:10px!important;justify-content:space-between!important}
 #ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}
-#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:27px!important;font-weight:1000!important;line-height:1!important;letter-spacing:-.05em!important;color:#fff!important;text-shadow:0 10px 24px rgba(0,0,0,.48)!important}
+#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:13px!important;font-weight:950!important;line-height:1!important;letter-spacing:.02em!important;color:#fff!important;text-shadow:0 7px 18px rgba(0,0,0,.44)!important}
 #ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}
 #ghostrun .ghost-run-screen[data-round-active='1'] .ghost-run-start-button{border-color:rgba(255,255,255,.20)!important;color:#fff!important}
 #ghostrun .ghost-run-reaper{display:none!important;visibility:hidden!important;opacity:0!important}
@@ -68,8 +68,8 @@ function patchGhostRunSection(section: string): string {
         "#ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;pointer-events:auto!important}",
         "#ghostrun .ghost-run-move-button,#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;pointer-events:auto!important;touch-action:none!important;cursor:pointer!important}",
         "#ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important}",
-        "#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:14px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}",
-        "#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:27px!important;font-weight:1000!important;line-height:1!important;letter-spacing:-.05em!important;color:#fff!important}",
+        "#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:12px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}",
+        "#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:13px!important;font-weight:950!important;line-height:1!important;letter-spacing:.02em!important;color:#fff!important}",
         "#ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}",
         "#ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}",
         "#ghostrun .ghost-run-reaper{display:none!important;visibility:hidden!important;opacity:0!important}",
@@ -107,6 +107,34 @@ function patchGhostRunSection(section: string): string {
       button.addEventListener('contextmenu',function(e){e.preventDefault()});
     }`;
 
+  const randomFearLogic = `function updateFear(dt){
+      var deep=stageDanger();
+      if(!roundActive||settled){return}
+      if(!fearModeTimer||fearModeTimer<=0){pickFearMode()}
+      fearModeTimer-=dt;
+      if(direction>0){
+        retreatCharge=0;
+        if(fearMode==='calm'){
+          fear+=(-1.2+Math.random()*2.1)*dt;
+        }else if(fearMode==='panic'){
+          fear+=(15+Math.random()*26)*deep*dt;
+        }else{
+          fear+=(1.2+Math.random()*5.6)*deep*dt;
+        }
+        if(Math.random()<(.022*deep*dt))fear+=18+Math.random()*42;
+        if(Math.random()<(.010*dt))fear=Math.max(fear,58+Math.random()*37);
+      }else if(direction<0){
+        retreatCharge+=dt;
+        var relief=Math.max(0,retreatCharge-.38);
+        if(fearMode==='panic'&&Math.random()<.38){fear-=Math.max(.2,relief*1.2)*dt}else{fear-=3.6*dt+relief*3.6*dt}
+        if(Math.random()<(.006*deep*dt))fear+=8+Math.random()*18;
+      }else{
+        retreatCharge=0;
+        if(Math.random()<(.010*stageIndex()*dt))fear+=3+Math.random()*10;
+      }
+      fear=Math.max(0,Math.min(100,fear));
+    }`;
+
   patched = replaceBlock(patched, 'function cssUrl(url){', '    function loadAssetUrls', safeAssetLoader);
   patched = patched.replace("if(fear>=65)return 'Azrael's shadow is closing in';", "if(fear>=65)return \"Fear is closing in\";");
   patched = patched.replace(
@@ -119,7 +147,11 @@ function patchGhostRunSection(section: string): string {
   );
   patched = patched.replace(
     "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];",
-    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'باختی':'You Lost',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'خیلی ترسیدی':'Too much fear',shadow:fa?'ترس نزدیکه':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
+    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];var fearMode='normal',fearModeTimer=0;function pickFearMode(){var r=Math.random();fearMode=r<.42?'calm':r<.78?'normal':'panic';fearModeTimer=.65+Math.random()*2.35}function resetFearLuck(){fearModeTimer=0;fearMode='normal'}function seedRoundFear(){resetFearLuck();if(Math.random()<.16){fear=Math.min(96,42+Math.random()*54)}}function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'باختی':'You Lost',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'خیلی ترسیدی':'Too much fear',shadow:fa?'ترس نزدیکه':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
+  );
+  patched = patched.replace(
+    "function updateFear(dt){var deep=stageDanger();if(direction>0){retreatCharge=0;fear+=8.6*deep*dt+Math.min(8,distance/viewportWidth())*0.16*dt}else if(direction<0){retreatCharge+=dt;var relief=Math.max(0,retreatCharge-.55);if(fear<60)fear-=5.2*dt+relief*2.2*dt;else if(fear<85)fear-=Math.max(.35,relief*2.4)*dt;else fear+=(1.1*deep-Math.max(0,relief*3.4))*dt}else{retreatCharge=0;if(stageIndex()>=2)fear+=(0.22+stageIndex()*0.18)*dt}fear=Math.max(0,Math.min(100,fear));}",
+    randomFearLogic
   );
   patched = patched.replace(
     "if(startButton)startButton.disabled=(roundActive&&!settled);",
@@ -128,6 +160,14 @@ function patchGhostRunSection(section: string): string {
   patched = patched.replace(
     "function startRound(){if(roundActive&&!settled)return;var amount=tonToNano(betInput&&betInput.value||0);",
     "function startRound(){if(roundActive&&!settled){claim();return}var amount=tonToNano(betInput&&betInput.value||0);"
+  );
+  patched = patched.replace(
+    "resetRound();activeBetNano=amount;roundActive=true;settled=false;changeBalance(-amount);setState('idle','Bet placed — move forward or claim',1);render()",
+    "resetRound();activeBetNano=amount;seedRoundFear();roundActive=true;settled=false;changeBalance(-amount);setState('idle','',1);render()"
+  );
+  patched = patched.replace(
+    "function resetRound(){stopHold();position=16;backgroundOffset=0;distance=0;fear=0;multiplierValue=1;retreatCharge=0;direction=0;state='idle';roundActive=false;settled=false;activeBetNano=0;if(result)result.removeAttribute('data-visible');setState('idle','Place a bet to start',1);render()}",
+    "function resetRound(){stopHold();position=16;backgroundOffset=0;distance=0;fear=0;multiplierValue=1;retreatCharge=0;direction=0;resetFearLuck();state='idle';roundActive=false;settled=false;activeBetNano=0;if(result)result.removeAttribute('data-visible');setState('idle','',1);render()}"
   );
   patched = patched.replace(
     "function warningText(){if(fear>=100)return 'The Reaper Caught You';if(fear>=85)return 'Retreat or Claim — The Reaper is near';if(fear>=65)return 'Azrael\\'s shadow is closing in';if(fear>=40)return 'Fear is rising';return ''}",
