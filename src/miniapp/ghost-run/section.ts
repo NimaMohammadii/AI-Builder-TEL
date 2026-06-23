@@ -104,7 +104,7 @@ export const GHOST_RUN_SECTION = `
     var previewEl=root.querySelector('[data-ghost-preview]');
     var betEl=root.querySelector('[data-ghost-bet]');
     var position=16, minPosition=10, leftEdge=18, rightEdge=68, backgroundOffset=0, distance=0, direction=0, raf=0, lastTime=0;
-    function cssUrl(url){return "url('"+String(url||'').replace(/['\\]/g,'')+"')"}
+    function cssUrl(url){return "url('"+String(url||'').replace(/'/g,'')+"')"}
     function injectAssetUrls(urls){
       if(!urls)return;
       var style=document.getElementById('ghostRunVersionedAssetStyle');
@@ -128,7 +128,7 @@ export const GHOST_RUN_SECTION = `
         "#ghostrun .ghost-run-uploaded-house-1{background-image:"+cssUrl(urls.house1)+"!important}",
         "#ghostrun .ghost-run-uploaded-house-2{background-image:"+cssUrl(urls.house2)+"!important}",
         "#ghostrun .ghost-run-uploaded-house-3{background-image:"+cssUrl(urls.house3)+"!important}"
-      ].join("\\n");
+      ].join("\n");
     }
     function loadAssetUrls(){
       fetch('/app/api/ghost-run-assets',{cache:'no-cache'})
