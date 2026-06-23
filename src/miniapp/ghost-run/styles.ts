@@ -399,15 +399,17 @@ body:has(#ghostrun.active) .top {
   gap: 10px;
   align-content: start;
   padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
-  background: transparent;
+  background: radial-gradient(ellipse at 50% 100%, rgba(48, 3, 17, .34), rgba(12, 0, 5, .10) 42%, transparent 72%);
 }
 #ghostrun .ghost-run-control-card {
   min-height: 70px;
   border-radius: 22px;
   padding: 13px 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.035));
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 18px 34px rgba(0,0,0,.28);
+  background: transparent;
+  border: 0;
+  box-shadow: 0 18px 38px rgba(0,0,0,.24), 0 0 34px rgba(255,255,255,.035);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  backdrop-filter: blur(18px) saturate(1.35);
 }
 #ghostrun .ghost-run-control-card span,
 #ghostrun .ghost-run-note {
@@ -425,6 +427,10 @@ body:has(#ghostrun.active) .top {
   color: #fff;
 }
 #ghostrun .ghost-run-control-card em { font-style: normal; }
+#ghostrun .ghost-run-bet-card input { width: 74px; border:0; outline:0; padding:0; background:transparent; color:#fff; font:inherit; letter-spacing:inherit; text-align:left; }
+#ghostrun .ghost-run-bet-card input::-webkit-outer-spin-button,
+#ghostrun .ghost-run-bet-card input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+#ghostrun .ghost-run-bet-card input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 #ghostrun .ghost-run-main-button {
   grid-column: 1 / 3;
   height: 62px;
@@ -698,7 +704,8 @@ body:has(#ghostrun.active) .top {
 #ghostrun .ghost-run-result strong { display:block; color:#fff; font-size:24px; font-weight:1000; letter-spacing:-.04em; margin-bottom:8px; }
 #ghostrun .ghost-run-result span { display:block; color:rgba(255,226,233,.82); font-size:14px; font-weight:850; }
 #ghostrun .ghost-run-result button { margin-top:16px; height:44px; min-width:138px; border:0; border-radius:999px; background:linear-gradient(180deg,#f4f0ed,#c9c0bd); color:#12070b; font-size:14px; font-weight:1000; }
-#ghostrun .ghost-run-claim-button { background: linear-gradient(180deg, #f4f0ed, #c9c0bd) !important; color:#12070b !important; }
+#ghostrun .ghost-run-start-button { background: linear-gradient(180deg, rgba(70,6,25,.82), rgba(24,1,9,.92)) !important; color:#fff !important; box-shadow:0 18px 42px rgba(50,2,18,.30), inset 0 1px 0 rgba(255,255,255,.12) !important; }
+#ghostrun .ghost-run-claim-button { background: transparent !important; background-color: transparent !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; color: rgba(255,255,255,.92) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 #ghostrun .ghost-run-claim-button:disabled,
 #ghostrun .ghost-run-move-button:disabled { opacity:.32 !important; pointer-events:none !important; }
 #ghostrun .ghost-run-screen[data-ghost-state='movingBack'] .ghost-run-ghost { transform: translate3d(0,-4px,0) scaleX(-1) scale(1.04) !important; transition: left .08s linear, transform .28s cubic-bezier(.2,.8,.2,1), filter .28s ease !important; }
