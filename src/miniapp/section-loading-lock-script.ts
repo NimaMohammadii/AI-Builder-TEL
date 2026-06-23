@@ -158,8 +158,8 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     }catch(e){}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();connectEvents()});else{load();connectEvents()}
-  document.addEventListener('click',function(ev){var target=ev.target&&target.closest?target.closest('[data-view]'):null;if(target)prepareTargetLoading(target.getAttribute('data-view')||'');setTimeout(load,80);setTimeout(paint,120);setTimeout(paint,260);setTimeout(updateBodyState,300)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(pendingEventLoad){pendingEventLoad=0;handleLockEvent()}else load();connectEvents();setTimeout(updateBodyState,120)}});
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view]'):null;if(target)prepareTargetLoading(target.getAttribute('data-view')||'');setTimeout(paint,120);setTimeout(paint,260);setTimeout(updateBodyState,300)},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(pendingEventLoad){pendingEventLoad=0;handleLockEvent()}connectEvents();setTimeout(updateBodyState,120)}});
   window.addEventListener('vexa-section-locks-updated',function(){if(isTrustedAccess())clearTrustedLoading();else handleLockEvent()});
 })();
 `;
