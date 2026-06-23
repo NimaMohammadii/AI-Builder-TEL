@@ -9,6 +9,15 @@ body:has(#ghostrun.active) .view.active {
   background-color: #000 !important;
   background-image: none !important;
 }
+body:has(#ghostrun.active)::before,
+body:has(#ghostrun.active)::after,
+body:has(#ghostrun.active) .app::before,
+body:has(#ghostrun.active) .app::after {
+  display: none !important;
+  background: #000 !important;
+  background-color: #000 !important;
+  background-image: none !important;
+}
 body:has(#ghostrun.active) .tabs {
   display: none !important;
 }
