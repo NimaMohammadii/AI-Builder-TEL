@@ -10,6 +10,7 @@ import { setTelegramWebhook } from './telegram-agent-safe';
 import { getPlayZoneCardVisibility, setPlayZoneCardVisibility } from './play-zone-card-visibility';
 import { hasAccessOverride } from './user-access-override-routes';
 import { PUBLIC_BASE_URL } from './utils';
+import { SECTION_BACKGROUND_IMAGE_TYPES, cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from './section-backgrounds';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -51,6 +52,57 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
     return c.json(controls);
   }
   catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); }
+});
+
+
+app.get('/app/api/section-backgrounds', async (c) => {
+  const locks = await getSectionLocks(c.env);
+  const sections = await Promise.all(locks.sections.map((section) => sectionBackgroundInfo(c.env, section)));
+  const preload = sections.map((section) => section.backgroundUrl).filter(Boolean);
+  return c.json({ sections, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+});
+app.get('/app/api/section-background/:section', async (c) => {
+  try {
+    const section = cleanSectionId(c.req.param('section').replace(/\.png$/i, ''));
+    return getAssetResponse(c.env, sectionBackgroundR2Key(section), null, { cacheControl: c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : 'no-store' });
+  } catch {
+    return c.text('Not found', 404, { 'cache-control': 'no-store' });
+  }
+});
+app.get('/admin/api/section-backgrounds', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const locks = await getSectionLocks(c.env);
+  const sections = await Promise.all(locks.sections.map((section) => sectionBackgroundInfo(c.env, section)));
+  return c.json({ sections }, 200, { 'cache-control': 'no-store' });
+});
+app.post('/admin/api/section-background', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const section = cleanSectionId(form.get('sectionId'));
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!SECTION_BACKGROUND_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(sectionBackgroundR2Key(section), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    const locks = await getSectionLocks(c.env);
+    const sections = await Promise.all(locks.sections.map((item) => sectionBackgroundInfo(c.env, item)));
+    return c.json({ ok: true, sections }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload background' }, 400);
+  }
+});
+app.delete('/admin/api/section-background/:section', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const section = cleanSectionId(c.req.param('section'));
+    await c.env.ASSETS.delete(sectionBackgroundR2Key(section));
+    const locks = await getSectionLocks(c.env);
+    const sections = await Promise.all(locks.sections.map((item) => sectionBackgroundInfo(c.env, item)));
+    return c.json({ ok: true, sections }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not delete background' }, 400);
+  }
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
