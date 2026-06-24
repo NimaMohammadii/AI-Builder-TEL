@@ -51,11 +51,9 @@ async function readConfig(env: Env): Promise<unknown | null> {
     const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(KEY).first<AdminSettingRow>();
     if (row?.value_json) return JSON.parse(row.value_json);
   } catch (error) {
-    console.warn('read online user counts from D1 failed', error);
+    console.warn('read online user counts from admin_settings failed', error);
   }
-  const raw = await env.BOT_CACHE.get(KEY).catch(() => null);
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
+  return null;
 }
 
 async function writeConfig(env: Env, config: OnlineCountConfig): Promise<void> {
@@ -65,7 +63,6 @@ async function writeConfig(env: Env, config: OnlineCountConfig): Promise<void> {
     ON CONFLICT(name) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`)
     .bind(KEY, JSON.stringify(config))
     .run();
-  await env.BOT_CACHE.put(KEY, JSON.stringify(config)).catch(() => undefined);
 }
 
 async function ensureAdminSettingsTable(env: Env): Promise<void> {
