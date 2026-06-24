@@ -172,16 +172,16 @@ export const DICE_FINAL_TWEAK = `<style>
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  gap:7px!important;
+  gap:4px!important;
   padding-top:0!important;
   line-height:1!important;
   transform:none!important;
 }
 #dice .dice-bet .dice-bet-main:before{
   content:''!important;
-  width:18px!important;
-  height:18px!important;
-  flex:0 0 18px!important;
+  width:22px!important;
+  height:22px!important;
+  flex:0 0 22px!important;
   display:block!important;
   background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
 }
@@ -191,17 +191,17 @@ export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-bet-box:before{
   content:''!important;
   position:absolute!important;
-  left:34px!important;
-  top:76px!important;
-  width:22px!important;
-  height:22px!important;
+  left:calc(50% - 54px)!important;
+  top:74px!important;
+  width:28px!important;
+  height:28px!important;
   z-index:2!important;
   pointer-events:none!important;
   background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
 }
 #dice .dice-bet-input{
-  padding-left:46px!important;
-  padding-right:46px!important;
+  padding-left:42px!important;
+  padding-right:42px!important;
 }
 #dice .dice-roll-button{
   width:100%!important;
@@ -295,14 +295,15 @@ export const DICE_FINAL_TWEAK = `<style>
     align-items:center!important;
   }
   #dice .dice-bet .dice-bet-main:before{
-    width:17px!important;
-    height:17px!important;
-    flex-basis:17px!important;
-  }
-  #dice .dice-bet-box:before{
-    left:32px!important;
     width:20px!important;
     height:20px!important;
+    flex-basis:20px!important;
+  }
+  #dice .dice-bet-box:before{
+    left:calc(50% - 50px)!important;
+    top:74px!important;
+    width:26px!important;
+    height:26px!important;
   }
   #dice .dice-roll-button{
     height:58px!important;
