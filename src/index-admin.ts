@@ -12,6 +12,7 @@ import { hasAccessOverride } from './user-access-override-routes';
 import { PUBLIC_BASE_URL } from './utils';
 import { SECTION_BACKGROUND_IMAGE_TYPES, cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from './section-backgrounds';
 import type { Env } from './types';
+import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS, resetOnlineUserCountConfig, saveOnlineUserCountConfig } from './online-user-counts';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
@@ -153,6 +154,7 @@ app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetRes
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
+app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
 app.get('/app/api/play-zone-cards', async (c) => {
   const visibility = await getPlayZoneCardVisibility(c.env);
   if (await hasAccessOverride(c.env, c.req.query('userId'))) {
@@ -177,6 +179,22 @@ app.get('/admin/api/miniapp-audio', async (c) => { if (!isAdminRequest(c)) retur
 app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
 app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
 app.post('/admin/api/upload-ton-icon', async (c) => uploadImageToR2(c, 'icon', 'ton-icon', (version) => ({ tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` })));
+
+app.get('/admin/api/online-user-counts', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' });
+});
+app.post('/admin/api/online-user-counts', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = await c.req.json().catch(() => ({}));
+  try { return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await saveOnlineUserCountConfig(c.env, body)) }, 200, { 'cache-control': 'no-store' }); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save online counts' }, 400); }
+});
+app.post('/admin/api/online-user-counts/reset', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await resetOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' });
+});
+
 app.post('/admin/api/upload-plinko-ball', async (c) => uploadImageToR2(c, 'image', 'plinko-ball', (version) => ({ plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` })));
 app.post('/admin/api/upload-rps-hand-image', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
