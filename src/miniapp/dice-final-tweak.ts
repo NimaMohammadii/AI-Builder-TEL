@@ -1,35 +1,213 @@
 export const DICE_FINAL_TWEAK = `<style>
-#dice.dice-view{
-  isolation:isolate!important;
-  background:
-    radial-gradient(circle at 50% -18%,rgba(255,63,129,.34),transparent 38%),
-    radial-gradient(circle at 8% 26%,rgba(80,107,255,.22),transparent 30%),
-    radial-gradient(circle at 92% 34%,rgba(40,255,177,.16),transparent 28%),
-    linear-gradient(180deg,#13030b 0%,#06050b 48%,#020204 100%)!important;
+#dice .dice-wrap{
+  gap:12px!important;
+  padding-bottom:max(14px,env(safe-area-inset-bottom))!important;
 }
-#dice.dice-view:after{content:''!important;position:fixed!important;inset:0!important;z-index:0!important;pointer-events:none!important;background:linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(180deg,rgba(255,255,255,.03) 1px,transparent 1px)!important;background-size:34px 34px!important;mask-image:radial-gradient(circle at 50% 18%,#000 0 36%,transparent 72%)!important;opacity:.28!important}
-#dice .dice-wrap{position:relative!important;z-index:1!important;gap:12px!important;padding-bottom:max(14px,env(safe-area-inset-bottom))!important;justify-content:flex-end!important}
-#dice .dice-wrap:before,#dice .dice-wrap:after{content:''!important;position:fixed!important;border-radius:999px!important;pointer-events:none!important;filter:blur(24px)!important;opacity:.55!important;z-index:-1!important;animation:diceAuraFloat 7s ease-in-out infinite!important}
-#dice .dice-wrap:before{width:170px!important;height:170px!important;left:-62px!important;top:22%!important;background:rgba(255,38,111,.34)!important}
-#dice .dice-wrap:after{width:190px!important;height:190px!important;right:-78px!important;top:43%!important;background:rgba(55,255,183,.16)!important;animation-delay:-2.4s!important}
-#dice .dice-panel{transform:none!important;gap:10px!important;padding:14px 16px 16px!important;border-radius:32px!important;overflow:hidden!important;background:linear-gradient(180deg,rgba(18,18,28,.76),rgba(5,5,10,.92))!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 28px 86px rgba(0,0,0,.72),0 0 0 1px rgba(255,69,134,.08),inset 0 1px 0 rgba(255,255,255,.14)!important;backdrop-filter:blur(18px) saturate(1.34)!important;-webkit-backdrop-filter:blur(18px) saturate(1.34)!important}
-#dice .dice-panel:before{content:''!important;position:absolute!important;inset:0!important;pointer-events:none!important;background:radial-gradient(circle at 18% 0%,rgba(255,255,255,.13),transparent 34%),linear-gradient(120deg,transparent 0 34%,rgba(255,255,255,.08) 45%,transparent 58%)!important;opacity:.8!important}
-#dice .dice-status{transform:none!important;min-height:30px!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;line-height:1.15!important;font-size:12px!important;font-weight:950!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:rgba(255,255,255,.76)!important;text-shadow:0 8px 22px rgba(0,0,0,.72)!important}
-#dice .dice-status.win{color:#8cffc2!important;text-shadow:0 0 20px rgba(84,255,170,.32)!important}#dice .dice-status.lose{color:#ff83a8!important;text-shadow:0 0 20px rgba(255,54,114,.24)!important}
-#dice .dice-range-card{background:linear-gradient(180deg,rgba(24,20,35,.76),rgba(5,5,10,.72))!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 24px 70px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.15)!important;backdrop-filter:blur(20px) saturate(1.35)!important;-webkit-backdrop-filter:blur(20px) saturate(1.35)!important}
-#dice .dice-range-card:before{content:'LUCK METER'!important;position:absolute!important;left:22px!important;top:14px!important;font-size:10px!important;font-weight:950!important;letter-spacing:.16em!important;color:rgba(255,255,255,.48)!important}#dice .dice-range-card:after{content:''!important;position:absolute!important;inset:1px!important;border-radius:27px!important;pointer-events:none!important;background:linear-gradient(135deg,rgba(255,255,255,.18),transparent 32%,rgba(255,43,119,.08) 58%,rgba(77,255,189,.10))!important}
-#dice .dice-slider-visual{height:34px!important;background:rgba(2,2,7,.82)!important;border-color:rgba(255,255,255,.18)!important;box-shadow:0 18px 40px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.18)!important}#dice .dice-slider-visual:before{height:16px!important;background:linear-gradient(90deg,#ff2b6f 0%,#ff2b6f var(--dice-fill-pos),#1dff9b var(--dice-fill-pos),#1dff9b 100%)!important;box-shadow:0 0 22px rgba(255,43,111,.25),0 0 22px rgba(29,255,155,.18)!important}
-#dice .dice-slider-thumb{width:42px!important;height:42px!important;border-radius:15px!important;background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.09))!important;border-color:rgba(255,255,255,.42)!important;box-shadow:0 18px 46px rgba(0,0,0,.7),0 0 24px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.54)!important}
-#dice .dice-control-grid{width:100%!important;margin:0 auto!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;align-items:stretch!important}
-#dice .dice-control-grid .dice-field,#dice button.dice-field.dice-mode-field{min-width:0!important;min-height:82px!important;height:82px!important;padding:12px 12px!important;border-radius:22px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;overflow:hidden!important;background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.026))!important;border:1px solid rgba(255,255,255,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 12px 26px rgba(0,0,0,.22)!important;color:#fff!important;text-align:left!important;outline:0!important;appearance:none!important;-webkit-appearance:none!important}
-#dice .dice-control-grid .dice-field small,#dice button.dice-field.dice-mode-field small[data-dice-mode-label]{font-size:12px!important;line-height:1.1!important;font-weight:950!important;color:rgba(255,255,255,.56)!important;overflow:hidden!important;text-overflow:ellipsis!important;text-transform:uppercase!important;letter-spacing:.04em!important}
-#dice .dice-control-grid .dice-field b,#dice button.dice-field.dice-mode-field b{margin-top:10px!important;min-width:0!important;width:100%!important;font-size:21px!important;line-height:1.05!important;font-weight:950!important;align-items:center!important;gap:6px!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#fff!important;text-shadow:0 8px 20px rgba(0,0,0,.52)!important}
-#dice .dice-bet{width:100%!important;margin:2px auto 0!important;gap:9px!important}#dice .dice-bet button{height:50px!important;border-radius:20px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;line-height:1!important;background:rgba(255,255,255,.07)!important;border-color:rgba(255,255,255,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}#dice .dice-bet .dice-bet-main,#dice .dice-bet .dice-bet-main.active{background:linear-gradient(135deg,rgba(255,42,113,.24),rgba(255,255,255,.08))!important;color:#fff!important;text-shadow:0 5px 14px rgba(0,0,0,.85)!important;font-size:18px!important;font-weight:950!important;letter-spacing:-.03em!important;font-variant-numeric:tabular-nums lining-nums!important}
-#dice .dice-roll-button{width:100%!important;height:62px!important;margin:4px auto 0!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;line-height:1!important;border-radius:24px!important;background:linear-gradient(180deg,rgba(255,255,255,.27),rgba(255,255,255,.07)),linear-gradient(135deg,#ff2c72 0%,#7a0dff 52%,#13f6a5 120%)!important;border-color:rgba(255,255,255,.26)!important;box-shadow:0 20px 44px rgba(255,43,111,.22),0 18px 42px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(0,0,0,.42)!important;text-transform:uppercase!important;letter-spacing:.08em!important;font-weight:950!important;position:relative!important;overflow:hidden!important}#dice .dice-roll-button:before{content:''!important;position:absolute!important;inset:-80% -30%!important;background:linear-gradient(90deg,transparent,rgba(255,255,255,.42),transparent)!important;transform:translateX(-65%) rotate(18deg)!important;animation:diceButtonSheen 2.8s ease-in-out infinite!important}#dice .dice-roll-button:active{transform:translateY(2px) scale(.98)!important}
-#dice .dice-result-card{background:linear-gradient(180deg,rgba(13,13,23,.62),rgba(6,6,11,.54))!important;border-color:rgba(255,255,255,.15)!important;box-shadow:0 18px 54px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.12)!important;backdrop-filter:blur(14px) saturate(1.22)!important;-webkit-backdrop-filter:blur(14px) saturate(1.22)!important}.dice-view .dice-result-row{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.025))!important}.dice-view .dice-result-row.is-positive{border-color:rgba(70,255,164,.24)!important;box-shadow:0 0 24px rgba(70,255,164,.07),inset 0 1px 0 rgba(255,255,255,.05)!important}
-#dice .dice-premium-hud{position:fixed!important;left:50%!important;top:calc(env(safe-area-inset-top) + 72px)!important;z-index:9!important;width:min(520px,calc(100vw - 28px))!important;transform:translateX(-50%)!important;display:grid!important;grid-template-columns:1fr auto!important;align-items:center!important;gap:12px!important;padding:12px 14px!important;border-radius:26px!important;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 18px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.16)!important;backdrop-filter:blur(16px) saturate(1.28)!important;-webkit-backdrop-filter:blur(16px) saturate(1.28)!important}.dice-premium-title{display:grid!important;gap:3px!important}.dice-premium-title b{font-size:18px!important;font-weight:1000!important;letter-spacing:-.04em!important}.dice-premium-title span{font-size:11px!important;font-weight:850!important;color:rgba(255,255,255,.55)!important}.dice-premium-chip{display:inline-flex!important;align-items:center!important;gap:6px!important;border-radius:999px!important;padding:8px 10px!important;background:rgba(20,255,156,.11)!important;color:#87ffc6!important;border:1px solid rgba(20,255,156,.22)!important;font-size:11px!important;font-weight:950!important}.dice-premium-chip i{width:7px!important;height:7px!important;border-radius:50%!important;background:#38ff9d!important;box-shadow:0 0 14px #38ff9d!important}
-#dice .dice-fx{position:absolute!important;inset:0!important;z-index:0!important;pointer-events:none!important;overflow:hidden!important}.dice-fx i{position:absolute!important;width:3px!important;height:3px!important;border-radius:50%!important;background:rgba(255,255,255,.7)!important;box-shadow:0 0 16px rgba(255,255,255,.5)!important;animation:diceParticle 5.5s linear infinite!important;opacity:.55!important}
-@keyframes diceAuraFloat{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(16px,-18px,0) scale(1.08)}}@keyframes diceButtonSheen{0%,38%{transform:translateX(-70%) rotate(18deg)}72%,100%{transform:translateX(70%) rotate(18deg)}}@keyframes diceParticle{0%{transform:translate3d(0,24px,0);opacity:0}15%,70%{opacity:.62}100%{transform:translate3d(18px,-92px,0);opacity:0}}
-@media(max-width:420px){#dice .dice-premium-hud{top:calc(env(safe-area-inset-top) + 66px)!important;padding:11px 12px!important;border-radius:24px!important}#dice .dice-premium-title b{font-size:16px!important}#dice .dice-range-card{top:calc(env(safe-area-inset-top) + 126px)!important}#dice .dice-result-card{top:calc(env(safe-area-inset-top) + 286px)!important}#dice .dice-wrap{gap:10px!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}#dice .dice-panel{gap:9px!important;padding:12px 14px 14px!important;border-radius:28px!important}#dice .dice-status{min-height:27px!important}#dice .dice-control-grid{gap:8px!important}#dice .dice-control-grid .dice-field,#dice button.dice-field.dice-mode-field{min-height:78px!important;height:78px!important;padding:11px 10px!important;border-radius:20px!important}#dice .dice-control-grid .dice-field small,#dice button.dice-field.dice-mode-field small[data-dice-mode-label]{font-size:10px!important}#dice .dice-control-grid .dice-field b,#dice button.dice-field.dice-mode-field b{margin-top:9px!important;font-size:19px!important}#dice .dice-bet{gap:8px!important}#dice .dice-bet button{height:48px!important;border-radius:18px!important}#dice .dice-roll-button{height:58px!important;margin:4px auto 0!important;border-radius:22px!important}}
-@media(prefers-reduced-motion:reduce){#dice .dice-wrap:before,#dice .dice-wrap:after,#dice .dice-roll-button:before,#dice .dice-fx i{animation:none!important}}
-</style><script>(function(){var root=document.getElementById('dice');if(!root||root.dataset.premiumDiceReady)return;root.dataset.premiumDiceReady='1';var wrap=root.querySelector('.dice-wrap');if(wrap&&!root.querySelector('.dice-fx')){var fx=document.createElement('div');fx.className='dice-fx';for(var i=0;i<18;i++){var p=document.createElement('i');p.style.left=(Math.random()*100).toFixed(2)+'%';p.style.top=(18+Math.random()*76).toFixed(2)+'%';p.style.animationDelay=(-Math.random()*5.5).toFixed(2)+'s';p.style.animationDuration=(4.2+Math.random()*3.8).toFixed(2)+'s';fx.appendChild(p)}wrap.insertBefore(fx,wrap.firstChild)}if(wrap&&!root.querySelector('.dice-premium-hud')){var hud=document.createElement('div');hud.className='dice-premium-hud';hud.innerHTML='<div class="dice-premium-title"><b>Vexa Dice Royale</b><span>Pick your edge, feel the roll.</span></div><div class="dice-premium-chip"><i></i><span>LIVE</span></div>';wrap.insertBefore(hud,wrap.firstChild)}var panel=root.querySelector('.dice-panel');if(panel&&!panel.dataset.tiltReady){panel.dataset.tiltReady='1';panel.addEventListener('pointermove',function(e){var r=panel.getBoundingClientRect(),x=(e.clientX-r.left)/Math.max(1,r.width)-.5,y=(e.clientY-r.top)/Math.max(1,r.height)-.5;panel.style.setProperty('--mx',(50+x*12)+'%');panel.style.transform='perspective(900px) rotateX('+(-y*2.2)+'deg) rotateY('+(x*2.2)+'deg)'}, {passive:true});panel.addEventListener('pointerleave',function(){panel.style.transform='none'},{passive:true})}})();</script>`;
+#dice .dice-panel{
+  transform:none!important;
+  gap:10px!important;
+  padding:14px 16px 16px!important;
+  border-radius:30px!important;
+  overflow:hidden!important;
+}
+#dice .dice-status{
+  transform:none!important;
+  min-height:22px!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  line-height:1.15!important;
+}
+#dice .dice-control-grid{
+  width:100%!important;
+  margin:0 auto!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:9px!important;
+  align-items:stretch!important;
+}
+#dice .dice-control-grid .dice-field{
+  min-width:0!important;
+  min-height:82px!important;
+  height:82px!important;
+  padding:12px 12px!important;
+  border-radius:20px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+#dice .dice-control-grid .dice-field small,
+#dice .dice-control-grid .dice-field b{
+  transform:none!important;
+}
+#dice .dice-control-grid .dice-field small{
+  font-size:12px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  color:rgba(255,255,255,.52)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#dice .dice-control-grid .dice-field b{
+  margin-top:10px!important;
+  min-width:0!important;
+  width:100%!important;
+  font-size:21px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  align-items:center!important;
+  gap:6px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#dice .dice-control-grid .dice-field b span{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#dice button.dice-field.dice-mode-field,
+#dice button.dice-field.dice-mode-field.active,
+#dice button.dice-field.dice-mode-field:hover,
+#dice button.dice-field.dice-mode-field:focus,
+#dice button.dice-field.dice-mode-field:active{
+  min-height:82px!important;
+  height:82px!important;
+  padding:12px 12px!important;
+  border-radius:20px!important;
+  background:#030303!important;
+  background-color:#030303!important;
+  background-image:none!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+  color:#fff!important;
+  text-align:left!important;
+  outline:0!important;
+  filter:none!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#dice button.dice-field.dice-mode-field:before,
+#dice button.dice-field.dice-mode-field:after{
+  display:none!important;
+  content:none!important;
+}
+#dice button.dice-field.dice-mode-field small[data-dice-mode-label]{
+  display:block!important;
+  color:rgba(255,255,255,.52)!important;
+  font-size:12px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  transform:none!important;
+}
+#dice button.dice-field.dice-mode-field b{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  width:100%!important;
+  margin-top:10px!important;
+  transform:none!important;
+}
+#dice .dice-bet{
+  width:100%!important;
+  margin:2px auto 0!important;
+  gap:9px!important;
+}
+#dice .dice-bet button{
+  height:50px!important;
+  border-radius:19px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  line-height:1!important;
+}
+#dice .dice-bet .dice-bet-main,
+#dice .dice-bet .dice-bet-main.active{
+  color:#fff!important;
+  text-shadow:0 5px 14px rgba(0,0,0,.85)!important;
+  font-size:18px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding-top:0!important;
+  line-height:1!important;
+  transform:none!important;
+}
+#dice .dice-roll-button{
+  width:100%!important;
+  height:58px!important;
+  margin:4px auto 0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  line-height:1!important;
+}
+@media(max-width:420px){
+  #dice .dice-wrap{
+    gap:10px!important;
+    padding-bottom:max(12px,env(safe-area-inset-bottom))!important;
+  }
+  #dice .dice-panel{
+    transform:none!important;
+    gap:9px!important;
+    padding:12px 14px 14px!important;
+    border-radius:28px!important;
+  }
+  #dice .dice-status{
+    transform:none!important;
+    min-height:21px!important;
+  }
+  #dice .dice-control-grid{
+    margin:0 auto!important;
+    gap:8px!important;
+  }
+  #dice .dice-control-grid .dice-field,
+  #dice button.dice-field.dice-mode-field,
+  #dice button.dice-field.dice-mode-field.active,
+  #dice button.dice-field.dice-mode-field:hover,
+  #dice button.dice-field.dice-mode-field:focus,
+  #dice button.dice-field.dice-mode-field:active{
+    min-height:78px!important;
+    height:78px!important;
+    padding:11px 10px!important;
+    border-radius:19px!important;
+  }
+  #dice .dice-control-grid .dice-field small,
+  #dice button.dice-field.dice-mode-field small[data-dice-mode-label]{
+    font-size:11px!important;
+    transform:none!important;
+  }
+  #dice .dice-control-grid .dice-field b,
+  #dice button.dice-field.dice-mode-field b{
+    margin-top:9px!important;
+    font-size:19px!important;
+    transform:none!important;
+  }
+  #dice .dice-bet{
+    margin:2px auto 0!important;
+    gap:8px!important;
+  }
+  #dice .dice-bet button{
+    height:48px!important;
+    border-radius:18px!important;
+  }
+  #dice .dice-bet .dice-bet-main,
+  #dice .dice-bet .dice-bet-main.active{
+    padding-top:0!important;
+    transform:none!important;
+    align-items:center!important;
+  }
+  #dice .dice-roll-button{
+    height:56px!important;
+    margin:4px auto 0!important;
+  }
+}
+</style>`;
