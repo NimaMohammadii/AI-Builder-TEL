@@ -113,7 +113,10 @@ export const MINIAPP_SCRIPT = `
 
   function openInitialTarget(){
     try{
-      var target=new URLSearchParams(location.search).get('open');
+      var params=new URLSearchParams(location.search);
+      var section=(params.get('section')||location.hash.replace(/^#/, '')||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40);
+      var target=params.get('open');
+      if(section&&q(section))show(section);
       if(target==='deposit'){
         show('home');
         setDepositSheet(true);
