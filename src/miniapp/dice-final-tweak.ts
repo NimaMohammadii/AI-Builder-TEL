@@ -19,20 +19,30 @@ export const DICE_FINAL_TWEAK = `<style>
   justify-content:center!important;
   line-height:1.15!important;
 }
-#dice .dice-range-card{
+#dice .dice-range-card,
+#dice .dice-result-card{
   background:rgba(255,255,255,.045)!important;
   border:1px solid rgba(255,255,255,.10)!important;
   box-shadow:none!important;
   backdrop-filter:blur(3px) saturate(1.08)!important;
   -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
 }
-#dice .dice-range-card:before{
+#dice .dice-range-card:before,
+#dice .dice-result-card:before{
   display:none!important;
   content:none!important;
 }
-#dice .dice-range-card:after{
+#dice .dice-range-card:after,
+#dice .dice-result-card:after{
   display:none!important;
   content:none!important;
+}
+#dice .dice-result-row{
+  background:rgba(255,255,255,.045)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(3px) saturate(1.06)!important;
+  -webkit-backdrop-filter:blur(3px) saturate(1.06)!important;
 }
 #dice .dice-control-grid{
   width:100%!important;
