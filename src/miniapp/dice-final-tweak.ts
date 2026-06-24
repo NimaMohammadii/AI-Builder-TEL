@@ -165,16 +165,17 @@ export const DICE_FINAL_TWEAK = `<style>
   padding:0!important;
   line-height:1!important;
   border-radius:24px!important;
-  background:rgba(255,255,255,.045)!important;
-  border-color:rgba(255,255,255,.12)!important;
-  box-shadow:none!important;
+  background:linear-gradient(180deg,rgba(92,10,34,.86),rgba(38,2,14,.92))!important;
+  border-color:rgba(148,24,62,.32)!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.34),0 0 24px rgba(104,8,36,.22)!important;
+  color:#fff!important;
   text-transform:uppercase!important;
   letter-spacing:.08em!important;
   font-weight:950!important;
   position:relative!important;
   overflow:hidden!important;
-  backdrop-filter:blur(3px) saturate(1.08)!important;
-  -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
+  backdrop-filter:blur(3px) saturate(1.12)!important;
+  -webkit-backdrop-filter:blur(3px) saturate(1.12)!important;
 }
 #dice .dice-roll-button:before{
   display:none!important;
@@ -182,10 +183,10 @@ export const DICE_FINAL_TWEAK = `<style>
 }
 #dice .dice-roll-button:active{
   transform:translateY(2px) scale(.98)!important;
-  background:rgba(255,255,255,.065)!important;
+  background:linear-gradient(180deg,rgba(64,5,23,.92),rgba(22,1,9,.96))!important;
 }
 #dice .dice-roll-button.is-rolling{
-  background:rgba(255,255,255,.065)!important;
+  background:linear-gradient(180deg,rgba(64,5,23,.92),rgba(22,1,9,.96))!important;
 }
 @media(max-width:420px){
   #dice .dice-wrap{
