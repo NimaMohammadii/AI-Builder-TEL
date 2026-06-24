@@ -30,6 +30,7 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { CONNECT_BOT_CARD_LOCK_STYLES } from './connect-bot-card-lock-styles';
 import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
+import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION } from './home';
 import { REFERRAL_SECTION } from './referral';
@@ -181,6 +182,7 @@ const STYLES = [
   CONNECT_BOT_CARD_LOCK_STYLES,
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
+  SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
 ].join('');
@@ -245,6 +247,7 @@ const SCRIPTS = [
   SECTION_LOCK_SCRIPT,
   SECTION_LOADING_LOCK_SCRIPT,
   SECTION_LOCK_IMAGE_SPLIT_SCRIPT,
+  SECTION_BACKGROUND_SCRIPT,
   MINIAPP_AUDIO_SCRIPT,
   XP_BAR_EFFECTS_SCRIPT,
 ].map((script) => `<script>${script}</script>`).join('');
