@@ -1,6 +1,7 @@
 import type { Env } from './types';
 
-export type OnlineCountSchedule = Record<string, number[]>;
+export type OnlineCountRange = { min: number; max: number };
+export type OnlineCountSchedule = Record<string, OnlineCountRange[]>;
 export type OnlineCountConfig = { schedule: OnlineCountSchedule; updatedAt?: string };
 
 type AdminSettingRow = { value_json: string };
@@ -35,11 +36,13 @@ function defaultOnlineCountConfig(): OnlineCountConfig {
   return { schedule };
 }
 
-function defaultCountFor(id: string, hour: number): number {
+function defaultCountFor(id: string, hour: number): OnlineCountRange {
   const base = hour >= 5 && hour <= 11 ? [80, 220] : hour >= 12 && hour <= 16 ? [180, 360] : [500, 700];
   const hash = id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const offset = ((hash + hour * 31) % (base[1] - base[0] + 1));
-  return base[0] + offset;
+  const offset = ((hash + hour * 31) % 45);
+  const min = Math.max(0, base[0] + offset);
+  const max = Math.max(min, base[1] + offset);
+  return { min, max };
 }
 
 async function readConfig(env: Env): Promise<unknown | null> {
@@ -79,9 +82,20 @@ function normalizeOnlineCountConfig(input: any): OnlineCountConfig {
   const schedule: OnlineCountSchedule = {};
   for (const id of SECTION_IDS) {
     const values = Array.isArray(source?.[id]) ? source[id] : [];
-    schedule[id] = Array.from({ length: 24 }, (_, hour) => normalizeCount(values[hour], fallback[id][hour]));
+    schedule[id] = Array.from({ length: 24 }, (_, hour) => normalizeRange(values[hour], fallback[id][hour]));
   }
   return { schedule, updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined };
+}
+
+function normalizeRange(value: unknown, fallback: OnlineCountRange): OnlineCountRange {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const raw = value as { min?: unknown; max?: unknown };
+    const min = normalizeCount(raw.min, fallback.min);
+    const max = normalizeCount(raw.max, fallback.max);
+    return min <= max ? { min, max } : { min: max, max: min };
+  }
+  const fixed = normalizeCount(value, fallback.min);
+  return { min: fixed, max: fixed };
 }
 
 function normalizeCount(value: unknown, fallback: number): number {
