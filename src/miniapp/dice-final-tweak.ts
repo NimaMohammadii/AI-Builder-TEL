@@ -172,16 +172,16 @@ export const DICE_FINAL_TWEAK = `<style>
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  gap:4px!important;
+  gap:1px!important;
   padding-top:0!important;
   line-height:1!important;
   transform:none!important;
 }
 #dice .dice-bet .dice-bet-main:before{
   content:''!important;
-  width:22px!important;
-  height:22px!important;
-  flex:0 0 22px!important;
+  width:25px!important;
+  height:25px!important;
+  flex:0 0 25px!important;
   display:block!important;
   background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
 }
@@ -191,17 +191,17 @@ export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-bet-box:before{
   content:''!important;
   position:absolute!important;
-  left:calc(50% - 54px)!important;
-  top:74px!important;
-  width:28px!important;
-  height:28px!important;
+  left:calc(50% - 46px)!important;
+  top:72px!important;
+  width:32px!important;
+  height:32px!important;
   z-index:2!important;
   pointer-events:none!important;
   background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
 }
 #dice .dice-bet-input{
-  padding-left:42px!important;
-  padding-right:42px!important;
+  padding-left:38px!important;
+  padding-right:38px!important;
 }
 #dice .dice-roll-button{
   width:100%!important;
@@ -293,17 +293,18 @@ export const DICE_FINAL_TWEAK = `<style>
     padding-top:0!important;
     transform:none!important;
     align-items:center!important;
+    gap:1px!important;
   }
   #dice .dice-bet .dice-bet-main:before{
-    width:20px!important;
-    height:20px!important;
-    flex-basis:20px!important;
+    width:23px!important;
+    height:23px!important;
+    flex-basis:23px!important;
   }
   #dice .dice-bet-box:before{
-    left:calc(50% - 50px)!important;
-    top:74px!important;
-    width:26px!important;
-    height:26px!important;
+    left:calc(50% - 44px)!important;
+    top:72px!important;
+    width:30px!important;
+    height:30px!important;
   }
   #dice .dice-roll-button{
     height:58px!important;
