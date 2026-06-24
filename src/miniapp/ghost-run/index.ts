@@ -17,6 +17,8 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}
 #ghostrun .ghost-run-reaper{display:none!important;opacity:0!important;visibility:hidden!important}
 #ghostrun .ghost-run-multiplier{position:absolute!important;top:18px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:flex!important;align-items:center!important;justify-content:center!important;min-width:110px!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#fff!important;font-size:34px!important;font-weight:950!important;line-height:1!important;letter-spacing:.02em!important;text-shadow:0 7px 18px rgba(0,0,0,.44)!important;z-index:90!important}
+#ghostrun .ghost-run-countdown{position:absolute!important;top:58px!important;left:50%!important;transform:translateX(-50%)!important;display:none!important;min-width:52px!important;text-align:center!important;color:rgba(255,255,255,.82)!important;font-size:15px!important;font-weight:900!important;line-height:1!important;text-shadow:0 6px 16px rgba(0,0,0,.48)!important;z-index:90!important}
+#ghostrun .ghost-run-screen[data-ghost-phase='betting'] .ghost-run-countdown{display:block!important}
 #ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;padding:12px 16px calc(20px + env(safe-area-inset-bottom))!important;align-content:start!important;background:transparent!important;pointer-events:auto!important}
 #ghostrun .ghost-run-control-card{min-height:56px!important;padding:8px 4px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#fff!important}
 #ghostrun .ghost-run-control-card span{display:block!important;margin:0 0 5px!important;color:rgba(255,255,255,.45)!important;font-size:10px!important;font-weight:800!important;letter-spacing:.04em!important;text-transform:uppercase!important;line-height:1!important}
@@ -45,6 +47,7 @@ function patchGhostRunSection(section: string): string {
   patched = patched.replace('<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">', '<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">' + crashCss);
   patched = patched.replace('<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/> TON</strong>', '<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/></strong>');
   patched = patched.replace('<strong><em data-ghost-preview>0.10</em> TON</strong>', '<strong><em data-ghost-preview>0.10</em></strong>');
+  patched = patched.replace('<strong class="ghost-run-multiplier" data-ghost-multiplier>1.00x</strong>', '<strong class="ghost-run-multiplier" data-ghost-multiplier>1.00x</strong><span class="ghost-run-countdown" data-ghost-countdown>8s</span>');
 
   const crashScript = `<script>
 (function(){
@@ -55,6 +58,7 @@ function patchGhostRunSection(section: string): string {
   var screen=root.querySelector('.ghost-run-screen');
   var ghost=root.querySelector('.ghost-run-ghost');
   var multiplierEl=root.querySelector('[data-ghost-multiplier]');
+  var countdownEl=root.querySelector('[data-ghost-countdown]');
   var betInput=root.querySelector('[data-ghost-bet-input]');
   var preview=root.querySelector('[data-ghost-preview]');
   var startButton=root.querySelector('[data-ghost-start]');
@@ -65,7 +69,7 @@ function patchGhostRunSection(section: string): string {
   var phase='betting', placedBetNano=0, activeBetNano=0, cashed=false, crashed=false;
   var multiplier=1, crashPoint=1.45, phaseStartedAt=performance.now(), raf=0, phaseTimer=0;
   var position=18, backgroundOffset=0, graveUrl='', localBalanceNano=0;
-  var bettingMs=6500, restartMs=4400;
+  var bettingMs=8000, restartMs=4400;
   function tonToNano(v){var n=parseFloat(String(v||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*1e9):0}
   function nanoToTon(v){return (Math.max(0,Math.floor(Number(v)||0))/1e9)}
   function readBalance(){if(window.VexaTonBalance&&window.VexaTonBalance.read)return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));return localBalanceNano||Math.max(0,Math.floor(Number(root.dataset.walletBalanceNano||0)||0))}
@@ -81,9 +85,11 @@ function patchGhostRunSection(section: string): string {
   function hideResult(){if(result)result.removeAttribute('data-visible')}
   function timeLeft(){return Math.max(0,Math.ceil((bettingMs-(performance.now()-phaseStartedAt))/1000))}
   function updatePreview(){var amount=phase==='running'&&activeBetNano?activeBetNano:placedBetNano||tonToNano(betInput&&betInput.value||0);if(preview)preview.textContent=nanoToTon(Math.max(0,Math.floor(amount*Math.max(1,multiplier)))).toFixed(2)}
-  function buttonText(){if(phase==='betting')return placedBetNano?'Bet Placed · starts in '+timeLeft()+'s':'Place Bet';if(phase==='running')return activeBetNano&&!cashed?'Cash Out '+multiplier.toFixed(2)+'x':'Running';return 'Next Round'}
+  function activeProfitText(){return nanoToTon(Math.max(0,Math.floor(activeBetNano*multiplier)-activeBetNano)).toFixed(2)}
+  function buttonText(){if(phase==='betting')return placedBetNano?'Bet Placed · starts in '+timeLeft()+'s':'Place Bet';if(phase==='running')return activeBetNano&&!cashed?'Cash Out '+activeProfitText():'Running';return 'Next Round'}
   function render(){
     if(multiplierEl)multiplierEl.textContent=multiplier.toFixed(2)+'x';
+    if(countdownEl)countdownEl.textContent=timeLeft()+'s';
     if(ghost)ghost.style.left=position+'px';
     root.style.setProperty('--ghost-x',position+'px');
     root.style.setProperty('--ghost-bg-x',(-backgroundOffset).toFixed(1)+'px');
@@ -103,8 +109,10 @@ function patchGhostRunSection(section: string): string {
     if(phase==='running'){
       var t=(now-phaseStartedAt)/1000;
       multiplier=1+t*.055+Math.pow(t,1.18)*.030;
-      position=Math.min(viewportWidth()-84,18+t*32);
-      backgroundOffset=t*22;
+      var center=Math.max(18,viewportWidth()*0.5-42);
+      var walkSpeed=32;
+      position=Math.min(center,18+t*walkSpeed);
+      backgroundOffset=Math.max(0,t-((center-18)/walkSpeed))*22;
       if(multiplier>=crashPoint)endRound();else render();
     }
     raf=requestAnimationFrame(tick);
