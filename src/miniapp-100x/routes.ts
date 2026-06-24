@@ -4,6 +4,7 @@ import { PUBLIC_BASE_URL } from '../utils';
 import { miniApp100xHtml } from './html';
 
 const BOT_2_ALLOWED_UPDATES = ['message', 'callback_query'];
+type EnvWithBot2 = Env & { BOT_TOKEN_2?: string };
 
 app.get('/100x', () => html(miniApp100xHtml()));
 app.get('/100x/', () => html(miniApp100xHtml()));
@@ -46,7 +47,7 @@ async function sendOpenMiniApp(token: string, chatId: number): Promise<void> {
 }
 
 function bot2Token(env: Env): string {
-  return String(env.BOT_TOKEN_2 || '').trim();
+  return String((env as EnvWithBot2).BOT_TOKEN_2 || '').trim();
 }
 
 async function telegram<T = { ok: boolean; description?: string }>(token: string, method: string, payload: unknown): Promise<T> {
