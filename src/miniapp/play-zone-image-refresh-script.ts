@@ -84,14 +84,16 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     }
     return Promise.resolve(refreshFromCache());
   }
-  var countProfiles={mines:{offset:-36,width:18},plinko:{offset:24,width:32},rps:{offset:-12,width:-8},wheel:{offset:58,width:24},dice:{offset:-28,width:14},crash:{offset:72,width:38},hilo:{offset:-44,width:20},coinflip:{offset:10,width:-12},slot:{offset:46,width:28},ghostrun:{offset:34,width:18}};
-  var countRanges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
-  function baseCountRange(hour){for(var i=0;i<countRanges.length;i++){var r=countRanges[i];if(hour>=r.start&&hour<=r.end)return r}return countRanges[0]}
-  function gameCountRange(id){var base=baseCountRange((new Date()).getHours());var profile=countProfiles[id]||{offset:0,width:0};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {min:low,max:high}}
-  function nextCount(id,current){var r=gameCountRange(id);var base=parseInt(current,10);if(!isFinite(base)||base<r.min||base>r.max){base=window.VexaLiveGameCounts&&window.VexaLiveGameCounts.get?window.VexaLiveGameCounts.get(id):r.min+Math.floor(Math.random()*(r.max-r.min+1))}var span=Math.max(3,Math.min(9,Math.round((r.max-r.min)*.035)));var delta=Math.floor(Math.random()*(span*2+1))-span;if(delta===0)delta=id&&id.length%2?1:-1;var value=base+delta;if(value<r.min)value=r.min+Math.floor(Math.random()*Math.min(12,r.max-r.min+1));if(value>r.max)value=r.max-Math.floor(Math.random()*Math.min(12,r.max-r.min+1));return value}
-  function flipDigit(el,text){el.classList.add('is-counting');setTimeout(function(){el.textContent=text;el.classList.remove('is-counting')},135)}
-  function animateNumber(el,value){if(!el)return;var from=String(parseInt(el.textContent,10)||0).padStart(3,'0');var to=String(value).padStart(3,'0');var order=[2,1,0];order.forEach(function(index,step){if(from.charAt(index)===to.charAt(index))return;setTimeout(function(){var current=String(parseInt(el.textContent,10)||0).padStart(3,'0').split('');current[index]=to.charAt(index);flipDigit(el,String(parseInt(current.join(''),10)))},step*170)})}
-  function tickCounters(){if(!isPlayZoneActive())return;document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){var shell=el.closest&&el.closest('.game-card-shell[data-game-view]');var id=shell&&shell.getAttribute('data-game-view');var next=nextCount(id,el.textContent);animateNumber(el,next);setTimeout(function(){if(window.VexaLiveGameCounts&&window.VexaLiveGameCounts.setCount&&isPlayZoneActive())window.VexaLiveGameCounts.setCount(id,next)},560)})}
+  function tickCounters(){
+    if(!isPlayZoneActive()||!window.VexaLiveGameCounts)return;
+    if(typeof window.VexaLiveGameCounts.sync==='function'){window.VexaLiveGameCounts.sync();return}
+    if(typeof window.VexaLiveGameCounts.get!=='function'||typeof window.VexaLiveGameCounts.setCount!=='function')return;
+    document.querySelectorAll('#playzone .game-card-shell[data-game-view] .game-players b').forEach(function(el){
+      var shell=el.closest&&el.closest('.game-card-shell[data-game-view]');
+      var id=shell&&shell.getAttribute('data-game-view');
+      if(id)window.VexaLiveGameCounts.setCount(id,window.VexaLiveGameCounts.get(id));
+    });
+  }
   function stopCounters(){if(counterTimer){clearTimeout(counterTimer);counterTimer=null}countersStarted=false}
   function scheduleCounterTick(delay){if(counterTimer)clearTimeout(counterTimer);if(!isPlayZoneActive()){stopCounters();return}counterTimer=setTimeout(function(){counterTimer=null;if(!isPlayZoneActive()){stopCounters();return}tickCounters();scheduleCounterTick(3000)},Math.max(250,delay||3000))}
   function startCounters(){if(countersStarted)return;countersStarted=true;scheduleCounterTick(3000)}
