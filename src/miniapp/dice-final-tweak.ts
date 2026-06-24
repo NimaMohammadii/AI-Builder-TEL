@@ -19,6 +19,14 @@ export const DICE_FINAL_TWEAK = `<style>
   justify-content:center!important;
   line-height:1.15!important;
 }
+#dice .dice-status.win{
+  color:#35ff9a!important;
+  text-shadow:0 0 14px rgba(53,255,154,.18)!important;
+}
+#dice .dice-status.lose{
+  color:#ff4f7b!important;
+  text-shadow:0 0 14px rgba(255,79,123,.16)!important;
+}
 #dice .dice-range-card,
 #dice .dice-result-card{
   background:rgba(255,255,255,.045)!important;
