@@ -11,6 +11,7 @@ import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, gameBotToken, id, rateLimit, safeParseJson } from './utils';
 import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
+import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-counts';
 
 const app = new Hono<{ Bindings: Env }>();
 const DEFAULT_BOT_ID = 'main';
@@ -110,6 +111,7 @@ app.get('/app/index.html', () => html(miniAppHtml()));
 app.get('/builder', () => html(builderAppHtml()));
 app.get('/builder/', () => html(builderAppHtml()));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
+app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));
 
 app.get('/admin', () => html(adminHtml()));
