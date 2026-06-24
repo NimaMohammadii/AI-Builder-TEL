@@ -1,4 +1,7 @@
 export const DICE_FINAL_TWEAK = `<style>
+#dice.dice-view{
+  filter:brightness(1.08) contrast(1.02)!important;
+}
 #dice .dice-wrap{
   gap:12px!important;
   padding-bottom:max(14px,env(safe-area-inset-bottom))!important;
