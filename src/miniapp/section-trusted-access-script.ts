@@ -2,6 +2,9 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
 (function(){
   var trusted=false;
   var nativeFetch=window.fetch&&window.fetch.bind(window);
+  var lastTrustedReadAt=0;
+  var trustedReadInFlight=null;
+  var TRUSTED_READ_CACHE_MS=60000;
   function currentUserId(){
     var tg=window.Telegram&&window.Telegram.WebApp;
     var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
@@ -15,12 +18,16 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
     document.body.classList.remove('section-loading-active');
   }
   function asJson(data){return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}})}
-  function readTrusted(){
+  function readTrusted(force){
     var uid=currentUserId();
     if(!uid){trusted=false;window.VexaTrustedAccess=false;return Promise.resolve(false)}
-    return nativeFetch('/app/api/user-access-override?userId='+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){trusted=!!(data&&data.trustedAccess);window.VexaTrustedAccess=trusted;if(trusted){removeLockViews();setTimeout(removeLockViews,120);try{window.dispatchEvent(new CustomEvent('vexa-section-locks-updated'))}catch(e){}}return trusted}).catch(function(){return false});
+    var now=Date.now();
+    if(!force&&lastTrustedReadAt&&now-lastTrustedReadAt<TRUSTED_READ_CACHE_MS)return Promise.resolve(trusted);
+    if(trustedReadInFlight)return trustedReadInFlight;
+    trustedReadInFlight=nativeFetch('/app/api/user-access-override?userId='+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){lastTrustedReadAt=Date.now();trusted=!!(data&&data.trustedAccess);window.VexaTrustedAccess=trusted;if(trusted){removeLockViews();setTimeout(removeLockViews,120);try{window.dispatchEvent(new CustomEvent('vexa-section-locks-updated'))}catch(e){}}return trusted}).catch(function(){return trusted}).finally(function(){trustedReadInFlight=null});
+    return trustedReadInFlight;
   }
-  var ready=readTrusted();
+  var ready=readTrusted(true);
   if(nativeFetch){
     window.fetch=function(input,init){
       var url=String((input&&input.url)||input||'');
@@ -42,8 +49,8 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
       return nativeFetch(input,init);
     };
   }
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)readTrusted()});
-  document.addEventListener('click',function(){readTrusted()},true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)readTrusted(false)});
+  document.addEventListener('click',function(){readTrusted(false)},true);
   if(window.MutationObserver){new MutationObserver(function(){if(trusted)removeLockViews()}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']})}
 })();
 `;
