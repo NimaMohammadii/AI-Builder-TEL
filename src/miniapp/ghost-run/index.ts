@@ -107,30 +107,39 @@ function patchGhostRunSection(section: string): string {
       button.addEventListener('contextmenu',function(e){e.preventDefault()});
     }`;
 
-  const randomFearLogic = `function updateFear(dt){
+  const balancedFearLogic = `function updateFear(dt){
       var deep=stageDanger();
       if(!roundActive||settled){return}
       if(!fearModeTimer||fearModeTimer<=0){pickFearMode()}
       fearModeTimer-=dt;
+      var m=multiplierValue;
+      var dangerBand=m<1.25?.45:m<1.55?.85:m<1.9?1.35:m<2.35?2.1:3.25;
       if(direction>0){
         retreatCharge=0;
-        if(fearMode==='calm'){
-          fear+=(-1.2+Math.random()*2.1)*dt;
-        }else if(fearMode==='panic'){
-          fear+=(15+Math.random()*26)*deep*dt;
+        if(roundType==='safe'){
+          fear+=(-1.0+Math.random()*2.3)*dt;
+          if(m>1.65)fear+=(Math.random()*2.6)*dt;
+          if(Math.random()<(.006*dangerBand*dt))fear+=8+Math.random()*18;
+        }else if(roundType==='normal'){
+          fear+=(fearMode==='calm'?(-.6+Math.random()*2.4):(2.2+Math.random()*7.2)*dangerBand)*dt;
+          if(Math.random()<(.014*dangerBand*dt))fear+=10+Math.random()*24;
+        }else if(roundType==='scary'){
+          fear+=(fearMode==='calm'?(1.0+Math.random()*4.2):(8.5+Math.random()*19)*dangerBand)*dt;
+          if(Math.random()<(.030*dangerBand*dt))fear+=18+Math.random()*42;
         }else{
-          fear+=(1.2+Math.random()*5.6)*deep*dt;
+          if(m<1.38){fear+=(-.8+Math.random()*1.8)*dt}
+          else{fear+=(10+Math.random()*24)*(dangerBand+.35)*dt;if(Math.random()<(.045*dangerBand*dt))fear+=28+Math.random()*55}
         }
-        if(Math.random()<(.022*deep*dt))fear+=18+Math.random()*42;
-        if(Math.random()<(.010*dt))fear=Math.max(fear,58+Math.random()*37);
+        if(roundType!=='safe'&&Math.random()<(.004*deep*dt))fear=Math.max(fear,55+Math.random()*39);
       }else if(direction<0){
         retreatCharge+=dt;
-        var relief=Math.max(0,retreatCharge-.38);
-        if(fearMode==='panic'&&Math.random()<.38){fear-=Math.max(.2,relief*1.2)*dt}else{fear-=3.6*dt+relief*3.6*dt}
-        if(Math.random()<(.006*deep*dt))fear+=8+Math.random()*18;
+        var relief=Math.max(0,retreatCharge-.35);
+        var reliefPower=roundType==='scary'?2.4:roundType==='trap'?1.8:3.4;
+        fear-=3.2*dt+relief*reliefPower*dt;
+        if(fear>82&&Math.random()<(.010*deep*dt))fear+=5+Math.random()*15;
       }else{
         retreatCharge=0;
-        if(Math.random()<(.010*stageIndex()*dt))fear+=3+Math.random()*10;
+        if(roundType==='scary'&&Math.random()<(.010*dt))fear+=4+Math.random()*10;
       }
       fear=Math.max(0,Math.min(100,fear));
     }`;
@@ -147,11 +156,11 @@ function patchGhostRunSection(section: string): string {
   );
   patched = patched.replace(
     "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];",
-    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];var fearMode='normal',fearModeTimer=0;function pickFearMode(){var r=Math.random();fearMode=r<.42?'calm':r<.78?'normal':'panic';fearModeTimer=.65+Math.random()*2.35}function resetFearLuck(){fearModeTimer=0;fearMode='normal'}function seedRoundFear(){resetFearLuck();if(Math.random()<.16){fear=Math.min(96,42+Math.random()*54)}}function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'باختی':'You Lost',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'خیلی ترسیدی':'Too much fear',shadow:fa?'ترس نزدیکه':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
+    "var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];var roundType='normal',fearMode='normal',fearModeTimer=0;function pickRoundType(){var r=Math.random();roundType=r<.45?'safe':r<.80?'normal':r<.95?'scary':'trap'}function pickFearMode(){var r=Math.random();fearMode=r<.48?'calm':r<.82?'normal':'panic';fearModeTimer=.55+Math.random()*2.65}function resetFearLuck(){fearModeTimer=0;fearMode='normal';roundType='normal'}function seedRoundFear(){pickRoundType();pickFearMode();if(roundType==='scary'&&Math.random()<.42)fear=Math.min(94,34+Math.random()*58);else if(roundType==='normal'&&Math.random()<.14)fear=12+Math.random()*28;else if(roundType==='trap')fear=Math.random()*8;else fear=Math.random()*6}function userLang(){return String((navigator.languages&&navigator.languages[0])||navigator.language||document.documentElement.lang||'en').toLowerCase()}function isFa(){return userLang().indexOf('fa')===0||userLang().indexOf('ir')>=0}function label(key){var fa=isFa();var t={cashout:fa?'برداشت':'Cash Out',caught:fa?'باختی':'You Lost',lost:fa?'باختی':'You Lost',escaped:fa?'فرار کردی':'Escaped Before the Fear',won:fa?'بردی':'Won',at:fa?'در ضریب':'at',near:fa?'خیلی ترسیدی':'Too much fear',shadow:fa?'ترس نزدیکه':'Fear is closing in',fear:fa?'ترس زیاد می‌شود':'Fear is rising'};return t[key]||key}"
   );
   patched = patched.replace(
     "function updateFear(dt){var deep=stageDanger();if(direction>0){retreatCharge=0;fear+=8.6*deep*dt+Math.min(8,distance/viewportWidth())*0.16*dt}else if(direction<0){retreatCharge+=dt;var relief=Math.max(0,retreatCharge-.55);if(fear<60)fear-=5.2*dt+relief*2.2*dt;else if(fear<85)fear-=Math.max(.35,relief*2.4)*dt;else fear+=(1.1*deep-Math.max(0,relief*3.4))*dt}else{retreatCharge=0;if(stageIndex()>=2)fear+=(0.22+stageIndex()*0.18)*dt}fear=Math.max(0,Math.min(100,fear));}",
-    randomFearLogic
+    balancedFearLogic
   );
   patched = patched.replace(
     "if(startButton)startButton.disabled=(roundActive&&!settled);",
