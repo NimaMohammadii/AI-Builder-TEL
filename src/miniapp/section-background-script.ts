@@ -45,6 +45,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
 
 export const SECTION_BACKGROUND_STYLES = `
 .has-admin-background {
+  position: relative !important;
   background-color: #000 !important;
   background-image: var(--admin-section-background-image) !important;
   background-size: cover !important;
@@ -61,11 +62,14 @@ export const SECTION_BACKGROUND_STYLES = `
 }
 .view.has-admin-background::before {
   content: "";
-  position: sticky;
-  top: 0;
+  position: absolute;
+  inset: 0;
   display: block;
-  width: 100%;
-  height: 0;
+  min-height: 100%;
+  background-image: var(--admin-section-background-image) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   pointer-events: none;
   z-index: 0;
 }
