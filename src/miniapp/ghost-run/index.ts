@@ -26,8 +26,8 @@ function patchGhostRunSection(section: string): string {
 #ghostrun [data-ghost-bet-input]{width:100%!important;height:34px!important;min-width:0!important;margin:0!important;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;font:inherit!important;font-size:22px!important;font-weight:950!important;letter-spacing:-.04em!important;text-align:left!important;box-shadow:none!important;-webkit-appearance:none!important;appearance:textfield!important}
 #ghostrun [data-ghost-bet-input]::-webkit-outer-spin-button,#ghostrun [data-ghost-bet-input]::-webkit-inner-spin-button{-webkit-appearance:none!important;margin:0!important}
 #ghostrun .ghost-run-back-button,#ghostrun .ghost-run-forward-button,#ghostrun .ghost-run-claim-button,#ghostrun .ghost-run-note{display:none!important}
-#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;background:transparent!important;background-color:transparent!important;background-image:none!important;border:1px solid rgba(255,255,255,.12)!important;box-shadow:none!important;color:rgba(255,255,255,.94)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important;grid-column:1 / 3!important;height:60px!important;border-radius:999px!important;font-weight:1000!important;letter-spacing:-.02em!important}
-#ghostrun .ghost-run-screen[data-round-active='1'] .ghost-run-start-button{border-color:rgba(255,255,255,.24)!important;color:#fff!important}
+#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;background:#3b0715!important;background-image:none!important;border:1px solid rgba(255,96,128,.18)!important;box-shadow:0 10px 22px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.08)!important;color:#ffdce5!important;-webkit-text-fill-color:#ffdce5!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important;grid-column:1 / 3!important;height:60px!important;border-radius:17px!important;font-size:15px!important;font-weight:1000!important;letter-spacing:-.02em!important;transition:transform .18s ease,opacity .18s ease,background .18s ease,color .18s ease!important}
+#ghostrun .ghost-run-main-button.cashout{background:#0f3f2a!important;border-color:rgba(120,255,179,.22)!important;color:#d8ffe8!important;-webkit-text-fill-color:#d8ffe8!important}#ghostrun .ghost-run-main-button.is-placed{background:#030303!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important;-webkit-text-fill-color:#fff!important}#ghostrun .ghost-run-main-button:not(:disabled):active{transform:scale(.975)!important}#ghostrun .ghost-run-main-button:disabled{opacity:.58!important;transform:scale(.985)!important}
 #ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost{animation:ghostRunMoveBob .38s ease-in-out infinite alternate!important;filter:drop-shadow(0 0 16px rgba(255,255,255,.18))!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost{animation:ghostRunGraveTransform 1.05s cubic-bezier(.18,.9,.18,1) both!important;opacity:1!important;filter:drop-shadow(0 0 22px rgba(255,255,255,.18)) drop-shadow(0 18px 26px rgba(0,0,0,.56))!important;background-position:center bottom!important;background-size:contain!important;background-repeat:no-repeat!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost:before{content:''!important;position:absolute!important;inset:-22px!important;border-radius:50%!important;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,.10) 28%,transparent 66%)!important;filter:blur(7px)!important;animation:ghostRunGraveFlash .72s ease-out both!important;pointer-events:none!important}
@@ -52,8 +52,8 @@ function patchGhostRunSection(section: string): string {
   var root=(script&&script.closest&&script.closest('#ghostrun'))||document.getElementById('ghostrun');
   if(!root)return;
   root.dataset.ghostReady=String(Date.now());
-  var screen=root.querySelector('[data-ghost-screen]');
-  var ghost=root.querySelector('[data-ghost]');
+  var screen=root.querySelector('.ghost-run-screen');
+  var ghost=root.querySelector('.ghost-run-ghost');
   var multiplierEl=root.querySelector('[data-ghost-multiplier]');
   var betInput=root.querySelector('[data-ghost-bet-input]');
   var preview=root.querySelector('[data-ghost-preview]');
@@ -61,54 +61,58 @@ function patchGhostRunSection(section: string): string {
   var result=root.querySelector('[data-ghost-result]');
   var resultTitle=root.querySelector('[data-ghost-result-title]');
   var resultDetail=root.querySelector('[data-ghost-result-detail]');
-  var panels=[].slice.call(root.querySelectorAll('[data-ghost-bg]'));
-  var walletBalanceNano=Number(root.dataset.walletBalanceNano||0);
-  var roundActive=false, armedBetNano=0, activeBetNano=0, cashed=false, crashed=false;
-  var multiplier=1, crashPoint=1.35, roundStartedAt=0, nextTimer=0, raf=0;
-  var position=18, backgroundOffset=0, graveUrl='';
+  var panels=[].slice.call(root.querySelectorAll('.ghost-run-background-panel'));
+  var phase='betting', placedBetNano=0, activeBetNano=0, cashed=false, crashed=false;
+  var multiplier=1, crashPoint=1.45, phaseStartedAt=performance.now(), raf=0, phaseTimer=0;
+  var position=18, backgroundOffset=0, graveUrl='', localBalanceNano=0;
+  var bettingMs=6500, restartMs=4400;
   function tonToNano(v){var n=parseFloat(String(v||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*1e9):0}
-  function nanoToTon(v){return (Math.floor(Number(v||0))/1e9)}
-  function changeBalance(delta){walletBalanceNano=Math.max(0,walletBalanceNano+delta);root.dataset.walletBalanceNano=String(walletBalanceNano)}
+  function nanoToTon(v){return (Math.max(0,Math.floor(Number(v)||0))/1e9)}
+  function readBalance(){if(window.VexaTonBalance&&window.VexaTonBalance.read)return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));return localBalanceNano||Math.max(0,Math.floor(Number(root.dataset.walletBalanceNano||0)||0))}
+  function changeBalance(delta){localBalanceNano=Math.max(0,readBalance()+Math.floor(Number(delta)||0));root.dataset.walletBalanceNano=String(localBalanceNano);if(window.VexaTonBalance&&window.VexaTonBalance.add)window.VexaTonBalance.add(Math.floor(Number(delta)||0),'ghostrun');else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(delta)||0),section:'ghostrun'}}))}
   function cssUrl(url){var clean=String(url||'').split("'").join('').split(')').join('').split('"').join('');return "url('"+clean+"')"}
   function cacheAsset(url){if(!url)return;try{var img=new Image();img.decoding='async';img.loading='eager';img.src=url}catch(e){}try{if('caches'in window)caches.open('ghost-run-assets-v1').then(function(c){c.match(url).then(function(hit){if(!hit)c.add(url).catch(function(){})})})}catch(e){}}
-  function loadAssets(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){var u=j&&j.urls;if(!u)return;Object.keys(u).forEach(function(k){cacheAsset(u[k])});graveUrl=u.ground||u.ghostidle||'';setBg('.ghost-run-background-panel-1',u.background);setBg('.ghost-run-background-panel-2',u.background2);setBg('.ghost-run-background-panel-3',u.background3);setBg('.ghost-run-background-panel-4',u.background4);setBg('.ghost-run-background-panel-5',u.background5);setBg('.ghost-run-background-panel-6',u.background6);setBg('.ghost-run-background-panel-copy',u.background);var st=document.getElementById('ghostRunCrashAssets');if(!st){st=document.createElement('style');st.id='ghostRunCrashAssets';document.head.appendChild(st)}st.textContent=["#ghostrun .ghost-run-ghost{background-image:"+cssUrl(u.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}","#ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost{background-image:"+cssUrl(u.ghostmove||u.ghostidle)+"!important}","#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost{background-image:"+cssUrl(graveUrl)+"!important}"].join('\\n')}).catch(function(){})}
   function setBg(sel,url){var el=root.querySelector(sel);if(el&&url)el.style.setProperty('background-image',cssUrl(url),'important')}
-  function viewportWidth(){return Math.max(1,(screen&&screen.clientWidth)||320)}
-  function pickCrashPoint(){var r=Math.random();if(r<.90)return 1.04+Math.pow(Math.random(),.62)*.76;return 1.82+Math.pow(Math.random(),2.2)*4.4}
-  function updatePreview(){var amount=tonToNano(betInput&&betInput.value||0);if(preview)preview.textContent=nanoToTon(Math.max(0,Math.floor(amount*Math.max(1,multiplier)))).toFixed(2)}
+  function loadAssets(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){var u=j&&j.urls;if(!u)return;Object.keys(u).forEach(function(k){cacheAsset(u[k])});graveUrl=u.ground||u.ghostidle||'';setBg('.ghost-run-background-panel-1',u.background);setBg('.ghost-run-background-panel-2',u.background2);setBg('.ghost-run-background-panel-3',u.background3);setBg('.ghost-run-background-panel-4',u.background4);setBg('.ghost-run-background-panel-5',u.background5);setBg('.ghost-run-background-panel-6',u.background6);setBg('.ghost-run-background-panel-copy',u.background);var st=document.getElementById('ghostRunCrashAssets');if(!st){st=document.createElement('style');st.id='ghostRunCrashAssets';document.head.appendChild(st)}st.textContent=["#ghostrun .ghost-run-ghost{background-image:"+cssUrl(u.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}","#ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost{background-image:"+cssUrl(u.ghostmove||u.ghostidle)+"!important}","#ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost{background-image:"+cssUrl(graveUrl)+"!important}"].join('\\n')}).catch(function(){})}
+  function viewportWidth(){return Math.max(1,(screen&&screen.clientWidth)||window.innerWidth||320)}
+  function pickCrashPoint(){var r=Math.random();if(r<.84)return 1.08+Math.pow(Math.random(),.82)*.92;if(r<.97)return 2.02+Math.pow(Math.random(),1.55)*2.2;return 4.25+Math.pow(Math.random(),2.3)*5.75}
   function setScreenState(state){if(screen)screen.setAttribute('data-ghost-state',state)}
-  function showResult(title,detail){if(result){result.setAttribute('data-visible','1')}if(resultTitle)resultTitle.textContent=title;if(resultDetail)resultDetail.textContent=detail}
+  function showResult(title,detail){if(result)result.setAttribute('data-visible','1');if(resultTitle)resultTitle.textContent=title;if(resultDetail)resultDetail.textContent=detail}
   function hideResult(){if(result)result.removeAttribute('data-visible')}
+  function timeLeft(){return Math.max(0,Math.ceil((bettingMs-(performance.now()-phaseStartedAt))/1000))}
+  function updatePreview(){var amount=phase==='running'&&activeBetNano?activeBetNano:placedBetNano||tonToNano(betInput&&betInput.value||0);if(preview)preview.textContent=nanoToTon(Math.max(0,Math.floor(amount*Math.max(1,multiplier)))).toFixed(2)}
+  function buttonText(){if(phase==='betting')return placedBetNano?'Bet Placed · starts in '+timeLeft()+'s':'Place Bet';if(phase==='running')return activeBetNano&&!cashed?'Cash Out '+multiplier.toFixed(2)+'x':'Running';return 'Next Round'}
   function render(){
     if(multiplierEl)multiplierEl.textContent=multiplier.toFixed(2)+'x';
     if(ghost)ghost.style.left=position+'px';
-    panels.forEach(function(p){p.style.transform='translate3d('+(-backgroundOffset)+'px,0,0)'});
-    if(screen)screen.setAttribute('data-round-active',roundActive?'1':'0');
-    if(startButton){startButton.disabled=false;startButton.textContent=roundActive?(activeBetNano&&!cashed?'Cash Out':'Running'):(armedBetNano?'Bet Placed':'Place Bet')}
+    root.style.setProperty('--ghost-x',position+'px');
+    root.style.setProperty('--ghost-bg-x',(-backgroundOffset).toFixed(1)+'px');
+    panels.forEach(function(p){p.style.transform='translate3d('+(-backgroundOffset).toFixed(1)+'px,0,0)'});
+    if(screen){screen.setAttribute('data-round-active',phase==='running'?'1':'0');screen.setAttribute('data-ghost-phase',phase)}
+    if(betInput)betInput.disabled=phase!=='betting'||!!placedBetNano;
+    if(startButton){startButton.disabled=phase==='ended'||(phase==='running'&&(!activeBetNano||cashed));startButton.classList.toggle('cashout',phase==='running'&&activeBetNano&&!cashed);startButton.classList.toggle('is-placed',phase==='betting'&&!!placedBetNano);startButton.textContent=buttonText()}
     updatePreview();
   }
-  function armBet(){var amount=tonToNano(betInput&&betInput.value||0);if(amount<=0||amount>walletBalanceNano)return;armedBetNano=amount;hideResult();render()}
-  function startRound(){
-    roundActive=true;crashed=false;cashed=false;activeBetNano=armedBetNano;armedBetNano=0;
-    if(activeBetNano>0)changeBalance(-activeBetNano);
-    multiplier=1;crashPoint=pickCrashPoint();position=18;backgroundOffset=0;roundStartedAt=performance.now();hideResult();setScreenState('movingForward');render();
-  }
-  function endRound(){
-    roundActive=false;crashed=true;setScreenState('caught');
-    if(activeBetNano>0&&!cashed){showResult('You Lost',nanoToTon(activeBetNano).toFixed(2)+' · '+multiplier.toFixed(2)+'x')}
-    activeBetNano=0;nextTimer=window.setTimeout(startRound,6000);render();
-  }
-  function cashOut(){
-    if(!roundActive||!activeBetNano||cashed)return;
-    cashed=true;var payout=Math.max(0,Math.floor(activeBetNano*multiplier));changeBalance(payout);showResult('Won',nanoToTon(payout).toFixed(2)+' · '+multiplier.toFixed(2)+'x');activeBetNano=0;render();
-  }
+  function placeBet(){var amount=tonToNano(betInput&&betInput.value||0);if(phase!=='betting'||placedBetNano)return;if(amount<=0){showResult('Invalid Bet','Enter a TON amount.');return}if(readBalance()<amount){showResult('Not enough balance','Wait for the next round after adding TON.');return}placedBetNano=amount;changeBalance(-amount);hideResult();render()}
+  function startBetting(){window.clearTimeout(phaseTimer);phase='betting';placedBetNano=0;activeBetNano=0;cashed=false;crashed=false;multiplier=1;position=18;backgroundOffset=0;phaseStartedAt=performance.now();hideResult();setScreenState('idle');phaseTimer=window.setTimeout(startRound,bettingMs);render()}
+  function startRound(){window.clearTimeout(phaseTimer);phase='running';activeBetNano=placedBetNano;placedBetNano=0;cashed=false;crashed=false;multiplier=1;crashPoint=pickCrashPoint();position=18;backgroundOffset=0;phaseStartedAt=performance.now();hideResult();setScreenState('movingForward');render()}
+  function endRound(){if(phase!=='running')return;phase='ended';crashed=true;setScreenState('caught');if(activeBetNano&&!cashed){showResult('You Lost',nanoToTon(activeBetNano).toFixed(2)+' TON · crashed at '+multiplier.toFixed(2)+'x')}activeBetNano=0;phaseTimer=window.setTimeout(startBetting,restartMs);render()}
+  function cashOut(){if(phase!=='running'||!activeBetNano||cashed)return;cashed=true;var payout=Math.max(0,Math.floor(activeBetNano*multiplier));changeBalance(payout);showResult('Won',nanoToTon(payout).toFixed(2)+' TON · '+multiplier.toFixed(2)+'x');activeBetNano=0;render()}
   function tick(now){
-    if(roundActive){var t=(now-roundStartedAt)/1000;multiplier=1+Math.pow(t,.92)*.22+t*.08;position=Math.min(viewportWidth()-84,18+t*58);backgroundOffset=t*34;if(multiplier>=crashPoint)endRound();else render()}
+    if(phase==='betting')render();
+    if(phase==='running'){
+      var t=(now-phaseStartedAt)/1000;
+      multiplier=1+t*.055+Math.pow(t,1.18)*.030;
+      position=Math.min(viewportWidth()-84,18+t*32);
+      backgroundOffset=t*22;
+      if(multiplier>=crashPoint)endRound();else render();
+    }
     raf=requestAnimationFrame(tick);
   }
-  if(startButton)startButton.addEventListener('click',function(){if(roundActive)cashOut();else armBet()});
-  if(betInput)betInput.addEventListener('input',updatePreview);
-  loadAssets();setScreenState('idle');render();nextTimer=window.setTimeout(startRound,6000);raf=requestAnimationFrame(tick);
+  if(startButton)startButton.addEventListener('click',function(){if(phase==='running')cashOut();else if(phase==='betting')placeBet()});
+  if(betInput)betInput.addEventListener('input',function(){hideResult();updatePreview()});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)render()});
+  loadAssets();startBetting();raf=requestAnimationFrame(tick);
 })();
 `;
 
