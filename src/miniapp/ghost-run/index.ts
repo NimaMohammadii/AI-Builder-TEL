@@ -26,8 +26,8 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-start-button{grid-column:1 / 3!important;height:60px!important;border-radius:999px!important;font-weight:1000!important;letter-spacing:-.02em!important}
 #ghostrun .ghost-run-note{display:none!important}
 #ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important;pointer-events:none!important}
-#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:12px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
-#ghostrun .ghost-run-fear-top{grid-column:1!important;grid-row:1!important;margin:0!important;display:flex!important;align-items:center!important;gap:10px!important;justify-content:space-between!important}
+#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:8px!important;row-gap:7px!important;align-items:center!important;width:176px!important;min-width:176px!important;max-width:calc(100vw - 32px)!important;padding:10px 12px!important;border-radius:20px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+#ghostrun .ghost-run-fear-top{grid-column:1!important;grid-row:1!important;margin:0!important;display:flex!important;align-items:center!important;gap:8px!important;justify-content:space-between!important}
 #ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}
 #ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:13px!important;font-weight:950!important;line-height:1!important;letter-spacing:.02em!important;color:#fff!important;text-shadow:0 7px 18px rgba(0,0,0,.44)!important}
 #ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}
@@ -53,8 +53,15 @@ function patchGhostRunSection(section: string): string {
 
   const safeAssetLoader = `function cssUrl(url){var clean=String(url||'').split("'").join('').split(')') .join('').split('"').join('');return "url('"+clean+"')"}
     function setVersionedBackground(selector,url){var el=root.querySelector(selector);if(el&&url)el.style.setProperty('background-image',cssUrl(url),'important')}
+    function cacheGhostAsset(url){
+      if(!url)return;
+      try{var img=new Image();img.decoding='async';img.loading='eager';img.src=url}catch(_e){}
+      try{if('caches' in window){window.caches.open('ghost-run-assets-v1').then(function(cache){cache.match(url).then(function(hit){if(!hit)cache.add(url).catch(function(){})})}).catch(function(){})}}catch(_e){}
+    }
+    function cacheGhostAssets(urls){Object.keys(urls||{}).forEach(function(k){cacheGhostAsset(urls[k])})}
     function injectAssetUrls(urls){
       if(!urls)return;
+      cacheGhostAssets(urls);
       setVersionedBackground('.ghost-run-background-panel-1',urls.background);
       setVersionedBackground('.ghost-run-background-panel-2',urls.background2);
       setVersionedBackground('.ghost-run-background-panel-3',urls.background3);
@@ -68,7 +75,7 @@ function patchGhostRunSection(section: string): string {
         "#ghostrun .ghost-run-controls{position:relative!important;z-index:80!important;pointer-events:auto!important}",
         "#ghostrun .ghost-run-move-button,#ghostrun .ghost-run-main-button{position:relative!important;z-index:90!important;pointer-events:auto!important;touch-action:none!important;cursor:pointer!important}",
         "#ghostrun .ghost-run-hud{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important}",
-        "#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:12px!important;row-gap:7px!important;align-items:center!important;min-width:218px!important;padding:12px 14px!important;border-radius:22px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}",
+        "#ghostrun .ghost-run-fear-wrap{display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;column-gap:8px!important;row-gap:7px!important;align-items:center!important;width:176px!important;min-width:176px!important;max-width:calc(100vw - 32px)!important;padding:10px 12px!important;border-radius:20px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}",
         "#ghostrun .ghost-run-fear-wrap .ghost-run-multiplier{grid-column:2!important;grid-row:1!important;display:inline-flex!important;min-width:auto!important;height:auto!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;font-size:13px!important;font-weight:950!important;line-height:1!important;letter-spacing:.02em!important;color:#fff!important}",
         "#ghostrun .ghost-run-fear-track{grid-column:1 / 3!important;grid-row:2!important}",
         "#ghostrun .ghost-run-state{display:none!important;opacity:0!important;visibility:hidden!important}",
@@ -146,6 +153,10 @@ function patchGhostRunSection(section: string): string {
 
   patched = replaceBlock(patched, 'function cssUrl(url){', '    function loadAssetUrls', safeAssetLoader);
   patched = patched.replace("if(fear>=65)return 'Azrael's shadow is closing in';", "if(fear>=65)return \"Fear is closing in\";");
+  patched = patched.replace(
+    "function loadAssetUrls(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)}).catch(function(){});}",
+    "function loadAssetUrls(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)}).catch(function(){});}"
+  );
   patched = patched.replace(
     "var root=document.currentScript&&document.currentScript.closest('#ghostrun');\n    if(!root||root.dataset.ghostReady==='1')return;\n    root.dataset.ghostReady='1';",
     "var script=document.currentScript;\n    var root=(script&&script.closest&&script.closest('#ghostrun'))||document.getElementById('ghostrun');\n    if(!root)return;\n    root.dataset.ghostReady=String(Date.now());"
