@@ -20,11 +20,11 @@ export const DICE_FINAL_TWEAK = `<style>
   line-height:1.15!important;
 }
 #dice .dice-range-card{
-  background:rgba(255,255,255,.055)!important;
-  border:1px solid rgba(255,255,255,.12)!important;
+  background:rgba(255,255,255,.045)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
   box-shadow:none!important;
-  backdrop-filter:blur(18px) saturate(1.16)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(1.16)!important;
+  backdrop-filter:blur(3px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
 }
 #dice .dice-range-card:before{
   display:none!important;
@@ -165,16 +165,16 @@ export const DICE_FINAL_TWEAK = `<style>
   padding:0!important;
   line-height:1!important;
   border-radius:24px!important;
-  background:rgba(90,10,34,.34)!important;
-  border-color:rgba(255,255,255,.16)!important;
-  box-shadow:0 0 18px rgba(130,18,50,.12)!important;
+  background:rgba(255,255,255,.045)!important;
+  border-color:rgba(255,255,255,.12)!important;
+  box-shadow:none!important;
   text-transform:uppercase!important;
   letter-spacing:.08em!important;
   font-weight:950!important;
   position:relative!important;
   overflow:hidden!important;
-  backdrop-filter:blur(14px) saturate(1.28)!important;
-  -webkit-backdrop-filter:blur(14px) saturate(1.28)!important;
+  backdrop-filter:blur(3px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
 }
 #dice .dice-roll-button:before{
   display:none!important;
@@ -182,10 +182,10 @@ export const DICE_FINAL_TWEAK = `<style>
 }
 #dice .dice-roll-button:active{
   transform:translateY(2px) scale(.98)!important;
-  background:rgba(74,8,28,.42)!important;
+  background:rgba(255,255,255,.065)!important;
 }
 #dice .dice-roll-button.is-rolling{
-  background:rgba(74,8,28,.42)!important;
+  background:rgba(255,255,255,.065)!important;
 }
 @media(max-width:420px){
   #dice .dice-wrap{
