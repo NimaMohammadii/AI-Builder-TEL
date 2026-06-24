@@ -4,10 +4,15 @@ import { PREDICT_HISTORY_GUARD_SCRIPT as PREDICT_HISTORY_SCRIPT } from './predic
 
 const PREDICT_SETTINGS_SCRIPT = `
 (function(){
+  var CACHE_MS=60000;
+  var lastLoadAt=0;
+  var inFlight=null;
+  var lastSettings=null;
   function apply(settings){
     var root=document.getElementById('predictzone');
     if(!root)return;
     settings=settings||{liveBetsEnabled:true,hiddenCards:{}};
+    lastSettings=settings;
     window.VexaPredictSettings=settings;
     root.classList.toggle('predict-live-bets-disabled', settings.liveBetsEnabled===false);
     try{window.dispatchEvent(new CustomEvent('vexa-predict-settings',{detail:settings}))}catch(e){}
@@ -21,18 +26,24 @@ const PREDICT_SETTINGS_SCRIPT = `
     var uid=currentUserId();
     return uid?'/app/api/predict-settings?userId='+encodeURIComponent(uid):'/app/api/predict-settings';
   }
-  function load(){
-    fetch(settingsUrl(),{cache:'no-store'})
+  function load(force){
+    var now=Date.now();
+    if(!force&&lastSettings&&lastLoadAt&&now-lastLoadAt<CACHE_MS){apply(lastSettings);return Promise.resolve(lastSettings)}
+    if(inFlight)return inFlight;
+    inFlight=fetch(settingsUrl(),{cache:'no-store'})
       .then(function(response){return response.json()})
-      .then(apply)
-      .catch(function(){apply({liveBetsEnabled:true,hiddenCards:{}})});
+      .then(function(settings){lastLoadAt=Date.now();apply(settings);return settings})
+      .catch(function(){var fallback=lastSettings||{liveBetsEnabled:true,hiddenCards:{}};apply(fallback);return fallback})
+      .finally(function(){inFlight=null});
+    return inFlight;
   }
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',load);
+    document.addEventListener('DOMContentLoaded',function(){load(false)});
   }else{
-    load();
+    load(false);
   }
-  window.addEventListener('focus',load);
+  window.addEventListener('focus',function(){load(false)});
+  window.VexaReloadPredictSettings=function(){return load(true)};
 })();
 `;
 
