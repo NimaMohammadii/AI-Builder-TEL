@@ -16,7 +16,7 @@ export const MINIAPP_SCRIPT = `
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',topplayers:'Top Players',balancewallet:'Wallet',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -67,7 +67,7 @@ export const MINIAPP_SCRIPT = `
   function syncTelegramBackButton(id){
     if(!tg||!tg.BackButton)return;
     try{tg.BackButton.offClick(handleBackButton)}catch(e){}
-    if(id==='topplayers'||id==='balancewallet'){
+    if(id==='topplayers'){
       try{tg.BackButton.onClick(handleBackButton);tg.BackButton.show()}catch(e){}
     }else{
       try{tg.BackButton.hide()}catch(e){}
@@ -109,7 +109,6 @@ export const MINIAPP_SCRIPT = `
     syncTelegramBackButton(id);
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     removeLegacyLeagueAndRewards();
-    if(id==='balancewallet'&&window.__vexaBalanceWalletLoad)setTimeout(window.__vexaBalanceWalletLoad,80);
   }
 
   function openInitialTarget(){
