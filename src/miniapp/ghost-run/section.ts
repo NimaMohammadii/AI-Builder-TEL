@@ -2,9 +2,12 @@ export const GHOST_RUN_SECTION = `
 <section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">
   <style>
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
-    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important}
+    #ghostrun.ghost-run-view{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun.ghost-run-view::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;min-height:auto!important;height:auto!important;overflow:visible!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun .ghost-run-screen::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
     #ghostrun .ghost-run-scene{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:0!important;margin-right:0!important;border-radius:0!important;box-shadow:none!important;background:#000!important;background-color:#000!important;background-image:none!important}
-    #ghostrun .ghost-run-controls{margin-top:-1px!important}
+    #ghostrun .ghost-run-controls{margin-top:24px!important}
     #ghostrun .ghost-run-shadow-fade{display:none!important;background:none!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     #ghostrun .ghost-run-background-strip{position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:700vw!important;width:700dvw!important;height:100%!important;z-index:1!important;display:flex!important;pointer-events:none!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
@@ -38,7 +41,8 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .crash-live-toggle svg{width:18px!important;height:18px!important;transition:transform .28s cubic-bezier(.2,.8,.2,1)!important;color:#fff!important;stroke:#fff!important;fill:none!important}
     #ghostrun .crash-live-toggle svg path{fill:none!important;stroke:#fff!important;stroke-width:2.4!important;stroke-linecap:round!important;stroke-linejoin:round!important}
     #ghostrun .crash-live.open .crash-live-toggle svg{transform:rotate(180deg)!important}
-    #ghostrun .crash-live-list{display:grid!important;gap:6px!important;max-height:min(394px,calc(100dvh - 300px))!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;padding-right:2px!important;scrollbar-width:thin!important;scrollbar-color:rgba(255,255,255,.18) transparent!important}
+    #ghostrun .crash-live-list{display:grid!important;gap:6px!important;max-height:min(394px,calc(100dvh - 300px))!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;padding-right:2px!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun .crash-live-list::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
     #ghostrun .crash-live:not(.open) .crash-live-list{max-height:0!important;opacity:0!important;pointer-events:none!important}
     #ghostrun .crash-live-empty{font-size:12px!important;font-weight:820!important;color:rgba(255,255,255,.45)!important;padding:14px 0!important;text-align:center!important}
     #ghostrun .crash-live-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:8px!important;min-height:34px!important;border-radius:17px!important;background:#030303!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;color:#fff!important;padding:2px 10px!important}
