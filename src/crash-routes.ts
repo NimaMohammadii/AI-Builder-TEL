@@ -1,4 +1,5 @@
 import app from './index';
+import { getCrashVirtualUsers } from './crash-virtual-users-config';
 import { ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs, revealCrashVirtualCashouts, seedCrashVirtualUsers } from './crash-virtual-users';
 
 const CACHE_NONE = 'no-store';
@@ -7,6 +8,8 @@ const MIN_BET_NANO = 10000000;
 const WAIT_WINDOW_MS = 9000;
 const WAIT_BETWEEN_MS = 10000;
 const REVEAL_END_BEFORE_START_MS = 180;
+
+app.get('/app/api/ghost-run-virtual-users', async (c) => c.json(await getCrashVirtualUsers(c.env), 200, {'cache-control': CACHE_NONE}));
 
 type Row = { round_id:number; user_id:string; username:string; amount_nano:number; status:string; cashout_multiplier:number|null; payout_nano:number; is_virtual?:number; target_cashout_multiplier?:number|null; virtual_reveal_at_ms?:number; virtual_order?:number; created_at:string; updated_at:string };
 
