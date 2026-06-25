@@ -1,4 +1,5 @@
 import './miniapp-voice-ai-routes';
+import './vexa-voice-message-routes';
 import './deposit-method-icon-routes';
 import './withdrawal-admin-routes';
 
