@@ -16,7 +16,7 @@ export const MINIAPP_SCRIPT = `
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -67,7 +67,7 @@ export const MINIAPP_SCRIPT = `
   function syncTelegramBackButton(id){
     if(!tg||!tg.BackButton)return;
     try{tg.BackButton.offClick(handleBackButton)}catch(e){}
-    if(id==='topplayers'){
+    if(id==='topplayers'||id==='wallet'){
       try{tg.BackButton.onClick(handleBackButton);tg.BackButton.show()}catch(e){}
     }else{
       try{tg.BackButton.hide()}catch(e){}
@@ -208,7 +208,7 @@ export const MINIAPP_SCRIPT = `
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     if(b.hasAttribute('data-game-view'))return;
-    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(q(v))show(v);else toast('Coming soon');return}
+    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(q(v)){show(v);if(v==='wallet'&&window.__vexaWalletSync)setTimeout(window.__vexaWalletSync,80)}else toast('Coming soon');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
