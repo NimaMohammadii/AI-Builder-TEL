@@ -7,6 +7,7 @@ import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUp
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 import { buildAgentDsl, type AgentDsl } from './agent-dsl-builder';
 import { handleAgentDslCallback, handleAgentDslMessage } from './agent-dsl-runtime';
+import { adjustUserTonBalance } from './user-controls';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -32,6 +33,9 @@ const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const TTS_TTL = 900;
 const MAIN_MENU_TTL = 7200;
+const REQUIRED_FA_CHANNEL = '@VexaOrder';
+const REQUIRED_FA_CHANNEL_URL = 'https://t.me/VexaOrder';
+const REQUIRED_FA_CHANNEL_REWARD = 100;
 const LOCKS_KEY = 'admin:section-locks';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
@@ -111,9 +115,13 @@ async function onMessage(env: Env, key: string, botId: string, message: Telegram
     await clearTtsState(env, userId);
     const region = await getUserRegion(env, botId, userId);
     if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
+    if (!(await ensureFaChannelAccess(env, key, botId, chatId, userId, region, null))) return;
     await mainMenu(env, key, chatId);
     return;
   }
+
+  const region = await getUserRegion(env, botId, userId);
+  if (!(await ensureFaChannelAccess(env, key, botId, chatId, userId, region, null))) return;
 
   if (text === 'End' || text === 'End Chat' || text === '/cancel') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
@@ -176,10 +184,17 @@ async function onCallback(env: Env, key: string, botId: string, q: TelegramCallb
     const region = regionByCode(data.slice('region:'.length));
     if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
     await saveUserRegion(env, botId, userId, region);
-    await tg(key, 'sendMessage', { chat_id: chatId, text: `Region saved: ${region.label}\nLanguage: ${region.language.toUpperCase()}\nTimezone: ${region.timezone}` });
+    if (!(await ensureFaChannelAccess(env, key, botId, chatId, userId, region, q))) return;
     await mainMenu(env, key, chatId);
     return;
   }
+
+  const region = await getUserRegion(env, botId, userId);
+  if (data === 'builder:check-fa-channel') {
+    if (await ensureFaChannelAccess(env, key, botId, chatId, userId, region, q)) await editMainMenu(env, key, chatId, q.message?.message_id);
+    return;
+  }
+  if (!(await ensureFaChannelAccess(env, key, botId, chatId, userId, region, q))) return;
 
   if (data === 'builder:miniapp') { await lockedCallback(env, key, q, 'ai-miniapp'); return; }
   if (data === 'builder:chat' && await lockedCallback(env, key, q, 'ai-chat')) return;
@@ -379,27 +394,73 @@ async function loadHistory(env: Env, key: string): Promise<ChatHistoryMessage[]>
 async function saveHistory(env: Env, key: string, h: ChatHistoryMessage[], userText: string, assistantText: string): Promise<void> { const next = [...h, { role: 'user' as const, content: userText.slice(0, 1800) }, { role: 'assistant' as const, content: assistantText.slice(0, 1800) }].slice(-16); await env.BOT_CACHE.put(key, JSON.stringify(next), { expirationTtl: CHAT_TTL }).catch(() => undefined); }
 
 async function mainMenu(env: Env, key: string, chatId: number): Promise<void> {
+  await deleteLastMainMenu(env, key, chatId);
+  const sent = await tg<TelegramMessageResult>(key, 'sendMessage', mainMenuPayload(await buildMainMenuMarkup(env), chatId));
+  const messageId = sent.result?.message_id;
+  if (messageId) await env.BOT_CACHE.put(mainMenuKey(chatId), String(messageId), { expirationTtl: MAIN_MENU_TTL }).catch(() => undefined);
+}
+
+async function editMainMenu(env: Env, key: string, chatId: number, messageId?: number): Promise<void> {
+  if (!messageId) return mainMenu(env, key, chatId);
+  await deleteLastMainMenu(env, key, chatId);
+  const edited = await tg<TelegramMessageResult>(key, 'editMessageText', { ...mainMenuPayload(await buildMainMenuMarkup(env), chatId), message_id: messageId }).catch(() => null);
+  if (edited) await env.BOT_CACHE.put(mainMenuKey(chatId), String(messageId), { expirationTtl: MAIN_MENU_TTL }).catch(() => undefined);
+  else await mainMenu(env, key, chatId);
+}
+
+async function buildMainMenuMarkup(env: Env): Promise<{ inline_keyboard: Array<Array<Record<string, unknown>>> }> {
   const miniAppLocked = await isAiSectionLocked(env, 'ai-miniapp').catch(() => false);
   const firstRow = miniAppLocked ? [{ text: 'Open Mini App', callback_data: 'builder:miniapp' }] : [{ text: 'Open Mini App', web_app: { url: `${PUBLIC_BASE_URL}/builder` } }];
+  return { inline_keyboard: [firstRow, [{ text: 'Chat with AI', callback_data: 'builder:chat' }], [{ text: 'Text to Speech', callback_data: 'builder:tts' }]] };
+}
 
-  await deleteLastMainMenu(env, key, chatId);
+function mainMenuPayload(replyMarkup: { inline_keyboard: Array<Array<Record<string, unknown>>> }, chatId: number): Record<string, unknown> {
+  return { chat_id: chatId, text: 'AI Builder', reply_markup: replyMarkup };
+}
 
-  const sent = await tg<TelegramMessageResult>(key, 'sendMessage', {
-    chat_id: chatId,
-    text: 'AI Builder',
-    reply_markup: {
-      inline_keyboard: [
-        firstRow,
-        [{ text: 'Chat with AI', callback_data: 'builder:chat' }],
-        [{ text: 'Text to Speech', callback_data: 'builder:tts' }],
-      ],
-    },
-  });
 
-  const messageId = sent.result?.message_id;
-  if (messageId) {
-    await env.BOT_CACHE.put(mainMenuKey(chatId), String(messageId), { expirationTtl: MAIN_MENU_TTL }).catch(() => undefined);
+async function ensureFaChannelAccess(env: Env, key: string, botId: string, chatId: number, userId: string, region: RegionConfig | null, callback: TelegramCallbackQuery | null): Promise<boolean> {
+  if (region?.language !== 'fa') return true;
+  const joined = await isRequiredChannelMember(key, userId);
+  if (joined) {
+    await grantFaChannelReward(env, botId, userId);
+    return true;
   }
+  await showFaChannelGate(key, chatId, callback?.message?.message_id);
+  return false;
+}
+
+async function isRequiredChannelMember(key: string, userId: string): Promise<boolean> {
+  const result = await tg<{ ok?: boolean; result?: { status?: string } }>(key, 'getChatMember', { chat_id: REQUIRED_FA_CHANNEL, user_id: userId }).catch(() => null);
+  const status = result?.result?.status;
+  return status === 'creator' || status === 'administrator' || status === 'member';
+}
+
+async function grantFaChannelReward(env: Env, botId: string, userId: string): Promise<void> {
+  const row = await env.DB.prepare('SELECT state_json FROM bot_users WHERE bot_id = ? AND telegram_user_id = ?').bind(botId, userId).first<{ state_json: string | null }>().catch(() => null);
+  const state = safeParseJson<Record<string, unknown>>(row?.state_json || '{}', {});
+  if (state.faChannelRewardGranted === true) return;
+  state.faChannelRewardGranted = true;
+  state.faChannelRewardGrantedAt = new Date().toISOString();
+  await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, state_json, last_seen_at, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET state_json = excluded.state_json, last_seen_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`)
+    .bind(botId, userId, JSON.stringify(state))
+    .run();
+  await adjustUserTonBalance(env, userId, REQUIRED_FA_CHANNEL_REWARD, { kind: 'admin', title: 'VexaOrder channel join reward', metadata: { channel: REQUIRED_FA_CHANNEL } }).catch((error) => console.warn('fa channel reward failed', error));
+}
+
+async function showFaChannelGate(key: string, chatId: number, messageId?: number): Promise<void> {
+  const payload = {
+    chat_id: chatId,
+    text: 'برای استفاده از ربات باید اول عضو کانال VexaOrder بشی.\n\nاگه عضو بشی ۱۰۰ کردیت رایگان هم بهت داده میشه.',
+    reply_markup: { inline_keyboard: [[{ text: 'عضویت در کانال', url: REQUIRED_FA_CHANNEL_URL }], [{ text: 'عضو شدم ✅', callback_data: 'builder:check-fa-channel' }]] },
+  };
+  if (messageId) {
+    const edited = await tg(key, 'editMessageText', { ...payload, message_id: messageId }).catch(() => null);
+    if (edited) return;
+  }
+  await tg(key, 'sendMessage', payload);
 }
 
 async function regionMenu(key: string, chatId: number, text: string): Promise<void> {
@@ -493,9 +554,9 @@ async function handleTtsText(env: Env, key: string, chatId: number, userId: stri
     form.append('chat_id', String(chatId));
     form.append('caption', `Voice: ${selection.voiceName}`);
     form.append('audio', new Blob([audio], { type: 'audio/mpeg' }), `${selection.voiceName}.mp3`);
-    await tgForm(key, 'sendAudio', form);
     await env.BOT_CACHE.delete(ttsKey(userId)).catch(() => undefined);
     await mainMenu(env, key, chatId);
+    await tgForm(key, 'sendAudio', form);
   } catch (error) {
     await send(key, chatId, `Could not create speech. ${(error instanceof Error ? error.message : String(error)).slice(0, 120)}`);
   }
