@@ -3,6 +3,7 @@ export type Env = {
   BOT_CACHE: KVNamespace;
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
+  GHOST_RUN_LIVE?: DurableObjectNamespace;
   TELEGRAM_BOT_TOKEN: string;
   AI_BOT_TOKEN?: string;
   GAME_BOT_TOKEN?: string;
