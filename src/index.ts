@@ -689,7 +689,7 @@ function adminCookieValue(cookie: string | undefined): string {
 function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
 function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
 
-async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }) {
+async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: { waitUntil: (promise: Promise<unknown>) => void } }) {
   try {
     const update = (await c.req.json()) as TelegramUpdate;
     const bot = defaultBotRecord();
@@ -757,7 +757,7 @@ async function handleGameWebhook(c: { req: { json: () => Promise<unknown> }; env
   }
 }
 
-async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: ExecutionContext }, botId: string) {
+async function handleUserBotWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: { waitUntil: (promise: Promise<unknown>) => void } }, botId: string) {
   try {
     const update = (await c.req.json()) as TelegramUpdate;
     const bot = await getBot(c.env, botId);
