@@ -33,7 +33,7 @@ function patchGhostRunSection(section: string): string {
 #ghostrun .ghost-run-main-button.is-placed{background:#030303!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
 #ghostrun .ghost-run-main-button:not(:disabled):active{transform:scale(.975)!important}
 #ghostrun .ghost-run-main-button:disabled{opacity:.58!important;transform:scale(.985)!important}
-#ghostrun .crash-live{margin-top:46px!important}
+#ghostrun .crash-live{margin-top:12px!important}
 #ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost{animation:ghostRunMoveBob .46s ease-in-out infinite alternate!important;filter:drop-shadow(0 0 16px rgba(255,255,255,.18))!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost{animation:ghostRunGraveTransform 1.05s cubic-bezier(.18,.9,.18,1) both!important;opacity:1!important;filter:drop-shadow(0 0 22px rgba(255,255,255,.18)) drop-shadow(0 18px 26px rgba(0,0,0,.56))!important;background-position:center bottom!important;background-size:contain!important;background-repeat:no-repeat!important}
 #ghostrun .ghost-run-screen[data-ghost-state='caught'] .ghost-run-ghost:before{content:''!important;position:absolute!important;inset:-22px!important;border-radius:50%!important;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,.10) 28%,transparent 66%)!important;filter:blur(7px)!important;animation:ghostRunGraveFlash .72s ease-out both!important;pointer-events:none!important}
