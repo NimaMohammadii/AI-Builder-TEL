@@ -11,7 +11,6 @@ import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
-import { registerGhostRunLiveRoutes, GhostRunLiveRoom } from './ghost-run-live';
 import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -30,7 +29,6 @@ const GHOST_RUN_ASSET_KINDS = new Set(['background', 'background1', 'background2
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
-registerGhostRunLiveRoutes(app);
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 app.get('/app/api/plinko-virtual-users', async (c) => c.json(await getPlinkoVirtualUsers(c.env)));
@@ -449,7 +447,7 @@ function isAdminRequest(c: { env: Env; req: { header: (name: string) => string |
   return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
 }
 
-export { PlinkoLiveRoom, GhostRunLiveRoom };
+export { PlinkoLiveRoom };
 
 export default app;
 
