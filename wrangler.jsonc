@@ -27,6 +27,9 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["PlinkoLiveRoom"]
+    },
+    {
+      "tag": "v3"
     }
   ],
   "d1_databases": [
