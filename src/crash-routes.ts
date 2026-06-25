@@ -9,7 +9,39 @@ const WAIT_WINDOW_MS = 9000;
 const WAIT_BETWEEN_MS = 10000;
 const REVEAL_END_BEFORE_START_MS = 180;
 
-app.get('/app/api/ghost-run-virtual-users', async (c) => c.json(await getCrashVirtualUsers(c.env), 200, {'cache-control': CACHE_NONE}));
+app.get('/app/api/ghost-run-virtual-users', async (c) => {
+  const [virtualConfig, realUsers] = await Promise.all([
+    getCrashVirtualUsers(c.env),
+    getGhostRunRealUsers(c.env.DB).catch((error) => { console.warn('load ghost run real users failed', error); return []; }),
+  ]);
+  const seen = new Set<string>();
+  const users = [...realUsers, ...virtualConfig.users].filter((user) => {
+    const key = String(user.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return c.json({ ...virtualConfig, users }, 200, {'cache-control': CACHE_NONE});
+});
+
+
+async function getGhostRunRealUsers(db:D1Database){
+  const rows = await db.prepare(`SELECT first_name, username
+    FROM app_users
+    WHERE current_section = 'ghostrun'
+      AND datetime(COALESCE(last_seen_at, updated_at, created_at)) >= datetime('now', '-10 minutes')
+    ORDER BY datetime(COALESCE(last_seen_at, updated_at, created_at)) DESC
+    LIMIT 12`).all<{first_name:string|null;username:string|null}>();
+  return (rows.results || []).map((row, index) => {
+    const username = String(row.username || '').replace(/^@+/, '').trim();
+    const firstName = String(row.first_name || '').trim();
+    return {
+      name: username ? '@' + username : firstName || 'Live Player',
+      bets: [{ amount: Number((0.12 + ((index * 7) % 28) / 10).toFixed(2)), cashoutMultiplier: Number((1.22 + ((index * 11) % 95) / 100).toFixed(2)) }],
+      real: true,
+    };
+  });
+}
 
 type Row = { round_id:number; user_id:string; username:string; amount_nano:number; status:string; cashout_multiplier:number|null; payout_nano:number; is_virtual?:number; target_cashout_multiplier?:number|null; virtual_reveal_at_ms?:number; virtual_order?:number; created_at:string; updated_at:string };
 
