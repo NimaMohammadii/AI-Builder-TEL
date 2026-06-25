@@ -40,8 +40,6 @@ function adminPanelWithFixes(): string {
     .replace(/Credit and section access/g, 'TON Balance and section access')
     .replace(/Manage credit/g, 'Manage TON balance')
     .replace('Manage images used inside the mini app. For now this section contains the credit icon.', 'Manage images used inside the mini app, including the credit icon, Slot game frame, and Dice game images.')
-    .replace('</button></div><section class="section admin-section active" id="sectionUsers"', '</button><button class="menu-item" id="announcementMenu" data-section="announcement" type="button"><strong>Admin Message</strong><span>Voice and bot delivery</span></button></div><section class="section admin-section active" id="sectionUsers"')
-    .replace('</section></main><script>', '</section><section class="section admin-section" id="sectionAnnouncement" data-title="Vexa Admin Message" data-subtitle="Send voice messages to the Mini App or bot chat."></section></main><script>')
     .replace('<section class="section admin-section active" id="sectionUsers"', '<a class="withdrawals-shortcut" href="/admin/withdrawals">Withdrawals</a><section class="section admin-section active" id="sectionUsers"')
     .replace('loadUsers();loadLocks();setInterval(loadUsers,15000);', 'loadUsers();loadLocks();');
 }
