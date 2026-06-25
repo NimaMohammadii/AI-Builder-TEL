@@ -114,11 +114,11 @@ export const GHOST_RUN_SECTION = `
     <div class="ghost-run-controls" aria-label="Ghost Run controls">
       <label class="ghost-run-control-card ghost-run-bet-card">
         <span>Bet Amount</span>
-        <strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/> TON</strong>
+        <strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/><img class="ghost-run-price-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async"/> TON</strong>
       </label>
       <div class="ghost-run-control-card ghost-run-win-card">
-        <span>Win Preview</span>
-        <strong><em data-ghost-preview>0.10</em> TON</strong>
+        <span>Auto Cash Out</span>
+        <strong><span class="crash-auto ghost-run-auto"><input data-ghost-auto-cashout inputmode="decimal" pattern="[0-9.]*" value="2.00" aria-label="Ghost Run auto cash out"/><span>x</span></span></strong>
       </div>
       <button class="ghost-run-move-button ghost-run-back-button" type="button" aria-label="Move back" data-ghost-back></button>
       <button class="ghost-run-move-button ghost-run-forward-button" type="button" aria-label="Move forward" data-ghost-forward></button>
