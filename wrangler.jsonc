@@ -16,6 +16,10 @@
       {
         "name": "PLINKO_LIVE",
         "class_name": "PlinkoLiveRoom"
+      },
+      {
+        "name": "GHOST_RUN_LIVE",
+        "class_name": "GhostRunLiveRoom"
       }
     ]
   },
@@ -27,6 +31,10 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["PlinkoLiveRoom"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["GhostRunLiveRoom"]
     }
   ],
   "d1_databases": [
