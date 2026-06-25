@@ -84,5 +84,4 @@ body.connect-only .top-balance-pill:after{
   margin:0!important;
   padding:0!important;
 }
-.top-balance-wrap{display:flex;align-items:center;gap:7px;flex:0 0 auto}.top-balance-plus{width:34px;height:34px;border:0;border-radius:999px;background:rgba(111,14,45,.18)!important;color:#fff;font-size:23px;font-weight:300;line-height:1;display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 12px 28px rgba(0,0,0,.22);backdrop-filter:blur(4px) saturate(1.18);-webkit-backdrop-filter:blur(4px) saturate(1.18);text-shadow:0 0 18px rgba(255,255,255,.22);transition:transform .18s ease,background .18s ease}.top-balance-plus:active{transform:scale(.92)}
 `;

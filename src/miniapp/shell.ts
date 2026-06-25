@@ -34,7 +34,6 @@ import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION } from './home';
 import { REFERRAL_SECTION } from './referral';
-import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
@@ -191,7 +190,6 @@ const STYLES = [
 const SECTIONS = [
   HOME_SECTION,
   REFERRAL_SECTION,
-  WALLET_SECTION,
   MARKET_SECTION,
   RESULTS_SECTION,
   PLAY_ZONE_SECTION,
@@ -283,13 +281,10 @@ export function miniAppShellHtml(): string {
           <p id="userLine">AI Bot Control</p>
         </div>
       </div>
-      <div class="top-balance-wrap">
-        <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
-          <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
-          <b id="topTonBalance" data-ton-balance-display>0</b>
-        </button>
-        <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
-      </div>
+      <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
+        <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
+        <b id="topTonBalance" data-ton-balance-display>0</b>
+      </button>
     </header>
     ${SECTIONS}
     <nav class="tabs">
