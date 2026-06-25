@@ -23,7 +23,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     function dailyOpen(){return isActive('dailyrewardsinfo')}
     function shouldShow(){
       if(dailyOpen())return true;
-      if(isActive('topplayers')||isActive('referral'))return true;
+      if(isActive('topplayers')||isActive('referral')||isActive('wallet'))return true;
       var games=['crash','plinko','mines','slot','wheel','dice','rps','ghostrun'];
       for(var i=0;i<games.length;i++)if(isActive(games[i]))return true;
       var p=document.getElementById('predictzone');
@@ -46,7 +46,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       }
       var games=['crash','plinko','mines','slot','wheel','dice','rps','ghostrun'];
       for(var i=0;i<games.length;i++){if(isActive(games[i])){setView('playzone');sync();return;}}
-      if(isActive('topplayers')||isActive('referral')){setView('home');sync();return;}
+      if(isActive('topplayers')||isActive('referral')||isActive('wallet')){setView('home');sync();return;}
       sync();
     }
     function sync(){shouldShow()?show():hide()}
