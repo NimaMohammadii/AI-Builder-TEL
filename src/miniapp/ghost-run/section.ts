@@ -26,7 +26,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-forward-button:before{transform:translate(-66%,-50%) rotate(135deg)!important}
     #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(255,255,255,.055)!important;transform:scale(.985)!important}
     #ghostrun .ghost-run-move-button:disabled{opacity:.28!important}
-    #ghostrun .crash-live{margin:24px 12px 22px!important;border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;overflow:hidden!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:min(430px,calc(100dvh - 238px))!important;display:flex!important;flex-direction:column!important;min-height:0!important}
+    #ghostrun .crash-live{margin:82px 12px 22px!important;border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;overflow:hidden!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:min(430px,calc(100dvh - 238px))!important;display:flex!important;flex-direction:column!important;min-height:0!important}
     #ghostrun .crash-live:not(.open){max-height:54px!important;padding-bottom:12px!important}
     #ghostrun .crash-live-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:850!important;letter-spacing:-.02em!important}
     #ghostrun .crash-live-title{display:inline-flex!important;align-items:center!important;gap:7px!important;color:rgba(255,255,255,.58)!important;min-width:0!important}
@@ -99,11 +99,7 @@ export const GHOST_RUN_SECTION = `
         <button type="button" data-ghost-reset>New Round</button>
       </div>
       <div class="ghost-run-ghost" aria-hidden="true">
-        <span class="ghost-run-ghost-body">
-          <i class="ghost-run-eye ghost-run-eye-left"></i>
-          <i class="ghost-run-eye ghost-run-eye-right"></i>
-          <b></b><b></b><b></b>
-        </span>
+        <span class="ghost-run-ghost-body"><i class="ghost-run-eye ghost-run-eye-left"></i><i class="ghost-run-eye ghost-run-eye-right"></i><b></b><b></b><b></b></span>
         <span class="ghost-run-ghost-glow"></span>
       </div>
       <div class="ghost-run-danger ghost-run-danger-a"></div>
@@ -140,106 +136,6 @@ export const GHOST_RUN_SECTION = `
       <div class="crash-live-list" id="ghostLiveList"><div class="crash-live-empty">No bets yet</div></div>
     </div>
   </div>
-  <script>
-  (function(){
-    var root=document.currentScript&&document.currentScript.closest('#ghostrun');
-    if(!root||root.dataset.ghostReady==='1')return;
-    root.dataset.ghostReady='1';
-    var screen=root.querySelector('.ghost-run-screen');
-    var forwardButton=root.querySelector('[data-ghost-forward]');
-    var backButton=root.querySelector('[data-ghost-back]');
-    var claimButton=root.querySelector('[data-ghost-claim]');
-    var startButton=root.querySelector('[data-ghost-start]');
-    var betInput=root.querySelector('[data-ghost-bet-input]');
-    var multiplierEl=root.querySelector('[data-ghost-multiplier]');
-    var messageEl=root.querySelector('[data-ghost-message]');
-    var previewEl=root.querySelector('[data-ghost-preview]');
-    var betEl=root.querySelector('[data-ghost-bet]');
-    var fearBar=root.querySelector('[data-ghost-fear-bar]');
-    var fearLabel=root.querySelector('[data-ghost-fear-label]');
-    var result=root.querySelector('[data-ghost-result]');
-    var resultTitle=root.querySelector('[data-ghost-result-title]');
-    var resultDetail=root.querySelector('[data-ghost-result-detail]');
-    var resetButton=root.querySelector('[data-ghost-reset]');
-    var position=16, minPosition=10, leftEdge=18, rightEdge=68, backgroundOffset=0, distance=0, direction=0, raf=0, lastTime=0;
-    var fear=0, multiplierValue=1, retreatCharge=0, state='idle', activeBetNano=0, roundActive=false, settled=false;
-    var roundProfile=null, ghostLiveRows=[], ghostLiveLoaded=false, ghostLiveSeq=1, ghostLiveIdleTimer=0;
-    var dangerRates=[1,1.22,1.48,1.82,2.22,2.75];
-    var houseProfileKey='vexa:ghostrun:house-profile:v1';
-    function loadHouseStats(){try{var raw=localStorage.getItem(houseProfileKey);var data=raw?JSON.parse(raw):{};return {rounds:Math.max(0,Number(data.rounds)||0),wins:Math.max(0,Number(data.wins)||0),losses:Math.max(0,Number(data.losses)||0),streak:Math.max(0,Number(data.streak)||0),microNext:data.microNext==='1'||data.microNext===true}}catch(e){return {rounds:0,wins:0,losses:0,streak:0,microNext:false}}}
-    function saveHouseStats(stats){try{localStorage.setItem(houseProfileKey,JSON.stringify(stats||{}))}catch(e){}}
-    function pickRoundProfile(){var stats=loadHouseStats();var seed=Math.random();if(stats.microNext){stats.microNext=false;saveHouseStats(stats);return {name:'micro-recovery',maxMultiplier:1.08,pressureAfter:1.045,pressureRate:46,forceCatchAfter:1.085}}if(stats.streak>=3)return {name:'streak-choke',maxMultiplier:1.05,pressureAfter:1.025,pressureRate:64,forceCatchAfter:1.052,setsMicroNext:true};if(seed<.90)return {name:'low-ceiling',maxMultiplier:1.80,pressureAfter:1.58,pressureRate:28,forceCatchAfter:1.805};if(seed<.985)return {name:'medium-ceiling',maxMultiplier:2.45,pressureAfter:2.08,pressureRate:18,forceCatchAfter:2.455};return {name:'rare-ceiling',maxMultiplier:3.20,pressureAfter:2.70,pressureRate:12,forceCatchAfter:3.205}}
-    function recordRoundResult(won){var stats=loadHouseStats();stats.rounds+=1;if(won){stats.wins+=1;stats.streak+=1}else{stats.losses+=1;stats.streak=0}if(roundProfile&&roundProfile.setsMicroNext)stats.microNext=true;saveHouseStats(stats)}
-    function cssUrl(url){return "url('"+String(url||'').replace(/['\\]/g,'')+"')"}
-    function setVersionedBackground(selector,url){var el=root.querySelector(selector);if(el&&url)el.style.setProperty('background-image',cssUrl(url),'important')}
-    function injectAssetUrls(urls){
-      if(!urls)return;
-      setVersionedBackground('.ghost-run-background-panel-1',urls.background);
-      setVersionedBackground('.ghost-run-background-panel-2',urls.background2);
-      setVersionedBackground('.ghost-run-background-panel-3',urls.background3);
-      setVersionedBackground('.ghost-run-background-panel-4',urls.background4);
-      setVersionedBackground('.ghost-run-background-panel-5',urls.background5);
-      setVersionedBackground('.ghost-run-background-panel-6',urls.background6);
-      setVersionedBackground('.ghost-run-background-panel-copy',urls.background);
-      var style=document.getElementById('ghostRunVersionedAssetStyle');
-      if(!style){style=document.createElement('style');style.id='ghostRunVersionedAssetStyle';document.head.appendChild(style)}
-      style.textContent=[
-        "#ghostrun .ghost-run-ghost{background-image:"+cssUrl(urls.ghostidle)+"!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}",
-        "#ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ghost,#ghostrun .ghost-run-screen[data-ghost-state='movingBack'] .ghost-run-ghost{background-image:"+cssUrl(urls.ghostmove)+"!important}"
-      ].join("\n");
-    }
-    function loadAssetUrls(){fetch('/app/api/ghost-run-assets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.urls)injectAssetUrls(j.urls)}).catch(function(){});}
-    function tonToNano(v){var n=Number(String(v||'').replace(',','.'));return Number.isFinite(n)?Math.max(0,Math.floor(n*1000000000)):0}
-    function nanoToTon(n){return (Math.max(0,Math.floor(Number(n)||0))/1000000000)}
-    function readBalance(){return window.VexaTonBalance&&window.VexaTonBalance.read?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
-    function changeBalance(delta){if(window.VexaTonBalance&&window.VexaTonBalance.add)window.VexaTonBalance.add(Math.floor(Number(delta)||0),'ghostrun');else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(delta)||0),section:'ghostrun'}}))}
-    function bet(){return nanoToTon(activeBetNano||tonToNano(betInput&&betInput.value||0.10)||100000000)}
-    function viewportWidth(){return Math.max(1,window.innerWidth||document.documentElement.clientWidth||360)}
-    function cycleLength(){return 6*viewportWidth()}
-    function normalizeBackgroundOffset(){var cycle=cycleLength();while(backgroundOffset<=-cycle)backgroundOffset+=cycle;while(backgroundOffset>0)backgroundOffset-=cycle;}
-    function stageIndex(){return Math.max(0,Math.min(5,Math.floor((((-backgroundOffset)%cycleLength())+cycleLength())%cycleLength()/viewportWidth())))}
-    function stageDanger(){return dangerRates[stageIndex()]||1}
-    function setState(next,msg,dir){state=next;if(screen){screen.setAttribute('data-ghost-state',next);screen.setAttribute('data-ghost-direction',dir<0?'back':'forward');screen.setAttribute('data-danger-stage',String(stageIndex()+1));screen.setAttribute('data-fear-tier',fear>=85?'critical':fear>=65?'haunted':fear>=40?'uneasy':'calm')}if(messageEl)messageEl.textContent=msg||''}
-    function updateMultiplier(dt){var cap=roundProfile&&Number(roundProfile.maxMultiplier)||1.8;if(direction>0){multiplierValue+=dt*(0.055+stageIndex()*0.014)+(Math.max(0,distance)*0.0000015);if(multiplierValue>cap)multiplierValue=cap}else if(direction<0){multiplierValue=Math.max(1,multiplierValue-dt*(0.024+stageIndex()*0.004));if(multiplierValue>cap)multiplierValue=cap}}
-    function updateFear(dt){var deep=stageDanger();var pressure=roundProfile&&Number(roundProfile.pressureAfter)||1.58;if(direction>0){retreatCharge=0;fear+=8.6*deep*dt+Math.min(8,distance/viewportWidth())*0.16*dt;if(multiplierValue>=pressure)fear+=(roundProfile&&Number(roundProfile.pressureRate)||28)*dt}else if(direction<0){retreatCharge+=dt;var relief=Math.max(0,retreatCharge-.55);if(fear<60)fear-=5.2*dt+relief*2.2*dt;else if(fear<85)fear-=Math.max(.35,relief*2.4)*dt;else fear+=(1.1*deep-Math.max(0,relief*3.4))*dt}else{retreatCharge=0;if(stageIndex()>=2)fear+=(0.22+stageIndex()*0.18)*dt}fear=Math.max(0,Math.min(100,fear));}
-    function warningText(){if(fear>=100)return 'The Reaper Caught You';if(fear>=85)return 'Retreat or Claim — The Reaper is near';if(fear>=65)return 'Azrael\'s shadow is closing in';if(fear>=40)return 'Fear is rising';return ''}
-    function cleanText(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
-    function tonText(n){return (Math.max(0,Number(n)||0)).toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1')}
-    function renderGhostLive(){var list=document.getElementById('ghostLiveList'),total=document.getElementById('ghostLiveTotal');if(!list)return;var sum=0;ghostLiveRows.forEach(function(r){sum+=Number(r.amount)||0});if(total)total.textContent=tonText(sum)+' TON';if(!ghostLiveRows.length){list.innerHTML='<div class="crash-live-empty">No bets yet</div>';return}list.innerHTML=ghostLiveRows.slice().sort(function(a,b){var rank={cashout:0,crashed:1,bet:2};var ra=rank[a.status]??3,rb=rank[b.status]??3;if(ra!==rb)return ra-rb;if(a.status==='cashout'&&b.status==='cashout')return Number(b.cashoutMultiplier||0)-Number(a.cashoutMultiplier||0);return Number(b.amount||0)-Number(a.amount||0)}).map(function(r){var cash=r.status==='cashout',crashed=r.status==='crashed';var status=cash?'<span class="crash-live-mult">'+cleanText(Number(r.cashoutMultiplier||1).toFixed(2).replace(/\.00$/,'')+'×')+'</span>':(crashed?'<span class="crash-live-lost">Lost</span>':'Bet');return '<div class="crash-live-row '+(cash?'cashout':crashed?'crashed':'')+'"><span class="crash-live-user">'+cleanText(r.name)+'</span><span class="crash-live-amount">'+(cash?'<span class="crash-live-plus">+</span>':'')+cleanText(tonText(r.amount)+' TON')+'</span><span class="crash-live-status">'+status+'</span></div>'}).join('')}
-    function pickBetOption(user,i){var bets=Array.isArray(user&&user.bets)?user.bets:[];return bets.length?bets[(Date.now()+i*17)%bets.length]:{amount:.1,cashoutMultiplier:1.5}}
-    function currentTelegramLiveUser(){try{var u=window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe&&window.Telegram.WebApp.initDataUnsafe.user;if(!u||!u.id)return null;var label=u.username?'@'+u.username:(u.first_name||'You');return {name:label,bets:[{amount:Math.max(.1,bet()),cashoutMultiplier:1.45+Math.random()*.9}],real:true}}catch(e){return null}}
-    function mergeCurrentUser(users){var current=currentTelegramLiveUser();var list=Array.isArray(users)?users.slice():[];if(!current)return list;var currentName=String(current.name||'');var exists=list.some(function(u){return String(u&&u.name||'')===currentName});if(!exists)list.unshift(current);return list}
-    function prepareGhostLive(){ghostLiveRows=[];var fallback=[{name:'Ari Stone',bets:[{amount:5,cashoutMultiplier:1.35}]},{name:'کیان مهر',bets:[{amount:6,cashoutMultiplier:1.28}]},{name:'Maya Chen',bets:[{amount:8,cashoutMultiplier:2.1}]}];function build(users){users=mergeCurrentUser(users&&users.length?users:fallback);ghostLiveRows=(users||fallback).slice(0,24).map(function(u,i){var b=pickBetOption(u,i);return {id:ghostLiveSeq++,name:u.name||'Player',amount:Number(b.amount)||.1,target:Number(b.cashoutMultiplier)||1.5,status:'bet'}});renderGhostLive()}if(ghostLiveLoaded&&window.__ghostLiveUsers){build(window.__ghostLiveUsers);return}fetch('/app/api/ghost-run-virtual-users',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){window.__ghostLiveUsers=j&&Array.isArray(j.users)?j.users:fallback;ghostLiveLoaded=true;build(window.__ghostLiveUsers)}).catch(function(){build(fallback)})}
-    function updateGhostLive(){if(!roundActive)return;var changed=false;ghostLiveRows.forEach(function(r){if(r.status==='bet'&&Number(r.target)<=multiplierValue){r.status='cashout';r.cashoutMultiplier=Number(r.target);changed=true}});if(changed)renderGhostLive()}
-    function crashGhostLive(){var changed=false;ghostLiveRows.forEach(function(r){if(r.status==='bet'){r.status='crashed';changed=true}});if(changed)renderGhostLive();scheduleIdleGhostLive()}
-    function scheduleIdleGhostLive(){if(ghostLiveIdleTimer)clearTimeout(ghostLiveIdleTimer);ghostLiveIdleTimer=window.setTimeout(function(){ghostLiveIdleTimer=0;if(!roundActive)prepareGhostLive();scheduleIdleGhostLive()},7200)}
-    function render(){
-      normalizeBackgroundOffset();
-      root.style.setProperty('--ghost-x',position+'%');root.style.setProperty('--ghost-bg-x',backgroundOffset.toFixed(1)+'px');root.style.setProperty('--ghost-fear',fear.toFixed(2)+'%');root.style.setProperty('--ghost-danger',String(stageIndex()+1));
-      if(multiplierEl)multiplierEl.textContent=multiplierValue.toFixed(2)+'x';
-      if(previewEl)previewEl.textContent=(bet()*multiplierValue).toFixed(2);
-      if(fearBar)fearBar.style.width=fear.toFixed(1)+'%';
-      if(fearLabel)fearLabel.textContent=Math.round(fear)+'%';
-      if(screen)screen.setAttribute('data-fear-tier',fear>=85?'critical':fear>=65?'haunted':fear>=40?'uneasy':'calm');
-      if(betEl)betEl.textContent=bet().toFixed(2);
-      if(backButton)backButton.disabled=(!roundActive||state==='claimed'||state==='caught'||(position<=minPosition&&distance<=0));
-      if(forwardButton)forwardButton.disabled=(!roundActive||state==='claimed'||state==='caught');
-      if(claimButton)claimButton.disabled=(!roundActive||state==='claimed'||state==='caught');
-      if(startButton)startButton.disabled=(roundActive&&!settled);
-      if(betInput)betInput.disabled=(roundActive&&!settled);
-      if(messageEl&&state!=='claimed'&&state!=='caught')messageEl.textContent=warningText();
-    }
-    function stopHold(){direction=0;lastTime=0;if(raf)window.cancelAnimationFrame(raf);raf=0;if(forwardButton)forwardButton.removeAttribute('data-holding');if(backButton)backButton.removeAttribute('data-holding');if(state!=='claimed'&&state!=='caught')setState('idle',warningText(),direction);render();}
-    function endCaught(){if(settled)return;settled=true;roundActive=false;crashGhostLive();recordRoundResult(false);stopHold();setState('caught','The Reaper Caught You',1);if(resultTitle)resultTitle.textContent='The Reaper Caught You';if(resultDetail)resultDetail.textContent='Lost '+nanoToTon(activeBetNano).toFixed(2)+' TON';if(result)result.setAttribute('data-visible','1');setTimeout(function(){render()},20)}
-
-    function resetRound(){stopHold();position=16;backgroundOffset=0;distance=0;fear=0;multiplierValue=1;retreatCharge=0;direction=0;state='idle';roundActive=false;settled=false;activeBetNano=0;roundProfile=null;if(result)result.removeAttribute('data-visible');setState('idle','Place a bet to start',1);render()}
-    function startRound(){if(ghostLiveIdleTimer){clearTimeout(ghostLiveIdleTimer);ghostLiveIdleTimer=0}if(roundActive&&!settled)return;var amount=tonToNano(betInput&&betInput.value||0);if(amount<=0){setState('idle','Enter a valid bet',1);return}if(readBalance()<amount){setState('idle','Not enough TON balance',1);return}resetRound();activeBetNano=amount;roundProfile=pickRoundProfile();roundActive=true;settled=false;prepareGhostLive();changeBalance(-amount);setState('idle','Bet placed — move forward or claim',1);render()}
-    function claim(){if(!roundActive||settled||state==='claimed'||state==='caught'||fear>=100)return;settled=true;roundActive=false;updateGhostLive();crashGhostLive();recordRoundResult(multiplierValue>1);stopHold();setState('claimed','Escaped the curse',direction);var payoutNano=Math.max(0,Math.floor(activeBetNano*multiplierValue));changeBalance(payoutNano);if(resultTitle)resultTitle.textContent='Escaped Before the Curse';if(resultDetail)resultDetail.textContent='Won '+nanoToTon(payoutNano).toFixed(2)+' TON at '+multiplierValue.toFixed(2)+'x';if(result)result.setAttribute('data-visible','1');render()}
-    function step(now){if(!direction||state==='claimed'||state==='caught')return;if(!lastTime)lastTime=now;var dt=Math.min(48,now-lastTime)/1000;lastTime=now;setState(direction>0?'movingForward':'movingBack','',direction);if(direction>0){if(position<rightEdge){position=Math.min(rightEdge,position+(22*dt))}else{var forward=42*dt;backgroundOffset-=forward;distance+=forward}}else{if(position>leftEdge){position=Math.max(leftEdge,position-(24*dt))}else if(distance>0){var reverse=42*dt;backgroundOffset+=reverse;distance=Math.max(0,distance-reverse)}else{position=Math.max(minPosition,position-(20*dt))}}updateMultiplier(dt);updateFear(dt);updateGhostLive();render();var catchAfter=roundProfile&&Number(roundProfile.forceCatchAfter)||0;if((catchAfter&&multiplierValue>=catchAfter)||fear>=100){endCaught();return}raf=window.requestAnimationFrame(step)}
-    function startHold(dir,button){if(!roundActive){setState('idle','Place a bet first',dir);return}if(state==='claimed'||state==='caught')return;direction=dir;if(button)button.setAttribute('data-holding','1');if(dir>0&&backButton)backButton.removeAttribute('data-holding');if(dir<0&&forwardButton)forwardButton.removeAttribute('data-holding');if(raf)window.cancelAnimationFrame(raf);lastTime=0;raf=window.requestAnimationFrame(step)}
-    function bindHold(button,dir){if(!button)return;button.addEventListener('pointerdown',function(e){e.preventDefault();button.setPointerCapture&&button.setPointerCapture(e.pointerId);startHold(dir,button)});button.addEventListener('pointerup',stopHold);button.addEventListener('pointercancel',stopHold);button.addEventListener('pointerleave',stopHold);button.addEventListener('contextmenu',function(e){e.preventDefault()})}
-    var ghostToggle=document.getElementById('ghostLiveToggle'),ghostBox=document.getElementById('ghostLive');if(ghostToggle&&ghostBox)ghostToggle.onclick=function(){var open=!ghostBox.classList.contains('open');ghostBox.classList.toggle('open',open);ghostToggle.setAttribute('aria-expanded',open?'true':'false')};prepareGhostLive();scheduleIdleGhostLive();bindHold(forwardButton,1);bindHold(backButton,-1);if(startButton)startButton.addEventListener('click',startRound);if(claimButton)claimButton.addEventListener('click',claim);if(resetButton)resetButton.addEventListener('click',resetRound);if(betInput)betInput.addEventListener('input',render);window.addEventListener('resize',render);loadAssetUrls();setState('idle','',1);render();
-  })();
-  </script>
+  <script></script>
 </section>
 `;
