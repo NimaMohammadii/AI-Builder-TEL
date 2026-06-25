@@ -1,7 +1,7 @@
 import type { Env } from './types';
 
 export type CrashVirtualBetOption = { amount: number; cashoutMultiplier: number };
-export type CrashVirtualUser = { name: string; bets: CrashVirtualBetOption[] };
+export type CrashVirtualUser = { name: string; betSecond: number; bets: CrashVirtualBetOption[] };
 export type CrashVirtualUsersConfig = { users: CrashVirtualUser[]; updatedAt?: string };
 
 type AdminSettingRow = { value_json: string };
@@ -13,16 +13,16 @@ const MAX_OPTIONS = 12;
 
 export const DEFAULT_CRASH_VIRTUAL_USERS: CrashVirtualUsersConfig = {
   users: [
-    { name: 'Ari Stone @crashdesk', bets: [{ amount: 5, cashoutMultiplier: 1.35 }, { amount: 12, cashoutMultiplier: 1.85 }, { amount: 25, cashoutMultiplier: 2.4 }] },
-    { name: 'Maya Chen · London', bets: [{ amount: 8, cashoutMultiplier: 1.22 }, { amount: 18, cashoutMultiplier: 2.1 }, { amount: 35, cashoutMultiplier: 3.2 }] },
-    { name: 'Leo Novak @rocketton', bets: [{ amount: 3, cashoutMultiplier: 1.55 }, { amount: 10, cashoutMultiplier: 2.75 }, { amount: 20, cashoutMultiplier: 4.5 }] },
-    { name: 'Sofia Reed · Lisbon', bets: [{ amount: 7.5, cashoutMultiplier: 1.42 }, { amount: 14, cashoutMultiplier: 2.25 }, { amount: 30, cashoutMultiplier: 5.1 }] },
-    { name: 'Noah Brooks @xpilot', bets: [{ amount: 20, cashoutMultiplier: 1.18 }, { amount: 45, cashoutMultiplier: 1.9 }, { amount: 80, cashoutMultiplier: 2.8 }] },
-    { name: 'Eva Morgan · Berlin', bets: [{ amount: 2, cashoutMultiplier: 1.7 }, { amount: 9, cashoutMultiplier: 2.6 }, { amount: 16, cashoutMultiplier: 6.4 }] },
-    { name: 'کیان مهر @kianrush', bets: [{ amount: 6, cashoutMultiplier: 1.28 }, { amount: 15, cashoutMultiplier: 2.2 }, { amount: 28, cashoutMultiplier: 3.75 }] },
-    { name: 'رها سام · شیراز', bets: [{ amount: 4, cashoutMultiplier: 1.6 }, { amount: 11, cashoutMultiplier: 2.9 }, { amount: 22, cashoutMultiplier: 5.5 }] },
-    { name: 'ماهان بیت @mahanbet', bets: [{ amount: 12, cashoutMultiplier: 1.32 }, { amount: 32, cashoutMultiplier: 2.05 }, { amount: 65, cashoutMultiplier: 3.4 }] },
-    { name: 'نیلا راد · تهران', bets: [{ amount: 1.5, cashoutMultiplier: 1.95 }, { amount: 7, cashoutMultiplier: 3.1 }, { amount: 18, cashoutMultiplier: 7.2 }] },
+    { name: 'Ari Stone @crashdesk', betSecond: 1, bets: [{ amount: 5, cashoutMultiplier: 1.35 }, { amount: 12, cashoutMultiplier: 1.85 }, { amount: 25, cashoutMultiplier: 2.4 }] },
+    { name: 'Maya Chen · London', betSecond: 2, bets: [{ amount: 8, cashoutMultiplier: 1.22 }, { amount: 18, cashoutMultiplier: 2.1 }, { amount: 35, cashoutMultiplier: 3.2 }] },
+    { name: 'Leo Novak @rocketton', betSecond: 3, bets: [{ amount: 3, cashoutMultiplier: 1.55 }, { amount: 10, cashoutMultiplier: 2.75 }, { amount: 20, cashoutMultiplier: 4.5 }] },
+    { name: 'Sofia Reed · Lisbon', betSecond: 4, bets: [{ amount: 7.5, cashoutMultiplier: 1.42 }, { amount: 14, cashoutMultiplier: 2.25 }, { amount: 30, cashoutMultiplier: 5.1 }] },
+    { name: 'Noah Brooks @xpilot', betSecond: 5, bets: [{ amount: 20, cashoutMultiplier: 1.18 }, { amount: 45, cashoutMultiplier: 1.9 }, { amount: 80, cashoutMultiplier: 2.8 }] },
+    { name: 'Eva Morgan · Berlin', betSecond: 6, bets: [{ amount: 2, cashoutMultiplier: 1.7 }, { amount: 9, cashoutMultiplier: 2.6 }, { amount: 16, cashoutMultiplier: 6.4 }] },
+    { name: 'کیان مهر @kianrush', betSecond: 2, bets: [{ amount: 6, cashoutMultiplier: 1.28 }, { amount: 15, cashoutMultiplier: 2.2 }, { amount: 28, cashoutMultiplier: 3.75 }] },
+    { name: 'رها سام · شیراز', betSecond: 4, bets: [{ amount: 4, cashoutMultiplier: 1.6 }, { amount: 11, cashoutMultiplier: 2.9 }, { amount: 22, cashoutMultiplier: 5.5 }] },
+    { name: 'ماهان بیت @mahanbet', betSecond: 6, bets: [{ amount: 12, cashoutMultiplier: 1.32 }, { amount: 32, cashoutMultiplier: 2.05 }, { amount: 65, cashoutMultiplier: 3.4 }] },
+    { name: 'نیلا راد · تهران', betSecond: 7, bets: [{ amount: 1.5, cashoutMultiplier: 1.95 }, { amount: 7, cashoutMultiplier: 3.1 }, { amount: 18, cashoutMultiplier: 7.2 }] },
   ],
 };
 
@@ -84,9 +84,10 @@ function normalizeCrashVirtualUsers(input: any): CrashVirtualUsersConfig {
 function normalizeUser(value: any): CrashVirtualUser | null {
   const name = String(value?.name ?? '').replace(/[<>]/g, '').trim().slice(0, 80);
   const sourceOptions = Array.isArray(value?.bets) ? value.bets : Array.isArray(value?.options) ? value.options : [];
+  const betSecond = normalizeBetSecond(value?.betSecond ?? value?.ghostBetSecond ?? value?.delaySecond);
   const bets = sourceOptions.map(normalizeBet).filter(Boolean).slice(0, MAX_OPTIONS) as CrashVirtualBetOption[];
   if (!name || bets.length < 1) return null;
-  return { name, bets };
+  return { name, betSecond, bets };
 }
 
 function normalizeBet(value: any): CrashVirtualBetOption | null {
@@ -94,6 +95,12 @@ function normalizeBet(value: any): CrashVirtualBetOption | null {
   const cashoutMultiplier = roundMultiplier(value?.cashoutMultiplier ?? value?.multiplier);
   if (amount <= 0 || cashoutMultiplier < 1.01) return null;
   return { amount, cashoutMultiplier };
+}
+
+function normalizeBetSecond(value: unknown): number {
+  const second = Number(value);
+  if (!Number.isFinite(second) || second < 0) return 0;
+  return Math.min(8, Math.round((second + Number.EPSILON) * 10) / 10);
 }
 
 function roundAmount(value: unknown): number {
