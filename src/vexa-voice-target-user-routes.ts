@@ -107,9 +107,9 @@ app.post('/app/api/vexa-voice/user-message', async (c) => {
 
 
 
-async function sendAdminBotMessage(env: Env, chatIds: string[], form: FormData): Promise<{ attempted: number; sent: number; failed: number }> {
+async function sendAdminBotMessage(env: Env, chatIds: string[], form: FormData): Promise<{ attempted: number; sent: number; failed: number; errors: string[] }> {
   const token = env.GAME_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN;
-  if (!token) return { attempted: chatIds.length, sent: 0, failed: chatIds.length };
+  if (!token) return { attempted: chatIds.length, sent: 0, failed: chatIds.length, errors: ['Bot token is missing.'] };
   const text = cleanText(form.get('text'), 1024);
   const buttonText = cleanText(form.get('buttonText'), 64);
   const buttonSection = cleanSection(form.get('buttonSection'));
@@ -117,14 +117,19 @@ async function sendAdminBotMessage(env: Env, chatIds: string[], form: FormData):
   if (!text && !(image instanceof File && image.size > 0)) throw new Error('Write text or choose an image first.');
   if (image instanceof File && image.size > 10 * 1024 * 1024) throw new Error('Image is too large. Maximum size is 10 MB.');
   let sent = 0, failed = 0;
+  const errors: string[] = [];
   for (const chatId of chatIds) {
     try {
       if (image instanceof File && image.size > 0) await sendTelegramPhoto(token, chatId, image, text, buttonText, buttonSection);
       else await sendTelegramText(token, chatId, text, buttonText, buttonSection);
       sent++;
-    } catch { failed++; }
+    } catch (error) {
+      failed++;
+      if (errors.length < 5) errors.push(chatId + ': ' + errorMessage(error));
+    }
   }
-  return { attempted: chatIds.length, sent, failed };
+  if (!chatIds.length) errors.push('No Telegram users matched the selected target or regions.');
+  return { attempted: chatIds.length, sent, failed, errors };
 }
 
 async function sendTelegramText(token: string, chatId: string, text: string, buttonText: string, buttonSection: string): Promise<void> {
@@ -142,16 +147,16 @@ async function sendTelegramPhoto(token: string, chatId: string, image: File, cap
   if (markup) body.append('reply_markup', JSON.stringify(markup));
   body.append('photo', image, image.name || 'admin-message.jpg');
   const response = await fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body });
-  if (!response.ok) throw new Error('Telegram failed');
-  const json = await response.json().catch(() => ({})) as { ok?: boolean };
-  if (!json.ok) throw new Error('Telegram rejected');
+  if (!response.ok) throw new Error(await telegramError(response));
+  const json = await response.json().catch(() => ({})) as { ok?: boolean; description?: string };
+  if (!json.ok) throw new Error(json.description || 'Telegram rejected');
 }
 
 async function callTelegram(token: string, method: string, payload: Record<string, unknown>): Promise<void> {
   const response = await fetch('https://api.telegram.org/bot' + token + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('Telegram failed');
-  const json = await response.json().catch(() => ({})) as { ok?: boolean };
-  if (!json.ok) throw new Error('Telegram rejected');
+  if (!response.ok) throw new Error(await telegramError(response));
+  const json = await response.json().catch(() => ({})) as { ok?: boolean; description?: string };
+  if (!json.ok) throw new Error(json.description || 'Telegram rejected');
 }
 
 function replyMarkup(buttonText: string, section: string): { inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>> } | null {
@@ -192,7 +197,7 @@ function cleanSection(value: unknown): string {
 
 function ttlSecondsFromMinutes(value: unknown): number { const minutes = Math.floor(Number(value) || 0); if (minutes <= 0) return 0; return Math.min(minutes, 60 * 24 * 30) * 60; }
 async function putMaybeExpiring(env: Env, key: string, value: unknown, ttlSeconds: number): Promise<void> { const payload = JSON.stringify(value); if (ttlSeconds > 0) await env.BOT_CACHE.put(key, payload, { expirationTtl: ttlSeconds }); else await env.BOT_CACHE.put(key, payload); }
-async function sendDraftVoice(env: Env, chatId: string, draft: AdminDraft): Promise<void> { const token = env.GAME_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN; if (!token) throw new Error('Bot token missing'); const object = await env.ASSETS.get(draft.r2Key); if (!object) throw new Error('Audio not found'); const form = new FormData(); form.append('chat_id', chatId); form.append('caption', cleanText(draft.title, 120) || 'Vexa wants to say something'); form.append('voice', new Blob([await object.arrayBuffer()], { type: 'audio/mpeg' }), draft.id + '.mp3'); const response = await fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form }); if (!response.ok) throw new Error('Telegram failed'); const json = await response.json().catch(() => ({})) as { ok?: boolean }; if (!json.ok) throw new Error('Telegram rejected'); }
+async function sendDraftVoice(env: Env, chatId: string, draft: AdminDraft): Promise<void> { const token = env.GAME_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN; if (!token) throw new Error('Bot token missing'); const object = await env.ASSETS.get(draft.r2Key); if (!object) throw new Error('Audio not found'); const form = new FormData(); form.append('chat_id', chatId); form.append('caption', cleanText(draft.title, 120) || 'Vexa wants to say something'); form.append('voice', new Blob([await object.arrayBuffer()], { type: 'audio/mpeg' }), draft.id + '.mp3'); const response = await fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form }); if (!response.ok) throw new Error(await telegramError(response)); const json = await response.json().catch(() => ({})) as { ok?: boolean; description?: string }; if (!json.ok) throw new Error(json.description || 'Telegram rejected'); }
 
 async function hasPlayed(env: Env, userId: string, messageKey: string): Promise<boolean> {
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS vexa_voice_user_events (user_id TEXT NOT NULL, event_id TEXT NOT NULL, played_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, event_id))').run();
@@ -200,6 +205,8 @@ async function hasPlayed(env: Env, userId: string, messageKey: string): Promise<
   return Boolean(row?.event_id);
 }
 
+async function telegramError(response: Response): Promise<string> { const json = await response.clone().json().catch(() => null) as { description?: string } | null; return json?.description || ('Telegram failed with HTTP ' + response.status); }
+function errorMessage(error: unknown): string { return error instanceof Error && error.message ? error.message : 'Telegram rejected the message'; }
 async function readJson<T extends Record<string, unknown>>(c: any): Promise<T> { return c.req.json().catch(() => ({})) as Promise<T>; }
 function readTelegramUserId(initData: string): string { if (!initData) return ''; try { const rawUser = new URLSearchParams(initData).get('user') || ''; const user = rawUser ? JSON.parse(rawUser) as { id?: number | string } : {}; const id = String(user.id || '').trim(); return /^\d+$/.test(id) ? id : ''; } catch { return ''; } }
 function cleanUserId(value: unknown): string { return String(value || '').replace(/[^0-9]/g, '').trim().slice(0, 32); }
