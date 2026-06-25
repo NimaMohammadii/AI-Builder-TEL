@@ -36,7 +36,7 @@ async function getGhostRunRealUsers(db:D1Database){
     const username = String(row.username || '').replace(/^@+/, '').trim();
     const firstName = String(row.first_name || '').trim();
     return {
-      name: username ? '@' + username : firstName || 'Live Player',
+      name: firstName || (username ? '@' + username : 'Live Player'),
       bets: [{ amount: Number((0.12 + ((index * 7) % 28) / 10).toFixed(2)), cashoutMultiplier: Number((1.22 + ((index * 11) % 95) / 100).toFixed(2)) }],
       real: true,
     };
