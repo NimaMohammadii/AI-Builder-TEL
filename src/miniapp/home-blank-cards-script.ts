@@ -27,8 +27,8 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       '.home-lucky-machine:before,.home-lucky-machine:after{display:none!important;content:none!important}',
       '.home-lucky-window-line{display:none!important}',
       '.home-lucky-reel{height:48px!important;border-radius:18px!important;overflow:hidden!important;position:relative!important;background:rgba(255,255,255,.055)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -10px 20px rgba(0,0,0,.16),0 10px 22px rgba(0,0,0,.13)!important;border:0!important;z-index:1!important}',
-      '.home-lucky-reel:before{content:""!important;display:block!important;position:absolute!important;left:0!important;right:0!important;top:0!important;height:18px!important;background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,.34),transparent)!important;z-index:3!important;pointer-events:none!important}',
-      '.home-lucky-reel:after{content:""!important;display:block!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important;height:18px!important;background:linear-gradient(0deg,rgba(0,0,0,.82),rgba(0,0,0,.34),transparent)!important;z-index:3!important;pointer-events:none!important}',
+      '.home-lucky-reel:before{display:none!important;content:none!important}',
+      '.home-lucky-reel:after{content:"";position:absolute;left:5px;right:5px;top:4px;height:12px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.095),transparent);z-index:2;pointer-events:none}',
       '.home-lucky-strip{will-change:transform!important;transform:translate3d(0,0,0)}',
       '.home-lucky-letter{height:48px!important;display:grid!important;place-items:center!important;color:#fff!important;font-size:23px!important;font-weight:950!important;letter-spacing:-.04em!important;text-shadow:0 9px 20px rgba(0,0,0,.48)!important}',
       '.home-lucky-reel.is-spinning{box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 14px 24px rgba(0,0,0,.2)!important}',
@@ -38,14 +38,15 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       '.home-lucky-spin:active{transform:scale(.988)!important}',
       '.home-lucky-spin[disabled]{opacity:.72!important;transform:none!important}',
       '.home-lucky-note{position:relative!important;z-index:1!important;margin:10px 0 0!important;text-align:center!important;color:rgba(255,255,255,.44)!important;font-size:11px!important;font-weight:720!important;line-height:1.35!important}',
-      '.home-ticket-card{margin-top:14px!important;border-radius:28px!important;padding:13px!important;background:rgba(255,255,255,.045)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 16px 36px rgba(0,0,0,.18)!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important;overflow:hidden!important}',
+      '.home-ticket-card{margin-top:14px!important;border-radius:28px!important;padding:14px!important;background:rgba(255,255,255,.045)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 16px 36px rgba(0,0,0,.18)!important;display:grid!important;gap:12px!important;overflow:hidden!important}',
+      '.home-ticket-top{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important}',
       '.home-ticket-copy{min-width:0!important;display:grid!important;gap:5px!important}',
       '.home-ticket-copy strong{color:#fff!important;font-size:16px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.045em!important}',
       '.home-ticket-copy span{color:rgba(255,255,255,.5)!important;font-size:11px!important;line-height:1.25!important;font-weight:740!important}',
-      '.home-ticket-action{display:grid!important;grid-template-columns:auto 42px!important;align-items:center!important;gap:9px!important}',
-      '.home-ticket-count{height:42px!important;min-width:54px!important;padding:0 12px!important;border-radius:16px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;color:#fff!important;font-size:15px!important;font-weight:950!important;display:flex!important;align-items:center!important;justify-content:center!important}',
-      '.home-ticket-button{width:42px!important;height:42px!important;border-radius:16px!important;border:0!important;background:#fff!important;color:#080808!important;font-size:24px!important;line-height:1!important;font-weight:950!important;box-shadow:0 12px 26px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.16)!important}',
-      '.home-ticket-button:active{transform:scale(.96)!important}'
+      '.home-ticket-count{height:42px!important;min-width:58px!important;padding:0 12px!important;border-radius:16px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;color:#fff!important;font-size:15px!important;font-weight:950!important;display:flex!important;align-items:center!important;justify-content:center!important}',
+      '.home-ticket-button{width:100%!important;height:48px!important;border-radius:19px!important;border:0!important;background:#fff!important;color:#080808!important;font-size:14px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.02em!important;box-shadow:0 12px 26px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.16)!important}',
+      '.home-ticket-button:active{transform:scale(.985)!important}',
+      '.home-ticket-button.is-claimed{background:rgba(255,255,255,.16)!important;color:#fff!important}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -86,7 +87,7 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     var count=Math.max(0,Math.floor(Number(v)||0));
     try{localStorage.setItem('vexaFreeTickets',String(count))}catch(e){}
     var n=q('#homeTicketCount');
-    if(n)n.textContent=String(count);
+    if(n)n.textContent=String(count)+' ticket'+(count===1?'':'s');
   }
 
   function ensureSection(){
@@ -96,7 +97,7 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     if(!section){
       section=document.createElement('section');
       section.id='homeLuckyCodeSection';
-      section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p><div class="home-ticket-card"><div class="home-ticket-copy"><strong>Free Ticket</strong><span>Claim a test ticket for your next Lucky Code reveal.</span></div><div class="home-ticket-action"><div class="home-ticket-count" id="homeTicketCount">0</div><button class="home-ticket-button" id="homeTicketButton" type="button" aria-label="Get free ticket">+</button></div></div></div>';
+      section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p><div class="home-ticket-card"><div class="home-ticket-top"><div class="home-ticket-copy"><strong>Free Ticket</strong><span>Claim a test ticket for your next Lucky Code reveal.</span></div><div class="home-ticket-count" id="homeTicketCount">0 tickets</div></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div></div>';
     }
     pinToTop(section);
     setTimeout(function(){pinToTop(section)},0);
@@ -154,11 +155,14 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     var btn=q('#homeTicketButton',section);
     if(!btn||btn.dataset.ticketBound==='1')return;
     btn.dataset.ticketBound='1';
-    btn.addEventListener('click',function(){
+    btn.addEventListener('click',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
       setTicketCount(ticketCount()+1);
-      btn.textContent='✓';
-      setTimeout(function(){btn.textContent='+'},650);
-    });
+      btn.classList.add('is-claimed');
+      btn.textContent='Ticket Claimed';
+      setTimeout(function(){btn.classList.remove('is-claimed');btn.textContent='Get Ticket'},850);
+    },true);
   }
 
   function init(){
