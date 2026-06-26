@@ -1,45 +1,11 @@
-export const HOME_SECTION = `<section id="home" class="view active">
-  <style>
-    #home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-    #home::-webkit-scrollbar{display:none}
-    #home .home-finance-split{align-items:start!important}
-    #home .home-finance-actions{display:grid!important;grid-template-rows:118px 118px!important;grid-auto-rows:118px!important;align-content:start!important;gap:10px!important}
-    #home .home-finance-actions>.home-finance-card,#home .home-finance-visual-stack>.home-finance-card{height:118px!important;min-height:118px!important;max-height:118px!important;margin:0!important;box-sizing:border-box!important;border:0!important;border-radius:28px!important;background:rgba(255,255,255,.026)!important;color:#fff!important;text-align:center!important;padding:12px 10px!important;display:grid!important;place-items:center!important;align-content:center!important;gap:5px!important;overflow:hidden!important;position:relative!important}
-    #home .home-finance-icon{width:32px!important;height:32px!important;border-radius:14px!important;display:grid!important;place-items:center!important;color:#fff!important;background:rgba(255,255,255,.06)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 12px 26px rgba(0,0,0,.18)!important;backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}
-    #home .home-finance-icon svg{width:24px!important;height:24px!important;display:block!important;filter:drop-shadow(0 6px 12px rgba(255,255,255,.08))!important}
-    #home .home-finance-card strong{display:block!important;font-size:18px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.055em!important;text-align:center!important}
-    #home .home-finance-card span:not(.home-finance-icon){display:block!important;font-size:11px!important;line-height:1.25!important;font-weight:650!important;color:rgba(255,255,255,.58)!important;text-align:center!important}
-    #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:246px!important;gap:10px!important;align-items:start!important}
-    #home .home-finance-visual{appearance:none!important;-webkit-appearance:none!important;width:100%!important;height:184px!important;min-height:184px!important;max-height:184px!important;margin:24px 0 0 0!important;border:0!important;outline:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:transparent!important;pointer-events:none!important}
-    #home .home-finance-visual:before,#home .home-finance-visual:after{display:none!important;content:none!important}
-    #home .home-finance-visual img{pointer-events:none!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.26))!important}
-    #home .home-daily-reward-card{cursor:pointer!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 42px rgba(0,0,0,.24)!important}
-  </style>
-  <section class="home-intro-card">
-    <h2>Welcome to Vexa</h2>
-    <p>Vexa is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
-  </section>
+import { gameCard, playZoneGames } from './play-zone';
 
-  <section class="home-finance-split">
-    <div class="home-finance-actions">
-      <button class="home-finance-card home-referral-card" type="button" data-view="referral">
-        <span class="home-finance-icon home-referral-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="25" r="9" fill="currentColor" opacity=".92"/><circle cx="43" cy="21" r="7" fill="currentColor" opacity=".42"/><circle cx="41" cy="43" r="8" fill="currentColor" opacity=".28"/><path d="M12 48c1.7-9 6.1-14 12-14s10.3 5 12 14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M36 32c3.9.8 7 3.7 9 8" stroke="currentColor" stroke-opacity=".42" stroke-width="3.4" stroke-linecap="round"/><path d="M34.5 23.5l7.5-2.5M32.5 30.5l7.5 8.5" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/><path d="M49 10l1.45 4.05 4.05 1.45-4.05 1.45L49 21l-1.45-4.05-4.05-1.45 4.05-1.45L49 10z" fill="currentColor" opacity=".9"/></svg></span>
-        <strong>Referral</strong>
-        <span>Invite friends to Vexa</span>
-      </button>
-      <button class="home-finance-card home-daily-reward-card" type="button" data-action="open-daily-guide" aria-label="Open daily rewards guide">
-        <span class="home-finance-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M16 24h32v28H16z" fill="currentColor" opacity=".34"/><path d="M14 20h36v11H14z" fill="currentColor" opacity=".58"/><path d="M32 20v32" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".9"/><path d="M32 20c-8-2-13-6-11-10 2-4 9 0 11 10Zm0 0c8-2 13-6 11-10-2-4-9 0-11 10Z" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <strong>Daily Rewards</strong>
-        <span>View reward guide</span>
-      </button>
+export const HOME_SECTION = `<section id="home" class="view active play-zone-view">
+  <div class="play-zone-stage">
+    <div class="play-zone-featured-row play-zone-grid-row">
+      ${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}
     </div>
-    <div class="home-finance-visual-stack">
-      <div class="home-finance-visual" aria-hidden="true">
-        <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
-      </div>
-    </div>
-  </section>
-
+  </div>
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-deposit"></div>
