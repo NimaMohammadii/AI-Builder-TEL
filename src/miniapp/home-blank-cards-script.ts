@@ -15,25 +15,24 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       '#home .home-finance-split{display:none!important}',
       '#home .home-intro-card{display:grid!important;pointer-events:none!important;user-select:none!important;-webkit-user-select:none!important;margin:0 0 14px!important}',
       '#home .home-intro-card *{pointer-events:none!important}',
-      '#homeLuckyCodeSection{padding:0 0 14px!important;display:grid!important;gap:14px!important}',
-      '.home-lucky-card{position:relative!important;overflow:hidden!important;border-radius:34px!important;padding:17px!important;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.026))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 24px 56px rgba(0,0,0,.36)!important;backdrop-filter:blur(18px) saturate(1.08)!important;-webkit-backdrop-filter:blur(18px) saturate(1.08)!important}',
-      '.home-lucky-card:before{content:"";position:absolute;inset:1px;border-radius:33px;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 44%,rgba(0,0,0,.12));pointer-events:none!important}',
-      '.home-lucky-card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;border:1px solid rgba(255,255,255,.09)!important}',
-      '.home-lucky-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:14px!important;position:relative!important;z-index:1!important}',
+      '#homeLuckyCodeSection{display:block!important;order:-9999!important;padding:0 0 14px!important;margin:0!important}',
+      '.home-lucky-card{position:relative!important;overflow:visible!important;border-radius:0!important;padding:0!important;background:none!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;border:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+      '.home-lucky-card:before,.home-lucky-card:after{display:none!important;content:none!important}',
+      '.home-lucky-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 0 12px!important;position:relative!important;z-index:1!important}',
       '.home-lucky-titlebox{min-width:0!important;display:grid!important;gap:5px!important}',
       '.home-lucky-titlebox strong{font-size:19px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.05em!important;color:#fff!important}',
       '.home-lucky-titlebox span{font-size:11px!important;line-height:1.25!important;font-weight:760!important;color:rgba(255,255,255,.5)!important}',
-      '.home-lucky-head-badge{flex:0 0 auto;border-radius:999px!important;padding:7px 10px!important;background:rgba(255,255,255,.055)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;color:rgba(255,255,255,.58)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.06em!important}',
-      '.home-lucky-machine{position:relative!important;z-index:1!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;padding:11px!important;border-radius:28px!important;background:linear-gradient(180deg,rgba(0,0,0,.38),rgba(0,0,0,.24))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.075),inset 0 -16px 36px rgba(0,0,0,.22),0 16px 34px rgba(0,0,0,.16)!important;overflow:hidden!important}',
-      '.home-lucky-machine:before,.home-lucky-machine:after{content:"";position:absolute;left:12px;right:12px;height:32px;z-index:3;pointer-events:none}.home-lucky-machine:before{top:10px;background:linear-gradient(180deg,rgba(6,6,7,.96),transparent)}.home-lucky-machine:after{bottom:10px;background:linear-gradient(0deg,rgba(6,6,7,.96),transparent)}',
-      '.home-lucky-window-line{position:absolute!important;left:12px!important;right:12px!important;top:50%!important;height:48px!important;transform:translateY(-50%)!important;border-radius:19px!important;border:1px solid rgba(255,255,255,.055)!important;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01))!important;z-index:0!important;pointer-events:none!important}',
-      '.home-lucky-reel{height:48px!important;border-radius:18px!important;overflow:hidden!important;position:relative!important;background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.03))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -10px 22px rgba(0,0,0,.16),0 10px 22px rgba(0,0,0,.15)!important;z-index:1!important}',
-      '.home-lucky-reel:before{content:"";position:absolute;inset:0;border-radius:inherit;border:1px solid rgba(255,255,255,.075);z-index:2;pointer-events:none}',
-      '.home-lucky-reel:after{content:"";position:absolute;left:5px;right:5px;top:4px;height:12px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.105),transparent);z-index:2;pointer-events:none}',
+      '.home-lucky-head-badge{flex:0 0 auto;border-radius:999px!important;padding:7px 10px!important;background:rgba(255,255,255,.045)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;color:rgba(255,255,255,.55)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.06em!important}',
+      '.home-lucky-machine{position:relative!important;z-index:1!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;padding:0!important;border-radius:0!important;background:none!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;border:0!important;overflow:visible!important}',
+      '.home-lucky-machine:before,.home-lucky-machine:after{display:none!important;content:none!important}',
+      '.home-lucky-window-line{display:none!important}',
+      '.home-lucky-reel{height:48px!important;border-radius:18px!important;overflow:hidden!important;position:relative!important;background:rgba(255,255,255,.055)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -10px 20px rgba(0,0,0,.16),0 10px 22px rgba(0,0,0,.13)!important;border:0!important;z-index:1!important}',
+      '.home-lucky-reel:before{display:none!important;content:none!important}',
+      '.home-lucky-reel:after{content:"";position:absolute;left:5px;right:5px;top:4px;height:12px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.095),transparent);z-index:2;pointer-events:none}',
       '.home-lucky-strip{will-change:transform!important;transform:translate3d(0,0,0)}',
       '.home-lucky-letter{height:48px!important;display:grid!important;place-items:center!important;color:#fff!important;font-size:23px!important;font-weight:950!important;letter-spacing:-.04em!important;text-shadow:0 9px 20px rgba(0,0,0,.48)!important}',
-      '.home-lucky-reel.is-spinning{box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 15px 26px rgba(0,0,0,.22)!important}',
-      '.home-lucky-code{height:40px!important;margin:13px 0!important;border-radius:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;background:rgba(255,255,255,.04)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)!important;color:rgba(255,255,255,.62)!important;font-size:12px!important;font-weight:800!important;letter-spacing:.03em!important;position:relative!important;z-index:1!important}',
+      '.home-lucky-reel.is-spinning{box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 14px 24px rgba(0,0,0,.2)!important}',
+      '.home-lucky-code{height:40px!important;margin:13px 0!important;border-radius:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;background:rgba(255,255,255,.035)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;color:rgba(255,255,255,.62)!important;font-size:12px!important;font-weight:800!important;letter-spacing:.03em!important;position:relative!important;z-index:1!important}',
       '.home-lucky-code b{color:#fff!important;font-size:14px!important;letter-spacing:.16em!important}',
       '.home-lucky-spin{position:relative!important;z-index:1!important;width:100%!important;height:54px!important;border-radius:22px!important;border:0!important;background:#fff!important;color:#090909!important;font-size:16px!important;font-weight:950!important;letter-spacing:-.025em!important;box-shadow:0 18px 42px rgba(255,255,255,.09),0 14px 34px rgba(0,0,0,.18)!important}',
       '.home-lucky-spin:active{transform:scale(.988)!important}',
@@ -51,21 +50,38 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     return html;
   }
 
+  function firstVisibleHomeNode(home){
+    var kids=qa('#home > *');
+    for(var i=0;i<kids.length;i++){
+      var n=kids[i];
+      if(!n||n.id==='homeLuckyCodeSection')continue;
+      if(String(n.tagName).toLowerCase()==='style')continue;
+      if(n.id==='depositSheet'||n.id==='withdrawSheet'||n.id==='transactionsSheet')continue;
+      return n;
+    }
+    return null;
+  }
+
+  function pinToTop(section){
+    var home=q('#home');
+    if(!home||!section)return;
+    var first=firstVisibleHomeNode(home);
+    if(first&&section.nextSibling!==first)home.insertBefore(section,first);
+    else if(!first&&home.firstChild!==section)home.insertBefore(section,home.firstChild);
+  }
+
   function ensureSection(){
     var home=q('#home');
     if(!home)return null;
-    var old=q('#homeLuckyCodeSection',home);
-    if(old)old.remove();
-    var section=document.createElement('section');
-    section.id='homeLuckyCodeSection';
-    section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p></div>';
-    var intro=q('#home .home-intro-card');
-    if(intro){
-      home.insertBefore(section,intro);
-    }else{
-      var firstVisible=qa('#home > *').filter(function(n){return n.tagName!=='STYLE'&&n.id!=='homeLuckyCodeSection'})[0];
-      home.insertBefore(section,firstVisible||home.firstChild);
+    var section=q('#homeLuckyCodeSection',home);
+    if(!section){
+      section=document.createElement('section');
+      section.id='homeLuckyCodeSection';
+      section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p></div>';
     }
+    pinToTop(section);
+    setTimeout(function(){pinToTop(section)},0);
+    setTimeout(function(){pinToTop(section)},250);
     return section;
   }
 
@@ -73,7 +89,8 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     var btn=q('#homeLuckySpin',section);
     var code=q('#homeLuckyCode',section);
     var reels=qa('.home-lucky-reel',section);
-    if(!btn||!code||!reels.length)return;
+    if(!btn||!code||!reels.length||btn.dataset.luckyBound==='1')return;
+    btn.dataset.luckyBound='1';
     var busy=false;
     btn.addEventListener('click',function(){
       if(busy)return;
