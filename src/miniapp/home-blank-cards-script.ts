@@ -59,8 +59,8 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     var section=document.createElement('section');
     section.id='homeLuckyCodeSection';
     section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p></div>';
-    var anchor=q('#depositSheet',home);
-    home.insertBefore(section,anchor||home.firstChild);
+    var intro=q('#home .home-intro-card');
+    home.insertBefore(section,intro||home.firstChild);
     return section;
   }
 
