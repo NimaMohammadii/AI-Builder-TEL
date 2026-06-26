@@ -15,11 +15,6 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-finance-visual img{pointer-events:none!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.26))!important}
     #home .home-daily-reward-card{cursor:pointer!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 42px rgba(0,0,0,.24)!important}
   </style>
-  <section class="home-intro-card">
-    <h2>Welcome to Vexa</h2>
-    <p>Vexa is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
-  </section>
-
   <section class="home-finance-split">
     <div class="home-finance-actions">
       <button class="home-finance-card home-referral-card" type="button" data-view="referral">
@@ -40,6 +35,11 @@ export const HOME_SECTION = `<section id="home" class="view active">
     </div>
   </section>
 
+
+  <section class="home-intro-card">
+    <h2>Welcome to Vexa</h2>
+    <p>Vexa is your mini app for managing your TON balance, playing interactive games, and accessing future market features from one clean experience</p>
+  </section>
 
   <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-deposit"></div>
