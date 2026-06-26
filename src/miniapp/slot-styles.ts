@@ -54,42 +54,23 @@ body:has(#slot.active) .tabs {
 
 .slot-window:before,
 .slot-window:after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 74px;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.slot-window:before {
-  top: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.88), transparent);
-}
-
-.slot-window:after {
-  bottom: 0;
-  background: linear-gradient(0deg, rgba(0,0,0,.88), transparent);
+  display: none;
+  content: none;
 }
 
 .slot-reel {
   position: relative;
   z-index: 2;
   height: 100%;
-  border-radius: 21px;
+  border-radius: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.055);
+  background: transparent;
+  box-shadow: none;
 }
 
 .slot-reel:before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.34) 28%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.82) 100%);
+  display: none;
+  content: none;
 }
 
 .slot-reel-strip {
@@ -105,7 +86,7 @@ body:has(#slot.active) .tabs {
   display: grid;
   place-items: center;
   font-size: 38px;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.32));
+  filter: none;
   user-select: none;
 }
 
@@ -251,7 +232,7 @@ body:has(#slot.active) .tabs {
 
 
 .slot-machine.is-spinning .slot-window {
-  box-shadow: 0 0 34px rgba(192,58,91,.12);
+  box-shadow: none;
 }
 
 .slot-machine.is-spinning .slot-reel-strip {
