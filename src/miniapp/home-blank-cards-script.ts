@@ -13,8 +13,9 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     style.id='homeLuckyCodeStyle';
     style.textContent=[
       '#home .home-finance-split{display:none!important}',
-      '#home .home-intro-card{display:none!important}',
-      '#homeLuckyCodeSection{padding:0 0 18px!important;display:grid!important;gap:14px!important}',
+      '#home .home-intro-card{display:grid!important;pointer-events:none!important;user-select:none!important;-webkit-user-select:none!important;margin:0 0 14px!important}',
+      '#home .home-intro-card *{pointer-events:none!important}',
+      '#homeLuckyCodeSection{padding:0 0 14px!important;display:grid!important;gap:14px!important}',
       '.home-lucky-card{position:relative!important;overflow:hidden!important;border-radius:34px!important;padding:17px!important;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.026))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 24px 56px rgba(0,0,0,.36)!important;backdrop-filter:blur(18px) saturate(1.08)!important;-webkit-backdrop-filter:blur(18px) saturate(1.08)!important}',
       '.home-lucky-card:before{content:"";position:absolute;inset:1px;border-radius:33px;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 44%,rgba(0,0,0,.12));pointer-events:none!important}',
       '.home-lucky-card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;border:1px solid rgba(255,255,255,.09)!important}',
@@ -58,7 +59,13 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     var section=document.createElement('section');
     section.id='homeLuckyCodeSection';
     section.innerHTML='<div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div><div class="home-lucky-head-badge">TEST MODE</div></div><div class="home-lucky-machine" id="homeLuckyMachine"><div class="home-lucky-window-line"></div>'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reelHtml()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b></div><button class="home-lucky-spin" id="homeLuckySpin" type="button">Spin</button><p class="home-lucky-note">Front-end test only. Later tickets can come from invites or daily tasks.</p></div>';
-    home.insertBefore(section,home.firstElementChild||home.firstChild);
+    var intro=q('#home .home-intro-card');
+    if(intro){
+      home.insertBefore(section,intro);
+    }else{
+      var firstVisible=qa('#home > *').filter(function(n){return n.tagName!=='STYLE'&&n.id!=='homeLuckyCodeSection'})[0];
+      home.insertBefore(section,firstVisible||home.firstChild);
+    }
     return section;
   }
 
