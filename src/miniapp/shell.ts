@@ -37,7 +37,6 @@ import { REFERRAL_SECTION } from './referral';
 import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
-import { LUCKY_DRAW_SECTION } from './lucky-draw';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { TTS_SECTION } from './tts';
 import { MARKET_SECTION } from './market';
@@ -196,7 +195,6 @@ const SECTIONS = [
   MARKET_SECTION,
   RESULTS_SECTION,
   PLAY_ZONE_SECTION,
-  LUCKY_DRAW_SECTION,
   PREDICT_ZONE_SECTION,
   TOP_PLAYERS_SECTION,
   `<div style="display:none">${TTS_SECTION}</div>`,
@@ -296,8 +294,8 @@ export function miniAppShellHtml(): string {
     ${SECTIONS}
     <nav class="tabs">
       <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="luckydraw">Lucky Draw</button>
-      <button class="tab" data-view="predictzone">Trends</button>
+      <button class="tab" data-view="playzone">Play Zone</button>
+      <button class="tab" data-view="predictzone">Predict</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>

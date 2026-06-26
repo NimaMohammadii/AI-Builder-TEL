@@ -16,7 +16,7 @@ export const MINIAPP_SCRIPT = `
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Trends',results:'Bot Control',playzone:'Play Zone',luckydraw:'Lucky Draw',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -81,7 +81,7 @@ export const MINIAPP_SCRIPT = `
   }
 
   function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
-  function setHeaderGlassMode(id){document.body.classList.toggle('header-glass-mode',id==='playzone'||id==='home'||id==='market')}
+  function setHeaderGlassMode(id){document.body.classList.toggle('header-glass-mode',id==='playzone'||id==='market')}
 
   function initHomeGlassButton(){
     var btn=q('homeGlassButton');if(!btn)return;
@@ -153,7 +153,7 @@ export const MINIAPP_SCRIPT = `
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
-      var b=target&&target.closest?target.closest('#home button[data-game-view],#playzone button[data-game-view]'):null;
+      var b=target&&target.closest?target.closest('#playzone button[data-game-view]'):null;
       if(!b)return;
       var id=b.getAttribute('data-game-view')||'';
       ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
