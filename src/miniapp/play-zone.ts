@@ -1,6 +1,6 @@
 import { livePlayersSeed, shouldShowLivePlayersOnCard } from './game-live-counts';
 
-const playZoneGames = [
+export const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
   ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
   ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
@@ -19,7 +19,7 @@ function stableCardImageUrl(id: string): string {
   return `/app/api/section-lock-image/${id}/locked.png?v=1`;
 }
 
-function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
+export function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
   const fallback = stableCardImageUrl(id);
   const initialSrc = id === 'slot' ? fallback : transparentPixel;
   const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
