@@ -28,7 +28,7 @@ export const HOME_BLANK_CARDS_SCRIPT = `
       '.home-ticket-drawer{position:fixed!important;left:0!important;top:calc(120px + env(safe-area-inset-top))!important;bottom:calc(88px + env(safe-area-inset-bottom))!important;width:min(44vw,210px)!important;max-width:210px!important;z-index:95!important;padding:24px 14px 14px!important;border-radius:0 30px 30px 0!important;background:rgba(255,255,255,.018)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(255,255,255,.04),0 24px 54px rgba(0,0,0,.36)!important;backdrop-filter:blur(6px) saturate(1.04)!important;-webkit-backdrop-filter:blur(6px) saturate(1.04)!important;transform:translate3d(-104%,0,0)!important;transition:transform .36s cubic-bezier(.18,.88,.24,1)!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;gap:14px!important;overflow:hidden!important}.home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}',
       '.home-ticket-drawer-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}.home-ticket-drawer-head strong{font-size:16px!important;font-weight:950!important}.home-ticket-drawer-close{width:32px!important;height:32px!important;border-radius:13px!important;border:0!important;background:rgba(255,255,255,.07)!important;color:#fff!important;font-size:18px!important}',
       '.home-ticket-drawer-count{height:54px!important;border-radius:20px!important;background:rgba(0,0,0,.16)!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:20px!important;font-weight:950!important}.home-ticket-list{min-height:0!important;display:grid!important;align-content:start!important;gap:8px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:0 0 8px!important}.home-ticket-list::-webkit-scrollbar{display:none!important}.home-ticket-list-item{height:38px!important;border-radius:16px!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 10px!important;font-size:12px!important;font-weight:850!important}.home-ticket-list-item span{color:rgba(255,255,255,.54)!important;font-size:11px!important}',
-      '@keyframes homeFinanceFloat{0%,100%{transform:translate3d(0,-5px,0)}50%{transform:translate3d(0,7px,0)}}@media(prefers-reduced-motion:reduce){.home-ticket-finance-visual img{animation:none!important;transform:none!important}}'
+      '@keyframes homeCodeSpin{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(0,-1248px,0)}}@keyframes homeFinanceFloat{0%,100%{transform:translate3d(0,-5px,0)}50%{transform:translate3d(0,7px,0)}}@media(prefers-reduced-motion:reduce){.home-ticket-finance-visual img{animation:none!important;transform:none!important}}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -44,7 +44,42 @@ export const HOME_BLANK_CARDS_SCRIPT = `
   function placeSection(home,sec){var intro=q('.home-intro-card',home);if(intro&&intro.nextSibling!==sec)intro.parentNode.insertBefore(sec,intro.nextSibling);else if(!intro&&home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
   function setDrawer(open,sec){var drawer=q('#homeTicketDrawer',sec),backdrop=q('#homeTicketDrawerBackdrop',sec);if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
   function randomCode(){var out='';for(var i=0;i<6;i++)out+=LETTERS[Math.floor(Math.random()*LETTERS.length)];return out}
-  function spinSlots(sec){var spin=q('#homeCodeSpinButton',sec);if(spin&&spin.disabled)return;var code=randomCode(),strips=qa('.home-lucky-strip',sec),reels=qa('.home-lucky-reel',sec),codeBox=q('#homeLuckyCode',sec);if(spin)spin.disabled=true;if(codeBox)codeBox.textContent='------';strips.forEach(function(s,i){var reel=reels[i];var idx=LETTERS.indexOf(code.charAt(i));var settle=((8+i*2)*LETTERS.length+idx)*ROW_HEIGHT;var duration=6000+(i*3000);if(reel)reel.classList.add('is-spinning');s.style.transition='none';s.style.animation='none';s.style.transform='translate3d(0,0,0)';s.style.filter='none';s.offsetHeight;requestAnimationFrame(function(){s.style.transition='transform '+duration+'ms cubic-bezier(.08,.76,.1,1)';s.style.transform='translate3d(0,-'+settle+'px,0)';s.style.filter='none'});setTimeout(function(){s.style.transition='transform 180ms cubic-bezier(.2,1.16,.28,1)';s.style.transform='translate3d(0,-'+(settle-4)+'px,0)'},duration+10);setTimeout(function(){s.style.transition='transform 130ms cubic-bezier(.22,.9,.25,1)';s.style.transform='translate3d(0,-'+settle+'px,0)';if(reel)reel.classList.remove('is-spinning');if(codeBox)codeBox.textContent=code.slice(0,i+1)+'-'.repeat(5-i);if(i===strips.length-1&&spin)spin.disabled=false},duration+210)})}
+  function spinSlots(sec){
+    var spin=q('#homeCodeSpinButton',sec);
+    if(spin&&spin.disabled)return;
+    var code=randomCode();
+    var strips=qa('.home-lucky-strip',sec);
+    var reels=qa('.home-lucky-reel',sec);
+    var codeBox=q('#homeLuckyCode',sec);
+    if(spin)spin.disabled=true;
+    if(codeBox)codeBox.textContent='------';
+    strips.forEach(function(s,i){
+      if(reels[i])reels[i].classList.add('is-spinning');
+      s.style.transition='none';
+      s.style.animation='none';
+      s.style.filter='none';
+      s.style.transform='translate3d(0,0,0)';
+      s.offsetHeight;
+      s.style.animation='homeCodeSpin .38s linear infinite';
+    });
+    strips.forEach(function(s,i){
+      setTimeout(function(){
+        var idx=LETTERS.indexOf(code.charAt(i));
+        var target=(LETTERS.length+idx)*ROW_HEIGHT;
+        s.style.animation='none';
+        s.style.filter='none';
+        s.style.transition='transform .72s cubic-bezier(.18,.88,.24,1)';
+        s.style.transform='translate3d(0,-'+target+'px,0)';
+        setTimeout(function(){
+          s.style.transition='none';
+          s.style.transform='translate3d(0,-'+target+'px,0)';
+          if(reels[i])reels[i].classList.remove('is-spinning');
+          if(codeBox)codeBox.textContent=code.slice(0,i+1)+'-'.repeat(5-i);
+          if(i===strips.length-1&&spin)spin.disabled=false;
+        },760);
+      },6000+(i*3000));
+    });
+  }
   function build(){var home=q('#home');if(!home)return null;cleanHome();var sec=q('#homeLuckyCodeSection',home);if(!sec){sec=document.createElement('section');sec.id='homeLuckyCodeSection';sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head"><div class="home-lucky-titlebox"><strong>Lucky Code</strong><span>Free ticket code machine</span></div></div><div class="home-lucky-machine">'+Array(6).fill(0).map(function(){return '<div class="home-lucky-reel"><div class="home-lucky-strip">'+reel()+'</div></div>'}).join('')+'</div><div class="home-lucky-code">Current code <b id="homeLuckyCode">------</b><button class="home-code-spin" id="homeCodeSpinButton" type="button">↻</button></div><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-card-head"><strong>Get Ticket</strong></div><div class="home-ticket-count" data-ticket-count>0 tickets</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><img src="/app/api/home-finance-image.png" alt="" decoding="async"/></div></div></div>'}placeSection(home,sec);sync();return sec}
   function bind(sec){if(sec.dataset.ticketUiBound==='1')return;sec.dataset.ticketUiBound='1';sec.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('[data-ticket-plus]')){e.preventDefault();change(1);return}if(t.closest&&t.closest('[data-ticket-minus]')){e.preventDefault();change(-1);return}if(t.id==='homeTicketButton'){e.preventDefault();markReady();return}if(t.id==='homeCodeSpinButton'){e.preventDefault();spinSlots(sec);return}if(t.id==='homeTicketImageButton'){e.preventDefault();setDrawer(true,sec);return}if(t.id==='homeTicketDrawerClose'||t.id==='homeTicketDrawerBackdrop'){e.preventDefault();setDrawer(false,sec);return}},true)}
   function init(){cleanHome();css();var sec=build();if(sec)bind(sec);setTimeout(function(){var s=build();if(s)bind(s)},250)}
