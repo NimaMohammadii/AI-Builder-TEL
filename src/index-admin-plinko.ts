@@ -21,6 +21,7 @@ const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
+const HOME_MY_TICKET_IMAGE_KEY = 'home-my-ticket/image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
@@ -233,6 +234,7 @@ app.delete('/app/api/groups/:chatId/leave', async (c) => {
 });
 
 app.get('/app/api/home-finance-image.png', async (c) => imageFromR2(c.env, HOME_FINANCE_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
+app.get('/app/api/home-my-ticket-image.png', async (c) => imageFromR2(c.env, HOME_MY_TICKET_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
 app.get('/app/api/crash-tip-image.png', async (c) => imageFromR2(c.env, CRASH_TIP_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
@@ -249,6 +251,21 @@ app.post('/admin/api/upload-home-finance-image', async (c) => {
     return c.json({ ok: true, url: `/app/api/home-finance-image.png?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home image' }, 400);
+  }
+});
+
+app.post('/admin/api/upload-home-my-ticket-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(HOME_MY_TICKET_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, url: `/app/api/home-my-ticket-image.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload My Ticket image' }, 400);
   }
 });
 
