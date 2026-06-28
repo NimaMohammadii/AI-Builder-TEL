@@ -15,7 +15,7 @@ import type { Env } from './types';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
 // Ghost Run scene art is referenced by stable CSS URLs, so keep it browser-cached
 // instead of re-downloading every time the user opens the game.
 const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
