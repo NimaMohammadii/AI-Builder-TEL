@@ -269,6 +269,16 @@ app.post('/admin/api/upload-home-my-ticket-image', async (c) => {
   }
 });
 
+app.delete('/admin/api/delete-home-my-ticket-image', async (c) => {
+  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    await c.env.ASSETS.delete(HOME_MY_TICKET_IMAGE_KEY);
+    return c.json({ ok: true, url: `/app/api/home-my-ticket-image.png?v=${Date.now()}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not delete My Ticket image' }, 400);
+  }
+});
+
 app.post('/admin/api/upload-crash-tip-image', async (c) => {
   if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
