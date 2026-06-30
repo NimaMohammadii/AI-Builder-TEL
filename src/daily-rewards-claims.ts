@@ -1,5 +1,5 @@
 import { addUserXp, getUserLevel } from './levels';
-import { adjustUserTonBalance } from './user-controls';
+import { adjustUserTonBalance, getUserControls } from './user-controls';
 import { getDailyRewardsPublicPayload } from './daily-rewards-missions';
 import { ensureDailyRewardEffectTables, grantDailyRewardEffect, rewardForDay, WEEKLY_DAILY_REWARDS } from './daily-rewards-effects';
 import type { Env } from './types';
@@ -150,7 +150,8 @@ export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown
     .first<{ id: string }>()
     .catch(() => null);
   if (existing?.id) {
-    return { ok: true, alreadyClaimed: true, claimedKey: claimKey(day, rewardId), claimedDay: day, reward, weekStart, trustedAccess, visitStartDay, profile: await getUserLevel(env, userId) };
+    const controls = await getUserControls(env, userId);
+    return { ok: true, alreadyClaimed: true, claimedKey: claimKey(day, rewardId), claimedDay: day, reward, weekStart, trustedAccess, visitStartDay, tonBalanceNano: controls.tonBalanceNano, profile: await getUserLevel(env, userId) };
   }
 
   const id = 'dr_' + crypto.randomUUID().replace(/-/g, '').slice(0, 28);
@@ -166,6 +167,8 @@ export async function claimWeeklyDailyReward(env: Env, input: { userId?: unknown
   } else {
     effect = await grantDailyRewardEffect(env, { userId, weekStart, reward, claimId: id });
   }
+
+  if (tonBalanceNano === null) tonBalanceNano = (await getUserControls(env, userId)).tonBalanceNano;
 
   return {
     ok: true,
