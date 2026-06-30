@@ -7,6 +7,7 @@ import type { BotRecord, Env, TelegramCallbackQuery, TelegramMessage, TelegramUp
 import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeParseJson } from './utils';
 import { buildAgentDsl, type AgentDsl } from './agent-dsl-builder';
 import { handleAgentDslCallback, handleAgentDslMessage } from './agent-dsl-runtime';
+import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -85,7 +86,9 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
     return;
   }
 
+  if (update.callback_query && await handleBotAdminCallback(env, key, update.callback_query, tg)) return;
   if (update.callback_query) return onCallback(env, key, bot.id, update.callback_query);
+  if (update.message && await handleBotAdminMessage(env, key, update.message, tg)) return;
   if (update.message) return onMessage(env, key, bot.id, update.message);
 }
 
