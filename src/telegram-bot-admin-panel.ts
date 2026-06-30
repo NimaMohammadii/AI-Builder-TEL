@@ -13,8 +13,15 @@ const SECTIONS: Array<[string, string]> = [
 
 export async function handleBotAdminMessage(env: Env, token: string, message: TelegramMessage, tg: TgApi): Promise<boolean> {
   const text = message.text?.trim() ?? '';
-  if (text !== '/admin') return false;
-  if (!isBotAdmin(env, message.from?.id)) return true;
+  if (!isAdminCommand(text)) return false;
+  if (!env.BOT_ADMIN) {
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'پنل ادمین هنوز تنظیم نشده است. مقدار BOT_ADMIN را برابر آیدی عددی تلگرام ادمین قرار بدهید.' }).catch(() => undefined);
+    return true;
+  }
+  if (!isBotAdmin(env, message.from?.id)) {
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'شما دسترسی پنل ادمین ربات را ندارید.' }).catch(() => undefined);
+    return true;
+  }
   await sendAdminHome(env, token, message.chat.id, tg, 0);
   return true;
 }
@@ -40,9 +47,18 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   return true;
 }
 
+function isAdminCommand(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
+}
+
 function isBotAdmin(env: Env, userId: unknown): boolean {
-  const admin = String(env.BOT_ADMIN ?? '').trim();
-  return Boolean(admin && String(userId ?? '') === admin);
+  const admins = String(env.BOT_ADMIN ?? '')
+    .split(/[\s,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const id = String(userId ?? '');
+  return admins.includes(id);
 }
 
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number): Promise<true> {
