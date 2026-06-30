@@ -105,9 +105,6 @@ const minesFriendRevealSchema = minesFriendUserSchema.extend({ cell: z.number().
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
-app.get('/app/', () => html(miniAppHtml()));
-app.get('/miniapp', () => html(miniAppHtml()));
-app.get('/app/index.html', () => html(miniAppHtml()));
 app.get('/builder', () => html(builderAppHtml()));
 app.get('/builder/', () => html(builderAppHtml()));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
