@@ -1,6 +1,7 @@
 import { aiReply } from './ai';
 import { processTelegramUpdate as baseProcessTelegramUpdate, setTelegramWebhook } from './telegram-agent-v3';
 import { trackTelegramBotUser } from './admin-users';
+import { handleBotAdminMessage } from './telegram-bot-admin-panel';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import { selectedGroupReply } from './group-ai-provider';
 import { isGroupAiDisabled } from './group-ai-access';
@@ -52,6 +53,10 @@ export async function processTelegramUpdate(env: Env, bot: BotRecord, update: Te
       return;
     }
 
+    if (settings.isBuilderBot && update.message && isGroupChat(update.message.chat.type)) {
+      const token = await decryptUserToken(env, bot.encrypted_token);
+      if (await handleBotAdminMessage(env, token, update.message, telegram)) return;
+    }
     if (update.my_chat_member && (await handleMainBotGroupMembership(env, bot, update))) return;
     if (update.message && (await handleMainBotGroupMessage(env, bot, update))) return;
     if (isGroupUpdate(update)) return;
