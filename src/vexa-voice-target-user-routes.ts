@@ -113,14 +113,14 @@ async function sendAdminBotMessage(env: Env, chatIds: string[], form: FormData):
   const text = cleanText(form.get('text'), 1024);
   const buttonText = cleanText(form.get('buttonText'), 64);
   const buttonSection = cleanSection(form.get('buttonSection'));
-  const media = mediaFileFromForm(form);
-  if (!text && !media) throw new Error('Write text or choose a media file first.');
-  if (media && media.size > 20 * 1024 * 1024) throw new Error('Media is too large. Maximum size is 20 MB.');
+  const image = form.get('image');
+  if (!text && !(image instanceof File && image.size > 0)) throw new Error('Write text or choose an image first.');
+  if (image instanceof File && image.size > 10 * 1024 * 1024) throw new Error('Image is too large. Maximum size is 10 MB.');
   let sent = 0, failed = 0;
   const errors: string[] = [];
   for (const chatId of chatIds) {
     try {
-      if (media) await sendTelegramMedia(token, chatId, media, text, buttonText, buttonSection);
+      if (image instanceof File && image.size > 0) await sendTelegramPhoto(token, chatId, image, text, buttonText, buttonSection);
       else await sendTelegramText(token, chatId, text, buttonText, buttonSection);
       sent++;
     } catch (error) {
@@ -139,34 +139,17 @@ async function sendTelegramText(token: string, chatId: string, text: string, but
   await callTelegram(token, 'sendMessage', payload);
 }
 
-async function sendTelegramMedia(token: string, chatId: string, media: File, caption: string, buttonText: string, buttonSection: string): Promise<void> {
-  const kind = telegramMediaKind(media);
+async function sendTelegramPhoto(token: string, chatId: string, image: File, caption: string, buttonText: string, buttonSection: string): Promise<void> {
   const body = new FormData();
   body.append('chat_id', chatId);
   if (caption) body.append('caption', caption.slice(0, 1024));
   const markup = replyMarkup(buttonText, buttonSection);
   if (markup) body.append('reply_markup', JSON.stringify(markup));
-  body.append(kind.field, media, media.name || kind.filename);
-  const response = await fetch('https://api.telegram.org/bot' + token + '/' + kind.method, { method: 'POST', body });
+  body.append('photo', image, image.name || 'admin-message.jpg');
+  const response = await fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body });
   if (!response.ok) throw new Error(await telegramError(response));
   const json = await response.json().catch(() => ({})) as { ok?: boolean; description?: string };
   if (!json.ok) throw new Error(json.description || 'Telegram rejected');
-}
-
-
-function mediaFileFromForm(form: FormData): File | null {
-  const media = form.get('media');
-  if (media instanceof File && media.size > 0) return media;
-  const image = form.get('image');
-  return image instanceof File && image.size > 0 ? image : null;
-}
-
-function telegramMediaKind(file: File): { method: string; field: string; filename: string } {
-  const type = String(file.type || '').toLowerCase();
-  if (type.startsWith('image/')) return { method: 'sendPhoto', field: 'photo', filename: 'admin-message.jpg' };
-  if (type.startsWith('video/')) return { method: 'sendVideo', field: 'video', filename: 'admin-message.mp4' };
-  if (type.startsWith('audio/')) return { method: 'sendAudio', field: 'audio', filename: 'admin-message.mp3' };
-  throw new Error('Only image, video, or audio files are allowed.');
 }
 
 async function callTelegram(token: string, method: string, payload: Record<string, unknown>): Promise<void> {
