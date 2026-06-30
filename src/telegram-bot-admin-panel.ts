@@ -19,7 +19,6 @@ export async function handleBotAdminMessage(env: Env, token: string, message: Te
     return true;
   }
   if (!isBotAdmin(env, message.from?.id)) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'شما دسترسی پنل ادمین ربات را ندارید.' }).catch(() => undefined);
     return true;
   }
   await sendAdminHome(env, token, message.chat.id, tg, 0);
