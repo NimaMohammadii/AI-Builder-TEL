@@ -7,6 +7,7 @@ import './section-lock-event-routes';
 import './crash-routes';
 import './slot-frame';
 import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
+import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
 import type { Env, TelegramUpdate, TelegramUser } from './types';
 import { PUBLIC_BASE_URL, gameBotToken } from './utils';
 
@@ -122,6 +123,7 @@ async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Re
   if (!update) return Response.json({ ok: true, ignored: true });
   const token = gameBotToken(env);
   const callback = update.callback_query;
+  if (callback && await handleBotAdminCallback(env, token, callback, telegram)) return Response.json({ ok: true, bot: 'game', admin: true });
   if (callback) {
     const chatId = callback.message?.chat.id ?? callback.from.id;
     const messageId = callback.message?.message_id ?? 0;
@@ -143,7 +145,8 @@ async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Re
   const message = update.message;
   const chatId = message?.chat.id;
   const user = message?.from;
-  if (!chatId || !user?.id) return Response.json({ ok: true, ignored: true, bot: 'game' });
+  if (!chatId || !user?.id || !message) return Response.json({ ok: true, ignored: true, bot: 'game' });
+  if (await handleBotAdminMessage(env, token, message, telegram)) return Response.json({ ok: true, bot: 'game', admin: true });
   const userId = String(user.id);
   const text = message.text?.trim() || '';
   await trackGameChatUser(env, user).catch(() => undefined);
