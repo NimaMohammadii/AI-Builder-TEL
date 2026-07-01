@@ -1,6 +1,7 @@
 import app from './index';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { isAdminSession } from './admin-auth';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -164,12 +165,12 @@ app.post('/app/api/football-live-question-bet', async (c) => {
 });
 
 app.get('/admin/api/football-teams', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getFootballTeams(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/football-teams', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -185,7 +186,7 @@ app.post('/admin/api/football-teams', async (c) => {
 });
 
 app.delete('/admin/api/football-teams/:id', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const id = cleanTeamId(c.req.param('id'));
@@ -197,7 +198,7 @@ app.delete('/admin/api/football-teams/:id', async (c) => {
 });
 
 app.post('/admin/api/football-team-logo', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const form = await c.req.formData();
     await ensureFootballPredictTables(c.env);
@@ -215,7 +216,7 @@ app.post('/admin/api/football-team-logo', async (c) => {
 });
 
 app.get('/admin/api/football-matches', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     await lockStartedMatches(c.env);
@@ -227,7 +228,7 @@ app.get('/admin/api/football-matches', async (c) => {
 });
 
 app.post('/admin/api/football-matches', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -249,7 +250,7 @@ app.post('/admin/api/football-matches', async (c) => {
 });
 
 app.post('/admin/api/football-matches/:id/action', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const id = cleanDbText(c.req.param('id'), 'Missing match id');
@@ -269,7 +270,7 @@ app.post('/admin/api/football-matches/:id/action', async (c) => {
 
 
 app.delete('/admin/api/football-matches/:id', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const id = cleanDbText(c.req.param('id'), 'Missing match id');
@@ -282,7 +283,7 @@ app.delete('/admin/api/football-matches/:id', async (c) => {
 
 
 app.post('/admin/api/football-matches/:id/live-questions', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     await expireFootballLiveQuestions(c.env);
@@ -303,7 +304,7 @@ app.post('/admin/api/football-matches/:id/live-questions', async (c) => {
 });
 
 app.post('/admin/api/football-live-questions/:id/action', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     await ensureFootballPredictTables(c.env);
     const id = cleanDbText(c.req.param('id'), 'Missing live question id');
@@ -564,7 +565,7 @@ function cleanQuestionText(value: unknown): string { const text = String(value ?
 function normalizeTimerMinutes(value: unknown): number { const n = Math.floor(Number(value)); if (!Number.isFinite(n) || n <= 0) throw new Error('Timer must be at least 1 minute'); return Math.min(180, n); }
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
-function truthy(value: unknown): boolean { return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on'; }
+function truthy(value: unknown): Promise<boolean> { return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on'; }
 function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

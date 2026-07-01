@@ -4,12 +4,13 @@ import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
 import { miniAppHtml as builderAppHtml } from './miniapp';
-import { adminHtml, adminPanelHtml } from './admin';
+import { adminCodeHtml, adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import type { BotRecord, Env, TelegramUpdate } from './types';
 import { APP_NAME, PUBLIC_BASE_URL, decryptUserToken, encryptUserToken, gameBotToken, id, rateLimit, safeParseJson } from './utils';
+import { adminSessionCookie, clearAdminSessionCookie, createAdminPasswordChallenge, isAdminPassword, isAdminSession, verifyAdminCode } from './admin-auth';
 import { isWheelFillReady, pickWheelFillEntries } from './wheel-fill-entries';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-counts';
 
@@ -113,22 +114,34 @@ app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString()
 
 app.get('/admin', () => html(adminHtml()));
 app.get('/admin/', () => html(adminHtml()));
-app.post('/admin/login', zValidator('json', adminLoginSchema), (c) => {
+app.post('/admin/login', zValidator('json', adminLoginSchema), async (c) => {
   const { key } = c.req.valid('json');
-  if (!isAdmin(c.env, key)) return c.json({ error: 'Wrong admin key' }, 401);
-  return c.json({ ok: true });
+  if (!isAdminPassword(c.env, key)) return c.json({ error: 'Wrong admin key' }, 401);
+  const challenge = await createAdminPasswordChallenge(c.env);
+  if (!challenge.ok) return c.json({ error: challenge.error, retryAfter: challenge.retryAfter }, challenge.status as 401 | 429 | 500 | 502);
+  return c.json(challenge);
 });
 app.post('/admin/panel', async (c) => {
   const form = await c.req.formData();
   const key = String(form.get('key') ?? '');
-  if (!isAdmin(c.env, key)) return html(adminHtml().replace('Only authenticated admins can open tools.', 'Wrong admin key.'));
-  return html(adminPanelHtml(), { 'set-cookie': adminCookie(key) });
+  if (!isAdminPassword(c.env, key)) return html(adminHtml('Wrong admin key.'));
+  const challenge = await createAdminPasswordChallenge(c.env);
+  if (!challenge.ok) return html(adminHtml(challenge.error));
+  return html(adminCodeHtml(challenge.challengeId));
 });
-app.get('/admin/panel', (c) => {
-  if (!isAdminRequest(c)) return c.redirect('/admin');
+app.post('/admin/verify', async (c) => {
+  const form = await c.req.formData();
+  const challengeId = String(form.get('challenge') ?? '');
+  const code = String(form.get('code') ?? '');
+  const result = await verifyAdminCode(c.env, challengeId, code);
+  if (!result.ok) return html(result.status === 429 ? adminHtml(result.error) : adminCodeHtml(challengeId, result.error));
+  return html(adminPanelHtml(), { 'set-cookie': adminSessionCookie(result.sessionToken) });
+});
+app.get('/admin/panel', async (c) => {
+  if (!(await isAdminRequest(c))) return c.redirect('/admin');
   return html(adminPanelHtml());
 });
-app.post('/admin/logout', (c) => new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json', 'set-cookie': 'vexa_admin=; Path=/admin; Max-Age=0; HttpOnly; SameSite=Lax; Secure' } }));
+app.post('/admin/logout', (c) => new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json', 'set-cookie': clearAdminSessionCookie() } }));
 app.get('/app/api/credit-icon', (c) => c.redirect('/app/api/credit-icon.png'));
 app.get('/app/api/credit-icon.png', async (c) => {
   const icon = await c.env.ASSETS.get('credit-icon').catch(() => null);
@@ -136,7 +149,7 @@ app.get('/app/api/credit-icon.png', async (c) => {
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
 });
 app.post('/admin/upload-credit-icon', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('icon');
   if (!file || typeof file !== 'object' || !('type' in file) || !('size' in file) || !('stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
@@ -163,7 +176,7 @@ app.get('/app/api/home-intro-image-meta', async (c) => {
   return c.json({ ok: true, version: String(version), url: `/app/api/home-intro-image-cached.png?v=${encodeURIComponent(String(version))}` }, 200, { 'cache-control': 'private, max-age=300' });
 });
 app.post('/admin/api/upload-home-intro-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const file = form.get('image');
   if (!file || typeof file !== 'object' || !('type' in file) || !('stream' in file)) return c.json({ error: 'Choose an image file.' }, 400);
@@ -678,13 +691,7 @@ app.post('/bot/:botId/webhook', async (c) => handleUserBotWebhook(c, c.req.param
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => { console.error(error); return c.json({ error: 'Internal error' }, 500); });
 
-function adminCookie(key: string): string { return `vexa_admin=${encodeURIComponent(key)}; Path=/admin; Max-Age=604800; HttpOnly; SameSite=Lax; Secure`; }
-function adminCookieValue(cookie: string | undefined): string {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }
 
 async function handleAiWebhook(c: { req: { json: () => Promise<unknown> }; env: Env; executionCtx: { waitUntil: (promise: Promise<unknown>) => void } }) {
   try {

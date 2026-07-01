@@ -1,6 +1,7 @@
 import app from './index';
 import { setSectionLoadingLock } from './section-locks';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const META_KEY = 'admin:section-loading-meta';
 
@@ -24,12 +25,12 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 app.get('/app/api/section-loading-meta', async (c) => {
@@ -37,7 +38,7 @@ app.get('/app/api/section-loading-meta', async (c) => {
 });
 
 app.post('/admin/api/section-loading-mode', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const body = await c.req.json().catch(() => ({})) as { sectionId?: unknown; minutes?: unknown; expiresAt?: unknown };
   try {
     const sectionId = cleanSection(body.sectionId);

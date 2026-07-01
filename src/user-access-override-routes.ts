@@ -1,5 +1,6 @@
 import app from './index';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 function cleanUserId(value: unknown): string {
   const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
@@ -62,12 +63,12 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, keyValue: string): boolean {
+function isAdmin(env: Env, keyValue: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && keyValue && keyValue === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 app.use('/app/api/section-locks', async (c, next) => {
@@ -86,7 +87,7 @@ app.get('/app/api/user-access-override', async (c) => {
 });
 
 app.get('/admin/api/users/access-override', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     return c.json(await getAccessOverride(c.env, c.req.query('userId') || ''), 200, { 'cache-control': 'no-store' });
   } catch (error) {
@@ -95,7 +96,7 @@ app.get('/admin/api/users/access-override', async (c) => {
 });
 
 app.post('/admin/api/users/access-override', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const body = await c.req.json().catch(() => ({})) as { userId?: unknown; enabled?: unknown };
   try {
     return c.json(await setAccessOverride(c.env, String(body.userId ?? ''), Boolean(body.enabled)), 200, { 'cache-control': 'no-store' });

@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const DAILY_REWARDS_HERO_IMAGE_KEY = 'daily-rewards/hero-image';
 const DAILY_REWARDS_BOTTOM_IMAGE_KEY = 'daily-rewards/bottom-image';
@@ -84,7 +85,7 @@ async function imageFromR2(env: Env, key: string, cacheControl = DAILY_REWARDS_I
 }
 
 async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, publicUrl: string, label: string): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     const form = await c.req.formData();
     const value = firstUploadableFile(form);
@@ -107,7 +108,7 @@ async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormDat
 }
 
 async function deleteImage(c: { env: Env; req: { header: (name: string) => string | undefined }; json: (data: unknown, status?: number, headers?: Record<string, string>) => Response }, key: string, label: string): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   try {
     await c.env.ASSETS.delete(key);
     return c.json({ ok: true, deleted: true, label }, 200, { 'cache-control': 'no-store' });
@@ -142,10 +143,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

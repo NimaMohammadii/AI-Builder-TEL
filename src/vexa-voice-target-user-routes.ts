@@ -2,6 +2,7 @@ import app from './index';
 import type { Env } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 import type { VexaVoiceLanguage } from './vexa-voice-messages';
+import { isAdminSession } from './admin-auth';
 
 type TargetVoiceMessage = {
   id: string;
@@ -28,7 +29,7 @@ const VOICE_INDEX_CACHE = 'no-store';
 
 
 app.post('/admin/api/vexa-voice/user-bot-message', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
   const form = await c.req.formData();
   const targetUserId = cleanUserId(form.get('targetUserId'));
   if (!targetUserId) return c.json({ error: 'Target Telegram user id is required.' }, 400, { 'cache-control': VOICE_INDEX_CACHE });
@@ -37,7 +38,7 @@ app.post('/admin/api/vexa-voice/user-bot-message', async (c) => {
 });
 
 app.post('/admin/api/vexa-voice/bot-message', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
   const form = await c.req.formData();
   const regions = normalizeRegions(form.get('regions'));
   const users = await botDeliveryUsers(c.env, regions);
@@ -46,7 +47,7 @@ app.post('/admin/api/vexa-voice/bot-message', async (c) => {
 });
 
 app.post('/admin/api/vexa-voice/user-publish', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
   const body = await readJson<{ draftId?: unknown; targetUserId?: unknown; ttlMinutes?: unknown; deliverMiniApp?: unknown; deliverBotChat?: unknown }>(c);
   const draftId = cleanKey(body.draftId);
   const targetUserId = cleanUserId(body.targetUserId);
@@ -74,7 +75,7 @@ app.post('/admin/api/vexa-voice/user-publish', async (c) => {
 });
 
 app.post('/admin/api/vexa-voice/user-disable', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': VOICE_INDEX_CACHE });
   const body = await readJson<{ targetUserId?: unknown }>(c);
   const targetUserId = cleanUserId(body.targetUserId);
   if (!targetUserId) return c.json({ error: 'Target Telegram user id is required.' }, 400, { 'cache-control': VOICE_INDEX_CACHE });
@@ -213,4 +214,4 @@ function cleanUserId(value: unknown): string { return String(value || '').replac
 function cleanKey(value: unknown): string { return String(value || '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 90); }
 function cleanText(value: unknown, max: number): string { return String(value || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max); }
 function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdminRequest(c: any): boolean { const key = adminCookieValue(c.req.header('cookie')); return Boolean(c.env.ADMIN_KEY && key && key === c.env.ADMIN_KEY); }
+async function isAdminRequest(c: any): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

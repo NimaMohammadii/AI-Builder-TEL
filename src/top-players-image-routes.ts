@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const TOP_PLAYERS_HERO_IMAGE_KEY = 'top-players/hero-image';
 const TOP_PLAYERS_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
@@ -22,7 +23,7 @@ async function imageFromR2(env: Env): Promise<Response> {
 }
 
 async function uploadImage(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: unknown, status?: number) => Response }): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -44,10 +45,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

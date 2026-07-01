@@ -1,5 +1,6 @@
 import { VEXA_VOICE_LANGUAGES, VEXA_VOICE_MESSAGES, normalizeVexaVoiceEventId, normalizeVexaVoiceLanguage, vexaVoiceLanguageForRegion, vexaVoiceR2Key, type VexaVoiceLanguage } from './vexa-voice-messages';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 type EnvWithVexaVoice = Env & { ELEVENLABS_API_KEY?: string };
 type AppLike = { get: (path: string, handler: (c: any) => Promise<Response> | Response) => unknown; post: (path: string, handler: (c: any) => Promise<Response> | Response) => unknown };
@@ -22,19 +23,19 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   app.get('/admin/api/vexa-voice/health', (c) => c.json({ ok: true, feature: 'vexa_voice_messages' }, 200, { 'cache-control': VOICE_INDEX_CACHE }));
 
   app.get('/admin/api/vexa-voice/messages', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     await seedVoiceMessages(c.env);
     return c.json(await listVoiceMessages(c.env), 200, { 'cache-control': VOICE_INDEX_CACHE });
   });
 
   app.post('/admin/api/vexa-voice/seed', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     await seedVoiceMessages(c.env);
     return c.json(await listVoiceMessages(c.env), 200, { 'cache-control': VOICE_INDEX_CACHE });
   });
 
   app.post('/admin/api/vexa-voice/generate', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     const env = c.env as EnvWithVexaVoice;
     if (!env.ELEVENLABS_API_KEY) return c.json({ error: 'ElevenLabs API key is not configured.' }, 500);
     const body = await readJson<{ eventId?: unknown; language?: unknown }>(c);
@@ -59,7 +60,7 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
 
   app.post('/admin/api/vexa-voice/preview', async (c) => {
     try {
-      if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+      if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
       const env = c.env as EnvWithVexaVoice;
       if (!env.ELEVENLABS_API_KEY) return c.json({ error: 'ElevenLabs API key is not configured.' }, 500);
       const body = await readJson<{ title?: unknown; text?: unknown; language?: unknown; regions?: unknown }>(c);
@@ -83,7 +84,7 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/vexa-voice/publish', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     const env = c.env as EnvWithVexaVoice;
     const body = await readJson<{ draftId?: unknown; regions?: unknown; ttlMinutes?: unknown; deliverMiniApp?: unknown; deliverBotChat?: unknown }>(c);
     const draftId = cleanEventKey(body.draftId);
@@ -105,7 +106,7 @@ export function registerVexaVoiceMessageRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/vexa-voice/admin-message', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     const body = await readJson<{ enabled?: unknown; title?: unknown; regions?: unknown }>(c);
     const regions = normalizeRegions(body.regions);
     if (body.enabled === false) {
@@ -192,4 +193,4 @@ function normalizeRegions(value: unknown): string[] { const raw = Array.isArray(
 function cleanText(value: unknown, max: number): string { return String(value || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max); }
 function cleanEventKey(value: unknown): string { return String(value || '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 90); }
 function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdminRequest(c: any): boolean { const key = adminCookieValue(c.req.header('cookie')); return Boolean(c.env.ADMIN_KEY && key && key === c.env.ADMIN_KEY); }
+async function isAdminRequest(c: any): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }
