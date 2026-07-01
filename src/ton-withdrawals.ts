@@ -1,6 +1,7 @@
 import type { TonClient } from '@ton/ton';
 import type { Env } from './types';
-import { adjustUserTonBalance, getUserControls } from './user-controls';
+import { adjustUserTonBalance, assertUserNotBanned, getUserControls } from './user-controls';
+import { getFinanceLimits } from './admin-finance-controls';
 
 const TON_NANO = 1_000_000_000;
 const MIN_WITHDRAW_NANO = 10 * TON_NANO;
@@ -44,8 +45,12 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   const userId = cleanUserId(userIdInput);
   const wallet = cleanWallet(walletInput);
   const amountNano = tonToNano(amountTonInput);
-  if (amountNano < MIN_WITHDRAW_NANO) throw new Error('Minimum withdrawal is 10 TON');
-  if (amountNano > MAX_WITHDRAW_NANO) throw new Error('Maximum withdrawal is 100 TON');
+  await assertUserNotBanned(env, userId);
+  const limits = await getFinanceLimits(env);
+  const minWithdrawNano = limits.minWithdrawNano || MIN_WITHDRAW_NANO;
+  const maxWithdrawNano = limits.maxWithdrawNano || MAX_WITHDRAW_NANO;
+  if (amountNano < minWithdrawNano) throw new Error(`Minimum withdrawal is ${formatTonAmount(minWithdrawNano)} TON`);
+  if (amountNano > maxWithdrawNano) throw new Error(`Maximum withdrawal is ${formatTonAmount(maxWithdrawNano)} TON`);
 
   const controls = await getUserControls(env, userId);
   if (controls.tonBalanceNano < amountNano) throw new Error('Not enough TON balance');
