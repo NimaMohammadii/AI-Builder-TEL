@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import './market-routes';
 import './deposit-method-icon-routes';
-import { adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
+import { adminUserDetailJson, adminUserDetailPdf, adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
@@ -23,7 +23,7 @@ const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 const SECTION_LOCK_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
-const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional() });
+const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional(), regionCode: z.string().max(12).nullable().optional(), languageCode: z.string().max(12).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
@@ -167,6 +167,8 @@ app.get('/app/api/section-lock-image/:section', async (c) => { try { const secti
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
 app.post('/app/api/section-locks/verify', zValidator('json', codeLockSchema), async (c) => { const body = c.req.valid('json'); try { return c.json(await verifySectionCode(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not verify code' }, 400); } });
 app.get('/admin/api/users', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await adminUsersJson(c.env)); } catch (error) { console.error('load admin users failed', error); return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalTonBalanceNano: 0 }, error: 'Database is not ready. Run migrations.' }, 500); } });
+app.get('/admin/api/users/:userId/detail', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await adminUserDetailJson(c.env, c.req.param('userId')), 200, { 'cache-control': 'no-store' }); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not load user detail' }, 400); } });
+app.get('/admin/api/users/:userId/report.pdf', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { const pdf = await adminUserDetailPdf(c.env, c.req.param('userId')); const safeId = c.req.param('userId').replace(/[^0-9A-Za-z_-]/g, ''); return new Response(pdf, { headers: { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="vexa-user-' + safeId + '.pdf"', 'cache-control': 'no-store' } }); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not create PDF' }, 400); } });
 app.delete('/admin/api/users/:userId', async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await resetUserEverywhere(c.env, c.req.param('userId'))); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not delete user' }, 400); } });
 app.get('/admin/api/user-controls', zValidator('query', userIdSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getUserControls(c.env, c.req.valid('query').userId)); });
 app.post('/admin/api/users/ton-balance', zValidator('json', userTonBalanceSchema), async (c) => { if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setUserTonBalance(c.env, body.userId, body.tonBalanceNano)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); } });
