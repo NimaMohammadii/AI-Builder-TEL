@@ -8,6 +8,7 @@ import { OPENAI_BASE_URL, OPENAI_MODEL, PUBLIC_BASE_URL, decryptUserToken, safeP
 import { buildAgentDsl, type AgentDsl } from './agent-dsl-builder';
 import { handleAgentDslCallback, handleAgentDslMessage } from './agent-dsl-runtime';
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
+import { REGIONS, getRegionSelectionConfig, regionByCode, type RegionConfig } from './region-settings';
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
   return tg(env.TELEGRAM_BOT_TOKEN, 'setWebhook', {
@@ -27,7 +28,6 @@ type TtsSelection = { voiceName: string; voiceId: string; createdAt: number };
 type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loading'; expiresAt?: string | null };
 type AdminSettingRow = { value_json: string };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
-type RegionConfig = { code: string; label: string; language: string; timezone: string };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
@@ -36,18 +36,6 @@ const MAIN_MENU_TTL = 7200;
 const LOCKS_KEY = 'admin:section-locks';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
-const REGIONS: RegionConfig[] = [
-  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
-  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
-  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
-  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
-  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
-  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
-  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
-  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
-  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
-  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
-];
 const TTS_VOICES: TtsVoice[] = [
   { name: 'Liam', id: 'TX3LPaxmHKxFdv7VOQHJ' },
   { name: 'Noah', id: '1SM7GgM6IMuvQlz2BwM3' },
@@ -106,14 +94,31 @@ async function onMessage(env: Env, key: string, botId: string, message: Telegram
   const chatKey = `builder-ai-chat:${userId}`;
   const historyKey = `builder-ai-history:${userId}`;
 
-  if (text === '/region') return regionMenu(key, chatId, 'Change your region 🌍');
+  if (text === '/region') {
+    const regionConfig = await getRegionSelectionConfig(env);
+    if (!regionConfig.selectionEnabled) {
+      const region = regionByCode(regionConfig.defaultRegion) || REGIONS[0];
+      await saveUserRegion(env, botId, userId, region);
+      await send(key, chatId, `Region selection is disabled by admin. Your region is set to ${region.label}.`);
+      return mainMenu(env, key, chatId);
+    }
+    return regionMenu(key, chatId, 'Change your region 🌍');
+  }
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await clearTtsState(env, userId);
+    const regionConfig = await getRegionSelectionConfig(env);
     const region = await getUserRegion(env, botId, userId);
-    if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
+    if (!region) {
+      const defaultRegion = regionByCode(regionConfig.defaultRegion) || REGIONS[0];
+      if (!regionConfig.selectionEnabled) {
+        await saveUserRegion(env, botId, userId, defaultRegion);
+      } else {
+        return regionMenu(key, chatId, 'Choose your region 🌍');
+      }
+    }
     await mainMenu(env, key, chatId);
     return;
   }
@@ -176,6 +181,14 @@ async function onCallback(env: Env, key: string, botId: string, q: TelegramCallb
   await tg(key, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
 
   if (data.startsWith('region:')) {
+    const regionConfig = await getRegionSelectionConfig(env);
+    if (!regionConfig.selectionEnabled) {
+      const region = regionByCode(regionConfig.defaultRegion) || REGIONS[0];
+      await saveUserRegion(env, botId, userId, region);
+      await tg(key, 'sendMessage', { chat_id: chatId, text: `Region selection is disabled by admin. Your region is set to ${region.label}.` });
+      await mainMenu(env, key, chatId);
+      return;
+    }
     const region = regionByCode(data.slice('region:'.length));
     if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
     await saveUserRegion(env, botId, userId, region);
@@ -415,10 +428,6 @@ async function regionMenu(key: string, chatId: number, text: string): Promise<vo
   });
 }
 
-function regionByCode(code: string): RegionConfig | null {
-  const cleaned = String(code || '').trim().toUpperCase();
-  return REGIONS.find((region) => region.code === cleaned) ?? null;
-}
 
 async function getUserRegion(env: Env, botId: string, userId: string): Promise<RegionConfig | null> {
   try {
