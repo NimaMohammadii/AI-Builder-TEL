@@ -6,9 +6,27 @@ import { getUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinCh
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown };
 type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast'; userId?: string; page?: number; regions?: string[]; miniAppButton?: boolean };
+type LanguageSettings = { startPromptEnabled: boolean; regionCommandEnabled: boolean; defaultRegionCode: string | null };
+type AdminSettingRow = { value_json: string };
+type RegionConfig = { code: string; label: string; language: string; timezone: string };
+
+const LANGUAGE_SETTINGS_KEY = 'botadmin:language-settings';
 
 const PAGE_SIZE = 8;
 const NANO = 1_000_000_000;
+const LANGUAGE_REGIONS: RegionConfig[] = [
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
+  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
+  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
+];
+
 const SECTIONS: Array<[string, string]> = [
   ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'], ['limbo', 'لیمبو'], ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
 ];
@@ -42,6 +60,11 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   const pageArg = Number(parts[4]) || 0;
   await clearAdminState(env, q.from.id);
   if (action === 'home') return sendAdminHome(env, token, chatId, tg, messageId);
+  if (action === 'language') return sendLanguageSettings(env, token, chatId, tg, messageId);
+  if (action === 'langprompt') return toggleLanguagePrompt(env, token, chatId, tg, messageId);
+  if (action === 'langcmd') return toggleRegionCommand(env, token, chatId, tg, messageId);
+  if (action === 'langdefault') return setDefaultRegion(env, token, chatId, tg, id, messageId);
+  if (action === 'langclear') return setDefaultRegion(env, token, chatId, tg, '', messageId);
   if (action === 'users') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
   if (action === 'page') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
   if (action === 'user') return sendUserPanel(env, token, chatId, tg, id, messageId, Number(arg) || 0);
@@ -70,7 +93,7 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '🌐 تنظیمات زبان و رجین', callback_data: 'botadmin:language' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
 }
 
@@ -107,6 +130,64 @@ async function sendUserPanel(env: Env, token: string, chatId: number, tg: TgApi,
   await upsertMessage(token, tg, chatId, messageId, text, rows);
   return true;
 }
+
+
+async function sendLanguageSettings(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const settings = await getLanguageSettings(env);
+  const defaultRegion = settings.defaultRegionCode ? LANGUAGE_REGIONS.find((region) => region.code === settings.defaultRegionCode) : null;
+  const rows = [
+    [{ text: `${settings.startPromptEnabled ? '✅' : '❌'} Show region/language prompt on /start`, callback_data: 'botadmin:langprompt' }],
+    [{ text: `${settings.regionCommandEnabled ? '✅' : '❌'} /region / /language command`, callback_data: 'botadmin:langcmd' }],
+    [{ text: `Default: ${defaultRegion ? defaultRegion.label : 'Not set'}`, callback_data: 'botadmin:language' }],
+    ...chunk(LANGUAGE_REGIONS.map((region) => ({ text: `${settings.defaultRegionCode === region.code ? '✓ ' : ''}${region.label}`, callback_data: `botadmin:langdefault:${region.code}` })), 2),
+    [{ text: 'Clear default region', callback_data: 'botadmin:langclear' }],
+    [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ];
+  const text = ['🌐 Language Settings', '', `Start region/language prompt: ${settings.startPromptEnabled ? 'Enabled' : 'Disabled'}`, `Default direct region: ${defaultRegion ? defaultRegion.label : 'Not set'}`, `/region / /language command: ${settings.regionCommandEnabled ? 'Enabled' : 'Disabled'}`, '', 'If the prompt is disabled and a default region is selected, new users go directly to the bot menu with that region/language.'].join('\n');
+  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  return true;
+}
+
+async function toggleLanguagePrompt(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const settings = await getLanguageSettings(env);
+  settings.startPromptEnabled = !settings.startPromptEnabled;
+  await saveLanguageSettings(env, settings);
+  return sendLanguageSettings(env, token, chatId, tg, messageId);
+}
+
+async function toggleRegionCommand(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const settings = await getLanguageSettings(env);
+  settings.regionCommandEnabled = !settings.regionCommandEnabled;
+  await saveLanguageSettings(env, settings);
+  return sendLanguageSettings(env, token, chatId, tg, messageId);
+}
+
+async function setDefaultRegion(env: Env, token: string, chatId: number, tg: TgApi, code: string, messageId?: number): Promise<true> {
+  const settings = await getLanguageSettings(env);
+  const cleaned = String(code || '').toUpperCase();
+  settings.defaultRegionCode = LANGUAGE_REGIONS.some((region) => region.code === cleaned) ? cleaned : null;
+  await saveLanguageSettings(env, settings);
+  return sendLanguageSettings(env, token, chatId, tg, messageId);
+}
+
+async function getLanguageSettings(env: Env): Promise<LanguageSettings> {
+  await ensureAdminSettingsTable(env);
+  const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(LANGUAGE_SETTINGS_KEY).first<AdminSettingRow>();
+  const raw = safeJson<Partial<LanguageSettings>>(row?.value_json || '{}', {});
+  const defaultRegionCode = typeof raw.defaultRegionCode === 'string' && LANGUAGE_REGIONS.some((region) => region.code === raw.defaultRegionCode?.toUpperCase()) ? raw.defaultRegionCode.toUpperCase() : null;
+  return { startPromptEnabled: raw.startPromptEnabled !== false, regionCommandEnabled: raw.regionCommandEnabled !== false, defaultRegionCode };
+}
+
+async function saveLanguageSettings(env: Env, settings: LanguageSettings): Promise<void> {
+  await ensureAdminSettingsTable(env);
+  await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(name) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`).bind(LANGUAGE_SETTINGS_KEY, JSON.stringify(settings)).run();
+}
+
+async function ensureAdminSettingsTable(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (name TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+}
+
+function safeJson<T>(value: string, fallback: T): T { try { return JSON.parse(value) as T; } catch { return fallback; } }
 
 async function promptAdminInput(env: Env, token: string, chatId: number, tg: TgApi, adminId: unknown, state: AdminState, text: string, messageId?: number): Promise<true> {
   await setAdminState(env, adminId, state);
