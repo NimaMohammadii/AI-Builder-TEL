@@ -19,6 +19,9 @@ type AdminUserRow = {
   last_seen_at: string | null;
   created_at: string | null;
   source: string | null;
+  region_code?: string | null;
+  language_code?: string | null;
+  timezone?: string | null;
 };
 
 type ClientResetState = { resetVersion: string; resetAllVersion: string };
@@ -81,16 +84,19 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 
 export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<string, unknown>>; stats: Record<string, number> }> {
   await ensureTonBalanceColumn(env);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
   const rows = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source FROM app_users
+      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source, region_code, language_code, timezone FROM app_users
       UNION ALL
       SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at,
-        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source
+        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source, NULL AS region_code, NULL AS language_code, NULL AS timezone
       FROM bot_users
     ), ranked AS (
       SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
-    SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source
+    SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source, region_code, language_code, timezone
     FROM ranked
     WHERE rn = 1
     ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
@@ -121,6 +127,10 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       createdAt: row.created_at,
       source: row.source || 'unknown',
       sourceLabel: sourceLabel(row.source || 'unknown'),
+      regionCode: regionKeyFromRow(row.region_code, row.language_code),
+      regionLabel: regionLabel(regionKeyFromRow(row.region_code, row.language_code)),
+      languageCode: row.language_code || '',
+      timezone: row.timezone || '',
     };
   }));
   const online = users.filter((user) => user.isActive).length;
@@ -314,4 +324,18 @@ function cleanUserId(value: unknown): string {
   const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
   if (!id) throw new Error('Missing user id');
   return id;
+}
+
+function regionKeyFromRow(regionCode: unknown, languageCode: unknown): string {
+  const region = String(regionCode || '').toUpperCase();
+  if (region === 'IR' || region === 'TR' || region === 'RU') return region;
+  const language = String(languageCode || '').trim().toLowerCase();
+  if (language === 'fa') return 'IR';
+  if (language === 'tr') return 'TR';
+  if (language === 'ru') return 'RU';
+  return 'EN';
+}
+
+function regionLabel(code: string): string {
+  return ({ EN: 'English / Global', IR: 'Iran / Persian', TR: 'Türkiye / Turkish', RU: 'Russia / Russian' } as Record<string, string>)[code] || code || 'Unknown';
 }
