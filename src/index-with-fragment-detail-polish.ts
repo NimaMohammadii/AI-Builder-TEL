@@ -7,13 +7,14 @@ import './section-lock-event-routes';
 import './crash-routes';
 import './slot-frame';
 import { createStarsDeposit, handleStarsSuccessfulPayment, listUserStarsDeposits } from './stars-deposits';
-import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
+import { getBotRegionSettings, handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
 import type { Env, TelegramUpdate, TelegramUser } from './types';
 import { PUBLIC_BASE_URL, gameBotToken } from './utils';
 
 export { SectionLockEvents } from './section-lock-events';
 
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
+type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 
 const REGIONS: RegionConfig[] = [
@@ -150,16 +151,23 @@ async function handleGameBotRegionUpdate(request: Request, env: Env): Promise<Re
   const userId = String(user.id);
   const text = message.text?.trim() || '';
   await trackGameChatUser(env, user).catch(() => undefined);
+  const settings = await getBotRegionSettings(env);
   if (text === '/region') {
     await deleteTelegramMessage(token, chatId, message.message_id).catch(() => undefined);
-    await sendRegionMenu(env, token, chatId, userId, 'Change your region 🌍');
+    if (settings.commandEnabled) {
+      await sendRegionMenu(env, token, chatId, userId, 'Change your region 🌍', settings);
+    } else {
+      const currentRegion = await getGameUserRegion(env, userId);
+      await sendOpenMiniApp(env, token, chatId, userId, currentRegion ? `Your region: ${currentRegion.label}` : 'Region changing is disabled by admin.');
+    }
     return Response.json({ ok: true, bot: 'game', command: 'region' });
   }
-  const region = await getGameUserRegion(env, userId);
+  let region = await getGameUserRegion(env, userId);
   if (!region || text === '/start') {
     await deleteTelegramMessage(token, chatId, message.message_id).catch(() => undefined);
-    if (!region) await sendRegionMenu(env, token, chatId, userId, 'Choose your region 🌍');
-    else await sendOpenMiniApp(env, token, chatId, userId, `Your region: ${region.label}\nUse /region to change it.`);
+    if (!region && !settings.startPromptEnabled) region = await applyDefaultRegion(env, user, settings);
+    if (!region) await sendRegionMenu(env, token, chatId, userId, 'Choose your region 🌍', settings);
+    else await sendOpenMiniApp(env, token, chatId, userId, `Your region: ${region.label}${settings.commandEnabled ? '\nUse /region to change it.' : ''}`);
     return Response.json({ ok: true, bot: 'game', command: text || 'message' });
   }
   await sendOpenMiniApp(env, token, chatId, userId, 'Open the mini app.');
@@ -193,6 +201,14 @@ async function getGameUserRegion(env: Env, userId: string): Promise<RegionConfig
   return row?.region_code ? regionByCode(row.region_code) : null;
 }
 
+
+async function applyDefaultRegion(env: Env, user: TelegramUser, settings: RegionSettings): Promise<RegionConfig | null> {
+  const region = settings.defaultRegionCode ? regionByCode(settings.defaultRegionCode) : null;
+  if (!region) return null;
+  await saveGameUserRegion(env, user, region);
+  return region;
+}
+
 async function saveGameUserRegion(env: Env, user: TelegramUser, region: RegionConfig): Promise<void> {
   await ensureAppUserRegionColumns(env);
   await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, region_code, language_code, timezone, current_section, last_seen_at, updated_at)
@@ -207,13 +223,13 @@ function cleanText(value: unknown, max: number): string | null {
   return text ? text.slice(0, max) : null;
 }
 
-async function sendRegionMenu(env: Env, token: string, chatId: number, userId: string, text: string): Promise<void> {
+async function sendRegionMenu(env: Env, token: string, chatId: number, userId: string, text: string, settings?: RegionSettings): Promise<void> {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   for (let i = 0; i < REGIONS.length; i += 2) rows.push(REGIONS.slice(i, i + 2).map((region) => ({ text: region.label, callback_data: `region:${region.code}` })));
   await deleteLastGameMenu(env, token, chatId, userId);
   const sent = await telegram<TelegramMessageResult>(token, 'sendMessage', {
     chat_id: chatId,
-    text: `${text}\n\nYou can change it anytime with /region.`,
+    text: `${text}${settings?.commandEnabled === false ? '' : '\n\nYou can change it anytime with /region.'}`,
     reply_markup: { inline_keyboard: rows },
   });
   await saveGameMenuMessageId(env, userId, sent.result?.message_id || 0);

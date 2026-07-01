@@ -13,16 +13,26 @@ const PAGE_SIZE = 8;
 const NANO = 1_000_000_000;
 const REGION_SETTINGS_KEY = 'admin:bot-region-settings';
 const REGIONS: RegionConfig[] = [
-  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
-  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
-  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
-  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
-  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
-  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
-  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
-  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
   { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
-  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
+  { code: 'UA', label: '🇺🇦 Ukraine', language: 'uk', timezone: 'Europe/Kyiv' },
+  { code: 'CN', label: '🇨🇳 China', language: 'zh', timezone: 'Asia/Shanghai' },
+  { code: 'GB', label: '🇬🇧 United Kingdom', language: 'en', timezone: 'Europe/London' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'AU', label: '🇦🇺 Australia', language: 'en', timezone: 'Australia/Sydney' },
+  { code: 'JP', label: '🇯🇵 Japan', language: 'ja', timezone: 'Asia/Tokyo' },
+  { code: 'KR', label: '🇰🇷 South Korea', language: 'ko', timezone: 'Asia/Seoul' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'AE', label: '🇦🇪 Middle East', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
+  { code: 'ID', label: '🇮🇩 Indonesia', language: 'id', timezone: 'Asia/Jakarta' },
+  { code: 'EU', label: '🇪🇺 Europe', language: 'en', timezone: 'Europe/Berlin' },
+  { code: 'ASIA', label: '🌏 Asia', language: 'en', timezone: 'Asia/Singapore' },
+  { code: 'AM', label: '🌎 Americas', language: 'en', timezone: 'America/New_York' },
+  { code: 'AF', label: '🌍 Africa', language: 'en', timezone: 'Africa/Lagos' },
+  { code: 'OTHER', label: '🌐 Other', language: 'en', timezone: 'UTC' },
 ];
 const SECTIONS: Array<[string, string]> = [
   ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'], ['limbo', 'لیمبو'], ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
@@ -95,7 +105,7 @@ async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi,
 
 
 async function sendRegionSettingsPanel(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
-  const settings = await getRegionSettings(env);
+  const settings = await getBotRegionSettings(env);
   const defaultRegion = settings.defaultRegionCode ? regionByCode(settings.defaultRegionCode) : null;
   const text = [
     '🌍 Region Settings',
@@ -119,7 +129,7 @@ async function sendRegionSettingsPanel(env: Env, token: string, chatId: number, 
 }
 
 async function updateRegionSettings(env: Env, token: string, chatId: number, tg: TgApi, messageId: number | undefined, patch: Partial<RegionSettings>): Promise<true> {
-  const current = await getRegionSettings(env);
+  const current = await getBotRegionSettings(env);
   const next = { ...current, ...patch };
   if (next.defaultRegionCode && !regionByCode(next.defaultRegionCode)) next.defaultRegionCode = null;
   await ensureAdminSettings(env);
@@ -130,7 +140,7 @@ async function updateRegionSettings(env: Env, token: string, chatId: number, tg:
   return sendRegionSettingsPanel(env, token, chatId, tg, messageId);
 }
 
-async function getRegionSettings(env: Env): Promise<RegionSettings> {
+export async function getBotRegionSettings(env: Env): Promise<RegionSettings> {
   const fallback: RegionSettings = { startPromptEnabled: true, commandEnabled: true, defaultRegionCode: null };
   try {
     await ensureAdminSettings(env);
