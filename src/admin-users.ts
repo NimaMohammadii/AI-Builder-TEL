@@ -22,6 +22,7 @@ type AdminUserRow = {
   region_code?: string | null;
   language_code?: string | null;
   timezone?: string | null;
+  return_count?: number | null;
 };
 
 type ClientResetState = { resetVersion: string; resetAllVersion: string };
@@ -60,6 +61,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 
   try {
     await ensureTonBalanceColumn(env);
+    await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
     const controls = await getUserControls(env, userId);
     const resetState = await getClientResetState(env, userId);
     const tonBalanceNano = Math.max(0, Math.floor(Number(controls.tonBalanceNano ?? 0) || 0));
@@ -69,6 +71,10 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         first_name = excluded.first_name,
         username = excluded.username,
         current_section = excluded.current_section,
+        return_count = CASE
+          WHEN datetime(COALESCE(app_users.last_seen_at, app_users.created_at)) < datetime('now', '-30 minutes') THEN COALESCE(app_users.return_count, 1) + 1
+          ELSE COALESCE(app_users.return_count, 1)
+        END,
         last_seen_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, section, tonBalanceNano)
@@ -87,16 +93,17 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
   const rows = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source, region_code, language_code, timezone FROM app_users
+      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source, region_code, language_code, timezone, return_count FROM app_users
       UNION ALL
       SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at,
-        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source, NULL AS region_code, NULL AS language_code, NULL AS timezone
+        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source, NULL AS region_code, NULL AS language_code, NULL AS timezone, 1 AS return_count
       FROM bot_users
     ), ranked AS (
       SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
     )
-    SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source, region_code, language_code, timezone
+    SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source, region_code, language_code, timezone, return_count
     FROM ranked
     WHERE rn = 1
     ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC
@@ -131,6 +138,7 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
       regionLabel: regionLabel(regionKeyFromRow(row.region_code, row.language_code)),
       languageCode: row.language_code || '',
       timezone: row.timezone || '',
+      returnCount: Math.max(1, Math.floor(Number(row.return_count) || 1)),
     };
   }));
   const online = users.filter((user) => user.isActive).length;

@@ -1,0 +1,1 @@
+ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1;

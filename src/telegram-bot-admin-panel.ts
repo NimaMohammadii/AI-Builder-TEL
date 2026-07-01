@@ -5,8 +5,8 @@ import { getUserControls, setUserBanned, setUserSectionBlocked, setUserTonBalanc
 import { formatTonAmount, getFinanceLimits, getFinanceStats, setFinanceLimits, tonToNano } from './admin-finance-controls';
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
-type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown };
-type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit'; userId?: string; page?: number; regions?: string[]; miniAppButton?: boolean };
+type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
+type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
 type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 
@@ -69,12 +69,13 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   await clearAdminState(env, q.from.id);
   if (action === 'home') return sendAdminHome(env, token, chatId, tg, messageId);
   if (action === 'users') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
-  if (action === 'page') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
-  if (action === 'user') return sendUserPanel(env, token, chatId, tg, id, messageId, Number(arg) || 0);
-  if (action === 'back') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
-  if (action === 'askwin') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'win', userId: id, page: Number(arg) || 0 }, 'درصد شانس برد را به عدد ۰ تا ۱۰۰ بفرستید.', messageId);
-  if (action === 'askcredit') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'credit', userId: id, page: Number(arg) || 0 }, 'مقدار تغییر کردیت/TON را با علامت مثبت یا منفی بفرستید. مثال: +1.5 یا -0.25', messageId);
-  if (action === 'askmsg') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'message', userId: id, page: Number(arg) || 0 }, 'پیام تکی کاربر را بفرستید: متن، عکس با کپشن، ویدیو، ویس/صوت یا فایل.', messageId);
+  if (action === 'returnusers') return sendUsersList(env, token, chatId, tg, pageArg || 0, messageId, returnListKey(id));
+  if (action === 'page') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId, returnListKey(arg));
+  if (action === 'user') return sendUserPanel(env, token, chatId, tg, id, messageId, Number(arg) || 0, returnListKey(parts[4] || 'all'));
+  if (action === 'back') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId, returnListKey(arg));
+  if (action === 'askwin') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'win', userId: id, page: Number(arg) || 0, list: returnListKey(parts[4] || 'all') }, 'درصد شانس برد را به عدد ۰ تا ۱۰۰ بفرستید.', messageId);
+  if (action === 'askcredit') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'credit', userId: id, page: Number(arg) || 0, list: returnListKey(parts[4] || 'all') }, 'مقدار تغییر کردیت/TON را با علامت مثبت یا منفی بفرستید. مثال: +1.5 یا -0.25', messageId);
+  if (action === 'askmsg') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'message', userId: id, page: Number(arg) || 0, list: returnListKey(parts[4] || 'all') }, 'پیام تکی کاربر را بفرستید: متن، عکس با کپشن، ویدیو، ویس/صوت یا فایل.', messageId);
   if (action === 'askbroadcast') return sendBroadcastOptions(env, token, chatId, tg, q.from.id, messageId);
   if (action === 'ban') return toggleUserBan(env, token, chatId, tg, id, arg === 'on', messageId, pageArg);
   if (action === 'financestats') return sendFinanceStatsPanel(env, token, chatId, tg, messageId);
@@ -104,7 +105,7 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ برگشتی‌های +۲', callback_data: 'botadmin:returnusers:r2:x:0' }], [{ text: '↩️ برگشتی‌های +۳', callback_data: 'botadmin:returnusers:r3:x:0' }, { text: '↩️ برگشتی‌های +۴', callback_data: 'botadmin:returnusers:r4:x:0' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
 }
 
@@ -169,44 +170,45 @@ function regionByCode(code: string): RegionConfig | null {
   return REGIONS.find((region) => region.code === cleaned) ?? null;
 }
 
-async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number): Promise<true> {
+async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number, list: string = 'all'): Promise<true> {
   const data = await adminUsersJson(env);
-  const users = data.users as AdminUser[];
+  const threshold = returnThreshold(list);
+  const users = (data.users as AdminUser[]).filter((user) => threshold <= 0 || returnCount(user) > threshold);
   const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const current = Math.min(Math.max(0, page), totalPages - 1);
-  const rows = users.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE).map((u) => [{ text: userButtonText(u), callback_data: `botadmin:user:${cleanId(u.id)}:${current}` }]);
+  const rows = users.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE).map((u) => [{ text: userButtonText(u), callback_data: `botadmin:user:${cleanId(u.id)}:${current}:${list}` }]);
   const nav = [];
-  if (current > 0) nav.push({ text: 'قبلی', callback_data: `botadmin:page:${current - 1}` });
-  nav.push({ text: `${current + 1}/${totalPages}`, callback_data: `botadmin:page:${current}` });
-  if (current < totalPages - 1) nav.push({ text: 'بعدی', callback_data: `botadmin:page:${current + 1}` });
+  if (current > 0) nav.push({ text: 'قبلی', callback_data: `botadmin:page:${current - 1}:${list}` });
+  nav.push({ text: `${current + 1}/${totalPages}`, callback_data: `botadmin:page:${current}:${list}` });
+  if (current < totalPages - 1) nav.push({ text: 'بعدی', callback_data: `botadmin:page:${current + 1}:${list}` });
   rows.push(nav, [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
-  await upsertMessage(token, tg, chatId, messageId, '👥 لیست کاربران\nبرای مدیریت هر کاربر روی نام او بزنید.', rows);
+  await upsertMessage(token, tg, chatId, messageId, usersListTitle(list, users.length), rows);
   return true;
 }
 
-async function sendUserPanel(env: Env, token: string, chatId: number, tg: TgApi, userId: string, messageId?: number, page = 0): Promise<true> {
+async function sendUserPanel(env: Env, token: string, chatId: number, tg: TgApi, userId: string, messageId?: number, page = 0, list: string = 'all'): Promise<true> {
   const [data, controls] = await Promise.all([adminUsersJson(env), getUserControls(env, userId)]);
   const user = (data.users as AdminUser[]).find((item) => cleanId(item.id) === userId) || { id: userId };
   const blocked = new Set(controls.blockedSections || []);
   const sectionButtons = SECTIONS.map(([section, label]) => ({ text: `${blocked.has(section) ? '🔒' : '🔓'} ${label}`, callback_data: `botadmin:block:${userId}:${section}:${page}` }));
   const rows = [
     [{ text: `${controls.banned ? '✅ آن‌بن کاربر' : '🚫 بن کاربر'}`, callback_data: `botadmin:ban:${userId}:${controls.banned ? 'off' : 'on'}:${page}` }],
-    [{ text: '🎲 تنظیم شانس برد', callback_data: `botadmin:askwin:${userId}:${page}` }],
-    [{ text: '💎 Change Credit', callback_data: `botadmin:askcredit:${userId}:${page}` }],
-    [{ text: '✉️ پیام تکی در چت ربات', callback_data: `botadmin:askmsg:${userId}:${page}` }],
+    [{ text: '🎲 تنظیم شانس برد', callback_data: `botadmin:askwin:${userId}:${page}:${list}` }],
+    [{ text: '💎 Change Credit', callback_data: `botadmin:askcredit:${userId}:${page}:${list}` }],
+    [{ text: '✉️ پیام تکی در چت ربات', callback_data: `botadmin:askmsg:${userId}:${page}:${list}` }],
     [{ text: '📄 دانلود PDF گزارش کامل کاربر', callback_data: `botadmin:report:${userId}` }],
     ...chunk(sectionButtons, 3),
     [{ text: '🧹 ریست کامل کاربر', callback_data: `botadmin:reset:${userId}` }],
-    [{ text: 'بازگشت به لیست کاربران', callback_data: `botadmin:back:${page}` }],
+    [{ text: 'بازگشت به لیست کاربران', callback_data: `botadmin:back:${page}:${list}` }],
   ];
-  const text = ['👤 مدیریت کاربر در پنل ربات گیم', '', `نام: ${cleanText(user.firstName, '—')}`, `یوزرنیم: ${cleanText(user.username, '—')}`, `آیدی: ${userId}`, `رجین: ${cleanText(user.regionLabel, cleanText(user.regionCode, 'نامشخص'))}`, `وضعیت: ${controls.banned ? 'Banned' : cleanText(user.status, '—')}`, `بخش فعلی: ${cleanText(user.currentSection, '—')}`, `موجودی: ${formatTon(controls.tonBalanceNano)} TON`, `شانس برد بازی: ${controls.winChancePercent}%`, `سطح: ${cleanText(user.level, '1')} - ${cleanText(user.rankName, 'Starter')} (${cleanText(user.xp, '0')} XP)`, '', 'قفل بخش‌ها سه‌تایی چیده شده‌اند؛ با هر کلیک قفل/باز می‌شوند.'].join('\n');
+  const text = ['👤 مدیریت کاربر در پنل ربات گیم', '', `نام: ${cleanText(user.firstName, '—')}`, `یوزرنیم: ${cleanText(user.username, '—')}`, `آیدی: ${userId}`, `رجین: ${cleanText(user.regionLabel, cleanText(user.regionCode, 'نامشخص'))}`, `وضعیت: ${controls.banned ? 'Banned' : cleanText(user.status, '—')}`, `بخش فعلی: ${cleanText(user.currentSection, '—')}`, `دفعات ورود/برگشت: ${returnCount(user)}`, `موجودی: ${formatTon(controls.tonBalanceNano)} TON`, `شانس برد بازی: ${controls.winChancePercent}%`, `سطح: ${cleanText(user.level, '1')} - ${cleanText(user.rankName, 'Starter')} (${cleanText(user.xp, '0')} XP)`, '', 'قفل بخش‌ها سه‌تایی چیده شده‌اند؛ با هر کلیک قفل/باز می‌شوند.'].join('\n');
   await upsertMessage(token, tg, chatId, messageId, text, rows);
   return true;
 }
 
 async function promptAdminInput(env: Env, token: string, chatId: number, tg: TgApi, adminId: unknown, state: AdminState, text: string, messageId?: number): Promise<true> {
   await setAdminState(env, adminId, state);
-  const back = state.userId ? `botadmin:user:${state.userId}:${state.page || 0}` : 'botadmin:home';
+  const back = state.userId ? `botadmin:user:${state.userId}:${state.page || 0}:${state.list || 'all'}` : 'botadmin:home';
   await upsertMessage(token, tg, chatId, messageId, text, [[{ text: 'لغو و بازگشت', callback_data: back }]]);
   return true;
 }
@@ -218,7 +220,7 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
     await clearAdminState(env, message.from?.id);
     await setUserWinChance(env, state.userId, value);
     await cleanupAdminInput(token, tg, message);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0);
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'credit' && state.userId) {
     const delta = parseTonDelta(message.text || '');
@@ -227,14 +229,14 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
     const controls = await getUserControls(env, state.userId);
     await setUserTonBalance(env, state.userId, Math.max(0, controls.tonBalanceNano + delta), { title: 'Telegram bot admin credit change', metadata: { source: 'telegram_bot_admin', deltaNano: delta } });
     await cleanupAdminInput(token, tg, message);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0);
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'message' && state.userId) {
     await clearAdminState(env, message.from?.id);
     await copyAdminMessageToChat(token, tg, message, state.userId);
     await cleanupAdminInput(token, tg, message);
     await tg(token, 'sendMessage', { chat_id: message.chat.id, text: '✅ پیام تکی در چت ربات کاربر ارسال شد.' }).catch(() => undefined);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0);
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'limit' && state.userId) {
     const value = tonToNano(message.text || '');
@@ -251,7 +253,7 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
     for (const user of (data.users as AdminUser[]).filter((item) => regionMatches(item, regions))) {
       const id = cleanId(user.id);
       if (!id) continue;
-      try { await copyAdminMessageToChat(token, tg, message, id, state.miniAppButton !== false); sent++; } catch (_) { /* ignore blocked users */ }
+      try { await copyAdminMessageToChat(token, tg, message, id, state.miniAppButton !== false, broadcastMiniAppButtonText(user, regions)); sent++; } catch (_) { /* ignore blocked users */ }
     }
     await cleanupAdminInput(token, tg, message);
     await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ پیام همگانی در چت ربات برای ${sent} کاربر ارسال شد.\nرجین: ${regions.join(', ')}\nدکمه ورود به مینی‌اپ: ${state.miniAppButton !== false ? 'بله' : 'خیر'}` }).catch(() => undefined);
@@ -265,8 +267,8 @@ async function sendStateError(token: string, tg: TgApi, message: TelegramMessage
   return true;
 }
 
-async function copyAdminMessageToChat(token: string, tg: TgApi, message: TelegramMessage, targetChatId: string, miniAppButton = false): Promise<void> {
-  const reply_markup = miniAppButton ? { inline_keyboard: [[{ text: 'ورود به مینی اپ', web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] } : undefined;
+async function copyAdminMessageToChat(token: string, tg: TgApi, message: TelegramMessage, targetChatId: string, miniAppButton = false, buttonText = 'Open Mini App'): Promise<void> {
+  const reply_markup = miniAppButton ? { inline_keyboard: [[{ text: buttonText, web_app: { url: `${PUBLIC_BASE_URL}/app` } }]] } : undefined;
   await tg(token, 'copyMessage', { chat_id: targetChatId, from_chat_id: message.chat.id, message_id: message.message_id, ...(reply_markup ? { reply_markup } : {}) });
 }
 
@@ -356,7 +358,11 @@ function parseTonDelta(value: string): number | null {
   if (!Number.isFinite(ton)) return null;
   return Math.trunc(ton * NANO);
 }
-function userButtonText(user: AdminUser): string { return `${cleanText(user.firstName, 'بی‌نام')} | ${cleanText(user.username, 'بدون یوزرنیم')} | ${formatTon(user.tonBalanceNano)} TON`; }
+function userButtonText(user: AdminUser): string { return `${cleanText(user.firstName, 'بی‌نام')} | ${cleanText(user.username, 'بدون یوزرنیم')} | ${formatTon(user.tonBalanceNano)} TON | ↩️ ${returnCount(user)}`; }
+function returnCount(user: AdminUser): number { return Math.max(1, Math.floor(Number(user.returnCount) || 1)); }
+function returnListKey(value: unknown): string { const key = String(value || 'all').toLowerCase(); return key === 'r2' || key === 'r3' || key === 'r4' ? key : 'all'; }
+function returnThreshold(list: string): number { return list === 'r2' ? 2 : list === 'r3' ? 3 : list === 'r4' ? 4 : 0; }
+function usersListTitle(list: string, count: number): string { const threshold = returnThreshold(list); return threshold > 0 ? `↩️ کاربران با بیشتر از ${threshold} بار ورود/برگشت (${count} نفر)\nبرای مدیریت هر کاربر روی نام او بزنید.` : '👥 لیست کاربران\nبرای مدیریت هر کاربر روی نام او بزنید.'; }
 function chunk<T>(items: T[], size: number): T[][] { const rows: T[][] = []; for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size)); return rows; }
 function cleanId(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80); }
 function cleanText(value: unknown, fallback: string): string { const text = String(value ?? '').trim(); return text && text !== '—' ? text.slice(0, 80) : fallback; }
@@ -396,6 +402,12 @@ function regionMatches(user: AdminUser, regions: string[]): boolean {
 function regionKey(value: unknown): string {
   const code = String(value || '').trim().toUpperCase();
   return ['IR', 'TR', 'RU'].includes(code) ? code : 'EN';
+}
+
+function broadcastMiniAppButtonText(user: AdminUser, regions: string[]): string {
+  if (regions.includes('ALL')) return 'Open Mini App';
+  const labels: Record<string, string> = { EN: 'Open Mini App', IR: 'ورود به مینی‌اپ', TR: 'Mini Uygulamayı Aç', RU: 'Открыть мини-приложение' };
+  return labels[regionKey(user.regionCode)] || labels.EN;
 }
 
 async function sendUserReportPdf(env: Env, token: string, chatId: number, tg: TgApi, userId: string): Promise<true> {
