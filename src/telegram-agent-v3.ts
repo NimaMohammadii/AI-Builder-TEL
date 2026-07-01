@@ -28,14 +28,12 @@ type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loadin
 type AdminSettingRow = { value_json: string };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
-type LanguageSettings = { startPromptEnabled: boolean; regionCommandEnabled: boolean; defaultRegionCode: string | null };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const TTS_TTL = 900;
 const MAIN_MENU_TTL = 7200;
 const LOCKS_KEY = 'admin:section-locks';
-const LANGUAGE_SETTINGS_KEY = 'botadmin:language-settings';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
 const REGIONS: RegionConfig[] = [
@@ -108,31 +106,14 @@ async function onMessage(env: Env, key: string, botId: string, message: Telegram
   const chatKey = `builder-ai-chat:${userId}`;
   const historyKey = `builder-ai-history:${userId}`;
 
-  if (text === '/region' || text === '/language') {
-    const languageSettings = await getLanguageSettings(env);
-    if (!languageSettings.regionCommandEnabled) return send(key, chatId, 'Region/language command is disabled by admin.');
-    return regionMenu(key, chatId, 'Change your region 🌍');
-  }
+  if (text === '/region') return regionMenu(key, chatId, 'Change your region 🌍');
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await clearTtsState(env, userId);
-    const languageSettings = await getLanguageSettings(env);
-    let region = await getUserRegion(env, botId, userId);
-    if (!region && !languageSettings.startPromptEnabled && languageSettings.defaultRegionCode) {
-      const defaultRegion = regionByCode(languageSettings.defaultRegionCode);
-      if (defaultRegion) {
-        await saveUserRegion(env, botId, userId, defaultRegion);
-        region = defaultRegion;
-      }
-    }
-    if (!region) {
-      if (!languageSettings.startPromptEnabled) {
-        const fallbackRegion = regionByCode('OTHER');
-        if (fallbackRegion) await saveUserRegion(env, botId, userId, fallbackRegion);
-      } else return regionMenu(key, chatId, 'Choose your region 🌍');
-    }
+    const region = await getUserRegion(env, botId, userId);
+    if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
     await mainMenu(env, key, chatId);
     return;
   }
@@ -424,23 +405,12 @@ async function mainMenu(env: Env, key: string, chatId: number): Promise<void> {
   }
 }
 
-
-async function getLanguageSettings(env: Env): Promise<LanguageSettings> {
-  const raw = await readAdminSetting<Partial<LanguageSettings>>(env, LANGUAGE_SETTINGS_KEY).catch(() => null);
-  const defaultRegionCode = typeof raw?.defaultRegionCode === 'string' && regionByCode(raw.defaultRegionCode) ? raw.defaultRegionCode.toUpperCase() : null;
-  return {
-    startPromptEnabled: raw?.startPromptEnabled !== false,
-    regionCommandEnabled: raw?.regionCommandEnabled !== false,
-    defaultRegionCode,
-  };
-}
-
 async function regionMenu(key: string, chatId: number, text: string): Promise<void> {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   for (let i = 0; i < REGIONS.length; i += 2) rows.push(REGIONS.slice(i, i + 2).map((region) => ({ text: region.label, callback_data: `region:${region.code}` })));
   await tg(key, 'sendMessage', {
     chat_id: chatId,
-    text: `${text}\n\nYou can change it anytime with /region or /language.`,
+    text: `${text}\n\nYou can change it anytime with /region.`,
     reply_markup: { inline_keyboard: rows },
   });
 }
