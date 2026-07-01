@@ -2,6 +2,7 @@ import app from './index';
 import { buyMarketItem, getMarketItems, getUserMarketNfts, isAllowedMarketMedia, marketContentType, marketImageKey, marketMediaTypeFromContentType, normalizeMarketItemId, setMarketItem } from './market-config';
 import { loadTonNftMarket, type TonNftMarketItem } from './ton-nft-market';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -78,12 +79,12 @@ app.get('/app/api/market-item-image/:item', async (c) => {
 });
 
 app.get('/admin/api/market-provider', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json({ provider: await getMarketProvider(c.env) }, 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/market-provider', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const body = await c.req.json().catch(() => ({})) as { provider?: unknown };
     const provider = normalizeMarketProvider(body.provider);
@@ -100,12 +101,12 @@ app.post('/admin/api/market-provider', async (c) => {
 });
 
 app.get('/admin/api/market-items', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getMarketItems(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/market-items', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   try {
     const id = normalizeMarketItemId(String(body.id || ''));
@@ -129,7 +130,7 @@ app.post('/admin/api/market-items', async (c) => {
 });
 
 app.post('/admin/api/market-item-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const id = normalizeMarketItemId(String(form.get('id') || ''));
@@ -296,5 +297,5 @@ function firstText(...values: unknown[]): string { for (const value of values) {
 function cleanGiftText(value: string, max: number): string { return value.replace(/[<>]/g, '').slice(0, max); }
 function isObject(value: unknown): value is Record<string, unknown> { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
 function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

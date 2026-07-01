@@ -1,3 +1,4 @@
+import { isAdminSession } from './admin-auth';
 const WHEEL_ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const WHEEL_ASSET_KINDS = new Set(['ring', 'center', 'pointer']);
 const WHEEL_ASSET_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
@@ -34,9 +35,8 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdminRequest(c: { env: { ADMIN_KEY?: string }; req: { header: (name: string) => string | undefined } }): boolean {
-  const key = adminCookieValue(c.req.header('cookie'));
-  return Boolean(c.env.ADMIN_KEY && key && key === c.env.ADMIN_KEY);
+async function isAdminRequest(c: { env: { ADMIN_KEY?: string }; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 function imageResponse(object: R2ObjectBody): Response {
@@ -85,7 +85,7 @@ export function registerWheelAssetRoutes(app: any): void {
 }
 
 async function uploadWheelAsset(c: any, kind: WheelAssetKind): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     if (!WHEEL_ASSET_KINDS.has(kind)) return c.json({ error: 'Unknown wheel asset' }, 400);
     const form = await c.req.formData();

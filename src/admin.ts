@@ -1,4 +1,4 @@
-import { mobileAdminLoginHtml, mobileAdminPanelHtml } from './admin-mobile';
+import { mobileAdminCodeHtml, mobileAdminLoginHtml, mobileAdminPanelHtml } from './admin-mobile';
 import { ADMIN_IMAGE_PANEL_SCRIPT } from './admin-image-panel';
 import { ADMIN_UPLOAD_CACHE_SCRIPT } from './admin-upload-cache-panel';
 import { ADMIN_PLINKO_CONTROL_SCRIPT } from './admin-plinko-control-panel';
@@ -44,8 +44,12 @@ function adminPanelWithFixes(): string {
     .replace('loadUsers();loadLocks();setInterval(loadUsers,15000);', 'loadUsers();loadLocks();');
 }
 
-export function adminHtml(): string {
-  return mobileAdminLoginHtml();
+export function adminHtml(message?: string): string {
+  return mobileAdminLoginHtml(message);
+}
+
+export function adminCodeHtml(challengeId: string, message?: string): string {
+  return mobileAdminCodeHtml(challengeId, message);
 }
 
 export function adminPanelHtml(): string {

@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 type AppLike = {
   get: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
@@ -43,7 +44,7 @@ async function homeIntroImageResponse(env: Env): Promise<Response> {
 }
 
 async function uploadHomeIntroImage(c: HandlerContext): Promise<Response> {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = pickImageFile(form);
@@ -92,10 +93,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(c: HandlerContext, key: string): boolean {
+function isAdmin(c: HandlerContext, key: string): Promise<boolean> {
   return Boolean(c.env.ADMIN_KEY && key && key === c.env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: HandlerContext): boolean {
-  return isAdmin(c, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: HandlerContext): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

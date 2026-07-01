@@ -1,5 +1,6 @@
 import app from './index';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -9,12 +10,12 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 app.get('/app/api/predict-loading-image.png', async (c) => getPredictLoadingImage(c.env));
 
 app.get('/admin/api/predict-loading-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await predictLoadingImageJson(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/predict-loading-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -54,5 +55,5 @@ function adminCookieValue(cookie: string | undefined): string {
   }
   return '';
 }
-function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

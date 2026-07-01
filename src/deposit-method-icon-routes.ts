@@ -1,4 +1,5 @@
 import app from './index';
+import { isAdminSession } from './admin-auth';
 
 const okImages = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const iconCache = 'public, max-age=31536000, immutable';
@@ -16,8 +17,7 @@ app.get('/app/api/deposit-method-icon/:method', async (c) => {
 });
 
 app.post('/admin/api/upload-deposit-method-icon', async (c) => {
-  const cookie = c.req.header('cookie') || '';
-  if (!c.env.ADMIN_KEY || !cookie.includes('vexa_admin=' + encodeURIComponent(c.env.ADMIN_KEY))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminSession(c.env, c.req.header('cookie')))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   const form = await c.req.formData();
   const method = cleanMethod(String(form.get('method') || 'stars'));
   const file = form.get('image');

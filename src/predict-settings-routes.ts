@@ -2,6 +2,7 @@ import app from './index';
 import './football-routes';
 import { hasAccessOverride } from './user-access-override-routes';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const CACHE_NONE = 'no-store';
 const PREDICT_SETTINGS_KEY = 'predict/settings';
@@ -26,12 +27,12 @@ app.get('/app/api/predict-settings', async (c) => {
 
 
 app.get('/admin/api/predict-settings', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getPredictSettings(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/predict-settings', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const current = await getPredictSettings(c.env);
@@ -92,12 +93,12 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 function normalizeLockedMarkets(value: unknown): Record<PredictLockableMarket, boolean> {
   const input = value && typeof value === 'object' ? value as Record<string, unknown> : {};

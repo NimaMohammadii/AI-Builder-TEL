@@ -1,5 +1,14 @@
-export function mobileAdminLoginHtml(): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/><title>Vexa Admin</title><style>${mobileAdminCss()}</style></head><body><main class="page login"><p class="eyebrow">Vexa FLOW</p><h1>Admin</h1><p class="muted">Enter admin key.</p><form method="post" action="/admin/panel"><label>Admin key</label><input name="key" type="password" placeholder="ADMIN_KEY" autocomplete="current-password" required/><button class="primary" type="submit">Enter</button></form><p class="status">Only admins can open tools.</p></main></body></html>`;
+export function mobileAdminLoginHtml(message = 'Only admins can open tools.'): string {
+  const safeMessage = escapeHtml(message);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/><title>Vexa Admin</title><style>${mobileAdminCss()}</style></head><body><main class="page login"><p class="eyebrow">Vexa FLOW</p><h1>Admin</h1><p class="muted">Enter admin key.</p><form method="post" action="/admin/panel"><label>Admin key</label><input name="key" type="password" placeholder="ADMIN_KEY" autocomplete="current-password" required/><button class="primary" type="submit">Send Telegram code</button></form><p class="status">${safeMessage}</p></main></body></html>`;
+}
+
+export function mobileAdminCodeHtml(challengeId: string, message = 'Enter the 6-digit code sent to Telegram.'): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/><title>Vexa Admin Code</title><style>${mobileAdminCss()}</style></head><body><main class="page login"><p class="eyebrow">Vexa FLOW</p><h1>2FA Code</h1><p class="muted">${escapeHtml(message)}</p><form method="post" action="/admin/verify"><input name="challenge" type="hidden" value="${escapeHtml(challengeId)}"/><label>Telegram code</label><input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required/><button class="primary" type="submit">Verify and enter</button></form><p class="status">Code expires in 5 minutes and can be used once.</p></main></body></html>`;
+}
+
+function escapeHtml(value: string): string {
+  return String(value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] || ch));
 }
 
 export function mobileAdminPanelHtml(): string {

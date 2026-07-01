@@ -3,6 +3,7 @@ import './predict-settings-routes';
 import type { Env } from './types';
 import { recordDailyRewardEvent } from './daily-rewards-claims';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { isAdminSession } from './admin-auth';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -50,17 +51,17 @@ app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
 });
 
 app.get('/admin/api/predict-crypto-card-images', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.get('/admin/api/predict-button-images', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
 app.post('/admin/api/predict-button-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const form = await c.req.formData();
     const side = normalizePredictButtonSide(String(form.get('side') || ''));
@@ -77,7 +78,7 @@ app.post('/admin/api/predict-button-image', async (c) => {
 });
 
 app.post('/admin/api/predict-crypto-card-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const form = await c.req.formData();
     const market = normalizePredictCryptoCardMarket(String(form.get('market') || ''));
@@ -152,7 +153,7 @@ app.post('/app/api/predict-settle', async (c) => {
 });
 
 app.get('/admin/api/predict-markets', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   return c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE });
 });
 
@@ -166,7 +167,7 @@ app.get('/app/api/predict-market-image/:market', async (c) => {
 });
 
 app.post('/admin/api/predict-market-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
   try {
     const form = await c.req.formData();
     const market = normalizePredictMarket(String(form.get('market') || ''));
@@ -412,5 +413,5 @@ function cleanDbText(value: unknown, message: string): string { const text = Str
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
 function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdmin(env: Env, key: string): boolean { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean { return isAdmin(c.env, adminCookieValue(c.req.header('cookie'))); }
+function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

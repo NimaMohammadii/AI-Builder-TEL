@@ -4,6 +4,7 @@ import { registerDailyRewardsImageRoutes } from './daily-rewards-image-routes';
 import { registerDailyRewardsAdminRoutes } from './daily-rewards-admin-routes';
 import { registerTopPlayersImageRoutes } from './top-players-image-routes';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const APP_CACHE_VERSION_KEY = 'admin:app-cache-version';
 const MARKET_PROVIDER_SETTING_KEY = 'market_provider';
@@ -64,7 +65,7 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
   });
 
   app.post('/admin/api/force-app-refresh', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
     const version = String(Date.now());
     await c.env.BOT_CACHE.put(APP_CACHE_VERSION_KEY, version);
     return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });
@@ -254,10 +255,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

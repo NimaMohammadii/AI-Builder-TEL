@@ -3,6 +3,7 @@ import { setGroupAiDisabled, setUserGroupAiDisabled, listUserGroups } from './gr
 import { setSectionCodeLock, setSectionLock } from './section-locks';
 import { setUserSectionBlocked } from './user-controls';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 type AppLike = {
   get: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
@@ -23,7 +24,7 @@ type HandlerContext = {
 
 export function registerAdvancedAdminRoutes(app: AppLike): void {
   app.delete('/admin/api/users', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       return c.json(await resetAllUsersEverywhere(c.env));
     } catch (error) {
@@ -32,7 +33,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/users/section-block-timed', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json() as { userId?: unknown; sectionId?: unknown; blocked?: unknown; expiresAt?: unknown };
       return c.json(await setUserSectionBlocked(c.env, String(body.userId || ''), String(body.sectionId || ''), Boolean(body.blocked), body.expiresAt));
@@ -42,7 +43,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/section-locks-timed', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json() as { sectionId?: unknown; locked?: unknown; expiresAt?: unknown };
       return c.json(await setSectionLock(c.env, String(body.sectionId || ''), Boolean(body.locked), body.expiresAt));
@@ -52,7 +53,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/section-locks/code-timed', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json() as { sectionId?: unknown; code?: unknown; expiresAt?: unknown };
       return c.json(await setSectionCodeLock(c.env, String(body.sectionId || ''), String(body.code || ''), body.expiresAt));
@@ -62,7 +63,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.get('/admin/api/user-groups', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       return c.json(await listUserGroups(c.env, String(c.req.query('userId') || '')));
     } catch (error) {
@@ -71,7 +72,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/users/group-ai-disabled', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json() as { userId?: unknown; disabled?: unknown };
       const userId = cleanUserId(body.userId);
@@ -83,7 +84,7 @@ export function registerAdvancedAdminRoutes(app: AppLike): void {
   });
 
   app.post('/admin/api/groups/:chatId/ai-disabled', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json() as { disabled?: unknown; userId?: unknown };
       await setGroupAiDisabled(c.env, c.req.param('chatId'), Boolean(body.disabled));
@@ -105,10 +106,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

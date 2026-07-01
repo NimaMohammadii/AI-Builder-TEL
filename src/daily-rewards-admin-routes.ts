@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { claimDailyRewardMission, claimWeeklyDailyReward, getDailyRewardsForUser } from './daily-rewards-claims';
 import { getDailyRewardsAdminPayload, getDailyRewardsPublicPayload, saveDailyRewardsSettings } from './daily-rewards-missions';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 type RegionLocaleRow = { region_code: string | null; language_code: string | null; timezone: string | null };
 
@@ -56,12 +57,12 @@ export function registerDailyRewardsAdminRoutes(app: Hono<{ Bindings: Env }>): v
   });
 
   app.get('/admin/api/daily-rewards/missions', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     return c.json(await getDailyRewardsAdminPayload(c.env), 200, { 'cache-control': 'no-store' });
   });
 
   app.post('/admin/api/daily-rewards/settings', async (c) => {
-    if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+    if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
     try {
       const body = await c.req.json();
       return c.json({ ok: true, settings: await saveDailyRewardsSettings(c.env, body) }, 200, { 'cache-control': 'no-store' });
@@ -113,10 +114,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

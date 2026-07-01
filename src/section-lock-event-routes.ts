@@ -1,5 +1,6 @@
 import app from './index';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 function eventStub(env: Env): DurableObjectStub | null {
   const namespace = (env as unknown as { SECTION_LOCK_EVENTS?: DurableObjectNamespace }).SECTION_LOCK_EVENTS;
@@ -14,7 +15,7 @@ app.get('/app/api/section-lock-events', async (c) => {
 });
 
 app.post('/admin/api/section-lock-events/broadcast', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
   const stub = eventStub(c.env);
   if (!stub) return c.json({ ok: false, error: 'Section lock events unavailable' }, 503, { 'cache-control': 'no-store' });
   await stub.fetch(new Request(new URL('/broadcast', c.req.url), { method: 'POST' }));
@@ -26,10 +27,10 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }

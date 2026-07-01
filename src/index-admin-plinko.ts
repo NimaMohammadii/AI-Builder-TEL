@@ -12,6 +12,7 @@ import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -43,7 +44,7 @@ app.get('/app/api/plinko-control-image/:kind', async (c) => {
 });
 
 app.post('/admin/api/upload-plinko-control-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const kind = normalizePlinkoControlImageKind(String(form.get('kind') || 'drop'));
@@ -73,7 +74,7 @@ app.get('/app/api/ghost-run-assets', async (c) => {
 });
 
 app.post('/admin/api/upload-ghost-run-asset', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const kind = normalizeGhostRunAssetKind(String(form.get('kind') || 'ground'));
@@ -96,7 +97,7 @@ app.get('/app/api/nft-price-icon.png', async (c) => {
 });
 
 app.post('/admin/api/upload-nft-price-icon', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -240,7 +241,7 @@ app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
 app.post('/admin/api/upload-home-finance-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -255,7 +256,7 @@ app.post('/admin/api/upload-home-finance-image', async (c) => {
 });
 
 app.post('/admin/api/upload-home-my-ticket-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -270,7 +271,7 @@ app.post('/admin/api/upload-home-my-ticket-image', async (c) => {
 });
 
 app.delete('/admin/api/delete-home-my-ticket-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     await c.env.ASSETS.delete(HOME_MY_TICKET_IMAGE_KEY);
     return c.json({ ok: true, url: `/app/api/home-my-ticket-image.png?v=${Date.now()}` });
@@ -280,7 +281,7 @@ app.delete('/admin/api/delete-home-my-ticket-image', async (c) => {
 });
 
 app.post('/admin/api/upload-crash-tip-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const file = form.get('image');
@@ -295,12 +296,12 @@ app.post('/admin/api/upload-crash-tip-image', async (c) => {
 });
 
 app.get('/admin/api/plinko-control', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getPlinkoControlPayload(c.env));
 });
 
 app.post('/admin/api/plinko-control', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     return c.json(await savePlinkoControl(c.env, await c.req.json()));
   } catch (error) {
@@ -309,18 +310,18 @@ app.post('/admin/api/plinko-control', async (c) => {
 });
 
 app.post('/admin/api/plinko-control/reset', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetPlinkoControl(c.env));
 });
 
 
 app.get('/admin/api/plinko-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getPlinkoVirtualUsers(c.env));
 });
 
 app.post('/admin/api/plinko-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     return c.json(await savePlinkoVirtualUsers(c.env, await c.req.json()));
   } catch (error) {
@@ -329,19 +330,19 @@ app.post('/admin/api/plinko-virtual-users', async (c) => {
 });
 
 app.post('/admin/api/plinko-virtual-users/reset', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetPlinkoVirtualUsers(c.env));
 });
 
 
 
 app.get('/admin/api/crash-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getCrashVirtualUsers(c.env));
 });
 
 app.post('/admin/api/crash-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     return c.json(await saveCrashVirtualUsers(c.env, await c.req.json()));
   } catch (error) {
@@ -350,17 +351,17 @@ app.post('/admin/api/crash-virtual-users', async (c) => {
 });
 
 app.post('/admin/api/crash-virtual-users/reset', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetCrashVirtualUsers(c.env));
 });
 
 app.get('/admin/api/slot-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await getSlotVirtualUsers(c.env));
 });
 
 app.post('/admin/api/slot-virtual-users', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     return c.json(await saveSlotVirtualUsers(c.env, await c.req.json()));
   } catch (error) {
@@ -369,12 +370,12 @@ app.post('/admin/api/slot-virtual-users', async (c) => {
 });
 
 app.post('/admin/api/slot-virtual-users/reset', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await resetSlotVirtualUsers(c.env));
 });
 
 app.post('/admin/api/upload-mines-tile-image', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const kind = String(form.get('kind') || '') === 'bomb' ? 'bomb' : 'safe';
@@ -390,7 +391,7 @@ app.post('/admin/api/upload-mines-tile-image', async (c) => {
 });
 
 app.post('/admin/api/section-lock-image-v2', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const form = await c.req.formData();
     const section = normalizeSectionId(String(form.get('sectionId') || ''));
@@ -466,12 +467,12 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 export { PlinkoLiveRoom };

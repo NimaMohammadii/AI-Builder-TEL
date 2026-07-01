@@ -8,6 +8,7 @@ import { listUserTonTransactions, listUserTonWalletTransactions } from './ton-tr
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
 import type { Env } from './types';
+import { isAdminSession } from './admin-auth';
 
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const TON_GIFT_NFT_CACHE_SECONDS = 120;
@@ -40,12 +41,12 @@ registerAdvancedAdminRoutes(app);
 registerReferralRoutes(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   return c.json(await groupAiProviderJson(c.env));
 });
 
 app.post('/admin/api/group-ai-provider', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const body = await c.req.json() as { provider?: unknown };
     return c.json(await setGroupAiProvider(c.env, body.provider));
@@ -55,7 +56,7 @@ app.post('/admin/api/group-ai-provider', async (c) => {
 });
 
 app.post('/admin/api/users/credit', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const body = await c.req.json() as { userId?: unknown; credit?: unknown; tonBalanceNano?: unknown };
     const value = body.tonBalanceNano ?? body.credit ?? 0;
@@ -66,7 +67,7 @@ app.post('/admin/api/users/credit', async (c) => {
 });
 
 app.post('/admin/api/users/credit-adjust', async (c) => {
-  if (!isAdminRequest(c)) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
   try {
     const body = await c.req.json() as { userId?: unknown; delta?: unknown; deltaNano?: unknown };
     const value = body.deltaNano ?? body.delta ?? 0;
@@ -323,12 +324,12 @@ function adminCookieValue(cookie: string | undefined): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function isAdmin(env: Env, key: string): boolean {
+function isAdmin(env: Env, key: string): Promise<boolean> {
   return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
 }
 
-function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): boolean {
-  return isAdmin(c.env, adminCookieValue(c.req.header('cookie')));
+async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
+  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 export default app;
