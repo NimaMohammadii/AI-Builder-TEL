@@ -1,5 +1,6 @@
 import { adminUsersJson, resetUserEverywhere } from './admin-users';
 import { PUBLIC_BASE_URL } from './utils';
+import { REGIONS, getRegionSelectionConfig, setRegionSelectionConfig } from './region-settings';
 import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 import { getUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
 
@@ -42,6 +43,9 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   const pageArg = Number(parts[4]) || 0;
   await clearAdminState(env, q.from.id);
   if (action === 'home') return sendAdminHome(env, token, chatId, tg, messageId);
+  if (action === 'regionsettings') return sendRegionSettings(env, token, chatId, tg, messageId);
+  if (action === 'regiontoggle') return toggleRegionSelection(env, token, chatId, tg, messageId);
+  if (action === 'regiondefault') return setDefaultRegion(env, token, chatId, tg, id, messageId);
   if (action === 'users') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
   if (action === 'page') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
   if (action === 'user') return sendUserPanel(env, token, chatId, tg, id, messageId, Number(arg) || 0);
@@ -70,8 +74,46 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '🌍 تنظیم رجین و زبان شروع', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
+}
+
+
+async function sendRegionSettings(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const config = await getRegionSelectionConfig(env);
+  const defaultRegion = REGIONS.find((region) => region.code === config.defaultRegion) || REGIONS[0];
+  const regionRows = chunk(REGIONS.map((region) => ({
+    text: `${region.code === defaultRegion.code ? '✅ ' : ''}${region.label}`,
+    callback_data: `botadmin:regiondefault:${region.code}`,
+  })), 2);
+  const rows = [
+    [{ text: config.selectionEnabled ? '🔴 غیرفعال کردن منوی انتخاب رجین/زبان' : '🟢 فعال کردن منوی انتخاب رجین/زبان', callback_data: 'botadmin:regiontoggle' }],
+    ...regionRows,
+    [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ];
+  const text = [
+    '🌍 تنظیم رجین و زبان شروع ربات گیم',
+    '',
+    `وضعیت منوی انتخاب رجین/زبان: ${config.selectionEnabled ? 'فعال' : 'غیرفعال'}`,
+    `رجین مستقیم/پیش‌فرض: ${defaultRegion.label}`,
+    `زبان: ${defaultRegion.language.toUpperCase()}   تایم‌زون: ${defaultRegion.timezone}`,
+    '',
+    'اگر منو غیرفعال باشد، کاربر با /start مستقیم وارد منوی اصلی می‌شود و همین رجین برایش ذخیره می‌شود.',
+    'اگر منو فعال باشد، فقط کاربری که هنوز رجین ندارد در اولین /start منوی انتخاب را می‌بیند و بعداً با /region می‌تواند تغییر دهد.',
+  ].join('\n');
+  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  return true;
+}
+
+async function toggleRegionSelection(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const current = await getRegionSelectionConfig(env);
+  await setRegionSelectionConfig(env, { selectionEnabled: !current.selectionEnabled });
+  return sendRegionSettings(env, token, chatId, tg, messageId);
+}
+
+async function setDefaultRegion(env: Env, token: string, chatId: number, tg: TgApi, regionCode: string, messageId?: number): Promise<true> {
+  await setRegionSelectionConfig(env, { defaultRegion: regionCode });
+  return sendRegionSettings(env, token, chatId, tg, messageId);
 }
 
 async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number): Promise<true> {
