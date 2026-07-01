@@ -1,5 +1,6 @@
 import type { Env } from './types';
-import { adjustUserTonBalance } from './user-controls';
+import { adjustUserTonBalance, assertUserNotBanned } from './user-controls';
+import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
 import { applyReferralDepositReward } from './referrals';
 
@@ -52,10 +53,14 @@ export async function createTonDeposit(env: Env, userId: string, amountTonInput:
   const wallet = treasuryWallet(env);
   const user = cleanUserId(userId);
   const amountTon = normalizeAmountTon(amountTonInput);
-  const minTon = minDepositTon(env);
-  if (Number(amountTon) < minTon) throw new Error(`Minimum deposit is ${minTon} TON`);
+  await assertUserNotBanned(env, user);
+  const limits = await getFinanceLimits(env);
+  const amountNanoValue = safeNanoNumber(tonToNanoString(amountTon));
+  const minNano = limits.minDepositNano || Math.trunc(minDepositTon(env) * 1_000_000_000);
+  if (amountNanoValue < minNano) throw new Error(`Minimum deposit is ${formatTonAmount(minNano)} TON`);
+  if (limits.maxDepositNano && amountNanoValue > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} TON`);
   const amountNano = tonToNanoString(amountTon);
-  const tonBalanceNano = safeNanoNumber(amountNano);
+  const tonBalanceNano = amountNanoValue;
   const depositId = 'dep_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
   await ensureTonDepositsTable(env);
   await env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, ton_balance_nano, status, created_at, updated_at)

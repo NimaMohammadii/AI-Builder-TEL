@@ -11,6 +11,7 @@ export type UserSectionBlock = {
 
 export type UserControls = {
   userId: string;
+  banned: boolean;
   tonBalanceNano: number;
   winChancePercent: number;
   blockedSections: string[];
@@ -23,10 +24,11 @@ type StoredUserControls = {
   userId?: string;
   blockedSections?: unknown;
   winChancePercent?: unknown;
+  banned?: boolean;
 };
 
 type StoredSectionBlock = { sectionId?: unknown; blocked?: unknown; expiresAt?: unknown };
-type UserControlRow = { blocked_sections_json: string; win_chance_percent?: number | null };
+type UserControlRow = { blocked_sections_json: string; win_chance_percent?: number | null; banned?: number | null };
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
@@ -34,6 +36,7 @@ export async function getUserControls(env: Env, userId: string): Promise<UserCon
   const sectionBlocks = normalizeSectionBlocks(saved?.blockedSections);
   return {
     userId: id,
+    banned: saved?.banned === true,
     tonBalanceNano: await readUserTonBalance(env, id),
     winChancePercent: normalizeWinChance(saved?.winChancePercent),
     blockedSections: sectionBlocks.filter((item) => item.blocked).map((item) => item.sectionId),
@@ -61,6 +64,7 @@ export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: 
 
 export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
+  if ((await getUserControls(env, id)).banned) throw new Error('Your access to all sections is blocked.');
   const baseDelta = Math.floor(Number(deltaNano) || 0);
   const gameSection = cleanGameSection(meta.metadata && (meta.metadata as Record<string, unknown>).section);
   const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta, { gameSection }).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
@@ -73,6 +77,7 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
 
 export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amountNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
+  if ((await getUserControls(env, id)).banned) throw new Error('Your access to all sections is blocked.');
   const amount = normalizeNano(amountNano);
   if (amount <= 0) throw new Error('Invalid purchase amount');
   await ensureTonBalanceColumn(env);
@@ -96,42 +101,55 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
   const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
   const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
   if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
-  await saveControls(env, id, next, current.winChancePercent);
+  await saveControls(env, id, next, current.winChancePercent, current.banned);
+  return getUserControls(env, id);
+}
+
+export async function setUserBanned(env: Env, userId: string, banned: boolean): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  const current = await getUserControls(env, id);
+  await saveControls(env, id, current.sectionBlocks, current.winChancePercent, banned);
   return getUserControls(env, id);
 }
 
 export async function setUserWinChance(env: Env, userId: string, winChancePercent: number): Promise<UserControls> {
   const id = cleanUserId(userId);
   const current = await getUserControls(env, id);
-  await saveControls(env, id, current.sectionBlocks, normalizeWinChance(winChancePercent));
+  await saveControls(env, id, current.sectionBlocks, normalizeWinChance(winChancePercent), current.banned);
   return getUserControls(env, id);
 }
 
-export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
+export async function assertUserNotBanned(env: Env, userId: string): Promise<void> {
   const controls = await getUserControls(env, userId);
-  return { userId: controls.userId, tonBalanceNano: controls.tonBalanceNano, winChancePercent: controls.winChancePercent, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
+  if (controls.banned) throw new Error('Your access to all sections is blocked.');
+}
+
+export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; banned: boolean; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
+  const controls = await getUserControls(env, userId);
+  return { userId: controls.userId, banned: controls.banned, tonBalanceNano: controls.tonBalanceNano, winChancePercent: controls.winChancePercent, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
 }
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
     await ensureUserControlsTable(env);
-    const row = await env.DB.prepare('SELECT blocked_sections_json, win_chance_percent FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
-    if (row) return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent };
+    const row = await env.DB.prepare('SELECT blocked_sections_json, win_chance_percent, banned FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
+    if (row) return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent, banned: Number(row.banned || 0) === 1 };
   } catch (error) {
     console.warn('read user section controls from D1 failed', error);
   }
   return env.BOT_CACHE.get(key(userId), 'json').catch(() => null) as Promise<StoredUserControls | null>;
 }
 
-async function saveControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[], winChancePercent: number): Promise<void> {
+async function saveControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[], winChancePercent: number, banned = false): Promise<void> {
   await ensureUserControlsTable(env);
-  await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, win_chance_percent, updated_at)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+  await env.DB.prepare(`INSERT INTO user_controls (user_id, blocked_sections_json, win_chance_percent, banned, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(user_id) DO UPDATE SET
       blocked_sections_json = excluded.blocked_sections_json,
       win_chance_percent = excluded.win_chance_percent,
+      banned = excluded.banned,
       updated_at = CURRENT_TIMESTAMP`)
-    .bind(userId, JSON.stringify(normalizeSectionBlocks(sectionBlocks)), normalizeWinChance(winChancePercent))
+    .bind(userId, JSON.stringify(normalizeSectionBlocks(sectionBlocks)), normalizeWinChance(winChancePercent), banned ? 1 : 0)
     .run();
 }
 
@@ -140,9 +158,11 @@ async function ensureUserControlsTable(env: Env): Promise<void> {
     user_id TEXT PRIMARY KEY,
     blocked_sections_json TEXT NOT NULL DEFAULT '[]',
     win_chance_percent INTEGER NOT NULL DEFAULT 50,
+    banned INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
   await env.DB.prepare('ALTER TABLE user_controls ADD COLUMN win_chance_percent INTEGER NOT NULL DEFAULT 50').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE user_controls ADD COLUMN banned INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 }
 
 export async function ensureTonBalanceColumn(env: Env): Promise<void> {

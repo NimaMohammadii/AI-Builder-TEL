@@ -1,5 +1,6 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
-import { adjustUserTonBalance } from './user-controls';
+import { adjustUserTonBalance, assertUserNotBanned } from './user-controls';
+import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
 import { applyReferralDepositReward } from './referrals';
 import { gameBotToken } from './utils';
@@ -39,7 +40,11 @@ export type StarDeposit = {
 export async function createStarsDeposit(env: Env, userId: string, starsInput: unknown): Promise<StarDeposit> {
   const user = cleanUserId(userId);
   const stars = cleanStarsAmount(starsInput);
+  await assertUserNotBanned(env, user);
   const amountNano = starsToNano(env, stars);
+  const limits = await getFinanceLimits(env);
+  if (amountNano < limits.minDepositNano) throw new Error(`Minimum deposit is ${formatTonAmount(limits.minDepositNano)} TON`);
+  if (limits.maxDepositNano && amountNano > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} TON`);
   const id = 'stars_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
   await ensureStarsDepositsTable(env);
   await env.DB.prepare(`INSERT INTO stars_deposits (id, user_id, stars_amount, amount_nano, status, created_at, updated_at)
