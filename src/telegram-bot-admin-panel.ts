@@ -6,9 +6,24 @@ import { getUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinCh
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown };
 type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast'; userId?: string; page?: number; regions?: string[]; miniAppButton?: boolean };
+type RegionConfig = { code: string; label: string; language: string; timezone: string };
+type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 
 const PAGE_SIZE = 8;
 const NANO = 1_000_000_000;
+const REGION_SETTINGS_KEY = 'admin:bot-region-settings';
+const REGIONS: RegionConfig[] = [
+  { code: 'IR', label: '🇮🇷 Iran', language: 'fa', timezone: 'Asia/Tehran' },
+  { code: 'TR', label: '🇹🇷 Turkey', language: 'tr', timezone: 'Europe/Istanbul' },
+  { code: 'DE', label: '🇩🇪 Germany', language: 'de', timezone: 'Europe/Berlin' },
+  { code: 'AE', label: '🇦🇪 UAE', language: 'ar', timezone: 'Asia/Dubai' },
+  { code: 'SA', label: '🇸🇦 Saudi Arabia', language: 'ar', timezone: 'Asia/Riyadh' },
+  { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
+  { code: 'IN', label: '🇮🇳 India', language: 'en', timezone: 'Asia/Kolkata' },
+  { code: 'BR', label: '🇧🇷 Brazil', language: 'pt', timezone: 'America/Sao_Paulo' },
+  { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
+  { code: 'OTHER', label: '🌍 Other', language: 'en', timezone: 'UTC' },
+];
 const SECTIONS: Array<[string, string]> = [
   ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'], ['limbo', 'لیمبو'], ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
 ];
@@ -50,6 +65,10 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   if (action === 'askcredit') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'credit', userId: id, page: Number(arg) || 0 }, 'مقدار تغییر کردیت/TON را با علامت مثبت یا منفی بفرستید. مثال: +1.5 یا -0.25', messageId);
   if (action === 'askmsg') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'message', userId: id, page: Number(arg) || 0 }, 'پیام تکی کاربر را بفرستید: متن، عکس با کپشن، ویدیو، ویس/صوت یا فایل.', messageId);
   if (action === 'askbroadcast') return sendBroadcastOptions(env, token, chatId, tg, q.from.id, messageId);
+  if (action === 'regionsettings') return sendRegionSettingsPanel(env, token, chatId, tg, messageId);
+  if (action === 'togglestartregion') return updateRegionSettings(env, token, chatId, tg, messageId, { startPromptEnabled: id !== 'off' });
+  if (action === 'toggleregioncmd') return updateRegionSettings(env, token, chatId, tg, messageId, { commandEnabled: id !== 'off' });
+  if (action === 'setdefaultregion') return updateRegionSettings(env, token, chatId, tg, messageId, { defaultRegionCode: regionByCode(id)?.code ?? null });
   if (action === 'broadcastregion') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'broadcast', regions: normalizeRegions(id), miniAppButton: arg !== 'nobutton' }, broadcastPrompt(normalizeRegions(id), arg !== 'nobutton'), messageId);
   if (action === 'report') return sendUserReportPdf(env, token, chatId, tg, id);
   if (action === 'block') return toggleSection(env, token, chatId, tg, id, arg, messageId, pageArg);
@@ -70,8 +89,69 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
+}
+
+
+async function sendRegionSettingsPanel(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const settings = await getRegionSettings(env);
+  const defaultRegion = settings.defaultRegionCode ? regionByCode(settings.defaultRegionCode) : null;
+  const text = [
+    '🌍 Region Settings',
+    '',
+    `Start region prompt: ${settings.startPromptEnabled ? 'Enabled' : 'Disabled'}`,
+    `Default direct region: ${defaultRegion ? defaultRegion.label : 'Not selected'}`,
+    `/region command: ${settings.commandEnabled ? 'Enabled' : 'Disabled'}`,
+    '',
+    'If the prompt is disabled and a default region is selected, new users go directly to the bot menu with that region.',
+  ].join('\n');
+  const rows = [
+    [{ text: `${settings.startPromptEnabled ? '❌' : '✅'} Show region prompt on /start`, callback_data: `botadmin:togglestartregion:${settings.startPromptEnabled ? 'off' : 'on'}` }],
+    [{ text: `${settings.commandEnabled ? '✅' : '❌'} /region command`, callback_data: `botadmin:toggleregioncmd:${settings.commandEnabled ? 'off' : 'on'}` }],
+    [{ text: `Default: ${defaultRegion ? defaultRegion.label : 'Not selected'}`, callback_data: 'botadmin:regionsettings' }],
+    ...chunk(REGIONS.map((region) => ({ text: `${settings.defaultRegionCode === region.code ? '✔️ ' : ''}${region.label}`, callback_data: `botadmin:setdefaultregion:${region.code}` })), 2),
+    [{ text: 'Clear default region', callback_data: 'botadmin:setdefaultregion:CLEAR' }],
+    [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ];
+  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  return true;
+}
+
+async function updateRegionSettings(env: Env, token: string, chatId: number, tg: TgApi, messageId: number | undefined, patch: Partial<RegionSettings>): Promise<true> {
+  const current = await getRegionSettings(env);
+  const next = { ...current, ...patch };
+  if (next.defaultRegionCode && !regionByCode(next.defaultRegionCode)) next.defaultRegionCode = null;
+  await ensureAdminSettings(env);
+  await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(name) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`)
+    .bind(REGION_SETTINGS_KEY, JSON.stringify(next))
+    .run();
+  return sendRegionSettingsPanel(env, token, chatId, tg, messageId);
+}
+
+async function getRegionSettings(env: Env): Promise<RegionSettings> {
+  const fallback: RegionSettings = { startPromptEnabled: true, commandEnabled: true, defaultRegionCode: null };
+  try {
+    await ensureAdminSettings(env);
+    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(REGION_SETTINGS_KEY).first<{ value_json: string }>();
+    const parsed = JSON.parse(row?.value_json || '{}') as Partial<RegionSettings>;
+    const defaultRegion = parsed.defaultRegionCode ? regionByCode(String(parsed.defaultRegionCode)) : null;
+    return { startPromptEnabled: parsed.startPromptEnabled !== false, commandEnabled: parsed.commandEnabled !== false, defaultRegionCode: defaultRegion?.code ?? null };
+  } catch { return fallback; }
+}
+
+async function ensureAdminSettings(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
+    name TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run().catch(() => undefined);
+}
+
+function regionByCode(code: string): RegionConfig | null {
+  const cleaned = String(code || '').trim().toUpperCase();
+  return REGIONS.find((region) => region.code === cleaned) ?? null;
 }
 
 async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number): Promise<true> {
