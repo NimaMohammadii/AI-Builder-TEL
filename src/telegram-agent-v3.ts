@@ -28,12 +28,14 @@ type SavedLock = { locked?: boolean; mode?: 'open' | 'locked' | 'code' | 'loadin
 type AdminSettingRow = { value_json: string };
 type TelegramMessageResult = { ok: boolean; result?: { message_id?: number }; description?: string };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
+type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const TTS_TTL = 900;
 const MAIN_MENU_TTL = 7200;
 const LOCKS_KEY = 'admin:section-locks';
+const REGION_SETTINGS_KEY = 'admin:bot-region-settings';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
 const REGIONS: RegionConfig[] = [
@@ -106,14 +108,27 @@ async function onMessage(env: Env, key: string, botId: string, message: Telegram
   const chatKey = `builder-ai-chat:${userId}`;
   const historyKey = `builder-ai-history:${userId}`;
 
-  if (text === '/region') return regionMenu(key, chatId, 'Change your region 🌍');
+  if (text === '/region') {
+    const settings = await getRegionSettings(env);
+    if (!settings.commandEnabled) return;
+    return regionMenu(key, chatId, 'Change your region 🌍');
+  }
 
   if (!text || text === '/start') {
     await env.BOT_CACHE.delete(chatKey).catch(() => undefined);
     await env.BOT_CACHE.delete(pendingKey(userId)).catch(() => undefined);
     await clearTtsState(env, userId);
-    const region = await getUserRegion(env, botId, userId);
-    if (!region) return regionMenu(key, chatId, 'Choose your region 🌍');
+    let region = await getUserRegion(env, botId, userId);
+    if (!region) {
+      const settings = await getRegionSettings(env);
+      const defaultRegion = settings.defaultRegionCode ? regionByCode(settings.defaultRegionCode) : null;
+      if (!settings.startPromptEnabled && defaultRegion) {
+        await saveUserRegion(env, botId, userId, defaultRegion);
+        region = defaultRegion;
+      } else if (settings.startPromptEnabled) {
+        return regionMenu(key, chatId, 'Choose your region 🌍');
+      }
+    }
     await mainMenu(env, key, chatId);
     return;
   }
@@ -418,6 +433,30 @@ async function regionMenu(key: string, chatId: number, text: string): Promise<vo
 function regionByCode(code: string): RegionConfig | null {
   const cleaned = String(code || '').trim().toUpperCase();
   return REGIONS.find((region) => region.code === cleaned) ?? null;
+}
+
+
+async function getRegionSettings(env: Env): Promise<RegionSettings> {
+  const fallback: RegionSettings = { startPromptEnabled: true, commandEnabled: true, defaultRegionCode: null };
+  try {
+    await ensureAdminSettings(env);
+    const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?').bind(REGION_SETTINGS_KEY).first<AdminSettingRow>();
+    const parsed = safeParseJson<Partial<RegionSettings>>(row?.value_json || '{}', {});
+    const defaultRegion = parsed.defaultRegionCode ? regionByCode(String(parsed.defaultRegionCode)) : null;
+    return {
+      startPromptEnabled: parsed.startPromptEnabled !== false,
+      commandEnabled: parsed.commandEnabled !== false,
+      defaultRegionCode: defaultRegion?.code ?? null,
+    };
+  } catch { return fallback; }
+}
+
+async function ensureAdminSettings(env: Env): Promise<void> {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
+    name TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run().catch(() => undefined);
 }
 
 async function getUserRegion(env: Env, botId: string, userId: string): Promise<RegionConfig | null> {
