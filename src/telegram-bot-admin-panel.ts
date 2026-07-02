@@ -6,7 +6,7 @@ import { formatTonAmount, getFinanceLimits, getFinanceStats, setFinanceLimits, t
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
-type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean };
+type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit' | 'search'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
 type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 
@@ -69,6 +69,8 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   await clearAdminState(env, q.from.id);
   if (action === 'home') return sendAdminHome(env, token, chatId, tg, messageId);
   if (action === 'users') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId);
+  if (action === 'returns') return sendReturnUsersMenu(env, token, chatId, tg, messageId);
+  if (action === 'asksearch') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'search', list: returnListKey(id) }, searchPrompt(returnListKey(id)), messageId);
   if (action === 'returnusers') return sendUsersList(env, token, chatId, tg, pageArg || 0, messageId, returnListKey(id));
   if (action === 'page') return sendUsersList(env, token, chatId, tg, Number(id) || 0, messageId, returnListKey(arg));
   if (action === 'user') return sendUserPanel(env, token, chatId, tg, id, messageId, Number(arg) || 0, returnListKey(parts[4] || 'all'));
@@ -105,10 +107,24 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ برگشتی‌های +۲', callback_data: 'botadmin:returnusers:r2:x:0' }], [{ text: '↩️ برگشتی‌های +۳', callback_data: 'botadmin:returnusers:r3:x:0' }, { text: '↩️ برگشتی‌های +۴', callback_data: 'botadmin:returnusers:r4:x:0' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
 }
 
+
+async function sendReturnUsersMenu(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
+  const data = await adminUsersJson(env);
+  const counts = (data.users as AdminUser[]).reduce<Record<string, number>>((acc, user) => { const key = returnListKeyByUser(user); acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+  const text = ['↩️ بخش کاربران برگشتی', '', 'کاربران برگشتی اینجا جدا از منوی اصلی دسته‌بندی شده‌اند:', `• فقط ۲ بار: ${counts.r2 || 0} نفر`, `• فقط ۳ بار: ${counts.r3 || 0} نفر`, `• فقط ۴ بار: ${counts.r4 || 0} نفر`, `• بیشتر از ۵ بار: ${counts.r5p || 0} نفر`].join('\n');
+  const rows = [
+    [{ text: '↩️ فقط ۲ بار', callback_data: 'botadmin:returnusers:r2:x:0' }],
+    [{ text: '↩️ فقط ۳ بار', callback_data: 'botadmin:returnusers:r3:x:0' }, { text: '↩️ فقط ۴ بار', callback_data: 'botadmin:returnusers:r4:x:0' }],
+    [{ text: '↩️ بیشتر از ۵ بار', callback_data: 'botadmin:returnusers:r5p:x:0' }],
+    [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ];
+  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  return true;
+}
 
 async function sendRegionSettingsPanel(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const settings = await getBotRegionSettings(env);
@@ -172,16 +188,15 @@ function regionByCode(code: string): RegionConfig | null {
 
 async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi, page: number, messageId?: number, list: string = 'all'): Promise<true> {
   const data = await adminUsersJson(env);
-  const threshold = returnThreshold(list);
-  const users = (data.users as AdminUser[]).filter((user) => threshold <= 0 || returnCount(user) > threshold);
+  const users = usersForList(data.users as AdminUser[], list);
   const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const current = Math.min(Math.max(0, page), totalPages - 1);
   const rows = users.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE).map((u) => [{ text: userButtonText(u), callback_data: `botadmin:user:${cleanId(u.id)}:${current}:${list}` }]);
   const nav = [];
   if (current > 0) nav.push({ text: 'قبلی', callback_data: `botadmin:page:${current - 1}:${list}` });
-  nav.push({ text: `${current + 1}/${totalPages}`, callback_data: `botadmin:page:${current}:${list}` });
+  nav.push({ text: '🔎 سرچ کاربر', callback_data: `botadmin:asksearch:${list}` });
   if (current < totalPages - 1) nav.push({ text: 'بعدی', callback_data: `botadmin:page:${current + 1}:${list}` });
-  rows.push(nav, [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
+  rows.push(nav, [{ text: list === 'all' ? '⬅️ منوی اصلی' : '⬅️ بخش برگشتی‌ها', callback_data: list === 'all' ? 'botadmin:home' : 'botadmin:returns' }]);
   await upsertMessage(token, tg, chatId, messageId, usersListTitle(list, users.length), rows);
   return true;
 }
@@ -259,6 +274,20 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
     await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ پیام همگانی در چت ربات برای ${sent} کاربر ارسال شد.\nرجین: ${regions.join(', ')}\nدکمه ورود به مینی‌اپ: ${state.miniAppButton !== false ? 'بله' : 'خیر'}` }).catch(() => undefined);
     return sendAdminHome(env, token, message.chat.id, tg);
   }
+  if (state.mode === 'search') {
+    await clearAdminState(env, message.from?.id);
+    await cleanupAdminInput(token, tg, message);
+    return sendSearchResults(env, token, message.chat.id, tg, message.text || '', state.list || 'all');
+  }
+  return true;
+}
+
+async function sendSearchResults(env: Env, token: string, chatId: number, tg: TgApi, query: string, list: string = 'all'): Promise<true> {
+  const users = usersForList((await adminUsersJson(env)).users as AdminUser[], list).filter((user) => userMatchesSearch(user, query)).slice(0, 25);
+  const rows = users.map((u) => [{ text: userButtonText(u), callback_data: `botadmin:user:${cleanId(u.id)}:0:${returnListKey(list)}` }]);
+  rows.push([{ text: '🔎 سرچ دوباره', callback_data: `botadmin:asksearch:${returnListKey(list)}` }], [{ text: returnListKey(list) === 'all' ? '⬅️ لیست کاربران' : '⬅️ بخش برگشتی‌ها', callback_data: returnListKey(list) === 'all' ? 'botadmin:users:0' : 'botadmin:returns' }]);
+  const text = [`🔎 نتایج جستجوی کاربر`, '', `عبارت: ${cleanText(query, '—')}`, `تعداد نتیجه: ${users.length}`, '', users.length ? 'نتایج در این بخش جدا نمایش داده می‌شوند:' : 'نتیجه‌ای پیدا نشد.'].join('\n');
+  await upsertMessage(token, tg, chatId, undefined, text, rows);
   return true;
 }
 
@@ -360,9 +389,13 @@ function parseTonDelta(value: string): number | null {
 }
 function userButtonText(user: AdminUser): string { return `${cleanText(user.firstName, 'بی‌نام')} | ${cleanText(user.username, 'بدون یوزرنیم')} | ${formatTon(user.tonBalanceNano)} TON | ↩️ ${returnCount(user)}`; }
 function returnCount(user: AdminUser): number { return Math.max(1, Math.floor(Number(user.returnCount) || 1)); }
-function returnListKey(value: unknown): string { const key = String(value || 'all').toLowerCase(); return key === 'r2' || key === 'r3' || key === 'r4' ? key : 'all'; }
-function returnThreshold(list: string): number { return list === 'r2' ? 2 : list === 'r3' ? 3 : list === 'r4' ? 4 : 0; }
-function usersListTitle(list: string, count: number): string { const threshold = returnThreshold(list); return threshold > 0 ? `↩️ کاربران با بیشتر از ${threshold} بار ورود/برگشت (${count} نفر)\nبرای مدیریت هر کاربر روی نام او بزنید.` : '👥 لیست کاربران\nبرای مدیریت هر کاربر روی نام او بزنید.'; }
+function returnListKey(value: unknown): string { const key = String(value || 'all').toLowerCase(); return key === 'r2' || key === 'r3' || key === 'r4' || key === 'r5p' ? key : 'all'; }
+function returnListKeyByUser(user: AdminUser): string { const count = returnCount(user); return count === 2 ? 'r2' : count === 3 ? 'r3' : count === 4 ? 'r4' : count > 5 ? 'r5p' : 'all'; }
+function usersForList(users: AdminUser[], list: string): AdminUser[] { const key = returnListKey(list); return users.filter((user) => key === 'all' || returnListKeyByUser(user) === key); }
+function usersListTitle(list: string, count: number): string { const labels: Record<string, string> = { r2: 'فقط ۲ بار', r3: 'فقط ۳ بار', r4: 'فقط ۴ بار', r5p: 'بیشتر از ۵ بار' }; return list !== 'all' ? `↩️ کاربران برگشتی ${labels[returnListKey(list)] || ''} (${count} نفر)\nبرای مدیریت هر کاربر روی نام او بزنید.` : '👥 لیست کاربران\nبرای مدیریت هر کاربر روی نام او بزنید.'; }
+function searchPrompt(list: string): string { return `عبارت سرچ را بفرستید: آیدی عددی، یوزرنیم یا اسم کاربر.\nمحدوده جستجو: ${returnListKey(list) === 'all' ? 'همه کاربران' : usersListTitle(list, 0).split(' (')[0]}`; }
+function normalizedSearch(value: unknown): string { return String(value ?? '').trim().replace(/^@/, '').toLowerCase(); }
+function userMatchesSearch(user: AdminUser, query: string): boolean { const q = normalizedSearch(query); if (!q) return false; return [user.id, user.username, user.firstName].some((value) => normalizedSearch(value).includes(q)); }
 function chunk<T>(items: T[], size: number): T[][] { const rows: T[][] = []; for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size)); return rows; }
 function cleanId(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80); }
 function cleanText(value: unknown, fallback: string): string { const text = String(value ?? '').trim(); return text && text !== '—' ? text.slice(0, 80) : fallback; }
