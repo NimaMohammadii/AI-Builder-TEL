@@ -1,6 +1,6 @@
 import app from './index';
 import { getCrashVirtualUsers } from './crash-virtual-users-config';
-import { ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs, revealCrashVirtualCashouts, seedCrashVirtualUsers } from './crash-virtual-users';
+import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs } from './crash-virtual-users';
 
 const CACHE_NONE = 'no-store';
 const NANO = 1000000000;
@@ -46,22 +46,20 @@ async function getGhostRunRealUsers(db:D1Database){
 type Row = { round_id:number; user_id:string; username:string; amount_nano:number; status:string; cashout_multiplier:number|null; payout_nano:number; is_virtual?:number; target_cashout_multiplier?:number|null; virtual_reveal_at_ms?:number; virtual_order?:number; created_at:string; updated_at:string };
 
 app.get('/app/api/crash-live', async (c) => {
-  await ensure(c.env);
   const state = getCrashRoundState(Date.now());
   const now = Date.now();
   const requestedRoundId = Number(c.req.query('roundId'));
   const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
   const revealWindow = virtualRevealWindow(roundId,state);
-  await seedCrashVirtualUsers(c.env.DB, roundId, revealWindow.start, revealWindow.end);
-  await revealCrashVirtualCashouts(c.env.DB, roundId, state);
-  if(roundId===state.id && state.waiting){
-    await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet'").bind(roundId).run().catch(() => undefined);
-  }
-  await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet'").bind(roundId).run().catch(() => undefined);
-  const rows = await c.env.DB.prepare("SELECT * FROM crash_live_bets WHERE round_id=? AND (is_virtual=0 OR COALESCE(virtual_reveal_at_ms,0)<=?) ORDER BY amount_nano DESC, COALESCE(virtual_order,0) ASC, datetime(created_at) ASC LIMIT 120").bind(roundId,now).all<Row>();
-  const bets = (rows.results || []).map(json);
+  await settleRealBetsForRound(c.env.DB, roundId, state);
+  const [realRows, virtualRows] = await Promise.all([
+    readRealLiveRows(c.env.DB, roundId),
+    buildCrashVirtualLiveBets(c.env, roundId, revealWindow.start, revealWindow.end, now, state),
+  ]);
+  const visibleVirtualRows = virtualRows.filter((row) => Number(row.virtual_reveal_at_ms||0) <= now);
+  const bets = [...realRows, ...visibleVirtualRows].map(json).sort((a,b)=>Number(b.amountNano||0)-Number(a.amountNano||0) || Number(a.virtualOrder||0)-Number(b.virtualOrder||0)).slice(0,120);
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
-  const nextReveal = await nextVirtualRevealMs(c.env.DB, roundId, now);
+  const nextReveal = nextVirtualRevealMs(virtualRows, now);
   const nextSyncMs = nextLiveSyncMs(state, bets, nextReveal, now);
   return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),state,nextRevealAtMs:nextReveal||0,nextSyncMs,bets},200,{'cache-control':CACHE_NONE});
 });
@@ -93,6 +91,18 @@ app.post('/app/api/crash-live/crash', async (c) => {
   return c.json({ok:true},200,{'cache-control':CACHE_NONE});
 });
 
+
+async function readRealLiveRows(db:D1Database, roundId:number): Promise<Row[]>{
+  const rows = await db.prepare("SELECT * FROM crash_live_bets WHERE round_id=? AND is_virtual=0 ORDER BY amount_nano DESC, datetime(created_at) ASC LIMIT 120").bind(roundId).all<Row>().catch(() => ({ results: [] as Row[] }));
+  return rows.results || [];
+}
+async function settleRealBetsForRound(db:D1Database, roundId:number, state:ReturnType<typeof getCrashRoundState>){
+  if(roundId===state.id && state.waiting){
+    await db.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
+  }
+  await db.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
+}
+
 async function ensure(env:{DB:D1Database}){
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS crash_live_bets(round_id INTEGER NOT NULL,user_id TEXT NOT NULL,username TEXT NOT NULL,amount_nano INTEGER NOT NULL,status TEXT NOT NULL DEFAULT \'bet\',cashout_multiplier REAL,payout_nano INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(round_id,user_id))').run();
   await ensureCrashVirtualColumns(env.DB);
@@ -104,9 +114,11 @@ function virtualRevealWindow(roundId:number,state:ReturnType<typeof getCrashRoun
   const end = Math.max(0,roundStart - REVEAL_END_BEFORE_START_MS);
   return {start:Math.max(0,end-WAIT_WINDOW_MS),end};
 }
-async function nextVirtualRevealMs(db:D1Database, roundId:number, now:number){
-  const row = await db.prepare('SELECT MIN(virtual_reveal_at_ms) AS nextReveal FROM crash_live_bets WHERE round_id=? AND is_virtual=1 AND status=\'bet\' AND COALESCE(virtual_reveal_at_ms,0)>?').bind(roundId,now).first<{nextReveal:number}>();
-  return Number(row?.nextReveal||0);
+function nextVirtualRevealMs(rows:Row[], now:number){
+  return rows.reduce((next,row) => {
+    const reveal = Number(row.virtual_reveal_at_ms||0);
+    return reveal > now && (!next || reveal < next) ? reveal : next;
+  }, 0);
 }
 function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:ReturnType<typeof json>[], nextReveal = 0, now = Date.now()){
   if(!state.running){

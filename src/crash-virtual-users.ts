@@ -53,6 +53,44 @@ export async function seedCrashVirtualUsers(db:D1Database, roundId:number, revea
   if(batch.length)await db.batch(batch);
 }
 
+
+export async function buildCrashVirtualLiveBets(env:{DB:D1Database; BOT_CACHE:any}, roundId:number, revealStartMs = Date.now(), revealEndMs = revealStartMs, now = Date.now(), state = getCrashRoundState(now)){
+  const configuredUsers = await getCrashVirtualUsers(env).then((config) => config.users).catch((error) => { console.warn('load crash virtual users failed', error); return [] as CrashVirtualUser[]; });
+  const count = configuredUsers.length;
+  if(!count)return [];
+  const stop = roundStop(roundId);
+  const revealWindow = Math.max(0, revealEndMs - revealStartMs);
+  return configuredUsers.map((configured, i) => {
+    const option = pickConfiguredBet(configured, roundId, i) || { amount: 1, cashoutMultiplier: 1.5 };
+    const amount = Math.max(1, Math.floor(Number(option.amount || 1) * NANO));
+    const target = Math.max(1.01, Math.floor(Number(option.cashoutMultiplier || 1.5) * 100) / 100);
+    const revealAt = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    const settled = virtualStatus(roundId, target, stop, state);
+    return {
+      round_id: roundId,
+      user_id: 'virtual_'+roundId+'_'+i,
+      username: configured.name,
+      amount_nano: amount,
+      status: settled.status,
+      cashout_multiplier: settled.cashoutMultiplier,
+      payout_nano: settled.cashoutMultiplier ? Math.max(0, Math.floor(amount * settled.cashoutMultiplier)) : 0,
+      is_virtual: 1,
+      target_cashout_multiplier: target,
+      virtual_reveal_at_ms: revealAt,
+      virtual_order: i + 1,
+      created_at: new Date(revealAt).toISOString(),
+      updated_at: new Date(now).toISOString(),
+    };
+  });
+}
+
+
+function virtualStatus(roundId:number,target:number,stop:number,state:CrashRoundState){
+  if(roundId < state.id || (roundId === state.id && state.waiting))return target < stop ? { status: 'cashout', cashoutMultiplier: target } : { status: 'crashed', cashoutMultiplier: null };
+  if(roundId === state.id && state.running && target <= state.current && target < state.stop)return { status: 'cashout', cashoutMultiplier: target };
+  return { status: 'bet', cashoutMultiplier: null };
+}
+
 export async function settleCrashVirtualUsers(db:D1Database, roundId:number){
   const stop = roundStop(roundId);
   await db.prepare("UPDATE crash_live_bets SET status='cashout', cashout_multiplier=target_cashout_multiplier, payout_nano=CAST(amount_nano*target_cashout_multiplier AS INTEGER), updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND is_virtual=1 AND status='bet' AND target_cashout_multiplier < ?").bind(roundId,stop).run();
