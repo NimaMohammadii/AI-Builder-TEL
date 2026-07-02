@@ -99,27 +99,37 @@ export const SECTION_BACKGROUND_SCRIPT = `
       }
     });
   }
-  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(applySectionBackground)}
-  function load(){
-    return fetch('/app/api/section-backgrounds',{credentials:'same-origin',cache:'no-store'})
+  var cache=null;
+  var inFlight=null;
+  var lastLoadAt=0;
+  var LOAD_TTL=300000;
+  function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
+  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
+  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
+  function load(force){
+    var now=Date.now();
+    if(!force&&cache&&now-lastLoadAt<LOAD_TTL){apply(cache.sections);return Promise.resolve(cache)}
+    if(inFlight)return inFlight;
+    inFlight=fetch('/app/api/section-backgrounds',{credentials:'same-origin',cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
-      .then(function(j){if(j)apply(j.sections);return j})
-      .catch(function(){});
+      .then(function(j){if(j){cache=j;lastLoadAt=Date.now();apply(j.sections)}return j})
+      .catch(function(){return cache})
+      .finally(function(){inFlight=null});
+    return inFlight;
   }
-  window.VexaApplySectionBackgrounds=load;
+  window.VexaApplySectionBackgrounds=function(){return load(true)};
   if(window.VexaRefreshPlayZoneImages&&!window.VexaRefreshPlayZoneImages.__adminBgWrapped){
     var originalPlayZoneRefresh=window.VexaRefreshPlayZoneImages;
     window.VexaRefreshPlayZoneImages=function(){
       var result=originalPlayZoneRefresh.apply(this,arguments);
-      try{Promise.resolve(result).then(function(){setTimeout(load,0)})}catch(e){setTimeout(load,0)}
+      try{Promise.resolve(result).then(function(){setTimeout(function(){load(true)},0)})}catch(e){setTimeout(function(){load(true)},0)}
       return result;
     };
     window.VexaRefreshPlayZoneImages.__adminBgWrapped=true;
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  setTimeout(load,150);setTimeout(load,800);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view],button,[data-action]');if(b)setTimeout(load,120)},true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false)});else load(false);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)load(false)});
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view],button,[data-action]');if(b)setTimeout(function(){load(false)},120)},true);
 })();
 `;
 

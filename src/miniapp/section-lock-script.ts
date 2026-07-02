@@ -65,7 +65,8 @@ export const SECTION_LOCK_SCRIPT = `
     }
     var img=new Image();img.decoding='async';img.src=url;
   }
-  function preloadLockImages(){Object.keys(locks).forEach(function(id){if(id==='connect-bot-card')return;var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
+  function activeLockIds(){var out={};var active=document.querySelector('.view.active[id],section.active[id]');if(active&&active.id)out[lockId(active.id)]=true;out['connect-bot-card']=true;return out}
+  function preloadLockImages(){var active=activeLockIds();Object.keys(locks).forEach(function(id){if(!active[id])return;var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
   function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
   function countdownHtml(item){return item&&item.expiresAt?'<p>Opens in <span data-section-lock-expires-at="'+item.expiresAt+'">'+formatLeft(item.remainingMs)+'</span></p>':''}
   function tickCountdowns(){document.querySelectorAll('[data-section-lock-expires-at]').forEach(function(el){el.textContent=formatLeft(Date.parse(el.getAttribute('data-section-lock-expires-at')||'')-Date.now())})}

@@ -63,7 +63,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
     if(data.plinkoBallUrl)applyPlinkoBall(data.plinkoBallUrl);
     applyMinesImages(data);
     applyRpsImages(data);
-    if(withPreload)(data.preload||[]).forEach(preload);
+    if(withPreload&&needsImages())(data.preload||[]).slice(0,24).forEach(preload);
   }
   function needsImages(){
     if(document.querySelector('.view.active#playzone,.view.active#market,.view.active#connect,.view.active#mines,.view.active#plinko,.view.active#rps'))return true;
