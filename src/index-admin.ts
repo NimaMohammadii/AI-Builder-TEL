@@ -24,6 +24,24 @@ const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 const SECTION_LOCK_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
+const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
+  home: ['global-loading', 'home', 'connect-bot-card'],
+  startup: ['global-loading', 'home', 'connect-bot-card'],
+  playzone: ['playzone', 'mines', 'plinko', 'crash', 'wheel', 'dice', 'rps', 'slot', 'coinflip', 'hilo', 'ghostrun', 'predict-zone-card'],
+  rps: ['rps'],
+  mines: ['mines'],
+  plinko: ['plinko'],
+};
+const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'>> = {
+  home: ['credit', 'ton'],
+  startup: ['credit', 'ton'],
+  playzone: ['credit', 'ton'],
+  rps: ['credit', 'ton', 'rps'],
+  mines: ['credit', 'ton', 'mines'],
+  plinko: ['credit', 'ton', 'plinko'],
+};
+
+
 const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
@@ -108,35 +126,37 @@ app.delete('/admin/api/section-background/:section', async (c) => {
 });
 
 app.get('/app/api/uploaded-images', async (c) => {
+  const context = normalizeUploadedImagesContext(c.req.query('context'));
+  const requestedSections = parseSectionLockQuery(c.req.query('sections'), c.req.query('section'));
+  const scopedSections = requestedSections || (context ? UPLOADED_IMAGE_CONTEXT_SECTIONS[context] : null);
+  const assetScope = new Set(context ? UPLOADED_IMAGE_CONTEXT_ASSETS[context] : uploadedImageAssetScopeForSections(scopedSections));
+  const head = (enabled: boolean, key: string) => enabled ? c.env.ASSETS.head(key).catch(() => null) : Promise.resolve(null);
   const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead, rpsYouRockHead, rpsYouPaperHead, rpsYouScissorsHead, rpsBotRockHead, rpsBotPaperHead, rpsBotScissorsHead] = await Promise.all([
-    c.env.ASSETS.head('credit-icon').catch(() => null),
-    c.env.ASSETS.head('ton-icon').catch(() => null),
-    c.env.ASSETS.head('plinko-ball').catch(() => null),
-    c.env.ASSETS.head('mines-tile/safe').catch(() => null),
-    c.env.ASSETS.head('mines-tile/bomb').catch(() => null),
-    c.env.ASSETS.head('rps-hand/you/rock').catch(() => null),
-    c.env.ASSETS.head('rps-hand/you/paper').catch(() => null),
-    c.env.ASSETS.head('rps-hand/you/scissors').catch(() => null),
-    c.env.ASSETS.head('rps-hand/bot/rock').catch(() => null),
-    c.env.ASSETS.head('rps-hand/bot/paper').catch(() => null),
-    c.env.ASSETS.head('rps-hand/bot/scissors').catch(() => null),
+    head(assetScope.has('credit'), 'credit-icon'),
+    head(assetScope.has('ton'), 'ton-icon'),
+    head(assetScope.has('plinko'), 'plinko-ball'),
+    head(assetScope.has('mines'), 'mines-tile/safe'),
+    head(assetScope.has('mines'), 'mines-tile/bomb'),
+    head(assetScope.has('rps'), 'rps-hand/you/rock'),
+    head(assetScope.has('rps'), 'rps-hand/you/paper'),
+    head(assetScope.has('rps'), 'rps-hand/you/scissors'),
+    head(assetScope.has('rps'), 'rps-hand/bot/rock'),
+    head(assetScope.has('rps'), 'rps-hand/bot/paper'),
+    head(assetScope.has('rps'), 'rps-hand/bot/scissors'),
   ]);
-  const creditIconUrl = `/app/api/credit-icon.png?v=${assetVersion(creditHead)}`;
-  const tonIconUrl = tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl;
-  const plinkoBallUrl = plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl;
+  const creditIconUrl = assetScope.has('credit') ? `/app/api/credit-icon.png?v=${assetVersion(creditHead)}` : null;
+  const tonIconUrl = assetScope.has('ton') ? (tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl) : null;
+  const plinkoBallUrl = assetScope.has('plinko') ? (plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl) : null;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
-  const rpsYouRockUrl = `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}`;
-  const rpsYouPaperUrl = `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}`;
-  const rpsYouScissorsUrl = `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}`;
-  const rpsBotRockUrl = `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}`;
-  const rpsBotPaperUrl = `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}`;
-  const rpsBotScissorsUrl = `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}`;
-  const locks = await getSectionLocks(c.env);
-  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl];
-  if (minesSafeUrl) preload.push(minesSafeUrl);
-  if (minesBombUrl) preload.push(minesBombUrl);
-  [rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl].forEach((url) => { if (url) preload.push(url); });
+  const rpsYouRockUrl = rpsYouRockHead ? `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}` : null;
+  const rpsYouPaperUrl = rpsYouPaperHead ? `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}` : null;
+  const rpsYouScissorsUrl = rpsYouScissorsHead ? `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}` : null;
+  const rpsBotRockUrl = rpsBotRockHead ? `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}` : null;
+  const rpsBotPaperUrl = rpsBotPaperHead ? `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}` : null;
+  const rpsBotScissorsUrl = rpsBotScissorsHead ? `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}` : null;
+  const locks = await getSectionLocks(c.env, { sections: scopedSections });
+  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl].filter(Boolean);
   for (const section of locks.sections) {
     if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
     if (section.codeImageUrl) preload.push(section.codeImageUrl);
@@ -159,6 +179,20 @@ function parseSectionLockQuery(sections: string | undefined, section: string | u
   const raw = [sections || '', section || ''].join(',');
   const items = raw.split(',').map((item) => item.trim()).filter(Boolean);
   return items.length ? items : null;
+}
+
+
+function uploadedImageAssetScopeForSections(sections: string[] | null): Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'> {
+  if (!sections) return ['credit', 'ton', 'plinko', 'mines', 'rps'];
+  const scope: Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'> = ['credit', 'ton'];
+  if (sections.includes('plinko')) scope.push('plinko');
+  if (sections.includes('mines')) scope.push('mines');
+  if (sections.includes('rps')) scope.push('rps');
+  return scope;
+}
+function normalizeUploadedImagesContext(context: string | undefined): string | null {
+  const clean = String(context || '').trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(UPLOADED_IMAGE_CONTEXT_SECTIONS, clean) ? clean : null;
 }
 app.get('/app/api/section-locks', async (c) => {
   const sections = parseSectionLockQuery(c.req.query('sections'), c.req.query('section'));
