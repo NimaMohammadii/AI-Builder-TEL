@@ -16,7 +16,7 @@ export const MINIAPP_SCRIPT = `
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
   var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Home',connect:'Connect',predictzone:'Predict',results:'Bot Control',playzone:'Play Zone',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Lucky Zone',connect:'Connect',predictzone:'Predict',livewinners:'Live Winners',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
