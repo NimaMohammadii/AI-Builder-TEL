@@ -32,10 +32,17 @@ type SavedSectionLock = {
 
 type AdminSettingRow = { value_json: string };
 type SectionImageInfo = { url: string | null; hasImage: boolean };
+type GetSectionLocksOptions = { sections?: string[] | null; cacheKey?: string | null };
+type SectionLocksCacheEntry = { expiresAt: number; value: { sections: SectionLock[] } };
+
 
 const LOCKS_KEY = 'admin:section-locks';
+const SECTION_LOCKS_CACHE_TTL_MS = 45_000;
+const SECTION_IMAGE_INFO_CACHE_TTL_MS = 60_000;
 const SHARED_LOCK_IMAGE_ID = 'shared';
 export const SECTION_LOCK_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const sectionLocksCache = new Map<string, SectionLocksCacheEntry>();
+const sectionImageInfoCache = new Map<string, { expiresAt: number; value: SectionImageInfo }>();
 
 const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeUrl'>> = [
   { id: 'global-loading', label: 'Global Mini App Loading', description: 'Put the entire mini app into loading mode' },
@@ -70,7 +77,13 @@ const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' 
   { id: 'ghostrun', label: 'Ghost Run', description: 'Ghost Run game card image' },
 ];
 
-export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock[] }> {
+export async function getSectionLocks(env: Env, options: GetSectionLocksOptions = {}): Promise<{ sections: SectionLock[] }> {
+  const requestedSections = normalizeRequestedSections(options.sections);
+  const sectionIds = requestedSections ?? DEFAULT_SECTIONS.map((section) => section.id);
+  const cacheKey = `locks:${options.cacheKey || 'global'}:${sectionIds.join(',')}`;
+  const cached = sectionLocksCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
   const saved = await readLocks(env);
   const now = Date.now();
   let changed = false;
@@ -80,12 +93,19 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
       changed = true;
     }
   }
-  if (changed) await writeLocks(env, saved).catch(() => undefined);
+  if (changed) {
+    await writeLocks(env, saved).catch(() => undefined);
+    clearSectionLockCaches();
+  }
 
-  const sharedLockedImage = await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'locked');
-  const sharedCodeImage = await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'code');
+  const needsShared = sectionIds.some((id) => id === 'coinflip' || normalizeMode(saved[id]) !== 'open');
+  const sharedLockedImage = needsShared ? await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'locked') : { url: null, hasImage: false };
+  const sharedCodeImage = needsShared ? await sectionImageInfo(env, SHARED_LOCK_IMAGE_ID, 'code') : { url: null, hasImage: false };
+  const sectionMap = new Map(DEFAULT_SECTIONS.map((section) => [section.id, section]));
 
-  const sections = await Promise.all(DEFAULT_SECTIONS.map(async (section) => {
+  const sections = await Promise.all(sectionIds.map(async (sectionId) => {
+    const section = sectionMap.get(sectionId);
+    if (!section) throw new Error('Unknown section');
     const item = saved[section.id];
     const mode = normalizeMode(item);
     const isLocked = mode !== 'open';
@@ -112,7 +132,9 @@ export async function getSectionLocks(env: Env): Promise<{ sections: SectionLock
       codeImageUrl,
     };
   }));
-  return { sections };
+  const value = { sections };
+  sectionLocksCache.set(cacheKey, { expiresAt: now + SECTION_LOCKS_CACHE_TTL_MS, value });
+  return value;
 }
 
 export async function isSectionLocked(env: Env, sectionId: string): Promise<boolean> {
@@ -127,6 +149,7 @@ export async function setSectionLock(env: Env, sectionId: string, locked: boolea
   const existing = current[normalized] ?? {};
   current[normalized] = { ...existing, locked: Boolean(locked), mode: locked ? 'locked' : 'open', expiresAt: locked ? normalizeExpiresAt(expiresAtInput) : null };
   await writeLocks(env, current);
+  clearSectionLockCaches();
   return getSectionLocks(env);
 }
 
@@ -135,6 +158,7 @@ export async function setSectionLoadingLock(env: Env, sectionId: string, expires
   const current = await readLocks(env);
   current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'loading', expiresAt: normalizeExpiresAt(expiresAtInput) };
   await writeLocks(env, current);
+  clearSectionLockCaches();
   return getSectionLocks(env);
 }
 
@@ -145,6 +169,7 @@ export async function setSectionCodeLock(env: Env, sectionId: string, code: stri
   const current = await readLocks(env);
   current[normalized] = { ...(current[normalized] ?? {}), locked: true, mode: 'code', code: cleaned, expiresAt: normalizeExpiresAt(expiresAtInput) };
   await writeLocks(env, current);
+  clearSectionLockCaches();
   return getSectionLocks(env);
 }
 
@@ -205,10 +230,15 @@ async function sectionImageVersion(env: Env, sectionId: string, kind: SectionLoc
 }
 
 async function sectionImageInfo(env: Env, sectionId: string, kind: SectionLockImageKind): Promise<SectionImageInfo> {
+  const cacheKey = `${cleanSection(sectionId)}:${normalizeSectionImageKind(kind)}`;
+  const cached = sectionImageInfoCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
   const hasImage = await hasStoredSectionImage(env, sectionId, kind);
-  if (!hasImage) return { url: null, hasImage: false };
-  const version = await sectionImageVersion(env, sectionId, kind);
-  return { url: `/app/api/section-lock-image/${cleanSection(sectionId)}/${kind}.png?v=${version}`, hasImage: true };
+  const value = hasImage
+    ? { url: `/app/api/section-lock-image/${cleanSection(sectionId)}/${kind}.png?v=${await sectionImageVersion(env, sectionId, kind)}`, hasImage: true }
+    : { url: null, hasImage: false };
+  sectionImageInfoCache.set(cacheKey, { expiresAt: Date.now() + SECTION_IMAGE_INFO_CACHE_TTL_MS, value });
+  return value;
 }
 
 async function readLocks(env: Env): Promise<Record<string, SavedSectionLock>> {
@@ -240,6 +270,22 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
     value_json TEXT NOT NULL,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`).run();
+}
+
+function normalizeRequestedSections(sections: string[] | null | undefined): string[] | null {
+  if (!sections || !sections.length) return null;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const section of sections) {
+    const normalized = ensureSection(section);
+    if (!seen.has(normalized)) { seen.add(normalized); out.push(normalized); }
+  }
+  return out;
+}
+
+export function clearSectionLockCaches(): void {
+  sectionLocksCache.clear();
+  sectionImageInfoCache.clear();
 }
 
 function ensureSection(sectionId: string): string {

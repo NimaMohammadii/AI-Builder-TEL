@@ -79,7 +79,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function refresh(force){
     if(force&&window.VexaSectionLocks&&window.VexaSectionLocks.reload){
       if(refreshInFlight)return refreshInFlight;
-      refreshInFlight=window.VexaSectionLocks.reload(true).then(function(){return refreshFromCache()}).catch(function(){return refreshFromCache()}).finally(function(){refreshInFlight=null});
+      refreshInFlight=window.VexaSectionLocks.reload(window.VexaSectionLocks.playZoneSections?window.VexaSectionLocks.playZoneSections():undefined).then(function(){return refreshFromCache()}).catch(function(){return refreshFromCache()}).finally(function(){refreshInFlight=null});
       return refreshInFlight;
     }
     return Promise.resolve(refreshFromCache());
