@@ -161,6 +161,10 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var counts={};
   var countBuckets={};
   var adminSchedule=null;
+  var adminScheduleFetchedAt=0;
+  var adminScheduleInFlight=null;
+  var adminScheduleTtl=20*60*1000;
+  var adminScheduleCacheKey='vexa-live-count:admin-schedule:v1';
   var storagePrefix='vexa-live-count:';
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
   var profiles=${JSON.stringify(livePlayerProfiles)};
@@ -189,8 +193,13 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function titleText(title){return String(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent||'').trim()}
   function renderBadge(){var title=document.getElementById('brandTitle');if(!title)return;var id=activeGame();if(!id){stripBadges(title);return}var label=games[id]||'';if(titleText(title)!==label){stripBadges(title);return}var n=count(id);var badge=title.querySelector('[data-game-online-badge="'+id+'"]');stripBadges(title,badge);if(!badge){badge=document.createElement('span');badge.className='game-online-badge '+id+'-online-badge';badge.setAttribute('data-game-online-badge',id);var dot=document.createElement('i');var value=document.createElement('b');badge.appendChild(dot);badge.appendChild(value);title.appendChild(badge)}badge.setAttribute('aria-label',n+' live online');var b=badge.querySelector('b');if(b&&b.textContent!==String(n))b.textContent=String(n)}
   function refreshCounts(){if(document.hidden)return;Object.keys(games).forEach(function(id){var n=count(id);if(isPlayZoneActive())setCount(id,n);else counts[id]=n});renderBadge()}
-  function loadAdminSchedule(){return fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){adminSchedule=j.schedule;counts={};countBuckets={};refreshCounts();syncCards()}}).catch(function(){})}
-  function syncCards(){if(document.hidden)return;if(!isPlayZoneActive()&&!activeGame()){renderBadge();return}Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current)){counts[id]=current;countBuckets[id]=bucketFor(new Date())}else setCount(id,count(id))});renderBadge()}
+  function needsAdminSchedule(){return !document.hidden&&(isPlayZoneActive()||!!activeGame())}
+  function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt&&(Date.now()-adminScheduleFetchedAt)<adminScheduleTtl)}
+  function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt||Date.now()-Number(cached.fetchedAt)>=adminScheduleTtl)return false;adminSchedule=cached.schedule;adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
+  function writeCachedAdminSchedule(schedule){var payload=JSON.stringify({schedule:schedule,fetchedAt:adminScheduleFetchedAt});try{sessionStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}try{localStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}}
+  function applyAdminSchedule(schedule,fetchedAt){if(!schedule)return;adminSchedule=schedule;adminScheduleFetchedAt=fetchedAt||Date.now();counts={};countBuckets={};writeCachedAdminSchedule(schedule);refreshCounts()}
+  function loadAdminSchedule(){if(!needsAdminSchedule())return Promise.resolve(false);if(isAdminScheduleFresh()||readCachedAdminSchedule()){refreshCounts();return Promise.resolve(true)}if(adminScheduleInFlight)return adminScheduleInFlight;adminScheduleInFlight=fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){applyAdminSchedule(j.schedule,Date.now());return true}return false}).catch(function(){return false}).then(function(result){adminScheduleInFlight=null;return result},function(err){adminScheduleInFlight=null;throw err});return adminScheduleInFlight}
+  function syncCards(){if(document.hidden)return Promise.resolve(false);if(!isPlayZoneActive()&&!activeGame()){renderBadge();return Promise.resolve(false)}var render=function(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current)){counts[id]=current;countBuckets[id]=bucketFor(new Date())}else setCount(id,count(id))});renderBadge();return true};if(isAdminScheduleFresh()||readCachedAdminSchedule()){render();return Promise.resolve(true)}return loadAdminSchedule().then(function(){return render()})}
   window.VexaLiveGameCounts={get:count,setCount:setCount,sync:syncCards,refresh:refreshCounts,renderBadge:renderBadge};
   document.addEventListener('click',function(){setTimeout(syncCards,220)},true);
   if(window.MutationObserver){
@@ -206,10 +215,8 @@ export const GAME_LIVE_COUNT_SCRIPT = `
     if(document.hidden)return;
     scheduleSmartRefresh.timer=setTimeout(function(){refreshCounts();scheduleSmartRefresh()},msUntilNextLiveBucket());
   }
-  document.addEventListener('visibilitychange',function(){if(document.hidden){if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);scheduleSmartRefresh.timer=0}else{refreshCounts();scheduleSmartRefresh()}});
-  window.addEventListener('focus',function(){refreshCounts();scheduleSmartRefresh()});
-  loadAdminSchedule().then(syncCards);
-  setInterval(loadAdminSchedule,300000);
+  document.addEventListener('visibilitychange',function(){if(document.hidden){if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);scheduleSmartRefresh.timer=0}else{if(needsAdminSchedule())syncCards();else refreshCounts();scheduleSmartRefresh()}});
+  window.addEventListener('focus',function(){if(needsAdminSchedule())syncCards();else refreshCounts();scheduleSmartRefresh()});
   syncCards();
   scheduleSmartRefresh();
 })();
