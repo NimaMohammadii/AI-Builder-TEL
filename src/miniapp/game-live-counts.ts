@@ -193,31 +193,32 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function titleText(title){return String(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent||'').trim()}
   function renderBadge(){var title=document.getElementById('brandTitle');if(!title)return;var id=activeGame();if(!id){stripBadges(title);return}var label=games[id]||'';if(titleText(title)!==label){stripBadges(title);return}var n=count(id);var badge=title.querySelector('[data-game-online-badge="'+id+'"]');stripBadges(title,badge);if(!badge){badge=document.createElement('span');badge.className='game-online-badge '+id+'-online-badge';badge.setAttribute('data-game-online-badge',id);var dot=document.createElement('i');var value=document.createElement('b');badge.appendChild(dot);badge.appendChild(value);title.appendChild(badge)}badge.setAttribute('aria-label',n+' live online');var b=badge.querySelector('b');if(b&&b.textContent!==String(n))b.textContent=String(n)}
   function refreshCounts(){if(document.hidden)return;Object.keys(games).forEach(function(id){var n=count(id);if(isPlayZoneActive())setCount(id,n);else counts[id]=n});renderBadge()}
-  function needsAdminSchedule(){return !document.hidden&&(isPlayZoneActive()||!!activeGame())}
+  function needsLiveCountRefresh(){return !document.hidden&&(isPlayZoneActive()||!!activeGame())}
+  function needsAdminSchedule(){return needsLiveCountRefresh()}
   function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt&&(Date.now()-adminScheduleFetchedAt)<adminScheduleTtl)}
   function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt||Date.now()-Number(cached.fetchedAt)>=adminScheduleTtl)return false;adminSchedule=cached.schedule;adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
   function writeCachedAdminSchedule(schedule){var payload=JSON.stringify({schedule:schedule,fetchedAt:adminScheduleFetchedAt});try{sessionStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}try{localStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}}
   function applyAdminSchedule(schedule,fetchedAt){if(!schedule)return;adminSchedule=schedule;adminScheduleFetchedAt=fetchedAt||Date.now();counts={};countBuckets={};writeCachedAdminSchedule(schedule);refreshCounts()}
   function loadAdminSchedule(){if(!needsAdminSchedule())return Promise.resolve(false);if(isAdminScheduleFresh()||readCachedAdminSchedule()){refreshCounts();return Promise.resolve(true)}if(adminScheduleInFlight)return adminScheduleInFlight;adminScheduleInFlight=fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){applyAdminSchedule(j.schedule,Date.now());return true}return false}).catch(function(){return false}).then(function(result){adminScheduleInFlight=null;return result},function(err){adminScheduleInFlight=null;throw err});return adminScheduleInFlight}
-  function syncCards(){if(document.hidden)return Promise.resolve(false);if(!isPlayZoneActive()&&!activeGame()){renderBadge();return Promise.resolve(false)}var render=function(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current)){counts[id]=current;countBuckets[id]=bucketFor(new Date())}else setCount(id,count(id))});renderBadge();return true};if(isAdminScheduleFresh()||readCachedAdminSchedule()){render();return Promise.resolve(true)}return loadAdminSchedule().then(function(){return render()})}
+  function syncCards(){if(document.hidden){clearSmartRefresh();return Promise.resolve(false)}if(!needsLiveCountRefresh()){renderBadge();clearSmartRefresh();return Promise.resolve(false)}var render=function(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current)){counts[id]=current;countBuckets[id]=bucketFor(new Date())}else setCount(id,count(id))});renderBadge();scheduleSmartRefresh();return true};if(isAdminScheduleFresh()||readCachedAdminSchedule()){render();return Promise.resolve(true)}return loadAdminSchedule().then(function(){return render()})}
   window.VexaLiveGameCounts={get:count,setCount:setCount,sync:syncCards,refresh:refreshCounts,renderBadge:renderBadge};
-  document.addEventListener('click',function(){setTimeout(syncCards,220)},true);
+  document.addEventListener('click',function(){setTimeout(function(){if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}},220)},true);
   if(window.MutationObserver){
-    var observer=new MutationObserver(function(){if(!document.hidden)renderBadge()});
+    var observer=new MutationObserver(function(){if(document.hidden)return;renderBadge();if(needsLiveCountRefresh())scheduleSmartRefresh();else clearSmartRefresh()});
     var title=document.getElementById('brandTitle');
     var play=document.getElementById('playzone');
     if(title)observer.observe(title,{childList:true,characterData:true,subtree:true});
     if(play)observer.observe(play,{attributes:true,attributeFilter:['class']});
   }
   function msUntilNextLiveBucket(){return 90000-(Date.now()%90000)+120}
+  function clearSmartRefresh(){if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);scheduleSmartRefresh.timer=0}
   function scheduleSmartRefresh(){
-    if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);
-    if(document.hidden)return;
-    scheduleSmartRefresh.timer=setTimeout(function(){refreshCounts();scheduleSmartRefresh()},msUntilNextLiveBucket());
+    clearSmartRefresh();
+    if(!needsLiveCountRefresh())return;
+    scheduleSmartRefresh.timer=setTimeout(function(){if(!needsLiveCountRefresh()){clearSmartRefresh();return}refreshCounts();scheduleSmartRefresh()},msUntilNextLiveBucket());
   }
-  document.addEventListener('visibilitychange',function(){if(document.hidden){if(scheduleSmartRefresh.timer)clearTimeout(scheduleSmartRefresh.timer);scheduleSmartRefresh.timer=0}else{if(needsAdminSchedule())syncCards();else refreshCounts();scheduleSmartRefresh()}});
-  window.addEventListener('focus',function(){if(needsAdminSchedule())syncCards();else refreshCounts();scheduleSmartRefresh()});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){clearSmartRefresh()}else if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}});
+  window.addEventListener('focus',function(){if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}});
   syncCards();
-  scheduleSmartRefresh();
 })();
 `;
