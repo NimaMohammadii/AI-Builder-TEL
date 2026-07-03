@@ -10,6 +10,11 @@ body:has(#slot.active) .tabs {
   display: none !important;
 }
 
+body:has(#slot.active) #brandTitle,
+body:has(#slot.active) #userLine {
+  display: none !important;
+}
+
 .slot-machine {
   position: relative;
   z-index: 2;
@@ -41,10 +46,10 @@ body:has(#slot.active) .tabs {
 .slot-window {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  width: 68%;
-  height: 258px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  width: 78%;
+  height: 248px;
   margin: 92px auto 0;
   padding: 0;
   background: transparent;
@@ -77,10 +82,13 @@ body:has(#slot.active) .tabs {
   position: relative;
   z-index: 2;
   height: 100%;
-  border-radius: 21px;
+  border-radius: 20px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.055);
+  background: linear-gradient(155deg, rgba(255,255,255,.105), rgba(255,255,255,.026) 38%, rgba(255,255,255,.07) 100%);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 -18px 34px rgba(0,0,0,.24), 0 16px 36px rgba(0,0,0,.26);
+  backdrop-filter: blur(3px) saturate(1.18);
+  -webkit-backdrop-filter: blur(3px) saturate(1.18);
 }
 
 .slot-reel:before {
@@ -96,15 +104,15 @@ body:has(#slot.active) .tabs {
   position: absolute;
   left: 0;
   right: 0;
-  top: 14px;
+  top: 12px;
   transform: translate3d(0, 0, 0);
 }
 
 .slot-symbol {
-  height: 92px;
+  height: 74px;
   display: grid;
   place-items: center;
-  font-size: 38px;
+  font-size: 30px;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.32));
   user-select: none;
 }
@@ -118,8 +126,8 @@ body:has(#slot.active) .tabs {
 }
 
 .slot-symbol-image {
-  width: 62px;
-  height: 62px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -296,12 +304,12 @@ body:has(#slot.active) .tabs {
   width: min(92%, 408px);
   margin: -2px auto 18px;
   border-radius: 32px !important;
-  background: #050505 !important;
-  border: 1px solid rgba(255,255,255,.10) !important;
-  box-shadow: 0 24px 74px rgba(0,0,0,.50), inset 0 1px 0 rgba(255,255,255,.08) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   padding: 14px !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
   overflow: hidden !important;
   transition: max-height .34s cubic-bezier(.2,.8,.2,1), padding .28s ease, opacity .2s ease !important;
   max-height: 430px !important;
@@ -450,14 +458,14 @@ body:has(#slot.active) .tabs {
   gap: 8px !important;
   min-height: 34px !important;
   border-radius: 17px !important;
-  background: #030303 !important;
-  border: 1px solid rgba(255,255,255,.08) !important;
+  background: transparent !important;
+  border: 0 !important;
   outline: 0 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+  box-shadow: none !important;
   color: #fff !important;
   padding: 2px 10px !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
 }
 
 #slot .slot-live-user {
@@ -547,8 +555,8 @@ body:has(#slot.active) .tabs {
 
 @media (max-width: 380px) {
   .slot-window {
-    width: 68%;
-    height: 240px;
+    width: 78%;
+    height: 232px;
     margin-top: 88px;
     gap: 4px;
     transform: translateX(-4px);
@@ -559,13 +567,13 @@ body:has(#slot.active) .tabs {
   }
 
   .slot-symbol {
-    height: 86px;
-    font-size: 35px;
+    height: 70px;
+    font-size: 28px;
   }
 
   .slot-symbol-image {
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
   }
 
   .slot-machine {
