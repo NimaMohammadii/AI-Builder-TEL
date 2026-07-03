@@ -14,6 +14,19 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-finance-visual:before,#home .home-finance-visual:after{display:none!important;content:none!important}
     #home .home-finance-visual img{pointer-events:none!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.26))!important}
     #home .home-daily-reward-card{cursor:pointer!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 42px rgba(0,0,0,.24)!important}
+
+    #home .home-live-winners-card{margin:10px 0 14px!important;border:1px solid rgba(92,10,35,.34)!important;border-radius:30px!important;background:linear-gradient(145deg,rgba(92,10,35,.18),rgba(255,255,255,.024) 46%,rgba(0,0,0,.18))!important;color:#fff!important;box-shadow:0 22px 52px rgba(0,0,0,.34),0 0 0 1px rgba(0,0,0,.24),0 0 34px rgba(92,10,35,.12),inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(3px) saturate(1.08)!important;-webkit-backdrop-filter:blur(3px) saturate(1.08)!important;overflow:hidden!important;padding:0!important;position:relative!important}
+    #home .home-live-winners-hero{height:168px!important;display:grid!important;place-items:center!important;background:transparent!important;overflow:visible!important;margin-top:-8px!important}
+    #home .home-live-winners-hero img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.28))!important}
+    #home .home-live-winners-copy{padding:0 18px 16px!important;margin-top:-6px!important}
+    #home .home-live-winners-copy h2{margin:0 0 6px!important;font-size:24px!important;line-height:1.04!important;font-weight:900!important;letter-spacing:-.055em!important;color:#fff!important}
+    #home .home-live-winners-copy p{margin:0!important;color:rgba(255,255,255,.60)!important;font-size:13px!important;line-height:1.42!important;font-weight:650!important}
+    #home .home-live-winners-list{display:grid!important;gap:8px!important;margin-top:8px!important}
+    #home .home-live-winner-row{min-height:54px!important;border:1px solid rgba(92,10,35,.22)!important;border-radius:21px!important;background:linear-gradient(135deg,rgba(0,0,0,.18),rgba(92,10,35,.08),rgba(255,255,255,.012))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 24px rgba(0,0,0,.12)!important;display:grid!important;grid-template-columns:38px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;padding:8px 4px!important;backdrop-filter:blur(3px) saturate(1.04)!important;-webkit-backdrop-filter:blur(3px) saturate(1.04)!important}
+    #home .home-live-winner-row img{width:38px!important;height:38px!important;border-radius:50%!important;object-fit:cover!important;display:block!important;background:transparent!important;box-shadow:none!important}
+    #home .home-live-winner-row strong{display:block!important;color:#fff!important;font-size:13px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+    #home .home-live-winner-row span{display:block!important;margin-top:3px!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:750!important}
+    #home .home-live-winner-row b{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
   </style>
   <section class="home-finance-split">
     <div class="home-finance-actions">
@@ -31,6 +44,17 @@ export const HOME_SECTION = `<section id="home" class="view active">
     <div class="home-finance-visual-stack">
       <div class="home-finance-visual" aria-hidden="true">
         <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-live-winners-card" aria-label="Live winner rewards">
+    <div class="home-live-winners-hero" aria-hidden="true"><img src="/app/api/home-finance-image.png" alt="" decoding="async" loading="eager"/></div>
+    <div class="home-live-winners-copy"><h2>Live Winners</h2><p>Latest lucky rewards from active players.</p>
+      <div class="home-live-winners-list">
+        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@NikaWin</strong><span>Lucky Zone</span></div><b>+1.25 TON</b></article>
+        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@ParsaFlow</strong><span>Lucky Zone</span></div><b>+0.84 TON</b></article>
+        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@MinaLucky</strong><span>Lucky Zone</span></div><b>+0.47 TON</b></article>
       </div>
     </div>
   </section>
