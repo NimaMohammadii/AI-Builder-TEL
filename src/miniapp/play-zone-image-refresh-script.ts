@@ -5,7 +5,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   var all=games.concat(legacyAds);
   var KEY='vexaPlayZoneImageUrls:v13';
   var OLD_KEYS=['vexaPlayZoneImageUrls:v12','vexaPlayZoneImageUrls:v11','vexaPlayZoneImageUrls:v10','vexaPlayZoneImageUrls:v9','vexaPlayZoneImageUrls:v8','vexaPlayZoneImageUrls:v7'];
-  var SECTION_LOCKS_KEY='vexaSectionLocks:v1';
+  var SECTION_LOCKS_PREFIX='vexaSectionLocks:v1:';
   var countersStarted=false;
   var counterTimer=null;
   var refreshInFlight=null;
@@ -15,7 +15,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function dropOldCaches(){try{OLD_KEYS.forEach(function(k){localStorage.removeItem(k)});Object.keys(localStorage).forEach(function(k){if(k.indexOf('vexaPlayZoneImageUrlsUpdatedAt')===0)localStorage.removeItem(k)})}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return {}}}
   function writeCache(map){try{localStorage.setItem(KEY,JSON.stringify(map||{}))}catch(e){}}
-  function readSectionLocks(){try{return JSON.parse(localStorage.getItem(SECTION_LOCKS_KEY)||'null')}catch(e){return null}}
+  function readSectionLocks(){var merged={sections:[]};try{Object.keys(localStorage).forEach(function(key){if(key.indexOf(SECTION_LOCKS_PREFIX)!==0)return;var data=JSON.parse(localStorage.getItem(key)||'null');if(data&&Array.isArray(data.sections))merged.sections=merged.sections.concat(data.sections)})}catch(e){}return merged.sections.length?merged:null}
   function stripCacheParams(url){try{var u=new URL(String(url||''),location.href);u.searchParams.delete('rt');u.searchParams.delete('av');return u.pathname+u.search+u.hash}catch(e){return String(url||'').replace(/([?&])(rt|av)=\d+(&?)/g,'$1').replace(/[?&]$/,'')}}
   function baseGameUrl(id){return '/app/api/section-lock-image/'+id+'/locked.png?v=1'}
   function stable(url){return stripCacheParams(url)}

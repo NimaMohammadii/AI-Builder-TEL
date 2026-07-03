@@ -7,7 +7,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   var progressTimers={};
   var expireTimers={};
   var signatures={};
-  var loadInFlight=0;
+  var loadInFlightByKey={};
   var eventSource=null;
   var pendingEventLoad=0;
   function style(){
@@ -24,11 +24,17 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
     return String(user.id||localStorage.getItem('ownerId')||'').trim();
   }
-  function sectionLocksUrl(){
-    var uid=currentUserId();
-    var sections=['global-loading','home','connect-bot-card'];
+  function loadingSectionList(){
     var active=document.querySelector('.view.active[id],section.active[id]');
-    if(active&&active.id&&KNOWN_LOADING_SECTIONS[modeKeyFromView(active.id)])sections.push(modeKeyFromView(active.id));
+    var id=active&&active.id?modeKeyFromView(active.id):'home';
+    if(id==='home'||id==='connect')return ['global-loading','home','connect-bot-card'];
+    if(id&&KNOWN_LOADING_SECTIONS[id])return [id];
+    return ['global-loading','home','connect-bot-card'];
+  }
+  function sectionListKey(sections){return (sections||[]).join(',')}
+  function sectionLocksUrl(sections){
+    var uid=currentUserId();
+    sections=sections&&sections.length?sections:loadingSectionList();
     var params=[];
     if(uid)params.push('userId='+encodeURIComponent(uid));
     params.push('sections='+encodeURIComponent(sections.join(',')));
@@ -141,12 +147,14 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   }
   function load(){
     if(isTrustedAccess()){clearTrustedLoading();return}
-    if(loadInFlight)return;
-    loadInFlight=1;
+    var sections=loadingSectionList();
+    var localKey=(currentUserId()||'anonymous')+':'+sectionListKey(sections);
+    if(loadInFlightByKey[localKey])return;
+    loadInFlightByKey[localKey]=1;
     Promise.all([
-      (function(){var key='loading:'+sectionLocksUrl();window.__vexaSectionLocksInflight=window.__vexaSectionLocksInflight||{};if(window.__vexaSectionLocksInflight[key])return window.__vexaSectionLocksInflight[key];var p=fetch(sectionLocksUrl(),{cache:'no-store'}).then(function(r){return r.json()}).finally(function(){delete window.__vexaSectionLocksInflight[key]});window.__vexaSectionLocksInflight[key]=p;return p})(),
+      (function(){var key=localKey;window.__vexaSectionLocksInflight=window.__vexaSectionLocksInflight||{};if(window.__vexaSectionLocksInflight[key])return window.__vexaSectionLocksInflight[key];var p=fetch(sectionLocksUrl(sections),{cache:'no-store'}).then(function(r){return r.json()}).finally(function(){delete window.__vexaSectionLocksInflight[key]});window.__vexaSectionLocksInflight[key]=p;return p})(),
       fetch('/app/api/section-loading-meta',{cache:'no-store'}).then(function(r){return r.json()}).catch(function(){return {items:{}}})
-    ]).then(function(res){if(isTrustedAccess()){clearTrustedLoading();return}var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){loadInFlight=0});
+    ]).then(function(res){if(isTrustedAccess()){clearTrustedLoading();return}var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){delete loadInFlightByKey[localKey]});
   }
   function notifyLive(){try{window.dispatchEvent(new CustomEvent('vexa-live-event',{detail:{type:'locks',at:Date.now()}}))}catch(e){}}
   function handleLockEvent(){
