@@ -2,7 +2,7 @@ export const SLOT_SECTION = `
 <section id="slot" class="view slot-view" style="overflow-x:hidden;max-width:100vw;transform:translateY(-10px)">
   <style>
     #slot .slot-rewards-toggle{position:absolute;opacity:0;pointer-events:none}
-    #slot .slot-rewards-card{position:absolute;left:18px;top:18px;z-index:38;width:40px;height:40px;display:grid;place-items:center;border-radius:18px;border:0!important;background:rgba(255,255,255,.035);color:rgba(255,255,255,.92);box-shadow:none!important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease}
+    #slot .slot-rewards-card{position:absolute;left:18px;top:0;z-index:38;width:40px;height:40px;display:grid;place-items:center;border-radius:18px;border:0!important;background:rgba(255,255,255,.035);color:rgba(255,255,255,.92);box-shadow:none!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);cursor:pointer;user-select:none;transition:transform .18s ease,opacity .18s ease}
     #slot .slot-rewards-card svg{width:20px;height:20px;display:block;filter:drop-shadow(0 0 10px rgba(233,189,124,.18))}
     #slot .slot-rewards-card svg path{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     #slot .slot-rewards-card:active{transform:scale(.96)}
@@ -56,6 +56,12 @@ export const SLOT_SECTION = `
         <div class="slot-reel-strip"></div>
       </div>
       <div class="slot-reel" data-slot-reel="2">
+        <div class="slot-reel-strip"></div>
+      </div>
+      <div class="slot-reel" data-slot-reel="3">
+        <div class="slot-reel-strip"></div>
+      </div>
+      <div class="slot-reel" data-slot-reel="4">
         <div class="slot-reel-strip"></div>
       </div>
     </div>
