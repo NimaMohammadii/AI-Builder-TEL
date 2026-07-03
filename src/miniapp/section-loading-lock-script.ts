@@ -1,5 +1,6 @@
 export const SECTION_LOADING_LOCK_SCRIPT = `
 (function(){
+  var KNOWN_LOADING_SECTIONS={};['global-loading','home','connect','playzone','predict','market','flow','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOADING_SECTIONS[id]=1});
   var modes={};
   var loadingMeta={};
   var painted={};
@@ -25,7 +26,13 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   }
   function sectionLocksUrl(){
     var uid=currentUserId();
-    return uid?'/app/api/section-locks?userId='+encodeURIComponent(uid):'/app/api/section-locks';
+    var sections=['global-loading','home','connect-bot-card'];
+    var active=document.querySelector('.view.active[id],section.active[id]');
+    if(active&&active.id&&KNOWN_LOADING_SECTIONS[modeKeyFromView(active.id)])sections.push(modeKeyFromView(active.id));
+    var params=[];
+    if(uid)params.push('userId='+encodeURIComponent(uid));
+    params.push('sections='+encodeURIComponent(sections.join(',')));
+    return '/app/api/section-locks?'+params.join('&');
   }
   function isTrustedAccess(){return window.VexaTrustedAccess===true}
   function clearTrustedLoading(){
@@ -137,7 +144,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     if(loadInFlight)return;
     loadInFlight=1;
     Promise.all([
-      fetch(sectionLocksUrl(),{cache:'no-store'}).then(function(r){return r.json()}),
+      (function(){var key='loading:'+sectionLocksUrl();window.__vexaSectionLocksInflight=window.__vexaSectionLocksInflight||{};if(window.__vexaSectionLocksInflight[key])return window.__vexaSectionLocksInflight[key];var p=fetch(sectionLocksUrl(),{cache:'no-store'}).then(function(r){return r.json()}).finally(function(){delete window.__vexaSectionLocksInflight[key]});window.__vexaSectionLocksInflight[key]=p;return p})(),
       fetch('/app/api/section-loading-meta',{cache:'no-store'}).then(function(r){return r.json()}).catch(function(){return {items:{}}})
     ]).then(function(res){if(isTrustedAccess()){clearTrustedLoading();return}var d=res[0]||{},m=res[1]||{};loadingMeta=m.items||{};modes={};(d.sections||[]).forEach(function(x){if(x.mode==='loading')modes[x.id]=x});paint()}).catch(function(){}).finally(function(){loadInFlight=0});
   }
@@ -146,7 +153,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     notifyLive();
     if(isTrustedAccess()){clearTrustedLoading();return}
     if(document.hidden){pendingEventLoad=1;return}
-    if(window.VexaSectionLocks&&typeof window.VexaSectionLocks.reload==='function')window.VexaSectionLocks.reload();
+    if(window.VexaSectionLocks&&typeof window.VexaSectionLocks.reload==='function')window.VexaSectionLocks.reload(['global-loading','home','connect-bot-card']);
     load();
   }
   function connectEvents(){

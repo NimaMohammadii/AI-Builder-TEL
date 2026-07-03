@@ -4,7 +4,7 @@ import app from './index';
 import './market-routes';
 import './deposit-method-icon-routes';
 import { adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
-import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
+import { clearSectionLockCaches, getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
 import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { getPlayZoneCardVisibility, setPlayZoneCardVisibility } from './play-zone-card-visibility';
@@ -154,7 +154,17 @@ app.get('/app/api/uploaded-image/rps-bot-paper.png', async (c) => getAssetRespon
 app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/scissors', null));
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
-app.get('/app/api/section-locks', async (c) => c.json(await getSectionLocks(c.env), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL }));
+
+function parseSectionLockQuery(sections: string | undefined, section: string | undefined): string[] | null {
+  const raw = [sections || '', section || ''].join(',');
+  const items = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  return items.length ? items : null;
+}
+app.get('/app/api/section-locks', async (c) => {
+  const sections = parseSectionLockQuery(c.req.query('sections'), c.req.query('section'));
+  const userId = String(c.req.query('userId') || '').trim();
+  return c.json(await getSectionLocks(c.env, { sections, cacheKey: userId || 'anonymous' }), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+});
 app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
 app.get('/app/api/play-zone-cards', async (c) => {
   const visibility = await getPlayZoneCardVisibility(c.env);
@@ -216,7 +226,7 @@ app.post('/admin/api/upload-rps-hand-image', async (c) => {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload RPS image' }, 400);
   }
 });
-app.post('/admin/api/section-lock-image', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { const form = await c.req.formData(); const section = normalizeSectionId(String(form.get('sectionId') || '')); const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked')); const file = form.get('image'); if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400); if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400); const version = String(Date.now()); await putR2Image(c.env, sectionImageR2Key(section, kind), file, version); await cleanupLegacyImageKv(c.env, [sectionImageKey(section, kind), sectionImageTypeKey(section, kind), sectionImageVersionKey(section, kind)]); return c.json(await getSectionLocks(c.env)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); } });
+app.post('/admin/api/section-lock-image', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { const form = await c.req.formData(); const section = normalizeSectionId(String(form.get('sectionId') || '')); const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked')); const file = form.get('image'); if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400); if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400); const version = String(Date.now()); await putR2Image(c.env, sectionImageR2Key(section, kind), file, version); clearSectionLockCaches(); await cleanupLegacyImageKv(c.env, [sectionImageKey(section, kind), sectionImageTypeKey(section, kind), sectionImageVersionKey(section, kind)]); return c.json(await getSectionLocks(c.env)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); } });
 app.post('/admin/api/section-locks', zValidator('json', lockSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionLock(c.env, body.sectionId, body.locked)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400); } });
 app.post('/admin/api/play-zone-cards', zValidator('json', playZoneCardVisibilitySchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setPlayZoneCardVisibility(c.env, body.gameId, body.visible), 200, { 'cache-control': 'no-store' }); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update Play Zone card' }, 400); } });
 app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionCodeLock(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400); } });
