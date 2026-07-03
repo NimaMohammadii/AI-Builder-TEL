@@ -75,8 +75,9 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
     games.forEach(function(id){if(!next[id])next[id]=baseGameUrl(id)});
     return next;
   }
-  function refreshFromCache(){var next=mapFromSectionLocks(readCache());writeCache(next);apply(next);startCounters();return next}
+  function refreshFromCache(){if(!isPlayZoneActive())return false;var next=mapFromSectionLocks(readCache());writeCache(next);apply(next);startCounters();return next}
   function refresh(force){
+    if(!isPlayZoneActive())return Promise.resolve(false);
     if(force&&window.VexaSectionLocks&&window.VexaSectionLocks.reload){
       if(refreshInFlight)return refreshInFlight;
       refreshInFlight=window.VexaSectionLocks.reload(window.VexaSectionLocks.playZoneSections?window.VexaSectionLocks.playZoneSections():undefined).then(function(){return refreshFromCache()}).catch(function(){return refreshFromCache()}).finally(function(){refreshInFlight=null});
@@ -97,7 +98,7 @@ export const PLAY_ZONE_IMAGE_REFRESH_SCRIPT = `
   function stopCounters(){if(counterTimer){clearTimeout(counterTimer);counterTimer=null}countersStarted=false}
   function scheduleCounterTick(delay){if(counterTimer)clearTimeout(counterTimer);if(!isPlayZoneActive()){stopCounters();return}counterTimer=setTimeout(function(){counterTimer=null;if(!isPlayZoneActive()){stopCounters();return}tickCounters();scheduleCounterTick(3000)},Math.max(250,delay||3000))}
   function startCounters(){if(countersStarted)return;countersStarted=true;scheduleCounterTick(3000)}
-  dropOldCaches();refresh(false);
+  dropOldCaches();if(isPlayZoneActive())refresh(false);
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"]');if(b)setTimeout(function(){refresh(false);tickCounters()},80)},true);
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&isPlayZoneActive()){tickCounters();startCounters()}else stopCounters()});
   window.VexaRefreshPlayZoneImages=function(){return refresh(false)};
