@@ -22,10 +22,10 @@ export const HOME_SECTION = `<section id="home" class="view active">
         <strong>Referral</strong>
         <span>Invite friends to Vexa</span>
       </button>
-      <button class="home-finance-card home-daily-reward-card" type="button" data-action="open-daily-guide" aria-label="Open daily rewards guide">
+      <button class="home-finance-card home-daily-reward-card" type="button" data-action="open-daily-guide" aria-label="Open rewards page">
         <span class="home-finance-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M16 24h32v28H16z" fill="currentColor" opacity=".34"/><path d="M14 20h36v11H14z" fill="currentColor" opacity=".58"/><path d="M32 20v32" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".9"/><path d="M32 20c-8-2-13-6-11-10 2-4 9 0 11 10Zm0 0c8-2 13-6 11-10-2-4-9 0-11 10Z" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <strong>Daily Rewards</strong>
-        <span>View reward guide</span>
+        <strong>Rewards</strong>
+        <span>View live rewards</span>
       </button>
     </div>
     <div class="home-finance-visual-stack">
