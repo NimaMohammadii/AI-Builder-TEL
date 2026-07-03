@@ -38,7 +38,7 @@ import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
-import { LIVE_WINNERS_SECTION } from './live-winners';
+import { REWARDS_SECTION } from './live-winners';
 import { TTS_SECTION } from './tts';
 import { MARKET_SECTION } from './market';
 import { TOP_PLAYERS_SECTION } from './top-players';
@@ -95,7 +95,7 @@ const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.
 
 const HOME_INTRO_CARD_IMAGE_STYLES = `
 #home .home-intro-card,
-#livewinners .home-intro-card {
+#rewards .home-intro-card {
   min-height: 156px !important;
   display: grid !important;
   place-items: stretch !important;
@@ -110,12 +110,12 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 }
 #home .home-intro-card h2,
 #home .home-intro-card p,
-#livewinners .home-intro-card h2,
-#livewinners .home-intro-card p {
+#rewards .home-intro-card h2,
+#rewards .home-intro-card p {
   display: none !important;
 }
 #home .home-intro-image-frame,
-#livewinners .home-intro-image-frame {
+#rewards .home-intro-image-frame {
   width: 100% !important;
   height: 100% !important;
   min-height: 144px !important;
@@ -128,7 +128,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   box-sizing: border-box !important;
 }
 #home .home-intro-image-frame img.home-intro-image,
-#livewinners .home-intro-image-frame img.home-intro-image {
+#rewards .home-intro-image-frame img.home-intro-image {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
@@ -201,7 +201,7 @@ const SECTIONS = [
   MARKET_SECTION,
   RESULTS_SECTION,
   PLAY_ZONE_SECTION,
-  LIVE_WINNERS_SECTION,
+  REWARDS_SECTION,
   PREDICT_ZONE_SECTION,
   TOP_PLAYERS_SECTION,
   `<div style="display:none">${TTS_SECTION}</div>`,
@@ -302,7 +302,7 @@ export function miniAppShellHtml(): string {
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
-      <button class="tab" data-view="livewinners">Live Winners</button>
+      <button class="tab" data-view="rewards">Rewards</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>
