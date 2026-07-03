@@ -122,7 +122,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     var originalPlayZoneRefresh=window.VexaRefreshPlayZoneImages;
     window.VexaRefreshPlayZoneImages=function(){
       var result=originalPlayZoneRefresh.apply(this,arguments);
-      try{Promise.resolve(result).then(function(){setTimeout(function(){load(true)},0)})}catch(e){setTimeout(function(){load(true)},0)}
+      try{Promise.resolve(result).then(function(refreshed){if(refreshed!==false)setTimeout(function(){load(true)},0)})}catch(e){setTimeout(function(){load(true)},0)}
       return result;
     };
     window.VexaRefreshPlayZoneImages.__adminBgWrapped=true;
