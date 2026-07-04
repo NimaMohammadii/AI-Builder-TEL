@@ -1,17 +1,17 @@
 export const HOME_SLOT_TUNING_SCRIPT = `
 (function(){
-  var busy=false,row=34,restLoop=10,spinLoops=18,totalSpinMs=5200,reelStopGapMs=520;
+  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=5200,reelStopGapMs=520;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
-  function y(i){return 'translate3d(0,'+(-i*row+row)+'px,0)'}
-  function digits(){var h='';for(var c=0;c<34;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
+  function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
+  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
   function tune(){
     if(q('#homeSlotTuningStyle'))return;
     var st=document.createElement('style');st.id='homeSlotTuningStyle';
     st.textContent=[
       '#home .home-slot-number-reel{margin:9px 13px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
-      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:0!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important}',
+      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2.8px)!important}',
       '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#fff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 8px 18px rgba(0,0,0,.55)!important}'
     ].join('');
@@ -21,7 +21,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     tune();
     qa('#home .home-slot-number-reel').forEach(function(reel){
       var strip=q('[data-slot-strip]',reel);if(!strip)return;
-      if(strip.dataset.tuned!=='2'){strip.innerHTML=digits();strip.dataset.tuned='2'}
+      if(strip.dataset.tuned!=='3'){strip.innerHTML=digits();strip.dataset.tuned='3'}
       var v=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
       strip.style.transition='none';strip.style.transform=y(indexFor(v,restLoop));strip.style.willChange='auto';
     });
