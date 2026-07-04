@@ -1,6 +1,8 @@
 export const HOME_SECTION = `<section id="home" class="view active">
   <style>
     #home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:radial-gradient(ellipse 118% 52% at 50% -15%,rgba(92,10,35,.42),transparent 64%),linear-gradient(180deg,rgba(12,2,5,.45),rgba(3,3,3,.08) 54%,rgba(2,2,2,.18))!important;border-radius:0!important}
+    #home.has-admin-background{background:transparent!important;background-color:transparent!important;background-image:none!important}
+    #home.has-admin-background:before{display:none!important;content:none!important}
     #home::-webkit-scrollbar{display:none}
     #home:before{content:'';position:fixed;left:50%;top:calc(88px + env(safe-area-inset-top));width:min(100%,560px);height:calc(100dvh - 172px);transform:translateX(-50%);pointer-events:none;z-index:0;background:linear-gradient(112deg,transparent 0 18%,rgba(0,0,0,.42) 18.35%,rgba(0,0,0,.42) 18.95%,rgba(92,10,35,.18) 19.12%,transparent 21.2%),linear-gradient(112deg,transparent 0 39%,rgba(0,0,0,.36) 39.25%,rgba(0,0,0,.36) 39.9%,rgba(92,10,35,.14) 40.1%,transparent 42%),linear-gradient(112deg,transparent 0 61%,rgba(0,0,0,.40) 61.25%,rgba(0,0,0,.40) 61.85%,rgba(92,10,35,.15) 62.05%,transparent 64.1%),linear-gradient(112deg,transparent 0 78%,rgba(0,0,0,.34) 78.25%,rgba(0,0,0,.34) 78.9%,rgba(92,10,35,.12) 79.1%,transparent 81%);filter:drop-shadow(0 0 18px rgba(92,10,35,.22))}#home>*{position:relative;z-index:1}#home .home-finance-split{align-items:start!important}
     #home .home-finance-actions{display:grid!important;grid-template-rows:118px 118px!important;grid-auto-rows:118px!important;align-content:start!important;gap:10px!important}

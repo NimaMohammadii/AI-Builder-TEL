@@ -105,7 +105,19 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
   function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
-  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
+  function syncHomeAppBackground(sections){
+    var app=document.querySelector('.app');
+    if(!app)return;
+    var home=(Array.isArray(sections)?sections:[]).filter(function(section){return section&&section.id==='home'})[0];
+    if(sectionVisible('home')&&home&&home.backgroundUrl){
+      app.classList.add('has-home-admin-background');
+      app.style.setProperty('--home-admin-section-background-image',cssUrl(home.backgroundUrl));
+    }else{
+      app.classList.remove('has-home-admin-background');
+      app.style.removeProperty('--home-admin-section-background-image');
+    }
+  }
+  function apply(sections){if(!Array.isArray(sections))return;syncHomeAppBackground(sections);sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     var now=Date.now();
     if(!force&&cache&&now-lastLoadAt<LOAD_TTL){apply(cache.sections);return Promise.resolve(cache)}
@@ -142,6 +154,16 @@ export const SECTION_BACKGROUND_STYLES = `
 }
 .view.has-admin-background {
   background-color: #000 !important;
+}
+.app.has-home-admin-background {
+  background-image: var(--home-admin-section-background-image) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+.app.has-home-admin-background #home.has-admin-background {
+  background-image: none !important;
+  background-color: transparent !important;
 }
 .view.has-admin-background::before {
   content: "";
