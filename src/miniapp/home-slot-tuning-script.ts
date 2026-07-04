@@ -11,8 +11,8 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     var st=document.createElement('style');st.id='homeSlotTuningStyle';
     st.textContent=[
       '#home .home-slot-number-reel{margin:9px 13px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
-      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important}',
-      '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2.8px)!important}',
+      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
+      '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2px)!important}',
       '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#fff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 8px 18px rgba(0,0,0,.55)!important}'
     ].join('');
     document.head.appendChild(st);
@@ -23,7 +23,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       var strip=q('[data-slot-strip]',reel);if(!strip)return;
       if(strip.dataset.tuned!=='3'){strip.innerHTML=digits();strip.dataset.tuned='3'}
       var v=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
-      strip.style.transition='none';strip.style.transform=y(indexFor(v,restLoop));strip.style.willChange='auto';
+      strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(v,restLoop));strip.style.willChange='auto';
     });
   }
   function spin(){
@@ -35,9 +35,9 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       var current=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
       var final=Math.floor(Math.random()*10);var loops=spinLoops+i*2;var finalIndex=indexFor(final,restLoop+loops);
       reel.setAttribute('data-slot-value',String(final));
-      strip.style.transition='none';strip.style.transform=y(indexFor(current,restLoop));strip.style.willChange='transform';reel.classList.add('is-spinning');
-      setTimeout(function(){strip.style.transition='transform '+(totalSpinMs+i*reelStopGapMs)+'ms linear';strip.style.transform=y(finalIndex)},30+i*60);
-      setTimeout(function(){strip.style.transition='none';strip.style.transform=y(indexFor(final,restLoop));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){if(btn)btn.classList.remove('is-spinning');busy=false}},totalSpinMs+i*reelStopGapMs+260);
+      strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(current,restLoop));strip.style.willChange='transform';reel.classList.add('is-spinning');
+      setTimeout(function(){strip.style.setProperty('transition','transform '+(totalSpinMs+i*reelStopGapMs)+'ms linear','important');strip.style.transform=y(finalIndex)},30+i*60);
+      setTimeout(function(){strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(final,restLoop));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){if(btn)btn.classList.remove('is-spinning');busy=false}},totalSpinMs+i*reelStopGapMs+260);
     });
   }
   document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeSlotSpinButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();spin()}},true);
