@@ -26,6 +26,10 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-live-winner-row strong{display:block!important;color:#fff!important;font-size:13px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
     #home .home-live-winner-row span{display:block!important;margin-top:3px!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:750!important}
     #home .home-live-winner-row b{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
+    #home .home-live-winners-card{display:none!important}
+    #home .home-lottery-slot-card{width:100%!important;min-height:302px!important;margin:10px 0 14px!important;border:0!important;outline:0!important;border-radius:30px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;backdrop-filter:blur(14px) saturate(1.22)!important;-webkit-backdrop-filter:blur(14px) saturate(1.22)!important;overflow:hidden!important;padding:0!important;position:relative!important;box-sizing:border-box!important}
+    #home .home-lottery-slot-card:before,#home .home-lottery-slot-card:after{display:none!important;content:none!important}
+    #home .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:30px!important;background:transparent!important;box-shadow:none!important;opacity:1!important}
   </style>
   <section class="home-finance-split">
     <div class="home-finance-actions">
@@ -41,41 +45,8 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </button>
     </div>
     <div class="home-finance-visual-stack">
-      <section class="home-live-winners-card" aria-label="Live winner rewards">
-        <div class="home-live-winners-copy"><h2>Live Winners</h2><p>Latest lucky rewards from active players.</p>
-          <div class="home-live-winners-list">
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@NikaWin</strong><span>Lucky Zone</span></div><b>+1.25 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@ParsaFlow</strong><span>Lucky Zone</span></div><b>+0.84 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@MinaLucky</strong><span>Lucky Zone</span></div><b>+0.47 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@ArianTon</strong><span>Lucky Zone</span></div><b>+2.10 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@SabaPlay</strong><span>Lucky Zone</span></div><b>+0.66 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@RezaMax</strong><span>Lucky Zone</span></div><b>+1.72 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@DaryaBet</strong><span>Lucky Zone</span></div><b>+0.93 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@KianX</strong><span>Lucky Zone</span></div><b>+3.40 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@AvaTon</strong><span>Lucky Zone</span></div><b>+0.58 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@PouyaWin</strong><span>Lucky Zone</span></div><b>+1.05 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@NoraLucky</strong><span>Lucky Zone</span></div><b>+0.77 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@ShayanPro</strong><span>Lucky Zone</span></div><b>+2.45 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@MelikaGold</strong><span>Lucky Zone</span></div><b>+1.18 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@ArmanKing</strong><span>Lucky Zone</span></div><b>+0.52 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@RahaMoon</strong><span>Lucky Zone</span></div><b>+4.20 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@NavidTon</strong><span>Lucky Zone</span></div><b>+0.69 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@SetiWin</strong><span>Lucky Zone</span></div><b>+1.33 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@MahanPlay</strong><span>Lucky Zone</span></div><b>+2.80 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@SinaFlow</strong><span>Lucky Zone</span></div><b>+0.91 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@NegarBet</strong><span>Lucky Zone</span></div><b>+1.60 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@RadinX</strong><span>Lucky Zone</span></div><b>+0.44 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@MatinTon</strong><span>Lucky Zone</span></div><b>+3.15 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@Sara88</strong><span>Lucky Zone</span></div><b>+0.73 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@AmirMax</strong><span>Lucky Zone</span></div><b>+1.95 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@TinaWin</strong><span>Lucky Zone</span></div><b>+0.88 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@HanaPlay</strong><span>Lucky Zone</span></div><b>+2.25 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@BardiaPro</strong><span>Lucky Zone</span></div><b>+0.56 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@SorenBet</strong><span>Lucky Zone</span></div><b>+1.48 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@YasminTon</strong><span>Lucky Zone</span></div><b>+0.62 TON</b></article>
-            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@AliLucky</strong><span>Lucky Zone</span></div><b>+3.75 TON</b></article>
-          </div>
-        </div>
+      <section class="home-lottery-slot-card" aria-label="Lottery slot image">
+        <img class="home-lottery-slot-image" src="/app/api/home-lottery-slot.png?v=home-lottery" alt="" decoding="async" loading="eager"/>
       </section>
     </div>
   </section>

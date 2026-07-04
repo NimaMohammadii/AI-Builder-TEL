@@ -4,6 +4,7 @@ import { isAdminSession } from './admin-auth';
 
 const KEY = 'slot-frame';
 const SLOT_SPIN_AUDIO_KEY = 'slot-spin-audio';
+const HOME_LOTTERY_SLOT_KEY = 'home-lottery-slot';
 const CONTROL_PREFIX = 'slot-control/';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const DICE_ASSET_PREFIX = 'dice-asset/';
@@ -91,6 +92,10 @@ function slotSymbolUrl(id: SlotSymbolId, version: string): string {
 
 function slotSpinAudioUrl(version: string): string {
   return `/app/api/uploaded-audio/slot-spin?v=${version}`;
+}
+
+function homeLotterySlotUrl(version: string): string {
+  return `/app/api/home-lottery-slot.png?v=${version}`;
 }
 
 function slotControlUrl(id: SlotControlId, version: string): string {
@@ -216,6 +221,42 @@ app.get('/app/api/uploaded-image/slot-frame.png', async (c) => {
       'content-length': String(head.size),
     },
   });
+});
+
+
+app.get('/app/api/home-lottery-slot-meta', async (c) => {
+  const head = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  const version = head?.customMetadata?.version || '1';
+  return c.json({ ok: true, hasImage: Boolean(head), url: homeLotterySlotUrl(version), version }, 200, { 'cache-control': 'no-store' });
+});
+
+app.get('/app/api/home-lottery-slot.png', async (c) => {
+  const head = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  if (!head) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  const object = await c.env.ASSETS.get(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'content-length': String(head.size),
+    },
+  });
+});
+
+app.post('/admin/api/upload-home-lottery-slot', async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(HOME_LOTTERY_SLOT_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, url: homeLotterySlotUrl(version), version }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload lottery slot image' }, 400, { 'cache-control': 'no-store' });
+  }
 });
 
 app.get('/app/api/slot-symbols', async (c) => {
