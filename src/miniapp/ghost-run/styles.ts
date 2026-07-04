@@ -5,18 +5,15 @@ body:has(#ghostrun.active),
 body:has(#ghostrun.active) .app,
 body:has(#ghostrun.active) .content,
 body:has(#ghostrun.active) .view.active {
-  background: #000 !important;
-  background-color: #000 !important;
+  background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
 body:has(#ghostrun.active)::before,
 body:has(#ghostrun.active)::after,
 body:has(#ghostrun.active) .app::before,
 body:has(#ghostrun.active) .app::after {
-  display: none !important;
-  background: #000 !important;
-  background-color: #000 !important;
-  background-image: none !important;
+  display: block !important;
 }
 body:has(#ghostrun.active) .tabs {
   display: none !important;
@@ -24,13 +21,13 @@ body:has(#ghostrun.active) .tabs {
 body:has(#ghostrun.active) .top {
   position: relative;
   z-index: 20;
-  background: #000 !important;
-  background-color: #000 !important;
+  background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
 #ghostrun.ghost-run-view {
   min-height: 100% !important;
-  background: #000 !important;
+  background: transparent !important;
   padding: 0 !important;
   overflow: hidden !important;
   color: #fff !important;
@@ -42,7 +39,7 @@ body:has(#ghostrun.active) .top {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #000;
+  background: transparent;
   overflow: hidden;
   isolation: isolate;
 }
@@ -56,7 +53,7 @@ body:has(#ghostrun.active) .top {
   min-height: 330px;
   overflow: hidden;
   border-radius: 0;
-  background: #000;
+  background: transparent;
   box-shadow: none;
 }
 #ghostrun .ghost-run-sky {
@@ -501,8 +498,8 @@ body:has(#ghostrun.active) .top {
 /* Ghost Run uploaded image replacement layer. */
 #ghostrun .ghost-run-scene,
 #ghostrun .ghost-run-sky {
-  background: #000 !important;
-  background-color: #000 !important;
+  background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
 #ghostrun .ghost-run-uploaded-background {
