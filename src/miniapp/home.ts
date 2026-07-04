@@ -9,16 +9,15 @@ export const HOME_SECTION = `<section id="home" class="view active">
     #home .home-finance-icon svg{width:24px!important;height:24px!important;display:block!important;filter:drop-shadow(0 6px 12px rgba(255,255,255,.08))!important}
     #home .home-finance-card strong{display:block!important;font-size:18px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.055em!important;text-align:center!important}
     #home .home-finance-card span:not(.home-finance-icon){display:block!important;font-size:11px!important;line-height:1.25!important;font-weight:650!important;color:rgba(255,255,255,.58)!important;text-align:center!important}
-    #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:246px!important;gap:10px!important;align-items:start!important}
+    #home .home-finance-visual-stack{min-width:0!important;display:grid!important;grid-template-rows:auto!important;gap:10px!important;align-items:start!important}
     #home .home-finance-visual{appearance:none!important;-webkit-appearance:none!important;width:100%!important;height:184px!important;min-height:184px!important;max-height:184px!important;margin:24px 0 0 0!important;border:0!important;outline:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:transparent!important;pointer-events:none!important}
     #home .home-finance-visual:before,#home .home-finance-visual:after{display:none!important;content:none!important}
     #home .home-finance-visual img{pointer-events:none!important;width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.26))!important}
     #home .home-daily-reward-card{cursor:pointer!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 42px rgba(0,0,0,.24)!important}
 
-    #home .home-live-winners-card{margin:10px 0 14px!important;border:1px solid rgba(92,10,35,.34)!important;border-radius:30px!important;background:linear-gradient(145deg,rgba(92,10,35,.18),rgba(255,255,255,.024) 46%,rgba(0,0,0,.18))!important;color:#fff!important;box-shadow:0 22px 52px rgba(0,0,0,.34),0 0 0 1px rgba(0,0,0,.24),0 0 34px rgba(92,10,35,.12),inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(3px) saturate(1.08)!important;-webkit-backdrop-filter:blur(3px) saturate(1.08)!important;overflow:hidden!important;padding:0!important;position:relative!important}
-    #home .home-live-winners-hero{height:168px!important;display:grid!important;place-items:center!important;background:transparent!important;overflow:visible!important;margin-top:-8px!important}
-    #home .home-live-winners-hero img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.28))!important}
-    #home .home-live-winners-copy{padding:0 18px 16px!important;margin-top:-6px!important}
+    #home .home-live-winners-card{margin:10px 0 14px!important;border:0!important;border-radius:30px!important;background:rgba(255,255,255,.026)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 16px 42px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px) saturate(1.14)!important;-webkit-backdrop-filter:blur(3px) saturate(1.14)!important;overflow:hidden!important;padding:3px!important;position:relative!important;box-sizing:border-box!important}
+    #home .home-live-winners-card:before{content:""!important;position:absolute!important;inset:3px!important;border-radius:27px!important;background:linear-gradient(145deg,rgba(92,10,35,.18),rgba(255,255,255,.024) 46%,rgba(0,0,0,.16))!important;pointer-events:none!important}
+    #home .home-live-winners-copy{position:relative!important;z-index:1!important;padding:16px 15px 15px!important;margin:0!important}
     #home .home-live-winners-copy h2{margin:0 0 6px!important;font-size:24px!important;line-height:1.04!important;font-weight:900!important;letter-spacing:-.055em!important;color:#fff!important}
     #home .home-live-winners-copy p{margin:0!important;color:rgba(255,255,255,.60)!important;font-size:13px!important;line-height:1.42!important;font-weight:650!important}
     #home .home-live-winners-list{display:grid!important;gap:8px!important;margin-top:8px!important}
@@ -42,20 +41,15 @@ export const HOME_SECTION = `<section id="home" class="view active">
       </button>
     </div>
     <div class="home-finance-visual-stack">
-      <div class="home-finance-visual" aria-hidden="true">
-        <img src="/app/api/home-finance-image.png" alt="" decoding="async"/>
-      </div>
-    </div>
-  </section>
-
-  <section class="home-live-winners-card" aria-label="Live winner rewards">
-    <div class="home-live-winners-hero" aria-hidden="true"><img src="/app/api/home-finance-image.png" alt="" decoding="async" loading="eager"/></div>
-    <div class="home-live-winners-copy"><h2>Live Winners</h2><p>Latest lucky rewards from active players.</p>
-      <div class="home-live-winners-list">
-        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@NikaWin</strong><span>Lucky Zone</span></div><b>+1.25 TON</b></article>
-        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@ParsaFlow</strong><span>Lucky Zone</span></div><b>+0.84 TON</b></article>
-        <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@MinaLucky</strong><span>Lucky Zone</span></div><b>+0.47 TON</b></article>
-      </div>
+      <section class="home-live-winners-card" aria-label="Live winner rewards">
+        <div class="home-live-winners-copy"><h2>Live Winners</h2><p>Latest lucky rewards from active players.</p>
+          <div class="home-live-winners-list">
+            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/telegram.jpg" alt="" decoding="async"/><div><strong>@NikaWin</strong><span>Lucky Zone</span></div><b>+1.25 TON</b></article>
+            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/durov.jpg" alt="" decoding="async"/><div><strong>@ParsaFlow</strong><span>Lucky Zone</span></div><b>+0.84 TON</b></article>
+            <article class="home-live-winner-row"><img src="https://t.me/i/userpic/320/TelegramTips.jpg" alt="" decoding="async"/><div><strong>@MinaLucky</strong><span>Lucky Zone</span></div><b>+0.47 TON</b></article>
+          </div>
+        </div>
+      </section>
     </div>
   </section>
 
