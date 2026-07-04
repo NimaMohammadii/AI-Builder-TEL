@@ -105,7 +105,9 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
   function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
-  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
+  function homeBackgroundSection(sections){for(var i=0;i<sections.length;i++){if(sections[i]&&sections[i].id==='home')return sections[i]}return null}
+  function playZoneMirroredHomeBackground(sections){var home=homeBackgroundSection(sections);return {id:'playzone',backgroundUrl:home&&home.backgroundUrl?home.backgroundUrl:null}}
+  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(section&&section.id==='playzone')return;if(shouldApplySection(section))applySectionBackground(section)});if(sectionVisible('playzone'))applySectionBackground(playZoneMirroredHomeBackground(sections))}
   function load(force){
     var now=Date.now();
     if(!force&&cache&&now-lastLoadAt<LOAD_TTL){apply(cache.sections);return Promise.resolve(cache)}
