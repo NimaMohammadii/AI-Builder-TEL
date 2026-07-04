@@ -1,5 +1,7 @@
 export const HOME_IMAGE_VERSION_SCRIPT = `
 (function(){
+  var latestSlotUrl='';
+  var slotLoading=false;
   var css = [
     '#home #homeLuckyCodeSection .home-lottery-slot-card,#home .home-lucky-card .home-lottery-slot-card{height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border-radius:22px!important;overflow:hidden!important}',
     '#home #homeLuckyCodeSection .home-lottery-slot-image,#home .home-lucky-card .home-lottery-slot-image{height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:22px!important}',
@@ -34,6 +36,22 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     box.classList.toggle('is-blue',tone==='blue');
     box.classList.toggle('is-bronze',tone==='bronze');
   }
+  function applySlotImage(url){
+    if(!url)return;
+    latestSlotUrl=url;
+    document.querySelectorAll('#home .home-lottery-slot-image').forEach(function(img){
+      if(img.getAttribute('src')!==url)img.setAttribute('src',url);
+    });
+  }
+  function refreshSlotImage(){
+    if(slotLoading)return;
+    slotLoading=true;
+    fetch('/app/api/home-lottery-slot-meta?ts='+Date.now(),{credentials:'same-origin',cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(j){if(j&&j.url)applySlotImage(j.url)})
+      .catch(function(){})
+      .finally(function(){slotLoading=false});
+  }
   function apply(){
     var style = document.getElementById('home-lottery-slot-size-fix');
     if(!style){style=document.createElement('style');style.id='home-lottery-slot-size-fix';document.head.appendChild(style)}
@@ -43,6 +61,8 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     ensure(root.querySelector('.home-live-winner-card:nth-child(1)'),'red');
     ensure(root.querySelector('.home-live-winner-card:nth-child(2)'),'blue');
     ensure(root.querySelector('.home-live-winner-card:nth-child(3)'),'bronze');
+    applySlotImage(latestSlotUrl);
+    refreshSlotImage();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
   var tries=0;var timer=setInterval(function(){apply();tries++;if(tries>12)clearInterval(timer)},250);
