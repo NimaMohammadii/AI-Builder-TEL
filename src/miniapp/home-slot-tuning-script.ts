@@ -13,8 +13,9 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '#home .home-slot-number-reel{margin:5px 13px 9px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important}',
       '#home .home-slot-number-reel:first-child{transform:translateX(2px)!important}',
       '#home .home-slot-number-reel:nth-child(2){transform:translateX(3px)!important}',
+      '#home .home-slot-number-reel:nth-child(4){transform:translateX(-3px)!important}',
       '#home .home-slot-number-reel:last-child{transform:translateX(-5px)!important}',
-      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:48%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
+      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2px)!important}',
       '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#fff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 8px 18px rgba(0,0,0,.55)!important}'
     ].join('');
