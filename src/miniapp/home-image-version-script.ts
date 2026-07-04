@@ -2,8 +2,8 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
 (function(){
   var latest='',loading=false;
   var css=[
-    '#home .home-lottery-slot-card{height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border-radius:22px!important;overflow:hidden!important}',
-    '#home .home-lottery-slot-image{height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:22px!important}',
+    '#home .home-lottery-slot-card{width:100%!important;height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border:0!important;outline:0!important;border-radius:22px!important;overflow:hidden!important;padding:0!important;position:relative!important;box-sizing:border-box!important}',
+    '#home .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;box-shadow:none!important}',
     '#home .home-lottery-slot-image[src*="v=home-lottery"]{opacity:0!important}',
     '#home .home-live-winners-list{max-height:520px!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain!important;padding:0 2px 16px!important;scroll-padding-bottom:16px!important;box-sizing:border-box!important}',
     '#home .home-live-winner-card{position:relative!important;overflow:hidden!important}',
