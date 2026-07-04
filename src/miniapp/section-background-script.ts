@@ -105,24 +105,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
   function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
-  function applyHomeBackgroundGlobally(sections){
-    if(!Array.isArray(sections))return;
-    var home=null;
-    sections.forEach(function(section){if(section&&section.id==='home')home=section});
-    var app=document.querySelector('.app');
-    var url=home&&home.backgroundUrl;
-    [document.documentElement,document.body,app].forEach(function(el){
-      if(!el)return;
-      if(url){
-        el.classList.add('has-home-global-background');
-        el.style.setProperty('--home-global-background-image',cssUrl(url));
-      }else{
-        el.classList.remove('has-home-global-background');
-        el.style.removeProperty('--home-global-background-image');
-      }
-    });
-  }
-  function apply(sections){if(!Array.isArray(sections))return;applyHomeBackgroundGlobally(sections);sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
+  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     var now=Date.now();
     if(!force&&cache&&now-lastLoadAt<LOAD_TTL){apply(cache.sections);return Promise.resolve(cache)}
@@ -159,34 +142,6 @@ export const SECTION_BACKGROUND_STYLES = `
 }
 .view.has-admin-background {
   background-color: #000 !important;
-}
-html.has-home-global-background {
-  background: #000 !important;
-}
-body.has-home-global-background {
-  background-color: #000 !important;
-  background-image: var(--home-global-background-image) !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-.app.has-home-global-background {
-  background: transparent !important;
-}
-body.has-home-global-background::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -3;
-  background-image: var(--home-global-background-image) !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-body.has-home-global-background::after,
-.app.has-home-global-background::before,
-.app.has-home-global-background::after {
-  display: none !important;
 }
 .view.has-admin-background::before {
   content: "";
