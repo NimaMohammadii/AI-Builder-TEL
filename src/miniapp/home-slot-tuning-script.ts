@@ -1,6 +1,6 @@
 export const HOME_SLOT_TUNING_SCRIPT = `
 (function(){
-  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=5200,reelStopGapMs=520;
+  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
@@ -17,7 +17,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '#home .home-slot-number-reel:last-child{transform:translateX(-5px)!important}',
       '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2px)!important}',
-      '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#fff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 8px 18px rgba(0,0,0,.55)!important}'
+      '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#ffeaf0!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 0 10px rgba(90,8,26,.32),0 8px 18px rgba(0,0,0,.55)!important}'
     ].join('');
     document.head.appendChild(st);
   }
