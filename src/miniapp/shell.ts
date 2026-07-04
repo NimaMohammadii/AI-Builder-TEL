@@ -96,7 +96,9 @@ const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.
 const HOME_INTRO_CARD_IMAGE_STYLES = `
 #home .home-intro-card,
 #rewards .home-intro-card {
-  min-height: 156px !important;
+  height: 104px !important;
+  min-height: 104px !important;
+  max-height: 104px !important;
   display: grid !important;
   place-items: stretch !important;
   padding: 6px !important;
@@ -118,7 +120,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 #rewards .home-intro-image-frame {
   width: 100% !important;
   height: 100% !important;
-  min-height: 144px !important;
+  min-height: 92px !important;
   display: block !important;
   overflow: hidden !important;
   border: 1px solid rgba(255,255,255,.18) !important;
@@ -132,7 +134,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   display: block !important;
   width: 100% !important;
   height: 100% !important;
-  min-height: 144px !important;
+  min-height: 92px !important;
   object-fit: cover !important;
   object-position: center !important;
   border-radius: 23px !important;
