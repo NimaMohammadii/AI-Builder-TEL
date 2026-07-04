@@ -4,7 +4,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
-  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
+  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit" data-home-slot-digit="'+n+'"><img class="home-slot-number-digit-image" src="/app/api/home-slot-digit/'+n+'.png?v=home-slot-digit" alt="" decoding="async" loading="eager"/></span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
   function tune(){
     if(q('#homeSlotTuningStyle'))return;
@@ -17,7 +17,8 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '#home .home-slot-number-reel:last-child{transform:translateX(-5px)!important}',
       '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2px)!important}',
-      '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:950!important;color:#ffeaf0!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;text-shadow:0 1px 1px rgba(0,0,0,.62),0 0 10px rgba(90,8,26,.32),0 8px 18px rgba(0,0,0,.55)!important}'
+      '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;color:transparent!important;background:none!important;text-shadow:none!important}',
+      '#home .home-slot-number-digit-image{width:100%!important;height:100%!important;display:block!important;object-fit:contain!important;object-position:center!important}'
     ].join('');
     document.head.appendChild(st);
   }

@@ -5,6 +5,7 @@ import { isAdminSession } from './admin-auth';
 const KEY = 'slot-frame';
 const SLOT_SPIN_AUDIO_KEY = 'slot-spin-audio';
 const HOME_LOTTERY_SLOT_KEY = 'home-lottery-slot';
+const HOME_SLOT_DIGIT_PREFIX = 'home-slot-digit/';
 const CONTROL_PREFIX = 'slot-control/';
 const SYMBOL_PREFIX = 'slot-symbol/';
 const DICE_ASSET_PREFIX = 'dice-asset/';
@@ -30,6 +31,8 @@ const SLOT_CONTROLS = [
 ] as const;
 
 const SLOT_CONTROL_IDS = new Set(SLOT_CONTROLS.map((control) => control.id));
+
+const HOME_SLOT_DIGITS = Array.from({ length: 10 }, (_, digit) => ({ digit, label: `Digit ${digit} / عدد ${digit}` }));
 
 const DICE_ASSETS = [
   { id: 'roll', label: 'Roll Dice button / دکمه رول دایس', hint: 'Replaces the main Roll Dice button.' },
@@ -98,6 +101,19 @@ function homeLotterySlotUrl(version: string): string {
   return `/app/api/home-lottery-slot.png?v=${version}`;
 }
 
+function homeSlotDigitKey(digit: number): string {
+  return `${HOME_SLOT_DIGIT_PREFIX}${digit}`;
+}
+
+function homeSlotDigitUrl(digit: number, version: string): string {
+  return `/app/api/home-slot-digit/${digit}.png?v=${version}`;
+}
+
+function cleanHomeSlotDigit(value: string): number | null {
+  const digit = Number(value.replace(/\.png$/i, ''));
+  return Number.isInteger(digit) && digit >= 0 && digit <= 9 ? digit : null;
+}
+
 function slotControlUrl(id: SlotControlId, version: string): string {
   return `/app/api/uploaded-image/slot-controls/${id}?v=${version}`;
 }
@@ -135,6 +151,21 @@ async function diceAssetPayload(env: Env) {
     };
   }));
   return assets;
+}
+
+async function homeSlotDigitPayload(env: Env) {
+  const digits = await Promise.all(HOME_SLOT_DIGITS.map(async (item) => {
+    const head = await env.ASSETS.head(homeSlotDigitKey(item.digit)).catch(() => null);
+    const version = head?.customMetadata?.version || '1';
+    return {
+      digit: item.digit,
+      label: item.label,
+      hasImage: Boolean(head),
+      imageUrl: head ? homeSlotDigitUrl(item.digit, version) : null,
+      version,
+    };
+  }));
+  return digits;
 }
 
 async function symbolPayload(env: Env) {
@@ -177,6 +208,23 @@ async function diceAssetResponse(env: Env, value: string): Promise<Response> {
   if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'content-length': String(head.size),
+    },
+  });
+}
+
+async function homeSlotDigitResponse(env: Env, value: string): Promise<Response> {
+  const digit = cleanHomeSlotDigit(value);
+  if (digit === null) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const key = homeSlotDigitKey(digit);
+  const head = await env.ASSETS.head(key).catch(() => null);
+  if (!head) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  const object = await env.ASSETS.get(key).catch(() => null);
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, {
     headers: {
       'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
@@ -256,6 +304,36 @@ app.post('/admin/api/upload-home-lottery-slot', async (c) => {
     return c.json({ ok: true, url: homeLotterySlotUrl(version), version }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload lottery slot image' }, 400, { 'cache-control': 'no-store' });
+  }
+});
+
+
+app.get('/app/api/home-slot-digits', async (c) => {
+  return c.json({ ok: true, digits: await homeSlotDigitPayload(c.env) }, 200, { 'cache-control': 'no-store' });
+});
+
+app.get('/app/api/home-slot-digit/:digit', async (c) => {
+  return homeSlotDigitResponse(c.env, c.req.param('digit'));
+});
+
+app.get('/app/api/home-slot-digit/:digit.png', async (c) => {
+  return homeSlotDigitResponse(c.env, c.req.param('digit'));
+});
+
+app.post('/admin/api/upload-home-slot-digit/:digit', async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
+  const digit = cleanHomeSlotDigit(c.req.param('digit'));
+  if (digit === null) return c.json({ error: 'Invalid digit.' }, 400, { 'cache-control': 'no-store' });
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(homeSlotDigitKey(digit), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, digit, url: homeSlotDigitUrl(digit, version), version }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload slot digit image' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
