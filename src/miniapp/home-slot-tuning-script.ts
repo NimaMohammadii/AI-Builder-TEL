@@ -10,7 +10,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     if(q('#homeSlotTuningStyle'))return;
     var st=document.createElement('style');st.id='homeSlotTuningStyle';
     st.textContent=[
-      '#home .home-slot-number-reel{margin:5px 13px 9px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important}',
+      '#home .home-slot-number-reel{margin:5px 13px 7px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important}',
       '#home .home-slot-number-reel:first-child{transform:translateX(1px)!important}',
       '#home .home-slot-number-reel:nth-child(2){transform:translateX(0px)!important}',
       '#home .home-slot-number-reel:nth-child(4){transform:translateX(-2px)!important}',
