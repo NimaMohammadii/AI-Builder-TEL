@@ -4,6 +4,21 @@ import { PREDICT_HISTORY_GUARD_SCRIPT as PREDICT_HISTORY_SCRIPT } from './predic
 
 const PREDICT_SETTINGS_SCRIPT = `
 (function(){
+  if(!window.__vexaPredictLazyFetchGuard){
+    window.__vexaPredictLazyFetchGuard=1;
+    (function(){
+      var nativeFetch=window.fetch&&window.fetch.bind(window);
+      var waiting=[];
+      if(!nativeFetch)return;
+      function isPredictApi(input){var url=String((input&&input.url)||input||'');return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0}
+      function isPredictActive(){var root=document.getElementById('predictzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
+      function flush(){if(!isPredictActive()||!waiting.length)return;var jobs=waiting.splice(0);jobs.forEach(function(job){nativeFetch(job.input,job.init).then(job.resolve,job.reject)})}
+      window.fetch=function(input,init){if(isPredictApi(input)&&!isPredictActive()){return new Promise(function(resolve,reject){waiting.push({input:input,init:init,resolve:resolve,reject:reject})})}return nativeFetch(input,init)};
+      document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view="predictzone"],[data-view="predict"]'):null;if(target){setTimeout(flush,80);setTimeout(flush,260);setTimeout(flush,700)}},true);
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(flush,80)});
+      if(window.MutationObserver){var root=document.getElementById('predictzone');if(root)new MutationObserver(flush).observe(root,{attributes:true,attributeFilter:['class']})}
+    })();
+  }
   var CACHE_MS=60000;
   var lastLoadAt=0;
   var inFlight=null;
