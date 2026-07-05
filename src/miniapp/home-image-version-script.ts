@@ -19,9 +19,8 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     '#home #homeLuckyCodeSection .home-live-winner-card:nth-child(-n+3) .home-live-winner-amount,#home .home-lucky-card .home-live-winner-card:nth-child(-n+3) .home-live-winner-amount{padding-right:28px!important}'
   ].join('');
   function style(){var s=document.getElementById('home-lottery-slot-size-fix');if(!s){s=document.createElement('style');s.id='home-lottery-slot-size-fix';document.head.appendChild(s)}if(s.textContent!==css)s.textContent=css}
-  function old(){document.querySelectorAll('#home #homeLuckyCodeSection .home-lottery-slot-image,#home .home-lucky-card .home-lottery-slot-image').forEach(function(i){if((i.getAttribute('src')||'').indexOf('v=home-lottery')>-1)i.removeAttribute('src')})}
   function stars(card,tone){if(!card)return;var b=card.querySelector('.vexa-premium-corner');if(!b){b=document.createElement('div');b.className='vexa-premium-corner';for(var i=0;i<5;i++){var x=document.createElement('span');x.className='vexa-premium-star';x.textContent='★';b.appendChild(x)}card.appendChild(b)}b.classList.toggle('is-blue',tone==='blue');b.classList.toggle('is-bronze',tone==='bronze')}
-  function apply(){style();old();var r=document.querySelector('#home #homeLuckyCodeSection')||document.querySelector('#home .home-lucky-card');if(!r)return;stars(r.querySelector('.home-live-winner-card:nth-child(1)'),'red');stars(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue');stars(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')}
+  function apply(){style();var r=document.querySelector('#home #homeLuckyCodeSection')||document.querySelector('#home .home-lucky-card');if(!r)return;stars(r.querySelector('.home-live-winner-card:nth-child(1)'),'red');stars(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue');stars(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
   window.VexaRefreshHomeLotteryChrome=apply;
 })();
