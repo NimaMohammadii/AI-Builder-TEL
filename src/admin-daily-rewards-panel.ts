@@ -5,23 +5,19 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
   function q(id){return document.getElementById(id)}
   function el(tag,cls){var node=document.createElement(tag);if(cls)node.className=cls;return node}
   function ensurePanel(){
-    var menu=document.getElementById('adminMenu')||document.querySelector('.menu-panel');
-    var sections=document.querySelector('main')||(document.querySelector('.admin-section')&&document.querySelector('.admin-section').parentNode);
+    var menu=document.querySelector('.menu-panel');
+    var sections=document.querySelector('.admin-section')&&document.querySelector('.admin-section').parentNode;
     if(!menu||!sections||q('sectionDailyRewards'))return;
     var btn=document.createElement('button');
-    btn.id='dailyRewardsMenuItem';
     btn.className='menu-item';
     btn.type='button';
     btn.dataset.section='DailyRewards';
     btn.innerHTML='<strong>Daily Rewards</strong><span>Prizes & Missions</span>';
-    var insertAfter=document.getElementById('aiUsersMenu')||menu.querySelector('[data-user-menu="game_bot"]')||menu.querySelector('[data-section="users"]');
-    if(insertAfter&&insertAfter.parentNode===menu)insertAfter.insertAdjacentElement('afterend',btn);else menu.insertBefore(btn,menu.firstChild);
+    menu.appendChild(btn);
     var section=document.createElement('section');
     section.id='sectionDailyRewards';
-    section.className='section admin-section daily-rewards-admin-section';
+    section.className='admin-section';
     section.hidden=true;
-    section.dataset.title='Daily Rewards';
-    section.dataset.subtitle='Prize images and six missions for each daily reward.';
     section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Upload the large animated top reward image and one prize image for each of the 7 daily cards, then choose 6 missions for each day.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div class="daily-rewards-admin-card daily-rewards-admin-hero"><h3>Reward page top image</h3><p>Upload the large image shown at the top of the Rewards / Daily Rewards page. It floats softly up and down in the mini app.</p><div class="daily-rewards-hero-preview"><img id="dailyRewardsHeroPreview" src="/app/api/daily-rewards-hero-image.png?t='+Date.now()+'" alt="Reward top preview" onerror="this.style.display='none'"></div><div class="daily-rewards-admin-hero-form"><input id="dailyRewardsHeroFile" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"/><button class="ghost" type="button" id="dailyRewardsHeroUpload">Upload top image</button></div></div><div class="daily-rewards-admin-card"><h3>Daily Prize card images</h3><p>Each row controls the image shown on that day card in Home → Daily Prize.</p><div id="dailyRewardsDayImageForms" class="daily-rewards-admin-images"></div></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
     sections.appendChild(section);
     renderImageForms();
@@ -41,11 +37,6 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
     if(panel){panel.hidden=false;panel.classList.add('active')}
     document.querySelectorAll('.menu-item').forEach(function(item){item.classList.remove('active')});
     if(btn)btn.classList.add('active');
-    var title=q('adminTitle'),subtitle=q('adminSubtitle'),menu=q('adminMenu');
-    if(title)title.textContent='Daily Rewards';
-    if(subtitle)subtitle.textContent='Prize images and six missions for each daily reward.';
-    if(menu)menu.hidden=true;
-    window.scrollTo({top:0,behavior:'smooth'});
   }
   function injectStyle(){
     if(q('dailyRewardsAdminStyle'))return;
@@ -250,8 +241,5 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
   }
   function escapeHtml(value){return String(value||'').replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]||ch})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel);else ensurePanel();
-  document.addEventListener('click',function(){setTimeout(ensurePanel,80)},true);
-  setTimeout(ensurePanel,300);
-  setTimeout(ensurePanel,1200);
 })();
 </script>`;
