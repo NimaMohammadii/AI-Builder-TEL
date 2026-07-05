@@ -1,16 +1,16 @@
 export const DAILY_REWARDS_INFO_SCRIPT = `
 (function(){
   var items=[
-    {day:1,title:'TON Starter',en:'Claim 0.05 TON as a guaranteed starter reward.'},
-    {day:2,title:'Loss Cashback',en:'Get 20% cashback on your losses for 24 hours after claiming.'},
-    {day:3,title:'TON Boost',en:'Claim 0.30 TON as a guaranteed balance boost.'},
-    {day:4,title:'Risk Free x3',en:'Receive 3 risk-free plays for selected games.'},
-    {day:5,title:'Free Slots',en:'Get 2 free slot plays. Wins stay yours and losses do not deduct balance.'},
-    {day:6,title:'Double Win Day',en:'Unlock a stronger reward day with extra winning potential.'},
-    {day:7,title:'Weekly Mega TON',en:'Reach the final day for the biggest weekly reward chance.'}
+    {day:1,title:'TON Starter',en:'0.05 TON instant gift.'},
+    {day:2,title:'Cashback',en:'20% loss cashback.'},
+    {day:3,title:'TON Boost',en:'0.30 TON balance boost.'},
+    {day:4,title:'Risk Free',en:'3 protected plays.'},
+    {day:5,title:'Free Slots',en:'2 slot plays on us.'},
+    {day:6,title:'Double Win',en:'Extra win power.'},
+    {day:7,title:'Mega TON',en:'The biggest weekly gift.'}
   ];
   var dict={
-    fa:['دریافت ۰.۰۵ تون به‌عنوان جایزه شروع تضمینی.','دریافت ۲۰٪ کش‌بک روی باخت‌ها تا ۲۴ ساعت بعد از کلیم.','دریافت ۰.۳۰ تون به‌عنوان بوست تضمینی موجودی.','دریافت ۳ بازی بدون ریسک برای بازی‌های منتخب.','دریافت ۲ بازی رایگان اسلات؛ برد برای شماست و باخت از موجودی کم نمی‌شود.','باز شدن روز جایزه قوی‌تر با شانس برد بیشتر.','رسیدن به روز آخر برای بزرگ‌ترین شانس جایزه هفتگی.'],
+    fa:['۰.۰۵ تون هدیه فوری.','۲۰٪ کش‌بک باخت.','۰.۳۰ تون بوست موجودی.','۳ بازی بدون ریسک.','۲ اسلات رایگان.','قدرت برد بیشتر.','بزرگ‌ترین هدیه هفته.'],
     de:['Erhalte 0,05 TON als garantierte Starter-Belohnung.','Erhalte 20 % Cashback auf Verluste für 24 Stunden nach dem Claim.','Erhalte 0,30 TON als garantierten Balance-Boost.','Erhalte 3 risikofreie Plays für ausgewählte Spiele.','Erhalte 2 kostenlose Slot-Plays. Gewinne bleiben dir, Verluste werden nicht abgezogen.','Schalte einen stärkeren Belohnungstag mit zusätzlichem Gewinnpotenzial frei.','Erreiche den letzten Tag für die größte wöchentliche Belohnungschance.'],
     tr:['Garantili başlangıç ödülü olarak 0.05 TON al.','Claim sonrası 24 saat boyunca kayıplarda %20 cashback al.','Garantili bakiye desteği olarak 0.30 TON al.','Seçili oyunlar için 3 risksiz oyun hakkı al.','2 ücretsiz slot hakkı al. Kazançlar sende kalır, kayıplar bakiyeden düşmez.','Daha güçlü bir ödül günü ve ekstra kazanma potansiyeli aç.','En büyük haftalık ödül şansı için son güne ulaş.'],
     ar:['احصل على 0.05 TON كمكافأة بداية مضمونة.','احصل على استرداد 20% من الخسائر لمدة 24 ساعة بعد المطالبة.','احصل على 0.30 TON كتعزيز مضمون للرصيد.','احصل على 3 لعبات بدون مخاطر للألعاب المحددة.','احصل على لعبتي سلوت مجانيتين؛ الأرباح لك والخسائر لا تُخصم.','افتح يوم مكافآت أقوى مع فرصة ربح إضافية.','صل إلى اليوم الأخير لأكبر فرصة مكافأة أسبوعية.'],
