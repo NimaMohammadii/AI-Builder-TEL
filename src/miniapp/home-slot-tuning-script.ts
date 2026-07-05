@@ -42,10 +42,10 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     var old=q('.vexa-confetti-layer');if(old)old.remove();
     var layer=document.createElement('div');layer.className='vexa-confetti-layer';document.body.appendChild(layer);
     var colors=['#ffd36a','#f5b33d','#ffe9a8','#c7892f','#fff4cf','#e0a43a'];
-    for(var i=0;i<150;i++){
+    for(var i=0;i<170;i++){
       var p=document.createElement('i');p.className='vexa-confetti-piece';
-      var x=Math.random()*100,dx=(Math.random()*72)-36,w=3+Math.random()*9,h=5+Math.random()*14;
-      p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--delay',(Math.random()*320)+'ms');p.style.setProperty('--dur',(2500+Math.random()*500)+'ms');p.style.setProperty('--mx',(dx*.42)+'vw');p.style.setProperty('--nx',(-dx*.2)+'vw');p.style.setProperty('--ex',dx+'vw');p.style.setProperty('--r1',(120+Math.random()*280)+'deg');p.style.setProperty('--r2',(420+Math.random()*540)+'deg');p.style.setProperty('--r3',(820+Math.random()*760)+'deg');
+      var x=Math.random()*100,wind=(Math.random()*58)-29,j1=(Math.random()*16)-8,j2=(Math.random()*20)-10,w=3+Math.random()*9,h=5+Math.random()*14;
+      p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--delay',(Math.random()*260)+'ms');p.style.setProperty('--dur',(2550+Math.random()*420)+'ms');p.style.setProperty('--mx',(wind*.34+j1)+'vw');p.style.setProperty('--nx',(wind*.68+j2)+'vw');p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r1',(120+Math.random()*280)+'deg');p.style.setProperty('--r2',(420+Math.random()*540)+'deg');p.style.setProperty('--r3',(820+Math.random()*760)+'deg');
       layer.appendChild(p);
     }
     setTimeout(function(){layer.remove()},3200);
