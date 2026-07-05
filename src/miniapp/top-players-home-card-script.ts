@@ -69,7 +69,6 @@ export const TOP_PLAYERS_HOME_CARD_SCRIPT = `
     injectPolish();
     injectBlankCards();
     bindHeroCard();
-    syncTopPlayersLock();
   }
   function bind(){inject()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
@@ -77,7 +76,7 @@ export const TOP_PLAYERS_HOME_CARD_SCRIPT = `
   setTimeout(inject,700);
   setTimeout(inject,1500);
   document.addEventListener('click',routeHomeIntroTap,true);
-  window.addEventListener('vexa-section-locks-updated',function(){syncTopPlayersLock(true)});
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)syncTopPlayersLock()});
+  window.addEventListener('vexa-section-locks-updated',function(){if(topPlayersLocksLoaded)syncTopPlayersLock(true)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&topPlayersLocksLoaded)syncTopPlayersLock()});
 })();
 `;
