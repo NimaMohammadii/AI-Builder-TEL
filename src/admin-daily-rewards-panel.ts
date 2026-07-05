@@ -5,26 +5,38 @@ export const ADMIN_DAILY_REWARDS_PANEL_SCRIPT = `<script>
   function q(id){return document.getElementById(id)}
   function el(tag,cls){var node=document.createElement(tag);if(cls)node.className=cls;return node}
   function ensurePanel(){
-    var menu=document.querySelector('.menu-panel');
-    var sections=document.querySelector('.admin-section')&&document.querySelector('.admin-section').parentNode;
-    if(!menu||!sections||q('sectionDailyRewards'))return;
-    var btn=document.createElement('button');
-    btn.className='menu-item';
-    btn.type='button';
-    btn.dataset.section='DailyRewards';
-    btn.innerHTML='<strong>Daily Rewards</strong><span>Prizes & Missions</span>';
-    menu.appendChild(btn);
-    var section=document.createElement('section');
-    section.id='sectionDailyRewards';
-    section.className='admin-section';
-    section.hidden=true;
+    var menu=document.getElementById('adminMenu')||document.querySelector('.menu-panel');
+    var firstSection=document.querySelector('.admin-section');
+    var sections=firstSection&&firstSection.parentNode;
+    if(!menu||!sections)return;
+    var btn=document.querySelector('[data-section="DailyRewards"],[data-section="dailyRewards"]');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.className='menu-item';
+      btn.type='button';
+      btn.dataset.section='DailyRewards';
+      btn.innerHTML='<strong>Daily Rewards</strong><span>Prizes & Missions</span>';
+      menu.appendChild(btn);
+    }
+    var section=q('sectionDailyRewards');
+    if(!section){
+      section=document.createElement('section');
+      section.id='sectionDailyRewards';
+      section.className='section admin-section';
+      section.hidden=true;
+      section.dataset.title='Daily Rewards';
+      section.dataset.subtitle='Prize images and mission setup.';
+      sections.appendChild(section);
+    }
     section.innerHTML='<div class="row-title"><div><h2>Daily Rewards</h2><p class="muted small-text">Upload the large animated top reward image and one prize image for each of the 7 daily cards, then choose 6 missions for each day.</p></div><button id="dailyRewardsSave" class="primary" type="button">Save</button></div><div class="daily-rewards-admin-card daily-rewards-admin-hero"><h3>Reward page top image</h3><p>Upload the large image shown at the top of the Rewards / Daily Rewards page. It floats softly up and down in the mini app.</p><div class="daily-rewards-hero-preview"><img id="dailyRewardsHeroPreview" src="/app/api/daily-rewards-hero-image.png?t='+Date.now()+'" alt="Reward top preview" onerror="this.style.display='none'"></div><div class="daily-rewards-admin-hero-form"><input id="dailyRewardsHeroFile" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"/><button class="ghost" type="button" id="dailyRewardsHeroUpload">Upload top image</button></div></div><div class="daily-rewards-admin-card"><h3>Daily Prize card images</h3><p>Each row controls the image shown on that day card in Home → Daily Prize.</p><div id="dailyRewardsDayImageForms" class="daily-rewards-admin-images"></div></div><div id="dailyRewardsDayTabs" class="daily-rewards-admin-tabs"></div><div id="dailyRewardsEditor" class="daily-rewards-admin-editor"></div><p id="dailyRewardsAdminStatus" class="status"></p>';
-    sections.appendChild(section);
     renderImageForms();
-    btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);
-    q('dailyRewardsSave').addEventListener('click',save);var heroBtn=q('dailyRewardsHeroUpload');if(heroBtn)heroBtn.addEventListener('click',uploadHeroImage);
-    q('sectionDailyRewards').addEventListener('submit',function(ev){var form=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-image-form]'):null;if(form)ev.preventDefault();},true);
-    q('sectionDailyRewards').addEventListener('click',function(ev){var upload=ev.target&&ev.target.closest?ev.target.closest('[data-upload-daily-rewards-day-image]'):null;if(upload){ev.preventDefault();var uploadDay=Number(upload.getAttribute('data-upload-daily-rewards-day-image'));uploadDayImage(uploadDay,'Day '+(uploadDay+1)+' image');return}var del=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-day-image]'):null;if(!del)return;ev.preventDefault();var day=Number(del.getAttribute('data-delete-daily-rewards-day-image'));deleteDayImage('/admin/api/delete-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
+    if(!btn.dataset.dailyRewardsBound){btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();showPanel(btn);load();},true);btn.dataset.dailyRewardsBound='1'}
+    var saveBtn=q('dailyRewardsSave');if(saveBtn)saveBtn.addEventListener('click',save);var heroBtn=q('dailyRewardsHeroUpload');if(heroBtn)heroBtn.addEventListener('click',uploadHeroImage);
+    if(!section.dataset.dailyRewardsBound){
+      section.addEventListener('submit',function(ev){var form=ev.target&&ev.target.closest?ev.target.closest('[data-daily-rewards-image-form]'):null;if(form)ev.preventDefault();},true);
+      section.addEventListener('click',function(ev){var upload=ev.target&&ev.target.closest?ev.target.closest('[data-upload-daily-rewards-day-image]'):null;if(upload){ev.preventDefault();var uploadDay=Number(upload.getAttribute('data-upload-daily-rewards-day-image'));uploadDayImage(uploadDay,'Day '+(uploadDay+1)+' image');return}var del=ev.target&&ev.target.closest?ev.target.closest('[data-delete-daily-rewards-day-image]'):null;if(!del)return;ev.preventDefault();var day=Number(del.getAttribute('data-delete-daily-rewards-day-image'));deleteDayImage('/admin/api/delete-daily-rewards-day-image/'+day,'Day '+(day+1)+' image')},true);
+      section.dataset.dailyRewardsBound='1';
+    }
     injectStyle();
   }
   function renderImageForms(){
