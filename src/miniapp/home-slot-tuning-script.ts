@@ -23,8 +23,8 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '.home-ticket-list-item{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
       '.home-confetti-button{height:34px!important;width:34px!important;min-width:34px!important;padding:0!important;border:0!important;border-radius:999px!important;background:rgba(255,255,255,.075)!important;color:#ffe7a8!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(255,255,255,.055),0 14px 30px rgba(0,0,0,.24)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}',
       '.vexa-confetti-layer{position:fixed!important;inset:0!important;z-index:999999!important;pointer-events:none!important;overflow:hidden!important}',
-      '.vexa-confetti-piece{position:absolute!important;top:-36px!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:0;transform-origin:center!important;animation:vexaConfettiFall var(--dur) cubic-bezier(.18,.02,.32,1) var(--delay) forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
-      '@keyframes vexaConfettiFall{0%{opacity:0;transform:translate3d(0,-42px,0) rotate(0deg)}8%{opacity:1}36%{opacity:.98;transform:translate3d(var(--mx),42vh,0) rotate(var(--r1))}72%{opacity:.94;transform:translate3d(var(--nx),92vh,0) rotate(var(--r2))}92%{opacity:.86;transform:translate3d(var(--ex),122vh,0) rotate(var(--r3))}100%{opacity:0;transform:translate3d(var(--ex),132vh,0) rotate(var(--r3))}}'
+      '.vexa-confetti-piece{position:absolute!important;top:var(--y)!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:0;transform-origin:center!important;animation:vexaConfettiFall 3000ms linear 0ms forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
+      '@keyframes vexaConfettiFall{0%{opacity:0;transform:translate3d(0,-42px,0) rotate(0deg)}6%{opacity:1}92%{opacity:.94;transform:translate3d(var(--ex),126vh,0) rotate(var(--r3))}100%{opacity:0;transform:translate3d(var(--ex),138vh,0) rotate(var(--r3))}}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -44,11 +44,11 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     var colors=['#ffd36a','#f5b33d','#ffe9a8','#c7892f','#fff4cf','#e0a43a'];
     for(var i=0;i<170;i++){
       var p=document.createElement('i');p.className='vexa-confetti-piece';
-      var x=Math.random()*100,wind=(Math.random()*58)-29,j1=(Math.random()*16)-8,j2=(Math.random()*20)-10,w=3+Math.random()*9,h=5+Math.random()*14;
-      p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--delay',(Math.random()*220)+'ms');p.style.setProperty('--dur',(2650+Math.random()*350)+'ms');p.style.setProperty('--mx',(wind*.34+j1)+'vw');p.style.setProperty('--nx',(wind*.68+j2)+'vw');p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r1',(120+Math.random()*280)+'deg');p.style.setProperty('--r2',(420+Math.random()*540)+'deg');p.style.setProperty('--r3',(820+Math.random()*760)+'deg');
+      var x=Math.random()*100,wind=(Math.random()*64)-32,w=3+Math.random()*9,h=5+Math.random()*14;
+      p.style.setProperty('--y',(-36-Math.random()*90)+'vh');p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r3',(820+Math.random()*760)+'deg');
       layer.appendChild(p);
     }
-    setTimeout(function(){layer.remove()},3300);
+    setTimeout(function(){layer.remove()},3100);
   }
   function spin(){
     if(busy)return;prepare();busy=true;
