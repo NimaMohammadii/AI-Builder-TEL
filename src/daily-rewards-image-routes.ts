@@ -21,7 +21,7 @@ type UploadableFile = {
 };
 
 export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): void {
-  app.get('/app/api/daily-rewards-hero-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_HERO_IMAGE_KEY, 'no-store'));
+  app.get('/app/api/daily-rewards-hero-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_HERO_IMAGE_KEY));
   app.get('/app/api/daily-rewards-bottom-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_BOTTOM_IMAGE_KEY));
   app.get('/app/api/daily-rewards-day-future-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
   app.get('/app/api/daily-rewards-day-today-image.png', async (c) => imageFromR2(c.env, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, DAILY_REWARDS_DAY_IMAGE_CACHE_CONTROL));
