@@ -46,6 +46,8 @@ export function registerDailyRewardsImageRoutes(app: Hono<{ Bindings: Env }>): v
     if (day === null) return c.json({ error: 'Choose a day from 1 to 7.' }, 400, { 'cache-control': 'no-store' });
     return uploadImage(c, dayImageKey(day), `/app/api/daily-rewards-day-image/${day}`, `Daily Rewards Day ${day + 1} image`);
   });
+  app.post('/admin/api/delete-daily-rewards-hero-image', async (c) => deleteImage(c, DAILY_REWARDS_HERO_IMAGE_KEY, 'Daily Rewards image'));
+  app.post('/admin/api/delete-daily-rewards-bottom-image', async (c) => deleteImage(c, DAILY_REWARDS_BOTTOM_IMAGE_KEY, 'Daily Rewards bottom image'));
   app.post('/admin/api/delete-daily-rewards-day-future-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_FUTURE_IMAGE_KEY, 'Daily Rewards future day image'));
   app.post('/admin/api/delete-daily-rewards-day-today-image', async (c) => deleteImage(c, DAILY_REWARDS_DAY_TODAY_IMAGE_KEY, 'Daily Rewards today image'));
   app.post('/admin/api/delete-daily-rewards-day-image/:day', async (c) => {
