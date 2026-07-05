@@ -23,8 +23,8 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '.home-ticket-list-item{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
       '.home-confetti-button{height:34px!important;width:34px!important;min-width:34px!important;padding:0!important;border:0!important;border-radius:999px!important;background:rgba(255,255,255,.075)!important;color:#ffe7a8!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(255,255,255,.055),0 14px 30px rgba(0,0,0,.24)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}',
       '.vexa-confetti-layer{position:fixed!important;inset:0!important;z-index:999999!important;pointer-events:none!important;overflow:hidden!important}',
-      '.vexa-confetti-piece{position:absolute!important;top:var(--y)!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:0;transform-origin:center!important;animation:vexaConfettiFall 5000ms linear 0ms forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
-      '@keyframes vexaConfettiFall{0%{opacity:0;transform:translate3d(0,-42px,0) rotate(0deg)}6%{opacity:1}92%{opacity:.94;transform:translate3d(var(--ex),126vh,0) rotate(var(--r3))}100%{opacity:0;transform:translate3d(var(--ex),138vh,0) rotate(var(--r3))}}'
+      '.vexa-confetti-piece{position:absolute!important;top:var(--y)!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:0;transform-origin:center!important;animation:vexaConfettiFall 6000ms linear 0ms forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
+      '@keyframes vexaConfettiFall{0%{opacity:0;transform:translate3d(0,-42px,0) rotate(0deg)}5%{opacity:1}80%{opacity:.94;transform:translate3d(var(--ex),176vh,0) rotate(var(--r3))}100%{opacity:0;transform:translate3d(var(--ex),220vh,0) rotate(var(--r3))}}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -45,10 +45,10 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     for(var i=0;i<170;i++){
       var p=document.createElement('i');p.className='vexa-confetti-piece';
       var x=Math.random()*100,wind=(Math.random()*64)-32,w=3+Math.random()*9,h=5+Math.random()*14;
-      p.style.setProperty('--y',(-36-Math.random()*90)+'vh');p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r3',(820+Math.random()*760)+'deg');
+      p.style.setProperty('--y',(-36-Math.random()*90)+'vh');p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r3',(960+Math.random()*960)+'deg');
       layer.appendChild(p);
     }
-    setTimeout(function(){layer.remove()},5100);
+    setTimeout(function(){layer.remove()},6100);
   }
   function spin(){
     if(busy)return;prepare();busy=true;
