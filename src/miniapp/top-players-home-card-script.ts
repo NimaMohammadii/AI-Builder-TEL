@@ -10,13 +10,16 @@ export const TOP_PLAYERS_HOME_CARD_SCRIPT = `
   }
   var topPlayersCardLocked=false;
   var topPlayersLocksLoaded=false;
+  var topPlayersLocksInFlight=null;
+  var topPlayersLocksLoadedAt=0;
+  var TOP_PLAYERS_LOCK_TTL=60000;
   function currentUserId(){var tg=window.Telegram&&window.Telegram.WebApp;var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function supportedLang(lang){lang=String(lang||'').trim().toLowerCase().split('-')[0];return ['fa','de','tr','ar','ru','uk','es','pt','id','zh','ja','ko','en'].indexOf(lang)>=0?lang:'en'}
   function currentLang(){var tg=window.Telegram&&window.Telegram.WebApp;var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};return supportedLang(window.__vexaCurrentLanguageCode||user.language_code||document.documentElement.lang||navigator.language||'en')}
   var lockedCopy={en:'This card is locked',fa:'این کارت قفل است',de:'Diese Karte ist gesperrt',tr:'Bu kart kilitli',ar:'هذه البطاقة مقفلة',ru:'Эта карточка заблокирована',uk:'Цю картку заблоковано',es:'Esta tarjeta está bloqueada',pt:'Este cartão está bloqueado',id:'Kartu ini terkunci',zh:'此卡片已锁定',ja:'このカードはロックされています',ko:'이 카드는 잠겨 있습니다'};
   function lockedText(){var lang=currentLang();return lockedCopy[lang]||lockedCopy.en}
   function toastLocked(){var msg=lockedText();var t=q('toast');if(t){t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none'},2400);return}try{alert(msg)}catch(e){}}
-  function syncTopPlayersLock(){var uid=currentUserId();var url='/app/api/section-locks'+(uid?'?userId='+encodeURIComponent(uid):'');return fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){var locked=false;(data&&data.sections||[]).forEach(function(section){if(section&&section.id==='home-top-players-card'&&section.mode!=='open')locked=true});topPlayersCardLocked=locked;topPlayersLocksLoaded=true;markHeroLock();return locked}).catch(function(){topPlayersLocksLoaded=true;return topPlayersCardLocked})}
+  function syncTopPlayersLock(force){force=force===true;var now=Date.now();if(!force&&topPlayersLocksLoaded&&now-topPlayersLocksLoadedAt<TOP_PLAYERS_LOCK_TTL){markHeroLock();return Promise.resolve(topPlayersCardLocked)}if(topPlayersLocksInFlight)return topPlayersLocksInFlight;var uid=currentUserId();var url='/app/api/section-locks'+(uid?'?userId='+encodeURIComponent(uid):'');topPlayersLocksInFlight=fetch(url,{cache:'no-store'}).then(function(r){return r.json()}).then(function(data){var locked=false;(data&&data.sections||[]).forEach(function(section){if(section&&section.id==='home-top-players-card'&&section.mode!=='open')locked=true});topPlayersCardLocked=locked;topPlayersLocksLoaded=true;topPlayersLocksLoadedAt=Date.now();markHeroLock();return locked}).catch(function(){topPlayersLocksLoaded=true;topPlayersLocksLoadedAt=Date.now();return topPlayersCardLocked}).finally(function(){topPlayersLocksInFlight=null});return topPlayersLocksInFlight}
   function markHeroLock(){var card=q('home')&&q('home').querySelector('.home-intro-card');if(card){card.classList.toggle('is-home-top-players-locked',!!topPlayersCardLocked);card.setAttribute('aria-label',topPlayersCardLocked?'Top Players is locked':'Open Top Players')}}
   function showTopPlayersDirect(){
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
@@ -74,7 +77,7 @@ export const TOP_PLAYERS_HOME_CARD_SCRIPT = `
   setTimeout(inject,700);
   setTimeout(inject,1500);
   document.addEventListener('click',routeHomeIntroTap,true);
-  window.addEventListener('vexa-section-locks-updated',syncTopPlayersLock);
+  window.addEventListener('vexa-section-locks-updated',function(){syncTopPlayersLock(true)});
   document.addEventListener('visibilitychange',function(){if(!document.hidden)syncTopPlayersLock()});
 })();
 `;
