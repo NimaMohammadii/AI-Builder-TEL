@@ -12,6 +12,8 @@ export const HOME_BLANK_CARDS_SCRIPT = `
     st.textContent=[
       '#home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:calc(98px + env(safe-area-inset-bottom))!important;background:transparent!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}',
       '#home .home-intro-card{display:grid!important;pointer-events:none!important;margin:0 0 14px!important}',
+      '.home-confetti-layer{position:fixed!important;inset:0!important;z-index:99993!important;overflow:hidden!important;pointer-events:none!important;contain:layout paint style!important}',
+      '.home-confetti-piece{position:absolute!important;display:block!important;will-change:transform,opacity!important;box-shadow:0 0 10px rgba(255,255,255,.28)!important;backface-visibility:hidden!important;transform:translate3d(0,0,0)!important}',
       '#homeLuckyCodeSection{display:block!important;padding:0!important;margin:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}',
       'body:has(#home.active) #home{overflow-y:auto!important;overflow-x:hidden!important}',
       '.home-lucky-card{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible!important}',
@@ -55,8 +57,37 @@ export const HOME_BLANK_CARDS_SCRIPT = `
   function setCount(v){v=Math.max(0,Math.floor(Number(v)||0));try{localStorage.setItem('vexaFreeTickets',String(v))}catch(e){}sync()}
   function listHtml(c){var html='';for(var i=0;i<c;i++)html+='<div class="home-ticket-list-item"><b>Ticket '+String(i+1).padStart(2,'0')+'</b><span>ready</span></div>';if(!c)html='<div class="home-ticket-list-item"><b>No tickets</b><span>empty</span></div>';return html}
   function sync(){var c=count();qa('[data-ticket-count]').forEach(function(n){n.textContent=c+' ticket'+(c===1?'':'s')});var btn=q('#homeTicketButton');if(btn){btn.classList.toggle('is-ready',ready());btn.textContent=ready()?'Get Ticket ✓':'Get Ticket'}var d=q('#homeTicketList');if(d)d.innerHTML=listHtml(c)}
+
+  function confettiBurst(){
+    var home=q('#home');if(!home||!home.classList.contains('active'))return;
+    var reduce=false;try{reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+    if(reduce)return;
+    qa('.home-confetti-piece,.home-confetti-layer').forEach(function(n){try{n.remove()}catch(e){}});
+    var layer=document.createElement('div');layer.className='home-confetti-layer';layer.setAttribute('aria-hidden','true');document.body.appendChild(layer);
+    var vw=Math.max(320,window.innerWidth||document.documentElement.clientWidth||360);
+    var vh=Math.max(520,window.innerHeight||document.documentElement.clientHeight||640);
+    var colors=['#ffffff','#ffe6ef','#ff5f91','#ffc857','#67e8f9','#a7f3d0','#c4b5fd'];
+    var count=Math.min(86,Math.max(54,Math.floor(vw/5.4)));
+    for(var i=0;i<count;i++){
+      var piece=document.createElement('i');piece.className='home-confetti-piece';
+      var size=4+Math.random()*7, startX=Math.random()*vw, startY=-24-Math.random()*vh*.22;
+      var drift=(Math.random()-.5)*vw*.72, sway=(Math.random()-.5)*vw*.18;
+      var endX=Math.max(-40,Math.min(vw+40,startX+drift));
+      var midX=Math.max(-30,Math.min(vw+30,startX+sway));
+      var duration=2600+Math.random()*2300, delay=Math.random()*520;
+      piece.style.left=startX+'px';piece.style.top=startY+'px';piece.style.width=size+'px';piece.style.height=(size*(.52+Math.random()*1.15))+'px';
+      piece.style.background=colors[i%colors.length];piece.style.borderRadius=(Math.random()>.55?'999px':'2px');piece.style.opacity=String(.72+Math.random()*.28);
+      layer.appendChild(piece);
+      piece.animate([
+        {transform:'translate3d(0,0,0) rotate3d(1,1,0,'+(Math.random()*180)+'deg)',offset:0,easing:'cubic-bezier(.18,.74,.24,1)'},
+        {transform:'translate3d('+(midX-startX)+'px,'+(vh*.42+Math.random()*vh*.12)+'px,0) rotate3d(1,1,1,'+(260+Math.random()*260)+'deg)',offset:.48,easing:'linear'},
+        {transform:'translate3d('+(endX-startX)+'px,'+(vh+90+Math.random()*120)+'px,0) rotate3d(1,1,1,'+(720+Math.random()*620)+'deg)',offset:1,easing:'linear'}
+      ],{duration:duration,delay:delay,fill:'forwards'});
+    }
+    setTimeout(function(){try{layer.remove()}catch(e){}},5600);
+  }
   function change(delta){setCount(count()+delta)}
-  function markReady(){if(count()<=0)return;setReady(true)}
+  function markReady(){if(count()<=0)return;setReady(true);confettiBurst()}
   function placeSection(home,sec){var intro=q('.home-intro-card',home);if(intro&&intro.nextSibling!==sec)intro.parentNode.insertBefore(sec,intro.nextSibling);else if(!intro&&home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
   function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})}
   function setDrawer(open,sec){ensureDrawerPortal(sec);var drawer=q('#homeTicketDrawer'),backdrop=q('#homeTicketDrawerBackdrop');if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
