@@ -1,6 +1,5 @@
 export const HOME_IMAGE_VERSION_SCRIPT = `
 (function(){
-  var latest='',loading=false;
   var css=[
     '#home #homeLuckyCodeSection .home-lottery-slot-card,#home .home-lucky-card .home-lottery-slot-card{width:100%!important;height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border:0!important;outline:0!important;border-radius:22px!important;overflow:hidden!important;padding:0!important;position:relative!important;box-sizing:border-box!important}',
     '#home #homeLuckyCodeSection .home-lottery-slot-image,#home .home-lucky-card .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;box-shadow:none!important}',
@@ -19,14 +18,11 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     '#home .vexa-premium-star:nth-child(1){right:14px!important;bottom:10px!important;font-size:12px!important}#home .vexa-premium-star:nth-child(2){right:50px!important;bottom:8px!important;font-size:9px!important}#home .vexa-premium-star:nth-child(3){right:30px!important;bottom:34px!important;font-size:10px!important}#home .vexa-premium-star:nth-child(4){right:92px!important;bottom:13px!important;font-size:8px!important}#home .vexa-premium-star:nth-child(5){right:66px!important;bottom:48px!important;font-size:9px!important}',
     '#home #homeLuckyCodeSection .home-live-winner-card:nth-child(-n+3) .home-live-winner-amount,#home .home-lucky-card .home-live-winner-card:nth-child(-n+3) .home-live-winner-amount{padding-right:28px!important}'
   ].join('');
-  function style(){var s=document.getElementById('home-lottery-slot-size-fix');if(!s){s=document.createElement('style');s.id='home-lottery-slot-size-fix';document.head.appendChild(s)}s.textContent=css}
+  function style(){var s=document.getElementById('home-lottery-slot-size-fix');if(!s){s=document.createElement('style');s.id='home-lottery-slot-size-fix';document.head.appendChild(s)}if(s.textContent!==css)s.textContent=css}
   function old(){document.querySelectorAll('#home #homeLuckyCodeSection .home-lottery-slot-image,#home .home-lucky-card .home-lottery-slot-image').forEach(function(i){if((i.getAttribute('src')||'').indexOf('v=home-lottery')>-1)i.removeAttribute('src')})}
-  function setImg(u){if(!u)return;latest=u;document.querySelectorAll('#home #homeLuckyCodeSection .home-lottery-slot-image,#home .home-lucky-card .home-lottery-slot-image').forEach(function(i){if(i.getAttribute('src')!==u)i.setAttribute('src',u);i.style.removeProperty('opacity')})}
-  function meta(){if(loading)return;loading=true;fetch('/app/api/home-lottery-slot-meta?ts='+Date.now(),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.url)setImg(j.url)}).finally(function(){loading=false})}
   function stars(card,tone){if(!card)return;var b=card.querySelector('.vexa-premium-corner');if(!b){b=document.createElement('div');b.className='vexa-premium-corner';for(var i=0;i<5;i++){var x=document.createElement('span');x.className='vexa-premium-star';x.textContent='★';b.appendChild(x)}card.appendChild(b)}b.classList.toggle('is-blue',tone==='blue');b.classList.toggle('is-bronze',tone==='bronze')}
-  function apply(){style();old();var r=document.querySelector('#home #homeLuckyCodeSection')||document.querySelector('#home .home-lucky-card');if(r){stars(r.querySelector('.home-live-winner-card:nth-child(1)'),'red');stars(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue');stars(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')}setImg(latest);meta()}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
-  var n=0,t=setInterval(function(){apply();if(++n>12)clearInterval(t)},250);
-  try{new MutationObserver(apply).observe(document.body,{childList:true,subtree:true})}catch(e){}
+  function apply(){style();old();var r=document.querySelector('#home #homeLuckyCodeSection')||document.querySelector('#home .home-lucky-card');if(!r)return;stars(r.querySelector('.home-live-winner-card:nth-child(1)'),'red');stars(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue');stars(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
+  window.VexaRefreshHomeLotteryChrome=apply;
 })();
 `;
