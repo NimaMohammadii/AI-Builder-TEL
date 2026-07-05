@@ -9,12 +9,11 @@ export const ADMIN_HOME_LOTTERY_SLOT_PANEL_SCRIPT = `<script>
     var box=document.createElement('section');
     box.id='homeLotterySlotPanel';
     box.className='card';
-    box.innerHTML='<div class="pad"><h2>اسلات لاتاری</h2><p class="muted small-text">Upload one image for the transparent glass lottery slot card on Home.</p><div class="image-current"><img id="homeLotterySlotPreview" src="/app/api/home-lottery-slot.png?t='+Date.now()+'" alt="Lottery slot preview"><div><strong>Home lottery slot image</strong><p class="muted small-text">This image loads inside the transparent Home glass card.</p></div></div><input id="homeLotterySlotFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"><button id="homeLotterySlotSave" class="primary" type="button">Upload lottery slot</button><p id="homeLotterySlotStatus" class="status"></p><hr><h3>تصاویر اعداد اسلات هوم</h3><p class="muted small-text">برای هر عدد ۰ تا ۹ یک تصویر آپلود کنید؛ همین تصاویر به‌جای متن عددها در اسلات هوم نمایش داده می‌شوند.</p><div id="homeSlotDigitGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px"></div><p id="homeSlotDigitStatus" class="status"></p></div>';
+    box.innerHTML='<div class="pad"><h2>اسلات لاتاری</h2><p class="muted small-text">Upload one image for the transparent glass lottery slot card on Home.</p><div class="image-current"><img id="homeLotterySlotPreview" src="/app/api/home-lottery-slot.png?t='+Date.now()+'" alt="Lottery slot preview"><div><strong>Home lottery slot image</strong><p class="muted small-text">This image loads inside the transparent Home glass card.</p></div></div><input id="homeLotterySlotFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"><button id="homeLotterySlotSave" class="primary" type="button">Upload lottery slot</button><p id="homeLotterySlotStatus" class="status"></p></div>';
     root.appendChild(box);
     var btn=q('homeLotterySlotSave');
     if(btn)btn.onclick=upload;
     load();
-    loadDigits();
   }
   async function load(){
     var img=q('homeLotterySlotPreview'),status=q('homeLotterySlotStatus');
@@ -40,8 +39,5 @@ export const ADMIN_HOME_LOTTERY_SLOT_PANEL_SCRIPT = `<script>
     }catch(e){if(status)status.textContent=e&&e.message?e.message:'Upload failed'}finally{if(btn)btn.disabled=false}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-  function digitCard(d){var src=d.imageUrl?previewSrc(d.imageUrl):'/app/api/home-slot-digit/'+d.digit+'.png?t='+Date.now();return '<div class="image-current" style="display:block"><strong>عدد '+d.digit+'</strong><img id="homeSlotDigitPreview'+d.digit+'" src="'+esc(src)+'" alt="Digit '+d.digit+'" style="width:100%;height:58px;object-fit:contain"><input id="homeSlotDigitFile'+d.digit+'" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"><button class="primary" type="button" data-home-slot-digit="'+d.digit+'">Upload '+d.digit+'</button></div>'}
-  async function loadDigits(){var grid=q('homeSlotDigitGrid'),status=q('homeSlotDigitStatus');if(!grid)return;try{var r=await fetch('/app/api/home-slot-digits',{credentials:'same-origin',cache:'no-store'});var j=await r.json();if(!r.ok)throw new Error(j.error||'Could not load digit images');grid.innerHTML=(j.digits||[]).map(digitCard).join('');grid.querySelectorAll('[data-home-slot-digit]').forEach(function(btn){btn.onclick=function(){uploadDigit(btn.getAttribute('data-home-slot-digit'))}});if(status)status.textContent='Digit image slots loaded.'}catch(e){if(status)status.textContent=e&&e.message?e.message:'Could not load digit images'}}
-  async function uploadDigit(digit){var input=q('homeSlotDigitFile'+digit),status=q('homeSlotDigitStatus');if(!input||!input.files||!input.files[0]){if(status)status.textContent='Choose an image for digit '+digit+'.';return}var form=new FormData();form.append('image',input.files[0]);if(status)status.textContent='Uploading digit '+digit+'...';try{var r=await fetch('/admin/api/upload-home-slot-digit/'+digit,{method:'POST',credentials:'same-origin',body:form});var j=await r.json().catch(function(){return {}});if(!r.ok)throw new Error(j.error||'Upload failed');var img=q('homeSlotDigitPreview'+digit);if(img&&j.url)img.src=previewSrc(esc(j.url));if(status)status.textContent='Uploaded digit '+digit+'.'}catch(e){if(status)status.textContent=e&&e.message?e.message:'Upload failed'}}
 })();
 </script>`;
