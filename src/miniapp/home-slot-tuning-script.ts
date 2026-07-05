@@ -6,6 +6,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
   function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
+  function ticketCount(){try{return Math.max(0,Math.floor(Number(localStorage.getItem('vexaFreeTickets')||'0')))}catch(e){return 0}}
   function tune(){
     if(q('#homeSlotTuningStyle'))return;
     var st=document.createElement('style');st.id='homeSlotTuningStyle';
@@ -18,6 +19,9 @@ export const HOME_SLOT_TUNING_SCRIPT = `
       '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(2px)!important}',
       '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:31px!important;font-weight:900!important;letter-spacing:-.045em!important;color:transparent!important;background:linear-gradient(180deg,#fff2f4 0%,#d48994 18%,#7f182b 46%,#3b0711 72%,#b94a5d 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:.35px rgba(255,205,215,.34)!important;text-shadow:0 1px 0 rgba(255,210,218,.22),0 2px 2px rgba(0,0,0,.74),0 0 12px rgba(115,10,30,.34),0 10px 20px rgba(0,0,0,.64)!important;filter:drop-shadow(0 0 7px rgba(110,7,25,.22))!important}',
+      '#home .home-draw-info-card{height:58px!important;margin:0 0 12px!important;border-radius:28px!important;padding:10px 12px!important;background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;box-sizing:border-box!important}',
+      '#home .home-draw-copy{min-width:0!important;display:grid!important;gap:3px!important}.home-draw-label{color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:850!important;letter-spacing:.12em!important;text-transform:uppercase!important}.home-draw-time{color:#fff!important;font-size:16px!important;font-weight:950!important;letter-spacing:-.02em!important;white-space:nowrap!important;text-shadow:0 10px 22px rgba(0,0,0,.42)!important}',
+      '#home .home-draw-ticket-pill{height:38px!important;min-width:118px!important;border-radius:18px!important;padding:0 12px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}.home-draw-ticket-icon{width:22px!important;height:16px!important;border-radius:5px!important;background:linear-gradient(135deg,rgba(255,242,244,.98),rgba(112,12,31,.78))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 8px 16px rgba(0,0,0,.26)!important;position:relative!important;display:block!important}.home-draw-ticket-icon:before,.home-draw-ticket-icon:after{content:""!important;position:absolute!important;top:50%!important;width:6px!important;height:6px!important;border-radius:999px!important;background:rgba(0,0,0,.42)!important;transform:translateY(-50%)!important}.home-draw-ticket-icon:before{left:-3px!important}.home-draw-ticket-icon:after{right:-3px!important}',
       '.home-ticket-drawer{background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}',
       '.home-ticket-drawer-count{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
       '.home-ticket-list-item{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
@@ -29,9 +33,11 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     ].join('');
     document.head.appendChild(st);
   }
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time">03:42:18</strong></div><div class="home-draw-ticket-pill"><i class="home-draw-ticket-icon" aria-hidden="true"></i><span data-draw-ticket-count>0 tickets</span></div></div>'}
+  function ensureDrawInfoCard(){var slot=q('#home .home-lottery-slot-card');if(!slot)return;var card=q('#homeDrawInfoCard');if(!card){slot.insertAdjacentHTML('beforebegin',drawInfoHtml());card=q('#homeDrawInfoCard')}var c=ticketCount();var n=q('[data-draw-ticket-count]',card);if(n)n.textContent=c+' ticket'+(c===1?'':'s')}
   function ensureConfettiButton(){var spin=q('#homeSlotSpinButton');if(!spin||q('#homeConfettiButton'))return;var b=document.createElement('button');b.id='homeConfettiButton';b.className='home-confetti-button';b.type='button';b.textContent='✦';spin.parentNode.insertBefore(b,spin.nextSibling)}
   function prepare(){
-    tune();ensureConfettiButton();
+    tune();ensureDrawInfoCard();ensureConfettiButton();
     qa('#home .home-slot-number-reel').forEach(function(reel){
       var strip=q('[data-slot-strip]',reel);if(!strip)return;
       if(strip.dataset.tuned!=='3'){strip.innerHTML=digits();strip.dataset.tuned='3'}
@@ -67,6 +73,8 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     });
   }
   document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeSlotSpinButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();spin()}if(t&&t.id==='homeConfettiButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();confetti()}},true);
+  document.addEventListener('click',function(){setTimeout(ensureDrawInfoCard,0)},true);
+  window.addEventListener('storage',ensureDrawInfoCard);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',prepare);else prepare();
   window.addEventListener('focus',prepare);
 })();
