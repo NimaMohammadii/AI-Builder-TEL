@@ -226,9 +226,17 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
 
 const scriptBody = (script: string): string => script.replace(/^\s*<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');
 
+function inlineScriptJson(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003C')
+    .replace(/>/g, '\\u003E')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
 
 function lazySectionLoaderScript(): string {
-  const payload = JSON.stringify(LAZY_SECTIONS.map((section) => ({
+  const payload = inlineScriptJson(LAZY_SECTIONS.map((section) => ({
     id: section.id,
     html: section.html,
     scripts: section.scripts || [],
