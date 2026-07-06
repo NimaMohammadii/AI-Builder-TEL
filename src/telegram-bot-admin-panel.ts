@@ -13,7 +13,6 @@ type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; de
 const PAGE_SIZE = 8;
 const NANO = 1_000_000_000;
 const REGION_SETTINGS_KEY = 'admin:bot-region-settings';
-const APP_CACHE_VERSION_KEY = 'admin:app-cache-version';
 const REGIONS: RegionConfig[] = [
   { code: 'US', label: '🇺🇸 United States', language: 'en', timezone: 'America/New_York' },
   { code: 'RU', label: '🇷🇺 Russia', language: 'ru', timezone: 'Europe/Moscow' },
@@ -59,7 +58,7 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   const data = q.data ?? '';
   if (!data.startsWith('botadmin:')) return false;
   if (!isBotAdmin(env, q.from.id)) return true;
-  if ((q.data ?? '').split(':')[1] !== 'refreshappcache') await tg(token, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
+  await tg(token, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
   const chatId = q.message?.chat.id ?? q.from.id;
   const messageId = q.message?.message_id;
   const parts = data.split(':');
@@ -85,7 +84,6 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   if (action === 'financelimits') return sendFinanceLimitsPanel(env, token, chatId, tg, messageId);
   if (action === 'asklimit') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'limit', userId: id }, limitPrompt(id), messageId);
   if (action === 'regionsettings') return sendRegionSettingsPanel(env, token, chatId, tg, messageId);
-  if (action === 'refreshappcache') return forceMiniAppCacheRefresh(env, token, chatId, tg, q.id, messageId);
   if (action === 'togglestartregion') return updateRegionSettings(env, token, chatId, tg, messageId, { startPromptEnabled: id !== 'off' });
   if (action === 'toggleregioncmd') return updateRegionSettings(env, token, chatId, tg, messageId, { commandEnabled: id !== 'off' });
   if (action === 'setdefaultregion') return updateRegionSettings(env, token, chatId, tg, messageId, { defaultRegionCode: regionByCode(id)?.code ?? null });
@@ -93,16 +91,6 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   if (action === 'report') return sendUserReportPdf(env, token, chatId, tg, id);
   if (action === 'block') return toggleSection(env, token, chatId, tg, id, arg, messageId, pageArg);
   if (action === 'reset') return resetUser(env, token, chatId, tg, id, messageId);
-  return true;
-}
-
-
-async function forceMiniAppCacheRefresh(env: Env, token: string, chatId: number, tg: TgApi, callbackQueryId: string, messageId?: number): Promise<true> {
-  const version = String(Date.now());
-  await env.BOT_CACHE.put(APP_CACHE_VERSION_KEY, version);
-  await tg(token, 'answerCallbackQuery', { callback_query_id: callbackQueryId, text: '✅ کش تصاویر مینی‌اپ آپدیت شد.', show_alert: true }).catch(() => undefined);
-  const text = ['♻️ آپدیت کش تصاویر مینی‌اپ', '', '✅ نسخه جدید کش ثبت شد.', `Version: ${version}`, '', 'از این به بعد وقتی کاربران مینی‌اپ را باز کنند یا به آن برگردند، کش تصاویر پاک می‌شود و عکس‌های جدید لود می‌شوند.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
   return true;
 }
 
@@ -119,7 +107,7 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
   const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }], [{ text: '♻️ آپدیت کش تصاویر مینی‌اپ', callback_data: 'botadmin:refreshappcache' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
   return true;
 }
 
