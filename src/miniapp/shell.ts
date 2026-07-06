@@ -198,35 +198,85 @@ const STYLES = [
   GHOST_RUN_STYLES,
 ].join('');
 
-const SECTIONS = [
+const INITIAL_SECTIONS = [
   HOME_SECTION,
-  REFERRAL_SECTION,
-  WALLET_SECTION,
-  MARKET_SECTION,
-  RESULTS_SECTION,
   PLAY_ZONE_SECTION,
   REWARDS_SECTION,
-  PREDICT_ZONE_SECTION,
-  TOP_PLAYERS_SECTION,
-  `<div style="display:none">${TTS_SECTION}</div>`,
-  MINES_SECTION,
-  PLINKO_SECTION,
-  CRASH_SECTION,
-  SLOT_SECTION,
-  WHEEL_SECTION,
-  DICE_SECTION + DICE_FINAL_TWEAK,
-  RPS_SECTION,
-  PUMP_SECTION,
-  LIMBO_SECTION,
-  GHOST_RUN_SECTION,
 ].join('');
 
+const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
+  { id: 'referral', html: REFERRAL_SECTION },
+  { id: 'wallet', html: WALLET_SECTION },
+  { id: 'market', html: MARKET_SECTION, scripts: [MARKET_CONFIG_SCRIPT] },
+  { id: 'results', html: RESULTS_SECTION },
+  { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
+  { id: 'topplayers', html: TOP_PLAYERS_SECTION },
+  { id: 'flow', html: `<div style="display:none">${TTS_SECTION}</div>` },
+  { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
+  { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_LIVE_FEED_POLISH_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
+  { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
+  { id: 'slot', html: SLOT_SECTION, scripts: [SLOT_SCRIPT] },
+  { id: 'wheel', html: WHEEL_SECTION, scripts: [WHEEL_ASSETS_SCRIPT] },
+  { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
+  { id: 'rps', html: RPS_SECTION },
+  { id: 'coinflip', html: PUMP_SECTION },
+  { id: 'limbo', html: LIMBO_SECTION },
+  { id: 'ghostrun', html: GHOST_RUN_SECTION },
+];
+
 const scriptBody = (script: string): string => script.replace(/^\s*<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');
+
+
+function lazySectionLoaderScript(): string {
+  const payload = JSON.stringify(LAZY_SECTIONS.map((section) => ({
+    id: section.id,
+    html: section.html,
+    scripts: section.scripts || [],
+  })));
+  return `
+(function(){
+  var registry=${payload};
+  var mounted={};
+  var main=null;
+  function findMain(){return main||(main=document.querySelector('main.app')||document.body)}
+  function runScript(code){
+    if(!code)return;
+    var script=document.createElement('script');
+    script.text=String(code).replace(/^\\s*<script[^>]*>/i,'').replace(/<\\/script>\\s*$/i,'');
+    document.body.appendChild(script);
+  }
+  function executeEmbeddedScripts(root){
+    Array.prototype.slice.call(root.querySelectorAll('script')).forEach(function(oldScript){
+      var script=document.createElement('script');
+      Array.prototype.slice.call(oldScript.attributes||[]).forEach(function(attr){script.setAttribute(attr.name,attr.value)});
+      script.text=oldScript.text||oldScript.textContent||'';
+      oldScript.parentNode.replaceChild(script,oldScript);
+    });
+  }
+  function mount(id){
+    if(!id||document.getElementById(id))return true;
+    if(mounted[id])return !!document.getElementById(id);
+    var item=registry.filter(function(entry){return entry.id===id})[0];
+    if(!item)return false;
+    mounted[id]=true;
+    var wrap=document.createElement('div');
+    wrap.setAttribute('data-lazy-section-host',id);
+    wrap.innerHTML=item.html;
+    findMain().insertBefore(wrap, document.querySelector('nav.tabs'));
+    executeEmbeddedScripts(wrap);
+    (item.scripts||[]).forEach(runScript);
+    try{window.dispatchEvent(new CustomEvent('vexa:section-mounted',{detail:{id:id}}))}catch(e){}
+    return !!document.getElementById(id);
+  }
+  window.VexaLazySections={ensure:mount};
+})();`;
+}
 
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
   APP_FORCE_REFRESH_SCRIPT,
   DICE_ASSET_CACHE_SCRIPT,
+  lazySectionLoaderScript(),
   MINIAPP_SCRIPT,
   ACTIVITY_SCRIPT,
   TON_BALANCE_SCRIPT,
@@ -241,21 +291,6 @@ const SCRIPTS = [
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
   PLAY_ZONE_VISIBILITY_SCRIPT,
   GAME_LIVE_COUNT_SCRIPT,
-  MARKET_CONFIG_SCRIPT,
-  PLINKO_SCRIPT,
-  PLINKO_DROP_FEEDBACK_SCRIPT,
-  PLINKO_LIVE_FEED_POLISH_SCRIPT,
-  PLINKO_PERFORMANCE_SCRIPT,
-  PLINKO_PANEL_SCRIPT,
-  MINES_SCRIPT,
-  CRASH_SCRIPT,
-  SLOT_SCRIPT,
-  WHEEL_ASSETS_SCRIPT,
-  PREDICT_ZONE_SETTINGS_SCRIPT,
-  scriptBody(FOOTBALL_PREDICT_SCRIPT),
-  PREDICT_EXTRA_MARKETS_SCRIPT,
-  PREDICT_ENTRY_LOADER_SCRIPT,
-  scriptBody(PREDICT_CARD_ACTIONS_SCRIPT),
   TELEGRAM_BACK_BUTTON_SCRIPT,
   UPLOADED_IMAGE_CACHE_SCRIPT,
   SECTION_TRUSTED_ACCESS_SCRIPT,
@@ -304,7 +339,7 @@ export function miniAppShellHtml(): string {
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
       </div>
     </header>
-    ${SECTIONS}
+    ${INITIAL_SECTIONS}
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
