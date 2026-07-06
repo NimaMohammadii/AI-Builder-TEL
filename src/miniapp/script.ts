@@ -100,13 +100,18 @@ export const MINIAPP_SCRIPT = `
     load();
   }
 
+  function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
+
   function show(id){
+    ensureSection(id);
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa');
     setHeaderGlassMode(id);
     syncTelegramBackButton(id);
+    if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
+    if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
     if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     if(id==='wallet'&&window.__vexaWalletLoad)setTimeout(window.__vexaWalletLoad,80)
     removeLegacyLeagueAndRewards();
@@ -117,7 +122,7 @@ export const MINIAPP_SCRIPT = `
       var params=new URLSearchParams(location.search);
       var section=(params.get('section')||location.hash.replace(/^#/, '')||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40);
       var target=params.get('open');
-      if(section&&q(section))show(section);
+      if(section&&ensureSection(section))show(section);
       if(target==='deposit'){
         show('home');
         setDepositSheet(true);
@@ -157,7 +162,7 @@ export const MINIAPP_SCRIPT = `
       if(!b)return;
       var id=b.getAttribute('data-game-view')||'';
       ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
-      if(q(id)){
+      if(ensureSection(id)){
         b.classList.add('is-soft-entering');
         document.body.classList.add('soft-game-entering');
         setTimeout(function(){show(id);b.classList.remove('is-soft-entering');document.body.classList.remove('soft-game-entering')},180);
@@ -209,7 +214,7 @@ export const MINIAPP_SCRIPT = `
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     if(b.hasAttribute('data-game-view'))return;
-    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(q(v))show(v);else toast('Coming soon');return}
+    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(ensureSection(v))show(v);else toast('Coming soon');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
