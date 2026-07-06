@@ -38,7 +38,7 @@ import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
-import { REWARDS_SECTION } from './live-winners';
+import { REWARDS_SECTION } from './rewards';
 import { TTS_SECTION } from './tts';
 import { MARKET_SECTION } from './market';
 import { TOP_PLAYERS_SECTION } from './top-players';
