@@ -158,14 +158,17 @@ export const MINIAPP_SCRIPT = `
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
-      var b=target&&target.closest?target.closest('#playzone button[data-game-view]'):null;
-      if(!b)return;
-      var id=b.getAttribute('data-game-view')||'';
+      var nav=target&&target.closest?target.closest('#playzone [data-game-view]'):null;
+      if(!nav)return;
+      var button=nav.matches&&nav.matches('button[data-game-view]')?nav:(nav.querySelector&&nav.querySelector('button[data-game-view]'));
+      var id=(nav.getAttribute('data-game-view')||(button&&button.getAttribute('data-game-view'))||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40);
+      if(!id)return;
       ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
       if(ensureSection(id)){
-        b.classList.add('is-soft-entering');
+        var animated=button||nav;
+        animated.classList.add('is-soft-entering');
         document.body.classList.add('soft-game-entering');
-        setTimeout(function(){show(id);b.classList.remove('is-soft-entering');document.body.classList.remove('soft-game-entering')},180);
+        setTimeout(function(){show(id);animated.classList.remove('is-soft-entering');document.body.classList.remove('soft-game-entering')},180);
         return;
       }
       toast('Coming soon');
