@@ -3,16 +3,16 @@ export const APP_FORCE_REFRESH_SCRIPT = `
   var KEY='vexa-app-cache-version';
   var CHECK_INTERVAL=60000;
   var checking=false;
-  var cacheNames=['vexa-play-zone-card-images-v1','vexa-daily-reward-images-v2','vexa-dice-assets-v1','ghost-run-assets-v1'];
+  var cacheNames=['vexa-play-zone-card-images-v1','vexa-daily-reward-images-v2','vexa-dice-assets-v1','ghost-run-assets-v1','vexa-predict-images-v1'];
   function removeLocalCaches(){
     try{
       Object.keys(localStorage).forEach(function(k){
-        if(k.indexOf('vexaUploadedImages:')===0||k.indexOf('vexaUploadedImagesUpdatedAt:')===0||k.indexOf('vexaPlayZoneImageUrls')===0||k.indexOf('vexaSectionLocks:')===0||k.indexOf('vexaSectionLocksUpdatedAt:')===0)localStorage.removeItem(k);
+        if(k.indexOf('vexaUploadedImages:')===0||k.indexOf('vexaUploadedImagesUpdatedAt:')===0||k.indexOf('vexaPlayZoneImageUrls')===0||k.indexOf('vexaSectionLocks:')===0||k.indexOf('vexaSectionLocksUpdatedAt:')===0||k.indexOf('vexaPredict')===0)localStorage.removeItem(k);
       });
     }catch(e){}
   }
   function clearBrowserCaches(){
-    try{if(!('caches' in window))return Promise.resolve();return Promise.all(cacheNames.map(function(name){return caches.delete(name).catch(function(){return false})}))}catch(e){return Promise.resolve()}
+    try{if(!('caches' in window))return Promise.resolve();return caches.keys().then(function(keys){var seen={};cacheNames.forEach(function(name){seen[name]=1});return Promise.all(keys.filter(function(name){return seen[name]||/^vexa/i.test(name)}).map(function(name){return caches.delete(name).catch(function(){return false})}))})}catch(e){return Promise.resolve()}
   }
   function stripCacheParams(url){
     try{var u=new URL(String(url||''),location.href);u.searchParams.delete('rt');u.searchParams.delete('av');return u.pathname+u.search+u.hash}catch(e){return String(url||'')}
@@ -44,7 +44,7 @@ export const APP_FORCE_REFRESH_SCRIPT = `
       var version=String(j&&j.version||'');
       var current='';try{current=localStorage.getItem(KEY)||''}catch(e){}
       if(version&&current&&version!==current)return apply(version,false);
-      if(version&&!current)try{localStorage.setItem(KEY,version)}catch(e){}
+      if(version&&!current)return apply(version,true);
       return false;
     }).catch(function(){return false}).finally(function(){checking=false});
   }
