@@ -99,7 +99,7 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
 
 async function forceMiniAppCacheRefresh(env: Env, token: string, chatId: number, tg: TgApi, callbackQueryId: string, messageId?: number): Promise<true> {
   const version = String(Date.now());
-  await setAppCacheVersion(env, version);
+  await env.BOT_CACHE.put(APP_CACHE_VERSION_KEY, version);
   await tg(token, 'answerCallbackQuery', { callback_query_id: callbackQueryId, text: '✅ کش تصاویر مینی‌اپ آپدیت شد.', show_alert: true }).catch(() => undefined);
   const text = ['♻️ آپدیت کش تصاویر مینی‌اپ', '', '✅ نسخه جدید کش ثبت شد.', `Version: ${version}`, '', 'از این به بعد وقتی کاربران مینی‌اپ را باز کنند یا به آن برگردند، کش تصاویر پاک می‌شود و عکس‌های جدید لود می‌شوند.'].join('\n');
   await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
@@ -387,42 +387,9 @@ async function upsertMessage(token: string, tg: TgApi, chatId: number, messageId
   await tg(token, 'sendMessage', payload);
 }
 
-
-async function ensureAppSettings(env: Env): Promise<void> {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)`).run().catch(() => undefined);
-}
-
-async function setAppCacheVersion(env: Env, version: string): Promise<void> {
-  await ensureAppSettings(env);
-  await env.DB.prepare(`INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-    .bind(APP_CACHE_VERSION_KEY, version)
-    .run();
-  await env.BOT_CACHE.delete(APP_CACHE_VERSION_KEY).catch(() => undefined);
-}
-
-async function getAdminState(env: Env, adminId: unknown): Promise<AdminState | null> {
-  try {
-    await ensureAdminSettings(env);
-    const row = await env.DB.prepare('SELECT value_json, updated_at FROM admin_settings WHERE name = ?').bind(stateKey(adminId)).first<{ value_json: string; updated_at: string }>();
-    if (!row) return null;
-    if (Date.now() - Date.parse(row.updated_at || '') > 900_000) { await clearAdminState(env, adminId); return null; }
-    return JSON.parse(row.value_json) as AdminState;
-  } catch { return null; }
-}
-async function setAdminState(env: Env, adminId: unknown, state: AdminState): Promise<void> {
-  await ensureAdminSettings(env);
-  await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(name) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`)
-    .bind(stateKey(adminId), JSON.stringify(state))
-    .run();
-  await env.BOT_CACHE.delete(stateKey(adminId)).catch(() => undefined);
-}
-async function clearAdminState(env: Env, adminId: unknown): Promise<void> {
-  await ensureAdminSettings(env);
-  await env.DB.prepare('DELETE FROM admin_settings WHERE name = ?').bind(stateKey(adminId)).run().catch(() => undefined);
-  await env.BOT_CACHE.delete(stateKey(adminId)).catch(() => undefined);
-}
+async function getAdminState(env: Env, adminId: unknown): Promise<AdminState | null> { return env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as Promise<AdminState | null>; }
+async function setAdminState(env: Env, adminId: unknown, state: AdminState): Promise<void> { await env.BOT_CACHE.put(stateKey(adminId), JSON.stringify(state), { expirationTtl: 900 }); }
+async function clearAdminState(env: Env, adminId: unknown): Promise<void> { await env.BOT_CACHE.delete(stateKey(adminId)).catch(() => undefined); }
 function stateKey(adminId: unknown): string { return 'botadmin:state:' + String(adminId ?? ''); }
 
 function parseTonDelta(value: string): number | null {

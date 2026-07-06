@@ -67,7 +67,7 @@ export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): v
   app.post('/admin/api/force-app-refresh', async (c) => {
     if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
     const version = String(Date.now());
-    await setAppVersion(c.env, version);
+    await c.env.BOT_CACHE.put(APP_CACHE_VERSION_KEY, version);
     return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });
   });
 }
@@ -245,26 +245,9 @@ function clampInt(value: string | null | undefined, min: number, max: number, fa
   return Math.min(max, Math.max(min, parsed));
 }
 
-
-async function setAppVersion(env: Env, version: string): Promise<void> {
-  await ensureAppSettings(env);
-  await env.DB.prepare(`INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-    .bind(APP_CACHE_VERSION_KEY, version)
-    .run();
-  await env.BOT_CACHE.delete(APP_CACHE_VERSION_KEY).catch(() => undefined);
-}
-
 async function getAppVersion(env: Env): Promise<string> {
-  await ensureAppSettings(env);
-  const row = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind(APP_CACHE_VERSION_KEY).first<{ value: string }>().catch(() => null);
-  if (row?.value) return row.value;
-  const legacy = await env.BOT_CACHE.get(APP_CACHE_VERSION_KEY).catch(() => null);
-  if (legacy) {
-    await setAppVersion(env, legacy).catch(() => undefined);
-    return legacy;
-  }
-  return '1';
+  const value = await env.BOT_CACHE.get(APP_CACHE_VERSION_KEY).catch(() => null);
+  return value || '1';
 }
 
 function adminCookieValue(cookie: string | undefined): string {
