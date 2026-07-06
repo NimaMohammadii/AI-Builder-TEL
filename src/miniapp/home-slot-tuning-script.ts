@@ -1,6 +1,6 @@
 export const HOME_SLOT_TUNING_SCRIPT = `
 (function(){
-  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000,drawTimerStarted=false,manualMode=false,manualDragReel=null,manualDragY=0,manualMoved=false,manualClickBlock=0,manualHandlersBound=false,homeScrollLocked=false;
+  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000,drawTimerStarted=false,manualMode=false,manualDragReel=null,manualDragY=0,manualMoved=false,manualClickBlock=0,manualHandlersBound=false;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
@@ -14,7 +14,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     if(q('#homeSlotTuningStyle'))return;
     var st=document.createElement('style');st.id='homeSlotTuningStyle';
     st.textContent=[
-      'body.home-scroll-locked,body.home-scroll-locked .content,body.home-scroll-locked #home,body.home-scroll-locked #home.view.active{overflow:hidden!important;overflow-y:hidden!important;overflow-x:hidden!important;overscroll-behavior:none!important;touch-action:none!important}body.home-scroll-locked #home{height:100dvh!important;max-height:100dvh!important;min-height:100dvh!important;position:relative!important}body.home-scroll-locked #home .home-bonus-list,body.home-scroll-locked #home .home-ticket-drawer,body.home-scroll-locked .home-bonus-list,body.home-scroll-locked .home-ticket-drawer{touch-action:pan-y!important;overscroll-behavior:contain!important}',
+      'body:has(#home.active) #home, #home.view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important}#home .home-bonus-list,#home .home-ticket-drawer,#home .home-ticket-list,.home-bonus-list,.home-ticket-drawer{touch-action:pan-y!important;overscroll-behavior:contain!important}',
       '#home .home-lottery-slot-card{pointer-events:auto!important}',
       '#home .home-slot-number-reel{margin:5px 13px 6px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;pointer-events:auto!important}',
       '#home .home-slot-number-reel:first-child{transform:translateX(1px)!important}',
@@ -41,7 +41,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     document.head.appendChild(st);
   }
   function isHomeActive(){var h=q('#home');return !!(h&&h.classList.contains('active'))}
-  function lockHomeScroll(){var h=q('#home');document.body.classList.toggle('home-scroll-locked',isHomeActive());if(h){h.scrollTop=0;h.scrollLeft=0}if(!homeScrollLocked){homeScrollLocked=true;setInterval(function(){var hh=q('#home');if(hh&&hh.classList.contains('active')){document.body.classList.add('home-scroll-locked');hh.scrollTop=0;hh.scrollLeft=0}},250)}}
+  function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
   function allowInnerScroll(t){return !!(t&&t.closest&&t.closest('.home-bonus-list,.home-ticket-drawer,.home-ticket-list'))}
   function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>24:00:00</strong></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8-2.2-4.6-4.9-4.1-3.4.6-5.7 4.5-7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
   function bonusRows(){var vals=[120,75,45,30,20,15,12,10,8,6,5,4,3,2.5,2,1.8,1.6,1.4,1.2,1,.9,.8,.7,.6,.5,.4,.3,.25,.2,.15],u=' TO'+'N',h='',tones=['',' is-blue',' is-bronze'];for(var i=0;i<30;i++){var premium=i<3?'<div class="vexa-bonus-premium" aria-hidden="true"></div>':'';h+='<article class="home-bonus-row home-bonus-top-card home-live-winner-card'+(tones[i]||'')+'">'+premium+'<div class="home-live-winner-avatar home-bonus-rank-avatar">#'+(i+1)+'</div><div class="home-live-winner-user" aria-hidden="true"></div><div class="home-live-winner-amount">'+vals[i]+u+'</div></article>'}return h}
@@ -60,7 +60,7 @@ export const HOME_SLOT_TUNING_SCRIPT = `
   function startDrawTimer(){if(drawTimerStarted)return;drawTimerStarted=true;setInterval(ensureDrawInfoCard,1000)}
   function ensureConfettiButton(){var spin=q('#homeSlotSpinButton');if(!spin||q('#homeConfettiButton'))return;var b=document.createElement('button');b.id='homeConfettiButton';b.className='home-confetti-button';b.type='button';b.textContent='✦';spin.parentNode.insertBefore(b,spin.nextSibling)}
   function prepare(){
-    tune();lockHomeScroll();ensureDrawInfoCard();startDrawTimer();ensureConfettiButton();ensureManualButton();
+    tune();enableHomeScroll();ensureDrawInfoCard();startDrawTimer();ensureConfettiButton();ensureManualButton();
     qa('#home .home-slot-number-reel').forEach(function(reel){
       var strip=q('[data-slot-strip]',reel);if(!strip)return;
       if(strip.dataset.tuned!=='3'){strip.innerHTML=digits();strip.dataset.tuned='3'}
@@ -97,10 +97,10 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     });
   }
   document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeSlotSpinButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();if(manualMode)setManualMode(false);spin()}if(t&&t.id==='homeSlotManualButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setManualMode(!manualMode)}if(t&&t.id==='homeConfettiButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();confetti()}var my=t&&t.closest&&t.closest('#homeTicketImageButton');if(my)tapAction(my);var bonus=t&&t.closest&&t.closest('#homeBonusButton');if(bonus){tapAction(bonus);e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setBonusPanel(true)}if(t&&t.id==='homeBonusClose'){e.preventDefault();setBonusPanel(false)}if(t&&t.id==='homeBonusBackdrop'){e.preventDefault();setBonusPanel(false)}},true);
-  document.addEventListener('wheel',function(e){var r=reelFromTarget(e.target);if(manualMode&&r){e.preventDefault();manualStep(r,e.deltaY>0?1:-1);return}if(isHomeActive()&&!allowInnerScroll(e.target)){e.preventDefault();var h=q('#home');if(h)h.scrollTop=0}},{passive:false,capture:true});
-  document.addEventListener('touchmove',function(e){if(isHomeActive()&&!allowInnerScroll(e.target)){e.preventDefault();var h=q('#home');if(h)h.scrollTop=0}},{passive:false,capture:true});
-  document.addEventListener('scroll',function(){if(isHomeActive()){var h=q('#home');if(h){h.scrollTop=0;h.scrollLeft=0}}},true);
-  document.addEventListener('click',function(){setTimeout(function(){ensureDrawInfoCard();lockHomeScroll();bindManualReels()},0)},true);
+  document.addEventListener('wheel',function(e){var r=reelFromTarget(e.target);if(manualMode&&r){e.preventDefault();manualStep(r,e.deltaY>0?1:-1);return}},{passive:false,capture:true});
+  document.addEventListener('touchmove',function(e){if(manualMode&&reelFromTarget(e.target))e.preventDefault()},{passive:false,capture:true});
+  document.addEventListener('scroll',function(){var h=q('#home');if(h&&h.classList.contains('active'))h.scrollLeft=0},true);
+  document.addEventListener('click',function(){setTimeout(function(){ensureDrawInfoCard();enableHomeScroll();bindManualReels()},0)},true);
   window.addEventListener('storage',ensureDrawInfoCard);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',prepare);else prepare();
   window.addEventListener('focus',prepare);
