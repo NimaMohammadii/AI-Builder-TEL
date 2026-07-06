@@ -1,8 +1,8 @@
 export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
   <style>
-    #rewards{overflow-y:auto!important;overflow-x:hidden!important;padding:0 8px 120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box!important}
+    #rewards{overflow-y:auto!important;overflow-x:hidden!important;padding:0 6px 120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box!important}
     #rewards::-webkit-scrollbar{display:none}
-    #rewards .rewards-hero-image-wrap{position:relative;width:min(44vw,170px);height:clamp(62px,20vw,104px);margin:calc(-48px + env(safe-area-inset-top)) auto 0;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
+    #rewards .rewards-hero-image-wrap{position:relative;width:min(44vw,170px);height:clamp(62px,20vw,104px);margin:calc(-54px + env(safe-area-inset-top)) auto 0;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
     #rewards .rewards-hero-image-wrap:before{content:'';position:absolute;inset:14% 8% 4%;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.10),rgba(135,31,62,.18) 42%,rgba(0,0,0,0) 72%);filter:blur(14px);transform:translateY(14px);z-index:-1}
     #rewards .rewards-hero-image{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .28s ease}
     #rewards .rewards-hero-image.is-loaded{opacity:1}
@@ -20,35 +20,35 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
     #rewards .rewards-mission-button:active{transform:scale(.98)!important;background:linear-gradient(180deg,rgba(118,22,50,.94),rgba(64,10,29,.96))!important}
     @keyframes rewardsHeroFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
     @media(prefers-reduced-motion:reduce){#rewards .rewards-hero-image-wrap{animation:none}}
-    @media(max-width:380px){#rewards{padding-left:6px!important;padding-right:6px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:calc(-48px + env(safe-area-inset-top))}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:76px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
+    @media(max-width:380px){#rewards{padding-left:5px!important;padding-right:5px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:calc(-54px + env(safe-area-inset-top))}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:76px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
   </style>
   <div class="rewards-hero-image-wrap" aria-hidden="true"><img class="rewards-hero-image" src="/app/api/daily-rewards-hero-image.png" alt="" decoding="async" onload="this.classList.add('is-loaded')" onerror="this.parentNode.style.display='none'"/></div>
   <div class="rewards-mission-list" aria-label="Rewards missions">
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
+      <div class="rewards-mission-info">Claim your free daily ticket</div>
+      <button class="rewards-mission-button" type="button">Claim</button>
+    </article>
     <article class="rewards-mission-card" data-rewards-invite-card data-rewards-invite-value="0">
       <div class="rewards-mission-head"><strong>Invite Friend</strong><span class="rewards-mission-tag">Mission</span></div>
       <div class="rewards-mission-info">Invite 20 friends and unlock your reward</div>
       <div class="rewards-friend-progress" aria-label="Invite friends progress"><div class="rewards-friend-progress-top"><span>Friends invited</span><b data-rewards-invite-count>0 / 20</b></div><div class="rewards-friend-progress-track"><i class="rewards-friend-progress-fill" data-rewards-invite-fill></i></div></div>
-      <button class="rewards-mission-button" type="button" onclick="var c=this.closest('[data-rewards-invite-card]');var n=Math.min(20,(Number(c.getAttribute('data-rewards-invite-value')||0)+1));c.setAttribute('data-rewards-invite-value',n);var l=c.querySelector('[data-rewards-invite-count]');var f=c.querySelector('[data-rewards-invite-fill]');if(l)l.textContent=n+' / 20';if(f)requestAnimationFrame(function(){f.style.width=(n*5)+'%';});">Invite + Claim</button>
-    </article>
-    <article class="rewards-mission-card">
-      <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
-      <div class="rewards-mission-info">Claim your free daily ticket</div>
-      <button class="rewards-mission-button" type="button">Claim Daily Ticket</button>
+      <button class="rewards-mission-button" type="button" onclick="var c=this.closest('[data-rewards-invite-card]');var n=Math.min(20,(Number(c.getAttribute('data-rewards-invite-value')||0)+1));c.setAttribute('data-rewards-invite-value',n);var l=c.querySelector('[data-rewards-invite-count]');var f=c.querySelector('[data-rewards-invite-fill]');if(l)l.textContent=n+' / 20';if(f)requestAnimationFrame(function(){f.style.width=(n*5)+'%';});">Invite</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Join Channel</strong><span class="rewards-mission-tag">Bonus</span></div>
       <div class="rewards-mission-info">Join our channel and claim bonus</div>
-      <button class="rewards-mission-button" type="button">Join & Claim</button>
+      <button class="rewards-mission-button" type="button">Join</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Watch YouTube Video</strong><span class="rewards-mission-tag">Video</span></div>
       <div class="rewards-mission-info">Watch the video to unlock this reward</div>
-      <button class="rewards-mission-button" type="button">Watch Video</button>
+      <button class="rewards-mission-button" type="button">Watch</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Subscribe YouTube</strong><span class="rewards-mission-tag">YouTube</span></div>
       <div class="rewards-mission-info">Subscribe to our YouTube channel</div>
-      <button class="rewards-mission-button" type="button">Subscribe & Claim</button>
+      <button class="rewards-mission-button" type="button">Subscribe</button>
     </article>
   </div>
 </section>`;
