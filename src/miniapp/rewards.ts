@@ -1,6 +1,6 @@
 export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
   <style>
-    #rewards{overflow-y:auto!important;overflow-x:hidden!important;padding:0 16px 120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box!important}
+    #rewards{overflow-y:auto!important;overflow-x:hidden!important;padding:0 8px 120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box!important}
     #rewards::-webkit-scrollbar{display:none}
     #rewards .rewards-hero-image-wrap{position:relative;width:min(44vw,170px);height:clamp(62px,20vw,104px);margin:calc(-48px + env(safe-area-inset-top)) auto 0;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
     #rewards .rewards-hero-image-wrap:before{content:'';position:absolute;inset:14% 8% 4%;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.10),rgba(135,31,62,.18) 42%,rgba(0,0,0,0) 72%);filter:blur(14px);transform:translateY(14px);z-index:-1}
@@ -15,12 +15,12 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
     #rewards .rewards-friend-progress{display:grid!important;gap:6px!important;margin:-1px 0 0!important}
     #rewards .rewards-friend-progress-top{display:flex!important;align-items:center!important;justify-content:space-between!important;color:rgba(255,255,255,.58)!important;font-size:10px!important;font-weight:900!important;padding:0 2px!important}
     #rewards .rewards-friend-progress-track{height:7px!important;border-radius:999px!important;background:rgba(0,0,0,.26)!important;overflow:hidden!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),inset 0 -1px 0 rgba(255,255,255,.035)!important}
-    #rewards .rewards-friend-progress-fill{display:block!important;height:100%!important;width:0%;border-radius:999px!important;background:linear-gradient(90deg,rgba(82,9,32,.95),rgba(135,31,62,.95))!important;box-shadow:0 0 16px rgba(135,31,62,.28)!important;transition:width .55s cubic-bezier(.2,.9,.24,1)!important}
+    #rewards .rewards-friend-progress-fill{display:block!important;height:100%!important;width:0%;border-radius:999px!important;background:linear-gradient(90deg,rgba(82,9,32,.95),rgba(135,31,62,.95))!important;box-shadow:0 0 16px rgba(135,31,62,.28)!important;transition:width .9s cubic-bezier(.16,1,.3,1)!important;will-change:width!important}
     #rewards .rewards-mission-button{width:100%!important;height:34px!important;border-radius:14px!important;border:0!important;background:linear-gradient(180deg,rgba(98,18,42,.92),rgba(54,8,24,.94))!important;color:#fff!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(255,255,255,.055),0 12px 24px rgba(0,0,0,.2)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
     #rewards .rewards-mission-button:active{transform:scale(.98)!important;background:linear-gradient(180deg,rgba(118,22,50,.94),rgba(64,10,29,.96))!important}
     @keyframes rewardsHeroFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
     @media(prefers-reduced-motion:reduce){#rewards .rewards-hero-image-wrap{animation:none}}
-    @media(max-width:380px){#rewards{padding-left:14px!important;padding-right:14px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:calc(-48px + env(safe-area-inset-top))}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:76px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
+    @media(max-width:380px){#rewards{padding-left:6px!important;padding-right:6px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:calc(-48px + env(safe-area-inset-top))}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:76px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
   </style>
   <div class="rewards-hero-image-wrap" aria-hidden="true"><img class="rewards-hero-image" src="/app/api/daily-rewards-hero-image.png" alt="" decoding="async" onload="this.classList.add('is-loaded')" onerror="this.parentNode.style.display='none'"/></div>
   <div class="rewards-mission-list" aria-label="Rewards missions">
@@ -28,17 +28,27 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
       <div class="rewards-mission-head"><strong>Invite Friend</strong><span class="rewards-mission-tag">Mission</span></div>
       <div class="rewards-mission-info">Invite 20 friends and unlock your reward</div>
       <div class="rewards-friend-progress" aria-label="Invite friends progress"><div class="rewards-friend-progress-top"><span>Friends invited</span><b data-rewards-invite-count>0 / 20</b></div><div class="rewards-friend-progress-track"><i class="rewards-friend-progress-fill" data-rewards-invite-fill></i></div></div>
-      <button class="rewards-mission-button" type="button" onclick="var c=this.closest('[data-rewards-invite-card]');var n=Math.min(20,(Number(c.getAttribute('data-rewards-invite-value')||0)+1));c.setAttribute('data-rewards-invite-value',n);var l=c.querySelector('[data-rewards-invite-count]');var f=c.querySelector('[data-rewards-invite-fill]');if(l)l.textContent=n+' / 20';if(f)f.style.width=(n*5)+'%';">Claim</button>
+      <button class="rewards-mission-button" type="button" onclick="var c=this.closest('[data-rewards-invite-card]');var n=Math.min(20,(Number(c.getAttribute('data-rewards-invite-value')||0)+1));c.setAttribute('data-rewards-invite-value',n);var l=c.querySelector('[data-rewards-invite-count]');var f=c.querySelector('[data-rewards-invite-fill]');if(l)l.textContent=n+' / 20';if(f)requestAnimationFrame(function(){f.style.width=(n*5)+'%';});">Invite + Claim</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
       <div class="rewards-mission-info">Claim your free daily ticket</div>
-      <button class="rewards-mission-button" type="button">Claim Ticket</button>
+      <button class="rewards-mission-button" type="button">Claim Daily Ticket</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Join Channel</strong><span class="rewards-mission-tag">Bonus</span></div>
       <div class="rewards-mission-info">Join our channel and claim bonus</div>
-      <button class="rewards-mission-button" type="button">Claim</button>
+      <button class="rewards-mission-button" type="button">Join & Claim</button>
+    </article>
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Watch YouTube Video</strong><span class="rewards-mission-tag">Video</span></div>
+      <div class="rewards-mission-info">Watch the video to unlock this reward</div>
+      <button class="rewards-mission-button" type="button">Watch Video</button>
+    </article>
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Subscribe YouTube</strong><span class="rewards-mission-tag">YouTube</span></div>
+      <div class="rewards-mission-info">Subscribe to our YouTube channel</div>
+      <button class="rewards-mission-button" type="button">Subscribe & Claim</button>
     </article>
   </div>
 </section>`;
