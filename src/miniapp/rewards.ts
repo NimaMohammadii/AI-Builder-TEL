@@ -2,12 +2,14 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
   <style>
     #rewards{overflow-y:auto!important;overflow-x:hidden!important;padding:0 6px 120px!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box!important}
     #rewards::-webkit-scrollbar{display:none}
-    #rewards .rewards-hero-image-wrap{position:relative;width:min(44vw,170px);height:clamp(62px,20vw,104px);margin:calc(-54px + env(safe-area-inset-top)) auto 0;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
+    #rewards .rewards-top-row{width:100%!important;margin:calc(-34px + env(safe-area-inset-top)) auto 0!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,.95fr)!important;align-items:center!important;gap:8px!important}
+    #rewards .rewards-hero-image-wrap{position:relative;width:100%;height:clamp(94px,29vw,150px);margin:0!important;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
     #rewards .rewards-hero-image-wrap:before{content:'';position:absolute;inset:14% 8% 4%;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.10),rgba(135,31,62,.18) 42%,rgba(0,0,0,0) 72%);filter:blur(14px);transform:translateY(14px);z-index:-1}
     #rewards .rewards-hero-image{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .28s ease}
     #rewards .rewards-hero-image.is-loaded{opacity:1}
-    #rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin:78px auto 0!important;display:grid!important;gap:10px!important;align-content:start!important;justify-items:stretch!important}
+    #rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin:28px auto 0!important;display:grid!important;gap:10px!important;align-content:start!important;justify-items:stretch!important}
     #rewards .rewards-mission-card{width:100%!important;margin:0!important;border-radius:23px!important;padding:10px!important;min-height:114px!important;background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 18px rgba(255,255,255,.05),0 14px 30px rgba(0,0,0,.20)!important;display:grid!important;gap:7px!important;align-content:space-between!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;box-sizing:border-box!important}
+    #rewards .rewards-top-row .rewards-mission-card{min-height:122px!important}
     #rewards .rewards-mission-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:8px!important}
     #rewards .rewards-mission-head strong{color:#fff!important;font-size:14px!important;font-weight:950!important;letter-spacing:-.03em!important}
     #rewards .rewards-mission-tag{height:26px!important;min-width:62px!important;padding:0 8px!important;border-radius:999px!important;background:rgba(255,255,255,.075)!important;color:rgba(255,255,255,.72)!important;font-size:10px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(255,255,255,.045)!important;white-space:nowrap!important}
@@ -20,15 +22,17 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
     #rewards .rewards-mission-button:active{transform:scale(.98)!important;background:linear-gradient(180deg,rgba(118,22,50,.94),rgba(64,10,29,.96))!important}
     @keyframes rewardsHeroFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
     @media(prefers-reduced-motion:reduce){#rewards .rewards-hero-image-wrap{animation:none}}
-    @media(max-width:380px){#rewards{padding-left:5px!important;padding-right:5px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:calc(-54px + env(safe-area-inset-top))}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:76px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
+    @media(max-width:380px){#rewards{padding-left:5px!important;padding-right:5px!important}#rewards .rewards-top-row{margin-top:calc(-34px + env(safe-area-inset-top))!important;grid-template-columns:minmax(0,1fr) minmax(0,.88fr)!important;gap:7px!important}#rewards .rewards-hero-image-wrap{height:clamp(86px,27vw,132px)}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:26px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-top-row .rewards-mission-card{min-height:118px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
   </style>
-  <div class="rewards-hero-image-wrap" aria-hidden="true"><img class="rewards-hero-image" src="/app/api/daily-rewards-hero-image.png" alt="" decoding="async" onload="this.classList.add('is-loaded')" onerror="this.parentNode.style.display='none'"/></div>
-  <div class="rewards-mission-list" aria-label="Rewards missions">
+  <div class="rewards-top-row">
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
       <div class="rewards-mission-info">Claim your free daily ticket</div>
       <button class="rewards-mission-button" type="button" data-rewards-action="claim">Claim</button>
     </article>
+    <div class="rewards-hero-image-wrap" aria-hidden="true"><img class="rewards-hero-image" src="/app/api/daily-rewards-hero-image.png" alt="" decoding="async" onload="this.classList.add('is-loaded')"/></div>
+  </div>
+  <div class="rewards-mission-list" aria-label="Rewards missions">
     <article class="rewards-mission-card" data-rewards-invite-card data-rewards-invite-value="0">
       <div class="rewards-mission-head"><strong>Invite Friend</strong><span class="rewards-mission-tag">Mission</span></div>
       <div class="rewards-mission-info">Invite 20 friends and unlock your reward</div>
