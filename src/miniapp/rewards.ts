@@ -26,29 +26,29 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
   </style>
   <article class="rewards-mission-card rewards-daily-top">
     <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
-    <div class="rewards-mission-info">Claim daily ticket and get +0.20 TON</div>
+    <div class="rewards-mission-info">Free daily ticket unlocks +0.20 TON</div>
     <button class="rewards-mission-button" type="button" data-rewards-action="claim">Claim</button>
   </article>
   <div class="rewards-mission-list" aria-label="Rewards missions">
     <article class="rewards-mission-card" data-rewards-invite-card data-rewards-invite-value="0">
       <div class="rewards-mission-head"><strong>Invite Friend</strong><span class="rewards-mission-tag">Mission</span></div>
-      <div class="rewards-mission-info">Invite 20 friends and get +5 TON</div>
+      <div class="rewards-mission-info">Bring 20 friends to unlock +5 TON</div>
       <div class="rewards-friend-progress" aria-label="Invite friends progress"><div class="rewards-friend-progress-top"><span>Friends invited</span><b data-rewards-invite-count>0 / 20</b></div><div class="rewards-friend-progress-track"><i class="rewards-friend-progress-fill" data-rewards-invite-fill></i></div></div>
       <button class="rewards-mission-button" type="button" data-rewards-action="invite">Invite</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Join Channel</strong><span class="rewards-mission-tag">Bonus</span></div>
-      <div class="rewards-mission-info">Join our channel and get +1 TON</div>
+      <div class="rewards-mission-info">Join our channel for +1 TON</div>
       <button class="rewards-mission-button" type="button" data-rewards-action="done">Join</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Watch YouTube Video</strong><span class="rewards-mission-tag">Video</span></div>
-      <div class="rewards-mission-info">Watch the video and get +0.50 TON</div>
+      <div class="rewards-mission-info">Watch one video and unlock +0.50 TON</div>
       <button class="rewards-mission-button" type="button" data-rewards-action="done">Watch</button>
     </article>
     <article class="rewards-mission-card">
       <div class="rewards-mission-head"><strong>Subscribe YouTube</strong><span class="rewards-mission-tag">YouTube</span></div>
-      <div class="rewards-mission-info">Subscribe and get +2 TON</div>
+      <div class="rewards-mission-info">Subscribe to YouTube for +2 TON</div>
       <button class="rewards-mission-button" type="button" data-rewards-action="done">Subscribe</button>
     </article>
   </div>
