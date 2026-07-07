@@ -23,6 +23,7 @@ const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
 const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const HOME_MY_TICKET_IMAGE_KEY = 'home-my-ticket/image';
+const WALLET_HERO_IMAGE_KEY = 'wallet/hero-image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
@@ -31,6 +32,29 @@ const GHOST_RUN_ASSET_KINDS = new Set(['background', 'background1', 'background2
 registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
+
+
+app.get('/app/api/wallet-hero-image.png', async (c) => {
+  const object = await c.env.ASSETS.get(WALLET_HERO_IMAGE_KEY).catch(() => null);
+  if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
+});
+
+app.post('/admin/api/upload-wallet-hero-image', async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
+    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+    if (file.size > 5_000_000) return c.json({ error: 'Image must be under 5MB.' }, 400);
+    const version = String(Date.now());
+    await c.env.ASSETS.put(WALLET_HERO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
+    return c.json({ ok: true, size: file.size, type: file.type, url: `/app/api/wallet-hero-image.png?v=${version}` });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Wallet image' }, 400);
+  }
+});
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 app.get('/app/api/plinko-virtual-users', async (c) => c.json(await getPlinkoVirtualUsers(c.env)));
