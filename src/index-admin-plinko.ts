@@ -37,7 +37,7 @@ registerPlinkoLiveRoutes(app);
 app.get('/app/api/wallet-hero-image.png', async (c) => {
   const object = await c.env.ASSETS.get(WALLET_HERO_IMAGE_KEY).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
 });
 
 app.post('/admin/api/upload-wallet-hero-image', async (c) => {
