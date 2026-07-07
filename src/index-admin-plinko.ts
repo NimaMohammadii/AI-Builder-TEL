@@ -17,6 +17,7 @@ import { isAdminSession } from './admin-auth';
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
+const WALLET_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 // Ghost Run scene art is referenced by stable CSS URLs, so keep it browser-cached
 // instead of re-downloading every time the user opens the game.
 const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -37,7 +38,7 @@ registerPlinkoLiveRoutes(app);
 app.get('/app/api/wallet-hero-image.png', async (c) => {
   const object = await c.env.ASSETS.get(WALLET_HERO_IMAGE_KEY).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
+  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': WALLET_IMAGE_CACHE_CONTROL } });
 });
 
 app.post('/admin/api/upload-wallet-hero-image', async (c) => {
