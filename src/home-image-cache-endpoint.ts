@@ -22,7 +22,19 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg
 
 export function registerHomeImageCacheEndpoint(app: AppLike): void {
   app.get('/app/api/home-intro-image.png', async (c) => homeIntroImageResponse(c.env));
+  app.get('/app/api/home-intro-image-meta', async (c) => homeIntroImageMetaResponse(c.env));
   app.post('/admin/api/upload-home-intro-image', async (c) => uploadHomeIntroImage(c));
+}
+
+async function homeIntroImageMetaResponse(env: Env): Promise<Response> {
+  const object = await env.ASSETS.head(HOME_INTRO_IMAGE_KEY).catch(() => null);
+  const version = assetVersion(object);
+  return new Response(JSON.stringify({ ok: true, version, url: `/app/api/home-intro-image.png?v=${encodeURIComponent(version)}` }), {
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
 }
 
 async function homeIntroImageResponse(env: Env): Promise<Response> {
@@ -50,8 +62,9 @@ async function uploadHomeIntroImage(c: HandlerContext): Promise<Response> {
     const file = pickImageFile(form);
     if (!file) return c.json({ error: 'Choose an image file.' }, 400);
     if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { uploadedAt: String(Date.now()) } });
-    return c.json({ ok: true, url: '/app/api/home-intro-image.png', size: file.size, type: file.type });
+    const version = String(Date.now());
+    await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version, uploadedAt: version } });
+    return c.json({ ok: true, url: `/app/api/home-intro-image.png?v=${encodeURIComponent(version)}`, version, size: file.size, type: file.type });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home intro image' }, 400);
   }
@@ -66,6 +79,10 @@ function pickImageFile(form: FormData): File | null {
     if (item instanceof File) return item;
   }
   return null;
+}
+
+function assetVersion(object: { customMetadata?: Record<string, string>; uploaded?: Date } | null): string {
+  return String(object?.customMetadata?.version || object?.customMetadata?.uploadedAt || object?.uploaded?.getTime?.() || 'default');
 }
 
 function fallbackSvg(): string {
