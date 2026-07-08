@@ -22,7 +22,6 @@ import { TTS_STYLES } from './tts-styles';
 import { MARKET_STYLES } from './market-styles';
 import { HOME_OVERRIDES } from './home-overrides';
 import { TRANSACTIONS_GLOBAL_STYLES } from './transactions-global-styles';
-import { HOME_FINANCE_STYLES } from './home-finance-styles';
 import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
@@ -32,7 +31,7 @@ import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
-import { HOME_SECTION } from './home';
+import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
 import { REFERRAL_SECTION } from './referral';
 import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
@@ -60,8 +59,6 @@ import { CONNECT_GROUPS_USAGE_SCRIPT } from './connect-groups-usage-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { TOP_PLAYERS_HOME_CARD_SCRIPT } from './top-players-home-card-script';
-import { HOME_BLANK_CARDS_SCRIPT } from './home-blank-cards-script';
-import { HOME_SLOT_TUNING_SCRIPT } from './home-slot-tuning-script';
 import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
@@ -184,7 +181,6 @@ const STYLES = [
   HOME_OVERRIDES,
   HOME_INTRO_CARD_IMAGE_STYLES,
   TRANSACTIONS_GLOBAL_STYLES,
-  HOME_FINANCE_STYLES,
   BALANCE_OVERRIDES,
   NAV_GLASS_OVERRIDES,
   GLASS_COMPONENTS_OVERRIDES,
