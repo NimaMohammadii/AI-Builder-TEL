@@ -4,33 +4,92 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
     #rewards::-webkit-scrollbar{display:none}
     #rewards .rewards-home-intro-card{min-height:156px!important;display:grid!important;place-items:stretch!important;padding:6px!important;overflow:hidden!important;box-sizing:border-box!important;background-color:rgba(255,255,255,.035)!important;background-image:url('/app/api/home-intro-image.png')!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;border-radius:30px!important;margin:calc(-54px + env(safe-area-inset-top)) 0 10px!important;box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.14)!important;backdrop-filter:blur(4px) saturate(1.12)!important;-webkit-backdrop-filter:blur(4px) saturate(1.12)!important}
     #rewards .rewards-home-intro-image-frame{width:100%!important;height:100%!important;min-height:144px!important;display:block!important;overflow:hidden!important;border:0!important;border-radius:24px!important;background:none!important;box-shadow:none!important;box-sizing:border-box!important}
-    #rewards .rewards-live-winners{margin:14px 0 0!important;display:block!important;min-height:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
-    #rewards .rewards-live-winners-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:0 2px 10px!important;color:#fff!important}
-    #rewards .rewards-live-winners-head strong{font-size:17px!important;font-weight:950!important;letter-spacing:-.035em!important}
-    #rewards .rewards-live-winners-head span{color:rgba(255,255,255,.48)!important;font-size:11px!important;font-weight:850!important}
-    #rewards .rewards-live-winners-list{height:auto!important;max-height:none!important;min-height:0!important;display:grid!important;align-content:start!important;gap:10px!important;overflow:visible!important;overscroll-behavior:auto!important;scrollbar-width:none!important;padding:0 2px 0!important;background:transparent!important;box-shadow:none!important}
-    #rewards .rewards-live-winners-list::-webkit-scrollbar{display:none!important}
-    #rewards .home-live-winner-card{min-height:64px!important;border:0!important;outline:0!important;border-radius:28px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;display:grid!important;grid-template-columns:42px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;padding:11px 14px!important;backdrop-filter:blur(3px) saturate(1.04)!important;-webkit-backdrop-filter:blur(3px) saturate(1.04)!important}
-    #rewards .home-live-winner-avatar{width:42px!important;height:42px!important;border-radius:50%!important;object-fit:cover!important;display:block!important;background:transparent!important;box-shadow:none!important}
-    #rewards .home-live-winner-user{min-width:0!important;display:grid!important;gap:3px!important}
-    #rewards .home-live-winner-user strong{display:block!important;color:#fff!important;font-size:13px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-    #rewards .home-live-winner-user span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:750!important}
-    #rewards .home-live-winner-amount{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
-    @media(max-width:380px){#rewards{padding-left:3px!important;padding-right:3px!important}#rewards .rewards-home-intro-card{margin-top:calc(-54px + env(safe-area-inset-top))!important;min-height:150px!important}#rewards .rewards-home-intro-image-frame{min-height:138px!important}}
+    #rewards .rewards-daily-top{margin:0!important}
+    #rewards .rewards-hero-image-wrap{position:relative;width:min(44vw,170px);height:clamp(62px,20vw,104px);margin:28px auto 0;display:grid;place-items:center;pointer-events:none;animation:rewardsHeroFloat 5.8s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 14px 22px rgba(0,0,0,.26))}
+    #rewards .rewards-hero-image-wrap:before{content:'';position:absolute;inset:14% 8% 4%;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.10),rgba(135,31,62,.18) 42%,rgba(0,0,0,0) 72%);filter:blur(14px);transform:translateY(14px);z-index:-1}
+    #rewards .rewards-hero-image{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .28s ease}
+    #rewards .rewards-hero-image.is-loaded{opacity:1}
+    #rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin:10px auto 0!important;display:grid!important;gap:10px!important;align-content:start!important;justify-items:stretch!important}
+    #rewards .rewards-mission-card{width:100%!important;margin:0!important;border-radius:23px!important;padding:10px!important;min-height:114px!important;background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 18px rgba(255,255,255,.05),0 14px 30px rgba(0,0,0,.20)!important;display:grid!important;gap:7px!important;align-content:space-between!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;box-sizing:border-box!important}
+    #rewards .rewards-mission-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:8px!important}
+    #rewards .rewards-mission-head strong{color:#fff!important;font-size:14px!important;font-weight:950!important;letter-spacing:-.03em!important}
+    #rewards .rewards-mission-tag{height:26px!important;min-width:62px!important;padding:0 8px!important;border-radius:999px!important;background:rgba(255,255,255,.075)!important;color:rgba(255,255,255,.72)!important;font-size:10px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(255,255,255,.045)!important;white-space:nowrap!important}
+    #rewards .rewards-mission-info{height:32px!important;width:100%!important;border-radius:14px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;font-size:12px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;padding:0 10px!important;box-sizing:border-box!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important}
+    #rewards .rewards-friend-progress{display:grid!important;gap:6px!important;margin:-1px 0 0!important}
+    #rewards .rewards-friend-progress-top{display:flex!important;align-items:center!important;justify-content:space-between!important;color:rgba(255,255,255,.58)!important;font-size:10px!important;font-weight:900!important;padding:0 2px!important}
+    #rewards .rewards-friend-progress-track{height:7px!important;border-radius:999px!important;background:rgba(0,0,0,.26)!important;overflow:hidden!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),inset 0 -1px 0 rgba(255,255,255,.035)!important}
+    #rewards .rewards-friend-progress-fill{display:block!important;height:100%!important;width:0%;border-radius:999px!important;background:linear-gradient(90deg,rgba(82,9,32,.95),rgba(135,31,62,.95))!important;box-shadow:0 0 16px rgba(135,31,62,.28)!important;transition:width .9s cubic-bezier(.16,1,.3,1)!important;will-change:width!important}
+    #rewards .rewards-mission-button{position:relative!important;z-index:2!important;width:100%!important;height:34px!important;border-radius:14px!important;border:0!important;background:linear-gradient(180deg,rgba(98,18,42,.92),rgba(54,8,24,.94))!important;color:#fff!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(255,255,255,.055),0 12px 24px rgba(0,0,0,.2)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important;transition:opacity .22s ease,filter .22s ease,background .22s ease!important}
+    #rewards .rewards-mission-button:active{transform:scale(.98)!important;background:linear-gradient(180deg,rgba(118,22,50,.94),rgba(64,10,29,.96))!important}
+    #rewards .rewards-mission-button.is-claimed{opacity:.42!important;filter:saturate(.55)!important;background:rgba(255,255,255,.095)!important;color:rgba(255,255,255,.68)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.035)!important;cursor:default!important}
+    @keyframes rewardsHeroFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
+    @media(prefers-reduced-motion:reduce){#rewards .rewards-hero-image-wrap{animation:none}}
+    @media(max-width:380px){#rewards{padding-left:3px!important;padding-right:3px!important}#rewards .rewards-home-intro-card{margin-top:calc(-54px + env(safe-area-inset-top))!important;min-height:150px!important}#rewards .rewards-home-intro-image-frame{min-height:138px!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:26px!important}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:10px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
   </style>
   <div class="rewards-home-intro-card" aria-hidden="true"><div class="rewards-home-intro-image-frame"></div></div>
-  <section class="rewards-live-winners" aria-label="Live Winners">
-    <div class="rewards-live-winners-head"><strong>Live Winners</strong><span>Recent user cards</span></div>
-    <div class="rewards-live-winners-list" id="rewardsLiveWinnersList"></div>
-  </section>
+  <article class="rewards-mission-card rewards-daily-top">
+    <div class="rewards-mission-head"><strong>Daily Ticket</strong><span class="rewards-mission-tag">Today</span></div>
+    <div class="rewards-mission-info">Free daily ticket unlocks +0.20 TON</div>
+    <button class="rewards-mission-button" type="button" data-rewards-action="claim">Claim</button>
+  </article>
+  <div class="rewards-mission-list" aria-label="Rewards missions">
+    <article class="rewards-mission-card" data-rewards-invite-card data-rewards-invite-value="0">
+      <div class="rewards-mission-head"><strong>Invite Friend</strong><span class="rewards-mission-tag">Mission</span></div>
+      <div class="rewards-mission-info">Bring 20 friends to unlock +5 TON</div>
+      <div class="rewards-friend-progress" aria-label="Invite friends progress"><div class="rewards-friend-progress-top"><span>Friends invited</span><b data-rewards-invite-count>0 / 20</b></div><div class="rewards-friend-progress-track"><i class="rewards-friend-progress-fill" data-rewards-invite-fill></i></div></div>
+      <button class="rewards-mission-button" type="button" data-rewards-action="invite">Invite</button>
+    </article>
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Join Channel</strong><span class="rewards-mission-tag">Bonus</span></div>
+      <div class="rewards-mission-info">Join our channel for +1 TON</div>
+      <button class="rewards-mission-button" type="button" data-rewards-action="done">Join</button>
+    </article>
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Watch YouTube Video</strong><span class="rewards-mission-tag">Video</span></div>
+      <div class="rewards-mission-info">Watch one video and unlock +0.50 TON</div>
+      <button class="rewards-mission-button" type="button" data-rewards-action="done">Watch</button>
+    </article>
+    <article class="rewards-mission-card">
+      <div class="rewards-mission-head"><strong>Subscribe YouTube</strong><span class="rewards-mission-tag">YouTube</span></div>
+      <div class="rewards-mission-info">Subscribe to YouTube for +2 TON</div>
+      <button class="rewards-mission-button" type="button" data-rewards-action="done">Subscribe</button>
+    </article>
+  </div>
+  <div class="rewards-hero-image-wrap" aria-hidden="true"><img class="rewards-hero-image" src="/app/api/daily-rewards-hero-image.png" alt="" decoding="async" onload="this.classList.add('is-loaded')" onerror="this.parentNode.style.display='none'"/></div>
   <script>
     (function(){
-      var WINNERS=[    ['@NikaWin','Level 8','+1.25 TON','telegram'],['@ParsaFlow','Level 9','+0.84 TON','durov'],['@MinaLucky','Level 10','+0.47 TON','TelegramTips'],['@ArianTon','Level 11','+2.10 TON','telegram'],['@SabaPlay','Level 12','+0.66 TON','durov'],['@RezaMax','Level 13','+1.72 TON','TelegramTips'],['@DaryaWin','Level 14','+0.93 TON','telegram'],['@KianX','Level 15','+3.40 TON','durov'],['@AvaTon','Level 16','+0.58 TON','TelegramTips'],['@PouyaWin','Level 17','+1.05 TON','telegram'],['@NoraLucky','Level 18','+0.77 TON','durov'],['@ShayanPro','Level 19','+2.45 TON','TelegramTips'],['@MelikaGold','Level 20','+1.18 TON','telegram'],['@ArmanKing','Level 21','+0.52 TON','durov'],['@RahaMoon','Level 22','+4.20 TON','TelegramTips'],['@NavidTon','Level 23','+0.69 TON','telegram'],['@SetiWin','Level 24','+1.33 TON','durov'],['@MahanPlay','Level 25','+2.80 TON','TelegramTips'],['@SinaFlow','Level 8','+0.91 TON','telegram'],['@NegarWin','Level 9','+1.60 TON','durov'],['@RadinX','Level 10','+0.44 TON','TelegramTips'],['@MatinTon','Level 11','+3.15 TON','telegram'],['@Sara88','Level 12','+0.73 TON','durov'],['@AmirMax','Level 13','+1.95 TON','TelegramTips'],['@TinaWin','Level 14','+0.88 TON','telegram'],['@HanaPlay','Level 15','+2.25 TON','durov'],['@BardiaPro','Level 16','+0.56 TON','TelegramTips'],['@SorenWin','Level 17','+1.48 TON','telegram'],['@YasminTon','Level 18','+0.62 TON','durov'],['@ErfanCode','Level 19','+2.65 TON','TelegramTips']];
-      function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]||c})}
-      function winnersHtml(){return WINNERS.map(function(w){return '<article class="home-live-winner-card"><img class="home-live-winner-avatar" src="https://t.me/i/userpic/320/'+esc(w[3])+'.jpg" alt="" decoding="async"/><div class="home-live-winner-user"><strong>'+esc(w[0])+'</strong><span>'+esc(w[1])+'</span></div><div class="home-live-winner-amount">'+esc(w[2])+'</div></article>'}).join('')}
-      function render(){var list=document.getElementById('rewardsLiveWinnersList');if(list&&!list.innerHTML)list.innerHTML=winnersHtml()}
-      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);else render();
-      window.addEventListener('vexa-view-change',render);
+      if(window.__vexaRewardsButtonsReady)return;
+      window.__vexaRewardsButtonsReady=true;
+      document.addEventListener('click',function(ev){
+        var btn=ev.target&&ev.target.closest&&ev.target.closest('#rewards .rewards-mission-button');
+        if(!btn)return;
+        var action=btn.getAttribute('data-rewards-action');
+        if(!action)return;
+        ev.preventDefault();
+        if(action==='claim'){
+          btn.textContent='Claimed';
+          btn.classList.add('is-claimed');
+          btn.setAttribute('data-rewards-action','claimed');
+          btn.disabled=true;
+          return;
+        }
+        if(action==='invite'){
+          var c=btn.closest('[data-rewards-invite-card]');
+          if(!c)return;
+          var n=Math.min(20,(Number(c.getAttribute('data-rewards-invite-value')||0)+1));
+          c.setAttribute('data-rewards-invite-value',String(n));
+          var label=c.querySelector('[data-rewards-invite-count]');
+          var fill=c.querySelector('[data-rewards-invite-fill]');
+          if(label)label.textContent=n+' / 20';
+          if(fill)requestAnimationFrame(function(){fill.style.width=(n*5)+'%';});
+          if(n>=20){btn.textContent='Claim';btn.setAttribute('data-rewards-action','claim');}
+          return;
+        }
+        if(action==='done'){
+          btn.textContent='Claim';
+          btn.setAttribute('data-rewards-action','claim');
+        }
+      },true);
     })();
   </script>
 </section>`;
