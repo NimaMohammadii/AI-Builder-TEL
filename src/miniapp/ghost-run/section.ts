@@ -1,13 +1,14 @@
 export const GHOST_RUN_SECTION = `
 <section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">
   <style>
+    body:has(#ghostrun.active) .content,body:has(#ghostrun.active) .view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important}
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
-    #ghostrun.ghost-run-view{height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun.ghost-run-view{height:100%!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
     #ghostrun.ghost-run-view::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
-    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;min-height:auto!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:visible!important;padding-bottom:calc(18px + env(safe-area-inset-bottom))!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;min-height:100%!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:visible!important;padding-bottom:calc(90px + env(safe-area-inset-bottom))!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
     #ghostrun .ghost-run-screen::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
     #ghostrun .ghost-run-scene{order:1!important;width:calc(100vw - 24px)!important;width:calc(100dvw - 24px)!important;max-width:430px!important;margin:10px auto 0!important;border-radius:34px!important;box-shadow:0 24px 70px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.12)!important;background:#000!important;background-color:#000!important;background-image:none!important;border:1px solid rgba(255,255,255,.12)!important;overflow:hidden!important}
-    #ghostrun .ghost-run-controls{order:3!important;margin-top:8px!important}
+    #ghostrun .ghost-run-controls{order:2!important;margin-top:8px!important}
     #ghostrun .ghost-run-shadow-fade{display:none!important;background:none!important}
     #ghostrun .ghost-run-moon,#ghostrun .ghost-run-ground,#ghostrun .ghost-run-uploaded-trees,#ghostrun .ghost-run-uploaded-houses{display:none!important;visibility:hidden!important}
     #ghostrun .ghost-run-background-strip{position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:700vw!important;width:700dvw!important;height:100%!important;z-index:1!important;display:flex!important;pointer-events:none!important;transform:translate3d(var(--ghost-bg-x,0px),0,0)!important;will-change:transform!important}
@@ -32,7 +33,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-forward-button:before{transform:translate(-66%,-50%) rotate(135deg)!important}
     #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(255,255,255,.055)!important;transform:scale(.985)!important}
     #ghostrun .ghost-run-move-button:disabled{opacity:.28!important}
-    #ghostrun .crash-live{order:2!important;margin:8px 12px 10px!important;border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
+    #ghostrun .crash-live{order:3!important;margin:8px 12px 10px!important;border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
     #ghostrun .crash-live:not(.open){max-height:54px!important;padding-bottom:12px!important;overflow:hidden!important}
     #ghostrun .crash-live-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:850!important;letter-spacing:-.02em!important}
     #ghostrun .crash-live-title{display:inline-flex!important;align-items:center!important;gap:7px!important;color:rgba(255,255,255,.58)!important;min-width:0!important}
@@ -118,7 +119,7 @@ export const GHOST_RUN_SECTION = `
     <div class="ghost-run-controls" aria-label="Ghost Run controls">
       <label class="ghost-run-control-card ghost-run-bet-card">
         <span>Bet Amount</span>
-        <strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/> TON</strong>
+        <strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/></strong>
       </label>
       <div class="ghost-run-control-card ghost-run-win-card">
         <span>Auto Cash Out</span>
