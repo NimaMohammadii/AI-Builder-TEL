@@ -865,4 +865,48 @@ body:has(#slot.active) main { background:transparent!important; }
   #slot .slot-control-panel { margin-top:-12px; }
 }
 
+
+/* Single continuous background layer */
+body:has(#slot.active),
+body:has(#slot.active) main.app,
+body:has(#slot.active) header.top,
+body:has(#slot.active) [data-lazy-section-host="slot"],
+body:has(#slot.active) #slot.slot-view {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body:has(#slot.active)::before,
+body:has(#slot.active)::after,
+body:has(#slot.active) main.app::before,
+body:has(#slot.active) main.app::after,
+body:has(#slot.active) header.top::before,
+body:has(#slot.active) header.top::after,
+#slot.slot-view::after {
+  content: none !important;
+  display: none !important;
+}
+
+#slot.slot-view::before {
+  content: "" !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  background: var(--slot-ai-bg) center center / cover no-repeat !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+}
+
+#slot .slot-atmosphere {
+  display: none !important;
+}
+
 `;
