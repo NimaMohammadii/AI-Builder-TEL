@@ -1,9 +1,53 @@
+import { SLOT_BACKGROUND_DATA_URI } from './slot-background';
+
 export const SLOT_STYLES = `
+html:has(#slot.active),
+body:has(#slot.active) {
+  min-height: 100%;
+  background: #010005 !important;
+  background-image: none !important;
+}
+
+body:has(#slot.active)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.34)), url('${SLOT_BACKGROUND_DATA_URI}');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+}
+
+body:has(#slot.active) .app,
+body:has(#slot.active) main.app,
+body:has(#slot.active) .content,
+body:has(#slot.active) .view.active,
+body:has(#slot.active) #slot,
+body:has(#slot.active) .top,
+body:has(#slot.active) header.top {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body:has(#slot.active) .content {
+  min-height: 100dvh;
+}
+
+body:has(#slot.active) .app {
+  position: relative;
+  z-index: 1;
+}
+
 .slot-view {
   position: relative;
-  min-height: calc(100dvh - 130px);
+  min-height: 100dvh;
   padding: 4px 0 18px;
   overflow: auto;
+  isolation: isolate;
 }
 
 body:has(#slot.active) .tabs {
