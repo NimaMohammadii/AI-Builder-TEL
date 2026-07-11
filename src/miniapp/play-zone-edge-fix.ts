@@ -1,3 +1,9 @@
+import { PLAYHUB_BG_DATA_1 } from './playhub-bg-data-1';
+import { PLAYHUB_BG_DATA_2 } from './playhub-bg-data-2';
+import { PLAYHUB_BG_DATA_3 } from './playhub-bg-data-3';
+
+const PLAYHUB_BACKGROUND = PLAYHUB_BG_DATA_1 + PLAYHUB_BG_DATA_2 + PLAYHUB_BG_DATA_3;
+
 export const PLAY_ZONE_EDGE_FIX = `
 #playzone.play-zone-view{contain:layout paint!important;transform:translateZ(0)!important;will-change:scroll-position!important}
 #playzone .play-zone-stage{--play-card-gap:3px!important;contain:layout paint style!important}
@@ -9,4 +15,15 @@ export const PLAY_ZONE_EDGE_FIX = `
 #playzone .game-card-shell.is-stacking{transform:none!important;opacity:1!important}
 #playzone .game-players i,#playzone .game-players i:before{animation:none!important}
 @media (prefers-reduced-motion:reduce){#playzone .game-card,#playzone .game-card-shell,#playzone .game-players b{transition:none!important;animation:none!important}}
+
+html body:has(#playzone.active)::before{
+  background-image:url('data:image/webp;base64,${PLAYHUB_BACKGROUND}')!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  opacity:1!important;
+}
 `;
