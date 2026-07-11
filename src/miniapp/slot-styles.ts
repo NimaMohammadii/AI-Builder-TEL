@@ -800,4 +800,69 @@ body:has(#slot.active) .tabs {
   #slot.slot-view::before,#slot .slot-atmosphere i,#slot .slot-frame-image,
   #slot .slot-reel::after,#slot .slot-spin-button::after{animation:none!important}
 }
+
+/* Reference-led modern cabinet v2 */
+body:has(#slot.active) { background:#020202!important; }
+body:has(#slot.active) .app,
+body:has(#slot.active) .app-shell,
+body:has(#slot.active) .app-content,
+body:has(#slot.active) .content,
+body:has(#slot.active) main { background:transparent!important; }
+
+#slot.slot-view {
+  min-height:100dvh;
+  background-color:#020202;
+  background-image:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.3) 70%,#020202),var(--slot-ai-bg);
+  background-size:cover;
+  background-position:center top;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+}
+#slot.slot-view::before {
+  position:fixed;
+  background-image:var(--slot-ai-bg);
+  background-size:cover;
+  background-position:center top;
+  opacity:.34;
+}
+#slot.slot-view::after {
+  position:fixed;
+  background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(2,0,1,.24) 62%,rgba(2,2,2,.82));
+}
+#slot .slot-machine {
+  width:min(96vw,430px);
+  height:548px;
+  margin-top:36px;
+}
+#slot .slot-frame-image {
+  width:100%;
+  height:auto;
+  filter:drop-shadow(0 28px 34px rgba(0,0,0,.7));
+}
+#slot .slot-window {
+  top:109px;
+  left:11.2%;
+  width:69.6%;
+  height:289px;
+  padding:6px;
+  border-radius:24px;
+  gap:5px;
+}
+#slot .slot-window::before,#slot .slot-window::after { height:68px; }
+#slot .slot-reel-strip { top:0; }
+#slot .slot-symbol { height:96px; }
+#slot .slot-symbol-image { width:64px;height:64px; }
+#slot .slot-control-panel { margin-top:-15px; }
+#slot .slot-controls.slot-image-controls { width:78%; }
+#slot .slot-image-control.slot-spin-button { max-width:330px;height:112px; }
+#slot .slot-live { margin-top:8px!important; }
+
+@media (max-width:380px) {
+  #slot .slot-machine { width:min(97vw,398px);height:510px;margin-top:40px; }
+  #slot .slot-window { top:101px;height:267px; }
+  #slot .slot-symbol { height:89px; }
+  #slot .slot-symbol-image { width:59px;height:59px; }
+  #slot .slot-control-panel { margin-top:-12px; }
+}
+
 `;
