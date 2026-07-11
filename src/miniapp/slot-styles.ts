@@ -584,4 +584,220 @@ body:has(#slot.active) .tabs {
     height: 68px;
   }
 }
+
+/* ImageGen premium slot skin */
+#slot.slot-view {
+  isolation: isolate;
+  min-height: calc(100dvh - 64px);
+  padding: 22px 0 30px;
+  background: #020202;
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: #f5f1ed;
+}
+
+#slot.slot-view::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  min-height: 100%;
+  background-image: var(--slot-ai-bg);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: .82;
+  transform: scale(1.012);
+  animation: slotBackdropBreathe 12s cubic-bezier(.4,0,.2,1) infinite alternate;
+}
+
+#slot.slot-view::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(180deg,rgba(0,0,0,.28),rgba(2,0,1,.08) 31%,rgba(2,0,1,.38) 62%,#020202),radial-gradient(ellipse at 50% 31%,rgba(104,18,42,.16),transparent 42%);
+}
+
+#slot .slot-atmosphere { position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none; }
+#slot .slot-atmosphere i {
+  position:absolute;display:block;width:3px;height:3px;border-radius:50%;
+  background:rgba(231,213,207,.42);box-shadow:0 0 0 1px rgba(93,16,36,.22);
+  opacity:0;animation:slotDustRise 8s ease-in-out infinite;
+}
+#slot .slot-atmosphere i:nth-child(1){left:17%;top:52%;animation-delay:-1s}
+#slot .slot-atmosphere i:nth-child(2){right:16%;top:43%;width:2px;height:2px;animation-delay:-4.5s}
+#slot .slot-atmosphere i:nth-child(3){left:73%;top:68%;width:4px;height:4px;animation-delay:-6.2s}
+
+#slot .slot-rewards-card {
+  left:16px;top:14px;width:44px;height:44px;border-radius:15px;
+  color:rgba(248,242,238,.9);
+  background:linear-gradient(145deg,rgba(31,27,27,.96),rgba(6,5,5,.96))!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.1)!important;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+#slot .slot-rewards-card svg{filter:drop-shadow(0 5px 8px rgba(0,0,0,.5))}
+#slot .slot-rewards-panel {
+  background:linear-gradient(155deg,rgba(25,20,21,.99),rgba(3,3,3,.99))!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  box-shadow:0 34px 100px rgba(0,0,0,.76),inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+#slot .slot-reward-row {
+  background:linear-gradient(110deg,rgba(255,255,255,.035),rgba(76,13,30,.08))!important;
+  border:1px solid rgba(255,255,255,.055)!important;
+}
+
+#slot .slot-machine {
+  position:relative;z-index:3;width:min(96vw,430px);height:432px;min-height:0;
+  margin:34px auto 0;padding:0;transform:none;perspective:900px;
+}
+#slot .slot-machine-shadow {
+  position:absolute;left:8%;right:8%;bottom:16px;height:68px;z-index:0;border-radius:50%;
+  background:rgba(0,0,0,.7);filter:blur(20px);transform:scaleX(.92);
+  animation:slotMachineShadow 5s ease-in-out infinite;
+}
+#slot .slot-frame-image {
+  top:0;left:0;z-index:8;width:100%;height:auto;object-fit:contain;opacity:1;
+  filter:drop-shadow(0 28px 34px rgba(0,0,0,.72)) drop-shadow(0 5px 8px rgba(0,0,0,.48));
+  transform-origin:50% 55%;animation:slotMachineFloat 5s cubic-bezier(.45,0,.55,1) infinite;
+}
+#slot .slot-window {
+  position:absolute;top:116px;left:15.8%;z-index:4;width:68.4%;height:188px;
+  margin:0;padding:5px;gap:5px;border-radius:24px;
+  background:linear-gradient(180deg,#080707,#020202);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 18px 28px rgba(0,0,0,.78),inset 0 -18px 28px rgba(0,0,0,.82);
+  transform:none;
+}
+#slot .slot-window::before,#slot .slot-window::after{height:49px}
+#slot .slot-reel {
+  border-radius:17px;
+  background:linear-gradient(90deg,rgba(255,255,255,.035),transparent 24%,transparent 72%,rgba(255,255,255,.025)),linear-gradient(180deg,#100c0d,#060505 48%,#0d090a);
+  border:1px solid rgba(255,255,255,.065);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 24px rgba(0,0,0,.42);
+}
+#slot .slot-reel::after {
+  content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:linear-gradient(112deg,transparent 7%,rgba(255,255,255,.055) 28%,transparent 46%);
+  transform:translateX(-125%);animation:slotReelReflection 7s ease-in-out infinite;
+}
+#slot .slot-reel-strip{top:-4px}
+#slot .slot-symbol{height:66px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.5))}
+#slot .slot-symbol-image{width:57px;height:57px}
+
+#slot .slot-control-panel {
+  position:relative;z-index:12;width:min(92vw,430px);margin:-60px auto 0;
+  overflow:visible;background:transparent!important;border:0!important;box-shadow:none!important;
+}
+#slot .slot-controls.slot-image-controls {
+  display:flex;align-items:center;justify-content:center;width:76%;margin:0 auto;overflow:visible;
+}
+#slot .slot-image-control.slot-spin-button {
+  width:100%;max-width:326px;height:124px;margin:0 auto;overflow:visible;
+  border-radius:30px!important;background:transparent!important;box-shadow:none!important;
+  transform:translateZ(0);transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .22s ease;
+}
+#slot .slot-button-shadow {
+  position:absolute;left:11%;right:11%;bottom:19px;height:28px;z-index:-1;border-radius:50%;
+  background:rgba(0,0,0,.78);filter:blur(12px);transition:transform .2s ease,opacity .2s ease;
+}
+#slot .slot-control-image {
+  inset:0;width:100%;height:100%;object-fit:contain;opacity:1;
+  filter:drop-shadow(0 17px 18px rgba(0,0,0,.66));
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),filter .2s ease,opacity .2s ease;
+}
+#slot .slot-spin-button::after {
+  content:"";position:absolute;left:18%;top:30%;width:20%;height:37%;z-index:2;pointer-events:none;
+  border-radius:50%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.13),transparent);
+  filter:blur(3px);opacity:0;transform:skewX(-16deg) translateX(-190%);
+  animation:slotButtonSheen 5.8s ease-in-out infinite;
+}
+#slot .slot-spin-button:active{transform:translateY(3px) scale(.975)}
+#slot .slot-spin-button:active .slot-control-image{filter:drop-shadow(0 8px 10px rgba(0,0,0,.62)) brightness(.92)}
+#slot .slot-spin-button:active .slot-button-shadow{opacity:.72;transform:scaleX(.82) translateY(-2px)}
+#slot .slot-spin-button:disabled{opacity:.72}
+#slot .slot-spin-button:disabled .slot-control-image {
+  filter:drop-shadow(0 10px 12px rgba(0,0,0,.62)) saturate(.55) brightness(.8);
+  animation:slotButtonRunning 1.1s ease-in-out infinite;
+}
+#slot .slot-control-fallback{opacity:0;pointer-events:none}
+#slot .slot-machine.is-spinning .slot-frame-image{animation:slotMachineRunning .19s linear infinite}
+#slot .slot-machine.is-spinning .slot-window {
+  box-shadow:inset 0 20px 32px rgba(0,0,0,.84),inset 0 -20px 32px rgba(0,0,0,.88),0 14px 28px rgba(0,0,0,.3);
+}
+#slot .slot-machine.is-win .slot-frame-image{animation:slotMachineWin .72s cubic-bezier(.16,.84,.24,1) both}
+
+#slot .slot-live {
+  position:relative;z-index:5;width:min(90vw,398px);margin:18px auto 24px!important;
+  border-radius:26px!important;
+  background:linear-gradient(145deg,rgba(18,15,15,.97),rgba(3,3,3,.98))!important;
+  border:1px solid rgba(255,255,255,.085)!important;
+  box-shadow:0 28px 60px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.07)!important;
+}
+#slot .slot-live::before {
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle at 15% 0,rgba(103,20,43,.12),transparent 38%);
+}
+#slot .slot-live-row {
+  min-height:44px!important;border-radius:15px!important;
+  background:linear-gradient(100deg,rgba(255,255,255,.035),rgba(73,13,29,.055))!important;
+  border:1px solid rgba(255,255,255,.045)!important;
+}
+#slot .slot-live-toggle {
+  background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.025))!important;
+  border:1px solid rgba(255,255,255,.065)!important;
+}
+
+@keyframes slotBackdropBreathe {
+  from{transform:scale(1.012) translate3d(0,0,0);filter:brightness(.9) saturate(.88)}
+  to{transform:scale(1.035) translate3d(0,-5px,0);filter:brightness(1) saturate(1)}
+}
+@keyframes slotDustRise {
+  0%{opacity:0;transform:translate3d(0,24px,0) scale(.6)}
+  25%{opacity:.5}72%{opacity:.16}
+  100%{opacity:0;transform:translate3d(10px,-90px,0) scale(1)}
+}
+@keyframes slotMachineFloat {
+  0%,100%{transform:translate3d(0,0,0) rotateX(0deg)}
+  50%{transform:translate3d(0,-4px,0) rotateX(.35deg)}
+}
+@keyframes slotMachineShadow {
+  0%,100%{opacity:.64;transform:scaleX(.9)}
+  50%{opacity:.52;transform:scaleX(.86)}
+}
+@keyframes slotReelReflection {
+  0%,64%{transform:translateX(-130%);opacity:0}72%{opacity:.72}
+  90%,100%{transform:translateX(230%);opacity:0}
+}
+@keyframes slotButtonSheen {
+  0%,68%{transform:skewX(-16deg) translateX(-210%);opacity:0}74%{opacity:.7}
+  86%,100%{transform:skewX(-16deg) translateX(480%);opacity:0}
+}
+@keyframes slotButtonRunning{0%,100%{transform:scale(.99)}50%{transform:scale(.975)}}
+@keyframes slotMachineRunning {
+  0%{transform:translate3d(-.6px,0,0)}50%{transform:translate3d(.6px,-.4px,0)}
+  100%{transform:translate3d(-.4px,.3px,0)}
+}
+@keyframes slotMachineWin {
+  0%{transform:scale(1);filter:drop-shadow(0 28px 34px rgba(0,0,0,.72))}
+  38%{transform:scale(1.025) translateY(-3px);filter:drop-shadow(0 34px 42px rgba(0,0,0,.78)) brightness(1.12)}
+  100%{transform:scale(1);filter:drop-shadow(0 28px 34px rgba(0,0,0,.72))}
+}
+
+@media (max-width:380px) {
+  #slot .slot-machine{width:min(98vw,398px);height:404px;margin-top:40px;transform:none}
+  #slot .slot-window{top:108px;height:174px;margin:0;transform:none}
+  #slot .slot-symbol{height:62px}
+  #slot .slot-symbol-image{width:53px;height:53px}
+  #slot .slot-control-panel{margin-top:-58px}
+  #slot .slot-image-control.slot-spin-button{height:112px}
+}
+
+@media (prefers-reduced-motion:reduce) {
+  #slot.slot-view::before,#slot .slot-atmosphere i,#slot .slot-frame-image,
+  #slot .slot-reel::after,#slot .slot-spin-button::after{animation:none!important}
+}
 `;
