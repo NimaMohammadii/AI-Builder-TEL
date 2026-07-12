@@ -1,7 +1,7 @@
 export const REWARDS_LIVE_WINNERS_EFFECTS = `
 <style id="vexa-rewards-live-winners-effects">
 #rewards .rewards-live-winners{
-  margin-top:clamp(430px,68dvh,760px)!important;
+  margin-top:clamp(250px,42dvh,460px)!important;
   padding:0 10px 30px!important;
   position:relative!important;
 }
@@ -16,7 +16,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   pointer-events:auto;
 }
 #rewards .home-live-winner-card[data-rewards-hidden="1"]{pointer-events:none!important}
-@media(max-width:380px){#rewards .rewards-live-winners{margin-top:clamp(390px,64dvh,690px)!important}}
+@media(max-width:380px){#rewards .rewards-live-winners{margin-top:clamp(225px,40dvh,410px)!important}}
 @media(prefers-reduced-motion:reduce){#rewards .home-live-winner-card{filter:none!important;transition:none!important}}
 </style>
 <script id="vexa-rewards-live-winners-scroll-script">
