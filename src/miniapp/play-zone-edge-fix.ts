@@ -107,4 +107,46 @@ html body:has(#rewards.active) header.top{
 html body:has(#rewards.active) #rewards .rewards-home-intro-card{
   display:none!important;
 }
+
+html body:has(#dice.active){
+  isolation:isolate!important;
+  background:#000!important;
+}
+html body:has(#dice.active)::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  background-color:#000!important;
+  background-image:url('/assets/Dice.PNG?v=1')!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  opacity:1!important;
+}
+html body:has(#dice.active)::after,
+html body:has(#dice.active) .app::before,
+html body:has(#dice.active) .app::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  background-image:none!important;
+}
+html body:has(#dice.active) .app,
+html body:has(#dice.active) main.app,
+html body:has(#dice.active) .content,
+html body:has(#dice.active) #dice.dice-view,
+html body:has(#dice.active) .top,
+html body:has(#dice.active) header.top{
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+}
 `;
