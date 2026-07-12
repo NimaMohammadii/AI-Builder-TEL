@@ -36,10 +36,10 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     var cards=rewards.querySelectorAll('.home-live-winner-card');
     if(!rewards.classList.contains('active')){reset(cards);return}
     var y=Math.max(0,rewards.scrollTop||0);
-    var step=48;
-    var fadeDistance=46;
+    var cardPitch=74;
+    var fadeDistance=44;
     for(var i=0;i<cards.length;i++){
-      var start=i*step;
+      var start=i*cardPitch;
       var p=clamp((y-start)/fadeDistance,0,1);
       cards[i].style.setProperty('--rewards-card-progress',String(p));
       cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
