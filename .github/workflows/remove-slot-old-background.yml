@@ -1,0 +1,36 @@
+name: Remove embedded Slot background
+
+on:
+  push:
+    paths:
+      - '.github/workflows/remove-slot-old-background.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  clean-slot-background:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove old embedded Slot background
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/miniapp/slot.ts')
+          text = path.read_text(encoding='utf-8')
+          pattern = r'<section id="slot" class="view slot-view" style="--slot-ai-bg:url\(\'data:image/webp;base64,[A-Za-z0-9+/=]+\'\)">'
+          cleaned, count = re.subn(pattern, '<section id="slot" class="view slot-view">', text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one embedded Slot background, found {count}')
+          path.write_text(cleaned, encoding='utf-8')
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/miniapp/slot.ts
+          git commit -m "Remove old embedded Slot background"
+          git push
