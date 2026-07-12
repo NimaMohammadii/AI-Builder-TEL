@@ -246,13 +246,16 @@ html body:has(#slot.active) #slot .slot-spin-cost{
 }
 html body:has(#slot.active) #slot #slotBetHalf{
   position:relative!important;
-  top:-2px!important;
-  left:-2px!important;
+  top:0!important;
+  left:0!important;
+}
+html body:has(#slot.active) #slot #slotBetHalf .slot-control-fallback{
+  transform:translate(-2px,-2px)!important;
 }
 html body:has(#slot.active) #slot #slotBetMax{
   position:relative!important;
-  top:-2px!important;
-  left:2px!important;
+  top:0!important;
+  left:0!important;
   font-size:0!important;
 }
 html body:has(#slot.active) #slot #slotBetMax::after{
@@ -262,6 +265,7 @@ html body:has(#slot.active) #slot #slotBetMax::after{
   font-weight:950!important;
   line-height:1!important;
   color:inherit!important;
+  transform:translate(2px,-2px)!important;
 }
 @media(max-width:380px){
   html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:29px!important;top:-18px!important;z-index:10!important}
