@@ -191,4 +191,46 @@ html body:has(#slot.active) header.top{
   background-color:transparent!important;
   background-image:none!important;
 }
+
+/* Slot-only sizing adjustment: keep the existing layout and assets intact. */
+html body:has(#slot.active) #slot .slot-machine{
+  width:min(88vw,378px)!important;
+  height:482px!important;
+  min-height:482px!important;
+  margin-top:8px!important;
+}
+html body:has(#slot.active) #slot .slot-frame-image{
+  width:100%!important;
+  height:auto!important;
+}
+html body:has(#slot.active) #slot .slot-window{
+  top:96px!important;
+  left:11.2%!important;
+  width:69.6%!important;
+  height:254px!important;
+  padding:5px!important;
+  border-radius:21px!important;
+  gap:4px!important;
+}
+html body:has(#slot.active) #slot .slot-window::before,
+html body:has(#slot.active) #slot .slot-window::after{height:60px!important}
+html body:has(#slot.active) #slot .slot-symbol{height:84px!important}
+html body:has(#slot.active) #slot .slot-symbol-image{width:56px!important;height:56px!important}
+html body:has(#slot.active) #slot .slot-control-panel{
+  width:min(88vw,378px)!important;
+  margin-top:-34px!important;
+}
+html body:has(#slot.active) #slot .slot-controls.slot-image-controls{width:78%!important}
+html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{
+  max-width:290px!important;
+  height:98px!important;
+}
+@media(max-width:380px){
+  html body:has(#slot.active) #slot .slot-machine{width:min(90vw,350px)!important;height:449px!important;min-height:449px!important;margin-top:6px!important}
+  html body:has(#slot.active) #slot .slot-window{top:89px!important;height:235px!important;padding:5px!important}
+  html body:has(#slot.active) #slot .slot-symbol{height:78px!important}
+  html body:has(#slot.active) #slot .slot-symbol-image{width:52px!important;height:52px!important}
+  html body:has(#slot.active) #slot .slot-control-panel{width:min(90vw,350px)!important;margin-top:-30px!important}
+  html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{max-width:270px!important;height:92px!important}
+}
 `;
