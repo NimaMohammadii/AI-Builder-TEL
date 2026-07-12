@@ -596,40 +596,6 @@ body:has(#slot.active) .tabs {
   color: #f5f1ed;
 }
 
-#slot.slot-view::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -3;
-  min-height: 100%;
-  background-image: var(--slot-ai-bg);
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  opacity: .82;
-  transform: scale(1.012);
-  animation: slotBackdropBreathe 12s cubic-bezier(.4,0,.2,1) infinite alternate;
-}
-
-#slot.slot-view::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background: linear-gradient(180deg,rgba(0,0,0,.28),rgba(2,0,1,.08) 31%,rgba(2,0,1,.38) 62%,#020202),radial-gradient(ellipse at 50% 31%,rgba(104,18,42,.16),transparent 42%);
-}
-
-#slot .slot-atmosphere { position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none; }
-#slot .slot-atmosphere i {
-  position:absolute;display:block;width:3px;height:3px;border-radius:50%;
-  background:rgba(231,213,207,.42);box-shadow:0 0 0 1px rgba(93,16,36,.22);
-  opacity:0;animation:slotDustRise 8s ease-in-out infinite;
-}
-#slot .slot-atmosphere i:nth-child(1){left:17%;top:52%;animation-delay:-1s}
-#slot .slot-atmosphere i:nth-child(2){right:16%;top:43%;width:2px;height:2px;animation-delay:-4.5s}
-#slot .slot-atmosphere i:nth-child(3){left:73%;top:68%;width:4px;height:4px;animation-delay:-6.2s}
-
 #slot .slot-rewards-card {
   left:16px;top:14px;width:44px;height:44px;border-radius:15px;
   color:rgba(248,242,238,.9);
@@ -797,8 +763,7 @@ body:has(#slot.active) .tabs {
 }
 
 @media (prefers-reduced-motion:reduce) {
-  #slot.slot-view::before,#slot .slot-atmosphere i,#slot .slot-frame-image,
-  #slot .slot-reel::after,#slot .slot-spin-button::after{animation:none!important}
+  #slot .slot-frame-image,#slot .slot-reel::after,#slot .slot-spin-button::after{animation:none!important}
 }
 
 /* Reference-led modern cabinet v2 */
@@ -812,22 +777,16 @@ body:has(#slot.active) main { background:transparent!important; }
 #slot.slot-view {
   min-height:100dvh;
   background-color:#020202;
-  background-image:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.3) 70%,#020202),var(--slot-ai-bg);
+  background-image:url('/assets/Slotbackground.PNG?v=1');
   background-size:cover;
   background-position:center top;
   background-repeat:no-repeat;
   background-attachment:fixed;
 }
-#slot.slot-view::before {
-  position:fixed;
-  background-image:var(--slot-ai-bg);
-  background-size:cover;
-  background-position:center top;
-  opacity:.34;
-}
+#slot.slot-view::before,
 #slot.slot-view::after {
-  position:fixed;
-  background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(2,0,1,.24) 62%,rgba(2,2,2,.82));
+  content:none!important;
+  display:none!important;
 }
 #slot .slot-machine {
   width:min(96vw,430px);
@@ -863,50 +822,6 @@ body:has(#slot.active) main { background:transparent!important; }
   #slot .slot-symbol { height:89px; }
   #slot .slot-symbol-image { width:59px;height:59px; }
   #slot .slot-control-panel { margin-top:-12px; }
-}
-
-
-/* Single continuous background layer */
-body:has(#slot.active),
-body:has(#slot.active) main.app,
-body:has(#slot.active) header.top,
-body:has(#slot.active) [data-lazy-section-host="slot"],
-body:has(#slot.active) #slot.slot-view {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-body:has(#slot.active)::before,
-body:has(#slot.active)::after,
-body:has(#slot.active) main.app::before,
-body:has(#slot.active) main.app::after,
-body:has(#slot.active) header.top::before,
-body:has(#slot.active) header.top::after,
-#slot.slot-view::after {
-  content: none !important;
-  display: none !important;
-}
-
-#slot.slot-view::before {
-  content: "" !important;
-  display: block !important;
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  background: var(--slot-ai-bg) center center / cover no-repeat !important;
-  opacity: 1 !important;
-  transform: none !important;
-  filter: none !important;
-  animation: none !important;
-  pointer-events: none !important;
-}
-
-#slot .slot-atmosphere {
-  display: none !important;
 }
 
 `;
