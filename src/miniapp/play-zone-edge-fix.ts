@@ -198,7 +198,9 @@ html body:has(#slot.active) #slot .slot-machine{
   height:460px!important;
   min-height:460px!important;
   margin-top:-14px!important;
-  left:14px!important;
+  left:20px!important;
+  top:-8px!important;
+  z-index:10!important;
 }
 html body:has(#slot.active) #slot .slot-frame-image{
   width:100%!important;
@@ -219,8 +221,10 @@ html body:has(#slot.active) #slot .slot-symbol{height:80px!important}
 html body:has(#slot.active) #slot .slot-symbol-image{width:53px!important;height:53px!important}
 html body:has(#slot.active) #slot .slot-control-panel{
   width:min(84vw,360px)!important;
-  margin:-24px auto 0!important;
+  margin:-38px auto 0!important;
   left:-8px!important;
+  top:-8px!important;
+  z-index:9!important;
 }
 html body:has(#slot.active) #slot .slot-controls.slot-image-controls{
   width:76%!important;
@@ -234,11 +238,11 @@ html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{
   margin-right:auto!important;
 }
 @media(max-width:380px){
-  html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:12px!important}
+  html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:17px!important;top:-8px!important;z-index:10!important}
   html body:has(#slot.active) #slot .slot-window{top:85px!important;height:225px!important;padding:4px!important}
   html body:has(#slot.active) #slot .slot-symbol{height:75px!important}
   html body:has(#slot.active) #slot .slot-symbol-image{width:49px!important;height:49px!important}
-  html body:has(#slot.active) #slot .slot-control-panel{width:min(86vw,336px)!important;margin:-22px auto 0!important;left:-7px!important}
+  html body:has(#slot.active) #slot .slot-control-panel{width:min(86vw,336px)!important;margin:-36px auto 0!important;left:-7px!important;top:-8px!important;z-index:9!important}
   html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{max-width:252px!important;height:84px!important;margin-left:auto!important;margin-right:auto!important}
 }
 `;
