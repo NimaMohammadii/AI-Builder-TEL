@@ -824,4 +824,167 @@ body:has(#slot.active) main { background:transparent!important; }
   #slot .slot-control-panel { margin-top:-12px; }
 }
 
+
+/* ImageGen integrated slot control console */
+#slot .slot-control-panel{
+  position:relative!important;
+  z-index:12!important;
+  width:min(96vw,430px)!important;
+  aspect-ratio:900/445!important;
+  height:auto!important;
+  margin:-38px auto 0!important;
+  overflow:visible!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  isolation:isolate;
+}
+#slot .slot-console-image{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+  filter:drop-shadow(0 24px 28px rgba(0,0,0,.7));
+}
+#slot .slot-console-ui{
+  position:absolute;
+  inset:0;
+  z-index:2;
+}
+#slot .slot-console-hit,
+#slot .slot-bet-display{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  margin:0!important;
+}
+#slot .slot-console-hit{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0!important;
+  border:0!important;
+  outline:0!important;
+  color:#f4e2cd!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-family:inherit;
+  font-weight:950;
+  text-shadow:0 2px 8px rgba(0,0,0,.8);
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .13s ease,opacity .18s ease,filter .18s ease;
+}
+#slot .slot-console-hit:active{
+  transform:translate(-50%,-47%) scale(.91);
+  filter:brightness(.84);
+}
+#slot .slot-console-hit:disabled{
+  opacity:.48!important;
+  cursor:default;
+}
+#slot .slot-bet-step{
+  top:30%;
+  width:16%;
+  height:27%;
+  border-radius:50%!important;
+  font-size:27px;
+  line-height:1;
+}
+#slot .slot-bet-minus{left:16.3%}
+#slot .slot-bet-plus{left:83.7%}
+#slot .slot-bet-display{
+  left:50%;
+  top:30%;
+  width:44%;
+  height:24%;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:7px;
+  padding:0 8px;
+  color:#f4e2cd;
+  pointer-events:auto;
+}
+#slot .slot-bet-display span,
+#slot .slot-bet-display small{
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.12em;
+  color:rgba(244,226,205,.66);
+}
+#slot .slot-bet-display input{
+  width:100%;
+  min-width:0;
+  height:100%;
+  padding:0!important;
+  border:0!important;
+  outline:0!important;
+  color:#fff4e8!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  appearance:textfield;
+  -moz-appearance:textfield;
+  text-align:center;
+  font-size:22px;
+  font-weight:1000;
+  letter-spacing:-.04em;
+  text-shadow:0 2px 10px rgba(0,0,0,.85);
+}
+#slot .slot-bet-display input::-webkit-inner-spin-button,
+#slot .slot-bet-display input::-webkit-outer-spin-button{
+  margin:0;
+  -webkit-appearance:none;
+}
+#slot .slot-bet-quick{
+  top:68%;
+  width:15%;
+  height:26%;
+  border-radius:50%!important;
+  font-size:14px;
+  letter-spacing:.02em;
+}
+#slot .slot-bet-half{left:16%}
+#slot .slot-bet-max{left:84%}
+#slot .slot-spin-button{
+  left:50%;
+  top:68%;
+  width:47%;
+  height:28%;
+  border-radius:28px!important;
+  flex-direction:column;
+  gap:0;
+}
+#slot .slot-spin-label{
+  display:block;
+  font-family:Georgia,serif;
+  font-size:22px;
+  line-height:1;
+  letter-spacing:.065em;
+  color:#fff0dc;
+}
+#slot .slot-spin-cost{
+  display:block;
+  margin-top:4px;
+  font-size:9px;
+  line-height:1;
+  letter-spacing:.15em;
+  color:rgba(255,235,211,.72);
+}
+#slot .slot-spin-button::after{content:none!important;display:none!important}
+#slot .slot-live{margin-top:10px!important}
+
+@media(max-width:380px){
+  #slot .slot-control-panel{
+    width:min(97vw,398px)!important;
+    margin-top:-34px!important;
+  }
+  #slot .slot-bet-step{font-size:24px}
+  #slot .slot-bet-display input{font-size:20px}
+  #slot .slot-spin-label{font-size:20px}
+}
+
 `;
