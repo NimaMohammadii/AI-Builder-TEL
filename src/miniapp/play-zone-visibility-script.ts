@@ -48,5 +48,19 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   window.VexaRefreshPlayZoneCards=function(){return refresh(true)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){refresh(false)});else refresh(false);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(false)});
+
+  document.addEventListener('click',function(ev){
+    var button=ev.target&&ev.target.closest?ev.target.closest('#slotBetMax'):null;
+    if(!button)return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    if(button.disabled)return;
+    var input=document.getElementById('slotAmount');
+    if(!input)return;
+    var current=Math.max(1,Math.floor(Number(input.value)||1));
+    input.value=String(Math.min(999,current*2));
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  },true);
 })();
 `;
