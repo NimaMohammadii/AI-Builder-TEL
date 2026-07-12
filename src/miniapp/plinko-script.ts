@@ -1173,7 +1173,7 @@ export const PLINKO_SCRIPT = `
       ctx.drawImage(state.houseStripImg, 4, 253, 352, 28);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '900 ' + binTextSize(bins.length) + 'px Inter,system-ui,sans-serif';
+    ctx.font = '800 8.4px Arial,system-ui,sans-serif';
     for (var b = 0; b < bins.length; b++) {
       var bin = bins[b];
       ctx.fillStyle = b === 6 || b === 7 ? 'rgba(255,78,115,.98)' : 'rgba(255,255,255,.94)';
