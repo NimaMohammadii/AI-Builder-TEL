@@ -987,4 +987,78 @@ body:has(#slot.active) main { background:transparent!important; }
   #slot .slot-spin-label{font-size:20px}
 }
 
+
+/* Unified physical cabinet: machine + controls */
+#slot .slot-cabinet{
+  position:relative;
+  z-index:3;
+  width:min(96vw,430px);
+  margin:36px auto 0;
+  animation:slotCabinetFloat 5s cubic-bezier(.45,0,.55,1) infinite;
+  transform-origin:50% 52%;
+}
+#slot .slot-cabinet .slot-machine{
+  width:100%!important;
+  height:548px!important;
+  min-height:0!important;
+  margin:0!important;
+  transform:none!important;
+  perspective:none!important;
+}
+#slot .slot-cabinet .slot-frame-image,
+#slot .slot-cabinet .slot-machine.is-spinning .slot-frame-image,
+#slot .slot-cabinet .slot-machine.is-win .slot-frame-image{
+  animation:none!important;
+}
+#slot .slot-cabinet .slot-control-panel{
+  width:83.5%!important;
+  max-width:359px!important;
+  margin:-68px auto 0!important;
+  transform:none!important;
+}
+#slot .slot-cabinet:has(.slot-machine.is-spinning){
+  animation:slotCabinetRunning .2s linear infinite;
+}
+#slot .slot-cabinet:has(.slot-machine.is-win){
+  animation:slotCabinetWin .72s cubic-bezier(.16,.84,.24,1) both;
+}
+#slot .slot-live{
+  margin-top:2px!important;
+}
+@keyframes slotCabinetFloat{
+  0%,100%{transform:translate3d(0,0,0)}
+  50%{transform:translate3d(0,-3px,0)}
+}
+@keyframes slotCabinetRunning{
+  0%{transform:translate3d(-.45px,0,0)}
+  50%{transform:translate3d(.45px,-.25px,0)}
+  100%{transform:translate3d(-.3px,.2px,0)}
+}
+@keyframes slotCabinetWin{
+  0%{transform:scale(1)}
+  38%{transform:scale(1.018) translateY(-2px)}
+  100%{transform:scale(1)}
+}
+@media(max-width:380px){
+  #slot .slot-cabinet{
+    width:min(97vw,398px);
+    margin-top:40px;
+  }
+  #slot .slot-cabinet .slot-machine{
+    height:510px!important;
+  }
+  #slot .slot-cabinet .slot-control-panel{
+    width:84%!important;
+    max-width:334px!important;
+    margin-top:-64px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #slot .slot-cabinet,
+  #slot .slot-cabinet:has(.slot-machine.is-spinning),
+  #slot .slot-cabinet:has(.slot-machine.is-win){
+    animation:none!important;
+  }
+}
+
 `;
