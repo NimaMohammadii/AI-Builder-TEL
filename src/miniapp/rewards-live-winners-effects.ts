@@ -28,12 +28,12 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     var rewards=document.getElementById('rewards');
     if(!rewards)return;
     var cards=rewards.querySelectorAll('.home-live-winner-card');
-    var y=Math.max(0,rewards.scrollTop||0);
-    var step=38;
-    var fadeDistance=68;
+    var rewardsTop=rewards.getBoundingClientRect().top;
+    var fadeStart=rewardsTop+18;
+    var fadeDistance=58;
     for(var i=0;i<cards.length;i++){
-      var start=i*step;
-      var p=clamp((y-start)/fadeDistance,0,1);
+      var cardTop=cards[i].getBoundingClientRect().top;
+      var p=clamp((fadeStart-cardTop)/fadeDistance,0,1);
       cards[i].style.setProperty('--rewards-card-progress',String(p));
       cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
     }
@@ -44,6 +44,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     if(!rewards||rewards.dataset.winnersScrollBound==='1')return;
     rewards.dataset.winnersScrollBound='1';
     rewards.addEventListener('scroll',queue,{passive:true});
+    window.addEventListener('resize',queue,{passive:true});
     apply();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
