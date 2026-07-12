@@ -22,15 +22,14 @@ export const PLINKO_SCRIPT = `
   var avatarCache = {};
   var seenLiveEvents = {};
   var seenLiveResults = {};
-  var dropCooldownUntil = 0;
   var MIN_BET = 0.01;
   var BOARD_W = 360;
   var BOARD_H = 326;
   var CENTER_X = 180;
   var MAX_RENDER_DPR = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')
-    ? 2.5
-    : 2.75;
-  var MAX_LOCAL_BALLS = 5;
+    ? 2
+    : 2.25;
+  var MAX_LOCAL_BALLS = 24;
   var MAX_REMOTE_BALLS = 1;
   var multipliers = {
     13: { low: [5, 2.4, 1.8, 1.35, 1.15, 1, 0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5] },
@@ -334,25 +333,6 @@ export const PLINKO_SCRIPT = `
   }
   function ballRandom(ball) {
     return ball && ball.rand ? ball.rand() : Math.random();
-  }
-  function dropButton() {
-    return document.querySelector('[data-action="drop-plinko-ball"]');
-  }
-  function updateDropCooldownButton() {
-    var btn = dropButton();
-    if (!btn) return;
-    var remaining = dropCooldownUntil - Date.now();
-    if (!btn.__plinkoDropLabel)
-      btn.__plinkoDropLabel = btn.getAttribute('aria-label') || 'Drop Ball';
-    if (remaining > 0) {
-      btn.disabled = true;
-      btn.setAttribute('aria-label', 'Wait ' + Math.ceil(remaining / 1000) + 's');
-      setTimeout(updateDropCooldownButton, Math.min(1000, remaining));
-      return;
-    }
-    btn.disabled = false;
-    btn.setAttribute('aria-label', btn.__plinkoDropLabel);
-    syncControlPanel();
   }
   function ensureLiveFeed() {
     var page =
@@ -854,12 +834,6 @@ export const PLINKO_SCRIPT = `
     init();
     primeAudio();
     if (!state) return;
-    var cooldownLeft = dropCooldownUntil - Date.now();
-    if (cooldownLeft > 0) {
-      show('Wait ' + Math.ceil(cooldownLeft / 1000) + 's');
-      updateDropCooldownButton();
-      return;
-    }
     if (
       state.balls &&
       state.balls.filter(function (ball) {
@@ -885,8 +859,6 @@ export const PLINKO_SCRIPT = `
     }
     payload.amount = roundCurrency(value);
     var localId = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-    dropCooldownUntil = Date.now() + 6000;
-    updateDropCooldownButton();
     var ball = spawnBall({
       id: localId,
       userId: payload.userId,
@@ -895,38 +867,9 @@ export const PLINKO_SCRIPT = `
       photoUrl: payload.photoUrl,
       seed: localId,
     });
-    if (!ball) {
-      dropCooldownUntil = 0;
-      updateDropCooldownButton();
-      return;
-    }
+    if (!ball) return;
     changePoints(-value);
     awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: value });
-    fetch('/app/api/plinko/live/send', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-    })
-      .then(function (r) {
-        return r.json().then(function (data) {
-          return { ok: r.ok, status: r.status, data: data };
-        });
-      })
-      .then(function (res) {
-        if (!res.ok) {
-          if (res.status === 429 && res.data && res.data.waitMs)
-            show('Wait ' + Math.ceil(res.data.waitMs / 1000) + 's');
-          else show((res.data && res.data.error) || 'Live sync failed');
-          return;
-        }
-        var event = res.data && res.data.event;
-        markLiveEventSeen(event);
-        if (event && event.id != null) ball.id = String(event.id);
-      })
-      .catch(function () {
-        show('Live sync failed');
-      });
   }
   function sendPlinkoResult(ball, bin, total) {
     var result = {
@@ -1109,7 +1052,8 @@ export const PLINKO_SCRIPT = `
         maxY = Math.max(prevY, ball.y) + ball.r + 7;
       for (var p = 0; p < pegs.length; p++) {
         var peg = pegs[p];
-        if (peg.y < minY || peg.y > maxY) continue;
+        if (peg.y < minY) continue;
+        if (peg.y > maxY) break;
         collide(ball, peg, left, right, prevX, prevY);
       }
       if (ball.y + ball.r > binTop + 5) {
@@ -1192,11 +1136,7 @@ export const PLINKO_SCRIPT = `
       if (ring.bin) {
         var bin = ring.bin;
         ctx.globalAlpha = a;
-        var glow = ctx.createLinearGradient(bin.x, bin.y, bin.x, bin.y + bin.h);
-        glow.addColorStop(0, 'rgba(255,255,255,.07)');
-        glow.addColorStop(0.55, 'rgba(255,255,255,.17)');
-        glow.addColorStop(1, 'rgba(255,255,255,.04)');
-        ctx.fillStyle = glow;
+        ctx.fillStyle = 'rgba(255,255,255,.13)';
         ctx.fillRect(bin.x + 3, bin.y + 4, Math.max(1, bin.w - 6), Math.max(1, bin.h - 7));
         ctx.restore();
         if (ring.life <= 0) state.effects.splice(r, 1);

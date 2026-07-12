@@ -3,7 +3,6 @@ import { DEFAULT_PLINKO_CONTROL, getPlinkoControl } from './plinko-control';
 import { DEFAULT_PLINKO_VIRTUAL_USERS, getPlinkoVirtualUsers, type PlinkoVirtualUser } from './plinko-virtual-users';
 
 const ROOM_NAME = 'global';
-const USER_DELAY_MS = 6000;
 const HISTORY_KEY = 'plinko-live-history-v2';
 const VIRTUAL_LAST_KEY = 'plinko-live-virtual-last-at';
 const TURNOVER_KEY_PREFIX = 'plinko-live-turnover-';
@@ -17,7 +16,6 @@ const HISTORY_LIMIT = 120;
 const LIVE_BALL_BROADCASTS_ENABLED = false;
 
 const localSockets = new Set<WebSocket>();
-const localUserLast = new Map<string, number>();
 const localResultLast = new Map<string, number>();
 let localHistory: PlinkoResult[] = [];
 
@@ -100,12 +98,6 @@ export class PlinkoLiveRoom {
     if (!userId) return json({ error: 'Missing user.' }, 400);
 
     const now = Date.now();
-    const key = 'plinko-live-user-' + userId;
-    const last = Number(await this.state.storage.get<number>(key).catch(() => 0)) || 0;
-    const waitMs = USER_DELAY_MS - (now - last);
-    if (waitMs > 0) return json({ error: 'Wait a moment.', waitMs }, 429);
-    await this.state.storage.put(key, now);
-
     const event = makeBallEvent(body, userId, now);
     if (LIVE_BALL_BROADCASTS_ENABLED) this.publish({ type: 'plinko-ball', event });
     return json({ ok: true, event });
@@ -226,11 +218,6 @@ async function localSend(request: Request): Promise<Response> {
   if (!userId) return json({ error: 'Missing user.' }, 400);
 
   const now = Date.now();
-  const last = localUserLast.get(userId) || 0;
-  const waitMs = USER_DELAY_MS - (now - last);
-  if (waitMs > 0) return json({ error: 'Wait a moment.', waitMs }, 429);
-  localUserLast.set(userId, now);
-
   const event = makeBallEvent(body, userId, now);
   if (LIVE_BALL_BROADCASTS_ENABLED) localPublish({ type: 'plinko-ball', event });
   return json({ ok: true, fallback: true, event });
