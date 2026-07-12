@@ -5,7 +5,7 @@ export const PLINKO_SCRIPT = `
   var risk = 'low';
   var NANO = 1000000000;
   var credit = readPoints();
-  var iconUrl = '/app/api/uploaded-image/credit-icon.png';
+  var iconUrl = '/app/api/uploaded-image/plinko-ball.png';
   var pegVisualUrl = '/assets/plinko-glass/peg.webp';
   var houseStripUrl = '/assets/plinko-glass/houses.webp';
   var control = null;
@@ -16,12 +16,6 @@ export const PLINKO_SCRIPT = `
   var syncQueued = false;
   var audioCtx = null;
   var lastSoundAt = 0;
-  var liveWs = null;
-  var liveReconnectTimer = 0;
-  var liveReconnectAttempts = 0;
-  var avatarCache = {};
-  var seenLiveEvents = {};
-  var seenLiveResults = {};
   var MIN_BET = 0.01;
   var BOARD_W = 360;
   var BOARD_H = 326;
@@ -30,7 +24,6 @@ export const PLINKO_SCRIPT = `
     ? 2
     : 2.25;
   var MAX_LOCAL_BALLS = 24;
-  var MAX_REMOTE_BALLS = 1;
   var multipliers = {
     13: { low: [5, 2.4, 1.8, 1.35, 1.15, 1, 0.85, 0.85, 1, 1.15, 1.35, 1.8, 2.4, 5] },
   };
@@ -258,10 +251,6 @@ export const PLINKO_SCRIPT = `
       ? window.Telegram.WebApp.initDataUnsafe.user
       : null;
   }
-  function currentUserId() {
-    var user = currentTelegramUser();
-    return user && user.id != null ? String(user.id) : '';
-  }
   function currentUserPayload() {
     var user = currentTelegramUser() || {};
     var parts = [];
@@ -273,48 +262,6 @@ export const PLINKO_SCRIPT = `
       name: name,
       photoUrl: user.photo_url || '',
     };
-  }
-  function avatarKey(url) {
-    return url || '__fallback__';
-  }
-  function avatarImage(url) {
-    var key = avatarKey(url);
-    if (avatarCache[key]) return avatarCache[key];
-    var img = new Image();
-    img.onload = function () {
-      draw();
-    };
-    img.onerror = function () {
-      if (url) {
-        avatarCache[key] = avatarImage('');
-        draw();
-      }
-    };
-    img.src = url || iconUrl;
-    avatarCache[key] = img;
-    return img;
-  }
-  function liveEventId(event) {
-    return event && event.id != null ? String(event.id) : '';
-  }
-  function hasSeenLiveEvent(event) {
-    var id = liveEventId(event);
-    return !!(id && seenLiveEvents[id]);
-  }
-  function markLiveEventSeen(event) {
-    var id = liveEventId(event);
-    if (id) seenLiveEvents[id] = Date.now();
-  }
-  function resultEventId(event) {
-    return event && event.id != null ? String(event.id) : '';
-  }
-  function hasSeenLiveResult(event) {
-    var id = resultEventId(event);
-    return !!(id && seenLiveResults[id]);
-  }
-  function markLiveResultSeen(event) {
-    var id = resultEventId(event);
-    if (id) seenLiveResults[id] = Date.now();
   }
   function seededRandom(seed) {
     var str = String(seed);
@@ -333,97 +280,6 @@ export const PLINKO_SCRIPT = `
   }
   function ballRandom(ball) {
     return ball && ball.rand ? ball.rand() : Math.random();
-  }
-  function ensureLiveFeed() {
-    var page =
-      document.querySelector('#plinko .plinko-page') || document.querySelector('.plinko-page');
-    if (!page) return null;
-    var style = q('plinkoLiveFeedStyle');
-    if (!style) {
-      style = document.createElement('style');
-      style.id = 'plinkoLiveFeedStyle';
-      style.textContent =
-        '.plinko-live-feed{width:min(96%,374px);display:grid;gap:6px;margin-top:7px;position:relative;z-index:2;max-height:118px;overflow:hidden;contain:layout paint style;content-visibility:auto;contain-intrinsic-size:374px 118px}.plinko-live-row{height:34px;border:0;border-radius:17px;background:rgba(255,255,255,.045);display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;align-items:center;gap:7px;padding:0 9px;color:#fff;box-shadow:none}.plinko-live-row img{width:24px;height:24px;border-radius:50%;object-fit:cover}.plinko-live-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:850}.plinko-live-meta{font-size:10px;font-weight:850;color:rgba(255,255,255,.68);white-space:nowrap}.plinko-live-mult{font-size:11px;font-weight:950;color:#fff;white-space:nowrap}';
-      document.head.appendChild(style);
-    }
-    var feed = q('plinkoLiveFeed');
-    if (feed) return feed;
-    feed = document.createElement('div');
-    feed.id = 'plinkoLiveFeed';
-    feed.className = 'plinko-live-feed';
-    var controls = page.querySelector('.plinko-controls');
-    if (controls && controls.parentNode === page) page.insertBefore(feed, controls.nextSibling);
-    else page.appendChild(feed);
-    return feed;
-  }
-  function addLiveFeed(ball, bin, result) {
-    var feed = ensureLiveFeed();
-    if (!feed || !ball || !bin) return;
-    var amountValue = Math.max(
-      0,
-      Number(result && result.amount != null ? result.amount : ball.amount) || 0,
-    );
-    if (!amountValue) amountValue = MIN_BET;
-    amountValue = roundCurrency(amountValue);
-    var multValue = Number(result && result.multiplier != null ? result.multiplier : bin.mult);
-    if (!Number.isFinite(multValue) || multValue < 0) multValue = 0;
-    multValue = roundCurrency(multValue);
-    var totalValue = Number(
-      result && result.total != null ? result.total : amountValue * multValue,
-    );
-    if (!Number.isFinite(totalValue) || totalValue < 0) totalValue = amountValue * multValue;
-    totalValue = roundCurrency(totalValue);
-    var row = document.createElement('div');
-    row.className = 'plinko-live-row';
-    if (row.dataset) {
-      row.dataset.amount = String(amountValue);
-      row.dataset.multiplier = String(multValue);
-      row.dataset.total = String(totalValue);
-      if (result && result.createdAt != null) row.dataset.createdAt = String(result.createdAt);
-      if (result && result.id != null) row.dataset.resultId = String(result.id);
-    }
-    var img = document.createElement('img');
-    img.src = (result && result.photoUrl) || ball.photoUrl || iconUrl;
-    img.onerror = function () {
-      this.src = iconUrl;
-    };
-    var name = document.createElement('div');
-    name.className = 'plinko-live-name';
-    name.textContent = (result && result.name) || ball.name || 'Player';
-    var amount = document.createElement('div');
-    amount.className = 'plinko-live-meta';
-    amount.textContent = 'TON ' + fmtFeedTon(amountValue);
-    var house = document.createElement('div');
-    house.className = 'plinko-live-meta';
-    house.textContent = 'Win ' + fmtFeedTon(totalValue);
-    var mult = document.createElement('div');
-    mult.className = 'plinko-live-mult';
-    mult.textContent = '×' + fmtFeedMultiplier(multValue);
-    row.appendChild(img);
-    row.appendChild(name);
-    row.appendChild(amount);
-    row.appendChild(mult);
-    row.title =
-      amount.textContent +
-      ' · Multiplier ×' +
-      fmtFeedMultiplier(multValue) +
-      ' · ' +
-      house.textContent;
-    feed.insertBefore(row, feed.firstChild);
-    while (feed.children.length > 5) feed.removeChild(feed.lastChild);
-  }
-  function addResultToLiveFeed(event) {
-    if (!event || hasSeenLiveResult(event)) return;
-    markLiveResultSeen(event);
-    addLiveFeed(
-      {
-        amount: Number(event.amount) || MIN_BET,
-        name: event.name || 'Player',
-        photoUrl: event.photoUrl || '',
-      },
-      { mult: Number(event.multiplier) || 0 },
-      event,
-    );
   }
   function primeAudio() {
     var Ctor = window.AudioContext || window.webkitAudioContext;
@@ -491,107 +347,6 @@ export const PLINKO_SCRIPT = `
   }
   function smartLoadPlinkoControl(force) {
     return requestSync(force);
-  }
-  function liveUrl() {
-    var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return proto + '//' + window.location.host + '/app/api/plinko/live/ws';
-  }
-  function shouldLive() {
-    return active() && !document.hidden;
-  }
-  function closeLive() {
-    if (liveReconnectTimer) {
-      clearTimeout(liveReconnectTimer);
-      liveReconnectTimer = 0;
-    }
-    if (liveWs) {
-      var ws = liveWs;
-      liveWs = null;
-      try {
-        ws.close();
-      } catch (e) {}
-    }
-  }
-  function scheduleLiveReconnect() {
-    if (!shouldLive() || liveReconnectTimer) return;
-    var delay = Math.min(10000, 1200 + liveReconnectAttempts * 1200);
-    liveReconnectAttempts += 1;
-    liveReconnectTimer = setTimeout(function () {
-      liveReconnectTimer = 0;
-      ensureLive();
-    }, delay);
-  }
-  function ensureLive() {
-    if (!shouldLive()) {
-      closeLive();
-      return;
-    }
-    if (
-      liveWs &&
-      (liveWs.readyState === WebSocket.OPEN || liveWs.readyState === WebSocket.CONNECTING)
-    )
-      return;
-    try {
-      var ws = new WebSocket(liveUrl());
-      liveWs = ws;
-      ws.onopen = function () {
-        liveReconnectAttempts = 0;
-      };
-      ws.onmessage = function (ev) {
-        handleLiveMessage(ev.data);
-      };
-      ws.onclose = function () {
-        if (liveWs === ws) liveWs = null;
-        scheduleLiveReconnect();
-      };
-      ws.onerror = function () {
-        try {
-          ws.close();
-        } catch (e) {}
-      };
-    } catch (e) {
-      scheduleLiveReconnect();
-    }
-  }
-  function applyLiveHour(msg) {
-    try {
-      var detail = {
-        hourlyTurnover: roundCurrency(Number(msg && msg.hourlyTurnover) || 0),
-        hourStartedAt: Number(msg && msg.hourStartedAt) || 0,
-      };
-      window.__plinkoLiveHour = detail;
-      window.dispatchEvent(new CustomEvent('vexa-plinko-live-hour', { detail: detail }));
-    } catch (e) {}
-  }
-  function handleLiveMessage(data) {
-    try {
-      var msg = JSON.parse(data);
-      if (!msg) return;
-      if (msg.type === 'plinko-history' && Array.isArray(msg.events)) {
-        applyLiveHour(msg);
-        msg.events.slice().reverse().forEach(addResultToLiveFeed);
-        return;
-      }
-      if (msg.type === 'plinko-result' && msg.event) {
-        applyLiveHour(msg);
-        addResultToLiveFeed(msg.event);
-        return;
-      }
-      if (msg.type !== 'plinko-ball' || !msg.event) return;
-      var event = msg.event;
-      if (hasSeenLiveEvent(event)) return;
-      markLiveEventSeen(event);
-      if (String(event.userId || '') === currentUserId()) return;
-      spawnBall({
-        id: event.id,
-        userId: event.userId,
-        amount: roundCurrency(Number(event.amount) || MIN_BET),
-        name: event.name,
-        photoUrl: event.photoUrl,
-        remote: true,
-        seed: event.seed,
-      });
-    } catch (e) {}
   }
   function hitPeg(x, y) {
     if (!state) return;
@@ -738,7 +493,6 @@ export const PLINKO_SCRIPT = `
       return;
     }
     prepareAmountInput();
-    ensureLiveFeed();
     var dpr = Math.min(window.devicePixelRatio || 1, MAX_RENDER_DPR);
     canvas.width = BOARD_W * dpr;
     canvas.height = BOARD_H * dpr;
@@ -785,7 +539,7 @@ export const PLINKO_SCRIPT = `
   function spawnBall(opts) {
     init();
     if (!state) return false;
-    var maxBalls = opts && opts.remote ? MAX_REMOTE_BALLS : MAX_LOCAL_BALLS;
+    var maxBalls = MAX_LOCAL_BALLS;
     if (
       state.balls &&
       state.balls.filter(function (ball) {
@@ -820,7 +574,7 @@ export const PLINKO_SCRIPT = `
       sink: 0,
       settled: false,
       settleX: null,
-      img: avatarImage(opts && opts.photoUrl),
+      img: null,
       remote: !!(opts && opts.remote),
       rand: rng,
     };
@@ -830,7 +584,6 @@ export const PLINKO_SCRIPT = `
   }
   function drop() {
     smartLoadPlinkoControl(false);
-    ensureLive();
     init();
     primeAudio();
     if (!state) return;
@@ -871,25 +624,6 @@ export const PLINKO_SCRIPT = `
     changePoints(-value);
     awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: value });
   }
-  function sendPlinkoResult(ball, bin, total) {
-    var result = {
-      id: ball.id || '',
-      userId: ball.userId || currentUserId(),
-      name: ball.name || 'Player',
-      photoUrl: ball.photoUrl || '',
-      amount: roundCurrency(Math.max(0, Number(ball.amount) || 0)),
-      multiplier: roundCurrency(Math.max(0, Number(bin && bin.mult) || 0)),
-      total: roundCurrency(Math.max(0, Number(total) || 0)),
-    };
-    markLiveResultSeen(result);
-    fetch('/app/api/plinko/live/result', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(result),
-      cache: 'no-store',
-    }).catch(function () {});
-    return result;
-  }
   function settle(ball, bin) {
     if (ball.settled) return;
     if (bin && Number.isFinite(Number(bin.x)) && Number.isFinite(Number(bin.w)))
@@ -898,9 +632,7 @@ export const PLINKO_SCRIPT = `
     if (state) state.effects.push({ bin: bin, life: 18, max: 18 });
     var mult = roundCurrency(Math.max(0, Number(bin && bin.mult) || 0));
     var total = roundCurrency(Math.max(0, (Number(ball.amount) || 0) * mult));
-    var result = ball.remote ? null : sendPlinkoResult(ball, bin, total);
     if (!ball.remote) {
-      addLiveFeed(ball, bin, result);
       changePoints(total);
       var winEl = document.querySelector('[data-plinko-win]');
       if (winEl) winEl.textContent = fmtAmountInput(total);
@@ -1198,11 +930,6 @@ export const PLINKO_SCRIPT = `
         setTimeout(function () {
           smartLoadPlinkoControl(true);
           init(true);
-          ensureLive();
-        }, 0);
-      } else if (button.hasAttribute('data-view') || button.hasAttribute('data-game-view')) {
-        setTimeout(function () {
-          if (!active()) closeLive();
         }, 0);
       }
       var action = button.getAttribute('data-action');
@@ -1218,16 +945,11 @@ export const PLINKO_SCRIPT = `
     if (ev.target && ev.target.id === 'plinkoBet') syncControlPanel();
   });
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) closeLive();
-    else if (active()) {
-      smartLoadPlinkoControl(true);
-      ensureLive();
-    }
+    if (!document.hidden && active()) smartLoadPlinkoControl(true);
   });
   window.addEventListener('focus', function () {
     if (active()) {
       smartLoadPlinkoControl(true);
-      ensureLive();
     }
   });
   window.addEventListener('vexa-credit-sync', function (ev) {
@@ -1237,22 +959,16 @@ export const PLINKO_SCRIPT = `
     if (ev && ev.detail) forcePoints(ev.detail);
   });
   window.addEventListener('vexa-credit-icon-sync', function (ev) {
-    if (ev && ev.detail && ev.detail.url) updateIcon(ev.detail.url);
+    if (ev && ev.detail && ev.detail.source === 'plinko-ball' && ev.detail.url)
+      updateIcon(ev.detail.url);
   });
   window.plinkoReloadControl = function () {
     smartLoadPlinkoControl(true);
   };
-  if (window.MutationObserver) {
-    new MutationObserver(function () {
-      if (shouldLive()) ensureLive();
-      else closeLive();
-    }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
-  }
   if (q('plinkoCanvasV2')) init(true);
   syncControlPanel();
   if (active()) {
     smartLoadPlinkoControl(true);
-    ensureLive();
   }
 })();
 `;

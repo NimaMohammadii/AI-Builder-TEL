@@ -65,7 +65,6 @@ import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
 import { MARKET_CONFIG_SCRIPT } from './market-config-script';
 import { PLINKO_SCRIPT } from './plinko-script';
 import { PLINKO_DROP_FEEDBACK_SCRIPT } from './plinko-drop-feedback-script';
-import { PLINKO_LIVE_FEED_POLISH_SCRIPT } from './plinko-live-feed-polish-script';
 import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
 import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
 import { MINES_SCRIPT } from './mines-script';
@@ -208,7 +207,7 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'topplayers', html: TOP_PLAYERS_SECTION },
   { id: 'flow', html: `<div style="display:none">${TTS_SECTION}</div>` },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
-  { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_LIVE_FEED_POLISH_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
+  { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
   { id: 'slot', html: SLOT_SECTION, scripts: [SLOT_SCRIPT] },
   { id: 'wheel', html: WHEEL_SECTION, scripts: [WHEEL_ASSETS_SCRIPT] },
