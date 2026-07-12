@@ -237,18 +237,14 @@ html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{
   margin-left:auto!important;
   margin-right:auto!important;
 }
+html body:has(#slot.active) #slot .slot-spin-label{
+  position:relative!important;
+  top:-2px!important;
+}
 html body:has(#slot.active) #slot .slot-spin-cost{
   display:none!important;
 }
-html body:has(#slot.active) #slot #slotBetHalf{
-  position:relative!important;
-  top:-4px!important;
-  left:-4px!important;
-}
 html body:has(#slot.active) #slot #slotBetMax{
-  position:relative!important;
-  top:-4px!important;
-  left:4px!important;
   font-size:0!important;
 }
 html body:has(#slot.active) #slot #slotBetMax::after{
