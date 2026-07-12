@@ -12,6 +12,11 @@ export const DICE_FINAL_TWEAK = `<style>
   padding:14px 16px 16px!important;
   border-radius:30px!important;
   overflow:hidden!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(4px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(4px) saturate(1.08)!important;
 }
 #dice .dice-status{
   transform:none!important;
@@ -33,7 +38,8 @@ export const DICE_FINAL_TWEAK = `<style>
 #dice .dice-range-card,
 #dice .dice-result-card{
   background:rgba(255,255,255,.045)!important;
-  border:1px solid rgba(255,255,255,.10)!important;
+  border:0!important;
+  outline:0!important;
   box-shadow:none!important;
   backdrop-filter:blur(3px) saturate(1.08)!important;
   -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
