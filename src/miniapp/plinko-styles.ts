@@ -1,5 +1,9 @@
 export const PLINKO_STYLES = `
 body:has(#plinko.active) .tabs{display:none!important}
+html body:has(#plinko.active){isolation:isolate!important;background:#000!important}
+html body:has(#plinko.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Plinko.PNG?v=1')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
+html body:has(#plinko.active)::after,html body:has(#plinko.active) .app::before,html body:has(#plinko.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
+html body:has(#plinko.active) .app,html body:has(#plinko.active) main.app,html body:has(#plinko.active) .content,html body:has(#plinko.active) #plinko.view,html body:has(#plinko.active) .top,html body:has(#plinko.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important}
 #plinko.view{overflow:hidden}
 .plinko-page{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:16px 0 132px;position:relative}
 .plinko-top{width:auto;display:flex;justify-content:flex-end;position:fixed;top:calc(26px + env(safe-area-inset-top));right:16px;z-index:12;pointer-events:none}
