@@ -6,6 +6,8 @@ export const PLINKO_SCRIPT = `
   var NANO = 1000000000;
   var credit = readPoints();
   var iconUrl = '/app/api/uploaded-image/credit-icon.png';
+  var pegVisualUrl = '/assets/plinko-glass/peg.webp';
+  var houseStripUrl = '/assets/plinko-glass/houses.webp';
   var control = null;
   var lastStamp = '';
   var houseImageUrl = '';
@@ -616,6 +618,17 @@ export const PLINKO_SCRIPT = `
     pegSound();
   }
   function drawPeg(ctx, x, y, r, hit) {
+    if (state && state.pegVisualImg && state.pegVisualImg.complete && state.pegVisualImg.naturalWidth > 0) {
+      var visualSize = Math.max(8.5, r * (hit ? 2.75 : 2.45));
+      ctx.save();
+      if (hit) {
+        ctx.shadowColor = 'rgba(177,55,82,.58)';
+        ctx.shadowBlur = 6;
+      }
+      ctx.drawImage(state.pegVisualImg, x - visualSize / 2, y - visualSize / 2, visualSize, visualSize);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, r * 1.04, 0, Math.PI * 2);
@@ -775,6 +788,8 @@ export const PLINKO_SCRIPT = `
       staticDpr: 0,
       staticDirty: true,
       tokenImg: img,
+      pegVisualImg: prev && prev.pegVisualImg ? prev.pegVisualImg : loadHouseImage(pegVisualUrl),
+      houseStripImg: prev && prev.houseStripImg ? prev.houseStripImg : loadHouseImage(houseStripUrl),
       houseImageUrl: houseImageUrl,
       houseImg:
         prev && prev.houseImageUrl === houseImageUrl
@@ -1152,6 +1167,17 @@ export const PLINKO_SCRIPT = `
     for (var p = 0; p < state.pegs.length; p++) {
       var peg = state.pegs[p];
       drawPeg(ctx, peg.x, peg.y, peg.vr || peg.r, 0);
+    }
+    var bins = state.bins;
+    if (state.houseStripImg && state.houseStripImg.complete && state.houseStripImg.naturalWidth > 0)
+      ctx.drawImage(state.houseStripImg, 4, 253, 352, 28);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 ' + binTextSize(bins.length) + 'px Inter,system-ui,sans-serif';
+    for (var b = 0; b < bins.length; b++) {
+      var bin = bins[b];
+      ctx.fillStyle = b === 6 || b === 7 ? 'rgba(255,78,115,.98)' : 'rgba(255,255,255,.94)';
+      ctx.fillText(bin.label, bin.x + bin.w / 2, bin.y + bin.h / 2);
     }
     state.staticDirty = false;
     return state.staticCanvas;
