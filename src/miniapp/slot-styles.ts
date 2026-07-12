@@ -1061,4 +1061,53 @@ body:has(#slot.active) main { background:transparent!important; }
   }
 }
 
+
+/* Flush-mounted console + unboxed control typography */
+#slot .slot-cabinet .slot-control-panel{
+  margin-top:-96px!important;
+}
+#slot .slot-console-ui,
+#slot .slot-console-ui label,
+#slot .slot-console-ui button,
+#slot .slot-console-ui input,
+#slot .slot-console-ui strong,
+#slot .slot-console-ui span,
+#slot .slot-console-ui small{
+  background:none!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#slot .slot-console-ui label::before,
+#slot .slot-console-ui label::after,
+#slot .slot-console-ui button::before,
+#slot .slot-console-ui button::after,
+#slot .slot-console-ui input::before,
+#slot .slot-console-ui input::after,
+#slot .slot-console-ui strong::before,
+#slot .slot-console-ui strong::after,
+#slot .slot-console-ui span::before,
+#slot .slot-console-ui span::after,
+#slot .slot-console-ui small::before,
+#slot .slot-console-ui small::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#slot .slot-bet-display,
+#slot .slot-spin-button{
+  filter:none!important;
+}
+@media(max-width:380px){
+  #slot .slot-cabinet .slot-control-panel{
+    margin-top:-92px!important;
+  }
+}
+
 `;
