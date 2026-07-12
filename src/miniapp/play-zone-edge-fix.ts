@@ -198,7 +198,7 @@ html body:has(#slot.active) #slot .slot-machine{
   height:460px!important;
   min-height:460px!important;
   margin-top:-14px!important;
-  left:28px!important;
+  left:32px!important;
   top:-14px!important;
   z-index:10!important;
 }
@@ -237,7 +237,18 @@ html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{
   margin-left:auto!important;
   margin-right:auto!important;
 }
+html body:has(#slot.active) #slot .slot-spin-cost{
+  display:none!important;
+}
+html body:has(#slot.active) #slot #slotBetHalf{
+  position:relative!important;
+  top:-4px!important;
+  left:-4px!important;
+}
 html body:has(#slot.active) #slot #slotBetMax{
+  position:relative!important;
+  top:-4px!important;
+  left:4px!important;
   font-size:0!important;
 }
 html body:has(#slot.active) #slot #slotBetMax::after{
@@ -249,7 +260,7 @@ html body:has(#slot.active) #slot #slotBetMax::after{
   color:inherit!important;
 }
 @media(max-width:380px){
-  html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:25px!important;top:-14px!important;z-index:10!important}
+  html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:29px!important;top:-14px!important;z-index:10!important}
   html body:has(#slot.active) #slot .slot-window{top:85px!important;height:225px!important;padding:4px!important}
   html body:has(#slot.active) #slot .slot-symbol{height:75px!important}
   html body:has(#slot.active) #slot .slot-symbol-image{width:49px!important;height:49px!important}
