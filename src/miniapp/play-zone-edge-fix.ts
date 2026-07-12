@@ -149,4 +149,46 @@ html body:has(#dice.active) header.top{
   background-color:transparent!important;
   background-image:none!important;
 }
+
+html body:has(#slot.active){
+  isolation:isolate!important;
+  background:#000!important;
+}
+html body:has(#slot.active)::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  background-color:#000!important;
+  background-image:url('/assets/Slotbackground.PNG?v=1')!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  opacity:1!important;
+}
+html body:has(#slot.active)::after,
+html body:has(#slot.active) .app::before,
+html body:has(#slot.active) .app::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  background-image:none!important;
+}
+html body:has(#slot.active) .app,
+html body:has(#slot.active) main.app,
+html body:has(#slot.active) .content,
+html body:has(#slot.active) #slot.slot-view,
+html body:has(#slot.active) .top,
+html body:has(#slot.active) header.top{
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+}
 `;
