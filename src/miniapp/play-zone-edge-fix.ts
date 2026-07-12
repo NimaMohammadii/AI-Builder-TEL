@@ -17,10 +17,10 @@ export const PLAY_ZONE_EDGE_FIX = `
 @media (prefers-reduced-motion:reduce){#playzone .game-card,#playzone .game-card-shell,#playzone .game-players b{transition:none!important;animation:none!important}}
 
 html body:has(#playzone.active)::before{
-  background-image:url('data:image/webp;base64,${PLAYHUB_BACKGROUND}')!important;
-  background-size:cover!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
+  background-image:url('/assets/playhub.png?v=1'),url('data:image/webp;base64,${PLAYHUB_BACKGROUND}')!important;
+  background-size:cover,cover!important;
+  background-position:center top,center top!important;
+  background-repeat:no-repeat,no-repeat!important;
   transform:none!important;
   animation:none!important;
   filter:none!important;
