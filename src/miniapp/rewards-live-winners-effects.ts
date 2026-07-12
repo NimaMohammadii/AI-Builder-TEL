@@ -7,12 +7,18 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
 }
 #rewards .home-live-winner-card{
   --rewards-card-progress:0;
+  min-height:0!important;
+  height:calc(64px * (1 - var(--rewards-card-progress)))!important;
+  padding-top:calc(11px * (1 - var(--rewards-card-progress)))!important;
+  padding-bottom:calc(11px * (1 - var(--rewards-card-progress)))!important;
+  margin-bottom:calc(-10px * var(--rewards-card-progress))!important;
   opacity:calc(1 - var(--rewards-card-progress))!important;
   transform:scale(calc(1 - var(--rewards-card-progress) * .018))!important;
   filter:blur(calc(var(--rewards-card-progress) * 3px))!important;
-  transform-origin:50% 50%!important;
-  will-change:transform,opacity,filter!important;
-  transition:opacity .1s linear,transform .1s linear,filter .1s linear!important;
+  transform-origin:50% 0!important;
+  overflow:hidden!important;
+  will-change:height,padding,margin,transform,opacity,filter!important;
+  transition:opacity .08s linear,transform .08s linear,filter .08s linear,height .08s linear,padding .08s linear,margin .08s linear!important;
   pointer-events:auto;
 }
 #rewards .home-live-winner-card[data-rewards-hidden="1"]{pointer-events:none!important}
@@ -36,8 +42,8 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     var cards=rewards.querySelectorAll('.home-live-winner-card');
     if(!rewards.classList.contains('active')){reset(cards);return}
     var y=Math.max(0,rewards.scrollTop||0);
-    var step=48;
-    var fadeDistance=46;
+    var step=44;
+    var fadeDistance=48;
     for(var i=0;i<cards.length;i++){
       var start=i*step;
       var p=clamp((y-start)/fadeDistance,0,1);
