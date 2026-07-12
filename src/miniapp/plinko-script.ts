@@ -6,11 +6,9 @@ export const PLINKO_SCRIPT = `
   var NANO = 1000000000;
   var credit = readPoints();
   var iconUrl = '/app/api/uploaded-image/credit-icon.png';
-  var pegAssetUrl = '/assets/plinko-v3/peg.webp';
-  var binAssetUrl = '/assets/plinko-v3/bin.webp';
-  var ballAssetUrl = '/assets/plinko-v3/ball.webp';
   var control = null;
   var lastStamp = '';
+  var houseImageUrl = '';
   var lastLoadAt = 0;
   var syncing = false;
   var syncQueued = false;
@@ -221,14 +219,35 @@ export const PLINKO_SCRIPT = `
     iconUrl = url || iconUrl;
     if (state && state.tokenImg && state.tokenImg.src !== iconUrl) state.tokenImg.src = iconUrl;
   }
-  function loadGameAsset(url) {
+  function loadHouseImage(url) {
+    if (!url) return null;
     var img = new Image();
     img.onload = function () {
       dirty();
       draw();
     };
+    img.onerror = function () {
+      if (state && state.houseImg === img) {
+        state.houseImg = null;
+        dirty();
+        draw();
+      }
+    };
     img.src = url;
     return img;
+  }
+  function setHouseImageVersion(version) {
+    var next = version
+      ? '/app/api/plinko-control-image/house.png?v=' + encodeURIComponent(version)
+      : '';
+    if (next === houseImageUrl) return;
+    houseImageUrl = next;
+    if (state) {
+      state.houseImageUrl = next;
+      state.houseImg = loadHouseImage(next);
+      dirty();
+      draw();
+    }
   }
   function currentTelegramUser() {
     return window.Telegram &&
@@ -457,7 +476,11 @@ export const PLINKO_SCRIPT = `
       })
       .then(function (data) {
         if (data && data.rows) {
-          var stamp = String(data.updatedAt || JSON.stringify(data.rows));
+          var houseVersion =
+            data.assets && data.assets.houseVersion ? String(data.assets.houseVersion) : '';
+          setHouseImageVersion(houseVersion);
+          var stamp =
+            String(data.updatedAt || JSON.stringify(data.rows)) + '|house:' + houseVersion;
           var changed = stamp !== lastStamp;
           control = data;
           lastStamp = stamp;
@@ -593,17 +616,6 @@ export const PLINKO_SCRIPT = `
     pegSound();
   }
   function drawPeg(ctx, x, y, r, hit) {
-    if (state && state.pegImg && state.pegImg.complete && state.pegImg.naturalWidth > 0) {
-      var size = Math.max(8.5, r * (hit ? 2.75 : 2.45));
-      ctx.save();
-      if (hit) {
-        ctx.shadowColor = 'rgba(134,20,52,.72)';
-        ctx.shadowBlur = 8;
-      }
-      ctx.drawImage(state.pegImg, x - size / 2, y - size / 2, size, size);
-      ctx.restore();
-      return;
-    }
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, r * 1.04, 0, Math.PI * 2);
@@ -630,10 +642,6 @@ export const PLINKO_SCRIPT = `
     ctx.restore();
   }
   function drawBin(ctx, bin) {
-    if (state && state.binImg && state.binImg.complete && state.binImg.naturalWidth > 0) {
-      ctx.drawImage(state.binImg, bin.x - 0.8, bin.y + 2, bin.w + 1.6, 20);
-      return;
-    }
     var r = Math.min(9, Math.max(5, bin.w * 0.24));
     ctx.save();
     roundRect(ctx, bin.x, bin.y, bin.w, bin.h, r);
@@ -690,8 +698,8 @@ export const PLINKO_SCRIPT = `
       pegRows = 13,
       rowGap = (bottom - top) / Math.max(1, pegRows - 1);
     var slotCount = houseCount();
-    var slotLeft = 50,
-      slotWidth = 260,
+    var slotLeft = 4,
+      slotWidth = 352,
       slotGap = slotWidth / slotCount;
     var r = pegRadius(),
       vr = pegVisualRadius();
@@ -709,11 +717,11 @@ export const PLINKO_SCRIPT = `
     var mult = currentMultipliers();
     var count = houseCount();
     var bins = [];
-    var left = 46,
-      top = 263,
-      width = 268,
-      height = 28,
-      gutter = 1.8;
+    var left = 4,
+      top = 260,
+      width = 352,
+      height = 14,
+      gutter = 2;
     var binW = width / count;
     for (var j = 0; j < count; j++)
       bins.push({
@@ -746,7 +754,11 @@ export const PLINKO_SCRIPT = `
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     var prev = state;
-    var img = loadGameAsset(ballAssetUrl);
+    var img = new Image();
+    img.onload = function () {
+      draw();
+    };
+    img.src = iconUrl;
     state = {
       canvas: canvas,
       ctx: ctx,
@@ -763,9 +775,11 @@ export const PLINKO_SCRIPT = `
       staticDpr: 0,
       staticDirty: true,
       tokenImg: img,
-      pegImg: prev && prev.pegImg ? prev.pegImg : loadGameAsset(pegAssetUrl),
-      binImg: prev && prev.binImg ? prev.binImg : loadGameAsset(binAssetUrl),
-      ballImg: prev && prev.ballImg ? prev.ballImg : img,
+      houseImageUrl: houseImageUrl,
+      houseImg:
+        prev && prev.houseImageUrl === houseImageUrl
+          ? prev.houseImg
+          : loadHouseImage(houseImageUrl),
     };
     renderPoints();
     var rowsEl = q('plinkoRowsValue');
@@ -811,7 +825,7 @@ export const PLINKO_SCRIPT = `
       sink: 0,
       settled: false,
       settleX: null,
-      img: state.ballImg,
+      img: avatarImage(opts && opts.photoUrl),
       remote: !!(opts && opts.remote),
       rand: rng,
     };
@@ -1139,16 +1153,6 @@ export const PLINKO_SCRIPT = `
       var peg = state.pegs[p];
       drawPeg(ctx, peg.x, peg.y, peg.vr || peg.r, 0);
     }
-    var bins = state.bins;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '900 ' + binTextSize(bins.length) + 'px Inter,system-ui,sans-serif';
-    for (var b = 0; b < bins.length; b++) {
-      var bin = bins[b];
-      drawBin(ctx, bin);
-      ctx.fillStyle = bin.mult >= 2 ? 'rgba(255,244,247,.98)' : 'rgba(230,211,217,.88)';
-      ctx.fillText(bin.label + '×', bin.x + bin.w / 2, bin.y + bin.h * 0.66);
-    }
     state.staticDirty = false;
     return state.staticCanvas;
   }
@@ -1187,15 +1191,23 @@ export const PLINKO_SCRIPT = `
     drawEffects(ctx);
     for (var b = 0; b < state.balls.length; b++) {
       var ball = state.balls[b],
-        img = state.ballImg || ball.img || state.tokenImg,
+        img = ball.img || state.tokenImg,
         alpha = ball.sinking ? Math.max(0, 1 - ball.sink / 34) : 1;
       ctx.save();
       ctx.globalAlpha = alpha;
       if (img && img.complete && img.naturalWidth > 0) {
-        var size = ball.r * 2.3;
+        var size = ball.r * 2.45;
         ctx.save();
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, size / 2, 0, Math.PI * 2);
+        ctx.clip();
         ctx.drawImage(img, ball.x - size / 2, ball.y - size / 2, size, size);
         ctx.restore();
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, size / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,.26)';
+        ctx.lineWidth = 0.65;
+        ctx.stroke();
       } else {
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
@@ -1259,7 +1271,7 @@ export const PLINKO_SCRIPT = `
     if (ev && ev.detail) forcePoints(ev.detail);
   });
   window.addEventListener('vexa-credit-icon-sync', function (ev) {
-    if (ev && ev.detail && ev.detail.url) iconUrl = ev.detail.url;
+    if (ev && ev.detail && ev.detail.url) updateIcon(ev.detail.url);
   });
   window.plinkoReloadControl = function () {
     smartLoadPlinkoControl(true);
