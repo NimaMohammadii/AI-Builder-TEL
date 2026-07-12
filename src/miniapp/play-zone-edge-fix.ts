@@ -20,4 +20,49 @@ html body:has(#playzone.active)::before{
   filter:none!important;
   opacity:1!important;
 }
+
+html body:has(#rewards.active){
+  isolation:isolate!important;
+  background:#000!important;
+}
+html body:has(#rewards.active)::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  background-color:#000!important;
+  background-image:url('/assets/Rewards.PNG?v=1')!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  opacity:1!important;
+}
+html body:has(#rewards.active)::after,
+html body:has(#rewards.active) .app::before,
+html body:has(#rewards.active) .app::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  background-image:none!important;
+}
+html body:has(#rewards.active) .app,
+html body:has(#rewards.active) main.app,
+html body:has(#rewards.active) .content,
+html body:has(#rewards.active) #rewards.rewards-view,
+html body:has(#rewards.active) .top,
+html body:has(#rewards.active) header.top{
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+}
+html body:has(#rewards.active) #rewards .rewards-home-intro-card{
+  display:none!important;
+}
 `;
