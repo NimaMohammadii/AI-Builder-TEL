@@ -11,9 +11,12 @@ export const DICE_ASSET_CACHE_SCRIPT = `
   }
   glassStyle.textContent=[
     '#dice.dice-view{filter:none!important}',
-    '#dice .dice-range-card,#dice .dice-result-card{background:rgba(255,255,255,.018)!important;background-color:rgba(255,255,255,.018)!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;filter:none!important;opacity:1!important;visibility:visible!important;backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}',
-    '#dice .dice-panel{display:grid!important;position:relative!important;opacity:1!important;visibility:visible!important;min-height:0!important;background:rgba(255,255,255,.022)!important;background-color:rgba(255,255,255,.022)!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;filter:none!important;backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}',
-    '#dice .dice-range-card:before,#dice .dice-range-card:after,#dice .dice-result-card:before,#dice .dice-result-card:after,#dice .dice-panel:before,#dice .dice-panel:after{content:none!important;display:none!important;background:none!important;border:0!important;box-shadow:none!important}'
+    '#dice .dice-range-card,#dice .dice-result-card,#dice .dice-panel{position:relative!important;isolation:isolate!important;background:transparent!important;background-color:transparent!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;filter:none!important;opacity:1!important;visibility:visible!important}',
+    '#dice .dice-panel{display:grid!important;min-height:0!important;overflow:hidden!important}',
+    '#dice .dice-range-card:before,#dice .dice-result-card:before,#dice .dice-panel:before{content:""!important;display:block!important;position:absolute!important;inset:0!important;z-index:-1!important;pointer-events:none!important;border:0!important;outline:0!important;box-shadow:none!important;border-radius:inherit!important;background:rgba(255,255,255,.008)!important;background-image:none!important}',
+    '#dice .dice-range-card:before,#dice .dice-result-card:before{backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important}',
+    '#dice .dice-panel:before{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}',
+    '#dice .dice-range-card:after,#dice .dice-result-card:after,#dice .dice-panel:after{content:none!important;display:none!important;background:none!important;border:0!important;box-shadow:none!important}'
   ].join('');
 
   var PREFIX='vexa:dice-img-cache:';
