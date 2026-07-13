@@ -285,6 +285,79 @@ html body:has(#slot.active) #slot #slotBetMax::after{
   color:inherit!important;
   z-index:2!important;
 }
+
+/* Slot live players: no outer card, glass rows, bottom placement and stepped scrolling. */
+html body:has(#slot.active) #slot .slot-live{
+  width:min(92%,408px)!important;
+  margin:clamp(190px,28dvh,320px) auto 28px!important;
+  padding:0 10px calc(20px + env(safe-area-inset-bottom))!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:transparent!important;
+  background-color:transparent!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow:visible!important;
+  max-height:none!important;
+}
+html body:has(#slot.active) #slot .slot-live:not(.open){
+  max-height:none!important;
+  padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;
+}
+html body:has(#slot.active) #slot .slot-live-head{
+  margin:0 4px 10px!important;
+  padding:0 2px!important;
+}
+html body:has(#slot.active) #slot .slot-live-list{
+  display:grid!important;
+  gap:8px!important;
+  height:214px!important;
+  max-height:214px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:2px 2px 10px!important;
+  scroll-snap-type:y mandatory!important;
+  scroll-padding-top:2px!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  scrollbar-width:none!important;
+}
+html body:has(#slot.active) #slot .slot-live-list::-webkit-scrollbar{display:none!important}
+html body:has(#slot.active) #slot .slot-live:not(.open) .slot-live-list{
+  max-height:214px!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+html body:has(#slot.active) #slot .slot-live-row{
+  min-height:64px!important;
+  height:64px!important;
+  scroll-snap-align:start!important;
+  scroll-snap-stop:always!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:10px!important;
+  padding:10px 14px!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:28px!important;
+  background:rgba(13,13,13,.54)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;
+  backdrop-filter:blur(4px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(4px) saturate(1.08)!important;
+  box-sizing:border-box!important;
+}
+html body:has(#slot.active) #slot .slot-live-user{
+  font-size:13px!important;
+  font-weight:900!important;
+}
+html body:has(#slot.active) #slot .slot-live-result{
+  gap:8px!important;
+}
+html body:has(#slot.active) #slot .slot-live-symbol{
+  width:24px!important;
+  height:24px!important;
+}
 @media(max-width:380px){
   html body:has(#slot.active) #slot .slot-cabinet{transform:scale(.78)!important;transform-origin:top center!important;margin-bottom:-140px!important}
   html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:29px!important;top:-18px!important;z-index:10!important}
@@ -293,5 +366,8 @@ html body:has(#slot.active) #slot #slotBetMax::after{
   html body:has(#slot.active) #slot .slot-symbol-image{width:49px!important;height:49px!important}
   html body:has(#slot.active) #slot .slot-control-panel{width:min(86vw,336px)!important;margin:-36px auto 0!important;left:-7px!important;top:-18px!important;z-index:9!important}
   html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{max-width:252px!important;height:84px!important;margin-left:auto!important;margin-right:auto!important}
+  html body:has(#slot.active) #slot .slot-live{margin-top:clamp(170px,25dvh,270px)!important;width:min(94%,370px)!important}
+  html body:has(#slot.active) #slot .slot-live-list{height:206px!important;max-height:206px!important}
+  html body:has(#slot.active) #slot .slot-live-row{min-height:62px!important;height:62px!important;border-radius:26px!important;padding:9px 12px!important}
 }
 `;
