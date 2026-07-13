@@ -192,11 +192,19 @@ html body:has(#slot.active) header.top{
   background-image:none!important;
 }
 
-/* Preserve the exact previous Slot geometry and scale the complete cabinet as one unit. */
+/* Keep machine and controls locked together, only slightly larger than before. */
+html body:has(#slot.active) #slot.slot-view{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-bottom:36px!important;
+  -webkit-overflow-scrolling:touch!important;
+}
 html body:has(#slot.active) #slot .slot-cabinet{
-  transform:scale(.78)!important;
+  transform:scale(.82)!important;
   transform-origin:top center!important;
-  margin-bottom:-150px!important;
+  margin-bottom:-128px!important;
+  transition:none!important;
+  animation:none!important;
 }
 html body:has(#slot.active) #slot .slot-machine{
   width:min(84vw,360px)!important;
@@ -286,10 +294,13 @@ html body:has(#slot.active) #slot #slotBetMax::after{
   z-index:2!important;
 }
 
-/* Slot live players: no outer card, glass rows, bottom placement and stepped scrolling. */
+/* Live players stay directly below the cabinet and remain visible. */
 html body:has(#slot.active) #slot .slot-live{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
   width:min(92%,408px)!important;
-  margin:clamp(190px,28dvh,320px) auto 28px!important;
+  margin:18px auto 28px!important;
   padding:0 10px calc(20px + env(safe-area-inset-bottom))!important;
   border:0!important;
   border-radius:0!important;
@@ -303,15 +314,24 @@ html body:has(#slot.active) #slot .slot-live{
   max-height:none!important;
 }
 html body:has(#slot.active) #slot .slot-live:not(.open){
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
   max-height:none!important;
   padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;
 }
 html body:has(#slot.active) #slot .slot-live-head{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
   margin:0 4px 10px!important;
   padding:0 2px!important;
 }
 html body:has(#slot.active) #slot .slot-live-list{
   display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
   gap:8px!important;
   height:214px!important;
   max-height:214px!important;
@@ -326,16 +346,22 @@ html body:has(#slot.active) #slot .slot-live-list{
 }
 html body:has(#slot.active) #slot .slot-live-list::-webkit-scrollbar{display:none!important}
 html body:has(#slot.active) #slot .slot-live:not(.open) .slot-live-list{
-  max-height:214px!important;
+  display:grid!important;
+  visibility:visible!important;
   opacity:1!important;
+  max-height:214px!important;
   pointer-events:auto!important;
 }
 html body:has(#slot.active) #slot .slot-live-row{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
   min-height:64px!important;
   height:64px!important;
   scroll-snap-align:start!important;
   scroll-snap-stop:always!important;
   grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
   gap:10px!important;
   padding:10px 14px!important;
   border:0!important;
@@ -359,14 +385,14 @@ html body:has(#slot.active) #slot .slot-live-symbol{
   height:24px!important;
 }
 @media(max-width:380px){
-  html body:has(#slot.active) #slot .slot-cabinet{transform:scale(.78)!important;transform-origin:top center!important;margin-bottom:-140px!important}
+  html body:has(#slot.active) #slot .slot-cabinet{transform:scale(.82)!important;transform-origin:top center!important;margin-bottom:-118px!important;transition:none!important;animation:none!important}
   html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:29px!important;top:-18px!important;z-index:10!important}
   html body:has(#slot.active) #slot .slot-window{top:85px!important;height:225px!important;padding:4px!important}
   html body:has(#slot.active) #slot .slot-symbol{height:75px!important}
   html body:has(#slot.active) #slot .slot-symbol-image{width:49px!important;height:49px!important}
   html body:has(#slot.active) #slot .slot-control-panel{width:min(86vw,336px)!important;margin:-36px auto 0!important;left:-7px!important;top:-18px!important;z-index:9!important}
   html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{max-width:252px!important;height:84px!important;margin-left:auto!important;margin-right:auto!important}
-  html body:has(#slot.active) #slot .slot-live{margin-top:clamp(170px,25dvh,270px)!important;width:min(94%,370px)!important}
+  html body:has(#slot.active) #slot .slot-live{margin-top:16px!important;width:min(94%,370px)!important}
   html body:has(#slot.active) #slot .slot-live-list{height:206px!important;max-height:206px!important}
   html body:has(#slot.active) #slot .slot-live-row{min-height:62px!important;height:62px!important;border-radius:26px!important;padding:9px 12px!important}
 }
