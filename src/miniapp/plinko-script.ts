@@ -2,7 +2,7 @@ export const PLINKO_SCRIPT = `
 (function () {
   var state = null;
   var rows = 12;
-  var risk = 'low';
+  var risk = 'easy';
   var autoRunning = false;
   var autoTimer = 0;
   var NANO = 1000000000;
@@ -28,9 +28,21 @@ export const PLINKO_SCRIPT = `
   var MAX_LOCAL_BALLS = 24;
   var AUTO_INTERVAL = 650;
   var multipliers = {
-    8: { low: [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6] },
-    12: { low: [10, 3, 1.6, 1.2, 1.11, 1.05, 0.5, 1.05, 1.11, 1.2, 1.6, 3, 10] },
-    16: { low: [16, 5, 2.5, 1.6, 1.2, 1.09, 1.05, 1.1, 0.5, 1.1, 1.05, 1.09, 1.2, 1.6, 2.5, 5, 16] },
+    8: {
+      easy: [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
+      medium: [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
+      hard: [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
+    },
+    12: {
+      easy: [10, 3, 1.6, 1.2, 1.11, 1.05, 0.5, 1.05, 1.11, 1.2, 1.6, 3, 10],
+      medium: [33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33],
+      hard: [170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170],
+    },
+    16: {
+      easy: [16, 5, 2.5, 1.6, 1.2, 1.09, 1.05, 1.1, 0.5, 1.1, 1.05, 1.09, 1.2, 1.6, 2.5, 5, 16],
+      medium: [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
+      hard: [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
+    },
   };
 
   function q(id) {
@@ -161,14 +173,21 @@ export const PLINKO_SCRIPT = `
       current = document.querySelector('[data-plinko-current]'),
       balanceEl = document.querySelector('[data-plinko-balance]'),
       mult = document.querySelector('[data-plinko-multiplier]'),
-      rowsEl = document.querySelector('[data-plinko-rows]');
+      rowsEl = document.querySelector('[data-plinko-rows]'),
+      riskEl = document.querySelector('[data-plinko-risk]');
     if (open) open.textContent = fmtAmountInput(value);
     if (current) current.textContent = fmtAmountInput(value);
     if (balanceEl) balanceEl.textContent = fmtTon(balance);
     if (mult) mult.textContent = fmtFeedMultiplier(Math.max.apply(Math, currentMultipliers()));
     if (rowsEl) rowsEl.textContent = String(rows);
+    if (riskEl) riskEl.textContent = risk;
     document.querySelectorAll('[data-plinko-rows-option]').forEach(function (button) {
       var selected = Number(button.getAttribute('data-plinko-rows-option')) === rows;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-plinko-risk-option]').forEach(function (button) {
+      var selected = button.getAttribute('data-plinko-risk-option') === risk;
       button.classList.toggle('active', selected);
       button.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
@@ -182,12 +201,13 @@ export const PLINKO_SCRIPT = `
   }
   function controlItem() {
     var rk = String(rows);
+    var riskKey = risk === 'easy' ? 'low' : risk === 'hard' ? 'high' : 'medium';
     return control &&
       control.enabled !== false &&
       control.rows &&
       control.rows[rk] &&
-      control.rows[rk].low
-      ? control.rows[rk].low
+      control.rows[rk][riskKey]
+      ? control.rows[rk][riskKey]
       : null;
   }
   function currentMultipliers() {
@@ -195,10 +215,10 @@ export const PLINKO_SCRIPT = `
     var source =
       item && Array.isArray(item.multipliers) && item.multipliers.length === houseCount()
         ? item.multipliers
-        : multipliers[rows].low;
+        : multipliers[rows][risk];
     return source.map(function (value, index) {
       var n = Number(value);
-      return Number.isFinite(n) && n > 0 ? n : multipliers[rows].low[index];
+      return Number.isFinite(n) && n > 0 ? n : multipliers[rows][risk][index];
     });
   }
   function pegRadius() {
@@ -440,6 +460,17 @@ export const PLINKO_SCRIPT = `
       return;
     }
     rows = value;
+    rebuildBoard(false);
+    syncControlPanel();
+  }
+  function setRisk(next) {
+    var value = String(next || '').toLowerCase();
+    if (['easy', 'medium', 'hard'].indexOf(value) === -1 || value === risk) return;
+    if (hasBalls()) {
+      show('Wait for the current balls to finish');
+      return;
+    }
+    risk = value;
     rebuildBoard(false);
     syncControlPanel();
   }
@@ -1006,6 +1037,12 @@ export const PLINKO_SCRIPT = `
         setRows(rowOption);
         return;
       }
+      var riskOption = button.getAttribute('data-plinko-risk-option');
+      if (riskOption) {
+        ev.preventDefault();
+        setRisk(riskOption);
+        return;
+      }
       if (
         button.getAttribute('data-view') === 'plinko' ||
         button.getAttribute('data-game-view') === 'plinko'
@@ -1057,6 +1094,7 @@ export const PLINKO_SCRIPT = `
     smartLoadPlinkoControl(true);
   };
   window.setPlinkoRows = setRows;
+  window.setPlinkoRisk = setRisk;
   if (q('plinkoCanvasV2')) init(true);
   syncControlPanel();
   if (active()) {
