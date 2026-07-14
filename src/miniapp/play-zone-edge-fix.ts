@@ -432,6 +432,7 @@ html body:has(#slot.active) #slot .slot-frame-image{
   height:100%!important;
   object-fit:contain!important;
   filter:drop-shadow(0 22px 28px rgba(0,0,0,.68))!important;
+  animation:none!important;
 }
 html body:has(#slot.active) #slot .slot-jackpot-title{
   position:absolute!important;
