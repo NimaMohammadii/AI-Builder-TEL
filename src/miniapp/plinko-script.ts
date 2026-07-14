@@ -7,7 +7,7 @@ export const PLINKO_SCRIPT = `
   var autoTimer = 0;
   var NANO = 1000000000;
   var credit = readPoints();
-  var iconUrl = '/app/api/uploaded-image/plinko-ball.png';
+  var iconUrl = '/assets/plinko-glass/ball.webp';
   var pegVisualUrl = '/assets/plinko-glass/peg.webp';
   var houseStripUrl = '/assets/plinko-glass/houses.webp';
   var control = null;
@@ -1003,17 +1003,7 @@ export const PLINKO_SCRIPT = `
       ctx.globalAlpha = alpha;
       if (img && img.complete && img.naturalWidth > 0) {
         var size = ball.r * 2.45;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, size / 2, 0, Math.PI * 2);
-        ctx.clip();
         ctx.drawImage(img, ball.x - size / 2, ball.y - size / 2, size, size);
-        ctx.restore();
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, size / 2, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,255,.26)';
-        ctx.lineWidth = 0.65;
-        ctx.stroke();
       } else {
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
