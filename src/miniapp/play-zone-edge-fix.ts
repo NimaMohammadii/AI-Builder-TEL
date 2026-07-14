@@ -686,4 +686,9 @@ html body:has(#slot.active) #slot .slot-live{margin-top:30px!important}
   html body:has(#slot.active) #slot .slot-asset-spin{width:min(78vw,286px)!important;height:77px!important}
 }
 
+
+
+html body:has(#slot.active) #slot .slot-symbol-fallback{
+  display:none!important;
+}
 `;
