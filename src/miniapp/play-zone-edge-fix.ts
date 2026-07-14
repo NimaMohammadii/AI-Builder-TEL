@@ -417,7 +417,7 @@ html body:has(#slot.active) #slot .slot-machine{
   position:relative!important;
   inset:auto!important;
   left:auto!important;
-  top:auto!important;
+  top:-14px!important;
   width:100%!important;
   height:auto!important;
   min-height:0!important;
@@ -453,12 +453,12 @@ html body:has(#slot.active) #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
   top:28.4%!important;
-  left:14.9%!important;
-  width:70.2%!important;
+  left:9.8%!important;
+  width:80.4%!important;
   height:55.8%!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  gap:1.4%!important;
+  gap:2.4%!important;
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
@@ -475,27 +475,43 @@ html body:has(#slot.active) #slot .slot-window::after{display:none!important}
 html body:has(#slot.active) #slot .slot-reel{
   position:relative!important;
   min-width:0!important;
-  overflow:hidden!important;
+  overflow:visible!important;
   border:0!important;
-  border-radius:48% / 8%!important;
-  background:transparent!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:none!important;
+  box-shadow:none!important;
   transform-style:preserve-3d!important;
+}
+html body:has(#slot.active) #slot .slot-reel::before,
+html body:has(#slot.active) #slot .slot-reel::after{
+  display:none!important;
+  content:none!important;
 }
 html body:has(#slot.active) #slot .slot-reel-strip{transform-style:preserve-3d!important}
 html body:has(#slot.active) #slot .slot-symbol{
+  width:118%!important;
   height:calc((min(92vw,390px) * .558 * 900 / 845) / 3)!important;
+  margin-left:-9%!important;
   display:grid!important;
   place-items:center!important;
   padding:0!important;
   transform-style:preserve-3d!important;
   backface-visibility:hidden!important;
   transition:transform .28s ease,opacity .28s ease,filter .28s ease!important;
-  filter:drop-shadow(0 7px 10px rgba(0,0,0,.52))!important;
+  overflow:visible!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:none!important;
+  box-shadow:none!important;
+  filter:none!important;
 }
 html body:has(#slot.active) #slot .slot-symbol-image{
   width:92%!important;
   height:92%!important;
   object-fit:contain!important;
+  filter:drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
 }
 html body:has(#slot.active) #slot .slot-reel:first-child .slot-symbol-image{
   transform:translateX(-19%) scale(1.08)!important;
@@ -504,7 +520,7 @@ html body:has(#slot.active) #slot .slot-reel:last-child .slot-symbol-image{
   transform:translateX(19%) scale(1.08)!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-top{
-  transform:perspective(180px) rotateX(-23deg) translateY(-11px) scale(.80)!important;
+  transform:perspective(180px) rotateX(-23deg) translateY(-17px) scale(.80)!important;
   transform-origin:50% 100%!important;
   opacity:.72!important;
   filter:brightness(.72) drop-shadow(0 6px 9px rgba(0,0,0,.48))!important;
@@ -515,7 +531,7 @@ html body:has(#slot.active) #slot .slot-symbol.is-reel-center{
   opacity:1!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-bottom{
-  transform:perspective(180px) rotateX(23deg) translateY(11px) scale(.80)!important;
+  transform:perspective(180px) rotateX(23deg) translateY(17px) scale(.80)!important;
   transform-origin:50% 0!important;
   opacity:.72!important;
   filter:brightness(.72) drop-shadow(0 6px 9px rgba(0,0,0,.48))!important;
