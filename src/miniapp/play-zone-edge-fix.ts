@@ -194,18 +194,26 @@ html body:has(#slot.active) header.top{
 
 /* Keep machine and controls locked together, only slightly larger than before. */
 html body:has(#slot.active) #slot.slot-view{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  box-sizing:border-box!important;
   overflow-y:hidden!important;
   overflow-x:hidden!important;
+  touch-action:none!important;
   padding-bottom:36px!important;
   -webkit-overflow-scrolling:touch!important;
 }
 html body:has(#slot.active) #slot.slot-view:has(.slot-live.open){
   overflow-y:auto!important;
+  touch-action:pan-y!important;
+  overscroll-behavior-y:contain!important;
 }
 html body:has(#slot.active) #slot .slot-cabinet{
-  transform:scale(.82)!important;
+  transform:scale(.88)!important;
   transform-origin:top center!important;
-  margin-bottom:-128px!important;
+  margin-bottom:-100px!important;
   transition:none!important;
   animation:none!important;
 }
@@ -303,7 +311,7 @@ html body:has(#slot.active) #slot .slot-live{
   visibility:visible!important;
   opacity:1!important;
   width:min(92%,408px)!important;
-  margin:36px auto 28px!important;
+  margin:44px auto 28px!important;
   padding:0 10px calc(20px + env(safe-area-inset-bottom))!important;
   border:0!important;
   border-radius:0!important;
@@ -385,14 +393,14 @@ html body:has(#slot.active) #slot .slot-live-symbol{
   height:20px!important;
 }
 @media(max-width:380px){
-  html body:has(#slot.active) #slot .slot-cabinet{transform:scale(.82)!important;transform-origin:top center!important;margin-bottom:-118px!important;transition:none!important;animation:none!important}
+  html body:has(#slot.active) #slot .slot-cabinet{transform:scale(.88)!important;transform-origin:top center!important;margin-bottom:-92px!important;transition:none!important;animation:none!important}
   html body:has(#slot.active) #slot .slot-machine{width:min(86vw,336px)!important;height:430px!important;min-height:430px!important;margin-top:-12px!important;left:29px!important;top:-18px!important;z-index:10!important}
   html body:has(#slot.active) #slot .slot-window{top:85px!important;height:225px!important;padding:4px!important}
   html body:has(#slot.active) #slot .slot-symbol{height:75px!important}
   html body:has(#slot.active) #slot .slot-symbol-image{width:49px!important;height:49px!important}
   html body:has(#slot.active) #slot .slot-control-panel{width:min(86vw,336px)!important;margin:-36px auto 0!important;left:-7px!important;top:-18px!important;z-index:9!important}
   html body:has(#slot.active) #slot .slot-image-control.slot-spin-button{max-width:252px!important;height:84px!important;margin-left:auto!important;margin-right:auto!important}
-  html body:has(#slot.active) #slot .slot-live{margin-top:30px!important;width:min(94%,370px)!important}
+  html body:has(#slot.active) #slot .slot-live{margin-top:38px!important;width:min(94%,370px)!important}
   html body:has(#slot.active) #slot .slot-live-list{height:auto!important;max-height:none!important}
   html body:has(#slot.active) #slot .slot-live:not(.open) .slot-live-list{height:0!important;max-height:0!important}
   html body:has(#slot.active) #slot .slot-live-row{min-height:46px!important;height:46px!important;border-radius:19px!important;padding:5px 11px!important}
