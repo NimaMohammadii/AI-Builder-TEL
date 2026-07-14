@@ -490,9 +490,9 @@ html body:has(#slot.active) #slot .slot-reel::after{
 }
 html body:has(#slot.active) #slot .slot-reel-strip{transform-style:preserve-3d!important}
 html body:has(#slot.active) #slot .slot-symbol{
-  width:118%!important;
+  width:100%!important;
   height:calc((min(92vw,390px) * .558 * 900 / 845) / 3)!important;
-  margin-left:-9%!important;
+  margin-left:0!important;
   display:grid!important;
   place-items:center!important;
   padding:0!important;
@@ -508,16 +508,16 @@ html body:has(#slot.active) #slot .slot-symbol{
   filter:none!important;
 }
 html body:has(#slot.active) #slot .slot-symbol-image{
-  width:92%!important;
-  height:92%!important;
+  width:80%!important;
+  height:80%!important;
   object-fit:contain!important;
   filter:drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
 }
 html body:has(#slot.active) #slot .slot-reel:first-child .slot-symbol-image{
-  transform:translateX(-19%) scale(1.08)!important;
+  transform:translateX(-11%)!important;
 }
 html body:has(#slot.active) #slot .slot-reel:last-child .slot-symbol-image{
-  transform:translateX(19%) scale(1.08)!important;
+  transform:translateX(11%)!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-top{
   transform:perspective(180px) rotateX(-23deg) translateY(-17px) scale(.80)!important;
@@ -599,9 +599,9 @@ html body:has(#slot.active) #slot .slot-asset-input{
 html body:has(#slot.active) #slot .slot-asset-input input{
   position:absolute!important;
   z-index:2!important;
-  left:18%!important;
+  left:10%!important;
   top:13%!important;
-  width:54%!important;
+  width:80%!important;
   height:74%!important;
   margin:0!important;
   padding:0!important;
@@ -623,6 +623,7 @@ html body:has(#slot.active) #slot .slot-asset-input input{
 html body:has(#slot.active) #slot .slot-asset-input input::-webkit-inner-spin-button,
 html body:has(#slot.active) #slot .slot-asset-input input::-webkit-outer-spin-button{-webkit-appearance:none!important;margin:0!important}
 html body:has(#slot.active) #slot .slot-asset-input small{
+  display:none!important;
   position:absolute!important;
   z-index:2!important;
   right:10%!important;
