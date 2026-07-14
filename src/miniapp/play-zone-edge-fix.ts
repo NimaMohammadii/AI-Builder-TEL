@@ -493,9 +493,15 @@ html body:has(#slot.active) #slot .slot-symbol{
   filter:drop-shadow(0 7px 10px rgba(0,0,0,.52))!important;
 }
 html body:has(#slot.active) #slot .slot-symbol-image{
-  width:64%!important;
-  height:64%!important;
+  width:92%!important;
+  height:92%!important;
   object-fit:contain!important;
+}
+html body:has(#slot.active) #slot .slot-reel:first-child .slot-symbol-image{
+  transform:translateX(-14%) scale(1.08)!important;
+}
+html body:has(#slot.active) #slot .slot-reel:last-child .slot-symbol-image{
+  transform:translateX(14%) scale(1.08)!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-top{
   transform:perspective(180px) rotateX(-23deg) translateY(5px) scale(.80)!important;
@@ -577,9 +583,9 @@ html body:has(#slot.active) #slot .slot-asset-input{
 html body:has(#slot.active) #slot .slot-asset-input input{
   position:absolute!important;
   z-index:2!important;
-  left:18%!important;
+  left:0!important;
   top:13%!important;
-  width:54%!important;
+  width:78%!important;
   height:74%!important;
   margin:0!important;
   padding:0!important;
