@@ -498,13 +498,13 @@ html body:has(#slot.active) #slot .slot-symbol-image{
   object-fit:contain!important;
 }
 html body:has(#slot.active) #slot .slot-reel:first-child .slot-symbol-image{
-  transform:translateX(-14%) scale(1.08)!important;
+  transform:translateX(-19%) scale(1.08)!important;
 }
 html body:has(#slot.active) #slot .slot-reel:last-child .slot-symbol-image{
-  transform:translateX(14%) scale(1.08)!important;
+  transform:translateX(19%) scale(1.08)!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-top{
-  transform:perspective(180px) rotateX(-23deg) translateY(5px) scale(.80)!important;
+  transform:perspective(180px) rotateX(-23deg) translateY(-11px) scale(.80)!important;
   transform-origin:50% 100%!important;
   opacity:.72!important;
   filter:brightness(.72) drop-shadow(0 6px 9px rgba(0,0,0,.48))!important;
@@ -515,7 +515,7 @@ html body:has(#slot.active) #slot .slot-symbol.is-reel-center{
   opacity:1!important;
 }
 html body:has(#slot.active) #slot .slot-symbol.is-reel-bottom{
-  transform:perspective(180px) rotateX(23deg) translateY(-5px) scale(.80)!important;
+  transform:perspective(180px) rotateX(23deg) translateY(11px) scale(.80)!important;
   transform-origin:50% 0!important;
   opacity:.72!important;
   filter:brightness(.72) drop-shadow(0 6px 9px rgba(0,0,0,.48))!important;
@@ -583,9 +583,9 @@ html body:has(#slot.active) #slot .slot-asset-input{
 html body:has(#slot.active) #slot .slot-asset-input input{
   position:absolute!important;
   z-index:2!important;
-  left:0!important;
+  left:18%!important;
   top:13%!important;
-  width:78%!important;
+  width:54%!important;
   height:74%!important;
   margin:0!important;
   padding:0!important;
@@ -596,8 +596,12 @@ html body:has(#slot.active) #slot .slot-asset-input input{
   text-align:center!important;
   font-size:22px!important;
   font-weight:950!important;
-  appearance:textfield!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
   -moz-appearance:textfield!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:none!important;
   text-shadow:0 2px 8px rgba(0,0,0,.9)!important;
 }
 html body:has(#slot.active) #slot .slot-asset-input input::-webkit-inner-spin-button,
