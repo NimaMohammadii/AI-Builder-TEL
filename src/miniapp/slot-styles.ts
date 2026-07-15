@@ -1150,7 +1150,7 @@ body:has(#slot.active) main { background:transparent!important; }
   position:absolute!important;
   top:24.1%!important;
   left:18.1%!important;
-  z-index:4!important;
+  z-index:9!important;
   width:63.8%!important;
   height:52.7%!important;
   margin:0!important;
@@ -1173,10 +1173,8 @@ body:has(#slot.active) main { background:transparent!important; }
   height:100%!important;
   border:0!important;
   border-radius:46% / 10%!important;
-  background:
-    linear-gradient(90deg,rgba(0,0,0,.48),rgba(30,24,25,.92) 25%,rgba(38,31,32,.96) 50%,rgba(28,22,23,.92) 75%,rgba(0,0,0,.52)),
-    linear-gradient(180deg,#080607,#171112 50%,#070506)!important;
-  box-shadow:inset 0 18px 26px rgba(0,0,0,.76),inset 0 -18px 26px rgba(0,0,0,.82)!important;
+  background:transparent!important;
+  box-shadow:none!important;
   overflow:hidden!important;
 }
 #slot .slot-cabinet .slot-reel::before{
