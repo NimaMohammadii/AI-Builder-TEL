@@ -1,0 +1,51 @@
+name: Patch slot reel layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-slot-reel-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch active slot CSS
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/miniapp/slot-styles.ts')
+          text = path.read_text()
+
+          old_height = '  height:52.7%!important;'
+          new_height = '  height:46.5%!important;'
+          if text.count(old_height) != 1:
+              raise SystemExit(f'Expected exactly one active slot-window height, found {text.count(old_height)}')
+          text = text.replace(old_height, new_height, 1)
+
+          marker = '#slot .slot-cabinet .slot-reel::after{display:none!important}\n'
+          rules = """#slot .slot-cabinet .slot-reel:first-child{transform:translateX(7px)!important}\n#slot .slot-cabinet .slot-reel:last-child{transform:translateX(-7px)!important}\n"""
+          if marker not in text:
+              raise SystemExit('Could not find active slot reel marker')
+          if '#slot .slot-cabinet .slot-reel:first-child{transform:translateX(7px)!important}' not in text:
+              text = text.replace(marker, marker + rules, 1)
+
+          path.write_text(text)
+          PY
+      - name: Remove one-time workflow
+        run: rm .github/workflows/patch-slot-reel-layout.yml
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/miniapp/slot-styles.ts .github/workflows/patch-slot-reel-layout.yml
+          git commit -m 'Move outer slot reels inward and shorten reel window'
+          git push origin main
