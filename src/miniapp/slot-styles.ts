@@ -1152,7 +1152,7 @@ body:has(#slot.active) main { background:transparent!important; }
   left:18.1%!important;
   z-index:9!important;
   width:63.8%!important;
-  height:39%!important;
+  height:36%!important;
   margin:0!important;
   padding:0!important;
   gap:4px!important;
@@ -1169,6 +1169,12 @@ body:has(#slot.active) main { background:transparent!important; }
   z-index:6!important;
   opacity:.82;
 }
+#slot .slot-cabinet .slot-window::after{
+  height:38%!important;
+  bottom:0!important;
+  background:linear-gradient(0deg,rgba(5,2,3,1) 0%,rgba(8,4,5,.98) 72%,rgba(8,4,5,.82) 88%,rgba(8,4,5,0) 100%)!important;
+  opacity:1!important;
+}
 #slot .slot-cabinet .slot-reel{
   height:100%!important;
   border:0!important;
@@ -1181,8 +1187,8 @@ body:has(#slot.active) main { background:transparent!important; }
   background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(0,0,0,.08) 35%,transparent 46%,transparent 54%,rgba(0,0,0,.10) 66%,rgba(0,0,0,.76))!important;
 }
 #slot .slot-cabinet .slot-reel::after{display:none!important}
-#slot .slot-cabinet .slot-reel:first-child{transform:translateX(14px)!important}
-#slot .slot-cabinet .slot-reel:last-child{transform:translateX(-14px)!important}
+#slot .slot-cabinet .slot-reel:first-child{transform:translateX(20px)!important}
+#slot .slot-cabinet .slot-reel:last-child{transform:translateX(-20px)!important}
 #slot .slot-cabinet .slot-reel-strip{top:0!important}
 #slot .slot-cabinet .slot-symbol{
   height:61px!important;
