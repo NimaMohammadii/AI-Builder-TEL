@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { buildBlueprint, defaultBlueprint, defaultFlow, emptyFlow, improveFlow, plainAiReply, type BotFlow } from './ai';
 import { miniAppHtml } from './miniapp-chat';
-import { miniAppHtml as builderAppHtml } from './miniapp';
 import { adminCodeHtml, adminHtml, adminPanelHtml } from './admin';
 import { processTelegramUpdate } from './telegram-agent-safe';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough } from './user-controls';
@@ -106,8 +105,6 @@ const minesFriendRevealSchema = minesFriendUserSchema.extend({ cell: z.number().
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
-app.get('/builder', () => html(builderAppHtml()));
-app.get('/builder/', () => html(builderAppHtml()));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }));

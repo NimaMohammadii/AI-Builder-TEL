@@ -12,8 +12,8 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
   }
   function removeLockViews(){
     document.querySelectorAll('.section-locked-view,.connect-card-locked-view,.section-loading-mode').forEach(function(el){el.remove()});
-    document.querySelectorAll('.is-section-locked,.connect-bot-card-locked,.is-section-loading-active,.is-section-loading-pending').forEach(function(el){
-      el.classList.remove('is-section-locked','connect-bot-card-locked','is-section-loading-active','is-section-loading-pending');
+    document.querySelectorAll('.is-section-locked,.is-section-loading-active,.is-section-loading-pending').forEach(function(el){
+      el.classList.remove('is-section-locked','is-section-loading-active','is-section-loading-pending');
     });
     document.body.classList.remove('section-loading-active');
   }

@@ -16,7 +16,7 @@ export const SECTION_LOCK_SCRIPT = `
   var GLOBAL_CACHE_PREFIX='vexaSectionLocks:v1:';
   var USER_CACHE_PREFIX='vexaUserControls:';
   var LOCK_IMAGE_CACHE='vexa-section-lock-images-v1';
-  var KNOWN_LOCK_SECTIONS={};['global-loading','home','connect','connect-bot-card','playzone','predict','market','predict-zone-card','flow','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOCK_SECTIONS[id]=1});
+  var KNOWN_LOCK_SECTIONS={};['global-loading','home','playzone','predict','market','predict-zone-card','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOCK_SECTIONS[id]=1});
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';
@@ -70,7 +70,7 @@ export const SECTION_LOCK_SCRIPT = `
   function activeLockIds(){var out={};sectionsForNavigation().forEach(function(id){out[id]=true});return out}
   function currentSectionList(){return sectionsForNavigation()}
   function playZoneSectionList(){return ['playzone','mines','plinko','crash','wheel','dice','rps','slot','coinflip','hilo','ghostrun','predict-zone-card']}
-  function sectionsForNavigation(){var active=document.querySelector('.view.active[id],section.active[id]');var id=active&&active.id?lockId(active.id):'home';if(id==='home'||id==='connect'||id==='connect-bot-card')return ['global-loading','home','connect-bot-card'];if(id==='playzone')return playZoneSectionList();return id&&KNOWN_LOCK_SECTIONS[id]?[id]:['global-loading','home','connect-bot-card']}
+  function sectionsForNavigation(){var active=document.querySelector('.view.active[id],section.active[id]');var id=active&&active.id?lockId(active.id):'home';if(id==='home')return ['global-loading','home'];if(id==='playzone')return playZoneSectionList();return id&&KNOWN_LOCK_SECTIONS[id]?[id]:['global-loading','home']}
   function mergeLocksData(data){(data&&data.sections||[]).forEach(function(section){locks[section.id]={mode:section.mode||((section.locked)?'locked':'open'),locked:!!section.locked,expiresAt:section.expiresAt||null,remainingMs:section.remainingMs==null?null:Number(section.remainingMs),hasCode:!!section.hasCode,imageUrl:section.imageUrl||null,hasImage:!!section.hasImage,lockedImageUrl:section.lockedImageUrl||section.imageUrl||null,codeImageUrl:section.codeImageUrl||null}});preloadLockImages()}
   function preloadLockImages(){var active=activeLockIds();Object.keys(locks).forEach(function(id){if(!active[id])return;var item=locks[id];preload(item.lockedImageUrl||item.imageUrl||'');preload(item.codeImageUrl||'')})}
   function formatLeft(ms){ms=Math.max(0,Math.floor(Number(ms)||0));var d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
@@ -135,19 +135,6 @@ export const SECTION_LOCK_SCRIPT = `
     setTimeout(updateKeyboardInset,80);setTimeout(updateKeyboardInset,260);setTimeout(updateKeyboardInset,520);
   }
 
-  function connectBotCard(){var connect=document.getElementById('connect');return connect&&connect.querySelector(':scope > .card:first-of-type')}
-  function lockedCardHtml(item){
-    if(item&&item.mode==='code')return '<div class="connect-card-locked-view connect-card-code-view">'+botCardVisual(item)+'<h2>Access code</h2><p>Enter code to connect a bot.</p>'+countdownHtml(item)+'<input class="connect-card-code-input" type="text" placeholder="Access code" autocomplete="one-time-code" autocapitalize="off" spellcheck="false"/><button class="connect-card-code-submit" type="button">Unlock</button><small class="connect-card-code-status"></small></div>';
-    return '<div class="connect-card-locked-view">'+botCardVisual(item)+'<h2>Locked</h2>'+(countdownHtml(item)||'<p>Bot token connection is currently unavailable.</p>')+'</div>';
-  }
-  function bindBotCardCode(card){
-    var input=card.querySelector('.connect-card-code-input');var button=card.querySelector('.connect-card-code-submit');var status=card.querySelector('.connect-card-code-status');if(!input||!button)return;
-    var submit=function(){var code=(input.value||'').trim();if(!code){status.textContent='Enter the access code.';input.focus();return}status.textContent='Checking...';fetch('/app/api/section-locks/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sectionId:'connect-bot-card',code:code})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,json:j}})}).then(function(res){if(res.ok&&res.json&&res.json.ok){setUnlocked('connect-bot-card');applyLocks();return}status.textContent=(res.json&&res.json.error)||'Wrong access code.';input.focus()}).catch(function(){status.textContent='Could not verify code.'})};
-    button.addEventListener('click',submit);input.addEventListener('keydown',function(e){if(e.key==='Enter')submit()});
-  }
-  function ensureBotCardOverlay(item){var card=connectBotCard();if(!card)return;if(!originalConnectBotCardHtml)originalConnectBotCardHtml=card.innerHTML;card.classList.add('connect-bot-card-locked');card.innerHTML=lockedCardHtml(item);bindBotCardCode(card);tickCountdowns();scheduleCountdownTick()}
-  function clearBotCardOverlay(){var card=connectBotCard();if(!card)return;if(card.classList.contains('connect-bot-card-locked')&&originalConnectBotCardHtml)card.innerHTML=originalConnectBotCardHtml;card.classList.remove('connect-bot-card-locked')}
-
   function ensureOverlay(section, item){
     if(!section)return;
     removeRegularLockViews();
@@ -174,7 +161,7 @@ export const SECTION_LOCK_SCRIPT = `
     if(isLocked&&item.mode!=='loading'){forceFullSectionLock(section,true);ensureOverlay(section,item)}else{removeRegularLockViews();if(!(item&&item.mode==='loading'))forceFullSectionLock(section,false)}
   }
 
-  function applyLocks(){syncCredit();var cardItem=locks['connect-bot-card'];var cardLocked=!!cardItem&&cardItem.mode!=='open'&&!isUnlocked('connect-bot-card');if(cardLocked)ensureBotCardOverlay(cardItem);else clearBotCardOverlay();applySectionLock(document.querySelector('.view.active'))}
+  function applyLocks(){syncCredit();applySectionLock(document.querySelector('.view.active'))}
   function applyGlobalData(data){mergeLocksData(data)}
   function applyUserData(data){userBlocked={};if(!data)return;if(Array.isArray(data.sectionBlocks)){data.sectionBlocks.forEach(function(item){if(item&&item.blocked)userBlocked[item.sectionId]={expiresAt:item.expiresAt||null,remainingMs:item.remainingMs==null?null:Number(item.remainingMs)}})}else{(data.blockedSections||[]).forEach(function(section){userBlocked[section]={expiresAt:null,remainingMs:null}})}userCredit=data.credit===null||data.credit===undefined?null:Number(data.credit)}
   function applyCachedLocks(){try{var prefix=GLOBAL_CACHE_PREFIX+(userId()||'anonymous')+':';Object.keys(localStorage).forEach(function(key){if(key.indexOf(prefix)===0){var global=readJson(key);if(global)applyGlobalData(global)}})}catch(e){}var userCache=readJson(cacheUserKey());if(userCache)applyUserData(userCache);applyLocks()}

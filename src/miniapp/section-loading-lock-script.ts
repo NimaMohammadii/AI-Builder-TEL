@@ -26,9 +26,9 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
   function loadingSectionList(){
     var active=document.querySelector('.view.active[id],section.active[id]');
     var id=active&&active.id?modeKeyFromView(active.id):'home';
-    if(id==='home'||id==='connect')return ['global-loading','home','connect-bot-card'];
+    if(id==='home')return ['global-loading','home'];
     if(id&&KNOWN_LOADING_SECTIONS[id])return [id];
-    return ['global-loading','home','connect-bot-card'];
+    return ['global-loading','home'];
   }
   function sectionListKey(sections){return (sections||[]).join(',')}
   function sectionLocksUrl(sections){
@@ -161,7 +161,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     notifyLive();
     if(isTrustedAccess()){clearTrustedLoading();return}
     if(!loadingLocksLoaded)return;
-    if(window.VexaSectionLocks&&typeof window.VexaSectionLocks.reload==='function')window.VexaSectionLocks.reload(['global-loading','home','connect-bot-card']);
+    if(window.VexaSectionLocks&&typeof window.VexaSectionLocks.reload==='function')window.VexaSectionLocks.reload(['global-loading','home']);
     load();
   }
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view]'):null;if(target){prepareTargetLoading(target.getAttribute('data-view')||'');setTimeout(load,40)}setTimeout(paint,120);setTimeout(paint,260);setTimeout(updateBodyState,300)},true);

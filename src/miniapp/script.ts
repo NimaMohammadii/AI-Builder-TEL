@@ -15,15 +15,13 @@ export const MINIAPP_SCRIPT = `
 
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
-  var selectedVoice='TX3LPaxmHKxFdv7VOQHJ';
-  var sectionTitles={home:'Lucky Zone',connect:'Connect',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',topplayers:'Top Players',flow:'Text To Speech',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Lucky Zone',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',topplayers:'Top Players',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
   function toast(v){var n=q('toast');if(!n)return;n.textContent=v;n.style.display='block';setTimeout(function(){n.style.display='none'},3000)}
   function setKeyboardOpen(open){document.body.classList.toggle('keyboard-open',!!open)}
   function dismissKeyboard(){var active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();setKeyboardOpen(false)}
-  function setLimitSheet(open){var s=q('ttsLimitSheet');if(!s)return;s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
   function setHomeSheetLock(open){var h=q('home');if(!h)return;if(open)h.style.setProperty('overflow-y','hidden','important');else h.style.removeProperty('overflow-y')}
   function applyFinanceSheetLayout(s,open){
     if(!s)return;
@@ -80,7 +78,6 @@ export const MINIAPP_SCRIPT = `
     document.body.classList.remove('leaderboard-open','rewards-open');
   }
 
-  function updateTtsCharCount(){var input=q('ttsText');var counter=q('ttsCharCount');var flow=q('flow');var count=(input&&input.value||'').length;if(counter)counter.textContent=String(count)+' characters';if(flow)flow.classList.toggle('over-limit',count>1000)}
   function setHeaderGlassMode(id){document.body.classList.toggle('header-glass-mode',id==='playzone'||id==='market')}
 
   function initHomeGlassButton(){
@@ -112,7 +109,6 @@ export const MINIAPP_SCRIPT = `
     syncTelegramBackButton(id);
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
     if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
-    if(id!=='flow'){setKeyboardOpen(false);setLimitSheet(false)}
     if(id==='wallet'&&window.__vexaWalletLoad)setTimeout(window.__vexaWalletLoad,80)
     removeLegacyLeagueAndRewards();
   }
@@ -188,8 +184,6 @@ export const MINIAPP_SCRIPT = `
   async function loadLevel(){if(window.VexaLevel&&typeof window.VexaLevel.load==='function'){window.VexaLevel.load();return}if(!ownerId)return;try{var profile=await api('/app/api/level?userId='+encodeURIComponent(ownerId),{cache:'no-store',headers:{'accept':'application/json','cache-control':'no-store'}});if(window.VexaLevel)return;renderLevel(profile)}catch(e){}}
   function userLine(){loadLevel()}
 
-  function setVoice(v,label){selectedVoice=v;setText('voiceLabel',label);document.querySelectorAll('[data-voice]').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-voice')===v)});var w=q('voiceWrap');if(w)w.classList.remove('open')}
-
   async function depositStars(stars){
     var amount=Math.floor(Number(stars)||0);
     if(!ownerId)return toast('Telegram user not found');
@@ -199,18 +193,7 @@ export const MINIAPP_SCRIPT = `
     try{var d=await api('/app/api/stars/deposits',{method:'POST',body:JSON.stringify({userId:ownerId,stars:amount})});if(status)status.textContent='Opening Telegram Stars payment';if(d.invoiceLink){if(tg&&typeof tg.openInvoice==='function'){tg.openInvoice(d.invoiceLink,function(state){if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);if(state==='paid')setTimeout(loadLevel,1100)})}else{window.location.href=d.invoiceLink}}}catch(x){if(status)status.textContent=x.message;toast(x.message)}
   }
 
-  async function generateTts(){
-    var text=(q('ttsText')&&q('ttsText').value.trim())||'';
-    if(!text)return toast('Type text first');
-    if(text.length>1000){setLimitSheet(true);return}
-    try{var r=await fetch('/app/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:text,voice:selectedVoice})});if(!r.ok)throw new Error('TTS API is not ready yet');var blob=await r.blob();var url=URL.createObjectURL(blob);q('ttsAudio').src=url;q('wavePlayer').classList.add('show');toast('Voice generated')}catch(x){q('wavePlayer').classList.add('show');toast(x.message)}
-  }
-
-  function playTts(){var a=q('ttsAudio');if(!a||!a.src)return toast('Generate voice first');if(a.paused){a.play();setText('wavePlay','Pause')}else{a.pause();setText('wavePlay','Play')}}
   function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();claimReferralIfNeeded()}
-
-  document.body.addEventListener('focusin',function(ev){if(ev.target&&ev.target.id==='ttsText')setKeyboardOpen(true)});
-  document.body.addEventListener('focusout',function(ev){if(ev.target&&ev.target.id==='ttsText')setTimeout(function(){if(document.activeElement!==q('ttsText'))setKeyboardOpen(false)},80)});
 
   document.body.addEventListener('click',function(ev){
     var target=ev.target;
@@ -219,7 +202,6 @@ export const MINIAPP_SCRIPT = `
     if(b.hasAttribute('data-game-view'))return;
     var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(ensureSection(v))show(v);else toast('Coming soon');return}
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
-    var voice=b.getAttribute('data-voice');if(voice){setVoice(voice,b.textContent||voice);return}
     var a=b.getAttribute('data-action');
     if(a==='open-rewards'||a==='close-rewards'||a==='open-leaderboard'||a==='close-leaderboard'){removeLegacyLeagueAndRewards();return}
     if(a==='open-deposit'){setDepositSheet(true);return}
@@ -230,16 +212,10 @@ export const MINIAPP_SCRIPT = `
     if(a==='close-transactions'){setTransactionsSheet(false);return}
     if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
     if(a==='deposit-custom-stars-sheet'){depositStars(q('starsAmountSheet')&&q('starsAmountSheet').value);return}
-    if(a==='open-char-limit'){setLimitSheet(true);return}
-    if(a==='close-char-limit'){setLimitSheet(false);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
-    if(a==='toggle-voice'){q('voiceWrap').classList.toggle('open');return}
-    if(a==='generate-tts')generateTts();
-    if(a==='play-tts')playTts();
     if(a==='save-user')saveUser();
   });
 
-  if(q('ttsText'))q('ttsText').addEventListener('input',updateTtsCharCount);
   if(ownerId)localStorage.setItem('ownerId',ownerId);
   if(q('ownerId'))q('ownerId').value=ownerId;
   removeLegacyLeagueAndRewards();
@@ -252,7 +228,6 @@ export const MINIAPP_SCRIPT = `
   syncTelegramBackButton('home');
   userLine();
   claimReferralIfNeeded();
-  updateTtsCharCount();
   setTimeout(openInitialTarget,250);
   setTimeout(openInitialTarget,900);
 })();

@@ -25,8 +25,8 @@ const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 const SECTION_LOCK_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
-  home: ['global-loading', 'home', 'connect-bot-card'],
-  startup: ['global-loading', 'home', 'connect-bot-card'],
+  home: ['global-loading', 'home'],
+  startup: ['global-loading', 'home'],
   playzone: ['playzone', 'mines', 'plinko', 'crash', 'wheel', 'dice', 'rps', 'slot', 'coinflip', 'hilo', 'ghostrun', 'predict-zone-card'],
   rps: ['rps'],
   mines: ['mines'],

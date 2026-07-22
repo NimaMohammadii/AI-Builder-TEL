@@ -18,7 +18,6 @@ import { PLAY_ZONE_SHOWCASE_OVERRIDES } from './play-zone-showcase-overrides';
 import { PLAY_ZONE_TOP_BLUR } from './play-zone-top-blur';
 import { PLAY_ZONE_ROW_IMAGE_FIX } from './play-zone-row-image-fix';
 import { PLAY_ZONE_EDGE_FIX } from './play-zone-edge-fix';
-import { TTS_STYLES } from './tts-styles';
 import { MARKET_STYLES } from './market-styles';
 import { HOME_OVERRIDES } from './home-overrides';
 import { TRANSACTIONS_GLOBAL_STYLES } from './transactions-global-styles';
@@ -26,7 +25,6 @@ import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
 import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
-import { CONNECT_BOT_CARD_LOCK_STYLES } from './connect-bot-card-lock-styles';
 import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
@@ -38,7 +36,6 @@ import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
-import { TTS_SECTION } from './tts';
 import { MARKET_SECTION } from './market';
 import { TOP_PLAYERS_SECTION } from './top-players';
 import { MINES_SECTION } from './mines';
@@ -55,7 +52,6 @@ import { LIMBO_SECTION } from './limbo';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
-import { CONNECT_GROUPS_USAGE_SCRIPT } from './connect-groups-usage-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { TOP_PLAYERS_HOME_CARD_SCRIPT } from './top-players-home-card-script';
@@ -156,7 +152,6 @@ const FINANCE_CLOSE_BUTTON_SCRIPT = `
 
 const STYLES = [
   MINIAPP_STYLES,
-  TTS_STYLES,
   MARKET_STYLES,
   PLINKO_STYLES,
   MINES_STYLES,
@@ -184,7 +179,6 @@ const STYLES = [
   NAV_GLASS_OVERRIDES,
   GLASS_COMPONENTS_OVERRIDES,
   APP_BACKGROUND_OVERRIDES,
-  CONNECT_BOT_CARD_LOCK_STYLES,
   TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
   SECTION_BACKGROUND_STYLES,
@@ -205,7 +199,6 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'results', html: RESULTS_SECTION },
   { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
   { id: 'topplayers', html: TOP_PLAYERS_SECTION },
-  { id: 'flow', html: `<div style="display:none">${TTS_SECTION}</div>` },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
@@ -281,7 +274,6 @@ const SCRIPTS = [
   MINIAPP_SCRIPT,
   ACTIVITY_SCRIPT,
   TON_BALANCE_SCRIPT,
-  CONNECT_GROUPS_USAGE_SCRIPT,
   DEPOSIT_ENHANCEMENTS_SCRIPT,
   FINANCE_CLOSE_BUTTON_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
