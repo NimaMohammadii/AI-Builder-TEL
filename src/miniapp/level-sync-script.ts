@@ -100,7 +100,7 @@ export const LEVEL_SYNC_SCRIPT = `
   document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs();clearPlayTimer()}else{lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})}});
   window.addEventListener('focus',function(){lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})});
   window.addEventListener('online',function(){scheduleFlushPendingXp(true);load({force:false})});
-  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){refreshFromUserIntent(false)},80)}if(a==='generate-tts')setTimeout(function(){add(10,'ai',{section:section()})},700)},true);
+  document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){refreshFromUserIntent(false)},80)}},true);
   try{new MutationObserver(function(){noteSectionChange()}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}
   function drainOnExit(){smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(navigator.sendBeacon)pending.slice(0,20).forEach(function(ev){navigator.sendBeacon('/app/api/level/xp',new Blob([xpBody(ev)],{type:'application/json'}))})}catch(e){}}
   window.addEventListener('pagehide',drainOnExit);

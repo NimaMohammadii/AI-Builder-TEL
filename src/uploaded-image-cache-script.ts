@@ -76,7 +76,7 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
   }
   function needsImages(context){
     if(context&&context!=='home')return true;
-    if(document.querySelector('.view.active#home,.view.active#connect'))return true;
+    if(document.querySelector('.view.active#home'))return true;
     if(document.querySelector('img[src^="/app/api/credit-icon"],img[src^="/app/api/uploaded-image/credit-icon"],img[data-ton-icon]'))return true;
     return false;
   }
@@ -94,6 +94,6 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
   window.VexaUploadedImages={reload:function(context){return load(true,context)},load:function(context){return load(false,context)},read:read};
   installAccessCodeKeyboardCss();
   apply(read(currentContext()),false);
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-view="market"],[data-view="connect"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-view="market"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);
 })();
 `;

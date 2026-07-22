@@ -221,9 +221,6 @@ async function deleteUserKv(env: Env, userId: string): Promise<number> {
     `builder-ai-chat:${userId}`,
     `builder-ai-history:${userId}`,
     `builder-pending-action:${userId}`,
-    `builder-tts:${userId}`,
-    `builder-tts-output:${userId}`,
-    `builder-tts-menu-message:${userId}`,
     `vexaUserControls:${userId}`,
   ]);
   await collectKvByPrefix(env, `agent-dsl-state:`, keys, userId);
@@ -241,9 +238,6 @@ async function deleteAllUserKv(env: Env): Promise<number> {
     'builder-ai-chat:',
     'builder-ai-history:',
     'builder-pending-action:',
-    'builder-tts:',
-    'builder-tts-output:',
-    'builder-tts-menu-message:',
     'vexaUserControls:',
     'agent-dsl-state:',
     'image-mode:',
