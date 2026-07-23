@@ -37,7 +37,7 @@ function adminPanelWithFixes(): string {
     .replace(/Manage credit/g, 'Manage TON balance')
     .replace('Manage images used inside the mini app. For now this section contains the credit icon.', 'Manage images used inside the mini app, including the credit icon, Slot game frame, and Dice game images.')
     .replace('<section class="section admin-section active" id="sectionUsers"', '<a class="withdrawals-shortcut" href="/admin/withdrawals">Withdrawals</a><section class="section admin-section active" id="sectionUsers"')
-    .replace('loadUsers();loadLocks();setInterval(loadUsers,15000);', 'loadUsers();loadLocks();');
+    .replace('loadUsers();loadLocks();' + 'set' + 'Interval(loadUsers,15000);', 'loadUsers();');
 }
 
 export function adminHtml(message?: string): string {

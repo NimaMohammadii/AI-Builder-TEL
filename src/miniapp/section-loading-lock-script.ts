@@ -165,7 +165,7 @@ export const SECTION_LOADING_LOCK_SCRIPT = `
     load();
   }
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view]'):null;if(target){prepareTargetLoading(target.getAttribute('data-view')||'');setTimeout(load,40)}setTimeout(paint,120);setTimeout(paint,260);setTimeout(updateBodyState,300)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(loadingLocksLoaded)load();setTimeout(updateBodyState,120)}});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)updateBodyState()});
   window.addEventListener('vexa-section-locks-updated',function(){if(isTrustedAccess())clearTrustedLoading();else handleLockEvent()});
 })();
 `;
