@@ -27,6 +27,10 @@
     },
     {
       "tag": "v3"
+    },
+    {
+      "tag": "v4",
+      "deleted_classes": ["SectionLockEvents"]
     }
   ],
   "d1_databases": [
