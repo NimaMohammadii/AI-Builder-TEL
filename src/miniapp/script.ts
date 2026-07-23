@@ -17,7 +17,7 @@ export const MINIAPP_SCRIPT = `
   function storageGet(key){try{return window.localStorage?localStorage.getItem(key):''}catch(e){return ''}}
   function storageSet(key,value){try{if(window.localStorage)localStorage.setItem(key,value)}catch(e){}}
   var ownerId=telegramUserId||storageGet('ownerId')||'';
-  var sectionTitles={home:'Lucky Zone',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',topplayers:'Top Players',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Lucky Zone',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -67,7 +67,7 @@ export const MINIAPP_SCRIPT = `
   function syncTelegramBackButton(id){
     if(!tg||!tg.BackButton)return;
     try{tg.BackButton.offClick(handleBackButton)}catch(e){}
-    if(id==='topplayers'||id==='wallet'){
+    if(id==='wallet'){
       try{tg.BackButton.onClick(handleBackButton);tg.BackButton.show()}catch(e){}
     }else{
       try{tg.BackButton.hide()}catch(e){}
@@ -128,31 +128,6 @@ export const MINIAPP_SCRIPT = `
     }catch(e){}
   }
 
-  function referralRefFromUrl(){
-    try{
-      var p=new URLSearchParams(location.search);
-      var explicit=p.get('ref')||'';
-      var start=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||p.get('startapp')||p.get('tgWebAppStartParam')||'';
-      var raw=explicit||start||'';
-      raw=String(raw);
-      if(raw.indexOf('ref_')===0||raw.indexOf('ref-')===0)raw=raw.slice(4);
-      else if(!explicit)return '';
-      return raw.replace(/[^0-9A-Za-z_-]/g,'').slice(0,80);
-    }catch(e){return ''}
-  }
-
-  async function claimReferralIfNeeded(){
-    var ref=referralRefFromUrl();
-    var id=ownerId;
-    if(!id||!ref||ref===id)return;
-    var key='vexa-referral-claim:'+id+':'+ref;
-    if(storageGet(key)==='1')return;
-    try{
-      await api('/app/api/referral/claim',{method:'POST',body:JSON.stringify({userId:id,ref:ref})});
-      storageSet(key,'1');
-    }catch(e){}
-  }
-
   function initPlayZoneGameNavigation(){
     document.addEventListener('click',function(ev){
       var target=ev.target;
@@ -195,7 +170,7 @@ export const MINIAPP_SCRIPT = `
     try{var d=await api('/app/api/stars/deposits',{method:'POST',body:JSON.stringify({userId:ownerId,stars:amount})});if(status)status.textContent='Opening Telegram Stars payment';if(d.invoiceLink){if(tg&&typeof tg.openInvoice==='function'){tg.openInvoice(d.invoiceLink,function(state){if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);if(state==='paid')setTimeout(loadLevel,1100)})}else{window.location.href=d.invoiceLink}}}catch(x){if(status)status.textContent=x.message;toast(x.message)}
   }
 
-  function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;storageSet('ownerId',ownerId);userLine();claimReferralIfNeeded()}
+  function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;storageSet('ownerId',ownerId);userLine()}
 
   document.body.addEventListener('click',function(ev){
     var target=ev.target;
@@ -229,7 +204,6 @@ export const MINIAPP_SCRIPT = `
   setHeaderGlassMode('home');
   syncTelegramBackButton('home');
   userLine();
-  claimReferralIfNeeded();
   setTimeout(openInitialTarget,250);
   setTimeout(openInitialTarget,900);
 })();

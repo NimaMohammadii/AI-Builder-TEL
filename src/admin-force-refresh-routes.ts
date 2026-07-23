@@ -1,8 +1,5 @@
 import type { Hono } from 'hono';
 import { loadTonNftMarket } from './ton-nft-market';
-import { registerDailyRewardsImageRoutes } from './daily-rewards-image-routes';
-import { registerDailyRewardsAdminRoutes } from './daily-rewards-admin-routes';
-import { registerTopPlayersImageRoutes } from './top-players-image-routes';
 import type { Env } from './types';
 import { isAdminSession } from './admin-auth';
 
@@ -33,10 +30,6 @@ type Gift = {
 };
 
 export function registerAdminForceRefreshRoutes(app: Hono<{ Bindings: Env }>): void {
-  registerDailyRewardsImageRoutes(app);
-  registerDailyRewardsAdminRoutes(app);
-  registerTopPlayersImageRoutes(app);
-
   app.get('/app/api/app-version', async (c) => {
     const version = await getAppVersion(c.env);
     return c.json({ ok: true, version }, 200, { 'cache-control': 'no-store' });

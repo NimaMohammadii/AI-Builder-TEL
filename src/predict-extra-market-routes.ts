@@ -1,6 +1,5 @@
 import app from './index';
 import type { Env } from './types';
-import { recordDailyRewardEvent } from './daily-rewards-claims';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 
 const CACHE_NONE = 'no-store';
@@ -63,7 +62,6 @@ app.post('/app/api/predict-bet', async (c, next) => {
       await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake rollback', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId, status: 'rollback' } });
       throw new Error('Could not activate prediction');
     }
-    await recordDailyRewardEvent(c.env, { userId, eventType: 'predict_bet', side, volumeNano: stakeNano }).catch((error) => console.warn('daily rewards predict bet progress failed', error));
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     if (betId) await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => undefined);
@@ -168,7 +166,6 @@ async function payBet(env: Env, bet: BetRow, payoutNano: number, status: 'won' |
   if ((lock.meta?.changes || 0) <= 0) return;
   const alreadyPaid = await env.DB.prepare(`SELECT id FROM ton_transactions WHERE reference_type = 'predict_bet' AND reference_id = ? AND amount_nano = ? LIMIT 1`).bind(betId, payoutNano).first<{ id: string }>().catch(() => null);
   if (!alreadyPaid) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: betId, referenceType: 'predict_bet', metadata: { roundId: cleanDbText(bet.round_id, 'Prediction round is not ready'), market: String(bet.market || ''), side: String(bet.side || ''), status } });
-  if (status === 'won') await recordDailyRewardEvent(env, { userId: bet.user_id, eventType: 'predict_win' }).catch((error) => console.warn('daily rewards predict win progress failed', error));
   await env.DB.prepare(`UPDATE predict_bets SET status = ?, payout_nano = ? WHERE id = ? AND status = 'settling_payment'`).bind(status, payoutNano, betId).run();
 }
 async function poolJson(env: Env, roundId: string) {

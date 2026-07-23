@@ -1,5 +1,4 @@
 import type { Env } from './types';
-import { applyDailyRewardGameDeltaBonuses } from './daily-rewards-effects';
 import { recordTonTransaction, type TonTransactionMeta } from './ton-transactions';
 
 export type UserSectionBlock = {
@@ -18,7 +17,7 @@ export type UserControls = {
   sectionBlocks: UserSectionBlock[];
 };
 
-const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'rps', 'limbo', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
+const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'rps', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
 
 type StoredUserControls = {
   userId?: string;
@@ -66,12 +65,10 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
   const id = cleanUserId(userId);
   if ((await getUserControls(env, id)).banned) throw new Error('Your access to all sections is blocked.');
   const baseDelta = Math.floor(Number(deltaNano) || 0);
-  const gameSection = cleanGameSection(meta.metadata && (meta.metadata as Record<string, unknown>).section);
-  const bonus = await applyDailyRewardGameDeltaBonuses(env, id, baseDelta, { gameSection }).catch(() => ({ totalDeltaNano: baseDelta, bonusNano: 0, applied: [] as Array<{ effectType: string; bonusNano: number }> }));
   const before = await readUserTonBalance(env, id);
-  await addUserTonBalance(env, id, bonus.totalDeltaNano);
+  await addUserTonBalance(env, id, baseDelta);
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, after - before, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta, dailyRewardBonusNano: bonus.bonusNano, dailyRewardEffects: bonus.applied } });
+  await recordTonTransaction(env, id, after - before, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta } });
   return getUserControls(env, id);
 }
 

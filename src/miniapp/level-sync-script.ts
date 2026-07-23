@@ -23,7 +23,7 @@ export const LEVEL_SYNC_SCRIPT = `
   var PROFILE_STALE_MS=60000;
   var FORCE_PROFILE_RELOAD_MS=120000;
   var FLUSH_DEBOUNCE_MS=2500;
-  var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,limbo:1,tower:1,slot:1,coinflip:1,hilo:1,ghostrun:1};
+  var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,tower:1,slot:1,coinflip:1,hilo:1,ghostrun:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-4',min:1,max:4,text:'Start your Vexa journey.'},
     {name:'Explorer',range:'Level 5-9',min:5,max:9,text:'Discover games, AI and rewards.'},
