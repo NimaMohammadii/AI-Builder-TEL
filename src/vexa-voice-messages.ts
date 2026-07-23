@@ -61,19 +61,6 @@ export const VEXA_VOICE_MESSAGES: VexaVoiceMessageSeed[] = [
     },
   },
   {
-    eventId: "daily_rewards_intro",
-    label: "Daily Rewards Intro",
-    displayText: "Daily Rewards tip from Vexa",
-    autoplay: true,
-    requiresTap: false,
-    texts: {
-      en: "[happy, playful, smiling] Welcome to Daily Rewards! Come back every day, keep your streak alive, and unlock better prizes!",
-      fa: "[happy, playful, smiling] \u0628\u0647 \u062c\u0627\u06cc\u0632\u0647\u200c\u0647\u0627\u06cc \u0631\u0648\u0632\u0627\u0646\u0647 \u062e\u0648\u0634 \u0627\u0648\u0645\u062f\u06cc! \u0647\u0631 \u0631\u0648\u0632 \u0628\u0631\u06af\u0631\u062f\u060c \u0627\u0633\u062a\u0631\u06cc\u06a9\u062a \u0631\u0648 \u0632\u0646\u062f\u0647 \u0646\u06af\u0647 \u062f\u0627\u0631 \u0648 \u062c\u0627\u06cc\u0632\u0647\u200c\u0647\u0627\u06cc \u0628\u0647\u062a\u0631 \u0628\u0627\u0632 \u06a9\u0646!",
-      tr: "[happy, playful, smiling] Daily Rewards\u2019a ho\u015f geldin! Her g\u00fcn geri gel, serini koru ve daha iyi \u00f6d\u00fcller a\u00e7!",
-      ru: "[happy, playful, smiling] \u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 Daily Rewards! \u0412\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0439\u0441\u044f \u043a\u0430\u0436\u0434\u044b\u0439 \u0434\u0435\u043d\u044c, \u0434\u0435\u0440\u0436\u0438 \u0441\u0435\u0440\u0438\u044e \u0438 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0439 \u043d\u0430\u0433\u0440\u0430\u0434\u044b \u043b\u0443\u0447\u0448\u0435!",
-    },
-  },
-  {
     eventId: "playzone_intro",
     label: "Play Zone Intro",
     displayText: "Play Zone tip from Vexa",

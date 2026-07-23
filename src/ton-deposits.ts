@@ -2,7 +2,6 @@ import type { Env } from './types';
 import { adjustUserTonBalance, assertUserNotBanned } from './user-controls';
 import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
-import { applyReferralDepositReward } from './referrals';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v2';
 const DEFAULT_MIN_TON = 1;
@@ -102,7 +101,6 @@ export async function verifyTonDeposit(env: Env, depositId: string): Promise<Ton
     metadata: { txHash },
   });
   await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
-  await applyReferralDepositReward(env, row.user_id, 'ton_deposit', row.id, row.ton_balance_nano).catch((error) => console.warn('referral TON reward failed', error));
   const completed = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ?').bind(id).first<DepositRow>();
   return rowToDeposit(completed ?? { ...row, status: 'completed', tx_hash: txHash }, wallet);
 }

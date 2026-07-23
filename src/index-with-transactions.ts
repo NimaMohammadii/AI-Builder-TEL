@@ -3,7 +3,6 @@ import { registerAdvancedAdminRoutes } from './admin-advanced-routes';
 import { groupAiProviderJson, setGroupAiProvider } from './group-ai-provider';
 import { registerGroupPhotoEndpoint } from './group-photo-endpoint';
 import { registerHomeImageCacheEndpoint } from './home-image-cache-endpoint';
-import { registerReferralRoutes } from './referral-routes';
 import { listUserTonTransactions, listUserTonWalletTransactions } from './ton-transactions';
 import { adjustUserTonBalance, setUserTonBalance } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
@@ -38,7 +37,6 @@ type TonGiftView = {
 registerGroupPhotoEndpoint(app);
 registerHomeImageCacheEndpoint(app);
 registerAdvancedAdminRoutes(app);
-registerReferralRoutes(app);
 
 app.get('/admin/api/group-ai-provider', async (c) => {
   if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);

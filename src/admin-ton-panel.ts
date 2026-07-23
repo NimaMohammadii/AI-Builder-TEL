@@ -10,7 +10,7 @@ export const ADMIN_TON_PANEL_SCRIPT = `<script>
   const formatLeft=(ms)=>{ms=Math.max(0,Math.floor(Number(ms)||0));const d=Math.floor(ms/86400000),h=Math.floor(ms/3600000)%24,m=Math.floor(ms/60000)%60,sec=Math.floor(ms/1000)%60;return d+'d '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')};
   const tickCountdowns=()=>document.querySelectorAll('[data-expires-at]').forEach(el=>{el.textContent=formatLeft(Date.parse(el.getAttribute('data-expires-at')||'')-Date.now())});
   const expiresFromDays=(panel)=>{const n=Number(panel.querySelector('[data-block-days]')?.value||0);return n>0?new Date(Date.now()+n*86400000).toISOString():null};
-  Object.assign(sectionLabels,{home:'Home',playzone:'Play Zone',plinko:'Plinko',mines:'Mines',crash:'Crash',wheel:'Wheel',dice:'Dice',limbo:'Limbo',slot:'Slot',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo',ghostrun:'Ghost Run'});
+  Object.assign(sectionLabels,{home:'Home',playzone:'Play Zone',plinko:'Plinko',mines:'Mines',crash:'Crash',wheel:'Wheel',dice:'Dice',slot:'Slot',tower:'Tower',coinflip:'Coin Flip',hilo:'Hi-Lo',ghostrun:'Ghost Run'});
   setInterval(tickCountdowns,1000);
 
   function patchLabels(){

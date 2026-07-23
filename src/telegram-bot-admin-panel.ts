@@ -36,7 +36,7 @@ const REGIONS: RegionConfig[] = [
   { code: 'OTHER', label: '🌐 Other', language: 'en', timezone: 'UTC' },
 ];
 const SECTIONS: Array<[string, string]> = [
-  ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'], ['limbo', 'لیمبو'], ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
+  ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'],  ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
 ];
 
 export async function handleBotAdminMessage(env: Env, token: string, message: TelegramMessage, tg: TgApi): Promise<boolean> {

@@ -25,19 +25,16 @@ import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
 import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
-import { TOP_PLAYERS_STYLES } from './top-players-styles';
 import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
-import { REFERRAL_SECTION } from './referral';
 import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MARKET_SECTION } from './market';
-import { TOP_PLAYERS_SECTION } from './top-players';
 import { MINES_SECTION } from './mines';
 import { PLINKO_SECTION } from './plinko';
 import { CRASH_SECTION } from './crash';
@@ -48,13 +45,11 @@ import { DICE_FINAL_TWEAK } from './dice-final-tweak';
 import { DICE_ASSET_CACHE_SCRIPT } from './dice-asset-cache-script';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
-import { LIMBO_SECTION } from './limbo';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
-import { TOP_PLAYERS_HOME_CARD_SCRIPT } from './top-players-home-card-script';
 import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
@@ -179,7 +174,6 @@ const STYLES = [
   NAV_GLASS_OVERRIDES,
   GLASS_COMPONENTS_OVERRIDES,
   APP_BACKGROUND_OVERRIDES,
-  TOP_PLAYERS_STYLES,
   SECTION_LOCK_BACKGROUND_FIX_STYLES,
   SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
@@ -193,12 +187,10 @@ const INITIAL_SECTIONS = [
 ].join('');
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
-  { id: 'referral', html: REFERRAL_SECTION },
   { id: 'wallet', html: WALLET_SECTION },
   { id: 'market', html: MARKET_SECTION, scripts: [MARKET_CONFIG_SCRIPT] },
   { id: 'results', html: RESULTS_SECTION },
   { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
-  { id: 'topplayers', html: TOP_PLAYERS_SECTION },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
@@ -207,7 +199,6 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
   { id: 'rps', html: RPS_SECTION },
   { id: 'coinflip', html: PUMP_SECTION },
-  { id: 'limbo', html: LIMBO_SECTION },
   { id: 'ghostrun', html: GHOST_RUN_SECTION },
 ];
 
@@ -277,7 +268,6 @@ const SCRIPTS = [
   DEPOSIT_ENHANCEMENTS_SCRIPT,
   FINANCE_CLOSE_BUTTON_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
-  TOP_PLAYERS_HOME_CARD_SCRIPT,
   HOME_BLANK_CARDS_SCRIPT,
   HOME_SLOT_TUNING_SCRIPT,
   PLAY_ZONE_IMAGE_REFRESH_SCRIPT,

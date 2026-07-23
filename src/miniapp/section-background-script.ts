@@ -1,12 +1,10 @@
 export const SECTION_BACKGROUND_SCRIPT = `
 (function(){
-  var aliases={predict:'predictzone','top-players':'topplayers','topplayers':'topplayers'};
+  var aliases={predict:'predictzone'};
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
     home:['#home'],
-    'home-top-players-card':['#home .home-intro-card','#homeTopPlayersEntry','#home .home-top-players-entry'],
-    'home-referral-card':['#home .home-referral-card'],
     'home-deposit-card':['#home [data-section-background-target="home-deposit-card"]','#home [data-action="open-deposit"]','#home .home-deposit-card'],
     'home-withdraw-card':['#home [data-section-background-target="home-withdraw-card"]','#home [data-action="open-withdraw"]','#home .home-withdraw-card'],
     connect:['#connect'],

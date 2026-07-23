@@ -23,7 +23,7 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
 
     @keyframes rewardsHeroFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
     @media(prefers-reduced-motion:reduce){#rewards .rewards-hero-image-wrap{animation:none}}
-    @media(max-width:380px){#rewards{padding-left:3px!important;padding-right:3px!important}#rewards .rewards-home-intro-card{margin-top:8px!important;min-height:0!important}#rewards .rewards-home-intro-image-frame{min-height:0!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:26px!important}#rewards .rewards-mission-list{width:100%!important;max-width:none!important;margin-top:10px!important}#rewards .rewards-mission-card{min-height:110px!important;border-radius:22px!important;padding:10px!important}#rewards .rewards-mission-info{font-size:11px!important;height:30px!important}}
+    @media(max-width:380px){#rewards{padding-left:3px!important;padding-right:3px!important}#rewards .rewards-home-intro-card{margin-top:8px!important;min-height:0!important}#rewards .rewards-home-intro-image-frame{min-height:0!important}#rewards .rewards-hero-image-wrap{width:min(42vw,155px);height:clamp(58px,18vw,92px);margin-top:26px!important}}
   </style>
   <div class="rewards-home-intro-card" aria-hidden="true"><div class="rewards-home-intro-image-frame"></div></div>
   <section class="rewards-live-winners" aria-label="Live Winners">

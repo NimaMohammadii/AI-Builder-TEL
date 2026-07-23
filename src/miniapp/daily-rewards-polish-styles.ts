@@ -1,1 +1,0 @@
-export const DAILY_REWARDS_POLISH_STYLES = ``;

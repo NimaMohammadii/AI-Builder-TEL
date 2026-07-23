@@ -47,10 +47,8 @@ const sectionImageInfoCache = new Map<string, { expiresAt: number; value: Sectio
 const DEFAULT_SECTIONS: Array<Omit<SectionLock, 'locked' | 'mode' | 'expiresAt' | 'remainingMs' | 'hasCode' | 'hasImage' | 'imageUrl' | 'hasLockedImage' | 'lockedImageUrl' | 'hasCodeImage' | 'codeUrl'>> = [
   { id: 'global-loading', label: 'Global Mini App Loading', description: 'Put the entire mini app into loading mode' },
   { id: 'home', label: 'Home', description: 'Main landing section' },
-  { id: 'home-top-players-card', label: 'Home Top Card', description: 'Clickable top card on Home that opens the Top Players page' },
   { id: 'home-deposit-card', label: 'Home Deposit Card', description: 'Image used on the Home deposit action card' },
   { id: 'home-withdraw-card', label: 'Home Withdraw Card', description: 'Image used on the Home withdraw action card' },
-  { id: 'home-referral-card', label: 'Home Referral Card', description: 'Image used on the Home referral action card' },
   { id: 'ai-miniapp', label: 'AI Bot Mini App', description: 'Open Mini App button in the AI bot' },
   { id: 'ai-chat', label: 'AI Bot Chat', description: 'Chat with AI menu in the AI bot' },
   { id: 'playzone', label: 'Play Zone', description: 'Games hub section' },
