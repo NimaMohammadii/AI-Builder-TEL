@@ -14,7 +14,9 @@ export const MINIAPP_SCRIPT = `
   setTimeout(expandMiniApp,1200);
 
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
-  var ownerId=telegramUserId||localStorage.getItem('ownerId')||'';
+  function storageGet(key){try{return window.localStorage?localStorage.getItem(key):''}catch(e){return ''}}
+  function storageSet(key,value){try{if(window.localStorage)localStorage.setItem(key,value)}catch(e){}}
+  var ownerId=telegramUserId||storageGet('ownerId')||'';
   var sectionTitles={home:'Lucky Zone',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',market:'Market',wallet:'Wallet',topplayers:'Top Players',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',rps:'RPS',limbo:'Limbo',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',hilo:'Chicken Cross',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
@@ -144,10 +146,10 @@ export const MINIAPP_SCRIPT = `
     var id=ownerId;
     if(!id||!ref||ref===id)return;
     var key='vexa-referral-claim:'+id+':'+ref;
-    try{if(localStorage.getItem(key)==='1')return}catch(e){}
+    if(storageGet(key)==='1')return;
     try{
       await api('/app/api/referral/claim',{method:'POST',body:JSON.stringify({userId:id,ref:ref})});
-      try{localStorage.setItem(key,'1')}catch(e){}
+      storageSet(key,'1');
     }catch(e){}
   }
 
@@ -193,7 +195,7 @@ export const MINIAPP_SCRIPT = `
     try{var d=await api('/app/api/stars/deposits',{method:'POST',body:JSON.stringify({userId:ownerId,stars:amount})});if(status)status.textContent='Opening Telegram Stars payment';if(d.invoiceLink){if(tg&&typeof tg.openInvoice==='function'){tg.openInvoice(d.invoiceLink,function(state){if(status)status.textContent=state==='paid'?'Payment received Balance will update shortly':'Payment status: '+state;if(state==='paid'&&window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},900);if(state==='paid')setTimeout(loadLevel,1100)})}else{window.location.href=d.invoiceLink}}}catch(x){if(status)status.textContent=x.message;toast(x.message)}
   }
 
-  function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;localStorage.setItem('ownerId',ownerId);userLine();claimReferralIfNeeded()}
+  function saveUser(){ownerId=telegramUserId||(q('ownerId')&&q('ownerId').value.trim())||ownerId;storageSet('ownerId',ownerId);userLine();claimReferralIfNeeded()}
 
   document.body.addEventListener('click',function(ev){
     var target=ev.target;
@@ -216,7 +218,7 @@ export const MINIAPP_SCRIPT = `
     if(a==='save-user')saveUser();
   });
 
-  if(ownerId)localStorage.setItem('ownerId',ownerId);
+  if(ownerId)storageSet('ownerId',ownerId);
   if(q('ownerId'))q('ownerId').value=ownerId;
   removeLegacyLeagueAndRewards();
   setTimeout(removeLegacyLeagueAndRewards,50);
