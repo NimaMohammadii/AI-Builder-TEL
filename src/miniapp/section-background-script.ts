@@ -12,7 +12,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
     'ai-chat':['[data-admin-image-slot="ai-chat"]','[data-section-background-target="ai-chat"]'],
     playzone:['#playzone','#playzone .play-zone-stage'],
     predict:['#predictzone','#predict'],
-    market:['#market'],
     'predict-zone-card':['#playzone .play-zone-predict-card','#playzone [data-admin-image-slot="predict-zone-card"]','#predictzone .predict-zone-glass-card'],
     'playzone-row-ad-right':['#playzone .playzone-row-ad-right','#playzone [data-playzone-ad="right"]','#playzone [data-play-zone-ad="playzone-row-ad-right"]','#playzone [data-play-zone-ad="playzone-row-ad-2"]'],
     'playzone-row-ad-left':['#playzone .playzone-row-ad-left','#playzone [data-playzone-ad="left"]','#playzone [data-play-zone-ad="playzone-row-ad-left"]','#playzone [data-play-zone-ad="playzone-row-ad-1"]'],

@@ -59,7 +59,7 @@ function patchGhostRunSection(section: string): string {
 </style>`;
 
   patched = patched.replace('<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">', '<section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">' + crashCss);
-  patched = patched.replace('<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/><img class="ghost-run-price-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async"/> TON</strong>', '<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/><img class="ghost-run-price-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async"/></strong>');
+  patched = patched.replace('<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/><img class="ghost-run-price-icon" src="/app/api/uploaded-image/ton-icon.png" alt="TON" loading="eager" decoding="async"/> TON</strong>', '<strong><input data-ghost-bet-input type="number" min="0.01" step="0.01" inputmode="decimal" value="0.10" aria-label="Ghost Run bet amount"/><img class="ghost-run-price-icon" src="/app/api/uploaded-image/ton-icon.png" alt="TON" loading="eager" decoding="async"/></strong>');
   patched = patched.replace('<strong class="ghost-run-multiplier" data-ghost-multiplier>1.00x</strong>', '<strong class="ghost-run-multiplier" data-ghost-multiplier>1.00x</strong><span class="ghost-run-countdown" data-ghost-countdown>6.50s</span>');
 
   const crashScript = `<script>

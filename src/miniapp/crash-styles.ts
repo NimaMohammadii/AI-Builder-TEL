@@ -56,6 +56,6 @@ body:has(#crash.active) .content{padding-bottom:0!important}
 #crash .crash-live-plus{display:inline-block;margin-right:3px;color:#78ffb3;font-weight:950}
 #crash .crash-live-row.crashed .crash-live-amount,#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,255,255,.70)}
 body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;padding:0 10px!important}
-body #crash .crash-bet-main::before{content:""!important;display:block!important;width:24px!important;height:24px!important;flex:0 0 24px!important;background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
+body #crash .crash-bet-main::before{content:""!important;display:block!important;width:24px!important;height:24px!important;flex:0 0 24px!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
 body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important}
 `;

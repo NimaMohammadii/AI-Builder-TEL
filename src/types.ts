@@ -10,7 +10,6 @@ export type Env = {
   TELEGRAM_MINI_APP_SHORT_NAME?: string;
   OPENAI_API_KEY: string;
   XAI_API_KEY?: string;
-  TON_GIFT_MARKET_URL?: string;
   TONCENTER_API_KEY?: string;
   TON_WITHDRAW_MNEMONIC?: string;
   TON_WITHDRAW_PAYOUT_TOKEN?: string;

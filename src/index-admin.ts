@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
-import './market-routes';
 import './deposit-method-icon-routes';
 import { adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
 import { clearSectionLockCaches, getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';

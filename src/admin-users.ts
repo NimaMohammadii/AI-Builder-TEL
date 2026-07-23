@@ -181,8 +181,6 @@ function userTableDeletes(): Array<[string, string]> {
     ['daily_reward_events', 'user_id'],
     ['daily_rewards_claims', 'user_id'],
     ['daily_rewards_events', 'user_id'],
-    ['market_purchases', 'user_id'],
-    ['nft_purchases', 'user_id'],
     ['predict_bets', 'user_id'],
     ['predict_entries', 'user_id'],
     ['wheel_entries', 'user_id'],

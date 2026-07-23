@@ -86,7 +86,7 @@ export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amou
     WHERE telegram_user_id = ? AND ton_balance_nano >= ?`).bind(amount, id, amount).run();
   if ((result.meta?.changes || 0) <= 0) throw new Error('Insufficient balance');
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, -amount, after, { kind: 'market', title: 'NFT purchase', ...meta });
+  await recordTonTransaction(env, id, -amount, after, { kind: 'adjustment', title: 'TON debit', ...meta });
   return getUserControls(env, id);
 }
 

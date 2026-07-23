@@ -189,7 +189,7 @@ export const DICE_FINAL_TWEAK = `<style>
   height:25px!important;
   flex:0 0 25px!important;
   display:block!important;
-  background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
+  background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;
 }
 #dice .dice-bet-box{
   position:relative!important;
@@ -203,7 +203,7 @@ export const DICE_FINAL_TWEAK = `<style>
   height:32px!important;
   z-index:2!important;
   pointer-events:none!important;
-  background:url('/app/api/nft-price-icon.png') center/contain no-repeat!important;
+  background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;
 }
 #dice .dice-bet-input{
   padding-left:38px!important;

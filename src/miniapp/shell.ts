@@ -18,7 +18,6 @@ import { PLAY_ZONE_SHOWCASE_OVERRIDES } from './play-zone-showcase-overrides';
 import { PLAY_ZONE_TOP_BLUR } from './play-zone-top-blur';
 import { PLAY_ZONE_ROW_IMAGE_FIX } from './play-zone-row-image-fix';
 import { PLAY_ZONE_EDGE_FIX } from './play-zone-edge-fix';
-import { MARKET_STYLES } from './market-styles';
 import { HOME_OVERRIDES } from './home-overrides';
 import { TRANSACTIONS_GLOBAL_STYLES } from './transactions-global-styles';
 import { BALANCE_OVERRIDES } from './balance-overrides';
@@ -34,7 +33,6 @@ import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
-import { MARKET_SECTION } from './market';
 import { MINES_SECTION } from './mines';
 import { PLINKO_SECTION } from './plinko';
 import { CRASH_SECTION } from './crash';
@@ -53,7 +51,6 @@ import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
-import { MARKET_CONFIG_SCRIPT } from './market-config-script';
 import { PLINKO_SCRIPT } from './plinko-script';
 import { PLINKO_DROP_FEEDBACK_SCRIPT } from './plinko-drop-feedback-script';
 import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
@@ -147,7 +144,6 @@ const FINANCE_CLOSE_BUTTON_SCRIPT = `
 
 const STYLES = [
   MINIAPP_STYLES,
-  MARKET_STYLES,
   PLINKO_STYLES,
   MINES_STYLES,
   CRASH_STYLES,
@@ -188,7 +184,6 @@ const INITIAL_SECTIONS = [
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
-  { id: 'market', html: MARKET_SECTION, scripts: [MARKET_CONFIG_SCRIPT] },
   { id: 'results', html: RESULTS_SECTION },
   { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
