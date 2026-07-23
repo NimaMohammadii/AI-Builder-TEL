@@ -1,6 +1,6 @@
 export const SECTION_LOADING_LOCK_SCRIPT = `
 (function(){
-  var KNOWN_LOADING_SECTIONS={};['global-loading','home','connect','playzone','predict','market','flow','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOADING_SECTIONS[id]=1});
+  var KNOWN_LOADING_SECTIONS={};['global-loading','home','connect','playzone','predict','flow','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOADING_SECTIONS[id]=1});
   var modes={};
   var loadingMeta={};
   var painted={};

@@ -94,6 +94,6 @@ export const UPLOADED_IMAGE_CACHE_SCRIPT = `
   window.VexaUploadedImages={reload:function(context){return load(true,context)},load:function(context){return load(false,context)},read:read};
   installAccessCodeKeyboardCss();
   apply(read(currentContext()),false);
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-view="market"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view="playzone"],[data-game-view]');if(b)setTimeout(function(){load(false)},120)},true);
 })();
 `;

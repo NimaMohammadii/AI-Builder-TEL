@@ -16,7 +16,7 @@ export const SECTION_LOCK_SCRIPT = `
   var GLOBAL_CACHE_PREFIX='vexaSectionLocks:v1:';
   var USER_CACHE_PREFIX='vexaUserControls:';
   var LOCK_IMAGE_CACHE='vexa-section-lock-images-v1';
-  var KNOWN_LOCK_SECTIONS={};['global-loading','home','playzone','predict','market','predict-zone-card','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOCK_SECTIONS[id]=1});
+  var KNOWN_LOCK_SECTIONS={};['global-loading','home','playzone','predict','predict-zone-card','mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun'].forEach(function(id){KNOWN_LOCK_SECTIONS[id]=1});
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lockSvg='<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="18" y="28" width="28" height="24" rx="8" stroke="currentColor" stroke-width="3"/><path d="M23 28v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="40" r="2.5" fill="currentColor"/></svg>';

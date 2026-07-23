@@ -1,4 +1,4 @@
-import app from './index-with-fragment-detail-polish';
+import app from './index-admin-plinko';
 import type { Env } from './types';
 import { isAdminSession } from './admin-auth';
 

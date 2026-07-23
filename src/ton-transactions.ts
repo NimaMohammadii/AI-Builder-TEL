@@ -1,6 +1,6 @@
 import type { Env } from './types';
 
-export type TonTransactionKind = 'deposit' | 'withdraw' | 'game' | 'group_usage' | 'admin' | 'adjustment' | 'market' | 'market_refund' | 'predict';
+export type TonTransactionKind = 'deposit' | 'withdraw' | 'game' | 'group_usage' | 'admin' | 'adjustment' | 'predict';
 
 export type TonTransactionMeta = {
   kind?: TonTransactionKind;
@@ -273,15 +273,13 @@ function titleForKind(kind: string, amountNano: number): string {
   if (kind === 'game') return amountNano >= 0 ? 'Game reward' : 'Game bet';
   if (kind === 'group_usage') return 'Group usage';
   if (kind === 'admin') return 'Admin balance update';
-  if (kind === 'market') return 'NFT purchase';
-  if (kind === 'market_refund') return 'NFT purchase refund';
   if (kind === 'predict') return amountNano >= 0 ? 'Prediction payout' : 'Prediction stake';
   return amountNano >= 0 ? 'Balance credit' : 'Balance debit';
 }
 
 function cleanKind(value: unknown): TonTransactionKind {
   const raw = String(value || 'adjustment').replace(/[^a-z_]/g, '').slice(0, 40) as TonTransactionKind;
-  return ['deposit', 'withdraw', 'game', 'group_usage', 'admin', 'adjustment', 'market', 'market_refund', 'predict'].includes(raw) ? raw : 'adjustment';
+  return ['deposit', 'withdraw', 'game', 'group_usage', 'admin', 'adjustment', 'predict'].includes(raw) ? raw : 'adjustment';
 }
 
 function cleanText(value: unknown, max: number): string {

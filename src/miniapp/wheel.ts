@@ -548,9 +548,9 @@ export const WHEEL_SECTION = `
         </div>
 
         <div class="wheel-quick">
-          <button data-wheel-quick="0.1" class="active"><span>0.1</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
-          <button data-wheel-quick="0.5"><span>0.5</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
-          <button data-wheel-quick="1"><span>1</span><img class="wheel-ton-icon" src="/app/api/nft-price-icon.png" alt="NFT price" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="0.1" class="active"><span>0.1</span><img class="wheel-ton-icon" src="/app/api/uploaded-image/ton-icon.png" alt="TON" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="0.5"><span>0.5</span><img class="wheel-ton-icon" src="/app/api/uploaded-image/ton-icon.png" alt="TON" loading="eager" decoding="async" data-wheel-credit-icon /></button>
+          <button data-wheel-quick="1"><span>1</span><img class="wheel-ton-icon" src="/app/api/uploaded-image/ton-icon.png" alt="TON" loading="eager" decoding="async" data-wheel-credit-icon /></button>
         </div>
 
         <button class="wheel-join" data-wheel-join>Spin</button>
@@ -603,7 +603,7 @@ export const WHEEL_SECTION = `
         var minChance = edgeChancePadding;
         var maxChance = 100 - edgeChancePadding;
         var pointerAngle = 0;
-        var creditIconSrc = '/app/api/nft-price-icon.png?v=' + Date.now();
+        var creditIconSrc = '/app/api/uploaded-image/ton-icon.png?v=' + Date.now();
 
         function clampChance(value) {
           return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));

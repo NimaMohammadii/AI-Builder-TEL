@@ -8,7 +8,6 @@ import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit 
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
 import { setTelegramWebhook } from './telegram-agent-safe';
-import { registerAdminForceRefreshRoutes } from './admin-force-refresh-routes';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';
@@ -26,11 +25,9 @@ const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
 const HOME_MY_TICKET_IMAGE_KEY = 'home-my-ticket/image';
 const WALLET_HERO_IMAGE_KEY = 'wallet/hero-image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
-const NFT_PRICE_ICON_KEY = 'market/nft-price-icon';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
 const GHOST_RUN_ASSET_KINDS = new Set(['background', 'background1', 'background2', 'background3', 'background4', 'background5', 'background6', 'ground', 'moon', 'ghost', 'ghostidle', 'ghostmove', 'tree1', 'tree2', 'tree3', 'house1', 'house2', 'house3']);
 
-registerAdminForceRefreshRoutes(app);
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
@@ -112,28 +109,6 @@ app.post('/admin/api/upload-ghost-run-asset', async (c) => {
     return c.json({ ok: true, kind, url: `/app/api/ghost-run-asset/${kind}.png?v=${version}` });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not upload Ghost Run asset' }, 400);
-  }
-});
-
-app.get('/app/api/nft-price-icon.png', async (c) => {
-  const object = await c.env.ASSETS.get(NFT_PRICE_ICON_KEY).catch(() => null);
-  if (!object) return new Response(defaultNftPriceIconSvg(), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': IMAGE_CACHE_CONTROL } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': IMAGE_CACHE_CONTROL } });
-});
-
-app.post('/admin/api/upload-nft-price-icon', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 1_200_000) return c.json({ error: 'Image must be under 1.2MB.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(NFT_PRICE_ICON_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: `/app/api/nft-price-icon.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload NFT price icon' }, 400);
   }
 });
 
@@ -470,18 +445,6 @@ function defaultPlinkoControlImageSvg(kind: 'drop' | 'input' | 'house'): string 
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><rect x="0" y="0" width="748" height="96" rx="30" fill="#191919" stroke="#4d4d4d" stroke-width="3"/><text x="374" y="59" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="800">Drop Ball</text></svg>';
 }
 
-function defaultNftPriceIconSvg(): string {
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="white" d="M12 16h40c4.2 0 6.7 4.8 4.2 8.2L36.2 52.4c-2 2.9-6.4 2.9-8.4 0L7.8 24.2C5.3 20.8 7.8 16 12 16Zm4.1 7 13.4 19.3V23H16.1Zm18.4 0v19.3L47.9 23H34.5ZM32 47.2 48.3 23H15.7L32 47.2Z"/></svg>';
-}
-
-async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
-  const response = await fetch('https://api.telegram.org/bot' + token + '/' + method, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return response.json() as Promise<T>;
-}
 
 function cleanTelegramUserId(value: unknown): string {
   return String(value || '').replace(/[^0-9]/g, '').slice(0, 32);
