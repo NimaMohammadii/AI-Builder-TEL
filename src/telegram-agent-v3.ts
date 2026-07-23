@@ -30,7 +30,6 @@ type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; de
 const CHAT_TTL = 7200;
 const PENDING_TTL = 900;
 const MAIN_MENU_TTL = 7200;
-const LOCKS_KEY = 'admin:section-locks';
 const REGION_SETTINGS_KEY = 'admin:bot-region-settings';
 const LOCKED_TEXT = 'اینجا قفله.';
 const USER_BOT_ALLOWED_UPDATES = ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'];
@@ -302,15 +301,8 @@ async function dashboard(env: Env, userId: string): Promise<BotView[]> {
   } catch { return []; }
 }
 
-async function isAiSectionLocked(env: Env, sectionId: string): Promise<boolean> {
-  const id = String(sectionId || '').replace(/[^a-zA-Z0-9_-]/g, '').trim();
-  if (!id) return false;
-  const raw = await readAdminSetting<Record<string, SavedLock>>(env, LOCKS_KEY).catch(() => null);
-  const item = raw?.[id];
-  if (!item) return false;
-  if (item.expiresAt && Date.parse(item.expiresAt) <= Date.now()) return false;
-  const mode = item.mode || (item.locked ? 'locked' : 'open');
-  return mode !== 'open';
+async function isAiSectionLocked(_env: Env, _sectionId: string): Promise<boolean> {
+  return false;
 }
 
 async function readAdminSetting<T>(env: Env, name: string): Promise<T | null> {

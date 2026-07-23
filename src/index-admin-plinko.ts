@@ -6,7 +6,6 @@ import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
-import { getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey } from './section-locks';
 import { setTelegramWebhook } from './telegram-agent-safe';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
@@ -16,13 +15,10 @@ import { isAdminSession } from './admin-auth';
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const HOME_IMAGE_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
-const WALLET_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 // Ghost Run scene art is referenced by stable CSS URLs, so keep it browser-cached
 // instead of re-downloading every time the user opens the game.
 const GHOST_RUN_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
-const HOME_FINANCE_IMAGE_KEY = 'home-finance/image';
-const HOME_MY_TICKET_IMAGE_KEY = 'home-my-ticket/image';
 const WALLET_HERO_IMAGE_KEY = 'wallet/hero-image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
@@ -32,27 +28,7 @@ registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
 
-app.get('/app/api/wallet-hero-image.png', async (c) => {
-  const object = await c.env.ASSETS.get(WALLET_HERO_IMAGE_KEY).catch(() => null);
-  if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': WALLET_IMAGE_CACHE_CONTROL } });
-});
 
-app.post('/admin/api/upload-wallet-hero-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 5_000_000) return c.json({ error: 'Image must be under 5MB.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(WALLET_HERO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, size: file.size, type: file.type, url: `/app/api/wallet-hero-image.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Wallet image' }, 400);
-  }
-});
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 app.get('/app/api/plinko-virtual-users', async (c) => c.json(await getPlinkoVirtualUsers(c.env)));
@@ -234,51 +210,12 @@ app.delete('/app/api/groups/:chatId/leave', async (c) => {
   }
 });
 
-app.get('/app/api/home-finance-image.png', async (c) => imageFromR2(c.env, HOME_FINANCE_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
-app.get('/app/api/home-my-ticket-image.png', async (c) => imageFromR2(c.env, HOME_MY_TICKET_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
 app.get('/app/api/crash-tip-image.png', async (c) => imageFromR2(c.env, CRASH_TIP_IMAGE_KEY, HOME_IMAGE_CACHE_CONTROL));
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
-app.post('/admin/api/upload-home-finance-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(HOME_FINANCE_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: `/app/api/home-finance-image.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home image' }, 400);
-  }
-});
 
-app.post('/admin/api/upload-home-my-ticket-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(HOME_MY_TICKET_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: `/app/api/home-my-ticket-image.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload My Ticket image' }, 400);
-  }
-});
 
-app.delete('/admin/api/delete-home-my-ticket-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    await c.env.ASSETS.delete(HOME_MY_TICKET_IMAGE_KEY);
-    return c.json({ ok: true, url: `/app/api/home-my-ticket-image.png?v=${Date.now()}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not delete My Ticket image' }, 400);
-  }
-});
 
 app.post('/admin/api/upload-crash-tip-image', async (c) => {
   if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
@@ -390,27 +327,6 @@ app.post('/admin/api/upload-mines-tile-image', async (c) => {
   }
 });
 
-app.post('/admin/api/section-lock-image-v2', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const section = normalizeSectionId(String(form.get('sectionId') || ''));
-    const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked'));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(sectionImageR2Key(section, kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    await Promise.all([
-      c.env.BOT_CACHE.delete(sectionImageKey(section, kind)).catch(() => undefined),
-      c.env.BOT_CACHE.delete(sectionImageTypeKey(section, kind)).catch(() => undefined),
-      c.env.BOT_CACHE.delete(sectionImageVersionKey(section, kind)).catch(() => undefined),
-    ]);
-    return c.json(await getSectionLocks(c.env));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400);
-  }
-});
 
 async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CONTROL): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
