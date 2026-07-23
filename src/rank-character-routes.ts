@@ -1,5 +1,4 @@
 import type { Hono } from 'hono';
-import { registerAdminLevelRoutes } from './admin-level-routes';
 import type { Env } from './types';
 import { isAdminSession } from './admin-auth';
 
@@ -8,8 +7,6 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg
 const CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 export function registerRankCharacterRoutes(app: Hono<{ Bindings: Env }>): void {
-  registerAdminLevelRoutes(app);
-
   app.get('/app/api/rank-character/:rank', async (c) => {
     const rank = cleanRank(c.req.param('rank'));
     if (!rank) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });

@@ -2,12 +2,9 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import './deposit-method-icon-routes';
-import { adminUsersJson, resetUserEverywhere, trackAppUser } from './admin-users';
-import { clearSectionLockCaches, getSectionLocks, normalizeSectionId, normalizeSectionImageKind, SECTION_LOCK_IMAGE_TYPES, sectionImageKey, sectionImageR2Key, sectionImageTypeKey, sectionImageVersionKey, setSectionCodeLock, setSectionLock, verifySectionCode } from './section-locks';
-import { adjustUserTonBalance, applyGameTonBalanceDelta, getUserControls, publicUserControls, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
+import { trackAppUser } from './admin-users';
+import { applyGameTonBalanceDelta, getUserControls, publicUserControls } from './user-controls';
 import { setTelegramWebhook } from './telegram-agent-safe';
-import { getPlayZoneCardVisibility, setPlayZoneCardVisibility } from './play-zone-card-visibility';
-import { hasAccessOverride } from './user-access-override-routes';
 import { PUBLIC_BASE_URL } from './utils';
 import { cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from './section-backgrounds';
 import type { Env } from './types';
@@ -21,21 +18,18 @@ const MINIAPP_AUDIO_KEY = 'miniapp/audio';
 const MINIAPP_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
-const SECTION_LOCK_IMAGE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate, max-age=0';
 
 const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
   home: ['global-loading', 'home'],
   startup: ['global-loading', 'home'],
-  playzone: ['playzone', 'mines', 'plinko', 'crash', 'wheel', 'dice', 'rps', 'slot', 'coinflip', 'hilo', 'ghostrun', 'predict-zone-card'],
-  rps: ['rps'],
+  playzone: ['playzone', 'mines', 'plinko', 'crash', 'slot', 'coinflip', 'hilo', 'ghostrun'],
   mines: ['mines'],
   plinko: ['plinko'],
 };
-const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'>> = {
+const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'plinko' | 'mines'>> = {
   home: ['credit', 'ton'],
   startup: ['credit', 'ton'],
   playzone: ['credit', 'ton'],
-  rps: ['credit', 'ton', 'rps'],
   mines: ['credit', 'ton', 'mines'],
   plinko: ['credit', 'ton', 'plinko'],
 };
@@ -75,8 +69,16 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
 
 
 app.get('/app/api/section-backgrounds', async (c) => {
-  const locks = await getSectionLocks(c.env);
-  const sections = await Promise.all(locks.sections.map((section) => sectionBackgroundInfo(c.env, section)));
+  const adminSections = [
+    { id: 'home', label: 'Home', description: 'Home section background' },
+    { id: 'playzone', label: 'Play Zone', description: 'Play Zone background' },
+    { id: 'mines', label: 'Mines', description: 'Mines background' },
+    { id: 'plinko', label: 'Plinko', description: 'Plinko background' },
+    { id: 'crash', label: 'Crash', description: 'Crash background' },
+    { id: 'slot', label: 'Slot', description: 'Slot background' },
+    { id: 'ghostrun', label: 'Ghost Run', description: 'Ghost Run background' },
+  ];
+  const sections = await Promise.all(adminSections.map((section) => sectionBackgroundInfo(c.env, section)));
   const preload = sections.map((section) => section.backgroundUrl).filter(Boolean);
   return c.json({ sections, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
@@ -90,99 +92,44 @@ app.get('/app/api/section-background/:section', async (c) => {
 });
 app.get('/app/api/uploaded-images', async (c) => {
   const context = normalizeUploadedImagesContext(c.req.query('context'));
-  const requestedSections = parseSectionLockQuery(c.req.query('sections'), c.req.query('section'));
-  const scopedSections = requestedSections || (context ? UPLOADED_IMAGE_CONTEXT_SECTIONS[context] : null);
+  const scopedSections = context ? UPLOADED_IMAGE_CONTEXT_SECTIONS[context] : null;
   const assetScope = new Set(context ? UPLOADED_IMAGE_CONTEXT_ASSETS[context] : uploadedImageAssetScopeForSections(scopedSections));
   const head = (enabled: boolean, key: string) => enabled ? c.env.ASSETS.head(key).catch(() => null) : Promise.resolve(null);
-  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead, rpsYouRockHead, rpsYouPaperHead, rpsYouScissorsHead, rpsBotRockHead, rpsBotPaperHead, rpsBotScissorsHead] = await Promise.all([
+  const [creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
     head(assetScope.has('credit'), 'credit-icon'),
     head(assetScope.has('ton'), 'ton-icon'),
     head(assetScope.has('plinko'), 'plinko-ball'),
     head(assetScope.has('mines'), 'mines-tile/safe'),
     head(assetScope.has('mines'), 'mines-tile/bomb'),
-    head(assetScope.has('rps'), 'rps-hand/you/rock'),
-    head(assetScope.has('rps'), 'rps-hand/you/paper'),
-    head(assetScope.has('rps'), 'rps-hand/you/scissors'),
-    head(assetScope.has('rps'), 'rps-hand/bot/rock'),
-    head(assetScope.has('rps'), 'rps-hand/bot/paper'),
-    head(assetScope.has('rps'), 'rps-hand/bot/scissors'),
   ]);
   const creditIconUrl = assetScope.has('credit') ? `/app/api/credit-icon.png?v=${assetVersion(creditHead)}` : null;
   const tonIconUrl = assetScope.has('ton') ? (tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl) : null;
   const plinkoBallUrl = assetScope.has('plinko') ? (plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl) : null;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
-  const rpsYouRockUrl = rpsYouRockHead ? `/app/api/uploaded-image/rps-you-rock.png?v=${assetVersion(rpsYouRockHead)}` : null;
-  const rpsYouPaperUrl = rpsYouPaperHead ? `/app/api/uploaded-image/rps-you-paper.png?v=${assetVersion(rpsYouPaperHead)}` : null;
-  const rpsYouScissorsUrl = rpsYouScissorsHead ? `/app/api/uploaded-image/rps-you-scissors.png?v=${assetVersion(rpsYouScissorsHead)}` : null;
-  const rpsBotRockUrl = rpsBotRockHead ? `/app/api/uploaded-image/rps-bot-rock.png?v=${assetVersion(rpsBotRockHead)}` : null;
-  const rpsBotPaperUrl = rpsBotPaperHead ? `/app/api/uploaded-image/rps-bot-paper.png?v=${assetVersion(rpsBotPaperHead)}` : null;
-  const rpsBotScissorsUrl = rpsBotScissorsHead ? `/app/api/uploaded-image/rps-bot-scissors.png?v=${assetVersion(rpsBotScissorsHead)}` : null;
-  const locks = await getSectionLocks(c.env, { sections: scopedSections });
-  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl].filter(Boolean);
-  for (const section of locks.sections) {
-    if (section.lockedImageUrl) preload.push(section.lockedImageUrl);
-    if (section.codeImageUrl) preload.push(section.codeImageUrl);
-  }
-  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, rpsYouRockUrl, rpsYouPaperUrl, rpsYouScissorsUrl, rpsBotRockUrl, rpsBotPaperUrl, rpsBotScissorsUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl].filter(Boolean);
+  return c.json({ creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
 app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse(c.env, 'plinko-ball', '/app/api/credit-icon.png'));
-app.get('/app/api/uploaded-image/rps-you-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/rock', null));
-app.get('/app/api/uploaded-image/rps-you-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/paper', null));
-app.get('/app/api/uploaded-image/rps-you-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/you/scissors', null));
-app.get('/app/api/uploaded-image/rps-bot-rock.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/rock', null));
-app.get('/app/api/uploaded-image/rps-bot-paper.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/paper', null));
-app.get('/app/api/uploaded-image/rps-bot-scissors.png', async (c) => getAssetResponse(c.env, 'rps-hand/bot/scissors', null));
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 
-function parseSectionLockQuery(sections: string | undefined, section: string | undefined): string[] | null {
-  const raw = [sections || '', section || ''].join(',');
-  const items = raw.split(',').map((item) => item.trim()).filter(Boolean);
-  return items.length ? items : null;
-}
 
-
-function uploadedImageAssetScopeForSections(sections: string[] | null): Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'> {
-  if (!sections) return ['credit', 'ton', 'plinko', 'mines', 'rps'];
-  const scope: Array<'credit' | 'ton' | 'plinko' | 'mines' | 'rps'> = ['credit', 'ton'];
+function uploadedImageAssetScopeForSections(sections: string[] | null): Array<'credit' | 'ton' | 'plinko' | 'mines'> {
+  if (!sections) return ['credit', 'ton', 'plinko', 'mines'];
+  const scope: Array<'credit' | 'ton' | 'plinko' | 'mines'> = ['credit', 'ton'];
   if (sections.includes('plinko')) scope.push('plinko');
   if (sections.includes('mines')) scope.push('mines');
-  if (sections.includes('rps')) scope.push('rps');
   return scope;
 }
 function normalizeUploadedImagesContext(context: string | undefined): string | null {
   const clean = String(context || '').trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(UPLOADED_IMAGE_CONTEXT_SECTIONS, clean) ? clean : null;
 }
-app.get('/app/api/section-locks', async (c) => {
-  const sections = parseSectionLockQuery(c.req.query('sections'), c.req.query('section'));
-  const userId = String(c.req.query('userId') || '').trim();
-  return c.json(await getSectionLocks(c.env, { sections, cacheKey: userId || 'anonymous' }), 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
-});
 app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
-app.get('/app/api/play-zone-cards', async (c) => {
-  const visibility = await getPlayZoneCardVisibility(c.env);
-  if (await hasAccessOverride(c.env, c.req.query('userId'))) {
-    return c.json({ ...visibility, trustedAccess: true, hiddenIds: [], cards: visibility.cards.map((card) => ({ ...card, visible: true })) }, 200, { 'cache-control': 'no-store' });
-  }
-  return c.json(visibility, 200, { 'cache-control': 'no-store' });
-});
-app.get('/app/api/section-lock-image/:section/:kind', async (c) => { try { const section = normalizeSectionId(c.req.param('section')); const kind = normalizeSectionImageKind(c.req.param('kind').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, kind), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
-app.get('/app/api/section-lock-image/:section', async (c) => { try { const section = normalizeSectionId(c.req.param('section').replace(/\.png$/i, '')); return getAssetResponse(c.env, sectionImageR2Key(section, 'locked'), null, { cacheControl: sectionLockImageCacheControl(c) }); } catch { return c.text('Not found', 404, { 'cache-control': 'no-store' }); } });
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
-app.post('/app/api/section-locks/verify', zValidator('json', codeLockSchema), async (c) => { const body = c.req.valid('json'); try { return c.json(await verifySectionCode(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not verify code' }, 400); } });
-app.get('/admin/api/users', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await adminUsersJson(c.env)); } catch (error) { console.error('load admin users failed', error); return c.json({ users: [], stats: { total: 0, online: 0, inactive: 0, totalTonBalanceNano: 0 }, error: 'Database is not ready. Run migrations.' }, 500); } });
-app.delete('/admin/api/users/:userId', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { return c.json(await resetUserEverywhere(c.env, c.req.param('userId'))); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not delete user' }, 400); } });
-app.get('/admin/api/user-controls', zValidator('query', userIdSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getUserControls(c.env, c.req.valid('query').userId)); });
-app.post('/admin/api/users/ton-balance', zValidator('json', userTonBalanceSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setUserTonBalance(c.env, body.userId, body.tonBalanceNano)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); } });
-app.post('/admin/api/users/ton-balance-adjust', zValidator('json', userTonBalanceAdjustSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await adjustUserTonBalance(c.env, body.userId, body.deltaNano)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not adjust TON balance' }, 400); } });
-app.post('/admin/api/users/section-block', zValidator('json', userSectionBlockSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setUserSectionBlocked(c.env, body.userId, body.sectionId, body.blocked)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update access' }, 400); } });
-app.post('/admin/api/users/win-chance', zValidator('json', userWinChanceSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setUserWinChance(c.env, body.userId, body.winChancePercent)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update win chance' }, 400); } });
-app.get('/admin/api/section-locks', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getSectionLocks(c.env)); });
-app.get('/admin/api/play-zone-cards', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getPlayZoneCardVisibility(c.env), 200, { 'cache-control': 'no-store' }); });
 app.get('/admin/api/miniapp-audio', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getMiniappAudioJson(c.env)); });
 app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
 app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
@@ -204,33 +151,7 @@ app.post('/admin/api/online-user-counts/reset', async (c) => {
 });
 
 app.post('/admin/api/upload-plinko-ball', async (c) => uploadImageToR2(c, 'image', 'plinko-ball', (version) => ({ plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` })));
-app.post('/admin/api/upload-rps-hand-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const side = String(form.get('side') || '');
-    const kind = String(form.get('kind') || '');
-    if (!['you', 'bot'].includes(side)) return c.json({ error: 'Invalid RPS image side.' }, 400);
-    if (!['rock', 'paper', 'scissors'].includes(kind)) return c.json({ error: 'Invalid RPS image kind.' }, 400);
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await putR2Image(c.env, `rps-hand/${side}/${kind}`, file, version);
-    await cleanupLegacyImageKv(c.env, [`admin:rps-hand/${side}/${kind}`, `admin:rps-hand/${side}/${kind}-type`, `admin:rps-hand/${side}/${kind}-version`]);
-    return c.json({ ok: true, size: file.size, type: file.type, side, kind, url: `/app/api/uploaded-image/rps-${side}-${kind}.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload RPS image' }, 400);
-  }
-});
-app.post('/admin/api/section-lock-image', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); try { const form = await c.req.formData(); const section = normalizeSectionId(String(form.get('sectionId') || '')); const kind = normalizeSectionImageKind(String(form.get('kind') || 'locked')); const file = form.get('image'); if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400); if (!SECTION_LOCK_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400); const version = String(Date.now()); await putR2Image(c.env, sectionImageR2Key(section, kind), file, version); clearSectionLockCaches(); await cleanupLegacyImageKv(c.env, [sectionImageKey(section, kind), sectionImageTypeKey(section, kind), sectionImageVersionKey(section, kind)]); return c.json(await getSectionLocks(c.env)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not upload image' }, 400); } });
-app.post('/admin/api/section-locks', zValidator('json', lockSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionLock(c.env, body.sectionId, body.locked)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update lock' }, 400); } });
-app.post('/admin/api/play-zone-cards', zValidator('json', playZoneCardVisibilitySchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setPlayZoneCardVisibility(c.env, body.gameId, body.visible), 200, { 'cache-control': 'no-store' }); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update Play Zone card' }, 400); } });
-app.post('/admin/api/section-locks/code', zValidator('json', codeLockSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); try { return c.json(await setSectionCodeLock(c.env, body.sectionId, body.code)); } catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save code lock' }, 400); } });
 
-function sectionLockImageCacheControl(c: { req: { query: (name: string) => string | undefined } }): string {
-  return c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : SECTION_LOCK_IMAGE_CACHE_CONTROL;
-}
 
 async function getMiniappAudioJson(env: Env): Promise<Record<string, unknown>> { const object = await env.ASSETS.head(MINIAPP_AUDIO_KEY).catch(() => null); const enabled = (await env.BOT_CACHE.get(MINIAPP_AUDIO_ENABLED_KEY).catch(() => '0')) === '1'; const version = assetVersion(object); return { ok: true, hasAudio: Boolean(object), enabled: Boolean(object) && enabled, version, type: object?.httpMetadata?.contentType || '', url: object ? `/app/api/miniapp-audio-file?v=${version}` : null }; }
 async function getMiniappAudioResponse(env: Env): Promise<Response> { return Response.json(await getMiniappAudioJson(env), { headers: { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL } }); }

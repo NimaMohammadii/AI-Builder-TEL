@@ -263,9 +263,6 @@ app.get('/app/api/slot-symbols', async (c) => {
   return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
 });
 
-app.get('/app/api/dice-assets', async (c) => {
-  return c.json({ ok: true, assets: await diceAssetPayload(c.env) }, 200, { 'cache-control': 'no-store' });
-});
 
 app.get('/app/api/slot-controls', async (c) => {
   return c.json({ ok: true, controls: await controlPayload(c.env) }, 200, { 'cache-control': 'no-store' });
@@ -283,13 +280,7 @@ app.get('/app/api/uploaded-image/slot-symbols/:id', async (c) => {
   return slotSymbolResponse(c.env, c.req.param('id'));
 });
 
-app.get('/app/api/uploaded-image/dice-assets/:id', async (c) => {
-  return diceAssetResponse(c.env, c.req.param('id'));
-});
 
-app.get('/app/api/uploaded-image/dice-assets/:id.png', async (c) => {
-  return diceAssetResponse(c.env, c.req.param('id'));
-});
 
 app.get('/app/api/uploaded-image/slot-symbols/:id.png', async (c) => {
   return slotSymbolResponse(c.env, c.req.param('id'));
@@ -347,22 +338,6 @@ app.post('/admin/api/upload-slot-control', async (c) => {
   }
 });
 
-app.post('/admin/api/upload-dice-asset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const id = String(form.get('id') || '') as DiceAssetId;
-    const file = form.get('image');
-    if (!DICE_ASSET_IDS.has(id)) return c.json({ error: 'Choose a valid Dice image slot.' }, 400);
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(diceAssetKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, id, imageUrl: diceAssetUrl(id, version), version, assets: await diceAssetPayload(c.env) }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Dice image' }, 400, { 'cache-control': 'no-store' });
-  }
-});
 
 app.post('/admin/api/upload-slot-symbol', async (c) => {
   if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });

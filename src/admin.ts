@@ -1,30 +1,13 @@
 import { mobileAdminCodeHtml, mobileAdminLoginHtml, mobileAdminPanelHtml } from './admin-mobile';
-import { ADMIN_IMAGE_PANEL_SCRIPT } from './admin-image-panel';
-import { ADMIN_UPLOAD_CACHE_SCRIPT } from './admin-upload-cache-panel';
 import { ADMIN_PLINKO_CONTROL_SCRIPT } from './admin-plinko-control-panel';
 import { ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT } from './admin-plinko-virtual-users-panel';
 import { ADMIN_CRASH_VIRTUAL_USERS_SCRIPT } from './admin-crash-virtual-users-panel';
-import { ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT } from './admin-play-zone-cards-panel';
 import { ADMIN_PREDICT_PANEL_SCRIPT } from './admin-predict-panel';
-import { ADMIN_PREDICT_LOADER_PANEL_SCRIPT } from './admin-predict-loader-panel';
 import { ADMIN_FOOTBALL_PANEL_SCRIPT } from './admin-football-panel';
-import { ADMIN_TON_PANEL_SCRIPT } from './admin-ton-panel';
-import { ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT } from './admin-home-finance-image-panel';
-import { ADMIN_WALLET_IMAGE_PANEL_SCRIPT } from './admin-wallet-image-panel';
-import { ADMIN_HOME_LOWER_PANEL_SCRIPT } from './admin-home-lower-panel';
 import { ADMIN_HOME_LOTTERY_SLOT_PANEL_SCRIPT } from './admin-home-lottery-slot-panel';
-import { ADMIN_RANK_CHARACTER_PANEL_SCRIPT } from './admin-rank-character-panel';
 import { ADMIN_AUDIO_PANEL_SCRIPT } from './admin-audio-panel';
-import { ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT } from './admin-group-ai-provider-panel';
-import { ADMIN_WHEEL_ASSETS_PANEL_SCRIPT } from './admin-wheel-assets-panel';
-import { ADMIN_SECTION_LOADING_PANEL_SCRIPT } from './admin-section-loading-panel';
-import { ADMIN_TRUSTED_ACCESS_PANEL_SCRIPT } from './admin-trusted-access-panel';
-import { ADMIN_USER_MENU_PANEL_SCRIPT } from './admin-user-menu-panel';
-import { ADMIN_USERS_BULK_PANEL_SCRIPT } from './admin-users-bulk-panel';
 import { ADMIN_SLOT_FRAME_PANEL_SCRIPT } from './admin-slot-frame-panel';
 import { ADMIN_SLOT_VIRTUAL_USERS_SCRIPT } from './admin-slot-virtual-users-panel';
-import { ADMIN_DICE_ASSETS_PANEL_SCRIPT } from './admin-dice-assets-panel';
-import { ADMIN_ANNOUNCEMENT_PANEL_SCRIPT } from './admin-announcement-panel';
 import { ADMIN_GHOST_RUN_ASSETS_PANEL_SCRIPT } from './admin-ghost-run-assets-panel';
 import { ADMIN_ONLINE_USER_COUNTS_PANEL_SCRIPT } from './admin-online-user-counts-panel';
 
@@ -32,12 +15,12 @@ const ADMIN_LAYOUT_CSS = `<style>.reset-user-btn{height:31px!important;margin-to
 
 function adminPanelWithFixes(): string {
   return mobileAdminPanelHtml()
+    .replace(/<button class="menu-item active" data-section="users"[\s\S]*?<\/button>/, '')
+    .replace(/<button class="menu-item" data-section="locks"[\s\S]*?<\/button>/, '')
     .replace(/Credit and per-user access/g, 'TON Balance and per-user access')
     .replace(/Credit and section access/g, 'TON Balance and section access')
     .replace(/Manage credit/g, 'Manage TON balance')
-    .replace('Manage images used inside the mini app. For now this section contains the credit icon.', 'Manage images used inside the mini app, including the credit icon, Slot game frame, and Dice game images.')
-    .replace('<section class="section admin-section active" id="sectionUsers"', '<a class="withdrawals-shortcut" href="/admin/withdrawals">Withdrawals</a><section class="section admin-section active" id="sectionUsers"')
-    .replace('loadUsers();loadLocks();' + 'set' + 'Interval(loadUsers,15000);', 'loadUsers();');
+    .replace('Manage images used inside the mini app. For now this section contains the credit icon.', 'Manage remaining images used inside the mini app.')
 }
 
 export function adminHtml(message?: string): string {
@@ -49,7 +32,7 @@ export function adminCodeHtml(challengeId: string, message?: string): string {
 }
 
 export function adminPanelHtml(): string {
-  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_ONLINE_USER_COUNTS_PANEL_SCRIPT + ADMIN_ANNOUNCEMENT_PANEL_SCRIPT + ADMIN_USERS_BULK_PANEL_SCRIPT + ADMIN_USER_MENU_PANEL_SCRIPT + ADMIN_GROUP_AI_PROVIDER_PANEL_SCRIPT + ADMIN_TON_PANEL_SCRIPT + ADMIN_WHEEL_ASSETS_PANEL_SCRIPT + ADMIN_IMAGE_PANEL_SCRIPT + ADMIN_HOME_LOWER_PANEL_SCRIPT + ADMIN_HOME_LOTTERY_SLOT_PANEL_SCRIPT + ADMIN_HOME_FINANCE_IMAGE_PANEL_SCRIPT + ADMIN_WALLET_IMAGE_PANEL_SCRIPT + ADMIN_RANK_CHARACTER_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PLAY_ZONE_CARDS_PANEL_SCRIPT + ADMIN_SLOT_FRAME_PANEL_SCRIPT + ADMIN_SLOT_VIRTUAL_USERS_SCRIPT + ADMIN_DICE_ASSETS_PANEL_SCRIPT + ADMIN_GHOST_RUN_ASSETS_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_PREDICT_LOADER_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_SECTION_LOADING_PANEL_SCRIPT + ADMIN_TRUSTED_ACCESS_PANEL_SCRIPT + ADMIN_UPLOAD_CACHE_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT + ADMIN_CRASH_VIRTUAL_USERS_SCRIPT + '</body></html>');
+  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_ONLINE_USER_COUNTS_PANEL_SCRIPT + ADMIN_HOME_LOTTERY_SLOT_PANEL_SCRIPT + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_SLOT_FRAME_PANEL_SCRIPT + ADMIN_SLOT_VIRTUAL_USERS_SCRIPT + ADMIN_GHOST_RUN_ASSETS_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT + ADMIN_CRASH_VIRTUAL_USERS_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {

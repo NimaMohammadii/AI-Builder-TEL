@@ -6,7 +6,6 @@ import { SLOT_STYLES } from './slot-styles';
 import { PLINKO_CONTROLS_MODERN_STYLES } from './plinko-controls-modern-styles';
 import { CRASH_CONTROLS_MODERN_STYLES } from './crash-controls-modern-styles';
 import { PLAY_ZONE_STYLES } from './play-zone-styles';
-import { PREDICT_ZONE_CARD_STYLES } from './predict-zone-card-styles';
 import { PREDICT_ZONE_STYLES } from './predict-zone-styles';
 import { PREDICT_CRYPTO_SELECTOR_STYLES } from './predict-crypto-selector-styles';
 import { PREDICT_CARD_ACTIONS_STYLES } from './predict-card-actions-styles';
@@ -24,7 +23,6 @@ import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
 import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
-import { SECTION_LOCK_BACKGROUND_FIX_STYLES } from './section-lock-background-fix-styles';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
@@ -40,7 +38,6 @@ import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
 import { DICE_FINAL_TWEAK } from './dice-final-tweak';
-import { DICE_ASSET_CACHE_SCRIPT } from './dice-asset-cache-script';
 import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
@@ -48,9 +45,7 @@ import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
-import { PLAY_ZONE_IMAGE_REFRESH_SCRIPT } from './play-zone-image-refresh-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
-import { PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone-visibility-script';
 import { PLINKO_SCRIPT } from './plinko-script';
 import { PLINKO_DROP_FEEDBACK_SCRIPT } from './plinko-drop-feedback-script';
 import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
@@ -58,13 +53,8 @@ import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
 import { MINES_SCRIPT } from './mines-script';
 import { CRASH_SCRIPT } from './crash-script';
 import { SLOT_SCRIPT } from './slot-script';
-import { WHEEL_ASSETS_SCRIPT } from './wheel-assets-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
-import { SECTION_LOCK_SCRIPT } from './section-lock-script';
-import { SECTION_LOADING_LOCK_SCRIPT } from './section-loading-lock-script';
-import { SECTION_TRUSTED_ACCESS_SCRIPT } from './section-trusted-access-script';
-import { SECTION_LOCK_IMAGE_SPLIT_SCRIPT } from './section-lock-image-split-script';
 import { MINIAPP_AUDIO_SCRIPT } from './audio-script';
 import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
 import { PREDICT_ZONE_SETTINGS_SCRIPT } from './predict-zone-settings-script';
@@ -73,7 +63,6 @@ import { PREDICT_ENTRY_LOADER_SCRIPT } from './predict-entry-loader-script';
 import { PREDICT_CARD_ACTIONS_SCRIPT } from './predict-card-actions-script';
 import { FOOTBALL_PREDICT_SCRIPT } from './football-predict-script';
 import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
-import { UPLOADED_IMAGE_CACHE_SCRIPT } from '../uploaded-image-cache-script';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
@@ -151,7 +140,6 @@ const STYLES = [
   PLINKO_CONTROLS_MODERN_STYLES,
   CRASH_CONTROLS_MODERN_STYLES,
   PLAY_ZONE_STYLES,
-  PREDICT_ZONE_CARD_STYLES,
   PREDICT_ZONE_STYLES,
   PREDICT_CRYPTO_SELECTOR_STYLES,
   PREDICT_CARD_ACTIONS_STYLES,
@@ -170,7 +158,6 @@ const STYLES = [
   NAV_GLASS_OVERRIDES,
   GLASS_COMPONENTS_OVERRIDES,
   APP_BACKGROUND_OVERRIDES,
-  SECTION_LOCK_BACKGROUND_FIX_STYLES,
   SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
@@ -190,7 +177,7 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
   { id: 'slot', html: SLOT_SECTION, scripts: [SLOT_SCRIPT] },
-  { id: 'wheel', html: WHEEL_SECTION, scripts: [WHEEL_ASSETS_SCRIPT] },
+  { id: 'wheel', html: WHEEL_SECTION, scripts: [] },
   { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
   { id: 'rps', html: RPS_SECTION },
   { id: 'coinflip', html: PUMP_SECTION },
@@ -255,7 +242,6 @@ function lazySectionLoaderScript(): string {
 
 const SCRIPTS = [
   BOOT_LOADER_SCRIPT,
-  DICE_ASSET_CACHE_SCRIPT,
   lazySectionLoaderScript(),
   MINIAPP_SCRIPT,
   ACTIVITY_SCRIPT,
@@ -265,16 +251,9 @@ const SCRIPTS = [
   HOME_IMAGE_VERSION_SCRIPT,
   HOME_BLANK_CARDS_SCRIPT,
   HOME_SLOT_TUNING_SCRIPT,
-  PLAY_ZONE_IMAGE_REFRESH_SCRIPT,
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
-  PLAY_ZONE_VISIBILITY_SCRIPT,
   GAME_LIVE_COUNT_SCRIPT,
   TELEGRAM_BACK_BUTTON_SCRIPT,
-  UPLOADED_IMAGE_CACHE_SCRIPT,
-  SECTION_TRUSTED_ACCESS_SCRIPT,
-  SECTION_LOCK_SCRIPT,
-  SECTION_LOADING_LOCK_SCRIPT,
-  SECTION_LOCK_IMAGE_SPLIT_SCRIPT,
   SECTION_BACKGROUND_SCRIPT,
   MINIAPP_AUDIO_SCRIPT,
   XP_BAR_EFFECTS_SCRIPT,

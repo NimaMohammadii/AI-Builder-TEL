@@ -1,6 +1,5 @@
 import app from './index';
 import './football-routes';
-import { hasAccessOverride } from './user-access-override-routes';
 import type { Env } from './types';
 import { isAdminSession } from './admin-auth';
 
@@ -19,9 +18,6 @@ type PredictSettings = {
 
 app.get('/app/api/predict-settings', async (c) => {
   const settings = await getPredictSettings(c.env);
-  if (await hasAccessOverride(c.env, c.req.query('userId'))) {
-    return c.json({ ...settings, trustedAccess: true, hiddenCards: visiblePredictCards(), lockedMarkets: unlockedPredictMarkets() }, 200, { 'cache-control': CACHE_NONE });
-  }
   return c.json(settings, 200, { 'cache-control': CACHE_NONE });
 });
 

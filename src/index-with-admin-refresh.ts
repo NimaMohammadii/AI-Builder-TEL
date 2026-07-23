@@ -97,7 +97,7 @@ async function isAdminRequest(c: { env: Env; req: { header: (name: string) => st
 
 function cacheStaticImageResponse(request: Request, response: Response): Response {
   const pathname = new URL(request.url).pathname;
-  if (!pathname.startsWith('/app/api/section-lock-image/') && pathname !== '/app/api/home-intro-image.png') return response;
+  if (pathname !== '/app/api/home-intro-image.png') return response;
   const headers = new Headers(response.headers);
   headers.set('cache-control', 'public, max-age=31536000, immutable');
   headers.delete('pragma');
