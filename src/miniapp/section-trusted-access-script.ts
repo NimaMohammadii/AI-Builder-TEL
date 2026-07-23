@@ -49,8 +49,6 @@ export const SECTION_TRUSTED_ACCESS_SCRIPT = `
       return nativeFetch(input,init);
     };
   }
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)readTrusted(false)});
-  document.addEventListener('click',function(){readTrusted(false)},true);
   if(window.MutationObserver){new MutationObserver(function(){if(trusted)removeLockViews()}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']})}
 })();
 `;

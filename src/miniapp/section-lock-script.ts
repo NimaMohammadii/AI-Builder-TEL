@@ -173,7 +173,7 @@ export const SECTION_LOCK_SCRIPT = `
 
   window.VexaSectionLocks={reload:function(sections){return loadLocks(true,sections)},syncUser:function(){return syncUserControls(true)},apply:applyLocks,playZoneSections:playZoneSectionList,currentSections:currentSectionList};
   document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.section-locked-view,.connect-card-locked-view'))return;if(isNavigationEvent(ev))setTimeout(function(){loadLocks(false,sectionsForNavigation())},40)},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){if(Object.keys(lastLoadAtBySectionKey).length)loadLocks(false);if(lastUserLoadAt)syncUserControls(false);updateKeyboardInset()}});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)updateKeyboardInset()});
   applyCachedLocks();
 })();
 `;
