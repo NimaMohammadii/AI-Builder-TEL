@@ -15,10 +15,6 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "SECTION_LOCK_EVENTS",
-        "class_name": "SectionLockEvents"
-      },
-      {
         "name": "PLINKO_LIVE",
         "class_name": "PlinkoLiveRoom"
       }
@@ -26,15 +22,15 @@
   },
   "migrations": [
     {
-      "tag": "v1",
-      "new_sqlite_classes": ["SectionLockEvents"]
-    },
-    {
       "tag": "v2",
       "new_sqlite_classes": ["PlinkoLiveRoom"]
     },
     {
       "tag": "v3"
+    },
+    {
+      "tag": "v4",
+      "deleted_classes": ["SectionLockEvents"]
     }
   ],
   "d1_databases": [

@@ -4,7 +4,6 @@ import './withdrawal-admin-routes';
 import app from './index-with-admin-refresh';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 
-export { SectionLockEvents } from './section-lock-events';
 export { PlinkoLiveRoom } from './plinko-live';
 
 export class GhostRunLiveRoom {
