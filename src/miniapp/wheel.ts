@@ -1,526 +1,44 @@
 export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
-    html:has(#wheel.active),
-    body:has(#wheel.active) {
-      background: #020102 !important;
-      background-color: #020102 !important;
-    }
-
-    body:has(#wheel.active) .app,
-    body:has(#wheel.active) main.app,
-    body:has(#wheel.active) .content,
-    body:has(#wheel.active) .view.active,
-    body:has(#wheel.active) #wheel,
-    body:has(#wheel.active) .wheel-view,
-    body:has(#wheel.active) .top,
-    body:has(#wheel.active) header.top {
-      background: transparent !important;
-      background-color: transparent !important;
-      background-image: none !important;
-      box-shadow: none !important;
-    }
-
-    body:has(#wheel.active)::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: -3;
-      background: radial-gradient(ellipse 118% 55% at 48% -10%, rgba(64,8,28,.58), transparent 62%), radial-gradient(ellipse 92% 15% at 50% 40%, rgba(0,0,0,.36), transparent 74%), linear-gradient(23deg, transparent 0 39%, rgba(0,0,0,.20) 47%, transparent 60%), linear-gradient(154deg, transparent 0 37%, rgba(0,0,0,.19) 48%, transparent 62%), radial-gradient(ellipse 68% 42% at 50% 42%, rgba(72,9,32,.28), transparent 68%), radial-gradient(ellipse 52% 38% at -8% 46%, rgba(92,12,38,.30), transparent 70%), radial-gradient(ellipse 54% 40% at 108% 44%, rgba(58,6,28,.32), transparent 70%), radial-gradient(ellipse 42% 34% at 4% 94%, rgba(48,5,24,.24), transparent 72%), radial-gradient(ellipse 42% 34% at 96% 92%, rgba(48,5,24,.24), transparent 72%), radial-gradient(ellipse 86% 48% at 20% 2%, rgba(78,10,34,.42), transparent 66%), radial-gradient(ellipse 82% 50% at 96% 8%, rgba(32,3,18,.62), transparent 64%), linear-gradient(180deg, #030102 0%, #070205 34%, #050303 62%, #010101 100%) !important;
-      pointer-events: none;
-    }
-
-    body:has(#wheel.active)::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: -2;
-      background: linear-gradient(166deg, transparent 0 41%, rgba(96,12,42,.14) 48%, rgba(0,0,0,.24) 55%, transparent 66%), linear-gradient(18deg, transparent 0 42%, rgba(92,10,40,.13) 49%, rgba(0,0,0,.22) 56%, transparent 67%), radial-gradient(ellipse 78% 42% at 50% 10%, rgba(255,230,238,.040), transparent 60%), radial-gradient(ellipse 88% 18% at 50% 34%, rgba(0,0,0,.26), transparent 76%), radial-gradient(ellipse 62% 34% at 50% 50%, rgba(255,205,220,.014), transparent 70%), linear-gradient(180deg, rgba(255,210,225,.012), transparent 22%, rgba(0,0,0,.30) 100%) !important;
-      pointer-events: none;
-    }
-
-    body:has(#wheel.active) .app::before {
-      content: '';
-      position: absolute;
-      left: -26%;
-      right: -26%;
-      top: -10%;
-      height: 72%;
-      z-index: 0;
-      background: radial-gradient(ellipse 72% 70% at 48% 4%, rgba(82,10,36,.40), transparent 66%), radial-gradient(ellipse 96% 14% at 50% 45%, rgba(0,0,0,.30), transparent 78%), linear-gradient(24deg, transparent 0 44%, rgba(0,0,0,.21) 52%, transparent 66%), linear-gradient(151deg, transparent 0 43%, rgba(0,0,0,.20) 52%, transparent 67%), linear-gradient(92deg, transparent 0 44%, rgba(96,12,42,.10) 51%, rgba(0,0,0,.13) 58%, transparent 68%), radial-gradient(ellipse 70% 58% at 52% 52%, rgba(76,9,34,.24), transparent 70%), radial-gradient(ellipse 50% 60% at 4% 48%, rgba(98,12,40,.23), transparent 72%), radial-gradient(ellipse 50% 60% at 98% 44%, rgba(62,6,30,.26), transparent 72%), radial-gradient(ellipse 62% 72% at 20% 16%, rgba(98,12,40,.28), transparent 70%), radial-gradient(ellipse 66% 72% at 88% 8%, rgba(28,3,18,.66), transparent 72%) !important;
-      pointer-events: none;
-    }
-
-    body:has(#wheel.active) .app::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      background: linear-gradient(160deg, transparent 0 40%, rgba(0,0,0,.14) 50%, transparent 61%), linear-gradient(26deg, transparent 0 42%, rgba(0,0,0,.12) 51%, transparent 62%), linear-gradient(180deg, rgba(255,220,232,.010), transparent 26%, rgba(0,0,0,.20) 100%) !important;
-      pointer-events: none;
-    }
-
-    body:has(#wheel.active) .content::before,
-    body:has(#wheel.active) .content::after,
-    body:has(#wheel.active) #wheel::before,
-    body:has(#wheel.active) #wheel::after {
-      background: transparent !important;
-      background-image: none !important;
-      box-shadow: none !important;
-    }
-
-    body:has(#wheel.active) .tabs {
-      display: none !important;
-    }
-
-    .wheel-view {
-      position: relative;
-      box-sizing: border-box;
-      height: 100%;
-      min-height: 100%;
-      padding: 0 14px calc(96px + env(safe-area-inset-bottom));
-      background: #000 !important;
-      color: white;
-      overflow-y: auto !important;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .wheel-wrap {
-      position: relative;
-      z-index: 1;
-      max-width: 520px;
-      margin: 0 auto;
-      display: grid;
-      gap: 12px;
-    }
-
-    .wheel-stage {
-      position: relative;
-      height: 372px;
-      display: grid;
-      place-items: center;
-      margin-top: 4px;
-    }
-
-    .wheel-canvas {
-      position: relative;
-      z-index: 1;
-      width: min(356px, 88vw);
-      height: min(356px, 88vw);
-      filter: none;
-    }
-
-    .wheel-pointer {
-      position: absolute;
-      top: 18px;
-      left: 50%;
-      width: 38px;
-      height: 34px;
-      z-index: 5;
-      transform: translateX(-50%);
-      background: transparent !important;
-      filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .78)) drop-shadow(0 0 8px rgba(255, 255, 255, .16));
-    }
-
-    .wheel-pointer:before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 0;
-      height: 0;
-      border-left: 19px solid transparent !important;
-      border-right: 19px solid transparent !important;
-      border-top: 34px solid rgba(255,255,255,.94) !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      clip-path: none;
-    }
-
-    .wheel-pointer:after {
-      content: '';
-      position: absolute;
-      left: 3px;
-      top: 2px;
-      width: 0;
-      height: 0;
-      border-left: 16px solid transparent;
-      border-right: 16px solid transparent;
-      border-top: 29px solid #030304;
-      background: transparent;
-      clip-path: none;
-      pointer-events: none;
-    }
-
-    .wheel-center {
-      position: absolute;
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at 34% 24%, rgba(255,255,255,.36), rgba(255,255,255,.10) 33%, rgba(8,8,10,.78) 72%) !important;
-      border: 1px solid rgba(255, 255, 255, .34) !important;
-      box-shadow: 0 16px 34px rgba(0, 0, 0, .70), inset 0 1px 0 rgba(255, 255, 255, .48), inset 0 -10px 18px rgba(0,0,0,.56), inset 0 0 18px rgba(255,255,255,.08) !important;
-      backdrop-filter: blur(8px) saturate(1.28);
-      -webkit-backdrop-filter: blur(8px) saturate(1.28);
-      z-index: 4;
-      text-align: center;
-      overflow: hidden;
-    }
-
-    .wheel-center:before {
-      content: '';
-      position: absolute;
-      left: 9px;
-      top: 7px;
-      width: 19px;
-      height: 10px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.32);
-      filter: blur(.4px);
-      transform: rotate(-22deg);
-      pointer-events: none;
-    }
-
-    .wheel-center b {
-      position: relative;
-      font-size: 29px;
-      line-height: 1;
-      font-family: Georgia, 'Times New Roman', serif;
-      font-weight: 900;
-      letter-spacing: -.12em;
-      padding-right: 2px;
-      color: transparent;
-      background: linear-gradient(180deg, #ffffff 0%, #d7d7dc 42%, #7f8089 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      text-shadow: 0 2px 10px rgba(255,255,255,.20), 0 9px 18px rgba(0,0,0,.84);
-    }
-
-    .wheel-panel {
-      position: relative;
-      border: 0 !important;
-      border-radius: 28px;
-      background: transparent !important;
-      box-shadow: none !important;
-      padding: 12px 14px 14px;
-      margin-bottom: 48px;
-    }
-
-    .wheel-controls {
-      display: grid;
-      gap: 10px;
-    }
-
-    .wheel-input-row {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 8px;
-    }
-
-    .wheel-input-row input {
-      height: 50px;
-      border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, .12);
-      background: rgba(255, 255, 255, .06);
-      color: #fff;
-      padding: 0 14px;
-      font-size: 18px;
-      font-weight: 900;
-      outline: none;
-    }
-
-    .wheel-multiplier-btn {
-      height: 50px;
-      min-width: 58px;
-      border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, .1);
-      background: rgba(0, 0, 0, .35);
-      color: #fff;
-      display: grid;
-      place-items: center;
-      font-weight: 950;
-      font-size: 13px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
-    }
-
-    .wheel-chance-card {
-      position: relative;
-      border: 0 !important;
-      border-radius: 0;
-      background: transparent !important;
-      padding: 0;
-      box-shadow: none !important;
-    }
-
-    .wheel-chance-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      position: absolute;
-      left: 18px;
-      right: 18px;
-      top: 14px;
-      z-index: 3;
-      margin-bottom: 0;
-      padding: 0;
-      font-size: 12px;
-      font-weight: 900;
-      color: rgba(255, 255, 255, .56);
-      letter-spacing: -.02em;
-    }
-
-    .wheel-chance-head b {
-      color: #fff;
-      font-size: 14px;
-      font-weight: 950;
-      font-variant-numeric: tabular-nums lining-nums;
-    }
-
-    .wheel-chance-shell {
-      --wheel-left-color: rgba(58, 6, 20, .84);
-      --wheel-right-color: rgba(138, 138, 146, .54);
-      position: relative;
-      height: 96px;
-      border-radius: 22px;
-      background: rgba(8,8,10,.48) !important;
-      border: 1px solid rgba(255,255,255,.12) !important;
-      overflow: visible;
-      box-shadow: none !important;
-      touch-action: none;
-      user-select: none;
-      padding: 42px 6px 24px;
-      box-sizing: border-box;
-    }
-
-    .wheel-chance-shell:before {
-      content: '';
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      top: 57px;
-      height: 10px;
-      background: linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 25%, rgba(255,255,255,.10) 25% calc(25% + 2px), transparent calc(25% + 2px) 50%, rgba(255,255,255,.10) 50% calc(50% + 2px), transparent calc(50% + 2px) 75%, rgba(255,255,255,.10) 75% calc(75% + 2px), transparent calc(75% + 2px) 100%);
-      clip-path: polygon(0 100%, 1.6% 0, 3.2% 100%, 25% 100%, 26.6% 0, 28.2% 100%, 50% 100%, 51.6% 0, 53.2% 100%, 75% 100%, 76.6% 0, 78.2% 100%, 100% 100%);
-      opacity: .56;
-      pointer-events: none;
-    }
-
-    .wheel-chance-fill {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      top: 63%;
-      height: 30px;
-      border-radius: 999px;
-      transform: translateY(-50%);
-      background: rgba(14,14,16,.86);
-      border: 1px solid rgba(255,255,255,.15);
-      box-shadow: 0 16px 36px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.55);
-      backdrop-filter: blur(6px) saturate(1.15);
-      -webkit-backdrop-filter: blur(6px) saturate(1.15);
-      pointer-events: none;
-      transition: none;
-    }
-
-    .wheel-chance-fill:before {
-      content: '';
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      top: 50%;
-      height: 12px;
-      border-radius: 999px;
-      transform: translateY(-50%);
-      background: linear-gradient(90deg, var(--wheel-left-color) 0%, var(--wheel-left-color) var(--wheel-pos, 20%), var(--wheel-right-color) var(--wheel-pos, 20%), var(--wheel-right-color) 100%);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 0 14px rgba(0,0,0,.42);
-      transition: background .12s cubic-bezier(.2,.8,.2,1);
-    }
-
-    .wheel-chance-thumb {
-      position: absolute;
-      left: calc(29px + (100% - 58px) * var(--wheel-ratio, .2));
-      top: 63%;
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      transform: translate(-50%, -50%);
-      background: var(--wheel-thumb-color, #4a0a1e);
-      border: 1px solid rgba(255,255,255,.34);
-      box-shadow: 0 14px 34px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(255,255,255,.06);
-      backdrop-filter: blur(7px) saturate(1.22);
-      -webkit-backdrop-filter: blur(7px) saturate(1.22);
-      pointer-events: none;
-      transition: left .10s cubic-bezier(.2,.8,.2,1), transform .16s ease, box-shadow .16s ease;
-    }
-
-    .wheel-chance-thumb:before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 17px;
-      height: 18px;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(90deg, rgba(255,255,255,.58) 0 3px, transparent 3px 7px, rgba(255,255,255,.58) 7px 10px, transparent 10px 14px, rgba(255,255,255,.58) 14px 17px);
-      border-radius: 2px;
-      filter: drop-shadow(0 1px 6px rgba(0,0,0,.35));
-    }
-
-    .wheel-chance-shell.dragging .wheel-chance-fill:before,
-    .wheel-chance-shell.dragging .wheel-chance-thumb {
-      transition-duration: .045s;
-    }
-
-    .wheel-chance-shell.dragging .wheel-chance-thumb {
-      transform: translate(-50%, -50%) scale(1.055);
-      box-shadow: 0 18px 40px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.50);
-    }
-
-    .wheel-chance-slider {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      opacity: 0;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-    }
-
-    .wheel-chance-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 52px;
-      height: 52px;
-    }
-
-    .wheel-chance-slider::-moz-range-thumb {
-      width: 52px;
-      height: 52px;
-      border: 0;
-    }
-
-    .wheel-quick {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .wheel-quick button,
-    .wheel-join {
-      border: 1px solid rgba(255, 255, 255, .12);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, .06);
-      color: #fff;
-      font-weight: 900;
-      height: 44px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
-    }
-
-    .wheel-quick button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1px;
-    }
-
-    .wheel-ton-icon {
-      width: 24px;
-      height: 24px;
-      display: inline-block;
-      object-fit: contain;
-      flex: 0 0 24px;
-      filter: drop-shadow(0 3px 8px rgba(0,136,204,.28));
-    }
-
-    .wheel-quick button.active {
-      background: #4a0a1e;
-      border-color: #5f0d27;
-    }
-
-    .wheel-join {
-      height: 58px;
-      border-radius: 18px;
-      font-size: 18px;
-      background: #3b0715;
-      color: #ffdce5;
-      letter-spacing: -.045em;
-      border-color: rgba(255, 96, 128, .18);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, .50), inset 0 1px 0 rgba(255,255,255,.08);
-      transition: transform .18s ease, opacity .18s ease, background .18s ease;
-    }
-
-    .wheel-join:active {
-      transform: scale(.975);
-    }
-
-    .wheel-join:disabled {
-      opacity: .62;
-      transform: scale(.985);
-    }
-
-    .wheel-join.win {
-      background: #0f3f2a;
-      border-color: rgba(120,255,179,.22);
-      color: #d8ffe8;
-    }
-
-    .wheel-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .wheel-stat {
-      border: 1px solid rgba(255, 255, 255, .1);
-      border-radius: 18px;
-      background: rgba(0, 0, 0, .35);
-      padding: 11px;
-      text-align: center;
-    }
-
-    .wheel-stat small {
-      display: block;
-      color: rgba(255, 255, 255, .45);
-      font-size: 10px;
-      font-weight: 850;
-    }
-
-    .wheel-stat b {
-      display: block;
-      margin-top: 4px;
-      font-size: 14px;
-    }
-
-    .wheel-players {
-      display: grid;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    @media(max-width: 420px) {
-      .wheel-stage {
-        height: 354px;
-      }
-
-      .wheel-canvas {
-        width: min(338px, 90vw);
-        height: min(338px, 90vw);
-      }
-
-      .wheel-center {
-        width: 50px;
-        height: 50px;
-      }
-    }
+    html:has(#wheel.active),body:has(#wheel.active){background:#020102!important;background-color:#020102!important}
+    body:has(#wheel.active) .app,body:has(#wheel.active) main.app,body:has(#wheel.active) .content,body:has(#wheel.active) .view.active,body:has(#wheel.active) #wheel,body:has(#wheel.active) .wheel-view,body:has(#wheel.active) .top,body:has(#wheel.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
+    body:has(#wheel.active)::before{content:"";position:fixed;inset:0;z-index:-3;background:radial-gradient(ellipse 110% 58% at 50% -12%,rgba(76,8,30,.62),transparent 62%),radial-gradient(ellipse 70% 40% at 50% 28%,rgba(50,5,22,.36),transparent 70%),linear-gradient(180deg,#030102 0%,#090204 38%,#050203 68%,#010101 100%)!important;pointer-events:none}
+    body:has(#wheel.active)::after{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(ellipse 80% 42% at 50% 8%,rgba(255,230,238,.035),transparent 62%),linear-gradient(160deg,transparent 0 42%,rgba(90,10,38,.12) 49%,transparent 62%),linear-gradient(180deg,transparent 0 30%,rgba(0,0,0,.36) 100%)!important;pointer-events:none}
+    body:has(#wheel.active) .tabs{display:none!important}
+    .wheel-view{position:relative;box-sizing:border-box;height:100%;min-height:100%;padding:10px 14px calc(96px + env(safe-area-inset-bottom));background:transparent!important;color:#fff;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+    .wheel-wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;display:grid;gap:14px}
+    .wheel-stage{position:relative;height:360px;display:grid;place-items:center;margin-top:2px}
+    .wheel-canvas{position:relative;z-index:1;width:min(342px,88vw);height:min(342px,88vw);filter:drop-shadow(0 28px 38px rgba(0,0,0,.58)) drop-shadow(0 0 24px rgba(74,10,30,.22))}
+    .wheel-stage:before{content:"";position:absolute;width:min(350px,90vw);height:min(350px,90vw);border-radius:50%;background:radial-gradient(circle,rgba(82,10,34,.20),rgba(0,0,0,.18) 58%,transparent 72%);filter:blur(10px);pointer-events:none}
+    .wheel-pointer{position:absolute;top:12px;left:50%;width:34px;height:30px;z-index:5;transform:translateX(-50%);filter:drop-shadow(0 10px 18px rgba(0,0,0,.78))}
+    .wheel-pointer:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#fff,#d7c8ce);clip-path:polygon(0 0,100% 0,50% 100%);border-radius:5px}
+    .wheel-pointer:after{content:"";position:absolute;left:4px;right:4px;top:3px;height:21px;background:#28050f;clip-path:polygon(0 0,100% 0,50% 100%)}
+    .wheel-center{position:absolute;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 34% 24%,rgba(255,255,255,.32),rgba(76,10,31,.92) 38%,#100307 76%)!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 14px 30px rgba(0,0,0,.70),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -10px 18px rgba(0,0,0,.62)!important;z-index:4;overflow:hidden}
+    .wheel-center:before{content:"";position:absolute;left:10px;top:8px;width:21px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);transform:rotate(-22deg)}
+    .wheel-center b{position:relative;font-size:28px;line-height:1;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:-.12em;padding-right:2px;color:#fff;text-shadow:0 2px 10px rgba(255,255,255,.16),0 9px 18px rgba(0,0,0,.84)}
+    .wheel-panel{position:relative;border:1px solid rgba(255,255,255,.10)!important;border-radius:28px;background:linear-gradient(180deg,rgba(20,6,11,.92),rgba(7,3,5,.94))!important;box-shadow:0 24px 60px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.06)!important;padding:16px;margin-bottom:48px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+    .wheel-controls{display:grid;gap:11px}
+    .wheel-input-row{display:grid;grid-template-columns:1fr auto auto;gap:8px}
+    .wheel-input-row input{height:50px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:#0d0709;color:#fff;padding:0 15px;font-size:18px;font-weight:900;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+    .wheel-multiplier-btn{height:50px;min-width:58px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:#10080b;color:#fff;display:grid;place-items:center;font-weight:900;font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+    .wheel-chance-card{position:relative;border:0!important;background:transparent!important;padding:0;box-shadow:none!important}
+    .wheel-chance-head{display:flex;align-items:center;justify-content:space-between;position:absolute;left:18px;right:18px;top:14px;z-index:3;font-size:12px;font-weight:800;color:rgba(255,255,255,.56)}
+    .wheel-chance-head b{color:#fff;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
+    .wheel-chance-shell{--wheel-left-color:#5a0a25;--wheel-right-color:#2a2528;position:relative;height:96px;border-radius:20px;background:#0b0608!important;border:1px solid rgba(255,255,255,.09)!important;overflow:visible;touch-action:none;user-select:none;padding:42px 6px 24px;box-sizing:border-box}
+    .wheel-chance-shell:before{content:"";position:absolute;left:20px;right:20px;top:57px;height:10px;background:linear-gradient(90deg,rgba(255,255,255,.09) 0 2px,transparent 2px 25%,rgba(255,255,255,.09) 25% calc(25% + 2px),transparent calc(25% + 2px) 50%,rgba(255,255,255,.09) 50% calc(50% + 2px),transparent calc(50% + 2px) 75%,rgba(255,255,255,.09) 75% calc(75% + 2px),transparent calc(75% + 2px));clip-path:polygon(0 100%,1.6% 0,3.2% 100%,25% 100%,26.6% 0,28.2% 100%,50% 100%,51.6% 0,53.2% 100%,75% 100%,76.6% 0,78.2% 100%,100% 100%);opacity:.5;pointer-events:none}
+    .wheel-chance-fill{position:absolute;left:12px;right:12px;top:63%;height:30px;border-radius:999px;transform:translateY(-50%);background:#080507;border:1px solid rgba(255,255,255,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);pointer-events:none}
+    .wheel-chance-fill:before{content:"";position:absolute;left:16px;right:16px;top:50%;height:12px;border-radius:999px;transform:translateY(-50%);background:linear-gradient(90deg,var(--wheel-left-color) 0%,var(--wheel-left-color) var(--wheel-pos,20%),var(--wheel-right-color) var(--wheel-pos,20%),var(--wheel-right-color) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+    .wheel-chance-thumb{position:absolute;left:calc(29px + (100% - 58px) * var(--wheel-ratio,.2));top:63%;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:var(--wheel-thumb-color,#5a0a25);border:1px solid rgba(255,255,255,.34);box-shadow:0 12px 26px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.36);pointer-events:none}
+    .wheel-chance-thumb:before{content:"";position:absolute;left:50%;top:50%;width:13px;height:13px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(255,255,255,.68);box-shadow:0 0 0 4px rgba(0,0,0,.16)}
+    .wheel-chance-slider{position:absolute;inset:0;z-index:2;width:100%;height:100%;margin:0;opacity:0;appearance:none;-webkit-appearance:none;cursor:pointer}
+    .wheel-chance-slider::-webkit-slider-thumb{-webkit-appearance:none;width:52px;height:52px}.wheel-chance-slider::-moz-range-thumb{width:52px;height:52px;border:0}
+    .wheel-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .wheel-quick button,.wheel-join{border:1px solid rgba(255,255,255,.10);border-radius:16px;background:#10080b;color:#fff;font-weight:900;height:44px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+    .wheel-quick button{display:inline-flex;align-items:center;justify-content:center;gap:1px}.wheel-ton-icon{width:24px;height:24px;display:inline-block;object-fit:contain;flex:0 0 24px}.wheel-quick button.active{background:#4a0a1e;border-color:#721239;color:#ffe4ec}
+    .wheel-join{height:58px;font-size:17px;background:linear-gradient(180deg,#65102d,#3b0718);color:#fff0f4;border-color:rgba(255,120,153,.20);box-shadow:0 14px 28px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.11);transition:transform .18s ease,opacity .18s ease}.wheel-join:active{transform:scale(.975)}.wheel-join:disabled{opacity:.62}.wheel-join.win{background:#0f3f2a;border-color:rgba(120,255,179,.22);color:#d8ffe8}
+    .wheel-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.wheel-stat{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:#0b0608;padding:11px;text-align:center}.wheel-stat small{display:block;color:rgba(255,255,255,.42);font-size:9px;font-weight:800}.wheel-stat b{display:block;margin-top:4px;font-size:14px}.wheel-players{display:grid;gap:8px;margin-top:12px}
+    @media(max-width:420px){.wheel-stage{height:348px}.wheel-canvas{width:min(330px,89vw);height:min(330px,89vw)}.wheel-center{width:56px;height:56px}}
   </style>
 
   <div class="wheel-wrap">
@@ -605,64 +123,17 @@ export const WHEEL_SECTION = `
         var pointerAngle = 0;
         var creditIconSrc = '/app/api/uploaded-image/ton-icon.png?v=' + Date.now();
 
-        function clampChance(value) {
-          return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20)));
-        }
-
-        function chanceToRatio(chance) {
-          return (clampChance(chance) - minChance) / Math.max(1, maxChance - minChance);
-        }
-
-        function chanceToPos(chance) {
-          return chanceToRatio(chance) * 100;
-        }
-
-        function posToChance(pos) {
-          var clampedPos = Math.max(minChance, Math.min(maxChance, pos));
-          return clampChance(clampedPos);
-        }
-
-        function chanceFromClientX(clientX) {
-          var rect = chanceShell.getBoundingClientRect();
-          var usableLeft = rect.left + 29;
-          var usableWidth = Math.max(1, rect.width - 58);
-          var pos = ((clientX - usableLeft) / usableWidth) * 100;
-          return posToChance(pos);
-        }
-
-        function multiplierFor(chance) {
-          return Math.max(1.01, Math.floor((100 / chance) * houseEdge * 100) / 100);
-        }
-
-        function money(n) {
-          var x = Number(n) || 0;
-          var text = x.toFixed(2);
-          if (text.slice(-3) === '.00') return text.slice(0, -3);
-          if (text.charAt(text.length - 1) === '0') return text.slice(0, -1);
-          return text;
-        }
-
-        function balance() {
-          return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0;
-        }
-
-        function changeBalance(deltaNano) {
-          if (window.VexaTonBalance) window.VexaTonBalance.add(Math.floor(Number(deltaNano) || 0));
-        }
-
-        function toNano(value) {
-          return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * 1000000000));
-        }
-
-        function hydrateCreditIcons() {
-          var src = creditIconSrc;
-          var img = new Image();
-          img.decoding = 'async';
-          img.src = src;
-          root.querySelectorAll('[data-wheel-credit-icon]').forEach(function (item) {
-            if (item.getAttribute('src') !== src) item.setAttribute('src', src);
-          });
-        }
+        function clampChance(value) { return Math.max(minChance, Math.min(maxChance, Math.round(Number(value) || 20))); }
+        function chanceToRatio(chance) { return (clampChance(chance) - minChance) / Math.max(1, maxChance - minChance); }
+        function chanceToPos(chance) { return chanceToRatio(chance) * 100; }
+        function posToChance(pos) { var clampedPos = Math.max(minChance, Math.min(maxChance, pos)); return clampChance(clampedPos); }
+        function chanceFromClientX(clientX) { var rect = chanceShell.getBoundingClientRect(); var usableLeft = rect.left + 29; var usableWidth = Math.max(1, rect.width - 58); var pos = ((clientX - usableLeft) / usableWidth) * 100; return posToChance(pos); }
+        function multiplierFor(chance) { return Math.max(1.01, Math.floor((100 / chance) * houseEdge * 100) / 100); }
+        function money(n) { var x = Number(n) || 0; var text = x.toFixed(2); if (text.slice(-3) === '.00') return text.slice(0, -3); if (text.charAt(text.length - 1) === '0') return text.slice(0, -1); return text; }
+        function balance() { return window.VexaTonBalance ? Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) : 0; }
+        function changeBalance(deltaNano) { if (window.VexaTonBalance) window.VexaTonBalance.add(Math.floor(Number(deltaNano) || 0)); }
+        function toNano(value) { return Math.max(0, Math.floor((Number(String(value || '').replace(',', '.')) || 0) * 1000000000)); }
+        function hydrateCreditIcons() { var src = creditIconSrc; var img = new Image(); img.decoding = 'async'; img.src = src; root.querySelectorAll('[data-wheel-credit-icon]').forEach(function (item) { if (item.getAttribute('src') !== src) item.setAttribute('src', src); }); }
 
         function updateUi() {
           var chance = clampChance(chanceInput.value);
@@ -684,35 +155,10 @@ export const WHEEL_SECTION = `
           if (!spinning) draw(angle);
         }
 
-        function setChanceFromClientX(clientX) {
-          if (spinning || chanceInput.disabled) return;
-          chanceInput.value = String(chanceFromClientX(clientX));
-          updateUi();
-        }
-
-        function startDrag(event) {
-          if (spinning || chanceInput.disabled) return;
-          dragging = true;
-          chanceShell.classList.add('dragging');
-          if (chanceShell.setPointerCapture && event.pointerId != null) chanceShell.setPointerCapture(event.pointerId);
-          setChanceFromClientX(event.clientX);
-          event.preventDefault();
-        }
-
-        function moveDrag(event) {
-          if (!dragging) return;
-          setChanceFromClientX(event.clientX);
-          event.preventDefault();
-        }
-
-        function endDrag(event) {
-          if (!dragging) return;
-          dragging = false;
-          chanceShell.classList.remove('dragging');
-          if (chanceShell.releasePointerCapture && event && event.pointerId != null) {
-            try { chanceShell.releasePointerCapture(event.pointerId); } catch (e) {}
-          }
-        }
+        function setChanceFromClientX(clientX) { if (spinning || chanceInput.disabled) return; chanceInput.value = String(chanceFromClientX(clientX)); updateUi(); }
+        function startDrag(event) { if (spinning || chanceInput.disabled) return; dragging = true; chanceShell.classList.add('dragging'); if (chanceShell.setPointerCapture && event.pointerId != null) chanceShell.setPointerCapture(event.pointerId); setChanceFromClientX(event.clientX); event.preventDefault(); }
+        function moveDrag(event) { if (!dragging) return; setChanceFromClientX(event.clientX); event.preventDefault(); }
+        function endDrag(event) { if (!dragging) return; dragging = false; chanceShell.classList.remove('dragging'); if (chanceShell.releasePointerCapture && event && event.pointerId != null) { try { chanceShell.releasePointerCapture(event.pointerId); } catch (e) {} } }
 
         function slicePath(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
           var corner = .03;
@@ -737,9 +183,7 @@ export const WHEEL_SECTION = `
           var full = Math.PI * 2;
           var normalized = ((angleValue % full) + full) % full;
           var readableAngle = angleValue;
-          if (normalized > Math.PI / 2 && normalized < Math.PI * 1.5) {
-            readableAngle += Math.PI;
-          }
+          if (normalized > Math.PI / 2 && normalized < Math.PI * 1.5) readableAngle += Math.PI;
           ctx.save();
           ctx.translate(cx + Math.cos(angleValue) * radius, cy + Math.sin(angleValue) * radius);
           ctx.rotate(readableAngle);
@@ -794,36 +238,10 @@ export const WHEEL_SECTION = `
           ctx.stroke();
         }
 
-        function chooseTargetOffset(win, chance) {
-          var userArc = Math.PI * 2 * chance / 100;
-          if (win) {
-            var winSafe = Math.max(.01, userArc * .38);
-            return (Math.random() * winSafe * 2) - winSafe;
-          }
-          var loseSafe = Math.PI * 2 - userArc - .20;
-          return userArc / 2 + .10 + Math.random() * Math.max(.12, loseSafe);
-        }
-
-        function normalizeDelta(delta) {
-          var full = Math.PI * 2;
-          while (delta < 0) delta += full;
-          while (delta >= full) delta -= full;
-          return delta;
-        }
-
-        function setControlsLocked(locked) {
-          amountInput.disabled = !!locked;
-          chanceInput.disabled = !!locked;
-          halfButton.disabled = !!locked;
-          doubleButton.disabled = !!locked;
-          root.querySelectorAll('[data-wheel-quick]').forEach(function (button) {
-            button.disabled = !!locked;
-          });
-        }
-
-        function awardXP(amount, source, metadata) {
-          if (window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'wheel' });
-        }
+        function chooseTargetOffset(win, chance) { var userArc = Math.PI * 2 * chance / 100; if (win) { var winSafe = Math.max(.01, userArc * .38); return (Math.random() * winSafe * 2) - winSafe; } var loseSafe = Math.PI * 2 - userArc - .20; return userArc / 2 + .10 + Math.random() * Math.max(.12, loseSafe); }
+        function normalizeDelta(delta) { var full = Math.PI * 2; while (delta < 0) delta += full; while (delta >= full) delta -= full; return delta; }
+        function setControlsLocked(locked) { amountInput.disabled = !!locked; chanceInput.disabled = !!locked; halfButton.disabled = !!locked; doubleButton.disabled = !!locked; root.querySelectorAll('[data-wheel-quick]').forEach(function (button) { button.disabled = !!locked; }); }
+        function awardXP(amount, source, metadata) { if (window.VexaLevel && typeof window.VexaLevel.add === 'function') window.VexaLevel.add(amount, source, metadata || { section: 'wheel' }); }
 
         function spin() {
           if (spinning) return;
@@ -831,10 +249,7 @@ export const WHEEL_SECTION = `
           var betNano = toNano(amountInput.value);
           var mult = multiplierFor(chance);
           if (betNano <= 0) return;
-          if (window.VexaTonBalance && balance() < betNano) {
-            if (resultStat) resultStat.textContent = 'No TON';
-            return;
-          }
+          if (window.VexaTonBalance && balance() < betNano) { if (resultStat) resultStat.textContent = 'No TON'; return; }
           spinning = true;
           awardXP(2, 'game-start', { section: 'wheel', event: 'spin' });
           setControlsLocked(true);
@@ -885,16 +300,8 @@ export const WHEEL_SECTION = `
             amountInput.value = button.getAttribute('data-wheel-quick') || '0.1';
           });
         });
-        halfButton.addEventListener('click', function () {
-          if (spinning) return;
-          var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2);
-          amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
-        });
-        doubleButton.addEventListener('click', function () {
-          if (spinning) return;
-          var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2);
-          amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, '');
-        });
+        halfButton.addEventListener('click', function () { if (spinning) return; var value = Math.max(0.1, Number(amountInput.value || '0.1') / 2); amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, ''); });
+        doubleButton.addEventListener('click', function () { if (spinning) return; var value = Math.max(0.1, Number(amountInput.value || '0.1') * 2); amountInput.value = String(Math.round(value * 100) / 100).replace(/\.0$/, ''); });
         chanceInput.min = String(minChance);
         chanceInput.max = String(maxChance);
         hydrateCreditIcons();
