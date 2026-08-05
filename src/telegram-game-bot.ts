@@ -47,9 +47,28 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   }
 
   if (message) {
-    if (await handleBotAdminMessage(env, token, message, telegram as TelegramApi)) return;
+    const adminCommand = isAdminCommand(message.text);
+    const adminHandled = await handleBotAdminMessage(env, token, message, telegram as TelegramApi);
+    if (adminHandled) return;
+
+    // An admin command must never fall through to the normal game menu. When
+    // BOT_ADMIN is present but does not include this account, show the exact
+    // Telegram ID needed for configuration instead.
+    if (adminCommand) {
+      await telegram(token, 'sendMessage', {
+        chat_id: message.chat.id,
+        text: `دسترسی ادمین برای این حساب فعال نیست.\n\nآیدی عددی تلگرام شما: ${message.from?.id ?? message.chat.id}\nاین عدد را داخل BOT_ADMIN قرار بدهید.`,
+      }).catch(() => undefined);
+      return;
+    }
+
     await sendGameHome(token, message.chat.id);
   }
+}
+
+function isAdminCommand(text: string | undefined): boolean {
+  const normalized = String(text ?? '').trim().toLowerCase();
+  return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
 }
 
 async function sendGameHome(token: string, chatId: number): Promise<void> {
