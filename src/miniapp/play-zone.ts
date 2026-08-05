@@ -13,8 +13,10 @@ const playZoneGames = [
   ['ghostrun', 'Ghost Run', 'Run through the dark and survive', 'Play'],
 ] as const;
 
+const GAME_CARD_IMAGE_REVISION = '20260805-1';
+
 function gameCardImageUrl(id: string): string {
-  return `/app/api/game-card-image/${id}.png`;
+  return `/app/api/game-card-image/${id}.png?v=${GAME_CARD_IMAGE_REVISION}`;
 }
 
 function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
@@ -27,7 +29,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
     <span class="game-card-shell ${extraClass}" data-play-zone-card-id="${id}" ${viewAttr} ${countAttr}>
       <button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}">
         <span class="game-image">
-          <img src="${imageUrl}" data-section-image-src="${imageUrl}" data-fallback-src="${imageUrl}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src='/app/api/section-lock-image/${id}/locked.png?v=1'"/>
+          <img src="${imageUrl}" data-game-card-image-id="${id}" data-section-image-src="${imageUrl}" data-fallback-src="${imageUrl}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src='/app/api/section-lock-image/${id}/locked.png?v=1'"/>
         </span>
       </button>
       ${footer}
@@ -49,6 +51,39 @@ const PLAY_HUB_STORY_GRID_STYLES = `
 @media(max-width:360px){#playzone.play-zone-view{padding-left:7px!important;padding-right:7px!important}#playzone .play-zone-featured-row,#playzone .play-zone-grid-row{gap:8px 6px!important}#playzone .game-card{border-radius:14px!important}}
 `;
 
+const GAME_CARD_IMAGE_GUARD_SCRIPT = `
+<script>
+(function(){
+  var revision='${GAME_CARD_IMAGE_REVISION}';
+  var root=document.getElementById('playzone');
+  if(!root)return;
+  function endpoint(id){return '/app/api/game-card-image/'+id+'.png?v='+revision}
+  function repair(img,force){
+    if(!img||img.tagName!=='IMG')return;
+    var id=img.getAttribute('data-game-card-image-id');
+    if(!id)return;
+    var expectedPath='/app/api/game-card-image/'+id+'.png';
+    var currentPath='';
+    try{currentPath=new URL(img.getAttribute('src')||'',location.href).pathname}catch(e){}
+    if(!force&&currentPath===expectedPath&&img.getAttribute('data-admin-bg-overridden')!=='1')return;
+    var url=endpoint(id)+(force?'&t='+Date.now():'');
+    img.removeAttribute('data-admin-bg-overridden');
+    img.setAttribute('src',url);
+    img.setAttribute('data-section-image-src',url);
+    img.setAttribute('data-fallback-src',url);
+    img.style.display='';
+  }
+  function repairAll(force){
+    Array.prototype.forEach.call(root.querySelectorAll('img[data-game-card-image-id]'),function(img){repair(img,force)});
+  }
+  repairAll(true);
+  new MutationObserver(function(records){
+    records.forEach(function(record){if(record.type==='attributes')repair(record.target,false)});
+  }).observe(root,{subtree:true,attributes:true,attributeFilter:['src','data-admin-bg-overridden']});
+})();
+</script>
+`;
+
 export const PLAY_ZONE_SECTION = `
 <section id="playzone" class="view play-zone-view">
   <style id="playHubStoryGridStyles">${PLAY_HUB_STORY_GRID_STYLES}</style>
@@ -57,5 +92,6 @@ export const PLAY_ZONE_SECTION = `
       ${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}
     </div>
   </div>
+  ${GAME_CARD_IMAGE_GUARD_SCRIPT}
 </section>
 `;
