@@ -1,8 +1,9 @@
-name: Restore Play Hub and remove retired game
+name: Restore Play Hub cards and remove RPS
 
 on:
   push:
-    branches: [main]
+    branches:
+      - chatgpt/restore-playhub-remove-rps
     paths:
       - '.github/workflows/restore-playhub-remove-rps.yml'
 
@@ -15,17 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: chatgpt/restore-playhub-remove-rps
           fetch-depth: 0
 
-      - name: Restore original cards and remove retired game
+      - name: Apply precise file-owned changes
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           import subprocess
 
-          ROOT = Path('.')
+          CARD_BASE = '51aaa72c24902c8e351e16e031e80687d5f3d7bd'
 
           def read(path: str) -> str:
               return Path(path).read_text()
@@ -35,66 +36,107 @@ jobs:
 
           def replace_exact(path: str, old: str, new: str, count: int = -1) -> None:
               text = read(path)
-              if old not in text:
+              occurrences = text.count(old)
+              if occurrences == 0:
                   raise SystemExit(f'Expected text not found in {path}: {old!r}')
+              if count > 0 and occurrences < count:
+                  raise SystemExit(f'Expected at least {count} occurrences in {path}, found {occurrences}')
               write(path, text.replace(old, new, count))
 
-          def old_file(path: str) -> str:
+          def historical_file(path: str) -> str:
               return subprocess.run(
-                  ['git', 'show', f'efda405b90ac929024639268f811c17ba8e9390a:{path}'],
+                  ['git', 'show', f'{CARD_BASE}:{path}'],
                   check=True,
                   capture_output=True,
                   text=True,
               ).stdout
 
-          # Restore the exact pre-redesign card structure and styling.
-          play_zone = old_file('src/miniapp/play-zone.ts')
-          play_zone = play_zone.replace("  ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],\n", '')
-          play_zone = play_zone.replace("  return `/app/api/section-lock-image/${id}/locked.png?v=1`;", "  return `/app/api/game-card-image/${id}.png`;")
-          play_zone = play_zone.replace("  const initialSrc = id === 'slot' ? fallback : transparentPixel;", "  const initialSrc = fallback;")
-          write('src/miniapp/play-zone.ts', play_zone)
-          write('src/miniapp/play-zone-showcase-overrides.ts', old_file('src/miniapp/play-zone-showcase-overrides.ts'))
+          # Play Hub card files: restore exactly to the last healthy pre-change state.
+          play_zone = historical_file('src/miniapp/play-zone.ts')
+          rps_card = "  ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],\n"
+          if play_zone.count(rps_card) != 1:
+              raise SystemExit('RPS Play Hub card row was not found exactly once in historical card file')
+          write('src/miniapp/play-zone.ts', play_zone.replace(rps_card, ''))
+          write('src/miniapp/play-zone-showcase-overrides.ts', historical_file('src/miniapp/play-zone-showcase-overrides.ts'))
 
-          # Remove the retired game from shell/navigation.
+          # Mini App section ownership.
           replace_exact('src/miniapp/shell.ts', "import { RPS_SECTION } from './rps';\n", '')
           replace_exact('src/miniapp/shell.ts', "  { id: 'rps', html: RPS_SECTION },\n", '')
           replace_exact('src/miniapp/script.ts', ",rps:'RPS'", '')
           replace_exact('src/miniapp/telegram-back-button-script.ts', ",'rps'", '')
-
-          # Remove the retired game from registries/admin controls.
-          replace_exact('src/play-zone-card-visibility.ts', "  { id: 'rps', label: 'Rock Paper Scissors' },\n", '')
-          replace_exact('src/online-user-counts.ts', "const SECTION_IDS = ['mines', 'plinko', 'rps', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];", "const SECTION_IDS = ['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];")
-          replace_exact('src/online-user-counts.ts', "const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', rps: 'RPS', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run' };", "const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run' };")
-          replace_exact('src/miniapp/game-live-counts.ts', "  rps: 'RPS',\n", '')
-          replace_exact('src/miniapp/game-live-counts.ts', "  rps: { offset: -12, width: -8, phase: 29 },\n", '')
-          replace_exact('src/user-controls.ts', ", 'rps'", '')
-          replace_exact('src/admin-users.ts', "    ['rps_rounds', 'user_id'],\n", '')
-          replace_exact('src/telegram-bot-admin-panel.ts', ", ['rps', 'سنگ کاغذ قیچی']", '')
           replace_exact('src/miniapp/section-background-script.ts', "    rps:playZoneCardSelectors('rps'),\n", '')
           replace_exact('src/miniapp/section-background-script.ts', ",'rps'", '')
 
-          # Keep normal photo/file uploads for remaining cards; original cards use 3:1.
-          replace_exact('src/telegram-game-card-admin.ts', "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'], ['rps', 'Rock Paper Scissors'],\n", "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],\n")
-          replace_exact('src/telegram-game-card-admin.ts', 'نسبت پیشنهادی ۴:۵ است.', 'نسبت پیشنهادی ۳:۱ است.')
+          # Card, live-count, access-control, and admin registries.
+          replace_exact('src/play-zone-card-visibility.ts', "  { id: 'rps', label: 'Rock Paper Scissors' },\n", '')
+          replace_exact(
+              'src/online-user-counts.ts',
+              "const SECTION_IDS = ['mines', 'plinko', 'rps', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];",
+              "const SECTION_IDS = ['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];",
+          )
+          replace_exact('src/online-user-counts.ts', ", rps: 'RPS'", '')
+          replace_exact('src/miniapp/game-live-counts.ts', "  rps: 'RPS',\n", '')
+          replace_exact('src/miniapp/game-live-counts.ts', "  rps: { offset: -12, width: -8, phase: 29 },\n", '')
+          replace_exact(
+              'src/user-controls.ts',
+              "const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'rps', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);",
+              "const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);",
+          )
+          replace_exact('src/admin-users.ts', "    ['rps_rounds', 'user_id'],\n", '')
+          replace_exact('src/telegram-bot-admin-panel.ts', ", ['rps', 'سنگ کاغذ قیچی']", '')
+          replace_exact('src/telegram-bot-admin-panel.ts', ", 'rps_rounds'", '')
+          replace_exact(
+              'src/telegram-game-card-admin.ts',
+              "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'], ['rps', 'Rock Paper Scissors'],\n",
+              "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],\n",
+          )
 
-          # Strip all retired friend-game API and database bootstrap logic while preserving Mines.
+          # Friend-game routes: remove only RPS blocks and keep Mines code in this owner file.
           routes_path = Path('src/game-friend-routes.ts')
           routes = routes_path.read_text()
-          routes = re.sub(r"type Choice = 'rock' \| 'paper' \| 'scissors';\n", '', routes, count=1)
-          routes = re.sub(r"type RpsRoom = .*?;\n", '', routes, count=1)
-          routes = re.sub(r"type RpsRound = .*?;\n", '', routes, count=1)
-          routes, n = re.subn(r"  app\.post\('/app/api/rps/friend/rooms',[\s\S]*?(?=  app\.post\('/app/api/mines/friend/rooms')", '', routes, count=1)
-          if n != 1:
-              raise SystemExit('Could not remove retired friend routes')
-          routes = re.sub(r"  await env\.DB\.prepare\(\"CREATE TABLE IF NOT EXISTS rps_friend_rooms .*?\)\.run\(\);\n", '', routes, count=1)
-          routes = re.sub(r"  await env\.DB\.prepare\(\"CREATE TABLE IF NOT EXISTS rps_friend_rounds .*?\)\.run\(\);\n", '', routes, count=1)
-          routes = re.sub(r"async function rpsRoom\([^\n]+\n", '', routes, count=1)
-          routes = re.sub(r"async function latestRound\([^\n]+\n", '', routes, count=1)
-          routes, n = re.subn(r"async function rpsState\([\s\S]*?(?=async function minesState)", '', routes, count=1)
-          if n != 1:
-              raise SystemExit('Could not remove retired state helpers')
-          routes = routes.replace("invite(c.env,'mines',roomId,userId,name(body.name,'Player'))", "invite(c.env,roomId,userId,name(body.name,'Player'))")
-          new_invite = (
+          for pattern in [
+              r"type Choice = 'rock' \| 'paper' \| 'scissors';\n",
+              r"type RpsRoom = .*?;\n",
+              r"type RpsRound = .*?;\n",
+          ]:
+              routes, count = re.subn(pattern, '', routes, count=1)
+              if count != 1:
+                  raise SystemExit(f'Could not remove expected RPS type: {pattern}')
+
+          routes, count = re.subn(
+              r"  app\.post\('/app/api/rps/friend/rooms',[\s\S]*?(?=  app\.post\('/app/api/mines/friend/rooms')",
+              '',
+              routes,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('Could not isolate and remove RPS route block')
+
+          for pattern in [
+              r"  await env\.DB\.prepare\(\"CREATE TABLE IF NOT EXISTS rps_friend_rooms .*?\)\.run\(\);\n",
+              r"  await env\.DB\.prepare\(\"CREATE TABLE IF NOT EXISTS rps_friend_rounds .*?\)\.run\(\);\n",
+              r"async function rpsRoom\([^\n]+\n",
+              r"async function latestRound\([^\n]+\n",
+          ]:
+              routes, count = re.subn(pattern, '', routes, count=1)
+              if count != 1:
+                  raise SystemExit(f'Could not remove expected RPS helper/table line: {pattern}')
+
+          routes, count = re.subn(
+              r"async function rpsState\([\s\S]*?(?=async function minesState)",
+              '',
+              routes,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('Could not remove RPS state/resolution helpers')
+
+          old_mines_invite_call = "invite(c.env,'mines',roomId,userId,name(body.name,'Player'))"
+          if routes.count(old_mines_invite_call) != 1:
+              raise SystemExit('Mines invite call was not found exactly once')
+          routes = routes.replace(old_mines_invite_call, "invite(c.env,roomId,userId,name(body.name,'Player'))", 1)
+
+          mines_invite = (
               "async function invite(env:Env,roomId:string,userId:string,displayName:string){\n"
               "  const numeric=Number(userId);if(!env.BOT_TOKEN||!Number.isSafeInteger(numeric)||numeric<=0)throw new Error('Telegram share is available only inside Telegram.');\n"
               "  const username=await botUsername(env),short=String(env.MINI_APP_SHORT_NAME||'').replace(/[^0-9A-Za-z_]/g,''),start=`minesroom_${roomId}`,url=`https://t.me/${username}${short?`/${short}`:''}?startapp=${encodeURIComponent(start)}`;\n"
@@ -103,48 +145,71 @@ jobs:
               "  if(!response.ok||!response.result?.id)throw new Error(response.description||'Telegram could not prepare invite');return{preparedMessageId:response.result.id,inviteUrl:url,fallbackText};\n"
               "}\n"
           )
-          routes, n = re.subn(r"async function invite\([\s\S]*?(?=async function botUsername)", new_invite, routes, count=1)
-          if n != 1:
-              raise SystemExit('Could not simplify Mines invite helper')
-          routes = re.sub(r"function role\([^\n]+\n", '', routes, count=1)
-          routes = re.sub(r"function beats\([^\n]+\n", '', routes, count=1)
+          routes, count = re.subn(
+              r"async function invite\([\s\S]*?(?=async function botUsername)",
+              lambda _: mines_invite,
+              routes,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('Could not replace shared invite helper with Mines-only helper')
+
+          for pattern in [r"function role\([^\n]+\n", r"function beats\([^\n]+\n"]:
+              routes, count = re.subn(pattern, '', routes, count=1)
+              if count != 1:
+                  raise SystemExit(f'Could not remove expected RPS-only helper: {pattern}')
           routes_path.write_text(routes)
 
-          # Remove implementation and historical creation migration.
+          # Dedicated RPS UI and historical creation migration.
           Path('src/miniapp/rps.ts').unlink()
           Path('migrations/0006_rps_friend_rooms.sql').unlink()
 
-          # Drop already-deployed tables. Fresh databases no longer create them.
-          write('migrations/0018_remove_retired_game.sql', "DROP TABLE IF EXISTS rps_friend_rounds;\nDROP TABLE IF EXISTS rps_friend_rooms;\nDROP TABLE IF EXISTS rps_rounds;\n\nUPDATE app_users\nSET current_section = 'playzone', updated_at = CURRENT_TIMESTAMP\nWHERE current_section = 'rps';\n")
+          # Production cleanup belongs in its own migration; fresh DBs no longer create these tables.
+          write(
+              'migrations/0018_remove_rps.sql',
+              "DROP TABLE IF EXISTS rps_friend_rounds;\n"
+              "DROP TABLE IF EXISTS rps_friend_rooms;\n"
+              "DROP TABLE IF EXISTS rps_rounds;\n\n"
+              "UPDATE app_users\n"
+              "SET current_section = 'playzone', updated_at = CURRENT_TIMESTAMP\n"
+              "WHERE current_section = 'rps';\n",
+          )
 
+          # The one-time workflow removes itself from the final product tree.
           Path('.github/workflows/restore-playhub-remove-rps.yml').unlink()
 
-          # Only the physical database cleanup migration may mention the retired game.
-          forbidden = re.compile(r'rps|rock paper scissors|سنگ کاغذ قیچی', re.I)
-          allowed = Path('migrations/0018_remove_retired_game.sql')
+          # Exact semantic residual check; avoids unrelated substrings in other code.
+          allowed = Path('migrations/0018_remove_rps.sql')
+          patterns = re.compile(
+              r"(?:\brps\b|rps_|_rps|/rps|rps:|Rps[A-Z]|RPS_|RPS_SECTION|Rock Paper Scissors|سنگ کاغذ قیچی)",
+              re.IGNORECASE,
+          )
           leftovers = []
-          for path in ROOT.rglob('*'):
-              if not path.is_file() or '.git' in path.parts or path == allowed:
-                  continue
-              try:
-                  text = path.read_text()
-              except (UnicodeDecodeError, OSError):
-                  continue
-              if forbidden.search(text) or re.search(r'(^|[-_.])rps($|[-_.])', path.name, re.I):
-                  leftovers.append(str(path))
+          for root in (Path('src'), Path('migrations'), Path('README.md')):
+              paths = [root] if root.is_file() else root.rglob('*')
+              for path in paths:
+                  if not path.is_file() or path == allowed:
+                      continue
+                  try:
+                      text = path.read_text()
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  if patterns.search(text) or patterns.search(path.as_posix()):
+                      leftovers.append(path.as_posix())
           if leftovers:
-              raise SystemExit('Retired-game references remain: ' + ', '.join(leftovers))
+              raise SystemExit('Active RPS references remain: ' + ', '.join(sorted(set(leftovers))))
           PY
 
-      - name: Typecheck
+      - name: Validate TypeScript and patch integrity
         run: |
           npm install --ignore-scripts --no-package-lock
           npm run typecheck
+          git diff --check
 
-      - name: Commit final cleanup
+      - name: Commit safe-branch result
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Restore original Play Hub cards and remove RPS completely'
-          git push origin main
+          git commit -m 'Restore Play Hub cards and remove RPS completely'
+          git push origin chatgpt/restore-playhub-remove-rps
