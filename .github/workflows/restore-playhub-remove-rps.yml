@@ -39,72 +39,29 @@ jobs:
                   raise SystemExit(f'Expected text not found in {path}: {old!r}')
               write(path, text.replace(old, new, count))
 
-          # Restore the original wide Play Hub card styling exactly from before
-          # the story-card redesign.
-          original_showcase = subprocess.run(
-              ['git', 'show', 'efda405b90ac929024639268f811c17ba8e9390a:src/miniapp/play-zone-showcase-overrides.ts'],
-              check=True,
-              capture_output=True,
-              text=True,
-          ).stdout
-          write('src/miniapp/play-zone-showcase-overrides.ts', original_showcase)
+          def old_file(path: str) -> str:
+              return subprocess.run(
+                  ['git', 'show', f'efda405b90ac929024639268f811c17ba8e9390a:{path}'],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              ).stdout
 
-          # Restore the original card structure while retaining the current image
-          # upload endpoint. Only the retired game is omitted.
-          write('src/miniapp/play-zone.ts', """import { livePlayersSeed, shouldShowLivePlayersOnCard } from './game-live-counts';
+          # Restore the exact pre-redesign card structure and styling.
+          play_zone = old_file('src/miniapp/play-zone.ts')
+          play_zone = play_zone.replace("  ['rps', 'Rock Paper Scissors', 'Choose rock, paper, or scissors', 'Play'],\n", '')
+          play_zone = play_zone.replace("  return `/app/api/section-lock-image/${id}/locked.png?v=1`;", "  return `/app/api/game-card-image/${id}.png`;")
+          play_zone = play_zone.replace("  const initialSrc = id === 'slot' ? fallback : transparentPixel;", "  const initialSrc = fallback;")
+          write('src/miniapp/play-zone.ts', play_zone)
+          write('src/miniapp/play-zone-showcase-overrides.ts', old_file('src/miniapp/play-zone-showcase-overrides.ts'))
 
-const playZoneGames = [
-  ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
-  ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
-  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
-  ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
-  ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
-  ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
-  ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
-  ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
-  ['ghostrun', 'Ghost Run', 'Run through the dark and survive', 'Play'],
-] as const;
-
-function gameCardImageUrl(id: string): string {
-  return `/app/api/game-card-image/${id}.png`;
-}
-
-function gameCard([id, label, _description, action]: typeof playZoneGames[number], extraClass = ''): string {
-  const imageUrl = gameCardImageUrl(id);
-  const viewAttr = action === 'Play' ? `data-game-view="${id}"` : '';
-  const footer = shouldShowLivePlayersOnCard(id) ? `<span class="game-footer game-footer-live"><span class="game-players" aria-label="Players online"><i></i><b>${livePlayersSeed(id)}</b><em>players</em></span></span>` : '';
-  const countAttr = shouldShowLivePlayersOnCard(id) ? 'data-player-count-visible="true"' : 'data-player-count-visible="false"';
-
-  return `
-    <span class="game-card-shell ${extraClass}" data-play-zone-card-id="${id}" ${viewAttr} ${countAttr}>
-      <button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}">
-        <span class="game-image">
-          <img src="${imageUrl}" data-section-image-src="${imageUrl}" data-fallback-src="${imageUrl}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src='/app/api/section-lock-image/${id}/locked.png?v=1'"/>
-        </span>
-      </button>
-      ${footer}
-    </span>
-  `;
-}
-
-export const PLAY_ZONE_SECTION = `
-<section id="playzone" class="view play-zone-view">
-  <div class="play-zone-stage">
-    <div class="play-zone-featured-row play-zone-grid-row">
-      ${playZoneGames.map((game, index) => gameCard(game, `play-zone-featured-card play-zone-featured-card-${index + 1}`)).join('')}
-    </div>
-  </div>
-</section>
-`;
-""")
-
-          # Remove the retired game UI from the shell and global navigation.
+          # Remove the retired game from shell/navigation.
           replace_exact('src/miniapp/shell.ts', "import { RPS_SECTION } from './rps';\n", '')
           replace_exact('src/miniapp/shell.ts', "  { id: 'rps', html: RPS_SECTION },\n", '')
           replace_exact('src/miniapp/script.ts', ",rps:'RPS'", '')
           replace_exact('src/miniapp/telegram-back-button-script.ts', ",'rps'", '')
 
-          # Remove it from card/admin/live-count registries.
+          # Remove the retired game from registries/admin controls.
           replace_exact('src/play-zone-card-visibility.ts', "  { id: 'rps', label: 'Rock Paper Scissors' },\n", '')
           replace_exact('src/online-user-counts.ts', "const SECTION_IDS = ['mines', 'plinko', 'rps', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];", "const SECTION_IDS = ['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];")
           replace_exact('src/online-user-counts.ts', "const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', rps: 'RPS', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run' };", "const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run' };")
@@ -113,29 +70,20 @@ export const PLAY_ZONE_SECTION = `
           replace_exact('src/user-controls.ts', ", 'rps'", '')
           replace_exact('src/admin-users.ts', "    ['rps_rounds', 'user_id'],\n", '')
           replace_exact('src/telegram-bot-admin-panel.ts', ", ['rps', 'سنگ کاغذ قیچی']", '')
-
-          # Remove old background-image hooks for the retired card/game.
           replace_exact('src/miniapp/section-background-script.ts', "    rps:playZoneCardSelectors('rps'),\n", '')
           replace_exact('src/miniapp/section-background-script.ts', ",'rps'", '')
 
-          # Keep normal photo/file card uploads for all remaining games and update
-          # the recommended ratio to the restored original card format.
+          # Keep normal photo/file uploads for remaining cards; original cards use 3:1.
           replace_exact('src/telegram-game-card-admin.ts', "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'], ['rps', 'Rock Paper Scissors'],\n", "  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],\n")
           replace_exact('src/telegram-game-card-admin.ts', 'نسبت پیشنهادی ۴:۵ است.', 'نسبت پیشنهادی ۳:۱ است.')
 
-          # Remove all API logic and helpers for the retired friend game while
-          # preserving the Mines friend-game implementation byte-for-byte where possible.
+          # Strip all retired friend-game API and database bootstrap logic while preserving Mines.
           routes_path = Path('src/game-friend-routes.ts')
           routes = routes_path.read_text()
           routes = re.sub(r"type Choice = 'rock' \| 'paper' \| 'scissors';\n", '', routes, count=1)
           routes = re.sub(r"type RpsRoom = .*?;\n", '', routes, count=1)
           routes = re.sub(r"type RpsRound = .*?;\n", '', routes, count=1)
-          routes, n = re.subn(
-              r"  app\.post\('/app/api/rps/friend/rooms',[\s\S]*?(?=  app\.post\('/app/api/mines/friend/rooms')",
-              '',
-              routes,
-              count=1,
-          )
+          routes, n = re.subn(r"  app\.post\('/app/api/rps/friend/rooms',[\s\S]*?(?=  app\.post\('/app/api/mines/friend/rooms')", '', routes, count=1)
           if n != 1:
               raise SystemExit('Could not remove retired friend routes')
           routes = re.sub(r"  await env\.DB\.prepare\(\"CREATE TABLE IF NOT EXISTS rps_friend_rooms .*?\)\.run\(\);\n", '', routes, count=1)
@@ -144,47 +92,34 @@ export const PLAY_ZONE_SECTION = `
           routes = re.sub(r"async function latestRound\([^\n]+\n", '', routes, count=1)
           routes, n = re.subn(r"async function rpsState\([\s\S]*?(?=async function minesState)", '', routes, count=1)
           if n != 1:
-              raise SystemExit('Could not remove retired friend-state helpers')
+              raise SystemExit('Could not remove retired state helpers')
           routes = routes.replace("invite(c.env,'mines',roomId,userId,name(body.name,'Player'))", "invite(c.env,roomId,userId,name(body.name,'Player'))")
-          routes, n = re.subn(
-              r"async function invite\([\s\S]*?(?=async function botUsername)",
-              """async function invite(env:Env,roomId:string,userId:string,displayName:string){
-  const numeric=Number(userId);if(!env.BOT_TOKEN||!Number.isSafeInteger(numeric)||numeric<=0)throw new Error('Telegram share is available only inside Telegram.');
-  const username=await botUsername(env),short=String(env.MINI_APP_SHORT_NAME||'').replace(/[^0-9A-Za-z_]/g,''),start=`minesroom_${roomId}`,url=`https://t.me/${username}${short?`/${short}`:''}?startapp=${encodeURIComponent(start)}`;
-  const fallbackText=`🎮 ${displayName} invited you to a Mines friend round.`;
-  const response=await telegram<{ok:boolean;result?:{id?:string};description?:string}>(env.BOT_TOKEN,'savePreparedInlineMessage',{user_id:numeric,result:{type:'article',id:`mines_invite_${roomId}`.slice(0,64),title:'Mines Friend Round',description:'Join a private game in Vexa.',input_message_content:{message_text:fallbackText,disable_web_page_preview:true},reply_markup:{inline_keyboard:[[{text:'🎮 Join Friend Round',url}]]}},allow_user_chats:true,allow_bot_chats:false,allow_group_chats:true,allow_channel_chats:false});
-  if(!response.ok||!response.result?.id)throw new Error(response.description||'Telegram could not prepare invite');return{preparedMessageId:response.result.id,inviteUrl:url,fallbackText};
-}
-""",
-              routes,
-              count=1,
+          new_invite = (
+              "async function invite(env:Env,roomId:string,userId:string,displayName:string){\n"
+              "  const numeric=Number(userId);if(!env.BOT_TOKEN||!Number.isSafeInteger(numeric)||numeric<=0)throw new Error('Telegram share is available only inside Telegram.');\n"
+              "  const username=await botUsername(env),short=String(env.MINI_APP_SHORT_NAME||'').replace(/[^0-9A-Za-z_]/g,''),start=`minesroom_${roomId}`,url=`https://t.me/${username}${short?`/${short}`:''}?startapp=${encodeURIComponent(start)}`;\n"
+              "  const fallbackText=`🎮 ${displayName} invited you to a Mines friend round.`;\n"
+              "  const response=await telegram<{ok:boolean;result?:{id?:string};description?:string}>(env.BOT_TOKEN,'savePreparedInlineMessage',{user_id:numeric,result:{type:'article',id:`mines_invite_${roomId}`.slice(0,64),title:'Mines Friend Round',description:'Join a private game in Vexa.',input_message_content:{message_text:fallbackText,disable_web_page_preview:true},reply_markup:{inline_keyboard:[[{text:'🎮 Join Friend Round',url}]]}},allow_user_chats:true,allow_bot_chats:false,allow_group_chats:true,allow_channel_chats:false});\n"
+              "  if(!response.ok||!response.result?.id)throw new Error(response.description||'Telegram could not prepare invite');return{preparedMessageId:response.result.id,inviteUrl:url,fallbackText};\n"
+              "}\n"
           )
+          routes, n = re.subn(r"async function invite\([\s\S]*?(?=async function botUsername)", new_invite, routes, count=1)
           if n != 1:
               raise SystemExit('Could not simplify Mines invite helper')
           routes = re.sub(r"function role\([^\n]+\n", '', routes, count=1)
           routes = re.sub(r"function beats\([^\n]+\n", '', routes, count=1)
           routes_path.write_text(routes)
 
-          # Remove dedicated implementation and creation migration.
+          # Remove implementation and historical creation migration.
           Path('src/miniapp/rps.ts').unlink()
           Path('migrations/0006_rps_friend_rooms.sql').unlink()
 
-          # Production databases may already contain the old tables. This cleanup
-          # migration physically removes them while fresh databases never create them.
-          write('migrations/0018_remove_retired_game.sql', """DROP TABLE IF EXISTS rps_friend_rounds;
-DROP TABLE IF EXISTS rps_friend_rooms;
-DROP TABLE IF EXISTS rps_rounds;
+          # Drop already-deployed tables. Fresh databases no longer create them.
+          write('migrations/0018_remove_retired_game.sql', "DROP TABLE IF EXISTS rps_friend_rounds;\nDROP TABLE IF EXISTS rps_friend_rooms;\nDROP TABLE IF EXISTS rps_rounds;\n\nUPDATE app_users\nSET current_section = 'playzone', updated_at = CURRENT_TIMESTAMP\nWHERE current_section = 'rps';\n")
 
-UPDATE app_users
-SET current_section = 'playzone', updated_at = CURRENT_TIMESTAMP
-WHERE current_section = 'rps';
-""")
-
-          # Remove this one-time workflow before checking the final tree.
           Path('.github/workflows/restore-playhub-remove-rps.yml').unlink()
 
-          # No active source/configuration reference may remain. The cleanup migration
-          # is the only allowed occurrence because it drops already-deployed tables.
+          # Only the physical database cleanup migration may mention the retired game.
           forbidden = re.compile(r'rps|rock paper scissors|سنگ کاغذ قیچی', re.I)
           allowed = Path('migrations/0018_remove_retired_game.sql')
           leftovers = []
