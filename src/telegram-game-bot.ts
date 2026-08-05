@@ -88,7 +88,7 @@ function isAdminCommand(text: string | undefined): boolean {
 async function sendGameHome(token: string, chatId: number): Promise<void> {
   await telegram(token, 'sendMessage', {
     chat_id: chatId,
-    text: 'AI Builder',
+    text: 'Click Open Mini App',
     reply_markup: {
       inline_keyboard: [[{
         text: 'Open Mini App',
