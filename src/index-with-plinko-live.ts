@@ -19,8 +19,8 @@ export class GhostRunLiveRoom {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Temporary internal aliases keep older game/admin modules working while all
-    // secrets still come from the single BOT_TOKEN binding.
+    // Older game/admin modules still receive compatibility aliases, but both are
+    // derived only from the single external BOT_TOKEN binding.
     const runtimeEnv = Object.assign(Object.create(env), env, {
       TELEGRAM_BOT_TOKEN: env.BOT_TOKEN,
       GAME_BOT_TOKEN: env.BOT_TOKEN,
@@ -29,11 +29,19 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/setup-webhook') {
       const [webhook, menu] = await Promise.all([
-        setTelegramWebhook(runtimeEnv),
-        setGameMenuButton(runtimeEnv),
+        setTelegramWebhook(env),
+        setGameMenuButton(env),
       ]);
       return Response.json(
-        { ok: Boolean(webhook.ok && menu.ok), webhook, menu, webhookUrl: `${url.origin}/telegram/webhook`, miniApp: `${url.origin}/app` },
+        {
+          ok: Boolean(webhook.ok && menu.ok),
+          tokenBinding: 'BOT_TOKEN',
+          tokenConfigured: Boolean(String(env.BOT_TOKEN ?? '').trim()),
+          webhook,
+          menu,
+          webhookUrl: `${url.origin}/telegram/webhook`,
+          miniApp: `${url.origin}/app`,
+        },
         { headers: { 'cache-control': 'no-store' } },
       );
     }
