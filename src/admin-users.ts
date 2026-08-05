@@ -188,7 +188,6 @@ function userTableDeletes(): Array<[string, string]> {
     ['plinko_rounds', 'user_id'],
     ['mines_rounds', 'user_id'],
     ['dice_rounds', 'user_id'],
-    ['rps_rounds', 'user_id'],
   ];
 }
 

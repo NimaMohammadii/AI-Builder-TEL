@@ -10,7 +10,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 
 const GAMES = [
-  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'], ['rps', 'Rock Paper Scissors'],
+  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
   ['wheel', 'Wheel'], ['dice', 'Dice'], ['crash', 'Crash'], ['hilo', 'Chicken Cross'],
   ['coinflip', 'Pump'], ['ghostrun', 'Ghost Run'],
 ] as const;

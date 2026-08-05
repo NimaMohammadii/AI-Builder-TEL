@@ -4,7 +4,6 @@ export const PLAY_ZONE_CARD_ITEMS = [
   { id: 'mines', label: 'Mines' },
   { id: 'plinko', label: 'Plinko' },
   { id: 'slot', label: 'Slot' },
-  { id: 'rps', label: 'Rock Paper Scissors' },
   { id: 'wheel', label: 'Wheel' },
   { id: 'dice', label: 'Dice' },
   { id: 'crash', label: 'Crash' },

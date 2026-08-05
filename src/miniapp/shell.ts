@@ -38,7 +38,6 @@ import { SLOT_SECTION } from './slot';
 import { WHEEL_SECTION } from './wheel';
 import { DICE_SECTION } from './dice-fixed';
 import { DICE_FINAL_TWEAK } from './dice-final-tweak';
-import { RPS_SECTION } from './rps';
 import { PUMP_SECTION } from './pump';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { MINIAPP_SCRIPT } from './script';
@@ -179,7 +178,6 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'slot', html: SLOT_SECTION, scripts: [SLOT_SCRIPT] },
   { id: 'wheel', html: WHEEL_SECTION, scripts: [] },
   { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
-  { id: 'rps', html: RPS_SECTION },
   { id: 'coinflip', html: PUMP_SECTION },
   { id: 'ghostrun', html: GHOST_RUN_SECTION },
 ];

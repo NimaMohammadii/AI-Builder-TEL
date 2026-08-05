@@ -1,7 +1,6 @@
 const liveGameLabels: Record<string, string> = {
   mines: 'Mines',
   plinko: 'Plinko',
-  rps: 'RPS',
   wheel: 'Wheel',
   dice: 'Dice',
   crash: 'Crash',
@@ -19,7 +18,6 @@ type LivePlayerProfile = { offset: number; width: number; phase: number };
 const livePlayerProfiles: Record<string, LivePlayerProfile> = {
   mines: { offset: -36, width: 18, phase: 5 },
   plinko: { offset: 24, width: 32, phase: 17 },
-  rps: { offset: -12, width: -8, phase: 29 },
   wheel: { offset: 58, width: 24, phase: 41 },
   dice: { offset: -28, width: 14, phase: 53 },
   crash: { offset: 72, width: 38, phase: 67 },

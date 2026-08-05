@@ -36,7 +36,7 @@ const REGIONS: RegionConfig[] = [
   { code: 'OTHER', label: '🌐 Other', language: 'en', timezone: 'UTC' },
 ];
 const SECTIONS: Array<[string, string]> = [
-  ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'], ['rps', 'سنگ کاغذ قیچی'],  ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
+  ['home', 'خانه'], ['connect', 'اتصال'], ['playzone', 'بازی‌ها'], ['plinko', 'پلینکو'], ['mines', 'ماینز'], ['crash', 'کرش'], ['wheel', 'ویل'], ['dice', 'تاس'],  ['slot', 'اسلات'], ['ghostrun', 'گوست ران'],
 ];
 
 export async function handleBotAdminMessage(env: Env, token: string, message: TelegramMessage, tg: TgApi): Promise<boolean> {
@@ -494,7 +494,7 @@ async function queryAll<T>(env: Env, sql: string, ...binds: unknown[]): Promise<
 }
 
 async function gameRows(env: Env, userId: string): Promise<Array<{ game: string; id: string; result: string; amount: number; createdAt: string }>> {
-  const tables = ['wheel_entries', 'crash_bets', 'plinko_rounds', 'mines_rounds', 'dice_rounds', 'rps_rounds', 'predict_bets', 'football_bets', 'football_live_question_bets'];
+  const tables = ['wheel_entries', 'crash_bets', 'plinko_rounds', 'mines_rounds', 'dice_rounds', 'predict_bets', 'football_bets', 'football_live_question_bets'];
   const out: Array<{ game: string; id: string; result: string; amount: number; createdAt: string }> = [];
   for (const table of tables) {
     const rows = await queryAll<Record<string, unknown>>(env, `SELECT * FROM ${table} WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT 80`, userId);

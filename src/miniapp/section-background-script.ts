@@ -21,7 +21,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
     crash:playZoneCardSelectors('crash'),
     wheel:playZoneCardSelectors('wheel'),
     dice:playZoneCardSelectors('dice'),
-    rps:playZoneCardSelectors('rps'),
     slot:playZoneCardSelectors('slot'),
     tower:playZoneCardSelectors('tower'),
     coinflip:playZoneCardSelectors('coinflip'),
@@ -99,7 +98,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var lastLoadAt=0;
   var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
-  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','rps','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
+  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','ghostrun','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
   function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     var now=Date.now();
