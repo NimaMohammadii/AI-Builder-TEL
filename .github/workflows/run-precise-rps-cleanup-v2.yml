@@ -1,0 +1,81 @@
+name: Validate and commit precise RPS cleanup
+
+on:
+  push:
+    branches:
+      - chatgpt/restore-playhub-remove-rps
+    paths:
+      - '.github/workflows/run-precise-rps-cleanup-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/restore-playhub-remove-rps
+          fetch-depth: 0
+
+      - name: Install existing project dependencies
+        run: npm install --ignore-scripts --no-package-lock --legacy-peer-deps
+
+      - name: Capture existing TypeScript baseline
+        run: |
+          npx tsc --noEmit --pretty false > /tmp/ts-before.log 2>&1 || true
+
+      - name: Apply precise file-owned cleanup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/restore-playhub-remove-rps.yml').read_text()
+          marker_start = "          python3 - <<'PY'\n"
+          marker_end = "\n          PY\n"
+          start = workflow.index(marker_start) + len(marker_start)
+          end = workflow.index(marker_end, start)
+          script = textwrap.dedent(workflow[start:end])
+          script = script.replace("Path('.github/workflows/restore-playhub-remove-rps.yml').unlink()", "pass")
+          Path('/tmp/precise-rps-cleanup.py').write_text(script)
+          PY
+          python3 /tmp/precise-rps-cleanup.py
+
+      - name: Verify no new TypeScript errors
+        run: |
+          npx tsc --noEmit --pretty false > /tmp/ts-after.log 2>&1 || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          pattern = re.compile(r'^(src/[^\(]+)\(\d+,\d+\): (error TS\d+: .*)$')
+
+          def normalized(path):
+              result = set()
+              for line in Path(path).read_text().splitlines():
+                  match = pattern.match(line.strip())
+                  if match:
+                      result.add(match.group(1) + ': ' + match.group(2))
+              return result
+
+          before = normalized('/tmp/ts-before.log')
+          after = normalized('/tmp/ts-after.log')
+          added = sorted(after - before)
+          if added:
+              print('New TypeScript errors introduced:')
+              print('\n'.join(added))
+              raise SystemExit(1)
+          print(f'No new TypeScript errors. Existing baseline: {len(before)}; after cleanup: {len(after)}')
+          PY
+          git diff --check
+
+      - name: Commit product files only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src migrations
+          git diff --cached --quiet && { echo 'No product changes to commit'; exit 1; }
+          git commit -m 'Restore Play Hub cards and remove RPS completely'
+          git push origin chatgpt/restore-playhub-remove-rps
