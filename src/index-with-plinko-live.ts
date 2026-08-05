@@ -19,6 +19,9 @@ export class GhostRunLiveRoom {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const adminDiagnosticResponse = await diagnoseAdminCommand(request, env);
+    if (adminDiagnosticResponse) return adminDiagnosticResponse;
+
     const gameCardAdminResponse = await handleGameCardAdminRequest(request, env);
     if (gameCardAdminResponse) return gameCardAdminResponse;
 
@@ -36,3 +39,29 @@ export default {
     });
   },
 };
+
+async function diagnoseAdminCommand(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (request.method !== 'POST' || url.pathname !== '/telegram/webhook') return null;
+  const update = await request.clone().json().catch(() => null) as { message?: { text?: string; chat?: { id?: number }; from?: { id?: number } } } | null;
+  const message = update?.message;
+  const text = String(message?.text || '').trim().toLowerCase();
+  if (!(text === 'admin' || text === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(text))) return null;
+  const chatId = message?.chat?.id;
+  const userId = message?.from?.id;
+  if (!chatId || !userId || !env.TELEGRAM_BOT_TOKEN) return null;
+
+  const admins = String(env.BOT_ADMIN || '').split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+  if (admins.length && admins.includes(String(userId))) return null;
+
+  const diagnostic = admins.length
+    ? `این حساب اجازه ورود به پنل ادمین را ندارد.\n\nآیدی عددی فعلی تو: ${userId}\nمقدار BOT_ADMIN باید شامل همین عدد باشد.`
+    : `پنل ادمین هنوز تنظیم نشده است.\n\nآیدی عددی فعلی تو: ${userId}\nدر تنظیمات Worker مقدار BOT_ADMIN را برابر همین عدد قرار بده.`;
+
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: diagnostic }),
+  }).catch(() => undefined);
+  return Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+}
