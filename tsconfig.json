@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/index.ts"]
+  "include": ["src/index-with-plinko-live.ts"]
 }

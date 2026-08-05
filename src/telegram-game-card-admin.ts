@@ -1,317 +1,201 @@
-import { adminUsersJson } from './admin-users';
 import type { Env } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 
-type TelegramPhoto = { file_id: string; file_size?: number; width?: number; height?: number };
-type TelegramDocument = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
-type TelegramAdminMessage = {
-  message_id: number;
-  chat: { id: number };
-  from?: { id: number };
-  text?: string;
-  photo?: TelegramPhoto[];
-  document?: TelegramDocument;
-};
-type TelegramAdminCallback = {
-  id: string;
-  data?: string;
-  from: { id: number };
-  message?: { message_id: number; chat: { id: number } };
-};
-type TelegramAdminUpdate = { message?: TelegramAdminMessage; callback_query?: TelegramAdminCallback };
-type TelegramFile = { file_id: string; file_path?: string; file_size?: number };
-type InlineButton = { text: string; callback_data: string };
-type InlineKeyboard = InlineButton[][];
+type Photo = { file_id: string; file_size?: number };
+type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
+type Message = { chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document };
+type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
+type Update = { message?: Message; callback_query?: Callback };
+type Button = { text: string; callback_data: string };
+type Keyboard = Button[][];
 
-type GameCard = { id: string; label: string };
-
-const GAME_CARDS: GameCard[] = [
-  { id: 'mines', label: 'Mines' },
-  { id: 'plinko', label: 'Plinko' },
-  { id: 'slot', label: 'Slot' },
-  { id: 'rps', label: 'Rock Paper Scissors' },
-  { id: 'wheel', label: 'Wheel' },
-  { id: 'dice', label: 'Dice' },
-  { id: 'crash', label: 'Crash' },
-  { id: 'hilo', label: 'Chicken Cross' },
-  { id: 'coinflip', label: 'Pump' },
-  { id: 'ghostrun', label: 'Ghost Run' },
-];
-const GAME_CARD_IDS = new Set(GAME_CARDS.map((game) => game.id));
+const GAMES = [
+  ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'], ['rps', 'Rock Paper Scissors'],
+  ['wheel', 'Wheel'], ['dice', 'Dice'], ['crash', 'Crash'], ['hilo', 'Chicken Cross'],
+  ['coinflip', 'Pump'], ['ghostrun', 'Ghost Run'],
+] as const;
+const GAME_IDS = new Set(GAMES.map(([id]) => id));
 const STATE_PREFIX = 'admin:game-card-upload:';
-const MAX_IMAGE_BYTES = 10_000_000;
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_BYTES = 10_000_000;
+const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export async function handleGameCardAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
-  const imageMatch = url.pathname.match(/^\/app\/api\/game-card-image\/([^/]+)$/);
-  if (request.method === 'GET' && imageMatch) return serveGameCardImage(request, env, imageMatch[1]);
+  const image = url.pathname.match(/^\/app\/api\/game-card-image\/([^/]+)$/);
+  if (request.method === 'GET' && image) return serveImage(request, env, image[1]);
   if (request.method !== 'POST' || url.pathname !== '/telegram/webhook') return null;
-
-  const update = await request.clone().json().catch(() => null) as TelegramAdminUpdate | null;
+  const update = await request.clone().json().catch(() => null) as Update | null;
   if (!update) return null;
-  return handleTelegramAdminUpdate(env, update);
+  return handleUpdate(env, update);
 }
 
-async function serveGameCardImage(request: Request, env: Env, rawGame: string): Promise<Response> {
-  const game = normalizeGame(rawGame.replace(/\.png$/i, ''));
-  if (!game) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  const object = await env.ASSETS.get(gameCardKey(game)).catch(() => null);
+async function serveImage(request: Request, env: Env, raw: string): Promise<Response> {
+  const game = normalizeGame(raw.replace(/\.png$/i, ''));
+  if (!game) return new Response('Not found', { status: 404 });
+  const object = await env.ASSETS.get(key(game)).catch(() => null);
   if (!object) {
-    const fallback = new URL(`/app/api/section-lock-image/${encodeURIComponent(game)}/locked.png?v=1`, request.url);
-    return Response.redirect(fallback.toString(), 302);
+    return Response.redirect(new URL(`/app/api/section-lock-image/${game}/locked.png?v=1`, request.url).toString(), 302);
   }
-  const headers = new Headers();
-  headers.set('content-type', object.httpMetadata?.contentType || 'image/jpeg');
-  headers.set('cache-control', 'no-store, max-age=0');
-  headers.set('x-content-type-options', 'nosniff');
-  const version = object.customMetadata?.version;
-  if (version) headers.set('etag', `"${version}"`);
-  return new Response(object.body, { headers });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || 'image/jpeg',
+      'cache-control': 'no-store, max-age=0',
+      'x-content-type-options': 'nosniff',
+    },
+  });
 }
 
-async function handleTelegramAdminUpdate(env: Env, update: TelegramAdminUpdate): Promise<Response | null> {
-  // /telegram/webhook is registered for TELEGRAM_BOT_TOKEN. Replies must use the
-  // same bot token; using GAME_BOT_TOKEN here causes Telegram "chat not found"
-  // whenever the game bot is a separate bot.
-  const token = env.TELEGRAM_BOT_TOKEN;
+async function handleUpdate(env: Env, update: Update): Promise<Response | null> {
+  const token = env.BOT_TOKEN;
   if (!token) return null;
 
   const callback = update.callback_query;
   if (callback) {
     const data = callback.data || '';
-    const isOurCallback = data === 'botadmin:home' || data === 'botadmin:gameimages' || data.startsWith('botadmin:gameimage:');
-    if (!isOurCallback) return null;
-    if (!isBotAdmin(env, callback.from.id)) return telegramOk();
-
-    await telegram(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data.startsWith('botadmin:gameimage:');
+    if (!ours) return null;
+    if (!isAdmin(env, callback.from.id)) return ok();
+    await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
     const chatId = callback.message?.chat.id ?? callback.from.id;
     const messageId = callback.message?.message_id;
-
     if (data === 'botadmin:home') {
-      await clearUploadState(env, callback.from.id);
-      await sendAdminHome(env, token, chatId, messageId);
-      return telegramOk();
+      await clearState(env, callback.from.id);
+      await sendHome(token, chatId, messageId);
+    } else if (data === 'botadmin:gameimages') {
+      await clearState(env, callback.from.id);
+      await sendGameMenu(token, chatId, messageId);
+    } else {
+      const game = normalizeGame(data.slice('botadmin:gameimage:'.length));
+      if (game) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), game, { expirationTtl: 900 });
+        await upsert(token, chatId, messageId, `🖼 تصویر کارت ${label(game)}\n\nتصویر PNG، JPG یا WebP با نسبت ۴:۵ را بفرستید.`, [
+          [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gameimages' }],
+        ]);
+      }
     }
-    if (data === 'botadmin:gameimages') {
-      await clearUploadState(env, callback.from.id);
-      await sendGameImageMenu(token, chatId, messageId);
-      return telegramOk();
-    }
-
-    const game = normalizeGame(data.slice('botadmin:gameimage:'.length));
-    if (!game) return telegramOk();
-    await env.BOT_CACHE.put(uploadStateKey(callback.from.id), game, { expirationTtl: 15 * 60 });
-    await sendUploadPrompt(token, chatId, messageId, game);
-    return telegramOk();
+    return ok();
   }
 
   const message = update.message;
-  if (!message?.from?.id || !isBotAdmin(env, message.from.id)) return null;
+  if (!message?.from?.id) return null;
   const text = message.text?.trim() || '';
   if (isAdminCommand(text)) {
-    await clearUploadState(env, message.from.id);
-    await sendAdminHome(env, token, message.chat.id);
-    return telegramOk();
+    if (!env.BOT_ADMIN) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `BOT_ADMIN تنظیم نشده.\nآیدی عددی شما: ${message.from.id}` }).catch(() => undefined);
+      return ok();
+    }
+    if (!isAdmin(env, message.from.id)) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `دسترسی ادمین ندارید.\nآیدی عددی شما: ${message.from.id}` }).catch(() => undefined);
+      return ok();
+    }
+    await clearState(env, message.from.id);
+    await sendHome(token, message.chat.id);
+    return ok();
   }
+  if (!isAdmin(env, message.from.id)) return null;
 
-  const pendingGame = normalizeGame(await env.BOT_CACHE.get(uploadStateKey(message.from.id)).catch(() => null));
-  if (!pendingGame) return null;
-
+  const game = normalizeGame(await env.BOT_CACHE.get(stateKey(message.from.id)).catch(() => null));
+  if (!game) return null;
   if (text === '/cancel' || text === 'لغو') {
-    await clearUploadState(env, message.from.id);
-    await sendGameImageMenu(token, message.chat.id);
-    return telegramOk();
+    await clearState(env, message.from.id);
+    await sendGameMenu(token, message.chat.id);
+    return ok();
   }
-
-  const image = imageFileFromMessage(message);
-  if (!image) {
-    await telegram(token, 'sendMessage', {
-      chat_id: message.chat.id,
-      text: 'لطفاً تصویر را به‌صورت عکس یا فایل PNG، JPG یا WebP بفرستید. برای لغو /cancel را بفرستید.',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:gameimages' }]] },
-    }).catch(() => undefined);
-    return telegramOk();
+  const source = imageFromMessage(message);
+  if (!source) {
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'تصویر PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
+    return ok();
   }
 
   try {
-    await saveTelegramImage(env, token, pendingGame, image);
-    await clearUploadState(env, message.from.id);
-    const game = gameInfo(pendingGame);
-    const previewUrl = `${PUBLIC_BASE_URL}/app/api/game-card-image/${pendingGame}.png?v=${Date.now()}`;
-    const keyboard: InlineKeyboard = [
-      [{ text: '🖼 تصاویر بازی‌ها', callback_data: 'botadmin:gameimages' }],
-      [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
-    ];
-    await telegram(token, 'sendPhoto', {
+    await saveImage(env, token, game, source);
+    await clearState(env, message.from.id);
+    await tg(token, 'sendPhoto', {
       chat_id: message.chat.id,
-      photo: previewUrl,
-      caption: `✅ تصویر کارت ${game.label} ذخیره شد و در Play Hub نمایش داده می‌شود.`,
-      reply_markup: { inline_keyboard: keyboard },
-    }).catch(async () => {
-      await telegram(token, 'sendMessage', {
-        chat_id: message.chat.id,
-        text: `✅ تصویر کارت ${game.label} ذخیره شد و در Play Hub نمایش داده می‌شود.`,
-        reply_markup: { inline_keyboard: keyboard },
-      });
-    });
+      photo: `${PUBLIC_BASE_URL}/app/api/game-card-image/${game}.png?v=${Date.now()}`,
+      caption: `✅ تصویر کارت ${label(game)} ذخیره شد.`,
+      reply_markup: { inline_keyboard: [[{ text: '🎮 تصاویر بازی‌ها', callback_data: 'botadmin:gameimages' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]] },
+    }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ تصویر کارت ${label(game)} ذخیره شد.` }));
   } catch (error) {
-    await telegram(token, 'sendMessage', {
-      chat_id: message.chat.id,
-      text: `❌ ${error instanceof Error ? error.message : 'آپلود تصویر انجام نشد.'}`,
-      reply_markup: { inline_keyboard: [[{ text: 'تلاش دوباره', callback_data: `botadmin:gameimage:${pendingGame}` }], [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gameimages' }]] },
-    }).catch(() => undefined);
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'آپلود انجام نشد.'}` }).catch(() => undefined);
   }
-  return telegramOk();
+  return ok();
 }
 
-async function sendAdminHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  let text = '🛡 پنل مدیریت ربات گیم\n\nاز منوی زیر بخش موردنظر را انتخاب کنید.';
-  try {
-    const data = await adminUsersJson(env) as { stats?: Record<string, unknown>; users?: unknown[] };
-    const stats = data.stats || {};
-    const totalUsers = Number(stats.total ?? data.users?.length ?? 0);
-    const onlineUsers = Number(stats.online ?? 0);
-    const inactiveUsers = Number(stats.inactive ?? 0);
-    const totalTon = formatNanoAsTon(stats.totalTonBalanceNano);
-    text = [
-      '🛡 پنل مدیریت ربات گیم',
-      '',
-      `👥 تعداد کل کاربران: ${totalUsers}`,
-      `🟢 آنلاین: ${onlineUsers}   ⚪️ غیرفعال: ${inactiveUsers}`,
-      `💎 مجموع موجودی: ${totalTon} TON`,
-      '',
-      'از منوی زیر بخش موردنظر را انتخاب کنید.',
-    ].join('\n');
-  } catch {
-    // Keep the compact fallback menu if stats are temporarily unavailable.
-  }
-
-  const keyboard: InlineKeyboard = [
+async function sendHome(token: string, chatId: number, messageId?: number): Promise<void> {
+  await upsert(token, chatId, messageId, '🛡 پنل مدیریت ربات گیم\n\nبخش موردنظر را انتخاب کنید.', [
     [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
     [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
-    [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }],
+    [{ text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' }],
     [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
     [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
     [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
-    [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }],
-  ];
-  await upsertTelegramMessage(token, chatId, messageId, text, keyboard);
+    [{ text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' }],
+  ]);
 }
 
-async function sendGameImageMenu(token: string, chatId: number, messageId?: number): Promise<void> {
-  const rows: InlineKeyboard = [];
-  for (let index = 0; index < GAME_CARDS.length; index += 2) {
-    rows.push(GAME_CARDS.slice(index, index + 2).map((game) => ({ text: game.label, callback_data: `botadmin:gameimage:${game.id}` })));
+async function sendGameMenu(token: string, chatId: number, messageId?: number): Promise<void> {
+  const rows: Keyboard = [];
+  for (let i = 0; i < GAMES.length; i += 2) {
+    rows.push(GAMES.slice(i, i + 2).map(([id, name]) => ({ text: name, callback_data: `botadmin:gameimage:${id}` })));
   }
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
-  await upsertTelegramMessage(
-    token,
-    chatId,
-    messageId,
-    '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید و تصویر عمودی آن را بفرستید. نسبت پیشنهادی تصویر ۴:۵ است.',
-    rows,
-  );
+  await upsert(token, chatId, messageId, '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید. نسبت تصویر ۴:۵ است.', rows);
 }
 
-async function sendUploadPrompt(token: string, chatId: number, messageId: number | undefined, gameId: string): Promise<void> {
-  const game = gameInfo(gameId);
-  const keyboard: InlineKeyboard = [[{ text: '⬅️ بازگشت به تصاویر', callback_data: 'botadmin:gameimages' }]];
-  await upsertTelegramMessage(
-    token,
-    chatId,
-    messageId,
-    `🖼 تصویر کارت ${game.label}\n\nحالا تصویر را به‌صورت عکس یا فایل PNG، JPG یا WebP بفرستید. بهترین اندازه عمودی با نسبت ۴:۵ است.`,
-    keyboard,
-  );
-}
-
-async function saveTelegramImage(env: Env, token: string, gameId: string, source: { fileId: string; size?: number; type?: string }): Promise<void> {
-  if (source.size && source.size > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
-  const file = await telegram<TelegramFile>(token, 'getFile', { file_id: source.fileId });
-  if (!file.file_path) throw new Error('فایل تصویر از تلگرام دریافت نشد.');
+async function saveImage(env: Env, token: string, game: string, source: { fileId: string; size?: number; type: string }): Promise<void> {
+  if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
+  const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
+  if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
   const response = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
-  if (!response.ok) throw new Error('دانلود تصویر از تلگرام ناموفق بود.');
+  if (!response.ok) throw new Error('دانلود تصویر ناموفق بود.');
   const bytes = await response.arrayBuffer();
-  if (!bytes.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
-  const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  const contentType = ALLOWED_IMAGE_TYPES.has(responseType) ? responseType : (ALLOWED_IMAGE_TYPES.has(source.type || '') ? source.type! : 'image/jpeg');
-  const version = String(Date.now());
-  await env.ASSETS.put(gameCardKey(gameId), bytes, {
+  if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
+  const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const contentType = TYPES.has(type) ? type : source.type;
+  await env.ASSETS.put(key(game), bytes, {
     httpMetadata: { contentType },
-    customMetadata: { version, gameId, uploadedVia: 'telegram-admin' },
+    customMetadata: { version: String(Date.now()), gameId: game, uploadedVia: 'telegram-admin' },
   });
 }
 
-function imageFileFromMessage(message: TelegramAdminMessage): { fileId: string; size?: number; type?: string } | null {
-  const photo = message.photo?.length ? message.photo[message.photo.length - 1] : null;
+function imageFromMessage(message: Message): { fileId: string; size?: number; type: string } | null {
+  const photo = message.photo?.at(-1);
   if (photo?.file_id) return { fileId: photo.file_id, size: photo.file_size, type: 'image/jpeg' };
-  const document = message.document;
-  if (!document?.file_id) return null;
-  const type = String(document.mime_type || '').toLowerCase();
-  const extension = String(document.file_name || '').split('.').pop()?.toLowerCase();
-  const extensionType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : (extension === 'jpg' || extension === 'jpeg') ? 'image/jpeg' : '';
-  const resolvedType = ALLOWED_IMAGE_TYPES.has(type) ? type : extensionType;
-  return resolvedType ? { fileId: document.file_id, size: document.file_size, type: resolvedType } : null;
+  const doc = message.document;
+  if (!doc?.file_id) return null;
+  const mime = String(doc.mime_type || '').toLowerCase();
+  const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
+  const type = TYPES.has(mime) ? mime : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : '';
+  return type ? { fileId: doc.file_id, size: doc.file_size, type } : null;
 }
 
-async function upsertTelegramMessage(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: InlineKeyboard): Promise<void> {
+async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
   const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
   if (messageId) {
-    const edited = await telegram(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
+    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
     if (edited) return;
   }
-  await telegram(token, 'sendMessage', payload);
+  await tg(token, 'sendMessage', payload);
 }
 
-async function telegram<T = unknown>(token: string, method: string, payload: Record<string, unknown>): Promise<T> {
+async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({})) as { ok?: boolean; result?: T; description?: string };
   if (!response.ok || !data.ok) throw new Error(data.description || `Telegram ${method} failed`);
   return data.result as T;
 }
 
-function telegramOk(): Response {
-  return Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
-}
-
-function isAdminCommand(text: string): boolean {
-  const normalized = text.trim().toLowerCase();
-  return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
-}
-
-function isBotAdmin(env: Env, userId: unknown): boolean {
-  const admins = String(env.BOT_ADMIN || '').split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
-  return admins.includes(String(userId || ''));
-}
-
 function normalizeGame(value: unknown): string | null {
   const game = String(value || '').replace(/\.png$/i, '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
-  return GAME_CARD_IDS.has(game) ? game : null;
+  return GAME_IDS.has(game as never) ? game : null;
 }
-
-function gameInfo(gameId: string): GameCard {
-  return GAME_CARDS.find((game) => game.id === gameId) || { id: gameId, label: gameId };
-}
-
-function gameCardKey(gameId: string): string {
-  return `game-card-images/${gameId}`;
-}
-
-function uploadStateKey(adminId: number): string {
-  return `${STATE_PREFIX}${adminId}`;
-}
-
-async function clearUploadState(env: Env, adminId: number): Promise<void> {
-  await env.BOT_CACHE.delete(uploadStateKey(adminId)).catch(() => undefined);
-}
-
-function formatNanoAsTon(value: unknown): string {
-  const amount = Number(value || 0) / 1_000_000_000;
-  if (!Number.isFinite(amount)) return '0';
-  return amount.toLocaleString('en-US', { maximumFractionDigits: 4 });
-}
+function label(game: string): string { return GAMES.find(([id]) => id === game)?.[1] || game; }
+function key(game: string): string { return `game-card-images/${game}`; }
+function stateKey(id: number): string { return `${STATE_PREFIX}${id}`; }
+function clearState(env: Env, id: number): Promise<void> { return env.BOT_CACHE.delete(stateKey(id)).catch(() => undefined); }
+function isAdmin(env: Env, id: unknown): boolean { return String(env.BOT_ADMIN || '').split(/[\s,;]+/).includes(String(id || '')); }
+function isAdminCommand(text: string): boolean { const value = text.toLowerCase(); return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value); }
+function ok(): Response { return Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } }); }

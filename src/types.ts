@@ -3,70 +3,18 @@ export type Env = {
   BOT_CACHE: KVNamespace;
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
+  BOT_TOKEN: string;
+  /** Internal compatibility aliases populated from BOT_TOKEN by the Worker entrypoint. */
   TELEGRAM_BOT_TOKEN: string;
-  AI_BOT_TOKEN?: string;
-  GAME_BOT_TOKEN?: string;
-  GAME_BOT_USERNAME?: string;
-  TELEGRAM_MINI_APP_SHORT_NAME?: string;
-  OPENAI_API_KEY: string;
-  XAI_API_KEY?: string;
+  GAME_BOT_TOKEN: string;
+  MINI_APP_SHORT_NAME?: string;
   TONCENTER_API_KEY?: string;
   TON_WITHDRAW_MNEMONIC?: string;
   TON_WITHDRAW_PAYOUT_TOKEN?: string;
   TON_WITHDRAW_WALLET_ADDRESS?: string;
+  STARS_TO_NANOTON?: string;
   ADMIN_KEY: string;
   BOT_ADMIN?: string;
-};
-
-export type ButtonAction =
-  | { type: 'menu'; target: string }
-  | { type: 'products' }
-  | { type: 'support' }
-  | { type: 'ai_chat'; prompt: string }
-  | { type: 'url'; url: string };
-
-export type BotButton = {
-  text: string;
-  action: ButtonAction;
-};
-
-export type BotScreen = {
-  id: string;
-  title: string;
-  message: string;
-  buttons: BotButton[];
-};
-
-export type BotBlueprint = {
-  version: 1;
-  botType: 'sales' | 'support' | 'vip' | 'custom';
-  language: 'fa' | 'en' | 'multi';
-  tone: 'friendly' | 'formal' | 'premium' | 'bold';
-  startScreen: string;
-  screens: BotScreen[];
-  aiSupport: {
-    enabled: boolean;
-    systemPrompt: string;
-    handoffMessage: string;
-  };
-  safety: {
-    blockedTopics: string[];
-    requireHumanFor: string[];
-  };
-};
-
-export type BotRecord = {
-  id: string;
-  owner_telegram_id: string | null;
-  username: string | null;
-  title: string;
-  status: 'draft' | 'active' | 'paused' | 'suspended';
-  encrypted_token: string;
-  webhook_secret: string;
-  blueprint_json: string;
-  settings_json: string;
-  created_at: string;
-  updated_at: string;
 };
 
 export type TelegramChat = {
@@ -80,15 +28,8 @@ export type TelegramUser = {
   id: number;
   is_bot?: boolean;
   first_name?: string;
+  last_name?: string;
   username?: string;
-};
-
-export type TelegramUpdate = {
-  update_id: number;
-  message?: TelegramMessage;
-  callback_query?: TelegramCallbackQuery;
-  pre_checkout_query?: TelegramPreCheckoutQuery;
-  my_chat_member?: TelegramChatMemberUpdated;
 };
 
 export type TelegramSuccessfulPayment = {
@@ -111,14 +52,40 @@ export type TelegramLocation = {
   latitude: number;
 };
 
+export type TelegramPhotoSize = {
+  file_id: string;
+  file_unique_id?: string;
+  width?: number;
+  height?: number;
+  file_size?: number;
+};
+
+export type TelegramDocument = {
+  file_id: string;
+  file_unique_id?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+};
+
 export type TelegramMessage = {
   message_id: number;
   text?: string;
+  caption?: string;
   successful_payment?: TelegramSuccessfulPayment;
   contact?: TelegramContact;
   location?: TelegramLocation;
+  photo?: TelegramPhotoSize[];
+  document?: TelegramDocument;
+  video?: { file_id: string; file_size?: number; mime_type?: string };
+  animation?: { file_id: string; file_size?: number; mime_type?: string };
+  audio?: { file_id: string; file_size?: number; mime_type?: string };
+  voice?: { file_id: string; file_size?: number; mime_type?: string };
   chat: TelegramChat;
   from?: TelegramUser;
+  reply_to_message?: TelegramMessage;
+  new_chat_members?: TelegramUser[];
+  left_chat_member?: TelegramUser;
 };
 
 export type TelegramChatMemberUpdated = {
@@ -142,4 +109,12 @@ export type TelegramPreCheckoutQuery = {
   currency: string;
   total_amount: number;
   invoice_payload: string;
+};
+
+export type TelegramUpdate = {
+  update_id: number;
+  message?: TelegramMessage;
+  callback_query?: TelegramCallbackQuery;
+  pre_checkout_query?: TelegramPreCheckoutQuery;
+  my_chat_member?: TelegramChatMemberUpdated;
 };

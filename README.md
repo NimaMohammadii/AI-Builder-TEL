@@ -1,14 +1,14 @@
-# AI Builder TEL
+# Vexa Games
 
-No-code AI Telegram bot builder built for Cloudflare Workers.
+Telegram game Mini App running on Cloudflare Workers.
 
-The Worker uses only two environment secrets:
+The project uses one Telegram bot and one Telegram token:
 
 ```env
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-OPENAI_API_KEY=your-openai-api-key
+BOT_TOKEN=123456789:replace-with-your-game-bot-token
 ```
-Everything else is defined in code/config.
+
+There is no AI provider, AI chat, bot builder, generated bot runtime, `OPENAI_API_KEY`, `XAI_API_KEY`, `AI_BOT_TOKEN`, or `GAME_BOT_TOKEN`.
 
 ## Stack
 
@@ -18,28 +18,15 @@ Everything else is defined in code/config.
 - Cloudflare R2
 - Hono
 - TypeScript
-- OpenAI chat completions
-- Telegram Bot API webhooks
+- Telegram Bot API
 
-## Model
+## Main routes
 
-The OpenAI model is hardcoded in `src/utils.ts`:
-
-```ts
-export const OPENAI_MODEL = 'gpt-4.1-mini';
-```
-
-## Features
-
-- Create Telegram bot blueprints from natural-language prompts
-- Runtime executes safe JSON config instead of generated user code
-- Telegram webhook publishing
-- D1 persistence
-- KV bot cache
-- KV rate limiting
-- R2-ready asset binding
-- Products/delivery flow
-- AI support replies
+- `GET /app` — game Mini App
+- `POST /telegram/webhook` — the single Telegram bot webhook
+- `GET /setup-webhook` — registers the webhook and Mini App menu button
+- `GET /admin` — web admin login
+- `/admin` inside Telegram — Telegram admin panel
 
 ## Local setup
 
@@ -48,140 +35,60 @@ npm install
 cp .dev.vars.example .dev.vars
 ```
 
-Edit `.dev.vars`:
+Set the game bot token and admin values:
 
 ```env
-TELEGRAM_BOT_TOKEN=123456789:your-telegram-bot-token
-OPENAI_API_KEY=sk-your-openai-key
+BOT_TOKEN=123456789:your-game-bot-token
+BOT_ADMIN=123456789
+ADMIN_KEY=replace-with-a-strong-admin-password
 ```
 
-Run locally:
+Run:
 
 ```bash
 npm run dev
 ```
 
-## Cloudflare resources
+## Deploy
 
-Create D1:
-
-```bash
-npx wrangler d1 create ai-builder-tel
-```
-
-Copy the returned database id into `wrangler.jsonc` under `d1_databases[0].database_id`.
-
-Create KV namespaces:
+Set the only Telegram bot secret:
 
 ```bash
-npx wrangler kv namespace create BOT_CACHE
-npx wrangler kv namespace create RATE_LIMITS
+npx wrangler secret put BOT_TOKEN
 ```
 
-Copy the returned ids into `wrangler.jsonc`.
-
-Create R2 bucket:
+Set the admin secrets:
 
 ```bash
-npx wrangler r2 bucket create ai-builder-tel-assets
+npx wrangler secret put BOT_ADMIN
+npx wrangler secret put ADMIN_KEY
 ```
 
-Apply migrations:
+Apply migrations and deploy:
 
 ```bash
 npm run db:migrate:prod
-```
-
-Set only these secrets:
-
-```bash
-npx wrangler secret put TELEGRAM_BOT_TOKEN
-npx wrangler secret put OPENAI_API_KEY
-```
-
-Deploy:
-
-```bash
 npm run deploy
 ```
 
-## API
-
-### Health
-
-```http
-GET /health
-```
-
-### Create bot
-
-```http
-POST /api/bots
-Content-Type: application/json
-```
-
-```json
-{
-  "title": "Course Sales Bot",
-  "ownerTelegramId": "123456789",
-  "username": "my_course_bot",
-  "prompt": "یک ربات فروش دوره زبان بساز با محصولات، پشتیبانی هوشمند، لحن حرفه‌ای و فارسی."
-}
-```
-
-Response includes `botId` and generated `blueprint`.
-
-### Add product
-
-```http
-POST /api/bots/:id/products
-Content-Type: application/json
-```
-
-```json
-{
-  "title": "دوره مکالمه زبان",
-  "description": "آموزش کامل مکالمه از صفر تا متوسط",
-  "priceAmount": 990000,
-  "currency": "IRR",
-  "deliveryText": "لینک دانلود یا عضویت خصوصی را اینجا قرار بده."
-}
-```
-
-### Publish bot
-
-```http
-POST /api/bots/:id/publish
-```
-
-This calls Telegram `setWebhook` and activates the bot.
-
-### Get bot
-
-```http
-GET /api/bots/:id
-```
-
-## Architecture
+After deployment, open:
 
 ```text
-Telegram user
-  -> Telegram webhook
-  -> Cloudflare Worker
-  -> bot lookup in KV/D1
-  -> settings.flow runtime engine
-  -> D1/KV/R2/OpenAI
-  -> Telegram Bot API response
+https://v.vexaagent.workers.dev/setup-webhook
 ```
 
-## Important
-
-`PUBLIC_BASE_URL`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and app name are hardcoded in `src/utils.ts`.
-
-Current Worker URL:
+The webhook is registered at:
 
 ```text
-https://v.vexaagent.workers.dev
+https://v.vexaagent.workers.dev/telegram/webhook
 ```
 
-If your deployed Worker URL changes, update `PUBLIC_BASE_URL` in `src/utils.ts`.
+## Cloudflare bindings
+
+- `DB` — D1 game/user/payment data
+- `BOT_CACHE` — admin sessions and runtime state
+- `RATE_LIMITS` — game rate limits
+- `ASSETS` — uploaded images and game assets
+- `PLINKO_LIVE` — Plinko Durable Object
+
+`PUBLIC_BASE_URL` is defined in `src/utils.ts`.
