@@ -1,0 +1,39 @@
+name: Fix RPS validation command
+
+on:
+  push:
+    branches:
+      - chatgpt/restore-playhub-remove-rps
+    paths:
+      - '.github/workflows/fix-rps-validation-command.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/restore-playhub-remove-rps
+      - name: Update validation command
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          target = Path('.github/workflows/restore-playhub-remove-rps.yml')
+          text = target.read_text()
+          old = 'npm install --ignore-scripts --no-package-lock'
+          new = 'npm install --ignore-scripts --no-package-lock --legacy-peer-deps'
+          if text.count(old) != 1:
+              raise SystemExit('Expected install command was not found exactly once')
+          target.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/fix-rps-validation-command.yml').unlink()
+          PY
+      - name: Commit temporary validation fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Allow validation with existing peer dependencies'
+          git push origin chatgpt/restore-playhub-remove-rps
