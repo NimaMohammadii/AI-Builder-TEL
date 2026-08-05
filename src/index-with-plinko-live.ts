@@ -3,6 +3,8 @@ import './deposit-method-icon-routes';
 import './withdrawal-admin-routes';
 import app from './index-with-admin-refresh';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
+import { handleGameCardAdminRequest } from './telegram-game-card-admin';
+import type { Env } from './types';
 
 export { PlinkoLiveRoom } from './plinko-live';
 
@@ -16,7 +18,10 @@ export class GhostRunLiveRoom {
 }
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const gameCardAdminResponse = await handleGameCardAdminRequest(request, env);
+    if (gameCardAdminResponse) return gameCardAdminResponse;
+
     const response = await app.fetch(request, env as never, ctx);
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) return response;
