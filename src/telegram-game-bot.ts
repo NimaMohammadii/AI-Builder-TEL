@@ -4,30 +4,47 @@ import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 
 type TelegramApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
+type TelegramEnvelope<T = unknown> = {
+  ok: boolean;
+  result?: T;
+  description?: string;
+  error_code?: number;
+};
 
-export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string }> {
-  if (!env.BOT_TOKEN) return { ok: false, description: 'BOT_TOKEN is not configured.' };
-  return telegram<{ ok: boolean; description?: string }>(env.BOT_TOKEN, 'setWebhook', {
+export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
+  const token = botToken(env);
+  const invalid = botTokenError(token);
+  if (invalid) return { ok: false, description: invalid };
+
+  const data = await telegramRequest<boolean>(token, 'setWebhook', {
     url: `${PUBLIC_BASE_URL}/telegram/webhook`,
     allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'my_chat_member'],
     drop_pending_updates: true,
   });
+
+  return { ok: data.ok, description: data.description, error_code: data.error_code };
 }
 
-export async function setGameMenuButton(env: Env): Promise<{ ok: boolean; description?: string }> {
-  if (!env.BOT_TOKEN) return { ok: false, description: 'BOT_TOKEN is not configured.' };
-  return telegram<{ ok: boolean; description?: string }>(env.BOT_TOKEN, 'setChatMenuButton', {
+export async function setGameMenuButton(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
+  const token = botToken(env);
+  const invalid = botTokenError(token);
+  if (invalid) return { ok: false, description: invalid };
+
+  const data = await telegramRequest<boolean>(token, 'setChatMenuButton', {
     menu_button: {
       type: 'web_app',
       text: 'Open Vexa Games',
       web_app: { url: `${PUBLIC_BASE_URL}/app` },
     },
   });
+
+  return { ok: data.ok, description: data.description, error_code: data.error_code };
 }
 
 export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Promise<void> {
-  const token = env.BOT_TOKEN;
-  if (!token) throw new Error('BOT_TOKEN is not configured.');
+  const token = botToken(env);
+  const invalid = botTokenError(token);
+  if (invalid) throw new Error(invalid);
 
   if (update.pre_checkout_query) {
     await handleStarsPreCheckout(env, update.pre_checkout_query);
@@ -51,9 +68,6 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
     const adminHandled = await handleBotAdminMessage(env, token, message, telegram as TelegramApi);
     if (adminHandled) return;
 
-    // An admin command must never fall through to the normal game menu. When
-    // BOT_ADMIN is present but does not include this account, show the exact
-    // Telegram ID needed for configuration instead.
     if (adminCommand) {
       await telegram(token, 'sendMessage', {
         chat_id: message.chat.id,
@@ -84,13 +98,38 @@ async function sendGameHome(token: string, chatId: number): Promise<void> {
   });
 }
 
-async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
+function botToken(env: Env): string {
+  let token = String(env.BOT_TOKEN ?? '').trim();
+  token = token.replace(/^['"]|['"]$/g, '').trim();
+  token = token.replace(/^https:\/\/api\.telegram\.org\/bot/i, '');
+  token = token.replace(/^bot/i, '');
+  token = token.split('/')[0]?.trim() ?? '';
+  return token;
+}
+
+function botTokenError(token: string): string | null {
+  if (!token) return 'BOT_TOKEN is not configured.';
+  if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(token)) {
+    return 'BOT_TOKEN format is invalid. Store only the raw BotFather token, without bot, URL, spaces or quotes.';
+  }
+  return null;
+}
+
+async function telegramRequest<T = unknown>(token: string, method: string, payload: unknown): Promise<TelegramEnvelope<T>> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const data = await response.json().catch(() => ({})) as { ok?: boolean; result?: T; description?: string };
-  if (!response.ok || !data.ok) throw new Error(data.description || `Telegram ${method} failed`);
+  const data = await response.json().catch(() => ({})) as TelegramEnvelope<T>;
+  if (!response.ok && typeof data.ok !== 'boolean') {
+    return { ok: false, description: `Telegram ${method} failed with HTTP ${response.status}` };
+  }
+  return data;
+}
+
+async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
+  const data = await telegramRequest<T>(token, method, payload);
+  if (!data.ok) throw new Error(data.description || `Telegram ${method} failed`);
   return data.result as T;
 }
