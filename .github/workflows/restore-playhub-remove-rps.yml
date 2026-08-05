@@ -178,12 +178,16 @@ jobs:
           # The one-time workflow removes itself from the final product tree.
           Path('.github/workflows/restore-playhub-remove-rps.yml').unlink()
 
-          # Exact semantic residual check; avoids unrelated substrings in other code.
+          # Semantic residual check. Inline image/audio data is ignored, not edited.
           allowed = Path('migrations/0018_remove_rps.sql')
-          patterns = re.compile(
-              r"(?:\brps\b|rps_|_rps|/rps|rps:|Rps[A-Z]|RPS_|RPS_SECTION|Rock Paper Scissors|سنگ کاغذ قیچی)",
+          token_pattern = re.compile(
+              r"(?:\brps\b|rps_|_rps|/rps|rps:|Rock Paper Scissors|سنگ کاغذ قیچی)",
               re.IGNORECASE,
           )
+          identifier_pattern = re.compile(
+              r"(?:rps[A-Z][A-Za-z0-9_]*|Rps[A-Z][A-Za-z0-9_]*|[A-Za-z0-9_]+Rps\b|RPS_[A-Z0-9_]+|RPS_SECTION)"
+          )
+          data_uri_pattern = re.compile(r"data:[^'\"`\s]+", re.IGNORECASE)
           leftovers = []
           for root in (Path('src'), Path('migrations'), Path('README.md')):
               paths = [root] if root.is_file() else root.rglob('*')
@@ -194,7 +198,8 @@ jobs:
                       text = path.read_text()
                   except (UnicodeDecodeError, OSError):
                       continue
-                  if patterns.search(text) or patterns.search(path.as_posix()):
+                  searchable = data_uri_pattern.sub('', text)
+                  if token_pattern.search(searchable) or identifier_pattern.search(searchable) or token_pattern.search(path.as_posix()):
                       leftovers.append(path.as_posix())
           if leftovers:
               raise SystemExit('Active RPS references remain: ' + ', '.join(sorted(set(leftovers))))
