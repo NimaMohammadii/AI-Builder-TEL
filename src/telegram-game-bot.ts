@@ -33,7 +33,7 @@ export async function setGameMenuButton(env: Env): Promise<{ ok: boolean; descri
   const data = await telegramRequest<boolean>(token, 'setChatMenuButton', {
     menu_button: {
       type: 'web_app',
-      text: 'Open Vexa Games',
+      text: 'Open Mini App',
       web_app: { url: `${PUBLIC_BASE_URL}/app` },
     },
   });
@@ -91,7 +91,7 @@ async function sendGameHome(token: string, chatId: number): Promise<void> {
     text: '🎮 Vexa Games\n\nبرای ورود به بازی‌ها دکمه زیر را بزن.',
     reply_markup: {
       inline_keyboard: [[{
-        text: '🎮 Open Games',
+        text: 'Open Mini App',
         web_app: { url: `${PUBLIC_BASE_URL}/app` },
       }]],
     },
