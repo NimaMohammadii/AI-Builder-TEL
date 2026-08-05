@@ -88,7 +88,7 @@ function isAdminCommand(text: string | undefined): boolean {
 async function sendGameHome(token: string, chatId: number): Promise<void> {
   await telegram(token, 'sendMessage', {
     chat_id: chatId,
-    text: '🎮 Vexa Games\n\nبرای ورود به بازی‌ها دکمه زیر را بزن.',
+    text: 'AI Builder',
     reply_markup: {
       inline_keyboard: [[{
         text: 'Open Mini App',
