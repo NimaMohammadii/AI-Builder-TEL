@@ -68,7 +68,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       const game = normalizeGame(data.slice('botadmin:gameimage:'.length));
       if (game) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), game, { expirationTtl: 900 });
-        await upsert(token, chatId, messageId, `🖼 تصویر کارت ${label(game)}\n\nتصویر PNG، JPG یا WebP با نسبت ۴:۵ را بفرستید.`, [
+        await upsert(token, chatId, messageId, `🖼 تصویر کارت ${label(game)}\n\nتصویر PNG، JPG یا WebP با نسبت ۴:۵ را فقط به‌صورت File/Document بفرستید؛ ارسال به‌صورت Photo توسط تلگرام فشرده می‌شود.`, [
           [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gameimages' }],
         ]);
       }
@@ -101,9 +101,16 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     await sendGameMenu(token, message.chat.id);
     return ok();
   }
+  if (message.photo?.length) {
+    await tg(token, 'sendMessage', {
+      chat_id: message.chat.id,
+      text: 'تصویر را به‌صورت File/Document بفرستید، نه Photo؛ تلگرام عکس‌های Photo را فشرده می‌کند.',
+    }).catch(() => undefined);
+    return ok();
+  }
   const source = imageFromMessage(message);
   if (!source) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'تصویر PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'فایل PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
     return ok();
   }
 
@@ -113,9 +120,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     await tg(token, 'sendPhoto', {
       chat_id: message.chat.id,
       photo: `${PUBLIC_BASE_URL}/app/api/game-card-image/${game}.png?v=${Date.now()}`,
-      caption: `✅ تصویر کارت ${label(game)} ذخیره شد.`,
+      caption: `✅ تصویر کارت ${label(game)} بدون فشرده‌سازی ذخیره شد.`,
       reply_markup: { inline_keyboard: [[{ text: '🎮 تصاویر بازی‌ها', callback_data: 'botadmin:gameimages' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]] },
-    }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ تصویر کارت ${label(game)} ذخیره شد.` }));
+    }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ تصویر کارت ${label(game)} بدون فشرده‌سازی ذخیره شد.` }));
   } catch (error) {
     await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'آپلود انجام نشد.'}` }).catch(() => undefined);
   }
@@ -140,7 +147,7 @@ async function sendGameMenu(token: string, chatId: number, messageId?: number): 
     rows.push(GAMES.slice(i, i + 2).map(([id, name]) => ({ text: name, callback_data: `botadmin:gameimage:${id}` })));
   }
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
-  await upsert(token, chatId, messageId, '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید. نسبت تصویر ۴:۵ است.', rows);
+  await upsert(token, chatId, messageId, '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید. نسبت تصویر ۴:۵ است و فایل را باید به‌صورت Document بفرستید.', rows);
 }
 
 async function saveImage(env: Env, token: string, game: string, source: { fileId: string; size?: number; type: string }): Promise<void> {
@@ -155,13 +162,11 @@ async function saveImage(env: Env, token: string, game: string, source: { fileId
   const contentType = TYPES.has(type) ? type : source.type;
   await env.ASSETS.put(key(game), bytes, {
     httpMetadata: { contentType },
-    customMetadata: { version: String(Date.now()), gameId: game, uploadedVia: 'telegram-admin' },
+    customMetadata: { version: String(Date.now()), gameId: game, uploadedVia: 'telegram-admin-document' },
   });
 }
 
 function imageFromMessage(message: Message): { fileId: string; size?: number; type: string } | null {
-  const photo = message.photo?.at(-1);
-  if (photo?.file_id) return { fileId: photo.file_id, size: photo.file_size, type: 'image/jpeg' };
   const doc = message.document;
   if (!doc?.file_id) return null;
   const mime = String(doc.mime_type || '').toLowerCase();
