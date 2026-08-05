@@ -1,6 +1,6 @@
 import { adminUsersJson } from './admin-users';
 import type { Env } from './types';
-import { gameBotToken, PUBLIC_BASE_URL } from './utils';
+import { PUBLIC_BASE_URL } from './utils';
 
 type TelegramPhoto = { file_id: string; file_size?: number; width?: number; height?: number };
 type TelegramDocument = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -71,7 +71,10 @@ async function serveGameCardImage(request: Request, env: Env, rawGame: string): 
 }
 
 async function handleTelegramAdminUpdate(env: Env, update: TelegramAdminUpdate): Promise<Response | null> {
-  const token = gameBotToken(env);
+  // /telegram/webhook is registered for TELEGRAM_BOT_TOKEN. Replies must use the
+  // same bot token; using GAME_BOT_TOKEN here causes Telegram "chat not found"
+  // whenever the game bot is a separate bot.
+  const token = env.TELEGRAM_BOT_TOKEN;
   if (!token) return null;
 
   const callback = update.callback_query;
@@ -206,7 +209,7 @@ async function sendGameImageMenu(token: string, chatId: number, messageId?: numb
     token,
     chatId,
     messageId,
-    '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید و تصویر عمودی آن را بفرستید. نسبت پیشنهادی تصویر ۹:۱۶ مثل استوری اینستاگرام است.',
+    '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید و تصویر عمودی آن را بفرستید. نسبت پیشنهادی تصویر ۴:۵ است.',
     rows,
   );
 }
@@ -218,7 +221,7 @@ async function sendUploadPrompt(token: string, chatId: number, messageId: number
     token,
     chatId,
     messageId,
-    `🖼 تصویر کارت ${game.label}\n\nحالا تصویر را به‌صورت عکس یا فایل PNG، JPG یا WebP بفرستید. بهترین اندازه عمودی با نسبت ۹:۱۶ است.`,
+    `🖼 تصویر کارت ${game.label}\n\nحالا تصویر را به‌صورت عکس یا فایل PNG، JPG یا WebP بفرستید. بهترین اندازه عمودی با نسبت ۴:۵ است.`,
     keyboard,
   );
 }
