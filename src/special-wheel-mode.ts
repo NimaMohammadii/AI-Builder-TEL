@@ -1,9 +1,5 @@
-import { adminUsersJson } from './admin-users';
-import { formatTonAmount } from './admin-finance-controls';
-import type { Env, TelegramCallbackQuery } from './types';
-
-type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
-type AdminUser = Record<string, unknown>;
+import type { Env } from './types';
+import { getSpecialWheelState } from './special-wheel-engine';
 
 const STATE_KEY = 'admin:special-wheel-mode';
 
@@ -24,91 +20,12 @@ export async function specialWheelStatusResponse(request: Request, env: Env): Pr
   const url = new URL(request.url);
   const userId = url.searchParams.get('userId') || '';
   const enabled = await isSpecialWheelEnabled(env);
+  const active = enabled && !isBotAdmin(env, userId);
+  const state = active && userId ? await getSpecialWheelState(env, userId).catch(() => null) : null;
   return Response.json(
-    { ok: true, active: enabled && !isBotAdmin(env, userId) },
+    { ok: true, active, state },
     { headers: { 'cache-control': 'no-store, no-cache, must-revalidate' } },
   );
-}
-
-export async function sendSpecialWheelAdminHome(
-  env: Env,
-  token: string,
-  chatId: number,
-  tg: TgApi,
-  userId: unknown,
-  messageId?: number,
-): Promise<boolean> {
-  if (!isBotAdmin(env, userId)) return false;
-
-  const [data, enabled] = await Promise.all([adminUsersJson(env), isSpecialWheelEnabled(env)]);
-  const users = data.users as AdminUser[];
-  const text = [
-    '🛡 پنل مدیریت ربات گیم',
-    '',
-    `👥 تعداد کل کاربران: ${data.stats.total ?? users.length}`,
-    `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`,
-    `💎 مجموع موجودی: ${formatTonAmount(data.stats.totalTonBalanceNano)} TON`,
-    '',
-    `🎡 صفحه موقت گردونه: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
-    '',
-    'از منوی زیر بخش موردنظر را انتخاب کنید.',
-  ].join('\n');
-
-  const payload = {
-    chat_id: chatId,
-    text,
-    reply_markup: {
-      inline_keyboard: [
-        [{
-          text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
-          callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
-        }],
-        [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
-        [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }],
-        [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
-        [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
-        [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
-        [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }],
-      ],
-    },
-    disable_web_page_preview: true,
-  };
-
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return true;
-  }
-  await tg(token, 'sendMessage', payload);
-  return true;
-}
-
-export async function handleSpecialWheelAdminCallback(
-  env: Env,
-  token: string,
-  q: TelegramCallbackQuery,
-  tg: TgApi,
-): Promise<boolean> {
-  const data = q.data ?? '';
-  if (data !== 'botadmin:home' && !data.startsWith('botadmin:specialwheel:')) return false;
-  if (!isBotAdmin(env, q.from.id)) return true;
-
-  const chatId = q.message?.chat.id ?? q.from.id;
-  const messageId = q.message?.message_id;
-
-  if (data === 'botadmin:home') {
-    await tg(token, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
-    await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
-    return true;
-  }
-
-  const enabled = data.endsWith(':on');
-  await setSpecialWheelEnabled(env, enabled);
-  await tg(token, 'answerCallbackQuery', {
-    callback_query_id: q.id,
-    text: enabled ? 'صفحه گردونه برای کاربران فعال شد.' : 'صفحه گردونه غیرفعال شد.',
-  }).catch(() => undefined);
-  await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
-  return true;
 }
 
 export const SPECIAL_WHEEL_OVERLAY = `
@@ -116,10 +33,9 @@ export const SPECIAL_WHEEL_OVERLAY = `
   <style>
     #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:calc(110px + env(safe-area-inset-top));z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
     #specialWheelOverlay.active{display:flex}
-    body.special-wheel-active main.app>header.top{position:relative;z-index:2147483647;background:#000}
     body.special-wheel-active main.app>header.top #rankPill{display:none!important}
     body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
-    #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:30px;transform:translateY(-1.5vh)}
+    #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:24px;transform:translateY(-1.5vh)}
     #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1}
     #specialWheelOverlay .special-wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4efe6 0 60deg,#171717 60deg 120deg,#d7c7ae 120deg 180deg,#0b0b0b 180deg 240deg,#ece5da 240deg 300deg,#202020 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 28px 72px rgba(0,0,0,.62),inset 0 0 0 8px rgba(0,0,0,.2);will-change:transform;transform:rotate(0deg)}
     #specialWheelOverlay .special-wheel-rotor:after{content:"";position:absolute;inset:9px;border-radius:50%;border:1px solid rgba(255,255,255,.16);pointer-events:none}
@@ -130,9 +46,11 @@ export const SPECIAL_WHEEL_OVERLAY = `
     #specialWheelOverlay .special-wheel-prize.special-wheel-word{font-size:10px;line-height:1.15;letter-spacing:.08em}
     #specialWheelOverlay .special-wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:38px;height:38px;margin:-19px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 20px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.14)}
     #specialWheelOverlay .special-wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:24px solid #f5efe5;filter:drop-shadow(0 5px 8px rgba(0,0,0,.7))}
-    #specialWheelOverlay .special-wheel-spin{width:min(78vw,320px);height:58px;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#3b0715;color:#f7e7eb;font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;box-shadow:0 12px 24px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .18s ease,opacity .18s ease}
+    #specialWheelOverlay .special-wheel-result{min-height:18px;margin:0;color:rgba(255,255,255,.76);font-family:system-ui,-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;text-align:center}
+    #specialWheelOverlay .special-wheel-spin{width:min(78vw,320px);height:58px;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#3b0715;color:#f7e7eb;font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;box-shadow:0 12px 24px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .18s ease,opacity .18s ease;display:flex;align-items:center;justify-content:center;gap:9px}
     #specialWheelOverlay .special-wheel-spin:active{transform:scale(.975)}
     #specialWheelOverlay .special-wheel-spin:disabled{opacity:.62}
+    #specialWheelOverlay .special-wheel-star{width:21px;height:21px;display:block;flex:0 0 auto}
   </style>
   <div class="special-wheel-content">
     <div class="special-wheel-stage">
@@ -147,6 +65,7 @@ export const SPECIAL_WHEEL_OVERLAY = `
         <i class="special-wheel-hub" aria-hidden="true"></i>
       </div>
     </div>
+    <p class="special-wheel-result" data-special-wheel-result></p>
     <button class="special-wheel-spin" type="button" data-special-wheel-spin>Spin</button>
   </div>
 </div>
@@ -156,35 +75,99 @@ export const SPECIAL_WHEEL_OVERLAY = `
   if(!overlay)return;
   var rotor=overlay.querySelector('[data-special-wheel-rotor]');
   var button=overlay.querySelector('[data-special-wheel-spin]');
+  var result=overlay.querySelector('[data-special-wheel-result]');
   var rotation=0;
   var spinning=false;
+  var state=null;
+  var starSvg='<svg class="special-wheel-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.7l2.75 5.57 6.15.9-4.45 4.33 1.05 6.12L12 16.73l-5.5 2.89 1.05-6.12L3.1 9.17l6.15-.9L12 2.7z" fill="#c99a24"/><path d="M12 5.1v13.8" stroke="#5d4514" stroke-width="1.45" stroke-linecap="round" stroke-dasharray="2.2 1.75"/></svg>';
   function userId(){
     try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user&&Telegram.WebApp.initDataUnsafe.user.id||'')}catch(e){return ''}
   }
-  function apply(active){
+  function initData(){
+    try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initData||'')}catch(e){return ''}
+  }
+  function requestId(){
+    var bytes=new Uint8Array(12);crypto.getRandomValues(bytes);return 'swreq_'+Array.from(bytes).map(function(v){return v.toString(16).padStart(2,'0')}).join('')
+  }
+  function applyActive(active){
     overlay.classList.toggle('active',!!active);
     overlay.setAttribute('aria-hidden',active?'false':'true');
     document.body.classList.toggle('special-wheel-active',!!active);
     document.documentElement.style.overflow=active?'hidden':'';
     document.body.style.overflow=active?'hidden':'';
   }
+  function renderButton(){
+    if(!button)return;
+    if(spinning){button.textContent='Spinning';return}
+    if(state&&(state.freeAvailable||Number(state.paidSpins)>0)){button.textContent='Spin';return}
+    button.innerHTML='<span>18</span>'+starSvg;
+  }
   async function refresh(){
     try{
       var response=await fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId())+'&t='+Date.now(),{cache:'no-store'});
       if(!response.ok)return;
       var data=await response.json();
-      apply(data.active===true);
+      applyActive(data.active===true);
+      if(data.state)state=data.state;
+      renderButton();
     }catch(e){}
   }
+  function animateTo(index,done){
+    var current=((rotation%360)+360)%360;
+    var target=(360-(Number(index)||0)*60)%360;
+    var delta=(target-current+360)%360;
+    rotation+=1440+delta;
+    rotor.style.transition='transform 4.2s cubic-bezier(.12,.72,.08,1)';
+    rotor.style.transform='rotate('+rotation+'deg)';
+    setTimeout(done,4300);
+  }
+  async function performSpin(){
+    var response=await fetch('/app/api/special-wheel/spin',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData(),requestId:requestId()}),cache:'no-store'});
+    var data=await response.json().catch(function(){return {ok:false,error:'Spin failed'}});
+    if(!response.ok||!data.ok){
+      if(data.state)state=data.state;
+      throw new Error(data.error||'Spin failed');
+    }
+    animateTo(data.prizeIndex,function(){
+      state=data.state||state;
+      result.textContent=data.prizeLabel==='Spin Again'?'You won another spin':data.prizeLabel==='No Prize'?'No prize this time':'You won '+data.prizeLabel;
+      spinning=false;button.disabled=false;renderButton();
+    });
+  }
+  async function waitForPaidSpin(){
+    for(var i=0;i<12;i++){
+      await new Promise(function(resolve){setTimeout(resolve,500)});
+      await refresh();
+      if(state&&Number(state.paidSpins)>0)return true;
+    }
+    return false;
+  }
+  async function buyAndSpin(){
+    var response=await fetch('/app/api/special-wheel/invoice',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData()}),cache:'no-store'});
+    var data=await response.json().catch(function(){return {ok:false,error:'Payment failed'}});
+    if(!response.ok||!data.ok)throw new Error(data.error||'Payment failed');
+    var tg=window.Telegram&&Telegram.WebApp;
+    if(!tg||typeof tg.openInvoice!=='function'){location.href=data.invoiceLink;return}
+    await new Promise(function(resolve,reject){
+      tg.openInvoice(data.invoiceLink,function(status){
+        if(status==='paid')resolve();
+        else if(status==='cancelled'||status==='failed')reject(new Error(status==='cancelled'?'Payment cancelled':'Payment failed'));
+        else reject(new Error('Payment was not completed'));
+      });
+    });
+    if(!(await waitForPaidSpin()))throw new Error('Payment received. Please try again in a moment.');
+    await performSpin();
+  }
   if(button&&rotor){
-    button.addEventListener('click',function(){
+    button.addEventListener('click',async function(){
       if(spinning)return;
-      spinning=true;
-      button.disabled=true;
-      rotation+=1440+Math.floor(Math.random()*360);
-      rotor.style.transition='transform 4.2s cubic-bezier(.12,.72,.08,1)';
-      rotor.style.transform='rotate('+rotation+'deg)';
-      setTimeout(function(){spinning=false;button.disabled=false},4300);
+      spinning=true;button.disabled=true;result.textContent='';renderButton();
+      try{
+        if(state&&(state.freeAvailable||Number(state.paidSpins)>0))await performSpin();
+        else await buyAndSpin();
+      }catch(error){
+        spinning=false;button.disabled=false;result.textContent=error&&error.message?error.message:'Something went wrong';renderButton();
+      }
     });
   }
   refresh();
