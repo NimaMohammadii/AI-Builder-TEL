@@ -1,6 +1,9 @@
+import { adminUsersJson } from './admin-users';
+import { formatTonAmount } from './admin-finance-controls';
 import type { Env, TelegramCallbackQuery } from './types';
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
+type AdminUser = Record<string, unknown>;
 
 const STATE_KEY = 'admin:special-wheel-mode';
 
@@ -27,18 +30,56 @@ export async function specialWheelStatusResponse(request: Request, env: Env): Pr
   );
 }
 
-export async function sendSpecialWheelAdminControl(env: Env, token: string, chatId: number, tg: TgApi): Promise<void> {
-  const enabled = await isSpecialWheelEnabled(env);
-  await tg(token, 'sendMessage', {
+export async function sendSpecialWheelAdminHome(
+  env: Env,
+  token: string,
+  chatId: number,
+  tg: TgApi,
+  userId: unknown,
+  messageId?: number,
+): Promise<boolean> {
+  if (!isBotAdmin(env, userId)) return false;
+
+  const [data, enabled] = await Promise.all([adminUsersJson(env), isSpecialWheelEnabled(env)]);
+  const users = data.users as AdminUser[];
+  const text = [
+    '🛡 پنل مدیریت ربات گیم',
+    '',
+    `👥 تعداد کل کاربران: ${data.stats.total ?? users.length}`,
+    `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`,
+    `💎 مجموع موجودی: ${formatTonAmount(data.stats.totalTonBalanceNano)} TON`,
+    '',
+    `🎡 صفحه موقت گردونه: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
+    '',
+    'از منوی زیر بخش موردنظر را انتخاب کنید.',
+  ].join('\n');
+
+  const payload = {
     chat_id: chatId,
-    text: `🎡 صفحه گردونه کاربران\n\nوضعیت: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
+    text,
     reply_markup: {
-      inline_keyboard: [[{
-        text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
-        callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
-      }]],
+      inline_keyboard: [
+        [{
+          text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
+          callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
+        }],
+        [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
+        [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }],
+        [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
+        [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
+        [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
+        [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }],
+      ],
     },
-  });
+    disable_web_page_preview: true,
+  };
+
+  if (messageId) {
+    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
+    if (edited) return true;
+  }
+  await tg(token, 'sendMessage', payload);
+  return true;
 }
 
 export async function handleSpecialWheelAdminCallback(
@@ -48,8 +89,17 @@ export async function handleSpecialWheelAdminCallback(
   tg: TgApi,
 ): Promise<boolean> {
   const data = q.data ?? '';
-  if (!data.startsWith('botadmin:specialwheel:')) return false;
+  if (data !== 'botadmin:home' && !data.startsWith('botadmin:specialwheel:')) return false;
   if (!isBotAdmin(env, q.from.id)) return true;
+
+  const chatId = q.message?.chat.id ?? q.from.id;
+  const messageId = q.message?.message_id;
+
+  if (data === 'botadmin:home') {
+    await tg(token, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
+    await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
+    return true;
+  }
 
   const enabled = data.endsWith(':on');
   await setSpecialWheelEnabled(env, enabled);
@@ -57,21 +107,7 @@ export async function handleSpecialWheelAdminCallback(
     callback_query_id: q.id,
     text: enabled ? 'صفحه گردونه برای کاربران فعال شد.' : 'صفحه گردونه غیرفعال شد.',
   }).catch(() => undefined);
-
-  const chatId = q.message?.chat.id ?? q.from.id;
-  const messageId = q.message?.message_id;
-  const payload = {
-    chat_id: chatId,
-    message_id: messageId,
-    text: `🎡 صفحه گردونه کاربران\n\nوضعیت: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
-    reply_markup: {
-      inline_keyboard: [[{
-        text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
-        callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
-      }]],
-    },
-  };
-  if (messageId) await tg(token, 'editMessageText', payload).catch(() => undefined);
+  await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
   return true;
 }
 
