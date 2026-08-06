@@ -1,4 +1,5 @@
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
+import { handleSpecialWheelAdminCallback, sendSpecialWheelAdminControl } from './special-wheel-mode';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
@@ -58,6 +59,7 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   }
 
   if (update.callback_query) {
+    if (await handleSpecialWheelAdminCallback(env, token, update.callback_query, telegram as TelegramApi)) return;
     if (await handleBotAdminCallback(env, token, update.callback_query, telegram as TelegramApi)) return;
     await telegram(token, 'answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
     return;
@@ -66,7 +68,10 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   if (message) {
     const adminCommand = isAdminCommand(message.text);
     const adminHandled = await handleBotAdminMessage(env, token, message, telegram as TelegramApi);
-    if (adminHandled) return;
+    if (adminHandled) {
+      if (adminCommand) await sendSpecialWheelAdminControl(env, token, message.chat.id, telegram as TelegramApi).catch(() => undefined);
+      return;
+    }
 
     if (adminCommand) {
       await telegram(token, 'sendMessage', {
