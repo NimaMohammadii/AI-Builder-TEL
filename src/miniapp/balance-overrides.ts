@@ -124,7 +124,7 @@ body.connect-only .top .top-balance-wrap .top-balance-pill:after{
   border-radius:999px!important;
   background:#fff!important;
   transform:translate(-50%,-50%)!important;
-  box-shadow:0 1px 8px rgba(255,255,255,.18)!important;
+  box-shadow:none!important;
   pointer-events:none!important;
 }
 .top .top-balance-wrap .top-balance-plus:after{
