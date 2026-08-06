@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
+import { getSpecialWheelPriceStars, setSpecialWheelPriceStars } from './special-wheel-engine';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -11,7 +12,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'ton' };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'ton' } | { kind: 'wheel-price' };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -21,6 +22,7 @@ const GAMES = [
 const GAME_IDS = new Set(GAMES.map(([id]) => id));
 const STATE_PREFIX = 'admin:game-card-upload:';
 const TON_STATE = 'ton-icon';
+const WHEEL_PRICE_STATE = 'special-wheel-price';
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -57,7 +59,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   const callback = update.callback_query;
   if (callback) {
     const data = callback.data || '';
-    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:tonlogo' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:specialwheel:');
+    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:tonlogo' || data === 'botadmin:specialwheelprice' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
     await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
@@ -72,6 +74,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await clearState(env, callback.from.id);
       await setSpecialWheelEnabled(env, enabled);
       await sendHome(env, token, chatId, messageId);
+    } else if (data === 'botadmin:specialwheelprice') {
+      const current = await getSpecialWheelPriceStars(env);
+      await env.BOT_CACHE.put(stateKey(callback.from.id), WHEEL_PRICE_STATE, { expirationTtl: 900 });
+      await upsert(token, chatId, messageId, `⭐️ قیمت فعلی هر اسپین بعدی: ${current} Stars\n\nیک عدد صحیح بفرستید.\nبرای رایگان شدن اسپین‌های بعدی عدد 0 را بفرستید.`, [
+        [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+      ]);
     } else if (data === 'botadmin:gameimages') {
       await clearState(env, callback.from.id);
       await sendGameMenu(token, chatId, messageId);
@@ -114,8 +122,24 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   if (!target) return null;
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, message.from.id);
-    if (target.kind === 'ton') await sendHome(env, token, message.chat.id);
-    else await sendGameMenu(token, message.chat.id);
+    if (target.kind === 'game') await sendGameMenu(token, message.chat.id);
+    else await sendHome(env, token, message.chat.id);
+    return ok();
+  }
+
+  if (target.kind === 'wheel-price') {
+    const value = Number(text);
+    if (!/^\d+$/.test(text) || !Number.isSafeInteger(value) || value < 0 || value > 100000) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'یک عدد صحیح از 0 تا 100000 بفرستید. عدد 0 یعنی اسپین‌های بعدی رایگان.' }).catch(() => undefined);
+      return ok();
+    }
+    const saved = await setSpecialWheelPriceStars(env, value);
+    await clearState(env, message.from.id);
+    await tg(token, 'sendMessage', {
+      chat_id: message.chat.id,
+      text: saved === 0 ? '✅ اسپین‌های بعدی رایگان شدند.' : `✅ قیمت هر اسپین بعدی روی ${saved} Stars تنظیم شد.`,
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]] },
+    }).catch(() => undefined);
     return ok();
   }
 
@@ -159,11 +183,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 }
 
 async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const wheelEnabled = await isSpecialWheelEnabled(env);
-  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`, [
+  const [wheelEnabled, wheelPrice] = await Promise.all([isSpecialWheelEnabled(env), getSpecialWheelPriceStars(env)]);
+  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n⭐️ قیمت اسپین‌های بعدی: ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nبخش موردنظر را انتخاب کنید.`, [
     [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
+    [{ text: `⭐️ قیمت اسپین بعدی: ${wheelPrice === 0 ? 'رایگان' : wheelPrice}`, callback_data: 'botadmin:specialwheelprice' }],
     [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
     [{ text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' }],
     [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
@@ -182,7 +207,7 @@ async function sendGameMenu(token: string, chatId: number, messageId?: number): 
   await upsert(token, chatId, messageId, '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید. تصویر را می‌توانید عادی یا به‌صورت فایل بفرستید.', rows);
 }
 
-async function saveImage(env: Env, token: string, target: UploadTarget, source: UploadSource): Promise<void> {
+async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'wheel-price' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
   if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
@@ -240,6 +265,7 @@ function normalizeGame(value: unknown): string | null {
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
+  if (raw === WHEEL_PRICE_STATE) return { kind: 'wheel-price' };
   const game = normalizeGame(raw);
   return game ? { kind: 'game', game } : null;
 }
