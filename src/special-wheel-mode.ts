@@ -114,10 +114,10 @@ export async function handleSpecialWheelAdminCallback(
 export const SPECIAL_WHEEL_OVERLAY = `
 <div id="specialWheelOverlay" aria-hidden="true">
   <style>
-    #specialWheelOverlay{position:absolute;left:16px;right:16px;top:calc(22px + env(safe-area-inset-top) + 88px);bottom:calc(14px + env(safe-area-inset-bottom));z-index:70;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:10px 8px 20px;box-sizing:border-box;overflow:hidden}
+    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:var(--special-wheel-header-height,92px);z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
     #specialWheelOverlay.active{display:flex}
-    body.special-wheel-active main.app>.view{visibility:hidden!important;pointer-events:none!important}
-    body.special-wheel-active nav.tabs{display:none!important}
+    body.special-wheel-active main.app>header.top{position:fixed!important;z-index:2147483647!important;left:0!important;right:0!important;top:0!important;width:100%!important;box-sizing:border-box!important;background:#000!important}
+    body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
     #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:30px;transform:translateY(-1.5vh)}
     #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1}
     #specialWheelOverlay .special-wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4efe6 0 60deg,#171717 60deg 120deg,#d7c7ae 120deg 180deg,#0b0b0b 180deg 240deg,#ece5da 240deg 300deg,#202020 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 28px 72px rgba(0,0,0,.62),inset 0 0 0 8px rgba(0,0,0,.2);will-change:transform;transform:rotate(0deg)}
@@ -153,8 +153,6 @@ export const SPECIAL_WHEEL_OVERLAY = `
 (function(){
   var overlay=document.getElementById('specialWheelOverlay');
   if(!overlay)return;
-  var app=document.querySelector('main.app');
-  if(app&&overlay.parentElement!==app)app.appendChild(overlay);
   var rotor=overlay.querySelector('[data-special-wheel-rotor]');
   var button=overlay.querySelector('[data-special-wheel-spin]');
   var rotation=0;
@@ -162,10 +160,19 @@ export const SPECIAL_WHEEL_OVERLAY = `
   function userId(){
     try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user&&Telegram.WebApp.initDataUnsafe.user.id||'')}catch(e){return ''}
   }
+  function syncHeaderHeight(){
+    var header=document.querySelector('main.app>header.top');
+    if(!header)return;
+    var height=Math.max(72,Math.ceil(header.getBoundingClientRect().bottom));
+    overlay.style.setProperty('--special-wheel-header-height',height+'px');
+  }
   function apply(active){
     overlay.classList.toggle('active',!!active);
     overlay.setAttribute('aria-hidden',active?'false':'true');
     document.body.classList.toggle('special-wheel-active',!!active);
+    if(active)syncHeaderHeight();
+    document.documentElement.style.overflow=active?'hidden':'';
+    document.body.style.overflow=active?'hidden':'';
   }
   async function refresh(){
     try{
@@ -186,6 +193,7 @@ export const SPECIAL_WHEEL_OVERLAY = `
       setTimeout(function(){spinning=false;button.disabled=false},4300);
     });
   }
+  window.addEventListener('resize',syncHeaderHeight);
   refresh();
   setInterval(refresh,2000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
