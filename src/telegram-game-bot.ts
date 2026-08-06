@@ -1,5 +1,5 @@
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
-import { handleSpecialWheelAdminCallback, isSpecialWheelEnabled } from './special-wheel-mode';
+import { handleSpecialWheelAdminCallback, sendSpecialWheelAdminHome } from './special-wheel-mode';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
@@ -10,11 +10,6 @@ type TelegramEnvelope<T = unknown> = {
   result?: T;
   description?: string;
   error_code?: number;
-};
-type InlineButton = { text?: string; callback_data?: string; [key: string]: unknown };
-type TelegramPayload = Record<string, unknown> & {
-  text?: unknown;
-  reply_markup?: { inline_keyboard?: InlineButton[][]; [key: string]: unknown };
 };
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
@@ -52,9 +47,6 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   const invalid = botTokenError(token);
   if (invalid) throw new Error(invalid);
 
-  const adminTelegram: TelegramApi = <T = unknown>(currentToken: string, method: string, payload: unknown) =>
-    telegramWithAdminPanel<T>(env, currentToken, method, payload);
-
   if (update.pre_checkout_query) {
     await handleStarsPreCheckout(env, update.pre_checkout_query);
     return;
@@ -67,15 +59,27 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   }
 
   if (update.callback_query) {
-    if (await handleSpecialWheelAdminCallback(env, token, update.callback_query, adminTelegram)) return;
-    if (await handleBotAdminCallback(env, token, update.callback_query, adminTelegram)) return;
+    if (await handleSpecialWheelAdminCallback(env, token, update.callback_query, telegram as TelegramApi)) return;
+    if (await handleBotAdminCallback(env, token, update.callback_query, telegram as TelegramApi)) return;
     await telegram(token, 'answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
     return;
   }
 
   if (message) {
     const adminCommand = isAdminCommand(message.text);
-    const adminHandled = await handleBotAdminMessage(env, token, message, adminTelegram);
+
+    if (adminCommand) {
+      const sent = await sendSpecialWheelAdminHome(
+        env,
+        token,
+        message.chat.id,
+        telegram as TelegramApi,
+        message.from?.id,
+      );
+      if (sent) return;
+    }
+
+    const adminHandled = await handleBotAdminMessage(env, token, message, telegram as TelegramApi);
     if (adminHandled) return;
 
     if (adminCommand) {
@@ -123,54 +127,6 @@ function botTokenError(token: string): string | null {
     return 'BOT_TOKEN format is invalid. Store only the raw BotFather token, without bot, URL, spaces or quotes.';
   }
   return null;
-}
-
-async function telegramWithAdminPanel<T = unknown>(env: Env, token: string, method: string, payload: unknown): Promise<T> {
-  const decorated = await decorateAdminPanelPayload(env, method, payload);
-  return telegram<T>(token, method, decorated);
-}
-
-async function decorateAdminPanelPayload(env: Env, method: string, payload: unknown): Promise<unknown> {
-  if (method !== 'sendMessage' && method !== 'editMessageText') return payload;
-  if (!payload || typeof payload !== 'object') return payload;
-
-  const source = payload as TelegramPayload;
-  const text = String(source.text ?? '');
-  if (!text.includes('🛡 پنل مدیریت ربات گیم')) return payload;
-
-  const enabled = await isSpecialWheelEnabled(env);
-  const existingRows = Array.isArray(source.reply_markup?.inline_keyboard)
-    ? source.reply_markup!.inline_keyboard!
-    : [];
-  const rows = existingRows.filter((row) =>
-    !row.some((button) => String(button.callback_data ?? '').startsWith('botadmin:specialwheel:')),
-  );
-
-  return {
-    ...source,
-    text: addSpecialWheelStatus(text, enabled),
-    reply_markup: {
-      ...(source.reply_markup ?? {}),
-      inline_keyboard: [
-        [{
-          text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
-          callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
-        }],
-        ...rows,
-      ],
-    },
-  };
-}
-
-function addSpecialWheelStatus(text: string, enabled: boolean): string {
-  const cleaned = text
-    .split('\n')
-    .filter((line) => !line.startsWith('🎡 صفحه موقت گردونه:'))
-    .join('\n');
-  const marker = 'از منوی زیر بخش موردنظر را انتخاب کنید.';
-  const status = `🎡 صفحه موقت گردونه: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`;
-  if (cleaned.includes(marker)) return cleaned.replace(marker, `${status}\n\n${marker}`);
-  return `${cleaned}\n\n${status}`;
 }
 
 async function telegramRequest<T = unknown>(token: string, method: string, payload: unknown): Promise<TelegramEnvelope<T>> {
