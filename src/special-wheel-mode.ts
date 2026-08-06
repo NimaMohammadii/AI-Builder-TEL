@@ -34,24 +34,24 @@ export const SPECIAL_WHEEL_OVERLAY = `
     @keyframes specialWheelLoader{to{transform:rotate(360deg)}}
     @keyframes specialWheelResultIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
     @keyframes specialWheelShine{0%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(220%) skewX(-18deg)}}
-    body.special-wheel-active main.app>header.top #rankPill{display:none!important}
+    body.special-wheel-active main.app>header.top{position:relative!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;transform:none!important;background:#000!important}
+    body.special-wheel-active main.app>header.top .brand{visibility:visible!important;opacity:1!important}
+    body.special-wheel-active main.app>header.top #rankPill,
+    body.special-wheel-active main.app>header.top .top-balance-wrap{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
     body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
     main.app>.content.special-wheel-host{position:relative!important;overflow:hidden!important}
-    #specialWheelOverlay{position:absolute;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden;font-family:var(--font-main,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+    #specialWheelOverlay{position:absolute;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 42%,rgba(89,28,47,.075),transparent 46%),#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden;font-family:var(--font-main,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
     #specialWheelOverlay.active{display:flex}
-    #specialWheelOverlay .special-wheel-starfield{position:absolute;inset:0;z-index:0;width:100%;height:100%;display:block;pointer-events:none;background:radial-gradient(circle at 50% 42%,rgba(78,25,42,.09),transparent 50%)}
+    #specialWheelOverlay .special-wheel-starfield{position:absolute;inset:0;z-index:0;width:100%;height:100%;display:block;pointer-events:none}
     #specialWheelOverlay .special-wheel-content{position:relative;z-index:1;width:100%;max-width:520px;display:grid;justify-items:center;gap:24px;transform:translateY(-1.5vh)}
     #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1;transition:transform .32s cubic-bezier(.22,.8,.22,1),filter .32s ease}
     #specialWheelOverlay .special-wheel-stage.is-spinning{transform:scale(1.015);filter:drop-shadow(0 18px 34px rgba(94,18,42,.18))}
     #specialWheelOverlay .special-wheel-stage.is-settled{transform:scale(1.025)}
     #specialWheelOverlay .special-wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4efe6 0 60deg,#171717 60deg 120deg,#d7c7ae 120deg 180deg,#0b0b0b 180deg 240deg,#ece5da 240deg 300deg,#202020 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 28px 72px rgba(0,0,0,.62),inset 0 0 0 8px rgba(0,0,0,.2);will-change:transform;transform:rotate(0deg);backface-visibility:hidden}
     #specialWheelOverlay .special-wheel-rotor:after{content:"";position:absolute;inset:9px;border-radius:50%;border:1px solid rgba(255,255,255,.16);pointer-events:none}
-    #specialWheelOverlay .special-wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:76px;margin-left:-38px;margin-top:-13px;text-align:center;color:#f7f2e9;font-family:inherit;font-size:12px;font-weight:600;line-height:1.08;letter-spacing:0;text-transform:none;text-shadow:0 1px 5px rgba(0,0,0,.8);transform:rotate(var(--wheel-angle)) translateY(-112px) rotate(calc(-1 * var(--wheel-angle)));transition:opacity .28s ease}
+    #specialWheelOverlay .special-wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:82px;margin-left:-41px;margin-top:-12px;text-align:center;color:#f7f2e9;font-family:inherit;font-size:10px;font-weight:650;line-height:1.15;letter-spacing:0;text-transform:none;text-shadow:0 1px 5px rgba(0,0,0,.8);transform:rotate(var(--wheel-angle)) translateY(-112px) rotate(calc(-1 * var(--wheel-angle)));transition:opacity .28s ease}
     #specialWheelOverlay .special-wheel-stage.is-spinning .special-wheel-prize{opacity:.9}
     #specialWheelOverlay .special-wheel-prize:nth-of-type(1),#specialWheelOverlay .special-wheel-prize:nth-of-type(3),#specialWheelOverlay .special-wheel-prize:nth-of-type(5){color:#111;text-shadow:none}
-    #specialWheelOverlay .special-wheel-prize .gram-value{display:block;font-size:17px;font-weight:650;letter-spacing:0}
-    #specialWheelOverlay .special-wheel-prize .gram-name{display:block;margin-top:2px;font-size:10px;font-weight:500;letter-spacing:0}
-    #specialWheelOverlay .special-wheel-prize.special-wheel-word{font-size:10px;font-weight:600;line-height:1.15;letter-spacing:0}
     #specialWheelOverlay .special-wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:38px;height:38px;margin:-19px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 20px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.14);transition:transform .3s ease,box-shadow .3s ease}
     #specialWheelOverlay .special-wheel-stage.is-spinning .special-wheel-hub{transform:scale(.94);box-shadow:0 5px 14px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.12)}
     #specialWheelOverlay .special-wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:24px solid #f5efe5;filter:drop-shadow(0 5px 8px rgba(0,0,0,.7))}
@@ -72,12 +72,12 @@ export const SPECIAL_WHEEL_OVERLAY = `
     <div class="special-wheel-stage" data-special-wheel-stage>
       <span class="special-wheel-pointer" aria-hidden="true"></span>
       <div class="special-wheel-rotor" data-special-wheel-rotor>
-        <span class="special-wheel-prize" style="--wheel-angle:0deg"><span class="gram-value">9</span><span class="gram-name">Gram</span></span>
-        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:60deg">No Prize</span>
-        <span class="special-wheel-prize" style="--wheel-angle:120deg"><span class="gram-value">4</span><span class="gram-name">Gram</span></span>
-        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:180deg">Spin Again</span>
-        <span class="special-wheel-prize" style="--wheel-angle:240deg"><span class="gram-value">0.5</span><span class="gram-name">Gram</span></span>
-        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:300deg">No Prize</span>
+        <span class="special-wheel-prize" style="--wheel-angle:0deg">Lucky Day</span>
+        <span class="special-wheel-prize" style="--wheel-angle:60deg">Plot Twist</span>
+        <span class="special-wheel-prize" style="--wheel-angle:120deg">Main Character</span>
+        <span class="special-wheel-prize" style="--wheel-angle:180deg">Spin Again</span>
+        <span class="special-wheel-prize" style="--wheel-angle:240deg">Good Vibes</span>
+        <span class="special-wheel-prize" style="--wheel-angle:300deg">Tiny Chaos</span>
         <i class="special-wheel-hub" aria-hidden="true"></i>
       </div>
     </div>
@@ -104,41 +104,40 @@ export const SPECIAL_WHEEL_OVERLAY = `
 
   function createStarfield(){
     if(!canvas||!canvas.getContext)return function(){};
-    var ctx=canvas.getContext('2d',{alpha:true});
+    var ctx=canvas.getContext('2d',{alpha:true,desynchronized:true});
     if(!ctx)return function(){};
-    var stars=[];var raf=0;var width=0;var height=0;var dpr=1;
-    function random(seed){var x=Math.sin(seed*127.1)*43758.5453;return x-Math.floor(x)}
+    var stars=[];var raf=0;var width=1;var height=1;var dpr=1;
+    function random(seed){var value=Math.sin(seed*137.17+19.73)*43758.5453123;return value-Math.floor(value)}
     function build(){
       stars=[];
-      var count=Math.max(26,Math.min(58,Math.round(width*height/11500)));
+      var count=Math.max(16,Math.min(28,Math.round(width*height/23000)));
       for(var i=0;i<count;i++){
-        var r1=random(i+2),r2=random(i+41),r3=random(i+93),r4=random(i+177),r5=random(i+251);
-        stars.push({x:r1*width,y:r2*height,r:.55+r3*1.55,a:.18+r4*.54,phase:r5*Math.PI*2,speed:.00035+r3*.00055,spikes:r4>.82?6:4,warm:r2>.55});
+        var r1=random(i+5),r2=random(i+47),r3=random(i+101),r4=random(i+193),r5=random(i+271),r6=random(i+359),depth=.35+r6*.65;
+        stars.push({x:r1*width,y:r2*height,size:(1.45+r3*3.95)*depth,opacity:(.12+r4*.31)*(.72+depth*.28),phase:r5*Math.PI*2,speed:.00013+r3*.00018,warm:r2>.58,stretch:.94+r4*.16,rotation:(r6-.5)*.2,flare:r3>.68});
       }
     }
     function resize(){
       var rect=canvas.getBoundingClientRect();
-      width=Math.max(1,rect.width);height=Math.max(1,rect.height);dpr=Math.min(3,Math.max(1,window.devicePixelRatio||1));
-      canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);build();
+      width=Math.max(1,rect.width);height=Math.max(1,rect.height);dpr=Math.min(4,Math.max(1,window.devicePixelRatio||1));
+      canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);canvas.style.width=width+'px';canvas.style.height=height+'px';ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';build();
     }
-    function drawStar(s,t){
-      var pulse=.78+.22*Math.sin(t*s.speed+s.phase);var alpha=s.a*pulse;var radius=s.r*(.92+.12*pulse);
-      ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=alpha;
-      var glow=ctx.createRadialGradient(0,0,0,0,0,radius*7);glow.addColorStop(0,s.warm?'rgba(255,246,218,.95)':'rgba(244,248,255,.98)');glow.addColorStop(.16,s.warm?'rgba(238,211,155,.42)':'rgba(190,214,255,.38)');glow.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,radius*7,0,Math.PI*2);ctx.fill();
-      ctx.globalAlpha=Math.min(1,alpha*1.28);ctx.fillStyle=s.warm?'#fff3cf':'#f6f9ff';ctx.beginPath();ctx.arc(0,0,Math.max(.45,radius),0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=s.warm?'rgba(255,239,196,.8)':'rgba(231,240,255,.82)';ctx.lineWidth=Math.max(.28,radius*.34);ctx.lineCap='round';
-      var long=radius*(s.spikes===6?5.2:6.4),short=radius*2.5;
-      ctx.beginPath();ctx.moveTo(-long,0);ctx.lineTo(long,0);ctx.moveTo(0,-long);ctx.lineTo(0,long);
-      if(s.spikes===6){ctx.moveTo(-short*.86,-short*.5);ctx.lineTo(short*.86,short*.5);ctx.moveTo(-short*.86,short*.5);ctx.lineTo(short*.86,-short*.5)}
-      ctx.stroke();ctx.restore();
+    function roundedStarPath(horizontal,vertical,waist){
+      var shoulderX=horizontal*.34,shoulderY=vertical*.34,curve=Math.max(.28,waist);
+      ctx.beginPath();ctx.moveTo(0,-vertical);ctx.bezierCurveTo(shoulderX*curve,-shoulderY,-shoulderX,-waist,horizontal,0);ctx.bezierCurveTo(shoulderX,waist,shoulderX*curve,shoulderY,0,vertical);ctx.bezierCurveTo(-shoulderX*curve,shoulderY,-shoulderX,waist,-horizontal,0);ctx.bezierCurveTo(-shoulderX,-waist,-shoulderX*curve,-shoulderY,0,-vertical);ctx.closePath();
     }
-    function frame(t){
-      if(!overlay.classList.contains('active')){raf=0;return}
-      ctx.clearRect(0,0,width,height);for(var i=0;i<stars.length;i++)drawStar(stars[i],t);raf=requestAnimationFrame(frame);
+    function drawStar(star,time){
+      var twinkle=.94+.06*Math.sin(time*star.speed+star.phase),alpha=star.opacity*twinkle,horizontal=star.size*(.98+.02*twinkle),vertical=horizontal*star.stretch,waist=Math.max(.42,horizontal*.23),rgb=star.warm?'255,245,222':'240,247,255';
+      ctx.save();ctx.translate(star.x,star.y);ctx.rotate(star.rotation);ctx.globalCompositeOperation='screen';
+      var haloRadius=horizontal*(star.flare?5.8:4.6),halo=ctx.createRadialGradient(0,0,0,0,0,haloRadius);halo.addColorStop(0,'rgba('+rgb+','+(alpha*.32)+')');halo.addColorStop(.18,'rgba('+rgb+','+(alpha*.13)+')');halo.addColorStop(.52,'rgba('+rgb+','+(alpha*.035)+')');halo.addColorStop(1,'rgba('+rgb+',0)');ctx.fillStyle=halo;ctx.beginPath();ctx.arc(0,0,haloRadius,0,Math.PI*2);ctx.fill();
+      if(star.flare){ctx.globalAlpha=Math.min(.38,alpha*.78);ctx.strokeStyle='rgba('+rgb+',.72)';ctx.lineWidth=Math.max(.34,horizontal*.11);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-horizontal*2.8,0);ctx.lineTo(horizontal*2.8,0);ctx.moveTo(0,-vertical*2.35);ctx.lineTo(0,vertical*2.35);ctx.stroke()}
+      ctx.globalAlpha=Math.min(.96,alpha*1.65);ctx.shadowColor='rgba('+rgb+',.38)';ctx.shadowBlur=horizontal*1.7;roundedStarPath(horizontal,vertical,waist);var body=ctx.createRadialGradient(-horizontal*.18,-vertical*.2,0,0,0,horizontal*1.05);body.addColorStop(0,'rgba(255,255,255,1)');body.addColorStop(.3,'rgba('+rgb+',.98)');body.addColorStop(.72,'rgba('+rgb+',.78)');body.addColorStop(1,'rgba('+rgb+',.42)');ctx.fillStyle=body;ctx.fill();
+      ctx.shadowBlur=0;ctx.globalAlpha=Math.min(1,alpha*1.95);var core=ctx.createRadialGradient(-horizontal*.12,-vertical*.14,0,0,0,horizontal*.52);core.addColorStop(0,'rgba(255,255,255,1)');core.addColorStop(.45,'rgba(255,255,255,.9)');core.addColorStop(1,'rgba('+rgb+',0)');ctx.fillStyle=core;ctx.beginPath();ctx.arc(0,0,horizontal*.54,0,Math.PI*2);ctx.fill();
+      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=Math.min(.78,alpha*1.35);ctx.beginPath();ctx.arc(-horizontal*.15,-vertical*.18,Math.max(.24,horizontal*.085),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.96)';ctx.fill();ctx.restore();
     }
+    function frame(time){if(!overlay.classList.contains('active')){raf=0;return}ctx.clearRect(0,0,width,height);for(var i=0;i<stars.length;i++)drawStar(stars[i],time);raf=requestAnimationFrame(frame)}
     function start(){resize();if(!raf)raf=requestAnimationFrame(frame)}
-    function stop(){if(raf){cancelAnimationFrame(raf);raf=0}}
-    window.addEventListener('resize',resize,{passive:true});
+    function stop(){if(raf){cancelAnimationFrame(raf);raf=0}ctx.clearRect(0,0,width,height)}
+    window.addEventListener('resize',function(){if(overlay.classList.contains('active'))resize()},{passive:true});
     return function(active){if(active)start();else stop()};
   }
   var setStarsActive=createStarfield();
@@ -161,21 +160,17 @@ export const SPECIAL_WHEEL_OVERLAY = `
     try{var response=await fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId())+'&t='+Date.now(),{cache:'no-store'});if(!response.ok)return;var data=await response.json();applyActive(data.active===true);if(data.state)state=data.state;renderButton()}catch(e){}
   }
   function animateTo(index,done){
-    var current=((rotation%360)+360)%360;var target=(360-(Number(index)||0)*60)%360;var delta=(target-current+360)%360;rotation+=1440+delta;
+    var current=((rotation%360)+360)%360,target=(360-(Number(index)||0)*60)%360,delta=(target-current+360)%360;rotation+=1440+delta;
     stage.classList.add('is-spinning');stage.classList.remove('is-settled');rotor.style.transition='transform 4.2s cubic-bezier(.12,.72,.08,1)';rotor.style.transform='rotate('+rotation+'deg)';
     setTimeout(function(){stage.classList.remove('is-spinning');stage.classList.add('is-settled');setTimeout(function(){stage.classList.remove('is-settled')},360);done()},4300);
-  }
-  function syncMainBalance(data){
-    var balance=Number(data&&data.tonBalanceNano);if(!Number.isFinite(balance))return;
-    try{if(window.VexaTonBalance&&typeof window.VexaTonBalance.write==='function')window.VexaTonBalance.write(balance,Number(data.tonRewardNano)||0,false);else window.dispatchEvent(new CustomEvent('vexa-ton-balance-sync',{detail:{tonBalanceNano:balance,deltaNano:Number(data.tonRewardNano)||0}}))}catch(e){}
   }
   async function performSpin(){
     var response=await fetch('/app/api/special-wheel/spin',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData(),requestId:requestId()}),cache:'no-store'});
     var data=await response.json().catch(function(){return {ok:false,error:'Spin failed'}});
     if(!response.ok||!data.ok){if(data.state)state=data.state;throw new Error(data.error||'Spin failed')}
     animateTo(data.prizeIndex,function(){
-      state=data.state||state;syncMainBalance(data);result.classList.remove('is-visible');result.textContent=data.prizeLabel==='Spin Again'?'You won another spin':data.prizeLabel==='No Prize'?'No prize this time':'You won '+data.prizeLabel;void result.offsetWidth;result.classList.add('is-visible');
-      try{var h=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback;if(h)h.notificationOccurred(data.prizeLabel==='No Prize'?'warning':'success')}catch(e){}
+      state=data.state||state;result.classList.remove('is-visible');result.textContent=data.prizeMessage||data.prizeLabel||'Just for fun';void result.offsetWidth;result.classList.add('is-visible');
+      try{var h=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback;if(h)h.notificationOccurred('success')}catch(e){}
       spinning=false;button.disabled=false;renderButton();
     });
   }
