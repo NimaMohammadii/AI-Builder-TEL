@@ -1,5 +1,6 @@
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
+import { handleSpecialWheelPreCheckout, handleSpecialWheelSuccessfulPayment } from './special-wheel-engine';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 
@@ -47,13 +48,16 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
   if (invalid) throw new Error(invalid);
 
   if (update.pre_checkout_query) {
+    if (await handleSpecialWheelPreCheckout(env, update.pre_checkout_query)) return;
     await handleStarsPreCheckout(env, update.pre_checkout_query);
     return;
   }
 
   const message = update.message;
   if (message?.successful_payment) {
-    await handleStarsSuccessfulPayment(env, message.from?.id ?? message.chat.id, message.successful_payment);
+    const userId = message.from?.id ?? message.chat.id;
+    if (await handleSpecialWheelSuccessfulPayment(env, userId, message.successful_payment)) return;
+    await handleStarsSuccessfulPayment(env, userId, message.successful_payment);
     return;
   }
 
