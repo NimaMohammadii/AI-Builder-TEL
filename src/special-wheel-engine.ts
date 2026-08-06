@@ -2,7 +2,8 @@ import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from '.
 import { gameBotToken } from './utils';
 
 const FREE_SPIN_MS = 24 * 60 * 60 * 1000;
-const PAID_SPIN_STARS = 18;
+const DEFAULT_PAID_SPIN_STARS = 18;
+const PRICE_KEY = 'admin:special-wheel-price-stars';
 const PAYMENT_PREFIX = 'swpay_';
 const REQUEST_PREFIX = 'swreq_';
 
@@ -42,11 +43,27 @@ type SpinRow = {
 
 type TelegramInvoiceResponse = { ok: boolean; result?: string; description?: string };
 
+export async function getSpecialWheelPriceStars(env: Env): Promise<number> {
+  const stored = await env.BOT_CACHE.get(PRICE_KEY).catch(() => null);
+  if (stored === null) return DEFAULT_PAID_SPIN_STARS;
+  const value = Math.floor(Number(stored));
+  return Number.isSafeInteger(value) && value >= 0 && value <= 100000 ? value : DEFAULT_PAID_SPIN_STARS;
+}
+
+export async function setSpecialWheelPriceStars(env: Env, value: unknown): Promise<number> {
+  const price = Math.floor(Number(value));
+  if (!Number.isSafeInteger(price) || price < 0 || price > 100000) {
+    throw new Error('Stars price must be a whole number from 0 to 100000');
+  }
+  await env.BOT_CACHE.put(PRICE_KEY, String(price));
+  return price;
+}
+
 export async function getSpecialWheelState(env: Env, userIdInput: unknown) {
   const userId = cleanUserId(userIdInput);
   await ensureTables(env);
   await ensureAccount(env, userId);
-  const account = await getAccount(env, userId);
+  const [account, priceStars] = await Promise.all([getAccount(env, userId), getSpecialWheelPriceStars(env)]);
   const lastFree = account?.last_free_spin_at ? Date.parse(account.last_free_spin_at) : 0;
   const nextFreeAtMs = lastFree > 0 ? lastFree + FREE_SPIN_MS : 0;
   const now = Date.now();
@@ -56,7 +73,7 @@ export async function getSpecialWheelState(env: Env, userIdInput: unknown) {
     paidSpins: Math.max(0, Number(account?.paid_spins || 0)),
     gramBalance: formatGram(Number(account?.gram_milli || 0)),
     gramMilli: Math.max(0, Number(account?.gram_milli || 0)),
-    priceStars: PAID_SPIN_STARS,
+    priceStars,
   };
 }
 
@@ -65,14 +82,16 @@ export async function createSpecialWheelInvoiceResponse(request: Request, env: E
     const userId = await verifiedUserId(request, env);
     await ensureTables(env);
     await ensureAccount(env, userId);
+    const priceStars = await getSpecialWheelPriceStars(env);
+    if (priceStars === 0) return json({ ok: true, free: true, priceStars: 0 });
     const id = PAYMENT_PREFIX + randomHex(20);
     await env.DB.prepare(`INSERT INTO special_wheel_payments
       (id, user_id, stars_amount, status, created_at, updated_at)
       VALUES (?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
-      .bind(id, userId, PAID_SPIN_STARS)
+      .bind(id, userId, priceStars)
       .run();
-    const invoiceLink = await createInvoiceLink(env, id);
-    return json({ ok: true, invoiceLink, priceStars: PAID_SPIN_STARS });
+    const invoiceLink = await createInvoiceLink(env, id, priceStars);
+    return json({ ok: true, invoiceLink, priceStars });
   } catch (error) {
     return json({ ok: false, error: errorMessage(error) }, 400);
   }
@@ -133,7 +152,7 @@ export async function handleSpecialWheelPreCheckout(env: Env, query: TelegramPre
   const buyerId = cleanUserId((query as unknown as { from?: { id?: unknown } }).from?.id);
   const valid = Boolean(
     row && row.status === 'pending' && row.user_id === buyerId && query.currency === 'XTR' &&
-    Number(query.total_amount) === PAID_SPIN_STARS && Number(row.stars_amount) === PAID_SPIN_STARS,
+    Number(query.total_amount) === Number(row.stars_amount) && Number(row.stars_amount) > 0,
   );
   await telegram(gameBotToken(env), 'answerPreCheckoutQuery', {
     pre_checkout_query_id: query.id,
@@ -150,12 +169,12 @@ export async function handleSpecialWheelSuccessfulPayment(
 ): Promise<boolean> {
   const payload = String(payment.invoice_payload || '').trim();
   if (!payload.startsWith(PAYMENT_PREFIX)) return false;
-  if (payment.currency !== 'XTR' || Number(payment.total_amount) !== PAID_SPIN_STARS) return true;
+  if (payment.currency !== 'XTR') return true;
   const userId = cleanUserId(userIdInput);
   await ensureTables(env);
   await ensureAccount(env, userId);
   const row = await env.DB.prepare('SELECT * FROM special_wheel_payments WHERE id = ?').bind(payload).first<PaymentRow>();
-  if (!row || row.user_id !== userId || Number(row.stars_amount) !== PAID_SPIN_STARS) return true;
+  if (!row || row.user_id !== userId || Number(payment.total_amount) !== Number(row.stars_amount) || Number(row.stars_amount) <= 0) return true;
   if (row.status === 'completed') return true;
 
   const chargeId = String(payment.telegram_payment_charge_id || '').trim();
@@ -191,7 +210,8 @@ async function claimEntitlement(env: Env, userId: string): Promise<'free' | 'pai
     WHERE user_id = ? AND paid_spins > 0`)
     .bind(userId)
     .run();
-  return Number(paid.meta.changes || 0) > 0 ? 'paid' : null;
+  if (Number(paid.meta.changes || 0) > 0) return 'paid';
+  return (await getSpecialWheelPriceStars(env)) === 0 ? 'free' : null;
 }
 
 async function verifiedUserId(request: Request, env: Env): Promise<string> {
@@ -221,13 +241,13 @@ async function validateTelegramInitData(initData: string, token: string): Promis
   return cleanUserId(user.id);
 }
 
-async function createInvoiceLink(env: Env, id: string): Promise<string> {
+async function createInvoiceLink(env: Env, id: string, priceStars: number): Promise<string> {
   const response = await telegram<TelegramInvoiceResponse>(gameBotToken(env), 'createInvoiceLink', {
     title: 'Vexa Wheel Spin',
     description: 'One paid spin on the Vexa reward wheel',
     payload: id,
     currency: 'XTR',
-    prices: [{ label: 'Wheel spin', amount: PAID_SPIN_STARS }],
+    prices: [{ label: 'Wheel spin', amount: priceStars }],
   });
   if (!response.ok || !response.result) throw new Error(response.description || 'Could not create Stars invoice');
   return response.result;
