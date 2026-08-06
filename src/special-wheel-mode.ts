@@ -114,9 +114,10 @@ export async function handleSpecialWheelAdminCallback(
 export const SPECIAL_WHEEL_OVERLAY = `
 <div id="specialWheelOverlay" aria-hidden="true">
   <style>
-    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:var(--special-wheel-header-height,92px);z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
+    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:calc(110px + env(safe-area-inset-top));z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
     #specialWheelOverlay.active{display:flex}
-    body.special-wheel-active main.app>header.top{position:fixed!important;z-index:2147483647!important;left:0!important;right:0!important;top:0!important;width:100%!important;box-sizing:border-box!important;background:#000!important}
+    body.special-wheel-active main.app>header.top{position:fixed!important;z-index:2147483647!important;left:50%!important;right:auto!important;top:calc(22px + env(safe-area-inset-top))!important;width:min(calc(100% - 32px),528px)!important;height:72px!important;margin:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#000!important}
+    body.special-wheel-active main.app>header.top #rankPill{display:none!important}
     body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
     #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:30px;transform:translateY(-1.5vh)}
     #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1}
@@ -160,17 +161,10 @@ export const SPECIAL_WHEEL_OVERLAY = `
   function userId(){
     try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user&&Telegram.WebApp.initDataUnsafe.user.id||'')}catch(e){return ''}
   }
-  function syncHeaderHeight(){
-    var header=document.querySelector('main.app>header.top');
-    if(!header)return;
-    var height=Math.max(72,Math.ceil(header.getBoundingClientRect().bottom));
-    overlay.style.setProperty('--special-wheel-header-height',height+'px');
-  }
   function apply(active){
     overlay.classList.toggle('active',!!active);
     overlay.setAttribute('aria-hidden',active?'false':'true');
     document.body.classList.toggle('special-wheel-active',!!active);
-    if(active)syncHeaderHeight();
     document.documentElement.style.overflow=active?'hidden':'';
     document.body.style.overflow=active?'hidden':'';
   }
@@ -193,7 +187,6 @@ export const SPECIAL_WHEEL_OVERLAY = `
       setTimeout(function(){spinning=false;button.disabled=false},4300);
     });
   }
-  window.addEventListener('resize',syncHeaderHeight);
   refresh();
   setInterval(refresh,2000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
