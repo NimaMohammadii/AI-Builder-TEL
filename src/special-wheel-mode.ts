@@ -114,17 +114,22 @@ export async function handleSpecialWheelAdminCallback(
 export const SPECIAL_WHEEL_OVERLAY = `
 <div id="specialWheelOverlay" aria-hidden="true">
   <style>
-    #specialWheelOverlay{position:fixed;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:24px;box-sizing:border-box;overflow:hidden}
+    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:var(--special-wheel-header-height,92px);z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
     #specialWheelOverlay.active{display:flex}
-    #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:34px;transform:translateY(-2vh)}
-    #specialWheelOverlay .special-wheel-stage{position:relative;width:min(74vw,286px);aspect-ratio:1}
-    #specialWheelOverlay .special-wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4f4f4 0 60deg,#181818 60deg 120deg,#d9d9d9 120deg 180deg,#101010 180deg 240deg,#bdbdbd 240deg 300deg,#080808 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform;transform:rotate(0deg)}
-    #specialWheelOverlay .special-wheel-rotor:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.18);pointer-events:none}
-    #specialWheelOverlay .special-wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:56px;margin-left:-28px;margin-top:-9px;text-align:center;color:#fff;font-size:12px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.72);transform:rotate(var(--wheel-angle)) translateY(-100px) rotate(calc(-1 * var(--wheel-angle)))}
-    #specialWheelOverlay .special-wheel-prize:nth-of-type(1),#specialWheelOverlay .special-wheel-prize:nth-of-type(3),#specialWheelOverlay .special-wheel-prize:nth-of-type(5){color:#050505;text-shadow:none}
-    #specialWheelOverlay .special-wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:34px;height:34px;margin:-17px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.28);box-shadow:0 5px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
-    #specialWheelOverlay .special-wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:23px solid #fff;filter:drop-shadow(0 5px 8px rgba(0,0,0,.65))}
-    #specialWheelOverlay .special-wheel-spin{width:min(78vw,320px);height:58px;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#3b0715;color:#ffdce5;font-size:18px;font-weight:900;letter-spacing:-.035em;box-shadow:0 12px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .18s ease,opacity .18s ease}
+    body.special-wheel-active main.app>header.top{position:fixed!important;z-index:2147483647!important;left:0!important;right:0!important;top:0!important;width:100%!important;box-sizing:border-box!important;background:#000!important}
+    body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
+    #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:30px;transform:translateY(-1.5vh)}
+    #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1}
+    #specialWheelOverlay .special-wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4efe6 0 60deg,#171717 60deg 120deg,#d7c7ae 120deg 180deg,#0b0b0b 180deg 240deg,#ece5da 240deg 300deg,#202020 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 28px 72px rgba(0,0,0,.62),inset 0 0 0 8px rgba(0,0,0,.2);will-change:transform;transform:rotate(0deg)}
+    #specialWheelOverlay .special-wheel-rotor:after{content:"";position:absolute;inset:9px;border-radius:50%;border:1px solid rgba(255,255,255,.16);pointer-events:none}
+    #specialWheelOverlay .special-wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:76px;margin-left:-38px;margin-top:-13px;text-align:center;color:#f7f2e9;font-family:Georgia,'Times New Roman',serif;font-size:12px;font-weight:700;line-height:1.05;letter-spacing:.035em;text-transform:uppercase;text-shadow:0 1px 5px rgba(0,0,0,.8);transform:rotate(var(--wheel-angle)) translateY(-112px) rotate(calc(-1 * var(--wheel-angle)))}
+    #specialWheelOverlay .special-wheel-prize:nth-of-type(1),#specialWheelOverlay .special-wheel-prize:nth-of-type(3),#specialWheelOverlay .special-wheel-prize:nth-of-type(5){color:#111;text-shadow:none}
+    #specialWheelOverlay .special-wheel-prize .gram-value{display:block;font-size:17px;font-weight:700;letter-spacing:-.02em;text-transform:none}
+    #specialWheelOverlay .special-wheel-prize .gram-name{display:block;margin-top:2px;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+    #specialWheelOverlay .special-wheel-prize.special-wheel-word{font-size:10px;line-height:1.15;letter-spacing:.08em}
+    #specialWheelOverlay .special-wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:38px;height:38px;margin:-19px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 20px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.14)}
+    #specialWheelOverlay .special-wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:24px solid #f5efe5;filter:drop-shadow(0 5px 8px rgba(0,0,0,.7))}
+    #specialWheelOverlay .special-wheel-spin{width:min(78vw,320px);height:58px;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#3b0715;color:#f7e7eb;font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;box-shadow:0 12px 24px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .18s ease,opacity .18s ease}
     #specialWheelOverlay .special-wheel-spin:active{transform:scale(.975)}
     #specialWheelOverlay .special-wheel-spin:disabled{opacity:.62}
   </style>
@@ -132,12 +137,12 @@ export const SPECIAL_WHEEL_OVERLAY = `
     <div class="special-wheel-stage">
       <span class="special-wheel-pointer" aria-hidden="true"></span>
       <div class="special-wheel-rotor" data-special-wheel-rotor>
-        <span class="special-wheel-prize" style="--wheel-angle:0deg">WIN</span>
-        <span class="special-wheel-prize" style="--wheel-angle:60deg">LOSE</span>
-        <span class="special-wheel-prize" style="--wheel-angle:120deg">WIN</span>
-        <span class="special-wheel-prize" style="--wheel-angle:180deg">LOSE</span>
-        <span class="special-wheel-prize" style="--wheel-angle:240deg">WIN</span>
-        <span class="special-wheel-prize" style="--wheel-angle:300deg">LOSE</span>
+        <span class="special-wheel-prize" style="--wheel-angle:0deg"><span class="gram-value">9</span><span class="gram-name">Gram</span></span>
+        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:60deg">NO PRIZE</span>
+        <span class="special-wheel-prize" style="--wheel-angle:120deg"><span class="gram-value">4</span><span class="gram-name">Gram</span></span>
+        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:180deg">SPIN AGAIN</span>
+        <span class="special-wheel-prize" style="--wheel-angle:240deg"><span class="gram-value">0.5</span><span class="gram-name">Gram</span></span>
+        <span class="special-wheel-prize special-wheel-word" style="--wheel-angle:300deg">NO PRIZE</span>
         <i class="special-wheel-hub" aria-hidden="true"></i>
       </div>
     </div>
@@ -155,9 +160,17 @@ export const SPECIAL_WHEEL_OVERLAY = `
   function userId(){
     try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user&&Telegram.WebApp.initDataUnsafe.user.id||'')}catch(e){return ''}
   }
+  function syncHeaderHeight(){
+    var header=document.querySelector('main.app>header.top');
+    if(!header)return;
+    var height=Math.max(72,Math.ceil(header.getBoundingClientRect().bottom));
+    overlay.style.setProperty('--special-wheel-header-height',height+'px');
+  }
   function apply(active){
     overlay.classList.toggle('active',!!active);
     overlay.setAttribute('aria-hidden',active?'false':'true');
+    document.body.classList.toggle('special-wheel-active',!!active);
+    if(active)syncHeaderHeight();
     document.documentElement.style.overflow=active?'hidden':'';
     document.body.style.overflow=active?'hidden':'';
   }
@@ -180,6 +193,7 @@ export const SPECIAL_WHEEL_OVERLAY = `
       setTimeout(function(){spinning=false;button.disabled=false},4300);
     });
   }
+  window.addEventListener('resize',syncHeaderHeight);
   refresh();
   setInterval(refresh,2000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
