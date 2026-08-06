@@ -1,8 +1,11 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
+import { ensureTonBalanceColumn } from './user-controls';
+import { recordTonTransaction } from './ton-transactions';
 import { gameBotToken } from './utils';
 
 const FREE_SPIN_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PAID_SPIN_STARS = 18;
+const GRAM_MILLI_TO_NANO = 1_000_000;
 const PRICE_KEY = 'admin:special-wheel-price-stars';
 const PAYMENT_PREFIX = 'swpay_';
 const REQUEST_PREFIX = 'swreq_';
@@ -63,7 +66,15 @@ export async function getSpecialWheelState(env: Env, userIdInput: unknown) {
   const userId = cleanUserId(userIdInput);
   await ensureTables(env);
   await ensureAccount(env, userId);
-  const [account, priceStars] = await Promise.all([getAccount(env, userId), getSpecialWheelPriceStars(env)]);
+  await ensureTonBalanceColumn(env);
+  const [account, priceStars, balance] = await Promise.all([
+    getAccount(env, userId),
+    getSpecialWheelPriceStars(env),
+    env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?')
+      .bind(userId)
+      .first<{ ton_balance_nano: number }>()
+      .catch(() => null),
+  ]);
   const lastFree = account?.last_free_spin_at ? Date.parse(account.last_free_spin_at) : 0;
   const nextFreeAtMs = lastFree > 0 ? lastFree + FREE_SPIN_MS : 0;
   const now = Date.now();
@@ -73,6 +84,7 @@ export async function getSpecialWheelState(env: Env, userIdInput: unknown) {
     paidSpins: Math.max(0, Number(account?.paid_spins || 0)),
     gramBalance: formatGram(Number(account?.gram_milli || 0)),
     gramMilli: Math.max(0, Number(account?.gram_milli || 0)),
+    tonBalanceNano: Math.max(0, Math.floor(Number(balance?.ton_balance_nano || 0))),
     priceStars,
   };
 }
@@ -104,6 +116,7 @@ export async function specialWheelSpinResponse(request: Request, env: Env): Prom
     const requestId = cleanRequestId(body.requestId);
     await ensureTables(env);
     await ensureAccount(env, userId);
+    await ensureTonBalanceColumn(env);
 
     const existing = await env.DB.prepare('SELECT * FROM special_wheel_spins WHERE id = ? AND user_id = ?')
       .bind(requestId, userId)
@@ -124,6 +137,7 @@ export async function specialWheelSpinResponse(request: Request, env: Env): Prom
 
     const prizeIndex = secureRandomIndex(PRIZES.length);
     const prize = PRIZES[prizeIndex];
+    const prizeNano = prize.gramMilli * GRAM_MILLI_TO_NANO;
     await env.DB.batch([
       env.DB.prepare(`UPDATE special_wheel_spins SET mode = ?, prize_index = ?, prize_code = ?, gram_milli = ?
         WHERE id = ? AND user_id = ? AND prize_index = -1`)
@@ -132,12 +146,36 @@ export async function specialWheelSpinResponse(request: Request, env: Env): Prom
         SET gram_milli = gram_milli + ?, paid_spins = paid_spins + ?, updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ?`)
         .bind(prize.gramMilli, prize.extraSpins, userId),
+      env.DB.prepare(`INSERT INTO app_users
+        (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
+        VALUES (?, 'home', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(telegram_user_id) DO UPDATE SET
+          ton_balance_nano = max(0, ton_balance_nano + excluded.ton_balance_nano),
+          updated_at = CURRENT_TIMESTAMP`)
+        .bind(userId, prizeNano),
     ]);
 
     const row = await env.DB.prepare('SELECT * FROM special_wheel_spins WHERE id = ? AND user_id = ?')
       .bind(requestId, userId)
       .first<SpinRow>();
     if (!row || row.prize_index < 0) throw new Error('Spin could not be completed');
+
+    if (prizeNano > 0) {
+      const balance = await env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?')
+        .bind(userId)
+        .first<{ ton_balance_nano: number }>()
+        .catch(() => null);
+      await recordTonTransaction(env, userId, prizeNano, Number(balance?.ton_balance_nano || 0), {
+        kind: 'game',
+        title: 'Wheel reward',
+        description: `${prize.label} reward`,
+        referenceId: requestId,
+        referenceType: 'special_wheel_spin',
+        status: 'completed',
+        metadata: { prizeCode: prize.code, gramMilli: prize.gramMilli },
+      }).catch(() => undefined);
+    }
+
     return json({ ok: true, ...spinPayload(row), state: await getSpecialWheelState(env, userId) });
   } catch (error) {
     return json({ ok: false, error: errorMessage(error) }, 400);
@@ -297,6 +335,7 @@ async function getAccount(env: Env, userId: string): Promise<AccountRow | null> 
 
 function spinPayload(row: SpinRow) {
   const prize = PRIZES[row.prize_index];
+  const prizeNano = Math.max(0, Number(row.gram_milli || 0)) * GRAM_MILLI_TO_NANO;
   return {
     spinId: row.id,
     mode: row.mode,
@@ -304,6 +343,7 @@ function spinPayload(row: SpinRow) {
     prizeCode: row.prize_code,
     prizeLabel: prize?.label || row.prize_code,
     gramWon: formatGram(row.gram_milli),
+    prizeNano,
   };
 }
 
