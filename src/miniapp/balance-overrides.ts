@@ -83,6 +83,7 @@ body.connect-only .top .top-balance-wrap .top-balance-pill:after{
   box-shadow:none!important;
   margin:0!important;
   padding:0!important;
+  transform:translateX(2px)!important;
 }
 .top .top-balance-wrap{display:flex;align-items:center;gap:7px;flex:0 0 auto}.top .top-balance-wrap .top-balance-plus{width:34px!important;height:34px!important;border:0!important;border-radius:999px!important;background:rgba(255,255,255,.045)!important;color:#fff!important;font-size:23px!important;font-weight:300!important;line-height:1!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.085),inset 0 -1px 0 rgba(255,255,255,.055),0 16px 34px rgba(0,0,0,.28)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;text-shadow:0 1px 12px rgba(0,0,0,.32)!important;transition:transform .18s ease,background .18s ease!important}.top .top-balance-wrap .top-balance-plus:active{transform:scale(.92)!important}
 `;
