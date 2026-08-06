@@ -1,9 +1,4 @@
-import { adminUsersJson } from './admin-users';
-import { formatTonAmount } from './admin-finance-controls';
-import type { Env, TelegramCallbackQuery } from './types';
-
-type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
-type AdminUser = Record<string, unknown>;
+import type { Env } from './types';
 
 const STATE_KEY = 'admin:special-wheel-mode';
 
@@ -30,93 +25,13 @@ export async function specialWheelStatusResponse(request: Request, env: Env): Pr
   );
 }
 
-export async function sendSpecialWheelAdminHome(
-  env: Env,
-  token: string,
-  chatId: number,
-  tg: TgApi,
-  userId: unknown,
-  messageId?: number,
-): Promise<boolean> {
-  if (!isBotAdmin(env, userId)) return false;
-
-  const [data, enabled] = await Promise.all([adminUsersJson(env), isSpecialWheelEnabled(env)]);
-  const users = data.users as AdminUser[];
-  const text = [
-    '🛡 پنل مدیریت ربات گیم',
-    '',
-    `👥 تعداد کل کاربران: ${data.stats.total ?? users.length}`,
-    `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`,
-    `💎 مجموع موجودی: ${formatTonAmount(data.stats.totalTonBalanceNano)} TON`,
-    '',
-    `🎡 صفحه موقت گردونه: ${enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
-    '',
-    'از منوی زیر بخش موردنظر را انتخاب کنید.',
-  ].join('\n');
-
-  const payload = {
-    chat_id: chatId,
-    text,
-    reply_markup: {
-      inline_keyboard: [
-        [{
-          text: enabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه',
-          callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}`,
-        }],
-        [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
-        [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }],
-        [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
-        [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
-        [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
-        [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }],
-      ],
-    },
-    disable_web_page_preview: true,
-  };
-
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return true;
-  }
-  await tg(token, 'sendMessage', payload);
-  return true;
-}
-
-export async function handleSpecialWheelAdminCallback(
-  env: Env,
-  token: string,
-  q: TelegramCallbackQuery,
-  tg: TgApi,
-): Promise<boolean> {
-  const data = q.data ?? '';
-  if (data !== 'botadmin:home' && !data.startsWith('botadmin:specialwheel:')) return false;
-  if (!isBotAdmin(env, q.from.id)) return true;
-
-  const chatId = q.message?.chat.id ?? q.from.id;
-  const messageId = q.message?.message_id;
-
-  if (data === 'botadmin:home') {
-    await tg(token, 'answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
-    await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
-    return true;
-  }
-
-  const enabled = data.endsWith(':on');
-  await setSpecialWheelEnabled(env, enabled);
-  await tg(token, 'answerCallbackQuery', {
-    callback_query_id: q.id,
-    text: enabled ? 'صفحه گردونه برای کاربران فعال شد.' : 'صفحه گردونه غیرفعال شد.',
-  }).catch(() => undefined);
-  await sendSpecialWheelAdminHome(env, token, chatId, tg, q.from.id, messageId);
-  return true;
-}
-
 export const SPECIAL_WHEEL_OVERLAY = `
 <div id="specialWheelOverlay" aria-hidden="true">
   <style>
-    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:var(--special-wheel-content-top,110px);z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
+    #specialWheelOverlay{position:fixed;left:0;right:0;bottom:0;top:calc(110px + env(safe-area-inset-top));z-index:2147483646;display:none;align-items:center;justify-content:center;background:#000;color:#fff;padding:22px 24px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
     #specialWheelOverlay.active{display:flex}
-    body.special-wheel-active main.app>header.top{position:fixed!important;z-index:2147483647!important;left:var(--special-wheel-header-left,16px)!important;right:auto!important;top:var(--special-wheel-header-top,22px)!important;width:var(--special-wheel-header-width,calc(100% - 32px))!important;height:var(--special-wheel-header-height,72px)!important;margin:0!important;transform:none!important;box-sizing:border-box!important;background:#000!important}
+    body.special-wheel-active main.app>header.top{position:relative!important;z-index:2147483647!important;background:#000!important}
+    body.special-wheel-active main.app>header.top #rankPill{display:none!important}
     body.special-wheel-active nav.tabs{visibility:hidden!important;pointer-events:none!important}
     #specialWheelOverlay .special-wheel-content{width:100%;max-width:520px;display:grid;justify-items:center;gap:30px;transform:translateY(-1.5vh)}
     #specialWheelOverlay .special-wheel-stage{position:relative;width:min(78vw,312px);aspect-ratio:1}
@@ -160,31 +75,10 @@ export const SPECIAL_WHEEL_OVERLAY = `
   function userId(){
     try{return String(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user&&Telegram.WebApp.initDataUnsafe.user.id||'')}catch(e){return ''}
   }
-  function syncHeaderGeometry(){
-    var header=document.querySelector('main.app>header.top');
-    if(!header)return;
-    var wasActive=document.body.classList.contains('special-wheel-active');
-    if(wasActive)document.body.classList.remove('special-wheel-active');
-    var rect=header.getBoundingClientRect();
-    overlay.style.setProperty('--special-wheel-header-left',rect.left+'px');
-    overlay.style.setProperty('--special-wheel-header-top',rect.top+'px');
-    overlay.style.setProperty('--special-wheel-header-width',rect.width+'px');
-    overlay.style.setProperty('--special-wheel-header-height',rect.height+'px');
-    overlay.style.setProperty('--special-wheel-content-top',Math.ceil(rect.bottom+16)+'px');
-    if(wasActive)document.body.classList.add('special-wheel-active');
-  }
   function apply(active){
-    var header=document.querySelector('main.app>header.top');
-    var rank=document.getElementById('rankPill');
-    if(active)syncHeaderGeometry();
     overlay.classList.toggle('active',!!active);
     overlay.setAttribute('aria-hidden',active?'false':'true');
     document.body.classList.toggle('special-wheel-active',!!active);
-    if(rank){
-      if(active)rank.style.setProperty('display','none','important');
-      else rank.style.removeProperty('display');
-    }
-    if(header)header.setAttribute('aria-hidden',active?'false':'false');
     document.documentElement.style.overflow=active?'hidden':'';
     document.body.style.overflow=active?'hidden':'';
   }
@@ -207,7 +101,6 @@ export const SPECIAL_WHEEL_OVERLAY = `
       setTimeout(function(){spinning=false;button.disabled=false},4300);
     });
   }
-  window.addEventListener('resize',function(){if(document.body.classList.contains('special-wheel-active'))syncHeaderGeometry()});
   refresh();
   setInterval(refresh,2000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
