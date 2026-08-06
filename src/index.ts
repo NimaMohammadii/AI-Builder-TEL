@@ -9,6 +9,7 @@ import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
+import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 
@@ -26,6 +27,8 @@ app.get('/app/api/online-user-counts', async (c) =>
   c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }),
 );
 app.get('/app/api/special-wheel-mode', (c) => specialWheelStatusResponse(c.req.raw, c.env));
+app.post('/app/api/special-wheel/invoice', (c) => createSpecialWheelInvoiceResponse(c.req.raw, c.env));
+app.post('/app/api/special-wheel/spin', (c) => specialWheelSpinResponse(c.req.raw, c.env));
 
 app.get('/admin', () => html(adminHtml()));
 app.get('/admin/', () => html(adminHtml()));
