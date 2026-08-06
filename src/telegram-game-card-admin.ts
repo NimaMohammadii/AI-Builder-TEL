@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { PUBLIC_BASE_URL } from './utils';
+import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -56,7 +57,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   const callback = update.callback_query;
   if (callback) {
     const data = callback.data || '';
-    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:tonlogo' || data.startsWith('botadmin:gameimage:');
+    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:tonlogo' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
     await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
@@ -65,7 +66,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 
     if (data === 'botadmin:home') {
       await clearState(env, callback.from.id);
-      await sendHome(token, chatId, messageId);
+      await sendHome(env, token, chatId, messageId);
+    } else if (data.startsWith('botadmin:specialwheel:')) {
+      const enabled = data.endsWith(':on');
+      await clearState(env, callback.from.id);
+      await setSpecialWheelEnabled(env, enabled);
+      await sendHome(env, token, chatId, messageId);
     } else if (data === 'botadmin:gameimages') {
       await clearState(env, callback.from.id);
       await sendGameMenu(token, chatId, messageId);
@@ -99,7 +105,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       return ok();
     }
     await clearState(env, message.from.id);
-    await sendHome(token, message.chat.id);
+    await sendHome(env, token, message.chat.id);
     return ok();
   }
   if (!isAdmin(env, message.from.id)) return null;
@@ -108,7 +114,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   if (!target) return null;
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, message.from.id);
-    if (target.kind === 'ton') await sendHome(token, message.chat.id);
+    if (target.kind === 'ton') await sendHome(env, token, message.chat.id);
     else await sendGameMenu(token, message.chat.id);
     return ok();
   }
@@ -152,10 +158,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   return ok();
 }
 
-async function sendHome(token: string, chatId: number, messageId?: number): Promise<void> {
-  await upsert(token, chatId, messageId, '🛡 پنل مدیریت ربات گیم\n\nبخش موردنظر را انتخاب کنید.', [
+async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const wheelEnabled = await isSpecialWheelEnabled(env);
+  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`, [
     [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
+    [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
     [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
     [{ text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' }],
     [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
