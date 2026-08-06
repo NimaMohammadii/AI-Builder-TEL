@@ -61,21 +61,21 @@ body.connect-only .top .top-balance-wrap .top-balance-pill:after{
   text-overflow:ellipsis!important;
 }
 .top .top-balance-wrap .top-balance-pill .ton-mini-icon{
-  width:30px!important;
-  height:30px!important;
+  width:42px!important;
+  height:42px!important;
   border-radius:0!important;
   overflow:visible!important;
   display:grid!important;
   place-items:center!important;
-  flex:0 0 30px!important;
+  flex:0 0 42px!important;
   background:transparent!important;
   margin:0!important;
   padding:0!important;
 }
 .top .top-balance-wrap .top-balance-pill .ton-mini-icon svg,
 .top .top-balance-wrap .top-balance-pill .ton-mini-icon img{
-  width:30px!important;
-  height:30px!important;
+  width:42px!important;
+  height:42px!important;
   display:block!important;
   object-fit:contain!important;
   background:transparent!important;
