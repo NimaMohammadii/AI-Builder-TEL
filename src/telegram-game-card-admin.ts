@@ -71,7 +71,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await sendGameMenu(token, chatId, messageId);
     } else if (data === 'botadmin:tonlogo') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), TON_STATE, { expirationTtl: 900 });
-      await upsert(token, chatId, messageId, '💎 لوگوی TON\n\nتصویر لوگوی TON را به‌صورت عکس معمولی یا File/Document بفرستید.', [
+      await upsert(token, chatId, messageId, '💎 لوگوی TON\n\nبرای حفظ فرمت و شفافیت، تصویر PNG را حتماً به‌صورت File/Document بفرستید.', [
         [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
       ]);
     } else {
@@ -115,7 +115,14 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 
   const source = imageFromMessage(message);
   if (!source) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'یک عکس معمولی یا فایل PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'یک فایل PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
+    return ok();
+  }
+  if (target.kind === 'ton' && source.via !== 'document') {
+    await tg(token, 'sendMessage', {
+      chat_id: message.chat.id,
+      text: 'برای اینکه PNG تبدیل به JPG نشود و شفافیتش حفظ شود، تصویر را از بخش File به‌صورت Document بفرستید؛ عکس معمولی پذیرفته نمی‌شود.',
+    }).catch(() => undefined);
     return ok();
   }
 
@@ -124,7 +131,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     await clearState(env, message.from.id);
 
     if (target.kind === 'ton') {
-      const successText = '✅ لوگوی TON ذخیره شد.';
+      const successText = `✅ لوگوی TON با فرمت ${source.type === 'image/png' ? 'PNG' : source.type === 'image/webp' ? 'WebP' : 'JPG'} ذخیره شد.`;
       await tg(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/uploaded-image/ton-icon.png?v=${Date.now()}`,
@@ -175,12 +182,12 @@ async function saveImage(env: Env, token: string, target: UploadTarget, source: 
   if (!response.ok) throw new Error('دانلود تصویر ناموفق بود.');
   const bytes = await response.arrayBuffer();
   if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
-  const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  const contentType = TYPES.has(type) ? type : source.type;
+  const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const contentType = source.via === 'document' ? source.type : (TYPES.has(responseType) ? responseType : source.type);
   const assetKey = target.kind === 'ton' ? 'ton-icon' : gameKey(target.game);
   const metadata = target.kind === 'ton'
-    ? { version: String(Date.now()), assetId: 'ton-icon', uploadedVia: `telegram-admin-${source.via}` }
-    : { version: String(Date.now()), gameId: target.game, uploadedVia: `telegram-admin-${source.via}` };
+    ? { version: String(Date.now()), assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
+    : { version: String(Date.now()), gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: metadata,
@@ -194,9 +201,9 @@ function imageFromMessage(message: Message): UploadSource | null {
   }
   const doc = message.document;
   if (!doc?.file_id) return null;
-  const mime = String(doc.mime_type || '').toLowerCase();
+  const mime = String(doc.mime_type || '').split(';')[0].trim().toLowerCase();
   const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
-  const type = TYPES.has(mime) ? mime : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : '';
+  const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : TYPES.has(mime) ? mime : '';
   return type ? { fileId: doc.file_id, size: doc.file_size, type, via: 'document' } : null;
 }
 
