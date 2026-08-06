@@ -78,8 +78,8 @@ body.connect-only .top .top-balance-wrap .top-balance-pill:after{
 }
 .top .top-balance-wrap .top-balance-pill .ton-mini-icon svg,
 .top .top-balance-wrap .top-balance-pill .ton-mini-icon img{
-  width:32px!important;
-  height:32px!important;
+  width:34px!important;
+  height:34px!important;
   display:block!important;
   object-fit:contain!important;
   background:transparent!important;
