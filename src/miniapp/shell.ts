@@ -288,7 +288,7 @@ export function miniAppShellHtml(): string {
       </div>
       <div class="top-balance-wrap">
         <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
-          <span class="ton-mini-icon"><img src="/app/api/uploaded-image/ton-icon.png?v=${Date.now()}" data-fallback-src="${TON_LOGO_PNG}" alt="" decoding="async" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc"/></span>
+          <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
           <b id="topTonBalance" data-ton-balance-display>0</b>
         </button>
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
