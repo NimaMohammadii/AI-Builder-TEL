@@ -24,7 +24,7 @@ export const WHEEL_SECTION = `
     .wheel-panel{position:relative;border:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;padding:12px 14px 14px;margin-bottom:48px}
     .wheel-controls{display:grid;gap:10px}
     .wheel-input-row{display:grid;grid-template-columns:1fr auto auto;gap:8px}
-    .wheel-input-row input{height:50px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;padding:0 14px;font-size:18px;font-weight:900;outline:none}
+    .wheel-input-row input{height:50px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background-color:rgba(255,255,255,.06);background-image:url('/app/api/uploaded-image/ton-icon.png');background-repeat:no-repeat;background-position:right 12px center;background-size:28px 28px;color:#fff;padding:0 50px 0 14px;font-size:18px;font-weight:900;outline:none}
     .wheel-multiplier-btn{height:50px;min-width:58px;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.35);color:#fff;display:grid;place-items:center;font-weight:950;font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
     .wheel-chance-card{position:relative;border:0!important;border-radius:0;background:transparent!important;padding:0;box-shadow:none!important}
     .wheel-chance-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:absolute;left:18px;right:18px;top:14px;z-index:3;margin-bottom:0;padding:0;font-size:12px;font-weight:900;color:rgba(255,255,255,.56);letter-spacing:-.02em}
@@ -39,7 +39,7 @@ export const WHEEL_SECTION = `
     .wheel-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
     .wheel-quick button,.wheel-join{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.06);color:#fff;font-weight:900;height:44px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
     .wheel-quick button{display:inline-flex;align-items:center;justify-content:center;gap:1px}
-    .wheel-ton-icon{width:24px;height:24px;display:inline-block;object-fit:contain;flex:0 0 24px;filter:drop-shadow(0 3px 8px rgba(0,136,204,.28))}
+    .wheel-ton-icon{width:28px;height:28px;display:inline-block;object-fit:contain;flex:0 0 28px;filter:drop-shadow(0 3px 8px rgba(0,136,204,.28))}
     .wheel-quick button.active{background:#4a0a1e;border-color:#5f0d27}
     .wheel-join{height:58px;border-radius:18px;font-size:18px;background:#3b0715;color:#ffdce5;letter-spacing:-.045em;border-color:rgba(255,96,128,.18);box-shadow:0 12px 24px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .18s ease,opacity .18s ease,background .18s ease}
     .wheel-join:active{transform:scale(.975)}.wheel-join:disabled{opacity:.62;transform:scale(.985)}.wheel-join.win{background:#0f3f2a;border-color:rgba(120,255,179,.22);color:#d8ffe8}
