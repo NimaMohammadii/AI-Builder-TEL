@@ -10,10 +10,11 @@ export const WHEEL_SECTION = `
 
     /* Exact ai-configa wheel component */
     .wheel-stage{position:relative;width:min(74vw,286px);height:auto;aspect-ratio:1;margin:20px auto 13px;display:block}
-    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from -30deg,#f4f4f4 0 60deg,#181818 60deg 120deg,#d9d9d9 120deg 180deg,#101010 180deg 240deg,#bdbdbd 240deg 300deg,#080808 300deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform;transform:rotate(0deg)}
+    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#f4f4f4 0deg 72deg,#181818 72deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform,background;transform:rotate(0deg)}
     .wheel-rotor:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.18);pointer-events:none}
-    .wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:56px;margin-left:-28px;margin-top:-9px;text-align:center;color:#fff;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.72);transform:rotate(var(--wheel-angle)) translateY(-100px) rotate(calc(-1 * var(--wheel-angle)))}
-    .wheel-prize:nth-of-type(1),.wheel-prize:nth-of-type(3),.wheel-prize:nth-of-type(5){color:#050505;text-shadow:none}
+    .wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:56px;margin-left:-28px;margin-top:-9px;text-align:center;color:#fff;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.72);transform:rotate(var(--wheel-angle)) translateY(-100px) rotate(calc(-1 * var(--wheel-angle)));will-change:transform}
+    .wheel-prize.win{color:#050505;text-shadow:none}
+    .wheel-prize.lose{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.72)}
     .wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:34px;height:34px;margin:-17px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.28);box-shadow:0 5px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
     .wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:23px solid #fff;filter:drop-shadow(0 5px 8px rgba(0,0,0,.65))}
 
@@ -49,12 +50,8 @@ export const WHEEL_SECTION = `
     <div class="wheel-stage">
       <span class="wheel-pointer" aria-hidden="true"></span>
       <div class="wheel-rotor" data-wheel-rotor>
-        <span class="wheel-prize" style="--wheel-angle:0deg">WIN</span>
-        <span class="wheel-prize" style="--wheel-angle:60deg">LOSE</span>
-        <span class="wheel-prize" style="--wheel-angle:120deg">WIN</span>
-        <span class="wheel-prize" style="--wheel-angle:180deg">LOSE</span>
-        <span class="wheel-prize" style="--wheel-angle:240deg">WIN</span>
-        <span class="wheel-prize" style="--wheel-angle:300deg">LOSE</span>
+        <span class="wheel-prize win" style="--wheel-angle:36deg" data-wheel-win-label>WIN</span>
+        <span class="wheel-prize lose" style="--wheel-angle:216deg" data-wheel-lose-label>LOSE</span>
         <i class="wheel-hub" aria-hidden="true"></i>
       </div>
     </div>
@@ -94,6 +91,8 @@ export const WHEEL_SECTION = `
         var root=document.getElementById('wheel');
         if(!root||root.dataset.readyWheelConfigaUi==='1')return;
         var rotor=root.querySelector('[data-wheel-rotor]');
+        var winLabel=root.querySelector('[data-wheel-win-label]');
+        var loseLabel=root.querySelector('[data-wheel-lose-label]');
         var amountInput=root.querySelector('[data-wheel-amount]');
         var chanceInput=root.querySelector('[data-wheel-chance]');
         var chanceShell=root.querySelector('[data-wheel-chance-shell]');
@@ -104,10 +103,11 @@ export const WHEEL_SECTION = `
         var spinButton=root.querySelector('[data-wheel-join]');
         var halfButton=root.querySelector('[data-wheel-half]');
         var doubleButton=root.querySelector('[data-wheel-double]');
-        if(!rotor||!amountInput||!chanceInput||!chanceShell||!spinButton||!halfButton||!doubleButton){setTimeout(initWheelGame,80);return}
+        if(!rotor||!winLabel||!loseLabel||!amountInput||!chanceInput||!chanceShell||!spinButton||!halfButton||!doubleButton){setTimeout(initWheelGame,80);return}
         root.dataset.readyWheelConfigaUi='1';
-        var rotation=0,spinning=false,dragging=false,houseEdge=.96,minChance=4,maxChance=96;
+        var rotation=0,spinning=false,dragging=false,houseEdge=.96,minChance=4,maxChance=96,displayedChance=20,sliceFrame=0;
         function clampChance(v){return Math.max(minChance,Math.min(maxChance,Math.round(Number(v)||20)))}
+        function clampDisplayChance(v){return Math.max(minChance,Math.min(maxChance,Number(v)||20))}
         function chanceToRatio(c){return(clampChance(c)-minChance)/Math.max(1,maxChance-minChance)}
         function chanceToPos(c){return chanceToRatio(c)*100}
         function posToChance(p){return clampChance(Math.max(minChance,Math.min(maxChance,p)))}
@@ -116,10 +116,30 @@ export const WHEEL_SECTION = `
         function money(n){var x=Number(n)||0,t=x.toFixed(2);if(t.slice(-3)==='.00')return t.slice(0,-3);if(t.charAt(t.length-1)==='0')return t.slice(0,-1);return t}
         function toNano(v){return Math.max(0,Math.floor((Number(String(v||'').replace(',','.'))||0)*1000000000))}
         function userId(){var tg=window.Telegram&&window.Telegram.WebApp,u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,id=String((u&&u.id)||'').trim();if(id)return id;try{return String(localStorage.getItem('ownerId')||'').trim()}catch(_){return ''}}
+        function applyWheelSlices(value){
+          var c=clampDisplayChance(value),winDeg=c*3.6,loseDeg=360-winDeg,winMid=winDeg/2,loseMid=winDeg+loseDeg/2;
+          rotor.style.background='conic-gradient(from 0deg,#f4f4f4 0deg '+winDeg+'deg,#181818 '+winDeg+'deg 360deg)';
+          winLabel.style.setProperty('--wheel-angle',winMid+'deg');
+          loseLabel.style.setProperty('--wheel-angle',loseMid+'deg');
+        }
+        function animateWheelSlices(value,instant){
+          var target=clampChance(value);
+          if(sliceFrame){cancelAnimationFrame(sliceFrame);sliceFrame=0}
+          var from=displayedChance;
+          if(instant||Math.abs(from-target)<.01){displayedChance=target;applyWheelSlices(target);return}
+          var started=performance.now(),duration=260;
+          function frame(now){
+            var t=Math.min(1,(now-started)/duration),eased=1-Math.pow(1-t,3);
+            displayedChance=from+(target-from)*eased;
+            applyWheelSlices(displayedChance);
+            if(t<1)sliceFrame=requestAnimationFrame(frame);else{displayedChance=target;sliceFrame=0;applyWheelSlices(target)}
+          }
+          sliceFrame=requestAnimationFrame(frame);
+        }
         async function syncPendingBalance(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.flush==='function')await window.VexaTonBalance.flush()}
         async function requestSpin(chance,betNano){var id=userId();if(!id)throw new Error('Telegram user not found');var r=await fetch('/app/api/wheel/spin',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({userId:id,amountNano:betNano,chance:chance})});var j=await r.json().catch(function(){return null});if(!r.ok)throw new Error(j&&j.error?j.error:'Spin failed');return j}
         function syncBalance(value){var n=Number(value);if(window.VexaTonBalance&&Number.isFinite(n)&&n>=0)window.VexaTonBalance.write(Math.floor(n),0)}
-        function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x'}
+        function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x';animateWheelSlices(c,false)}
         function setChanceFromClientX(x){if(spinning||chanceInput.disabled)return;chanceInput.value=String(chanceFromClientX(x));updateUi()}
         function startDrag(e){if(spinning||chanceInput.disabled)return;dragging=true;chanceShell.classList.add('dragging');if(chanceShell.setPointerCapture&&e.pointerId!=null)chanceShell.setPointerCapture(e.pointerId);setChanceFromClientX(e.clientX);e.preventDefault()}
         function moveDrag(e){if(!dragging)return;setChanceFromClientX(e.clientX);e.preventDefault()}
@@ -140,9 +160,11 @@ export const WHEEL_SECTION = `
           try{
             await syncPendingBalance();
             var outcome=await requestSpin(chance,betNano);
-            var win=!!outcome.win,index=Math.max(0,Math.min(5,Math.floor(Number(outcome.index)||0))),mult=Number(outcome.multiplier)||multiplierFor(chance);
+            var win=!!outcome.win,targetAngle=Number(outcome.targetAngleDeg),mult=Number(outcome.multiplier)||multiplierFor(chance);
+            if(!Number.isFinite(targetAngle))throw new Error('Invalid wheel result');
+            targetAngle=((targetAngle%360)+360)%360;
             awardXP(2,'game-start',{section:'wheel',event:'spin'});
-            var normalized=((rotation%360)+360)%360,desired=(360-index*60)%360,delta=(desired-normalized+360)%360;
+            var normalized=((rotation%360)+360)%360,desired=(360-targetAngle)%360,delta=(desired-normalized+360)%360;
             rotation+=2160+delta;
             rotor.style.transition='transform 3.4s cubic-bezier(.12,.72,.12,1)';
             void rotor.offsetWidth;
@@ -173,7 +195,7 @@ export const WHEEL_SECTION = `
         root.querySelectorAll('[data-wheel-quick]').forEach(function(button){button.addEventListener('click',function(){if(spinning)return;root.querySelectorAll('[data-wheel-quick]').forEach(function(item){item.classList.remove('active')});button.classList.add('active');amountInput.value=button.getAttribute('data-wheel-quick')||'0.1'})});
         halfButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')/2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
         doubleButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')*2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
-        chanceInput.min=String(minChance);chanceInput.max=String(maxChance);chanceShell.addEventListener('pointerdown',startDrag);chanceShell.addEventListener('pointermove',moveDrag,{passive:false});chanceShell.addEventListener('pointerup',endDrag);chanceShell.addEventListener('pointercancel',endDrag);chanceInput.addEventListener('input',updateUi);chanceInput.addEventListener('change',updateUi);spinButton.addEventListener('click',spin);updateUi()
+        chanceInput.min=String(minChance);chanceInput.max=String(maxChance);chanceShell.addEventListener('pointerdown',startDrag);chanceShell.addEventListener('pointermove',moveDrag,{passive:false});chanceShell.addEventListener('pointerup',endDrag);chanceShell.addEventListener('pointercancel',endDrag);chanceInput.addEventListener('input',updateUi);chanceInput.addEventListener('change',updateUi);spinButton.addEventListener('click',spin);displayedChance=clampChance(chanceInput.value);applyWheelSlices(displayedChance);updateUi()
       }
       if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initWheelGame);else initWheelGame();
     })();
