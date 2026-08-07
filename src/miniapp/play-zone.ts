@@ -3,13 +3,13 @@ import { livePlayersSeed, shouldShowLivePlayersOnCard } from './game-live-counts
 const playZoneGames = [
   ['mines', 'Mines', 'Reveal safe tiles and cash out', 'Play'],
   ['plinko', 'Plinko', 'Drop the ball and catch a multiplier', 'Play'],
-  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
   ['wheel', 'Wheel', 'Spin the wheel and hit a prize', 'Play'],
-  ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
+  ['slot', 'Slot', 'Spin the reels and chase a winning combo', 'Play'],
+  ['ghostrun', 'Ghost Run', 'Run through the dark and survive', 'Play'],
   ['crash', 'Crash', 'Cash out before the line crashes', 'Play'],
+  ['dice', 'Dice', 'Roll the dice and beat the target', 'Play'],
   ['hilo', 'Chicken Cross', 'Cross the road and collect rewards', 'Play'],
   ['coinflip', 'Pump', 'Pump the multiplier before it pops', 'Play'],
-  ['ghostrun', 'Ghost Run', 'Run through the dark and survive', 'Play'],
 ] as const;
 
 function stableCardImageUrl(id: string): string {
