@@ -39,9 +39,8 @@ export function registerWheelRoutes(app: App): void {
       });
       debited = true;
 
-      const winChancePercent = clampPercent(controls.winChancePercent);
-      const win = secureRandomUnit() * 100 < winChancePercent;
-      const index = pickWheelIndex(win);
+      const win = secureRandomUnit() * 100 < chance;
+      const targetAngleDeg = pickWheelTargetAngle(win, chance);
       let payoutNano = 0;
       let finalControls = afterBet;
 
@@ -58,7 +57,8 @@ export function registerWheelRoutes(app: App): void {
       return c.json({
         ok: true,
         win,
-        index,
+        chance,
+        targetAngleDeg,
         multiplier,
         payoutNano,
         tonBalanceNano: finalControls.tonBalanceNano,
@@ -102,18 +102,20 @@ function wheelMultiplier(chance: number): number {
   return Math.max(1.01, Math.floor((100 / chance) * WHEEL_HOUSE_EDGE * 100) / 100);
 }
 
-function clampPercent(value: unknown): number {
-  const chance = Math.round(Number(value));
-  return Number.isFinite(chance) ? Math.max(0, Math.min(100, chance)) : 50;
-}
-
 function secureRandomUnit(): number {
   const value = new Uint32Array(1);
   crypto.getRandomValues(value);
   return value[0] / 4294967296;
 }
 
-function pickWheelIndex(win: boolean): number {
-  const indices = win ? [0, 2, 4] : [1, 3, 5];
-  return indices[Math.floor(secureRandomUnit() * indices.length)] ?? indices[0];
+function pickWheelTargetAngle(win: boolean, chance: number): number {
+  const winArc = chance * 3.6;
+  const start = win ? 0 : winArc;
+  const end = win ? winArc : 360;
+  const arc = Math.max(0.01, end - start);
+  const margin = Math.min(6, Math.max(1.25, arc * 0.08));
+  const safeStart = start + margin;
+  const safeEnd = end - margin;
+  if (safeEnd <= safeStart) return start + arc / 2;
+  return safeStart + secureRandomUnit() * (safeEnd - safeStart);
 }
