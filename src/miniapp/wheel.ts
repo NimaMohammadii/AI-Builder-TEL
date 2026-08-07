@@ -11,12 +11,13 @@ export const WHEEL_SECTION = `
 
     /* Exact ai-configa wheel component */
     .wheel-stage{position:relative;width:min(74vw,286px);height:auto;aspect-ratio:1;margin:20px auto 13px;display:block}
-    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#E8D5DA 0deg 72deg,#1A0B0F 72deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform;transform:rotate(0deg)}
-    .wheel-rotor:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.18);pointer-events:none}
+    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#E8D5DA 0deg 72deg,#1A0B0F 72deg 360deg);border:1px solid rgba(232,213,218,.22);box-shadow:0 26px 70px rgba(0,0,0,.56),inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 0 7px rgba(8,3,5,.16);will-change:transform;transform:rotate(0deg)}
+    .wheel-rotor:after{content:"";position:absolute;inset:7px;border-radius:50%;border:1px solid rgba(232,213,218,.11);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 1px 0 rgba(0,0,0,.18);pointer-events:none}
     .wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:56px;margin-left:-28px;margin-top:-9px;text-align:center;color:#fff;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.72);transform:rotate(var(--wheel-angle)) translateY(-100px) rotate(calc(-1 * var(--wheel-angle)));will-change:transform}
     .wheel-prize.win{color:#050505;text-shadow:none}
     .wheel-prize.lose{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.72)}
-    .wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:34px;height:34px;margin:-17px;border-radius:50%;background:#050505;border:1px solid rgba(255,255,255,.28);box-shadow:0 5px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+    .wheel-hub{position:absolute;z-index:3;left:50%;top:50%;width:36px;height:36px;margin:-18px;border-radius:50%;background:radial-gradient(circle at 38% 30%,#3b252c 0%,#1b0e12 42%,#080405 100%);border:1px solid rgba(232,213,218,.28);box-shadow:0 8px 22px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -1px 0 rgba(0,0,0,.58)}
+    .wheel-hub:after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px solid rgba(232,213,218,.07);pointer-events:none}
     .wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:23px solid #fff;filter:drop-shadow(0 5px 8px rgba(0,0,0,.65))}
 
     /* Original AI-Builder-TEL controls, unchanged */
