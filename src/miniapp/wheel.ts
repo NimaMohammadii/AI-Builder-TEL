@@ -10,7 +10,7 @@ export const WHEEL_SECTION = `
 
     /* Exact ai-configa wheel component */
     .wheel-stage{position:relative;width:min(74vw,286px);height:auto;aspect-ratio:1;margin:20px auto 13px;display:block}
-    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#f4f4f4 0deg 72deg,#181818 72deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform,background;transform:rotate(0deg)}
+    .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#f4f4f4 0deg 72deg,#181818 72deg 360deg);border:1px solid rgba(255,255,255,.22);box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 0 0 7px rgba(0,0,0,.18);will-change:transform;transform:rotate(0deg)}
     .wheel-rotor:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.18);pointer-events:none}
     .wheel-prize{position:absolute;z-index:2;left:50%;top:50%;width:56px;margin-left:-28px;margin-top:-9px;text-align:center;color:#fff;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.72);transform:rotate(var(--wheel-angle)) translateY(-100px) rotate(calc(-1 * var(--wheel-angle)));will-change:transform}
     .wheel-prize.win{color:#050505;text-shadow:none}
@@ -105,58 +105,45 @@ export const WHEEL_SECTION = `
         var doubleButton=root.querySelector('[data-wheel-double]');
         if(!rotor||!winLabel||!loseLabel||!amountInput||!chanceInput||!chanceShell||!spinButton||!halfButton||!doubleButton){setTimeout(initWheelGame,80);return}
         root.dataset.readyWheelConfigaUi='1';
-        var rotation=0,spinning=false,dragging=false,houseEdge=.96,minChance=4,maxChance=96,displayedChance=20,sliceFrame=0;
+        var rotation=0,spinning=false,dragging=false,houseEdge=.96,minChance=4,maxChance=96,sliceFrame=0,sliceTarget=20,dragFrame=0,pendingClientX=0,dragRect=null;
         function clampChance(v){return Math.max(minChance,Math.min(maxChance,Math.round(Number(v)||20)))}
-        function clampDisplayChance(v){return Math.max(minChance,Math.min(maxChance,Number(v)||20))}
         function chanceToRatio(c){return(clampChance(c)-minChance)/Math.max(1,maxChance-minChance)}
         function chanceToPos(c){return chanceToRatio(c)*100}
         function posToChance(p){return clampChance(Math.max(minChance,Math.min(maxChance,p)))}
-        function chanceFromClientX(x){var r=chanceShell.getBoundingClientRect(),left=r.left+29,width=Math.max(1,r.width-58);return posToChance(((x-left)/width)*100)}
+        function chanceFromClientX(x){var r=dragRect||chanceShell.getBoundingClientRect(),left=r.left+29,width=Math.max(1,r.width-58);return posToChance(((x-left)/width)*100)}
         function multiplierFor(c){return Math.max(1.01,Math.floor((100/c)*houseEdge*100)/100)}
         function money(n){var x=Number(n)||0,t=x.toFixed(2);if(t.slice(-3)==='.00')return t.slice(0,-3);if(t.charAt(t.length-1)==='0')return t.slice(0,-1);return t}
         function toNano(v){return Math.max(0,Math.floor((Number(String(v||'').replace(',','.'))||0)*1000000000))}
         function userId(){var tg=window.Telegram&&window.Telegram.WebApp,u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,id=String((u&&u.id)||'').trim();if(id)return id;try{return String(localStorage.getItem('ownerId')||'').trim()}catch(_){return ''}}
-        function applyWheelSlices(value){
-          var c=clampDisplayChance(value),winDeg=c*3.6,loseDeg=360-winDeg,winMid=winDeg/2,loseMid=winDeg+loseDeg/2;
-          rotor.style.background='conic-gradient(from 0deg,#f4f4f4 0deg '+winDeg+'deg,#181818 '+winDeg+'deg 360deg)';
-          winLabel.style.setProperty('--wheel-angle',winMid+'deg');
-          loseLabel.style.setProperty('--wheel-angle',loseMid+'deg');
-        }
-        function animateWheelSlices(value,instant){
-          var target=clampChance(value);
-          if(sliceFrame){cancelAnimationFrame(sliceFrame);sliceFrame=0}
-          var from=displayedChance;
-          if(instant||Math.abs(from-target)<.01){displayedChance=target;applyWheelSlices(target);return}
-          var started=performance.now(),duration=260;
-          function frame(now){
-            var t=Math.min(1,(now-started)/duration),eased=1-Math.pow(1-t,3);
-            displayedChance=from+(target-from)*eased;
-            applyWheelSlices(displayedChance);
-            if(t<1)sliceFrame=requestAnimationFrame(frame);else{displayedChance=target;sliceFrame=0;applyWheelSlices(target)}
-          }
-          sliceFrame=requestAnimationFrame(frame);
-        }
+        function applyWheelSlices(c){var winDeg=c*3.6,loseDeg=360-winDeg;rotor.style.background='conic-gradient(from 0deg,#f4f4f4 0deg '+winDeg+'deg,#181818 '+winDeg+'deg 360deg)';winLabel.style.setProperty('--wheel-angle',(winDeg/2)+'deg');loseLabel.style.setProperty('--wheel-angle',(winDeg+loseDeg/2)+'deg')}
+        function queueWheelSlices(value){sliceTarget=clampChance(value);if(sliceFrame)return;sliceFrame=requestAnimationFrame(function(){sliceFrame=0;applyWheelSlices(sliceTarget)})}
         async function syncPendingBalance(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.flush==='function')await window.VexaTonBalance.flush()}
         async function requestSpin(chance,betNano){var id=userId();if(!id)throw new Error('Telegram user not found');var r=await fetch('/app/api/wheel/spin',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({userId:id,amountNano:betNano,chance:chance})});var j=await r.json().catch(function(){return null});if(!r.ok)throw new Error(j&&j.error?j.error:'Spin failed');return j}
         function syncBalance(value){var n=Number(value);if(window.VexaTonBalance&&Number.isFinite(n)&&n>=0)window.VexaTonBalance.write(Math.floor(n),0)}
-        function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x';animateWheelSlices(c,false)}
-        function setChanceFromClientX(x){if(spinning||chanceInput.disabled)return;chanceInput.value=String(chanceFromClientX(x));updateUi()}
-        function startDrag(e){if(spinning||chanceInput.disabled)return;dragging=true;chanceShell.classList.add('dragging');if(chanceShell.setPointerCapture&&e.pointerId!=null)chanceShell.setPointerCapture(e.pointerId);setChanceFromClientX(e.clientX);e.preventDefault()}
+        function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x';queueWheelSlices(c)}
+        function flushDragFrame(){dragFrame=0;if(!dragging)return;chanceInput.value=String(chanceFromClientX(pendingClientX));updateUi()}
+        function setChanceFromClientX(x){if(spinning||chanceInput.disabled)return;pendingClientX=x;if(!dragFrame)dragFrame=requestAnimationFrame(flushDragFrame)}
+        function startDrag(e){if(spinning||chanceInput.disabled)return;dragging=true;dragRect=chanceShell.getBoundingClientRect();chanceShell.classList.add('dragging');if(chanceShell.setPointerCapture&&e.pointerId!=null)chanceShell.setPointerCapture(e.pointerId);setChanceFromClientX(e.clientX);e.preventDefault()}
         function moveDrag(e){if(!dragging)return;setChanceFromClientX(e.clientX);e.preventDefault()}
-        function endDrag(e){if(!dragging)return;dragging=false;chanceShell.classList.remove('dragging');if(chanceShell.releasePointerCapture&&e&&e.pointerId!=null){try{chanceShell.releasePointerCapture(e.pointerId)}catch(_){}}}
+        function endDrag(e){if(!dragging)return;dragging=false;dragRect=null;chanceShell.classList.remove('dragging');if(chanceShell.releasePointerCapture&&e&&e.pointerId!=null){try{chanceShell.releasePointerCapture(e.pointerId)}catch(_){}}}
         function setControlsLocked(v){amountInput.disabled=!!v;chanceInput.disabled=!!v;halfButton.disabled=!!v;doubleButton.disabled=!!v;root.querySelectorAll('[data-wheel-quick]').forEach(function(b){b.disabled=!!v})}
         function awardXP(a,s,m){if(window.VexaLevel&&typeof window.VexaLevel.add==='function')window.VexaLevel.add(a,s,m||{section:'wheel'})}
-        function waitForSpin(){return new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;rotor.removeEventListener('transitionend',onEnd);resolve()},onEnd=function(e){if(e.propertyName==='transform')finish()};rotor.addEventListener('transitionend',onEnd);setTimeout(finish,3800)})}
+        function readRotorAngle(){var t=getComputedStyle(rotor).transform;if(!t||t==='none')return((rotation%360)+360)%360;var m=t.match(/^matrix\(([^)]+)\)$/);if(m){var p=m[1].split(',').map(Number);return(Math.atan2(p[1],p[0])*180/Math.PI+360)%360}var m3=t.match(/^matrix3d\(([^)]+)\)$/);if(m3){var q=m3[1].split(',').map(Number);return(Math.atan2(q[1],q[0])*180/Math.PI+360)%360}return((rotation%360)+360)%360}
+        function beginImmediateSpin(){rotor.style.transition='transform 6s linear';rotation+=2160;requestAnimationFrame(function(){rotor.style.transform='rotate('+rotation+'deg)'})}
+        function freezeRotor(){var angle=readRotorAngle();rotor.style.transition='none';rotation=angle;rotor.style.transform='rotate('+angle+'deg)';void rotor.offsetWidth;return angle}
+        function settleRotor(targetAngle){return new Promise(function(resolve){var current=freezeRotor(),desired=(360-targetAngle)%360,delta=(desired-current+360)%360,done=false;rotation=current+1080+delta;function finish(){if(done)return;done=true;rotor.removeEventListener('transitionend',onEnd);resolve()}function onEnd(e){if(e.propertyName==='transform')finish()}rotor.addEventListener('transitionend',onEnd);rotor.style.transition='transform 2.65s cubic-bezier(.12,.72,.12,1)';requestAnimationFrame(function(){rotor.style.transform='rotate('+rotation+'deg)'});setTimeout(finish,3000)})}
         async function spin(){
           if(spinning)return;
           var chance=clampChance(chanceInput.value),betNano=toNano(amountInput.value);
           if(betNano<=0){if(resultStat)resultStat.textContent='Invalid bet';return}
+          if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function'&&window.VexaTonBalance.read()<betNano){if(resultStat)resultStat.textContent='No TON';return}
           spinning=true;
           setControlsLocked(true);
           spinButton.disabled=true;
           spinButton.classList.remove('win');
           spinButton.textContent='Spinning...';
           if(resultStat)resultStat.textContent='Spinning';
+          beginImmediateSpin();
           try{
             await syncPendingBalance();
             var outcome=await requestSpin(chance,betNano);
@@ -164,12 +151,7 @@ export const WHEEL_SECTION = `
             if(!Number.isFinite(targetAngle))throw new Error('Invalid wheel result');
             targetAngle=((targetAngle%360)+360)%360;
             awardXP(2,'game-start',{section:'wheel',event:'spin'});
-            var normalized=((rotation%360)+360)%360,desired=(360-targetAngle)%360,delta=(desired-normalized+360)%360;
-            rotation+=2160+delta;
-            rotor.style.transition='transform 3.4s cubic-bezier(.12,.72,.12,1)';
-            void rotor.offsetWidth;
-            rotor.style.transform='rotate('+rotation+'deg)';
-            await waitForSpin();
+            await settleRotor(targetAngle);
             syncBalance(outcome.tonBalanceNano);
             if(win){
               var payoutNano=Math.max(0,Math.floor(Number(outcome.payoutNano)||0));
@@ -183,6 +165,7 @@ export const WHEEL_SECTION = `
               if(resultStat)resultStat.textContent='Lost';
             }
           }catch(error){
+            freezeRotor();
             spinButton.textContent='Spin';
             if(resultStat){var message=String(error&&error.message||'Spin failed');resultStat.textContent=/insufficient/i.test(message)?'No TON':'Error'}
             if(window.VexaTonBalance&&typeof window.VexaTonBalance.load==='function')window.VexaTonBalance.load();
@@ -195,7 +178,7 @@ export const WHEEL_SECTION = `
         root.querySelectorAll('[data-wheel-quick]').forEach(function(button){button.addEventListener('click',function(){if(spinning)return;root.querySelectorAll('[data-wheel-quick]').forEach(function(item){item.classList.remove('active')});button.classList.add('active');amountInput.value=button.getAttribute('data-wheel-quick')||'0.1'})});
         halfButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')/2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
         doubleButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')*2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
-        chanceInput.min=String(minChance);chanceInput.max=String(maxChance);chanceShell.addEventListener('pointerdown',startDrag);chanceShell.addEventListener('pointermove',moveDrag,{passive:false});chanceShell.addEventListener('pointerup',endDrag);chanceShell.addEventListener('pointercancel',endDrag);chanceInput.addEventListener('input',updateUi);chanceInput.addEventListener('change',updateUi);spinButton.addEventListener('click',spin);displayedChance=clampChance(chanceInput.value);applyWheelSlices(displayedChance);updateUi()
+        chanceInput.min=String(minChance);chanceInput.max=String(maxChance);chanceShell.addEventListener('pointerdown',startDrag);chanceShell.addEventListener('pointermove',moveDrag,{passive:false});chanceShell.addEventListener('pointerup',endDrag);chanceShell.addEventListener('pointercancel',endDrag);chanceInput.addEventListener('input',updateUi);chanceInput.addEventListener('change',updateUi);spinButton.addEventListener('click',spin);sliceTarget=clampChance(chanceInput.value);applyWheelSlices(sliceTarget);updateUi()
       }
       if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initWheelGame);else initWheelGame();
     })();
