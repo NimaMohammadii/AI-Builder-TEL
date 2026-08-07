@@ -116,6 +116,7 @@ export const WHEEL_SECTION = `
         function money(n){var x=Number(n)||0,t=x.toFixed(2);if(t.slice(-3)==='.00')return t.slice(0,-3);if(t.charAt(t.length-1)==='0')return t.slice(0,-1);return t}
         function toNano(v){return Math.max(0,Math.floor((Number(String(v||'').replace(',','.'))||0)*1000000000))}
         function userId(){var tg=window.Telegram&&window.Telegram.WebApp,u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,id=String((u&&u.id)||'').trim();if(id)return id;try{return String(localStorage.getItem('ownerId')||'').trim()}catch(_){return ''}}
+        async function syncPendingBalance(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.flush==='function')await window.VexaTonBalance.flush()}
         async function requestSpin(chance,betNano){var id=userId();if(!id)throw new Error('Telegram user not found');var r=await fetch('/app/api/wheel/spin',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({userId:id,amountNano:betNano,chance:chance})});var j=await r.json().catch(function(){return null});if(!r.ok)throw new Error(j&&j.error?j.error:'Spin failed');return j}
         function syncBalance(value){var n=Number(value);if(window.VexaTonBalance&&Number.isFinite(n)&&n>=0)window.VexaTonBalance.write(Math.floor(n),0)}
         function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x'}
@@ -137,6 +138,7 @@ export const WHEEL_SECTION = `
           spinButton.textContent='Spinning...';
           if(resultStat)resultStat.textContent='Spinning';
           try{
+            await syncPendingBalance();
             var outcome=await requestSpin(chance,betNano);
             var win=!!outcome.win,index=Math.max(0,Math.min(5,Math.floor(Number(outcome.index)||0))),mult=Number(outcome.multiplier)||multiplierFor(chance);
             awardXP(2,'game-start',{section:'wheel',event:'spin'});
