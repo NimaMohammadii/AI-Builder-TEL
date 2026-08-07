@@ -35,25 +35,6 @@ export const DICE_FINAL_TWEAK = `<style>
   color:#ff4f7b!important;
   text-shadow:0 0 14px rgba(255,79,123,.16)!important;
 }
-#dice .dice-range-card,
-#dice .dice-result-card{
-  background:rgba(255,255,255,.045)!important;
-  border:0!important;
-  outline:0!important;
-  box-shadow:none!important;
-  backdrop-filter:blur(3px) saturate(1.08)!important;
-  -webkit-backdrop-filter:blur(3px) saturate(1.08)!important;
-}
-#dice .dice-range-card:before,
-#dice .dice-result-card:before{
-  display:none!important;
-  content:none!important;
-}
-#dice .dice-range-card:after,
-#dice .dice-result-card:after{
-  display:none!important;
-  content:none!important;
-}
 #dice .dice-result-row{
   background:rgba(255,255,255,.045)!important;
   border:1px solid rgba(255,255,255,.08)!important;
