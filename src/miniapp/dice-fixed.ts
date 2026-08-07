@@ -2,7 +2,8 @@ import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
 
 const DICE_POLISH_STYLES = `
 body:has(#dice.active) #brandTitle{display:inline-flex!important;align-items:center!important;gap:8px!important}
-#dice.dice-view{filter:brightness(1.08) contrast(1.02)!important}
+#dice.dice-view{filter:none!important}
+html body:has(#dice.active)::before{filter:brightness(1.08) contrast(1.02)!important}
 .dice-view .dice-wrap{width:100%!important;max-width:520px!important;min-height:0!important;box-sizing:border-box!important;margin-left:auto!important;margin-right:auto!important;justify-content:flex-start!important;gap:12px!important;padding-top:calc(env(safe-area-inset-top) + 384px)!important;padding-bottom:max(14px,env(safe-area-inset-bottom))!important}
 .dice-view .dice-range-card{position:fixed!important;top:calc(env(safe-area-inset-top) + 138px)!important;left:14px!important;right:14px!important;z-index:8!important;width:auto!important;max-width:520px!important;height:170px!important;margin:0 auto!important;padding:18px 12px!important;box-sizing:border-box!important;border-radius:28px!important;background:rgba(13,13,13,.54)!important;border:0!important;outline:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;transform:none!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:0!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
 .dice-view .dice-track-labels{flex:0 0 auto!important;height:18px!important;padding:0 19px!important;transform:translateY(14px)!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:800!important;z-index:5!important}
