@@ -42,7 +42,7 @@ export const WHEEL_SECTION = `
     .wheel-join:active{transform:scale(.975)}.wheel-join:disabled{opacity:.62;transform:scale(.985)}.wheel-join.win{background:#0f3f2a;border-color:rgba(120,255,179,.22);color:#d8ffe8}
     .wheel-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
     .wheel-stat{border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(0,0,0,.35);padding:11px;text-align:center}
-    .wheel-stat small{display:block;color:rgba(255,255,255,.45);font-size:10px;font-weight:850}.wheel-stat b{display:block;margin-top:4px;font-size:14px}.wheel-players{display:grid;gap:8px;margin-top:12px}
+    .wheel-stat small{display:block;color:rgba(255,255,255,.45);font-size:10px;font-weight:850}.wheel-stat b{display:block;margin-top:4px;font-size:14px}
   </style>
 
   <div class="wheel-wrap">
@@ -85,7 +85,6 @@ export const WHEEL_SECTION = `
         <div class="wheel-stat"><small>MULTIPLIER</small><b data-wheel-pot>4.80x</b></div>
         <div class="wheel-stat"><small>RESULT</small><b data-wheel-user>Ready</b></div>
       </div>
-      <div class="wheel-players" data-wheel-players></div>
     </div>
   </div>
 
@@ -115,9 +114,10 @@ export const WHEEL_SECTION = `
         function chanceFromClientX(x){var r=chanceShell.getBoundingClientRect(),left=r.left+29,width=Math.max(1,r.width-58);return posToChance(((x-left)/width)*100)}
         function multiplierFor(c){return Math.max(1.01,Math.floor((100/c)*houseEdge*100)/100)}
         function money(n){var x=Number(n)||0,t=x.toFixed(2);if(t.slice(-3)==='.00')return t.slice(0,-3);if(t.charAt(t.length-1)==='0')return t.slice(0,-1);return t}
-        function balance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
-        function changeBalance(n){if(window.VexaTonBalance)window.VexaTonBalance.add(Math.floor(Number(n)||0))}
         function toNano(v){return Math.max(0,Math.floor((Number(String(v||'').replace(',','.'))||0)*1000000000))}
+        function userId(){var tg=window.Telegram&&window.Telegram.WebApp,u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,id=String((u&&u.id)||'').trim();if(id)return id;try{return String(localStorage.getItem('ownerId')||'').trim()}catch(_){return ''}}
+        async function requestSpin(chance,betNano){var id=userId();if(!id)throw new Error('Telegram user not found');var r=await fetch('/app/api/wheel/spin',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({userId:id,amountNano:betNano,chance:chance})});var j=await r.json().catch(function(){return null});if(!r.ok)throw new Error(j&&j.error?j.error:'Spin failed');return j}
+        function syncBalance(value){var n=Number(value);if(window.VexaTonBalance&&Number.isFinite(n)&&n>=0)window.VexaTonBalance.write(Math.floor(n),0)}
         function updateUi(){var c=clampChance(chanceInput.value),p=chanceToPos(c),r=chanceToRatio(c),m=multiplierFor(c);chanceInput.value=String(c);root.style.setProperty('--wheel-pos',p+'%');root.style.setProperty('--wheel-ratio',String(r));chanceShell.style.setProperty('--wheel-pos',p+'%');chanceShell.style.setProperty('--wheel-ratio',String(r));var red=[74,10,30],gray=[138,138,146],thumb=red.map(function(v,i){return Math.round(v+(gray[i]-v)*r)});chanceShell.style.setProperty('--wheel-thumb-color','rgb('+thumb.join(',')+')');if(chanceText)chanceText.textContent=c+'%';if(chanceStat)chanceStat.textContent=c+'%';if(multiplierStat)multiplierStat.textContent=m.toFixed(2)+'x'}
         function setChanceFromClientX(x){if(spinning||chanceInput.disabled)return;chanceInput.value=String(chanceFromClientX(x));updateUi()}
         function startDrag(e){if(spinning||chanceInput.disabled)return;dragging=true;chanceShell.classList.add('dragging');if(chanceShell.setPointerCapture&&e.pointerId!=null)chanceShell.setPointerCapture(e.pointerId);setChanceFromClientX(e.clientX);e.preventDefault()}
@@ -126,7 +126,48 @@ export const WHEEL_SECTION = `
         function setControlsLocked(v){amountInput.disabled=!!v;chanceInput.disabled=!!v;halfButton.disabled=!!v;doubleButton.disabled=!!v;root.querySelectorAll('[data-wheel-quick]').forEach(function(b){b.disabled=!!v})}
         function awardXP(a,s,m){if(window.VexaLevel&&typeof window.VexaLevel.add==='function')window.VexaLevel.add(a,s,m||{section:'wheel'})}
         function waitForSpin(){return new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;rotor.removeEventListener('transitionend',onEnd);resolve()},onEnd=function(e){if(e.propertyName==='transform')finish()};rotor.addEventListener('transitionend',onEnd);setTimeout(finish,3800)})}
-        async function spin(){if(spinning)return;var chance=clampChance(chanceInput.value),betNano=toNano(amountInput.value),mult=multiplierFor(chance);if(betNano<=0)return;if(window.VexaTonBalance&&balance()<betNano){if(resultStat)resultStat.textContent='No TON';return}spinning=true;awardXP(2,'game-start',{section:'wheel',event:'spin'});setControlsLocked(true);spinButton.disabled=true;spinButton.classList.remove('win');spinButton.textContent='Spinning...';if(resultStat)resultStat.textContent='Spinning';changeBalance(-betNano);var win=window.VexaGameChance&&typeof window.VexaGameChance.decideNative==='function'?window.VexaGameChance.decideNative(chance):Math.random()*100<chance;var indices=win?[0,2,4]:[1,3,5],index=indices[Math.floor(Math.random()*indices.length)],normalized=((rotation%360)+360)%360,desired=(360-index*60)%360,delta=(desired-normalized+360)%360;rotation+=2160+delta;rotor.style.transition='transform 3.4s cubic-bezier(.12,.72,.12,1)';void rotor.offsetWidth;rotor.style.transform='rotate('+rotation+'deg)';await waitForSpin();spinning=false;spinButton.disabled=false;setControlsLocked(false);if(win){var payout=Math.floor(betNano*mult);awardXP(mult>=10?60:(mult>=4?30:12),'game-win',{section:'wheel',event:'spin-finish',result:'win',multiplier:mult});changeBalance(payout);spinButton.classList.add('win');spinButton.textContent='Won +'+money(payout/1000000000)+' TON';if(resultStat)resultStat.textContent='+'+money(payout/1000000000)+' TON'}else{awardXP(4,'game-lose',{section:'wheel',event:'spin-finish',result:'no-win',multiplier:mult});spinButton.textContent='Spin';if(resultStat)resultStat.textContent='Lost'}}
+        async function spin(){
+          if(spinning)return;
+          var chance=clampChance(chanceInput.value),betNano=toNano(amountInput.value);
+          if(betNano<=0){if(resultStat)resultStat.textContent='Invalid bet';return}
+          spinning=true;
+          setControlsLocked(true);
+          spinButton.disabled=true;
+          spinButton.classList.remove('win');
+          spinButton.textContent='Spinning...';
+          if(resultStat)resultStat.textContent='Spinning';
+          try{
+            var outcome=await requestSpin(chance,betNano);
+            var win=!!outcome.win,index=Math.max(0,Math.min(5,Math.floor(Number(outcome.index)||0))),mult=Number(outcome.multiplier)||multiplierFor(chance);
+            awardXP(2,'game-start',{section:'wheel',event:'spin'});
+            var normalized=((rotation%360)+360)%360,desired=(360-index*60)%360,delta=(desired-normalized+360)%360;
+            rotation+=2160+delta;
+            rotor.style.transition='transform 3.4s cubic-bezier(.12,.72,.12,1)';
+            void rotor.offsetWidth;
+            rotor.style.transform='rotate('+rotation+'deg)';
+            await waitForSpin();
+            syncBalance(outcome.tonBalanceNano);
+            if(win){
+              var payoutNano=Math.max(0,Math.floor(Number(outcome.payoutNano)||0));
+              awardXP(mult>=10?60:(mult>=4?30:12),'game-win',{section:'wheel',event:'spin-finish',result:'win',multiplier:mult});
+              spinButton.classList.add('win');
+              spinButton.textContent='Won +'+money(payoutNano/1000000000)+' TON';
+              if(resultStat)resultStat.textContent='+'+money(payoutNano/1000000000)+' TON';
+            }else{
+              awardXP(4,'game-lose',{section:'wheel',event:'spin-finish',result:'no-win',multiplier:mult});
+              spinButton.textContent='Spin';
+              if(resultStat)resultStat.textContent='Lost';
+            }
+          }catch(error){
+            spinButton.textContent='Spin';
+            if(resultStat){var message=String(error&&error.message||'Spin failed');resultStat.textContent=/insufficient/i.test(message)?'No TON':'Error'}
+            if(window.VexaTonBalance&&typeof window.VexaTonBalance.load==='function')window.VexaTonBalance.load();
+          }finally{
+            spinning=false;
+            spinButton.disabled=false;
+            setControlsLocked(false);
+          }
+        }
         root.querySelectorAll('[data-wheel-quick]').forEach(function(button){button.addEventListener('click',function(){if(spinning)return;root.querySelectorAll('[data-wheel-quick]').forEach(function(item){item.classList.remove('active')});button.classList.add('active');amountInput.value=button.getAttribute('data-wheel-quick')||'0.1'})});
         halfButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')/2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
         doubleButton.addEventListener('click',function(){if(spinning)return;var v=Math.max(.1,Number(amountInput.value||'.1')*2);amountInput.value=String(Math.round(v*100)/100).replace(/\.0$/,'')});
