@@ -38,6 +38,14 @@ export const PUMP_SECTION = `
       background: transparent !important;
     }
 
+    body:has(#coinflip.active) #coinflip.has-admin-background {
+      background-color: transparent !important;
+      background-image: var(--admin-section-background-image) !important;
+      background-size: cover !important;
+      background-position: center top !important;
+      background-repeat: no-repeat !important;
+    }
+
     .pump-page {
       width: min(100%, 430px);
       min-height: calc(100vh - 96px);
