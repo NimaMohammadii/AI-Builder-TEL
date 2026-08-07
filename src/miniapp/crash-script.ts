@@ -10,7 +10,7 @@ export const CRASH_SCRIPT = `
   function toNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(/,/g,'.'))||0)*UNIT))}
   function toTon(nano){var v=Math.max(0,Math.floor(Number(nano)||0))/UNIT;return v.toFixed(2)}
   function normalizeAmount(){var input=q('crashAmount');var n=toNano(input&&input.value);if(n<MIN_BET_NANO)n=MIN_BET_NANO;if(input){input.setAttribute('step','0.01');input.setAttribute('inputmode','decimal');input.value=toTon(n)}return n}
-  function normalizeAutoCashout(){var input=q('crashAutoCashout');if(!input)return 0;var v=Number(String(input.value||'').replace(/,/g,'.'))||0;if(v>0&&v<1.01)v=1.01;if(v>200)v=200;if(input.value&&String(input.value)!==String(v))input.value=v.toFixed(2).replace(/\\.00$/,'');return v>=1.01?v:0}
+  function normalizeAutoCashout(){var input=q('crashAutoCashout');if(!input)return 0;var v=Number(String(input.value||'').replace(/,/g,'.'))||0;if(v>0&&v<1.01)v=1.01;if(v>200)v=200;if(input.value&&String(input.value)!==String(v))input.value=v.toFixed(2).replace(/\.00$/,'');return v>=1.01?v:0}
   function fmt(v){return Math.max(1,Number(v)||1).toFixed(2)+'x'}
   function status(text){var n=q('crashStatus');if(n)n.textContent=text}
   function mult(v){var text=fmt(v),n=q('crashMultiplier'),p=q('crashPanelMultiplier');if(n)n.textContent=text;if(p)p.textContent=text}
