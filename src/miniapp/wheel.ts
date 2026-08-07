@@ -1,11 +1,12 @@
 export const WHEEL_SECTION = `
 <section id="wheel" class="view wheel-view">
   <style>
-    html:has(#wheel.active),body:has(#wheel.active){background:#020102!important;background-color:#020102!important}
-    body:has(#wheel.active) .app,body:has(#wheel.active) main.app,body:has(#wheel.active) .content,body:has(#wheel.active) .view.active,body:has(#wheel.active) #wheel,body:has(#wheel.active) .wheel-view,body:has(#wheel.active) .top,body:has(#wheel.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
-    body:has(#wheel.active)::before{content:'';position:fixed;inset:0;z-index:-3;background:radial-gradient(ellipse 118% 55% at 48% -10%,rgba(64,8,28,.58),transparent 62%),radial-gradient(ellipse 92% 15% at 50% 40%,rgba(0,0,0,.36),transparent 74%),radial-gradient(ellipse 68% 42% at 50% 42%,rgba(72,9,32,.28),transparent 68%),linear-gradient(180deg,#030102 0%,#070205 34%,#050303 62%,#010101 100%)!important;pointer-events:none}
+    html body:has(#wheel.active){isolation:isolate!important;background:#000!important}
+    html body:has(#wheel.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Wheel.PNG?v=1')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
+    html body:has(#wheel.active)::after,html body:has(#wheel.active) .app::before,html body:has(#wheel.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
+    html body:has(#wheel.active) .app,html body:has(#wheel.active) main.app,html body:has(#wheel.active) .content,html body:has(#wheel.active) .view.active,html body:has(#wheel.active) #wheel,html body:has(#wheel.active) .wheel-view,html body:has(#wheel.active) .top,html body:has(#wheel.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     body:has(#wheel.active) .tabs{display:none!important}
-    .wheel-view{position:relative;box-sizing:border-box;height:100%;min-height:100%;padding:0 14px calc(96px + env(safe-area-inset-bottom));background:#000!important;color:#fff;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+    .wheel-view{position:relative;box-sizing:border-box;height:100%;min-height:100%;padding:0 14px calc(96px + env(safe-area-inset-bottom));background:transparent!important;color:#fff;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
     .wheel-wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;display:grid;gap:12px}
 
     /* Exact ai-configa wheel component */
