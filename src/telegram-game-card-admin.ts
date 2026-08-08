@@ -3,13 +3,6 @@ import { PUBLIC_BASE_URL } from './utils';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
 import { getSpecialWheelPriceStars, setSpecialWheelPriceStars } from './special-wheel-engine';
 import { sectionBackgroundR2Key } from './section-backgrounds';
-import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
-import { getOnlineUserCountConfig, resetOnlineUserCountConfig } from './online-user-counts';
-import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
-import { getPlinkoVirtualUsers, resetPlinkoVirtualUsers, savePlinkoVirtualUsers } from './plinko-virtual-users';
-import { getCrashVirtualUsers, resetCrashVirtualUsers, saveCrashVirtualUsers } from './crash-virtual-users-config';
-import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from './slot-virtual-users';
-import { approveTonWithdrawal, listAdminTonWithdrawals, rejectTonWithdrawal } from './ton-withdrawals';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -20,8 +13,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
 
-type ConfigKind = 'plinko-control' | 'plinko-users' | 'crash-users' | 'slot-users';
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'wheel-price' } | { kind: 'config'; config: ConfigKind };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'wheel-price' };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -108,7 +100,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   const callback = update.callback_query;
   if (callback) {
     const data = callback.data || '';
-    const ours = data === 'botadmin:home' || data.startsWith('botadmin:menu:') || data === 'botadmin:gameimages' || data === 'botadmin:gamebackgrounds' || data === 'botadmin:crashstage' || data === 'botadmin:tonlogo' || data === 'botadmin:specialwheelprice' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:gamebackground:') || data.startsWith('botadmin:crashstage:') || data.startsWith('botadmin:specialwheel:') || data.startsWith('botadmin:globalaccess:') || data.startsWith('botadmin:audio:') || data.startsWith('botadmin:online:') || data.startsWith('botadmin:config:') || data.startsWith('botadmin:withdrawals:');
+    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:gamebackgrounds' || data === 'botadmin:crashstage' || data === 'botadmin:tonlogo' || data === 'botadmin:specialwheelprice' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:gamebackground:') || data.startsWith('botadmin:crashstage:') || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
     await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
@@ -118,37 +110,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     if (data === 'botadmin:home') {
       await clearState(env, callback.from.id);
       await sendHome(env, token, chatId, messageId);
-    } else if (data.startsWith('botadmin:menu:')) {
-      await clearState(env, callback.from.id);
-      await sendCategory(env, token, chatId, data.slice('botadmin:menu:'.length), messageId);
-    } else if (data.startsWith('botadmin:globalaccess:')) {
-      const [, , action, section, rawMinutes] = data.split(':');
-      if (action === 'lock') await setSectionLock(env, section, Number(rawMinutes) || 60);
-      if (action === 'unlock') await clearSectionLock(env, section);
-      await sendAccessMenu(env, token, chatId, messageId);
-    } else if (data.startsWith('botadmin:audio:')) {
-      await env.BOT_CACHE.put('admin:miniapp-audio-enabled', data.endsWith(':on') ? '1' : '0');
-      await sendSystemMenu(env, token, chatId, messageId);
-    } else if (data === 'botadmin:online:reset') {
-      await resetOnlineUserCountConfig(env);
-      await sendSystemMenu(env, token, chatId, messageId, '✅ شمارنده‌های آنلاین به حالت پیش‌فرض برگشتند.');
-    } else if (data.startsWith('botadmin:config:')) {
-      const [, , action, rawKind] = data.split(':');
-      const kind = normalizeConfigKind(rawKind);
-      if (kind && action === 'show') await sendConfigPanel(env, token, chatId, kind, messageId);
-      if (kind && action === 'reset') { await resetConfig(env, kind); await sendConfigPanel(env, token, chatId, kind, messageId, '✅ تنظیمات پیش‌فرض بازیابی شد.'); }
-      if (kind && action === 'edit') {
-        await env.BOT_CACHE.put(stateKey(callback.from.id), `config:${kind}`, { expirationTtl: 900 });
-        await upsert(token, chatId, messageId, '📝 JSON جدید را در یک پیام بفرستید. ساختار فعلی در پیام قبلی نمایش داده شده است. برای لغو /cancel را بفرستید.', [[{ text: '⬅️ بازگشت', callback_data: `botadmin:config:show:${kind}` }]]);
-      }
-    } else if (data.startsWith('botadmin:withdrawals:')) {
-      const [, , action, id] = data.split(':');
-      let notice = '';
-      try {
-        if (action === 'approve' && id) { await approveTonWithdrawal(env, id); notice = '✅ برداشت تأیید و برای پرداخت پردازش شد.'; }
-        if (action === 'reject' && id) { await rejectTonWithdrawal(env, id, 'Rejected by Telegram admin'); notice = '✅ برداشت رد و موجودی کاربر بازگردانده شد.'; }
-      } catch (error) { notice = `❌ ${error instanceof Error ? error.message : 'عملیات ناموفق بود.'}`; }
-      await sendWithdrawals(env, token, chatId, messageId, notice);
     } else if (data.startsWith('botadmin:specialwheel:')) {
       const enabled = data.endsWith(':on');
       await clearState(env, callback.from.id);
@@ -247,18 +208,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     return ok();
   }
 
-  if (target.kind === 'config') {
-    try {
-      const parsed = JSON.parse(text);
-      await saveConfig(env, target.config, parsed);
-      await clearState(env, message.from.id);
-      await sendConfigPanel(env, token, message.chat.id, target.config, undefined, '✅ تنظیمات ذخیره شد.');
-    } catch (error) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ JSON یا مقادیر نامعتبر است: ${error instanceof Error ? error.message : 'خطای نامشخص'}` }).catch(() => undefined);
-    }
-    return ok();
-  }
-
   const source = imageFromMessage(message);
   if (!source) {
     await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'یک فایل PNG، JPG یا WebP بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
@@ -323,49 +272,20 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 
 async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
   const [wheelEnabled, wheelPrice] = await Promise.all([isSpecialWheelEnabled(env), getSpecialWheelPriceStars(env)]);
-  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}  •  ⭐️ ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nابزارها بر اساس موضوع دسته‌بندی شده‌اند.`, [
-    [{ text: '👥 کاربران', callback_data: 'botadmin:menu:users' }, { text: '💳 مالی', callback_data: 'botadmin:menu:finance' }],
-    [{ text: '🖼 تصاویر و رسانه', callback_data: 'botadmin:menu:media' }, { text: '🎮 بازی‌ها', callback_data: 'botadmin:menu:games' }],
-    [{ text: '⚙️ سیستم و دسترسی', callback_data: 'botadmin:menu:system' }, { text: '📣 پیام و رجین', callback_data: 'botadmin:menu:communication' }],
+  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n⭐️ قیمت اسپین‌های بعدی: ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nبخش موردنظر را انتخاب کنید.`, [
+    [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
+    [{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }],
+    [{ text: '🚀 10 تصویر داخل Crash', callback_data: 'botadmin:crashstage' }],
+    [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
+    [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
+    [{ text: `⭐️ قیمت اسپین بعدی: ${wheelPrice === 0 ? 'رایگان' : wheelPrice}`, callback_data: 'botadmin:specialwheelprice' }],
+    [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
+    [{ text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' }],
+    [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
+    [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
+    [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
+    [{ text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' }],
   ]);
-}
-
-async function sendCategory(env: Env, token: string, chatId: number, category: string, messageId?: number): Promise<void> {
-  if (category === 'users') return upsert(token, chatId, messageId, '👥 مدیریت کاربران', [[{ text: '👥 همه کاربران', callback_data: 'botadmin:users:0' }, { text: '↩️ برگشتی‌ها', callback_data: 'botadmin:returns' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-  if (category === 'finance') return upsert(token, chatId, messageId, '💳 امور مالی', [[{ text: '📊 آمار مالی', callback_data: 'botadmin:financestats' }, { text: '⚙️ حدود تراکنش', callback_data: 'botadmin:financelimits' }], [{ text: '💸 درخواست‌های برداشت', callback_data: 'botadmin:withdrawals:list' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-  if (category === 'media') return upsert(token, chatId, messageId, '🖼 تصاویر و رسانه‌ها', [[{ text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' }, { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🚀 تصاویر Crash', callback_data: 'botadmin:crashstage' }, { text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-  if (category === 'games') return sendGamesMenu(env, token, chatId, messageId);
-  if (category === 'system') return sendSystemMenu(env, token, chatId, messageId);
-  return upsert(token, chatId, messageId, '📣 پیام‌رسانی و تنظیمات منطقه', [[{ text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' }, { text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-}
-
-async function sendGamesMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const enabled = await isSpecialWheelEnabled(env); const price = await getSpecialWheelPriceStars(env);
-  await upsert(token, chatId, messageId, '🎮 کنترل بازی‌ها و کاربران مجازی', [[{ text: enabled ? '❌ خاموش‌کردن گردونه' : '✅ روشن‌کردن گردونه', callback_data: `botadmin:specialwheel:${enabled ? 'off' : 'on'}` }, { text: `⭐️ اسپین: ${price}`, callback_data: 'botadmin:specialwheelprice' }], [{ text: '🟣 کنترل Plinko', callback_data: 'botadmin:config:show:plinko-control' }], [{ text: '👤 Plinko زنده', callback_data: 'botadmin:config:show:plinko-users' }, { text: '👤 Crash زنده', callback_data: 'botadmin:config:show:crash-users' }], [{ text: '👤 Slot زنده', callback_data: 'botadmin:config:show:slot-users' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-}
-
-async function sendSystemMenu(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
-  const [audio, online] = await Promise.all([env.BOT_CACHE.get('admin:miniapp-audio-enabled').catch(() => '0'), getOnlineUserCountConfig(env)]);
-  await upsert(token, chatId, messageId, `${notice ? notice + '\n\n' : ''}⚙️ سیستم و دسترسی\n\n🔊 صدای مینی‌اپ: ${audio === '1' ? 'روشن' : 'خاموش'}\n🕒 برنامه شمارنده آنلاین: ${online.updatedAt ? 'سفارشی' : 'پیش‌فرض'}`, [[{ text: '🔐 قفل زمانی بخش‌ها', callback_data: 'botadmin:globalaccess:list' }], [{ text: audio === '1' ? '🔇 خاموش‌کردن صدا' : '🔊 روشن‌کردن صدا', callback_data: `botadmin:audio:${audio === '1' ? 'off' : 'on'}` }], [{ text: '♻️ ریست شمارنده آنلاین', callback_data: 'botadmin:online:reset' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
-}
-
-async function sendAccessMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const locks = new Map((await getSectionAccess(env)).map(x => [x.sectionId, x]));
-  const rows: Keyboard = ACCESS_SECTIONS.map(([id, label]) => { const locked = locks.has(id); return [{ text: `${locked ? '🔒' : '🔓'} ${label}`, callback_data: `botadmin:globalaccess:${locked ? 'unlock' : 'lock'}:${id}:60` }]; });
-  rows.push([{ text: '⬅️ سیستم', callback_data: 'botadmin:menu:system' }]);
-  await upsert(token, chatId, messageId, '🔐 قفل زمانی بخش‌ها\n\nهر دکمه، بخش باز را ۶۰ دقیقه قفل می‌کند یا قفل موجود را فوراً باز می‌کند.', rows);
-}
-
-async function sendWithdrawals(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
-  const { withdrawals } = await listAdminTonWithdrawals(env, 'pending');
-  const rows: Keyboard = withdrawals.slice(0, 10).flatMap(item => [[{ text: `✅ تأیید ${item.userId} • ${Number(item.amountNano) / 1e9} TON`, callback_data: `botadmin:withdrawals:approve:${item.id}` }], [{ text: `❌ رد و بازگشت وجه • ${String(item.id).slice(0, 12)}`, callback_data: `botadmin:withdrawals:reject:${item.id}` }]]);
-  rows.push([{ text: '🔄 بروزرسانی', callback_data: 'botadmin:withdrawals:list' }, { text: '⬅️ مالی', callback_data: 'botadmin:menu:finance' }]);
-  await upsert(token, chatId, messageId, `${notice ? notice + '\n\n' : ''}💸 برداشت‌های در انتظار\n\n${withdrawals.length ? `${withdrawals.length} درخواست پیدا شد. برای جلوگیری از اشتباه، تأیید و رد در ردیف‌های جدا هستند.` : 'درخواست در انتظاری وجود ندارد.'}`, rows);
-}
-
-async function sendConfigPanel(env: Env, token: string, chatId: number, kind: ConfigKind, messageId?: number, notice = ''): Promise<void> {
-  const value = await getConfig(env, kind); const json = JSON.stringify(value, null, 2); const preview = json.length > 3000 ? json.slice(0, 3000) + '\n…' : json;
-  await upsert(token, chatId, messageId, `${notice ? notice + '\n\n' : ''}${configLabel(kind)}\n\n<pre>${escapeTelegram(preview)}</pre>`, [[{ text: '📝 ویرایش JSON', callback_data: `botadmin:config:edit:${kind}` }, { text: '♻️ پیش‌فرض', callback_data: `botadmin:config:reset:${kind}` }], [{ text: '⬅️ بازی‌ها', callback_data: 'botadmin:menu:games' }]], 'HTML');
 }
 
 async function sendGameMenu(token: string, chatId: number, messageId?: number): Promise<void> {
@@ -393,7 +313,7 @@ async function sendCrashStageMenu(env: Env, token: string, chatId: number, messa
   await upsert(token, chatId, messageId, '🚀 تصاویر عمودی داخل کادر Crash\n\nImage 1 پایین‌ترین/شروع مسیر است و Image 10 بالاترین/آخر مسیر. هر 10 تصویر به‌ترتیب عمودی به هم وصل می‌شوند.', rows);
 }
 
-async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'wheel-price' } | { kind: 'config' }>, source: UploadSource): Promise<void> {
+async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'wheel-price' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
   if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
@@ -431,8 +351,8 @@ function imageFromMessage(message: Message): UploadSource | null {
   return type ? { fileId: doc.file_id, size: doc.file_size, type, via: 'document' } : null;
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard, parseMode?: 'HTML'): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true, ...(parseMode ? { parse_mode: parseMode } : {}) };
+async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
   if (messageId) {
     const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
     if (edited) return;
@@ -463,7 +383,6 @@ function normalizeCrashStageSlot(value: unknown): number | null {
 }
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
-  if (raw.startsWith('config:')) { const config = normalizeConfigKind(raw.slice(7)); return config ? { kind: 'config', config } : null; }
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === WHEEL_PRICE_STATE) return { kind: 'wheel-price' };
   if (raw.startsWith(BACKGROUND_STATE_PREFIX)) {
@@ -479,12 +398,6 @@ function normalizeTarget(value: unknown): UploadTarget | null {
 }
 function label(game: string): string { return GAMES.find(([id]) => id === game)?.[1] || game; }
 function backgroundLabel(game: string): string { return BACKGROUND_GAMES.find(([id]) => id === game)?.[1] || game; }
-function normalizeConfigKind(value: unknown): ConfigKind | null { const kind = String(value || '') as ConfigKind; return ['plinko-control', 'plinko-users', 'crash-users', 'slot-users'].includes(kind) ? kind : null; }
-function configLabel(kind: ConfigKind): string { return ({ 'plinko-control': '🟣 کنترل نتیجه Plinko', 'plinko-users': '👤 کاربران مجازی Plinko', 'crash-users': '👤 کاربران مجازی Crash/Ghost Run', 'slot-users': '👤 کاربران مجازی Slot' })[kind]; }
-function escapeTelegram(value: string): string { return value.replace(/[&<>]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char] || char); }
-async function getConfig(env: Env, kind: ConfigKind): Promise<unknown> { if (kind === 'plinko-control') return getPlinkoControl(env); if (kind === 'plinko-users') return getPlinkoVirtualUsers(env); if (kind === 'crash-users') return getCrashVirtualUsers(env); return getSlotVirtualUsers(env); }
-async function saveConfig(env: Env, kind: ConfigKind, value: unknown): Promise<unknown> { if (kind === 'plinko-control') return savePlinkoControl(env, value); if (kind === 'plinko-users') return savePlinkoVirtualUsers(env, value); if (kind === 'crash-users') return saveCrashVirtualUsers(env, value); return saveSlotVirtualUsers(env, value); }
-async function resetConfig(env: Env, kind: ConfigKind): Promise<unknown> { if (kind === 'plinko-control') return resetPlinkoControl(env); if (kind === 'plinko-users') return resetPlinkoVirtualUsers(env); if (kind === 'crash-users') return resetCrashVirtualUsers(env); return resetSlotVirtualUsers(env); }
 function gameKey(game: string): string { return `game-card-images/${game}`; }
 function crashStageKey(slot: number): string { return `crash-stage-images/${slot}`; }
 function stateKey(id: number): string { return `${STATE_PREFIX}${id}`; }
