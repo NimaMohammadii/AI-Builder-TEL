@@ -47,6 +47,9 @@ const SLOT_SYMBOLS = [
 ] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+// Card images use stable URLs in the Play Hub, so let the user's browser keep
+// the nine responses locally instead of reaching the Worker on every visit.
+const GAME_CARD_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 export async function handleGameCardAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
@@ -66,12 +69,18 @@ async function serveImage(request: Request, env: Env, raw: string): Promise<Resp
   if (!game) return new Response('Not found', { status: 404 });
   const object = await env.ASSETS.get(gameKey(game)).catch(() => null);
   if (!object) {
-    return Response.redirect(new URL(`/app/api/section-lock-image/${game}/locked.png?v=1`, request.url).toString(), 302);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: new URL(`/app/api/section-lock-image/${game}/locked.png?v=1`, request.url).toString(),
+        'cache-control': GAME_CARD_CACHE_CONTROL,
+      },
+    });
   }
   return new Response(object.body, {
     headers: {
       'content-type': object.httpMetadata?.contentType || 'image/jpeg',
-      'cache-control': 'no-store, max-age=0',
+      'cache-control': GAME_CARD_CACHE_CONTROL,
       'x-content-type-options': 'nosniff',
     },
   });
