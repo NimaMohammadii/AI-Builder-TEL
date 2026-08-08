@@ -178,31 +178,12 @@ export const SECTION_BACKGROUND_STYLES = `
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
-body.has-ghostrun-admin-background:has(#ghostrun.active) {
-  isolation: isolate !important;
-}
-body.has-ghostrun-admin-background:has(#ghostrun.active)::before {
-  content: "" !important;
-  display: block !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  z-index: -1 !important;
-  pointer-events: none !important;
+body.has-ghostrun-admin-background:has(#ghostrun.active) #ghostrun .ghost-run-screen {
   background-color: #000 !important;
   background-image: var(--ghostrun-admin-background-image) !important;
   background-size: cover !important;
   background-position: center top !important;
   background-repeat: no-repeat !important;
-}
-body.has-ghostrun-admin-background:has(#ghostrun.active) .app,
-body.has-ghostrun-admin-background:has(#ghostrun.active) .content,
-body.has-ghostrun-admin-background:has(#ghostrun.active) #ghostrun.ghost-run-view,
-body.has-ghostrun-admin-background:has(#ghostrun.active) #ghostrun .ghost-run-screen,
-body.has-ghostrun-admin-background:has(#ghostrun.active) .top {
-  background-color: transparent !important;
-  background-image: none !important;
 }
 img[data-admin-bg-overridden="1"] {
   display: block !important;
