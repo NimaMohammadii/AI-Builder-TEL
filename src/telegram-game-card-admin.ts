@@ -271,8 +271,9 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     ],
     [
       { text: '🚀 تصاویر Crash', callback_data: 'botadmin:crashstage' },
-      { text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' },
+      { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
+    [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ]);
 }
