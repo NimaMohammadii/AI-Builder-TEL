@@ -3,6 +3,7 @@ import './withdrawal-admin-routes';
 import app from './index-with-admin-refresh';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
+import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
 
@@ -45,6 +46,9 @@ export default {
         { headers: { 'cache-control': 'no-store' } },
       );
     }
+
+    const sectionAccessAdminResponse = await handleSectionAccessAdminRequest(request, runtimeEnv);
+    if (sectionAccessAdminResponse) return sectionAccessAdminResponse;
 
     const gameCardAdminResponse = await handleGameCardAdminRequest(request, runtimeEnv);
     if (gameCardAdminResponse) return gameCardAdminResponse;
