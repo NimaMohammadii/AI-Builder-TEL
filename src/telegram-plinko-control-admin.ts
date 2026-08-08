@@ -369,10 +369,12 @@ function applyPreset(item: { multipliers: number[]; weights: number[] }, kind: P
 function normalizeWeights(weights: number[]): number[] {
   const positive = weights.map((value) => Math.max(0, Number(value) || 0));
   const sum = positive.reduce((total, value) => total + value, 0);
-  if (sum <= 0) return positive.map(() => roundValue(100 / positive.length, 10)).mapWithAdjust?.() as never;
-  const normalized = positive.map((value) => roundValue(value * 100 / sum, 10));
+  const normalized = sum > 0
+    ? positive.map((value) => roundValue(value * 100 / sum, 10))
+    : positive.map(() => roundValue(100 / positive.length, 10));
   const difference = roundValue(100 - normalized.reduce((total, value) => total + value, 0), 10);
-  const index = normalized.findLastIndex((value) => value > 0);
+  let index = normalized.length - 1;
+  while (index > 0 && normalized[index] <= 0) index -= 1;
   if (index >= 0) normalized[index] = roundValue(normalized[index] + difference, 10);
   return normalized;
 }
