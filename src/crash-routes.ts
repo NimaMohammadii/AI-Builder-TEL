@@ -1,5 +1,4 @@
 import app from './index';
-import { getCrashVirtualUsers } from './crash-virtual-users-config';
 import { getGhostRunVirtualUsers } from './ghost-run-virtual-users-config';
 import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs } from './crash-virtual-users';
 
@@ -52,16 +51,14 @@ app.get('/app/api/crash-live', async (c) => {
   const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
   const revealWindow = virtualRevealWindow(roundId,state);
   await settleRealBetsForRound(c.env.DB, roundId, state);
-  const [realRows, virtualRows, crashConfig] = await Promise.all([
+  const [realRows, virtualRows] = await Promise.all([
     readRealLiveRows(c.env.DB, roundId),
     buildCrashVirtualLiveBets(c.env, roundId, revealWindow.start, revealWindow.end, now, state),
-    getCrashVirtualUsers(c.env),
   ]);
-  const timedVirtualRows = applyConfiguredRevealSeconds(virtualRows, crashConfig.users, revealWindow);
-  const visibleVirtualRows = timedVirtualRows.filter((row) => Number(row.virtual_reveal_at_ms||0) <= now);
+  const visibleVirtualRows = virtualRows.filter((row) => Number(row.virtual_reveal_at_ms||0) <= now);
   const bets = [...realRows, ...visibleVirtualRows].map(json).sort((a,b)=>Number(b.amountNano||0)-Number(a.amountNano||0) || Number(a.virtualOrder||0)-Number(b.virtualOrder||0)).slice(0,120);
   const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
-  const nextReveal = nextVirtualRevealMs(timedVirtualRows, now);
+  const nextReveal = nextVirtualRevealMs(virtualRows, now);
   const nextSyncMs = nextLiveSyncMs(state, bets, nextReveal, now);
   return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),state,nextRevealAtMs:nextReveal||0,nextSyncMs,bets},200,{'cache-control':CACHE_NONE});
 });
@@ -114,15 +111,6 @@ function virtualRevealWindow(roundId:number,state:ReturnType<typeof getCrashRoun
   const roundStart = roundId===state.id ? state.start : state.start + state.runMs + WAIT_BETWEEN_MS;
   const end = Math.max(0,roundStart - REVEAL_END_BEFORE_START_MS);
   return {start:Math.max(0,end-WAIT_WINDOW_MS),end};
-}
-function applyConfiguredRevealSeconds(rows:Row[], users:Array<{betSecond?:unknown}>, window:{start:number;end:number}):Row[]{
-  const windowSeconds = Math.max(0,(window.end-window.start)/1000);
-  return rows.map((row,index)=>{
-    const raw = Number(users[index]?.betSecond);
-    const second = Number.isFinite(raw) ? Math.max(0,Math.min(8,windowSeconds,raw)) : 0;
-    const reveal = Math.min(window.end,Math.max(window.start,Math.floor(window.start+second*1000)));
-    return {...row,virtual_reveal_at_ms:reveal,created_at:new Date(reveal).toISOString()};
-  });
 }
 function nextVirtualRevealMs(rows:Row[], now:number){
   return rows.reduce((next,row) => {
