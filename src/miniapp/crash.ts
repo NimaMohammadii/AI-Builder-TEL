@@ -105,7 +105,7 @@ const CRASH_VERTICAL_BACKGROUNDS_SCRIPT = `
     function updatePosition(){
       var value=parseFloat(String(multiplier.textContent||'1').replace(/x/i,''));
       if(!Number.isFinite(value))value=1;
-      var step=Math.max(0,Math.min(9,value-1));
+      var step=Math.max(0,Math.min(9,(value-1)*(9/59)));
       var height=Math.max(1,stage.clientHeight||stage.getBoundingClientRect().height||1);
       var y=-(9-step)*height;
       strip.style.transform='translate3d(0,'+y.toFixed(2)+'px,0)';
