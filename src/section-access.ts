@@ -71,10 +71,10 @@ export async function clearSectionLock(env: Env, sectionIdInput: unknown): Promi
   return locks;
 }
 
-export function isMiniAppAdmin(env: Env, userId: unknown): boolean {
-  const user = String(userId || '').trim();
-  if (!user) return false;
-  return String(env.BOT_ADMIN || '').split(/[\s,;|]+/).some((id) => id && id === user);
+// Section update locks now apply to every mini app session, including BOT_ADMIN.
+// Admins can always manage and remove locks from the Telegram admin panel itself.
+export function isMiniAppAdmin(_env: Env, _userId: unknown): boolean {
+  return false;
 }
 
 async function saveSectionAccess(env: Env, locks: SectionLock[]): Promise<void> {
