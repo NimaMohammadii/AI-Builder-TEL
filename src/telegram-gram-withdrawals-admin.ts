@@ -73,12 +73,12 @@ export async function notifyAdminGramWithdrawal(env: Env, withdrawal: TonWithdra
     loadUserProfile(env, withdrawal.userId),
     loadLedger(env, withdrawal.id),
   ]);
-  const text = `🆕 New Gram Withdrawal\n\n${detailText(withdrawal, profile, ledger)}`;
-  const keyboard = detailKeyboard(withdrawal, 'pending', 0);
+  const text = trimTelegramText(`🆕 New Gram Withdrawal\n\n${detailText(withdrawal, profile, ledger)}`);
+  const reply_markup = { inline_keyboard: detailKeyboard(withdrawal, 'pending', 0) };
   await Promise.all(admins.map((chatId) => tg(token, 'sendMessage', {
     chat_id: chatId,
-    text: trimTelegramText(text),
-    reply_markup: { inline_keyboard: keyboard },
+    text,
+    reply_markup,
     disable_web_page_preview: true,
   }).catch((error) => console.warn('send Gram withdrawal admin notification failed', error))));
 }
@@ -113,11 +113,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'a') {
     await clearState(env, callback.from.id);
     const id = cleanId(parts[3]);
-    if (!id) return ok();
     const filter = normalizeFilter(parts[4]);
     const page = normalizePage(parts[5]);
+    if (!id) return ok();
     const withdrawal = await loadWithdrawal(env, id);
-    if (!withdrawal) return sendMissing(token, chatId, messageId);
+    if (!withdrawal) {
+      await sendMissing(token, chatId, messageId);
+      return ok();
+    }
     await upsert(token, chatId, messageId,
       `⚠️ Confirm Gram withdrawal\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nWallet: ${withdrawal.walletAddress}\n\nThis action sends the real on-chain payout.`,
       [[
@@ -131,9 +134,9 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'ac') {
     await clearState(env, callback.from.id);
     const id = cleanId(parts[3]);
-    if (!id) return ok();
     const filter = normalizeFilter(parts[4]);
     const page = normalizePage(parts[5]);
+    if (!id) return ok();
     let notice = '✅ Withdrawal approved and payout completed.';
     try {
       await approveTonWithdrawal(env, id);
@@ -146,11 +149,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
 
   if (action === 'r') {
     const id = cleanId(parts[3]);
-    if (!id) return ok();
     const filter = normalizeFilter(parts[4]);
     const page = normalizePage(parts[5]);
+    if (!id) return ok();
     const withdrawal = await loadWithdrawal(env, id);
-    if (!withdrawal) return sendMissing(token, chatId, messageId);
+    if (!withdrawal) {
+      await sendMissing(token, chatId, messageId);
+      return ok();
+    }
     await setState(env, callback.from.id, { mode: 'reject', withdrawalId: id, filter, page });
     await upsert(token, chatId, messageId,
       `❌ Reject & Refund\n\nRequest: ${id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\n\nSend the rejection reason as a message, or use the default reason below. Rejecting refunds the reserved balance to the user.`,
@@ -165,9 +171,9 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'rd') {
     await clearState(env, callback.from.id);
     const id = cleanId(parts[3]);
-    if (!id) return ok();
     const filter = normalizeFilter(parts[4]);
     const page = normalizePage(parts[5]);
+    if (!id) return ok();
     let notice = '✅ Withdrawal rejected and balance refunded.';
     try {
       await rejectTonWithdrawal(env, id, 'Rejected by admin');
@@ -181,8 +187,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'd') {
     await clearState(env, callback.from.id);
     const id = cleanId(parts[3]);
-    if (!id) return ok();
-    await sendDetailFile(env, token, chatId, id);
+    if (id) await sendDetailFile(env, token, chatId, id);
     return ok();
   }
 
@@ -230,28 +235,15 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
 async function sendList(env: Env, token: string, chatId: number, filter: Filter, page: number, messageId?: number): Promise<void> {
   await ensureStorage(env);
-  const [counts, items, total] = await Promise.all([
-    withdrawalCounts(env),
-    listRows(env, filter, page),
-    countRows(env, filter),
-  ]);
+  const [counts, total] = await Promise.all([withdrawalCounts(env), countRows(env, filter)]);
   const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   const safePage = Math.min(page, maxPage);
-  const withdrawals = safePage === page ? items : await listRows(env, filter, safePage);
+  const withdrawals = await listRows(env, filter, safePage);
   const profiles = await Promise.all(withdrawals.map((item) => loadUserProfile(env, item.userId)));
   const rows: Keyboard = [
-    [
-      statusButton('Pending', 'pending', filter, counts.pending),
-      statusButton('Failed', 'failed', filter, counts.failed),
-    ],
-    [
-      statusButton('Processing', 'processing', filter, counts.processing),
-      statusButton('Paid', 'paid', filter, counts.paid),
-    ],
-    [
-      statusButton('Rejected', 'rejected', filter, counts.rejected),
-      statusButton('All', 'all', filter, counts.all),
-    ],
+    [statusButton('Pending', 'pending', filter, counts.pending), statusButton('Failed', 'failed', filter, counts.failed)],
+    [statusButton('Processing', 'processing', filter, counts.processing), statusButton('Paid', 'paid', filter, counts.paid)],
+    [statusButton('Rejected', 'rejected', filter, counts.rejected), statusButton('All', 'all', filter, counts.all)],
   ];
 
   withdrawals.forEach((withdrawal, index) => {
@@ -280,9 +272,15 @@ async function sendList(env: Env, token: string, chatId: number, filter: Filter,
 
 async function sendDetail(env: Env, token: string, chatId: number, idInput: unknown, filter: Filter, page: number, messageId?: number, notice = ''): Promise<void> {
   const id = cleanId(idInput);
-  if (!id) return sendMissing(token, chatId, messageId);
+  if (!id) {
+    await sendMissing(token, chatId, messageId);
+    return;
+  }
   const withdrawal = await loadWithdrawal(env, id);
-  if (!withdrawal) return sendMissing(token, chatId, messageId);
+  if (!withdrawal) {
+    await sendMissing(token, chatId, messageId);
+    return;
+  }
   const [profile, ledger] = await Promise.all([
     loadUserProfile(env, withdrawal.userId),
     loadLedger(env, withdrawal.id),
@@ -431,8 +429,8 @@ async function withdrawalCounts(env: Env): Promise<Record<Filter, number>> {
   const out: Record<Filter, number> = { pending: 0, failed: 0, processing: 0, paid: 0, rejected: 0, all: 0 };
   const rows = await env.DB.prepare('SELECT status, COUNT(*) AS count FROM ton_withdrawals GROUP BY status').all<{ status: string; count: number | string }>();
   for (const row of rows.results ?? []) {
-    const status = normalizeFilter(row.status);
-    if (status !== 'all') out[status] = Math.max(0, Number(row.count || 0));
+    const status = String(row.status || '').toLowerCase() as Filter;
+    if (status !== 'all' && FILTERS.includes(status)) out[status] = Math.max(0, Number(row.count || 0));
   }
   out.all = out.pending + out.failed + out.processing + out.paid + out.rejected;
   return out;
