@@ -10,15 +10,19 @@ const PREDICT_SETTINGS_SCRIPT = `
       var nativeFetch=window.fetch&&window.fetch.bind(window);
       var waiting={};
       var inFlight={};
+      var recent={};
       if(!nativeFetch)return;
       function urlOf(input){return String((input&&input.url)||input||'')}
       function methodOf(input,init){return String((init&&init.method)||(input&&input.method)||'GET').toUpperCase()}
-      function isPredictApi(input){var url=urlOf(input);return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0}
+      function isPredictApi(input){var url=urlOf(input);return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0||url.indexOf('/app/api/predict-round')>=0}
+      function recentTtl(key){return key.indexOf('/app/api/predict-round')>=0?2500:0}
       function isPredictActive(){var root=document.getElementById('predictzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
       function sharedFetch(input,init){
         if(methodOf(input,init)!=='GET')return nativeFetch(input,init);
-        var key=urlOf(input);var hit=inFlight[key];if(hit)return hit.then(function(r){return r.clone()});
-        var base=nativeFetch(input,init);
+        var key=urlOf(input),now=Date.now(),ttl=recentTtl(key),cached=recent[key];
+        if(ttl&&cached&&now-cached.t<ttl)return Promise.resolve(cached.response.clone());
+        var hit=inFlight[key];if(hit)return hit.then(function(r){return r.clone()});
+        var base=nativeFetch(input,init).then(function(response){if(ttl)recent[key]={t:Date.now(),response:response.clone()};return response});
         inFlight[key]=base.then(function(r){return r.clone()}).finally(function(){delete inFlight[key]});
         return base;
       }
