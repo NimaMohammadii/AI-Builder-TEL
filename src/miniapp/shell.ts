@@ -40,6 +40,7 @@ import { DICE_SECTION } from './dice-fixed';
 import { DICE_FINAL_TWEAK } from './dice-final-tweak';
 import { PUMP_SECTION } from './pump';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
+import { CHICKEN_CROSS_SCRIPT, CHICKEN_CROSS_SECTION, CHICKEN_CROSS_STYLES } from './chicken-cross';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
@@ -162,6 +163,7 @@ const STYLES = [
   SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
+  CHICKEN_CROSS_STYLES,
   SECTION_ACCESS_STYLES,
 ].join('');
 
@@ -182,6 +184,7 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wheel', html: WHEEL_SECTION, scripts: [] },
   { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
   { id: 'coinflip', html: PUMP_SECTION },
+  { id: 'hilo', html: CHICKEN_CROSS_SECTION, scripts: [CHICKEN_CROSS_SCRIPT] },
   { id: 'ghostrun', html: GHOST_RUN_SECTION },
 ];
 
