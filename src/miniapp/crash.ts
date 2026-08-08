@@ -127,6 +127,10 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Crash.PNG?v=1')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
     html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
     html body:has(#crash.active) .app,html body:has(#crash.active) main.app,html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
+    html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
+    html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
+    html body:has(#crash.active) #crash .crash-controls,html body:has(#crash.active) #crash #crashLive{border-radius:28px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;outline:0!important;box-shadow:0 20px 58px rgba(0,0,0,.54),inset 0 1px 0 rgba(255,255,255,.08)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+    html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:8px!important}
   </style>
   <div class="crash-page">
     <div class="crash-stage">
@@ -154,21 +158,21 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
       <div class="crash-actions">
         <button id="crashAction" class="crash-primary" type="button">Place Bet</button>
       </div>
-    </div>
-    <div class="crash-live open" id="crashLive">
-      <div class="crash-live-head">
-        <span class="crash-live-title">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
-          <span>Live Bets</span>
-        </span>
-        <div class="crash-live-head-actions">
-          <b id="crashLiveTotal">0 TON</b>
-          <button id="crashLiveToggle" class="crash-live-toggle" type="button" aria-label="Toggle live bets" aria-expanded="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
-          </button>
+      <div class="crash-live open" id="crashLive">
+        <div class="crash-live-head">
+          <span class="crash-live-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M3.4 18.4c.6-3 2.3-4.6 4.8-4.6s4.2 1.6 4.8 4.6"/><path d="M16.3 10.2a2.6 2.6 0 1 0 0-5.2"/><path d="M15.4 13.6c2.4.2 3.9 1.7 4.4 4.3"/></svg>
+            <span>Live Bets</span>
+          </span>
+          <div class="crash-live-head-actions">
+            <b id="crashLiveTotal">0 TON</b>
+            <button id="crashLiveToggle" class="crash-live-toggle" type="button" aria-label="Toggle live bets" aria-expanded="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+            </button>
+          </div>
         </div>
+        <div class="crash-live-list" id="crashLiveList"><div class="crash-live-empty">No bets yet</div></div>
       </div>
-      <div class="crash-live-list" id="crashLiveList"><div class="crash-live-empty">No bets yet</div></div>
     </div>
   </div>
   <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
