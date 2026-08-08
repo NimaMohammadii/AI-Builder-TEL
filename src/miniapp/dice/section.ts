@@ -1,4 +1,4 @@
-import { DICE_SECTION as RAW_DICE_SECTION } from './dice';
+import { DICE_SECTION as RAW_DICE_SECTION } from './base-section';
 
 const DICE_STYLES = `
 body:has(#dice.active) #brandTitle{display:inline-flex!important;align-items:center!important;gap:8px!important}

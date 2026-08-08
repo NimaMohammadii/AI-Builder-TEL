@@ -1,10 +1,21 @@
 import { MINIAPP_STYLES } from './styles';
-import { PLINKO_STYLES } from './plinko-styles';
-import { MINES_STYLES } from './mines-styles';
-import { CRASH_STYLES } from './crash-styles';
-import { SLOT_STYLES } from './slot-styles';
-import { PLINKO_CONTROLS_MODERN_STYLES } from './plinko-controls-modern-styles';
-import { CRASH_CONTROLS_MODERN_STYLES } from './crash-controls-modern-styles';
+import {
+  PLINKO_CONTROLS_MODERN_STYLES,
+  PLINKO_DROP_FEEDBACK_SCRIPT,
+  PLINKO_PANEL_SCRIPT,
+  PLINKO_PERFORMANCE_SCRIPT,
+  PLINKO_SCRIPT,
+  PLINKO_SECTION,
+  PLINKO_STYLES,
+} from './plinko';
+import { MINES_SCRIPT, MINES_SECTION, MINES_STYLES } from './mines';
+import { CRASH_CONTROLS_MODERN_STYLES, CRASH_SCRIPT, CRASH_SECTION, CRASH_STYLES } from './crash';
+import { SLOT_SCRIPT, SLOT_SECTION, SLOT_STYLES } from './slot';
+import { DICE_FINAL_TWEAK, DICE_SECTION } from './dice';
+import { WHEEL_SECTION } from './wheel';
+import { PUMP_SECTION } from './pump';
+import { CHICKEN_CROSS_SCRIPT, CHICKEN_CROSS_SECTION, CHICKEN_CROSS_STYLES } from './chicken-cross';
+import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { PLAY_ZONE_STYLES } from './play-zone-styles';
 import { PREDICT_ZONE_STYLES } from './predict-zone-styles';
 import { PREDICT_CRYPTO_SELECTOR_STYLES } from './predict-crypto-selector-styles';
@@ -31,28 +42,11 @@ import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
-import { MINES_SECTION } from './mines';
-import { PLINKO_SECTION } from './plinko';
-import { CRASH_SECTION } from './crash';
-import { SLOT_SECTION } from './slot';
-import { WHEEL_SECTION } from './wheel';
-import { DICE_SECTION } from './dice-fixed';
-import { DICE_FINAL_TWEAK } from './dice-final-tweak';
-import { PUMP_SECTION } from './pump';
-import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
-import { CHICKEN_CROSS_SCRIPT, CHICKEN_CROSS_SECTION, CHICKEN_CROSS_STYLES } from './chicken-cross';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
-import { PLINKO_SCRIPT } from './plinko-script';
-import { PLINKO_DROP_FEEDBACK_SCRIPT } from './plinko-drop-feedback-script';
-import { PLINKO_PERFORMANCE_SCRIPT } from './plinko-performance-script';
-import { PLINKO_PANEL_SCRIPT } from './plinko-panel-script';
-import { MINES_SCRIPT } from './mines-script';
-import { CRASH_SCRIPT } from './crash-script';
-import { SLOT_SCRIPT } from './slot-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
 import { MINIAPP_AUDIO_SCRIPT } from './audio-script';
