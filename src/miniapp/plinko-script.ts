@@ -15,7 +15,6 @@ export const PLINKO_SCRIPT = `
   var houseImageUrl = '';
   var lastLoadAt = 0;
   var syncing = false;
-  var syncQueued = false;
   var audioCtx = null;
   var lastSoundAt = 0;
   var MIN_BET = 0.01;
@@ -399,19 +398,12 @@ export const PLINKO_SCRIPT = `
   function requestSync(force) {
     var now = Date.now();
     if (!force && !active()) return Promise.resolve();
-    if (!force && now - lastLoadAt < 1200) return Promise.resolve();
-    if (syncing) {
-      syncQueued = Boolean(force || syncQueued);
-      return Promise.resolve();
-    }
+    if (now - lastLoadAt < 1200) return Promise.resolve();
+    if (syncing) return Promise.resolve();
     syncing = true;
     lastLoadAt = now;
     return loadControl().finally(function () {
       syncing = false;
-      if (syncQueued) {
-        syncQueued = false;
-        requestSync(true);
-      }
     });
   }
   function smartLoadPlinkoControl(force) {
