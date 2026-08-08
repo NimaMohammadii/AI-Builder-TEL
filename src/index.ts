@@ -89,7 +89,7 @@ app.post('/admin/panel', async (c) => {
   const key = String(form.get('key') ?? '');
   if (!isAdminPassword(c.env, key)) return html(adminHtml('Wrong admin key.'));
   const challenge = await createAdminPasswordChallenge(c.env);
-  if (challenge.ok === false) return html(adminCodeHtml(challenge.challengeId));
+  if (challenge.ok === false) return html(adminHtml(challenge.error));
   return html(adminCodeHtml(challenge.challengeId));
 });
 app.post('/admin/verify', async (c) => {
@@ -174,7 +174,7 @@ app.post('/telegram/webhook', async (c) => {
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => {
   console.error(error);
-  return c.json({ error: 'Internal error' }, 500);
+  return c.json({ error: 'Internal error' }, 500));
 });
 
 function html(content: string, extraHeaders: Record<string, string> = {}): Response {
