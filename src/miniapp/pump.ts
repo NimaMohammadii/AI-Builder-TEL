@@ -186,7 +186,12 @@ export const PUMP_SECTION = String.raw`
         render();
       }).catch(function(){ var stage=q('pumpStage');if(stage){stage.classList.add('is-ready');} });
     }
-    bind(); bootThree();
+    bind();
+    var threeBooted=false;
+    function ensureThree(){ if(threeBooted)return; var root=q('coinflip'); if(!root||!root.classList.contains('active'))return; threeBooted=true; bootThree(); }
+    if(window.MutationObserver){ var observer=new MutationObserver(ensureThree); var root=q('coinflip'); if(root)observer.observe(root,{attributes:true,attributeFilter:['class']}); }
+    document.addEventListener('click',function(){setTimeout(ensureThree,220)},true);
+    ensureThree();
   })();
   </script>
 </section>
