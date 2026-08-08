@@ -1,6 +1,7 @@
 import type { Env } from './types';
 
-export type PlinkoRisk = 'low';
+export type PlinkoRisk = 'low' | 'medium' | 'high';
+export type PlinkoRow = '8' | '12' | '16';
 export type PlinkoMode = 'weighted';
 
 export interface PlinkoRiskConfig {
@@ -10,6 +11,8 @@ export interface PlinkoRiskConfig {
 
 export interface PlinkoRowsConfig {
   low: PlinkoRiskConfig;
+  medium: PlinkoRiskConfig;
+  high: PlinkoRiskConfig;
 }
 
 export interface PlinkoControlConfig {
@@ -17,13 +20,35 @@ export interface PlinkoControlConfig {
   mode: PlinkoMode;
   houseEdge: number;
   volatility: number;
-  rows: Record<'13', PlinkoRowsConfig>;
+  rows: Record<PlinkoRow, PlinkoRowsConfig>;
   updatedAt?: string;
 }
 
 type AdminSettingRow = { value_json: string };
 
 const KEY = 'admin:plinko-control';
+export const PLINKO_ROWS: readonly PlinkoRow[] = ['8', '12', '16'];
+export const PLINKO_RISKS: readonly PlinkoRisk[] = ['low', 'medium', 'high'];
+
+const WEIGHTS_8 = [
+  0.390625, 3.125, 10.9375, 21.875, 27.34375, 21.875, 10.9375, 3.125, 0.390625,
+];
+const WEIGHTS_12 = [
+  0.0244140625, 0.29296875, 1.611328125, 5.37109375, 12.0849609375,
+  19.3359375, 22.55859375, 19.3359375, 12.0849609375, 5.37109375,
+  1.611328125, 0.29296875, 0.0244140625,
+];
+const WEIGHTS_16 = [
+  0.00152587890625, 0.0244140625, 0.18310546875, 0.8544921875,
+  2.777099609375, 6.6650390625, 12.21923828125, 17.4560546875,
+  19.6380615234375, 17.4560546875, 12.21923828125, 6.6650390625,
+  2.777099609375, 0.8544921875, 0.18310546875, 0.0244140625,
+  0.00152587890625,
+];
+
+function riskConfig(multipliers: number[], weights: number[]): PlinkoRiskConfig {
+  return { multipliers: multipliers.slice(), weights: weights.slice() };
+}
 
 export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
   enabled: true,
@@ -31,30 +56,40 @@ export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
   houseEdge: 8,
   volatility: 50,
   rows: {
-    '13': {
-      low: {
-        multipliers: [30, 5, 3.4, 2, 1.5, 1, 0.2, 0.2, 1, 1.5, 2, 3.4, 5, 30],
-        weights: [1, 2, 3.5, 6, 9, 13, 15.5, 15.5, 13, 9, 6, 3.5, 2, 1],
-      },
+    '8': {
+      low: riskConfig([5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6], WEIGHTS_8),
+      medium: riskConfig([13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13], WEIGHTS_8),
+      high: riskConfig([29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29], WEIGHTS_8),
+    },
+    '12': {
+      low: riskConfig([10, 3, 1.6, 1.2, 1.11, 1.05, 0.5, 1.05, 1.11, 1.2, 1.6, 3, 10], WEIGHTS_12),
+      medium: riskConfig([33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33], WEIGHTS_12),
+      high: riskConfig([170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170], WEIGHTS_12),
+    },
+    '16': {
+      low: riskConfig([16, 5, 2.5, 1.6, 1.2, 1.09, 1.05, 1.1, 0.5, 1.1, 1.05, 1.09, 1.2, 1.6, 2.5, 5, 16], WEIGHTS_16),
+      medium: riskConfig([110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110], WEIGHTS_16),
+      high: riskConfig([1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000], WEIGHTS_16),
     },
   },
 };
 
 export async function getPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
   const saved = await readConfig(env);
-  return saved ? normalizePlinkoConfig(saved) : DEFAULT_PLINKO_CONTROL;
+  return saved ? normalizePlinkoConfig(saved) : cloneDefault();
 }
 
 export async function savePlinkoControl(env: Env, value: unknown): Promise<PlinkoControlConfig> {
   const config = normalizePlinkoConfig(value);
-  validatePlinkoChanceTotal(config);
+  validatePlinkoChanceTotals(config);
   config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
   return config;
 }
 
 export async function resetPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
-  const config = { ...DEFAULT_PLINKO_CONTROL, updatedAt: new Date().toISOString() };
+  const config = cloneDefault();
+  config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
   return config;
 }
@@ -92,7 +127,7 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
 }
 
 function normalizePlinkoConfig(input: any): PlinkoControlConfig {
-  const base = JSON.parse(JSON.stringify(DEFAULT_PLINKO_CONTROL)) as PlinkoControlConfig;
+  const base = cloneDefault();
   const out: PlinkoControlConfig = {
     enabled: input?.enabled !== false,
     mode: 'weighted',
@@ -101,12 +136,18 @@ function normalizePlinkoConfig(input: any): PlinkoControlConfig {
     rows: base.rows,
     updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined,
   };
-  const expected = 14;
-  const item = input?.rows?.['13']?.low ?? input?.rows?.['11']?.low ?? input?.rows?.['9']?.low ?? input?.rows?.['7']?.low;
-  out.rows['13'].low = {
-    multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows['13'].low.multipliers, 0.01, 1000),
-    weights: normalizeNumberArray(item?.weights, expected, base.rows['13'].low.weights, 0, 100),
-  };
+
+  for (const rowKey of PLINKO_ROWS) {
+    for (const risk of PLINKO_RISKS) {
+      const expected = Number(rowKey) + 1;
+      const alias = risk === 'low' ? 'easy' : risk === 'high' ? 'hard' : 'medium';
+      const item = input?.rows?.[rowKey]?.[risk] ?? input?.rows?.[rowKey]?.[alias];
+      out.rows[rowKey][risk] = {
+        multipliers: normalizeNumberArray(item?.multipliers, expected, base.rows[rowKey][risk].multipliers, 0.01, 1000),
+        weights: normalizeNumberArray(item?.weights, expected, base.rows[rowKey][risk].weights, 0, 100),
+      };
+    }
+  }
   return out;
 }
 
@@ -123,10 +164,17 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   return Math.min(max, Math.max(min, n));
 }
 
-function validatePlinkoChanceTotal(config: PlinkoControlConfig): void {
-  const weights = config.rows['13'].low.weights;
-  const total = weights.reduce((sum, value) => sum + value, 0);
-  if (Math.abs(total - 100) > 0.05) {
-    throw new Error('Plinko house chances must total exactly 100%.');
+function validatePlinkoChanceTotals(config: PlinkoControlConfig): void {
+  for (const rowKey of PLINKO_ROWS) {
+    for (const risk of PLINKO_RISKS) {
+      const total = config.rows[rowKey][risk].weights.reduce((sum, value) => sum + value, 0);
+      if (Math.abs(total - 100) > 0.05) {
+        throw new Error(`Plinko ${rowKey} ${risk} chances must total exactly 100%.`);
+      }
+    }
   }
+}
+
+function cloneDefault(): PlinkoControlConfig {
+  return JSON.parse(JSON.stringify(DEFAULT_PLINKO_CONTROL)) as PlinkoControlConfig;
 }
