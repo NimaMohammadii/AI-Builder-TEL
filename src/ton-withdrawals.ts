@@ -1,4 +1,3 @@
-import type { TonClient } from '@ton/ton';
 import type { Env } from './types';
 import { adjustUserTonBalance, assertUserNotBanned, getUserControls } from './user-controls';
 import { getFinanceLimits } from './admin-finance-controls';
@@ -17,6 +16,7 @@ type WithdrawRow = {
   amount_nano: number;
   status: string;
   tx_hash?: string | null;
+  submission_ref?: string | null;
   error_message?: string | null;
   approved_at?: string | null;
   paid_at?: string | null;
@@ -31,14 +31,33 @@ export type TonWithdrawal = {
   walletAddress: string;
   amountNano: number;
   amountTon: number;
+  amountGram: number;
   status: string;
   txHash: string | null;
+  submissionRef: string | null;
   errorMessage: string | null;
   approvedAt: string | null;
   paidAt: string | null;
   rejectedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type PreparedPayout = {
+  submissionRef: string;
+  sourceWallet: string;
+  seqno: number;
+  sendOnce(): Promise<void>;
+};
+
+type OpenedWithdrawalWallet = {
+  getSeqno(): Promise<number>;
+  sendTransfer(args: {
+    secretKey: Uint8Array;
+    seqno: number;
+    sendMode: number;
+    messages: unknown[];
+  }): Promise<void>;
 };
 
 export async function createTonWithdrawal(env: Env, userIdInput: unknown, amountTonInput: unknown, walletInput: unknown): Promise<TonWithdrawal> {
@@ -49,11 +68,11 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   const limits = await getFinanceLimits(env);
   const minWithdrawNano = limits.minWithdrawNano || MIN_WITHDRAW_NANO;
   const maxWithdrawNano = limits.maxWithdrawNano || MAX_WITHDRAW_NANO;
-  if (amountNano < minWithdrawNano) throw new Error(`Minimum withdrawal is ${formatTonAmount(minWithdrawNano)} TON`);
-  if (amountNano > maxWithdrawNano) throw new Error(`Maximum withdrawal is ${formatTonAmount(maxWithdrawNano)} TON`);
+  if (amountNano < minWithdrawNano) throw new Error(`Minimum withdrawal is ${formatGramAmount(minWithdrawNano)} Gram`);
+  if (amountNano > maxWithdrawNano) throw new Error(`Maximum withdrawal is ${formatGramAmount(maxWithdrawNano)} Gram`);
 
   const controls = await getUserControls(env, userId);
-  if (controls.tonBalanceNano < amountNano) throw new Error('Not enough TON balance');
+  if (controls.tonBalanceNano < amountNano) throw new Error('Not enough Gram balance');
 
   await ensureTonWithdrawalsTable(env);
   await enforceDailyWithdrawalLimit(env, userId, amountNano);
@@ -66,12 +85,12 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
 
   await adjustUserTonBalance(env, userId, -amountNano, {
     kind: 'withdraw',
-    title: 'TON withdrawal',
+    title: 'Gram withdrawal',
     description: 'Withdrawal request to ' + shortWallet(wallet),
     referenceId: id,
     referenceType: 'ton_withdrawal',
     status: 'pending',
-    metadata: { walletAddress: wallet },
+    metadata: { walletAddress: wallet, displayCurrency: 'Gram' },
   });
 
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
@@ -101,31 +120,110 @@ export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown)
   const id = cleanWithdrawalId(withdrawalIdInput);
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   if (!row) throw new Error('Withdrawal not found');
-  if (row.status === 'paid') return rowToWithdrawal(row);
+  if (row.status === 'paid' || row.status === 'processing') return rowToWithdrawal(row);
   if (!['pending', 'failed'].includes(row.status)) throw new Error('Withdrawal cannot be approved from status ' + row.status);
 
-  const locked = await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'processing', error_message = NULL, approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('pending', 'failed')`)
-    .bind(id)
-    .run();
-  if ((locked.meta?.changes ?? 0) !== 1) throw new Error('Withdrawal is already being processed');
-
+  let prepared: PreparedPayout;
   try {
-    const payout = await callWithdrawalPayout(env, row);
-    await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'paid', tx_hash = ?, paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-      .bind(payout.txHash, id)
-      .run();
-    await markWithdrawalTransaction(env, id, 'approved', 'TON withdrawal approved', 'Approved to ' + shortWallet(row.wallet_address), { walletAddress: row.wallet_address, txHash: payout.txHash, sourceStatus: 'paid' });
+    prepared = await prepareWithdrawalPayout(env, row);
   } catch (error) {
     const message = cleanError(error);
-    await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'failed', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+    await env.DB.prepare(`UPDATE ton_withdrawals
+      SET status = 'failed', error_message = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status IN ('pending', 'failed')`)
       .bind(message, id)
       .run();
-    await markWithdrawalTransaction(env, id, 'failed', 'TON withdrawal', 'Withdrawal payout failed: ' + message, { walletAddress: row.wallet_address, errorMessage: message }).catch(() => undefined);
+    await markWithdrawalTransaction(env, id, 'failed', 'Gram withdrawal', 'Payout preparation failed: ' + message, {
+      walletAddress: row.wallet_address,
+      errorMessage: message,
+      displayCurrency: 'Gram',
+    });
     throw new Error(message);
   }
 
+  const locked = await env.DB.prepare(`UPDATE ton_withdrawals
+    SET status = 'processing', submission_ref = ?, error_message = NULL,
+        approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status IN ('pending', 'failed')`)
+    .bind(prepared.submissionRef, id)
+    .run();
+  if ((locked.meta?.changes ?? 0) !== 1) {
+    const current = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
+    if (current) return rowToWithdrawal(current);
+    throw new Error('Withdrawal is already being processed');
+  }
+
+  await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submitting', 'Single payout submission started', {
+    walletAddress: row.wallet_address,
+    sourceWallet: prepared.sourceWallet,
+    submissionRef: prepared.submissionRef,
+    seqno: prepared.seqno,
+    displayCurrency: 'Gram',
+  });
+
+  try {
+    await prepared.sendOnce();
+    await env.DB.prepare(`UPDATE ton_withdrawals
+      SET error_message = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'processing'`)
+      .bind(id)
+      .run();
+    await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submitted', 'Submitted once; no automatic resend or polling', {
+      walletAddress: row.wallet_address,
+      sourceWallet: prepared.sourceWallet,
+      submissionRef: prepared.submissionRef,
+      seqno: prepared.seqno,
+      sourceStatus: 'processing',
+      displayCurrency: 'Gram',
+    });
+  } catch (error) {
+    const message = cleanError(error);
+    const safeMessage = `Submission state uncertain. Do not resend or refund automatically. ${message}`;
+    await env.DB.prepare(`UPDATE ton_withdrawals
+      SET error_message = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'processing'`)
+      .bind(cleanText(safeMessage, 240), id)
+      .run();
+    await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submission uncertain', safeMessage, {
+      walletAddress: row.wallet_address,
+      sourceWallet: prepared.sourceWallet,
+      submissionRef: prepared.submissionRef,
+      seqno: prepared.seqno,
+      errorMessage: message,
+      sourceStatus: 'processing',
+      displayCurrency: 'Gram',
+    });
+    throw new Error(safeMessage);
+  }
+
+  const processing = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
+  return rowToWithdrawal(processing ?? { ...row, status: 'processing', submission_ref: prepared.submissionRef });
+}
+
+export async function markTonWithdrawalPaid(env: Env, withdrawalIdInput: unknown): Promise<TonWithdrawal> {
+  await ensureTonWithdrawalsTable(env);
+  const id = cleanWithdrawalId(withdrawalIdInput);
+  const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
+  if (!row) throw new Error('Withdrawal not found');
+  if (row.status === 'paid') return rowToWithdrawal(row);
+  if (row.status !== 'processing') throw new Error('Only a processing withdrawal can be marked paid');
+  if (!row.submission_ref) throw new Error('Processing withdrawal has no submission reference');
+
+  const updated = await env.DB.prepare(`UPDATE ton_withdrawals
+    SET status = 'paid', paid_at = CURRENT_TIMESTAMP, error_message = NULL, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status = 'processing' AND submission_ref IS NOT NULL`)
+    .bind(id)
+    .run();
+  if ((updated.meta?.changes ?? 0) !== 1) throw new Error('Withdrawal status changed before finalization');
+
+  await markWithdrawalTransaction(env, id, 'approved', 'Gram withdrawal paid', 'Marked paid by admin without resending funds', {
+    walletAddress: row.wallet_address,
+    submissionRef: row.submission_ref,
+    displayCurrency: 'Gram',
+    sourceStatus: 'paid',
+  });
   const paid = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
-  return rowToWithdrawal(paid ?? { ...row, status: 'paid' });
+  return rowToWithdrawal(paid ?? { ...row, status: 'paid', paid_at: new Date().toISOString(), error_message: null });
 }
 
 export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, reasonInput: unknown = ''): Promise<TonWithdrawal> {
@@ -135,7 +233,7 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
   if (!row) throw new Error('Withdrawal not found');
   if (row.status === 'paid') throw new Error('Paid withdrawal cannot be rejected');
   if (row.status === 'rejected') return rowToWithdrawal(row);
-  if (row.status === 'processing') throw new Error('Processing withdrawal cannot be rejected');
+  if (row.status === 'processing') throw new Error('Processing withdrawal cannot be rejected or refunded because submission may already have happened');
 
   const rejected = await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'rejected', error_message = ?, rejected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('pending', 'failed')`)
     .bind(cleanText(reasonInput, 180) || 'Rejected by admin', id)
@@ -144,18 +242,17 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
 
   await adjustUserTonBalance(env, row.user_id, Math.abs(Number(row.amount_nano || 0)), {
     kind: 'withdraw',
-    title: 'Withdrawal refunded',
+    title: 'Gram withdrawal refunded',
     description: 'Rejected withdrawal refunded',
     referenceId: id,
     referenceType: 'ton_withdrawal',
     status: 'rejected',
-    metadata: { walletAddress: row.wallet_address },
+    metadata: { walletAddress: row.wallet_address, displayCurrency: 'Gram' },
   });
 
   const updated = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   return rowToWithdrawal(updated ?? { ...row, status: 'rejected' });
 }
-
 
 async function markWithdrawalTransaction(env: Env, withdrawalId: string, status: string, title: string, description: string, metadata: Record<string, unknown>): Promise<void> {
   await env.DB.prepare(`UPDATE ton_transactions
@@ -177,23 +274,18 @@ async function enforceDailyWithdrawalLimit(env: Env, userId: string, amountNano:
   const usedTodayNano = Number(row?.totalNano || 0);
   if (usedTodayNano + amountNano > DAILY_WITHDRAW_LIMIT_NANO) {
     const remainingNano = Math.max(0, DAILY_WITHDRAW_LIMIT_NANO - usedTodayNano);
-    throw new Error(`Daily withdrawal limit is 100 TON. Remaining today: ${formatTonAmount(remainingNano)} TON`);
+    throw new Error(`Daily withdrawal limit is 100 Gram. Remaining today: ${formatGramAmount(remainingNano)} Gram`);
   }
 }
 
-function formatTonAmount(nano: number): string {
+function formatGramAmount(nano: number): string {
   const amount = nano / TON_NANO;
   return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-async function callWithdrawalPayout(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
-  return sendWithdrawalFromConfiguredWallet(env, row);
-}
-
-async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): Promise<{ txHash: string }> {
+async function prepareWithdrawalPayout(env: Env, row: WithdrawRow): Promise<PreparedPayout> {
   const mnemonic = withdrawalMnemonic(env);
   const configuredAddress = envValue(env, 'TON_WITHDRAW_WALLET_ADDRESS') || DEFAULT_TON_WITHDRAW_WALLET_ADDRESS;
-
   const { mnemonicToPrivateKey, internal, SendMode, TonClient } = await loadTonSdk();
   const client = new TonClient({
     endpoint: `${TONCENTER_BASE}/jsonRPC`,
@@ -201,29 +293,37 @@ async function sendWithdrawalFromConfiguredWallet(env: Env, row: WithdrawRow): P
   });
   const keyPair = await mnemonicToPrivateKey(mnemonic);
   const wallet = await createWithdrawalWalletForAddress(configuredAddress, keyPair.publicKey);
-
-  const openedWallet = client.open(wallet);
+  const openedWallet = client.open(wallet as never) as unknown as OpenedWithdrawalWallet;
   const seqno = await openedWallet.getSeqno();
   const amountNano = Math.floor(Number(row.amount_nano || 0));
   if (!Number.isSafeInteger(amountNano) || amountNano <= 0) throw new Error('Invalid withdrawal amount');
-
-  await openedWallet.sendTransfer({
-    secretKey: keyPair.secretKey,
-    seqno,
-    sendMode: SendMode.PAY_GAS_SEPARATELY,
-    messages: [
-      internal({
-        to: row.wallet_address,
-        value: BigInt(amountNano),
-        body: 'Vexa withdrawal ' + row.id,
-        bounce: false,
-      }),
-    ],
+  const sourceWallet = wallet.address.toString({ bounceable: false });
+  const submissionRef = await makeSubmissionRef(row, sourceWallet, seqno);
+  const message = internal({
+    to: row.wallet_address,
+    value: BigInt(amountNano),
+    body: 'Vexa Gram withdrawal ' + row.id,
+    bounce: false,
   });
 
-  const nextSeqno = await waitForWalletSeqno(openedWallet, seqno);
-  const txHash = await findLatestWalletTxHash(client, wallet.address.toString(), row.id);
-  return { txHash: txHash || `ton-withdraw:${row.id}:seqno:${nextSeqno}` };
+  return {
+    submissionRef,
+    sourceWallet,
+    seqno,
+    sendOnce: () => openedWallet.sendTransfer({
+      secretKey: keyPair.secretKey,
+      seqno,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      messages: [message],
+    }),
+  };
+}
+
+async function makeSubmissionRef(row: WithdrawRow, sourceWallet: string, seqno: number): Promise<string> {
+  const input = `${row.id}|${row.user_id}|${row.wallet_address}|${row.amount_nano}|${sourceWallet}|${seqno}`;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  const hash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `gram-submit:${hash}`;
 }
 
 type TonWalletContract = {
@@ -259,26 +359,6 @@ async function walletMatchesAddress(configuredAddress: string, wallet: TonWallet
   return (await sameTonAddress(configuredAddress, wallet.address.toString())) || (await sameTonAddress(configuredAddress, wallet.address.toString({ bounceable: false })));
 }
 
-async function waitForWalletSeqno(openedWallet: { getSeqno(): Promise<number> }, previousSeqno: number): Promise<number> {
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    await delay(2500);
-    const seqno = await openedWallet.getSeqno();
-    if (seqno > previousSeqno) return seqno;
-  }
-  throw new Error('TON withdrawal was sent but not confirmed by wallet seqno');
-}
-
-async function findLatestWalletTxHash(client: TonClient, walletAddress: string, withdrawalId: string): Promise<string | null> {
-  try {
-    const txs = await client.getTransactions(walletAddress, { limit: 10 });
-    const tagged = txs.find((tx) => String(tx.inMessage?.body || tx.description || '').includes(withdrawalId));
-    const tx = tagged || txs[0];
-    return tx?.hash()?.toString('hex') || null;
-  } catch {
-    return null;
-  }
-}
-
 async function ensureTonWithdrawalsTable(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS ton_withdrawals (
     id TEXT PRIMARY KEY,
@@ -287,6 +367,7 @@ async function ensureTonWithdrawalsTable(env: Env): Promise<void> {
     amount_nano INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     tx_hash TEXT,
+    submission_ref TEXT,
     error_message TEXT,
     approved_at TEXT,
     paid_at TEXT,
@@ -295,6 +376,7 @@ async function ensureTonWithdrawalsTable(env: Env): Promise<void> {
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
   await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN tx_hash TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN submission_ref TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN error_message TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN approved_at TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN paid_at TEXT').run().catch(() => undefined);
@@ -302,17 +384,21 @@ async function ensureTonWithdrawalsTable(env: Env): Promise<void> {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_withdrawals_user ON ton_withdrawals(user_id, created_at)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ton_withdrawals_status ON ton_withdrawals(status, created_at)').run();
   await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ton_withdrawals_tx_hash ON ton_withdrawals(tx_hash) WHERE tx_hash IS NOT NULL').run();
+  await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ton_withdrawals_submission_ref ON ton_withdrawals(submission_ref) WHERE submission_ref IS NOT NULL').run();
 }
 
 function rowToWithdrawal(row: WithdrawRow): TonWithdrawal {
+  const amount = Number(row.amount_nano || 0) / TON_NANO;
   return {
     id: row.id,
     userId: row.user_id,
     walletAddress: row.wallet_address,
     amountNano: Number(row.amount_nano || 0),
-    amountTon: Number(row.amount_nano || 0) / TON_NANO,
+    amountTon: amount,
+    amountGram: amount,
     status: row.status,
     txHash: row.tx_hash || null,
+    submissionRef: row.submission_ref || null,
     errorMessage: row.error_message || null,
     approvedAt: row.approved_at || null,
     paidAt: row.paid_at || null,
@@ -323,24 +409,38 @@ function rowToWithdrawal(row: WithdrawRow): TonWithdrawal {
 }
 
 function fallbackRow(id: string, userId: string, wallet: string, amountNano: number, status: string): WithdrawRow {
-  return { id, user_id: userId, wallet_address: wallet, amount_nano: amountNano, status, tx_hash: null, error_message: null, approved_at: null, paid_at: null, rejected_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  return {
+    id,
+    user_id: userId,
+    wallet_address: wallet,
+    amount_nano: amountNano,
+    status,
+    tx_hash: null,
+    submission_ref: null,
+    error_message: null,
+    approved_at: null,
+    paid_at: null,
+    rejected_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
 
 function tonToNano(value: unknown): number {
   const raw = String(value ?? '').replace(',', '.').trim();
   if (!raw) throw new Error('Enter withdrawal amount');
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid TON amount');
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid Gram amount');
   const nano = Math.floor(n * TON_NANO);
-  if (!Number.isSafeInteger(nano) || nano < 1) throw new Error('Enter a valid TON amount');
+  if (!Number.isSafeInteger(nano) || nano < 1) throw new Error('Enter a valid Gram amount');
   if (nano > 10_000_000 * TON_NANO) throw new Error('Withdrawal amount is too large');
   return nano;
 }
 
 function cleanWallet(value: unknown): string {
   const wallet = String(value ?? '').trim().slice(0, 120);
-  if (!wallet) throw new Error('Enter your TON wallet address');
-  if (!/^[A-Za-z0-9_\-:]{24,120}$/.test(wallet)) throw new Error('Enter a valid TON wallet address');
+  if (!wallet) throw new Error('Enter your Gram wallet address');
+  if (!/^[A-Za-z0-9_\-:]{24,120}$/.test(wallet)) throw new Error('Enter a valid Gram wallet address');
   return wallet;
 }
 
@@ -349,8 +449,8 @@ function shortWallet(wallet: string): string {
 }
 
 function cleanUserId(value: unknown): string {
-  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
-  if (!id) throw new Error('Missing user id');
+  const id = String(value ?? '').replace(/[^0-9]/g, '').trim().slice(0, 24);
+  if (!id) throw new Error('Missing Telegram user');
   return id;
 }
 
@@ -389,7 +489,6 @@ async function sameTonAddress(left: string, right: string): Promise<boolean> {
   }
 }
 
-
 async function loadTonSdk(): Promise<{
   mnemonicToPrivateKey: typeof import('@ton/crypto').mnemonicToPrivateKey;
   Address: typeof import('@ton/ton').Address;
@@ -424,8 +523,4 @@ function ensureWindowCompatForTonSdk(): void {
   if (typeof globalThis.window === 'undefined') {
     Object.defineProperty(globalThis, 'window', { value: globalThis, configurable: true });
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
