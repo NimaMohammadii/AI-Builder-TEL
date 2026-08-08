@@ -7,7 +7,8 @@ import { formatTonAmount, getFinanceLimits, getFinanceStats, setFinanceLimits, t
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
-type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit' | 'search'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean };
+type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit' | 'search'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean; menuMessageId?: number };
+type TelegramSentMessage = { message_id?: number };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
 type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
 
@@ -51,6 +52,7 @@ export async function handleBotAdminMessage(env: Env, token: string, message: Te
   if (state && !isAdminCommand(text)) return handleStateMessage(env, token, message, tg, state);
   if (!isAdminCommand(text)) return false;
   await clearAdminState(env, message.from?.id);
+  await cleanupAdminInput(token, tg, message);
   await sendAdminHome(env, token, message.chat.id, tg);
   return true;
 }
@@ -121,7 +123,7 @@ async function sendReturnUsersMenu(env: Env, token: string, chatId: number, tg: 
     [{ text: '↩️ بیشتر از ۵ بار', callback_data: 'botadmin:returnusers:r5p:x:0' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ];
-  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  await upsertMessage(env, token, tg, chatId, messageId, text, rows);
   return true;
 }
 
@@ -145,7 +147,7 @@ async function sendRegionSettingsPanel(env: Env, token: string, chatId: number, 
     [{ text: 'Clear default region', callback_data: 'botadmin:setdefaultregion:CLEAR' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ];
-  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  await upsertMessage(env, token, tg, chatId, messageId, text, rows);
   return true;
 }
 
@@ -196,7 +198,7 @@ async function sendUsersList(env: Env, token: string, chatId: number, tg: TgApi,
   nav.push({ text: '🔎 سرچ کاربر', callback_data: `botadmin:asksearch:${list}` });
   if (current < totalPages - 1) nav.push({ text: 'بعدی', callback_data: `botadmin:page:${current + 1}:${list}` });
   rows.push(nav, [{ text: list === 'all' ? '⬅️ منوی اصلی' : '⬅️ بخش برگشتی‌ها', callback_data: list === 'all' ? 'botadmin:home' : 'botadmin:returns' }]);
-  await upsertMessage(token, tg, chatId, messageId, usersListTitle(list, users.length), rows);
+  await upsertMessage(env, token, tg, chatId, messageId, usersListTitle(list, users.length), rows);
   return true;
 }
 
@@ -216,48 +218,48 @@ async function sendUserPanel(env: Env, token: string, chatId: number, tg: TgApi,
     [{ text: 'بازگشت به لیست کاربران', callback_data: `botadmin:back:${page}:${list}` }],
   ];
   const text = ['👤 مدیریت کاربر در پنل ربات گیم', '', `نام: ${cleanText(user.firstName, '—')}`, `یوزرنیم: ${cleanText(user.username, '—')}`, `آیدی: ${userId}`, `رجین: ${cleanText(user.regionLabel, cleanText(user.regionCode, 'نامشخص'))}`, `وضعیت: ${controls.banned ? 'Banned' : cleanText(user.status, '—')}`, `بخش فعلی: ${cleanText(user.currentSection, '—')}`, `دفعات ورود/برگشت: ${returnCount(user)}`, `موجودی: ${formatTon(controls.tonBalanceNano)} TON`, `شانس برد بازی: ${controls.winChancePercent}%`, `سطح: ${cleanText(user.level, '1')} - ${cleanText(user.rankName, 'Starter')} (${cleanText(user.xp, '0')} XP)`, '', 'قفل بخش‌ها سه‌تایی چیده شده‌اند؛ با هر کلیک قفل/باز می‌شوند.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  await upsertMessage(env, token, tg, chatId, messageId, text, rows);
   return true;
 }
 
 async function promptAdminInput(env: Env, token: string, chatId: number, tg: TgApi, adminId: unknown, state: AdminState, text: string, messageId?: number): Promise<true> {
-  await setAdminState(env, adminId, state);
+  const menuMessageId = messageId ?? await getAdminMenuMessageId(env, chatId);
+  await setAdminState(env, adminId, { ...state, menuMessageId });
   const back = state.userId ? `botadmin:user:${state.userId}:${state.page || 0}:${state.list || 'all'}` : 'botadmin:home';
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: 'لغو و بازگشت', callback_data: back }]]);
+  await upsertMessage(env, token, tg, chatId, messageId, text, [[{ text: 'لغو و بازگشت', callback_data: back }]]);
   return true;
 }
 
 async function handleStateMessage(env: Env, token: string, message: TelegramMessage, tg: TgApi, state: AdminState): Promise<true> {
   if (state.mode === 'win' && state.userId) {
     const value = Number((message.text || '').replace(/[٪%]/g, '').trim());
-    if (!Number.isFinite(value)) return sendStateError(token, tg, message, 'عدد شانس برد معتبر نیست.');
+    if (!Number.isFinite(value)) return sendStateError(env, token, tg, message, state, 'عدد شانس برد معتبر نیست.');
     await clearAdminState(env, message.from?.id);
     await setUserWinChance(env, state.userId, value);
     await cleanupAdminInput(token, tg, message);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, state.menuMessageId, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'credit' && state.userId) {
     const delta = parseTonDelta(message.text || '');
-    if (delta === null) return sendStateError(token, tg, message, 'عدد تغییر کردیت معتبر نیست. مثال: +1 یا -0.25');
+    if (delta === null) return sendStateError(env, token, tg, message, state, 'عدد تغییر کردیت معتبر نیست. مثال: +1 یا -0.25');
     await clearAdminState(env, message.from?.id);
     const controls = await getUserControls(env, state.userId);
     await setUserTonBalance(env, state.userId, Math.max(0, controls.tonBalanceNano + delta), { title: 'Telegram bot admin credit change', metadata: { source: 'telegram_bot_admin', deltaNano: delta } });
     await cleanupAdminInput(token, tg, message);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, state.menuMessageId, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'message' && state.userId) {
     await clearAdminState(env, message.from?.id);
     await copyAdminMessageToChat(token, tg, message, state.userId);
     await cleanupAdminInput(token, tg, message);
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: '✅ پیام تکی در چت ربات کاربر ارسال شد.' }).catch(() => undefined);
-    return sendUserPanel(env, token, message.chat.id, tg, state.userId, undefined, state.page || 0, state.list || 'all');
+    return sendUserPanel(env, token, message.chat.id, tg, state.userId, state.menuMessageId, state.page || 0, state.list || 'all');
   }
   if (state.mode === 'limit' && state.userId) {
     const value = tonToNano(message.text || '');
     await clearAdminState(env, message.from?.id);
     await setFinanceLimits(env, { [state.userId]: value } as Record<string, number>);
     await cleanupAdminInput(token, tg, message);
-    return sendFinanceLimitsPanel(env, token, message.chat.id, tg);
+    return sendFinanceLimitsPanel(env, token, message.chat.id, tg, state.menuMessageId);
   }
   if (state.mode === 'broadcast') {
     await clearAdminState(env, message.from?.id);
@@ -270,28 +272,28 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
       try { await copyAdminMessageToChat(token, tg, message, id, state.miniAppButton !== false, broadcastMiniAppButtonText(user, regions)); sent++; } catch (_) { /* ignore blocked users */ }
     }
     await cleanupAdminInput(token, tg, message);
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ پیام همگانی در چت ربات برای ${sent} کاربر ارسال شد.\nرجین: ${regions.join(', ')}\nدکمه ورود به مینی‌اپ: ${state.miniAppButton !== false ? 'بله' : 'خیر'}` }).catch(() => undefined);
-    return sendAdminHome(env, token, message.chat.id, tg);
+    return sendAdminHome(env, token, message.chat.id, tg, state.menuMessageId);
   }
   if (state.mode === 'search') {
     await clearAdminState(env, message.from?.id);
     await cleanupAdminInput(token, tg, message);
-    return sendSearchResults(env, token, message.chat.id, tg, message.text || '', state.list || 'all');
+    return sendSearchResults(env, token, message.chat.id, tg, message.text || '', state.list || 'all', state.menuMessageId);
   }
   return true;
 }
 
-async function sendSearchResults(env: Env, token: string, chatId: number, tg: TgApi, query: string, list: string = 'all'): Promise<true> {
+async function sendSearchResults(env: Env, token: string, chatId: number, tg: TgApi, query: string, list: string = 'all', messageId?: number): Promise<true> {
   const users = usersForList((await adminUsersJson(env)).users as AdminUser[], list).filter((user) => userMatchesSearch(user, query)).slice(0, 25);
   const rows = users.map((u) => [{ text: userButtonText(u), callback_data: `botadmin:user:${cleanId(u.id)}:0:${returnListKey(list)}` }]);
   rows.push([{ text: '🔎 سرچ دوباره', callback_data: `botadmin:asksearch:${returnListKey(list)}` }], [{ text: returnListKey(list) === 'all' ? '⬅️ لیست کاربران' : '⬅️ بخش برگشتی‌ها', callback_data: returnListKey(list) === 'all' ? 'botadmin:users:0' : 'botadmin:returns' }]);
   const text = [`🔎 نتایج جستجوی کاربر`, '', `عبارت: ${cleanText(query, '—')}`, `تعداد نتیجه: ${users.length}`, '', users.length ? 'نتایج در این بخش جدا نمایش داده می‌شوند:' : 'نتیجه‌ای پیدا نشد.'].join('\n');
-  await upsertMessage(token, tg, chatId, undefined, text, rows);
+  await upsertMessage(env, token, tg, chatId, messageId, text, rows);
   return true;
 }
 
-async function sendStateError(token: string, tg: TgApi, message: TelegramMessage, text: string): Promise<true> {
-  await tg(token, 'sendMessage', { chat_id: message.chat.id, text }).catch(() => undefined);
+async function sendStateError(env: Env, token: string, tg: TgApi, message: TelegramMessage, state: AdminState, text: string): Promise<true> {
+  await cleanupAdminInput(token, tg, message);
+  await upsertMessage(env, token, tg, message.chat.id, state.menuMessageId, `❌ ${text}\n\nلطفاً دوباره مقدار درست را بفرستید.`, [[{ text: 'لغو و بازگشت', callback_data: state.userId ? `botadmin:user:${state.userId}:${state.page || 0}:${state.list || 'all'}` : 'botadmin:home' }]]);
   return true;
 }
 
@@ -322,7 +324,7 @@ async function sendFinanceStatsPanel(env: Env, token: string, chatId: number, tg
     `۷ روز اخیر واریز: ${formatTonAmount(stats.weekly.depositNano)} TON (${stats.weekly.depositUsers} نفر)`,
     `۷ روز اخیر برداشت: ${formatTonAmount(stats.weekly.withdrawNano)} TON (${stats.weekly.withdrawUsers} نفر)`,
   ].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '🔄 بروزرسانی', callback_data: 'botadmin:financestats' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
+  await upsertMessage(env, token, tg, chatId, messageId, text, [[{ text: '🔄 بروزرسانی', callback_data: 'botadmin:financestats' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]]);
   return true;
 }
 
@@ -343,7 +345,7 @@ async function sendFinanceLimitsPanel(env: Env, token: string, chatId: number, t
     [{ text: 'حداقل برداشت', callback_data: 'botadmin:asklimit:minWithdrawNano' }, { text: 'حداکثر برداشت', callback_data: 'botadmin:asklimit:maxWithdrawNano' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ];
-  await upsertMessage(token, tg, chatId, messageId, text, rows);
+  await upsertMessage(env, token, tg, chatId, messageId, text, rows);
   return true;
 }
 
@@ -360,17 +362,31 @@ async function toggleSection(env: Env, token: string, chatId: number, tg: TgApi,
 
 async function resetUser(env: Env, token: string, chatId: number, tg: TgApi, userId: string, messageId?: number): Promise<true> {
   await resetUserEverywhere(env, userId);
-  await upsertMessage(token, tg, chatId, messageId, `✅ کاربر ${userId} کامل ریست شد.`, [[{ text: 'بازگشت به لیست کاربران', callback_data: 'botadmin:back:0' }]]);
+  await upsertMessage(env, token, tg, chatId, messageId, `✅ کاربر ${userId} کامل ریست شد.`, [[{ text: 'بازگشت به لیست کاربران', callback_data: 'botadmin:back:0' }]]);
   return true;
 }
 
-async function upsertMessage(token: string, tg: TgApi, chatId: number, messageId: number | undefined, text: string, inline_keyboard: Array<Array<{ text: string; callback_data: string }>>): Promise<void> {
+async function upsertMessage(env: Env, token: string, tg: TgApi, chatId: number, messageId: number | undefined, text: string, inline_keyboard: Array<Array<{ text: string; callback_data: string }>>): Promise<void> {
   const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard } };
-  if (messageId) {
-    await tg(token, 'editMessageText', { ...payload, message_id: messageId }).catch(() => tg(token, 'sendMessage', payload));
-    return;
+  const currentMessageId = messageId ?? await getAdminMenuMessageId(env, chatId);
+  if (currentMessageId) {
+    const edited = await tg(token, 'editMessageText', { ...payload, message_id: currentMessageId }).then(() => true).catch(() => false);
+    if (edited) {
+      await setAdminMenuMessageId(env, chatId, currentMessageId);
+      return;
+    }
+    await tg(token, 'deleteMessage', { chat_id: chatId, message_id: currentMessageId }).catch(() => undefined);
   }
-  await tg(token, 'sendMessage', payload);
+  const sent = await tg<TelegramSentMessage>(token, 'sendMessage', payload);
+  if (sent?.message_id) await setAdminMenuMessageId(env, chatId, sent.message_id);
+}
+
+async function getAdminMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
+  const value = Number(await env.BOT_CACHE.get(`botadmin:menu:${chatId}`).catch(() => null));
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+async function setAdminMenuMessageId(env: Env, chatId: number, messageId: number): Promise<void> {
+  await env.BOT_CACHE.put(`botadmin:menu:${chatId}`, String(messageId), { expirationTtl: 60 * 60 * 24 * 30 });
 }
 
 async function getAdminState(env: Env, adminId: unknown): Promise<AdminState | null> { return env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as Promise<AdminState | null>; }
@@ -410,7 +426,7 @@ async function sendBroadcastOptions(env: Env, token: string, chatId: number, tg:
     [{ text: 'RU + دکمه', callback_data: 'botadmin:broadcastregion:RU:button' }, { text: 'RU بدون دکمه', callback_data: 'botadmin:broadcastregion:RU:nobutton' }],
     [{ text: 'لغو و بازگشت', callback_data: 'botadmin:home' }],
   ];
-  await upsertMessage(token, tg, chatId, messageId, '📣 تنظیمات پیام همگانی ربات گیم\n\nانتخاب کنید پیام برای همه ارسال شود یا فقط کاربران یک رجین، و اینکه زیر پیام دکمه ورود به مینی‌اپ باشد یا نه.', rows);
+  await upsertMessage(env, token, tg, chatId, messageId, '📣 تنظیمات پیام همگانی ربات گیم\n\nانتخاب کنید پیام برای همه ارسال شود یا فقط کاربران یک رجین، و اینکه زیر پیام دکمه ورود به مینی‌اپ باشد یا نه.', rows);
   return true;
 }
 

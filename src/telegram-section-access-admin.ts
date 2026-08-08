@@ -90,12 +90,9 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (!userId) return null;
   const text = String(message.text || '').trim();
 
-  if (isAdminCommand(text)) {
-    if (!isAdmin(env, userId)) return null;
-    await clearAdminInputStates(env, userId);
-    await sendAdminHome(env, token, message.chat.id);
-    return ok();
-  }
+  // The central bot-admin handler owns /admin so it can reuse the one tracked
+  // menu message instead of creating another menu in the chat.
+  if (isAdminCommand(text)) return null;
 
   if (!isAdmin(env, userId)) return null;
   const sectionId = normalizeSectionId(await env.BOT_CACHE.get(lockStateKey(userId)).catch(() => null));
@@ -130,7 +127,8 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
 export async function sendAdminHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
   const wheelEnabled = await isSpecialWheelEnabled(env);
-  await upsert(token, chatId, messageId,
+  const trackedMessageId = messageId ?? await getTrackedMenuMessageId(env, chatId);
+  const activeMessageId = await upsert(token, chatId, trackedMessageId,
     `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`,
     [
       [
@@ -167,6 +165,12 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
       ],
     ],
   );
+  if (activeMessageId) await env.BOT_CACHE.put(`botadmin:menu:${chatId}`, String(activeMessageId), { expirationTtl: 60 * 60 * 24 * 30 });
+}
+
+async function getTrackedMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
+  const value = Number(await env.BOT_CACHE.get(`botadmin:menu:${chatId}`).catch(() => null));
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
 async function sendAccessMenu(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
@@ -254,13 +258,15 @@ function isAdminCommand(text: string): boolean {
   return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
   const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
   if (messageId) {
     const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
+    if (edited) return messageId;
+    await tg(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
   }
-  await tg(token, 'sendMessage', payload);
+  const sent = await tg<{ message_id?: number }>(token, 'sendMessage', payload);
+  return sent?.message_id;
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
