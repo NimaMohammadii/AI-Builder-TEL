@@ -25,16 +25,16 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-history::-webkit-scrollbar{display:none!important}
     #ghostrun .ghost-run-history span{flex:0 0 auto!important;border-radius:999px!important;padding:4px 8px!important;min-height:20px!important;line-height:12px!important;font-size:10px!important;font-weight:890!important;color:rgba(255,255,255,.94)!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important;clip-path:none!important}
     #ghostrun .ghost-run-ghost{left:var(--ghost-x,16%)!important;width:64px!important;height:76px!important;bottom:76px!important;transition:left .08s linear, transform .08s linear!important}
-    #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.025)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)!important;backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
+    #ghostrun .ghost-run-move-button{height:62px!important;border-radius:999px!important;border:0!important;background:rgba(26,11,15,.54)!important;color:transparent!important;font-size:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;position:relative!important;overflow:hidden!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
     #ghostrun .ghost-run-move-button:before{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:24px!important;height:24px!important;border-top:3px solid rgba(255,255,255,.92)!important;border-left:3px solid rgba(255,255,255,.92)!important;filter:drop-shadow(0 0 10px rgba(255,255,255,.22))!important}
     #ghostrun .ghost-run-move-button:after{content:''!important;position:absolute!important;left:50%!important;top:50%!important;width:42px!important;height:42px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.10)!important;transform:translate(-50%,-50%)!important}
     #ghostrun .ghost-run-back-button{grid-column:1!important}
     #ghostrun .ghost-run-forward-button{grid-column:2!important}
     #ghostrun .ghost-run-back-button:before{transform:translate(-34%,-50%) rotate(-45deg)!important}
     #ghostrun .ghost-run-forward-button:before{transform:translate(-66%,-50%) rotate(135deg)!important}
-    #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(255,255,255,.055)!important;transform:scale(.985)!important}
+    #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(26,11,15,.68)!important;transform:scale(.985)!important}
     #ghostrun .ghost-run-move-button:disabled{opacity:.28!important}
-    #ghostrun .crash-live{order:3!important;margin:0 12px 10px!important;border-radius:32px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 24px 74px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
+    #ghostrun .crash-live{order:3!important;margin:0 12px 10px!important;border-radius:32px!important;background:rgba(26,11,15,.54)!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
     #ghostrun .crash-live:not(.open){max-height:54px!important;padding-bottom:12px!important;overflow:hidden!important}
     #ghostrun .crash-live-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:850!important;letter-spacing:-.02em!important}
     #ghostrun .crash-live-title{display:inline-flex!important;align-items:center!important;gap:7px!important;color:rgba(255,255,255,.58)!important;min-width:0!important}
@@ -42,7 +42,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .crash-live-title svg path{fill:none!important;stroke:currentColor!important;stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important}
     #ghostrun .crash-live-head-actions{display:flex!important;align-items:center!important;gap:8px!important}
     #ghostrun .crash-live-head b{color:rgba(255,255,255,.92)!important;font-size:13px!important;font-weight:900!important}
-    #ghostrun .crash-live-toggle{width:28px!important;height:28px!important;border:0!important;border-radius:10px!important;background:rgba(255,255,255,.055)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important}
+    #ghostrun .crash-live-toggle{width:28px!important;height:28px!important;border:0!important;border-radius:10px!important;background:rgba(26,11,15,.54)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
     #ghostrun .crash-live-toggle svg{width:18px!important;height:18px!important;transition:transform .28s cubic-bezier(.2,.8,.2,1)!important;color:#fff!important;stroke:#fff!important;fill:none!important}
     #ghostrun .crash-live-toggle svg path{fill:none!important;stroke:#fff!important;stroke-width:2.4!important;stroke-linecap:round!important;stroke-linejoin:round!important}
     #ghostrun .crash-live.open .crash-live-toggle svg{transform:rotate(180deg)!important}
@@ -50,7 +50,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .crash-live-list::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
     #ghostrun .crash-live:not(.open) .crash-live-list{max-height:0!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
     #ghostrun .crash-live-empty{font-size:12px!important;font-weight:820!important;color:rgba(255,255,255,.45)!important;padding:14px 0!important;text-align:center!important}
-    #ghostrun .crash-live-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:8px!important;min-height:34px!important;border-radius:17px!important;background:#030303!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;color:#fff!important;padding:2px 10px!important}
+    #ghostrun .crash-live-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:8px!important;min-height:34px!important;border-radius:17px!important;background:rgba(26,11,15,.54)!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;color:#fff!important;padding:2px 10px!important}
     #ghostrun .crash-live-user{min-width:0!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:rgba(255,255,255,.92)!important}
     #ghostrun .crash-live-amount{font-size:11px!important;font-weight:900!important;color:rgba(255,255,255,.62)!important;white-space:nowrap!important}
     #ghostrun .crash-live-status{display:flex!important;justify-content:flex-end!important;gap:5px!important;font-size:11px!important;font-weight:930!important;color:rgba(255,255,255,.84)!important;white-space:nowrap!important}
@@ -63,11 +63,12 @@ export const GHOST_RUN_SECTION = `
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-bet-card,
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-move-button,
     html body:has(#ghostrun.active) main.app #ghostrun #ghostLive,
-    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-row{
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-row,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-toggle{
       border:0!important;
       outline:0!important;
-      background:rgba(13,13,13,.54)!important;
-      background-color:rgba(13,13,13,.54)!important;
+      background:rgba(26,11,15,.54)!important;
+      background-color:rgba(26,11,15,.54)!important;
       background-image:none!important;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;
       backdrop-filter:blur(10px) saturate(1.12)!important;
