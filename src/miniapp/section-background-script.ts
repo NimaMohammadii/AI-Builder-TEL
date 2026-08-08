@@ -42,17 +42,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   function applyBackgroundToElement(el,url){if(!el||el.tagName==='IMG')return;el.classList.add('has-admin-background');el.style.setProperty('--admin-section-background-image',cssUrl(url))}
   function clearBackgroundFromElement(el){if(!el||el.tagName==='IMG')return;el.classList.remove('has-admin-background');el.style.removeProperty('--admin-section-background-image')}
-  function applyGhostRunPageBackground(url){
-    var body=document.body;
-    if(!body)return;
-    if(url){
-      body.classList.add('has-ghostrun-admin-background');
-      body.style.setProperty('--ghostrun-admin-background-image',cssUrl(url));
-    }else{
-      body.classList.remove('has-ghostrun-admin-background');
-      body.style.removeProperty('--ghostrun-admin-background-image');
-    }
-  }
   function remember(img,name,value){if(!img.dataset[name])img.dataset[name]=value||''}
   function overrideImage(img,url){
     if(!img||img.tagName!=='IMG'||!url)return;
@@ -91,10 +80,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   function applySectionBackground(section){
     if(!section||!section.id)return;
-    if(section.id==='ghostrun'){
-      applyGhostRunPageBackground(section.backgroundUrl||'');
-      return;
-    }
+    if(section.id==='ghostrun')return;
     var found=targets(section.id);
     if(!found.length)return;
     found.forEach(function(el){
@@ -112,7 +98,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var lastLoadAt=0;
   var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
-  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='ghostrun')return true;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
+  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='ghostrun')return false;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
   function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     var now=Date.now();
@@ -178,9 +164,9 @@ export const SECTION_BACKGROUND_STYLES = `
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
-body.has-ghostrun-admin-background:has(#ghostrun.active) #ghostrun .ghost-run-screen {
+body:has(#ghostrun.active) #ghostrun .ghost-run-screen {
   background-color: #000 !important;
-  background-image: var(--ghostrun-admin-background-image) !important;
+  background-image: url('/app/api/section-background/ghostrun.png') !important;
   background-size: cover !important;
   background-position: center top !important;
   background-repeat: no-repeat !important;
