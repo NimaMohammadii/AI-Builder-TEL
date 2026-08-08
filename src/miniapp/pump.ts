@@ -1,4 +1,4 @@
-export const PUMP_SECTION = String.raw\`
+export const PUMP_SECTION = String.raw`
 <section id="coinflip" class="view pump-view">
   <style>
     body:has(#coinflip.active) .tabs { display: none !important; }
@@ -190,4 +190,4 @@ export const PUMP_SECTION = String.raw\`
   })();
   </script>
 </section>
-\`;
+`;
