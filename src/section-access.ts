@@ -15,6 +15,7 @@ export const ACCESS_SECTIONS = [
   ['slot', 'Slot'],
   ['wheel', 'Wheel'],
   ['dice', 'Dice'],
+  ['hilo', 'Chicken Cross'],
   ['coinflip', 'Pump'],
   ['ghostrun', 'Ghost Run'],
 ] as const;
