@@ -1,5 +1,5 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
-import { gameBotToken } from './utils';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 const FREE_SPIN_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PAID_SPIN_STARS = 18;
@@ -222,32 +222,7 @@ async function claimEntitlement(env: Env, userId: string): Promise<'free' | 'pai
 
 async function verifiedUserId(request: Request, env: Env): Promise<string> {
   const body = await request.clone().json().catch(() => ({})) as Record<string, unknown>;
-  const initData = String(body.initData || '').trim();
-  if (!initData) throw new Error('Open the Mini App inside Telegram');
-  return validateTelegramInitData(initData, gameBotToken(env));
-}
-
-async function validateTelegramInitData(initData: string, token: string): Promise<string> {
-  if (!token) throw new Error('Bot token is not configured');
-  const params = new URLSearchParams(initData);
-  const receivedHash = String(params.get('hash') || '').toLowerCase();
-  if (!/^[0-9a-f]{64}$/.test(receivedHash)) throw new Error('Invalid Telegram session');
-  params.delete('hash');
-  const authDate = Number(params.get('auth_date'));
-  if (!Number.isFinite(authDate) || Math.abs(Date.now() / 1000 - authDate) > 86400) throw new Error('Telegram session expired');
-  const checkString = Array.from(params.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
-  const encoder = new TextEncoder();
-  const webAppKey = await crypto.subtle.importKey('raw', encoder.encode('WebAppData'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const secret = await crypto.subtle.sign('HMAC', webAppKey, encoder.encode(token));
-  const secretKey = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', secretKey, encoder.encode(checkString));
-  const expected = Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  if (!timingSafeEqual(expected, receivedHash)) throw new Error('Invalid Telegram session');
-  const user = JSON.parse(String(params.get('user') || '{}')) as { id?: unknown };
-  return cleanUserId(user.id);
+  return validateTelegramInitData(body.initData, gameBotToken(env));
 }
 
 async function createInvoiceLink(env: Env, id: string, priceStars: number): Promise<string> {
@@ -340,13 +315,6 @@ function cleanRequestId(value: unknown): string {
   const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 64);
   if (!id.startsWith(REQUEST_PREFIX) || id.length < REQUEST_PREFIX.length + 12) throw new Error('Invalid spin request');
   return id;
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i += 1) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return mismatch === 0;
 }
 
 function errorMessage(error: unknown): string {
