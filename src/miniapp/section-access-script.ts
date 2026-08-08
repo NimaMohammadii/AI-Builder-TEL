@@ -7,7 +7,7 @@ export const SECTION_ACCESS_SCRIPT = `
   var cache=null;
   var inFlight=null;
   var lastFetchAt=0;
-  var CACHE_MS=10000;
+  var CACHE_MS=5*60*1000;
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
