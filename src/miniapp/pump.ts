@@ -8,7 +8,7 @@ export const PUMP_SECTION = String.raw`
     .pump-view {
       min-height: 100%; height: 100%; overflow-y: auto !important; overflow-x: hidden;
       padding: 0 14px calc(32px + env(safe-area-inset-bottom)); color: #fff; box-sizing: border-box;
-      background: radial-gradient(ellipse 120% 58% at 50% -12%, #3d061e 0%, #100106 43%, #020102 83%) !important;
+      background: radial-gradient(ellipse 110% 52% at 50% -16%, #260b16 0%, #0a0407 48%, #020202 86%) !important;
     }
     .pump-page { width: min(100%, 440px); min-height: calc(100vh - 76px); margin: 0 auto; padding: 8px 0 20px; box-sizing: border-box; }
     .pump-brand { display:flex; justify-content:space-between; align-items:center; margin: 4px 4px 0; font-size: 11px; letter-spacing: .24em; font-weight: 900; color: rgba(255,240,246,.68); }
@@ -16,7 +16,7 @@ export const PUMP_SECTION = String.raw`
     .pump-stage {
       position: relative; height: min(56vh, 475px); min-height: 350px; margin: 0 -14px 4px; overflow: hidden;
       isolation:isolate; border-radius: 0 0 38px 38px;
-      background: radial-gradient(ellipse at 50% 63%, rgba(116,9,50,.42), transparent 42%), linear-gradient(180deg, rgba(34,2,13,.88), #060103 76%);
+      background: radial-gradient(ellipse at 50% 65%, rgba(100,29,54,.24), transparent 44%), linear-gradient(180deg, rgba(22,7,13,.92), #050304 78%);
     }
     .pump-stage::after { content:""; pointer-events:none; position:absolute; inset:auto 0 0; height:31%; z-index:2; background:linear-gradient(transparent,rgba(1,0,1,.57)); }
     #pumpCanvas { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; touch-action:none; }
@@ -142,47 +142,23 @@ export const PUMP_SECTION = String.raw`
         renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.25; renderer.outputColorSpace=THREE.SRGBColorSpace;
         var scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(37,1,.1,100); camera.position.set(0,2.7,11.5);
         var group=new THREE.Group(); scene.add(group);
-        var floor=new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.2,.14,96),new THREE.MeshStandardMaterial({color:0x12040a,metalness:.76,roughness:.28}));
-        floor.position.y=-3.35; floor.receiveShadow=true; group.add(floor);
-        var floorRing=new THREE.Mesh(new THREE.TorusGeometry(3.2,.035,12,80),new THREE.MeshBasicMaterial({color:0xd41c63,transparent:true,opacity:.72})); floorRing.rotation.x=Math.PI/2; floorRing.position.y=-3.25; group.add(floorRing);
-        var balloonGroup=new THREE.Group(); balloonGroup.position.set(1.55,.08,0); group.add(balloonGroup);
-        var balloonMat=new THREE.MeshPhysicalMaterial({color:0x4f0622,metalness:.25,roughness:.14,clearcoat:1,clearcoatRoughness:.08,reflectivity:1,iridescence:.2,iridescenceIOR:1.3});
+        var balloonGroup=new THREE.Group(); balloonGroup.position.set(0,.02,0); group.add(balloonGroup);
+        var balloonMat=new THREE.MeshPhysicalMaterial({color:0x542039,metalness:.12,roughness:.18,clearcoat:1,clearcoatRoughness:.1,reflectivity:.82,iridescence:.08,iridescenceIOR:1.3});
         var balloon=new THREE.Mesh(new THREE.SphereGeometry(1.72,64,48),balloonMat); balloon.scale.set(.94,1.17,.94); balloon.castShadow=true; balloonGroup.add(balloon);
         var knot=new THREE.Mesh(new THREE.ConeGeometry(.17,.38,20),new THREE.MeshStandardMaterial({color:0x23000d,metalness:.72,roughness:.25})); knot.position.y=-2.05; knot.rotation.z=Math.PI; balloonGroup.add(knot);
-        var shine=new THREE.Mesh(new THREE.SphereGeometry(1.73,48,32),new THREE.MeshBasicMaterial({color:0xffb5d0,transparent:true,opacity:.12,side:THREE.FrontSide})); shine.scale.set(.95,1.18,.95); shine.position.set(-.11,.12,.12); balloonGroup.add(shine);
-        var pump=new THREE.Group(); pump.position.set(-1.75,-2.58,.15); group.add(pump);
-        var metal=new THREE.MeshStandardMaterial({color:0x260813,metalness:.93,roughness:.18}), chrome=new THREE.MeshStandardMaterial({color:0xdfa2bb,metalness:1,roughness:.12});
-        var pumpBase=new THREE.Mesh(new THREE.CylinderGeometry(.68,.82,.34,32),metal);pumpBase.scale.z=.74;pumpBase.castShadow=true;pump.add(pumpBase);
-        var barrel=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,2.65,30),chrome);barrel.position.y=1.33;barrel.castShadow=true;pump.add(barrel);
-        var handle=new THREE.Mesh(new THREE.CylinderGeometry(.58,.58,.16,32),metal);handle.position.y=2.66;handle.scale.z=.48;pump.add(handle);
-        var grip=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,1.4,18),chrome);grip.rotation.z=Math.PI/2;grip.position.y=2.86;grip.castShadow=true;pump.add(grip);
-        var hoseCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.27,-2.35,0),new THREE.Vector3(-.45,-2.05,.15),new THREE.Vector3(.42,-2.32,.12),new THREE.Vector3(1.14,-1.97,.06)]);
-        var hose=new THREE.Mesh(new THREE.TubeGeometry(hoseCurve,64,.075,12,false),new THREE.MeshStandardMaterial({color:0x4a0c24,metalness:.55,roughness:.28}));hose.castShadow=true;group.add(hose);
-        var bot=new THREE.Group();bot.position.set(-1.62,-.62,-.34);group.add(bot);
-        var suit=new THREE.MeshStandardMaterial({color:0x12060b,metalness:.58,roughness:.3}), trim=new THREE.MeshStandardMaterial({color:0x761536,metalness:.75,roughness:.18});
-        var torso=new THREE.Mesh(new THREE.CapsuleGeometry(.6,1.05,10,24),suit);torso.position.y=-.55;torso.castShadow=true;bot.add(torso);
-        var head=new THREE.Mesh(new THREE.SphereGeometry(.9,44,32),suit);head.scale.set(1,1.04,.9);head.position.y=.85;head.castShadow=true;bot.add(head);
-        var visor=new THREE.Mesh(new THREE.SphereGeometry(.66,36,24),new THREE.MeshPhysicalMaterial({color:0x040308,metalness:.72,roughness:.06,clearcoat:1}));visor.scale.set(1,.66,.32);visor.position.set(0,.83,.72);bot.add(visor);
-        var eyeMat=new THREE.MeshBasicMaterial({color:0xffeaf4});[-.25,.25].forEach(function(x){var eye=new THREE.Mesh(new THREE.SphereGeometry(.07,16,12),eyeMat);eye.position.set(x,.85,1.0);bot.add(eye);});
-        function limb(x,y,z,rot){var arm=new THREE.Mesh(new THREE.CapsuleGeometry(.14,.7,7,14),trim);arm.position.set(x,y,z);arm.rotation.z=rot;arm.castShadow=true;bot.add(arm);return arm;}
-        var armL=limb(-.7,-.22,.3,.75),armR=limb(.7,-.22,.3,-.75);
-        [[-.39,-1.72],[.39,-1.72]].forEach(function(p){var leg=new THREE.Mesh(new THREE.CapsuleGeometry(.2,.65,7,14),suit);leg.position.set(p[0],p[1],0);leg.castShadow=true;bot.add(leg);});
-        var key=new THREE.DirectionalLight(0xffd3e3,3.2);key.position.set(-4,5,7);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
-        var wine=new THREE.PointLight(0xd11158,32,12,2);wine.position.set(2.6,.3,3);scene.add(wine);
-        var fill=new THREE.PointLight(0x6f1335,18,10,2);fill.position.set(-4,-1,3);scene.add(fill);
-        var rim=new THREE.PointLight(0xff9ac2,18,10,2);rim.position.set(0,4,-3);scene.add(rim);
-        var particles=new THREE.Group();scene.add(particles);for(var i=0;i<42;i++){var dot=new THREE.Mesh(new THREE.SphereGeometry(.018+(i%3)*.012,8,8),new THREE.MeshBasicMaterial({color:0xff8fbb,transparent:true,opacity:.25+Math.random()*.55}));dot.position.set((Math.random()-.5)*8,(Math.random()-.2)*6,(Math.random()-.5)*4);dot.userData.speed=.15+Math.random()*.35;particles.add(dot);}
-        var targetScale=1, pop=0, lastPumps=0, clock=new THREE.Clock();
+        var shine=new THREE.Mesh(new THREE.SphereGeometry(1.73,48,32),new THREE.MeshBasicMaterial({color:0xffd7e5,transparent:true,opacity:.08,side:THREE.FrontSide})); shine.scale.set(.95,1.18,.95); shine.position.set(-.11,.12,.12); balloonGroup.add(shine);
+        var key=new THREE.DirectionalLight(0xffe4ed,2.8);key.position.set(-4,5,7);scene.add(key);
+        var fill=new THREE.PointLight(0x7a3853,9,10,2);fill.position.set(-3,1,3);scene.add(fill);
+        var rim=new THREE.PointLight(0xd8a4b8,7,9,2);rim.position.set(2,3,-3);scene.add(rim);
+        var targetScale=1, pop=0, clock=new THREE.Clock();
         function resize(){var r=stage.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
         resize();window.addEventListener('resize',resize);stage.classList.add('is-ready');
         (function loop(){requestAnimationFrame(loop);var t=clock.getElapsedTime();if(!document.body.contains(canvas)){renderer.dispose();return;}
           group.rotation.y=Math.sin(t*.24)*.08;balloonGroup.rotation.y=Math.sin(t*.58)*.09;balloonGroup.position.y=.08+Math.sin(t*1.1)*.045;
           var bounce=1+pop*Math.sin(Math.min(1,pop*2.5)*Math.PI)*.075;balloonGroup.scale.set(targetScale*bounce,targetScale*(1-pop*.055),targetScale*bounce);
-          pump.children[1].position.y=1.33+(lastPumps?Math.sin(t*10)*.055:0);armL.rotation.z=.75+Math.sin(t*10)*.03;armR.rotation.z=-.75-Math.sin(t*10)*.03;
-          particles.children.forEach(function(d){d.position.y+=d.userData.speed*.012;if(d.position.y>4)d.position.y=-3;});
           pop*=.91;renderer.render(scene,camera);
         })();
-        scene3d={setState:function(value,count,nextState){var next=1+Math.min(.42,(Math.max(1,value)-1)*.075+count*.013);targetScale=next;lastPumps=count;if(count>0)pop=1;if(nextState==='popped'){pop=7;balloonMat.emissive=new THREE.Color(0xff1b63);setTimeout(function(){balloonMat.emissive=new THREE.Color(0x000000);},500);}}};
+        scene3d={setState:function(value,count,nextState){var next=1+Math.min(.42,(Math.max(1,value)-1)*.075+count*.013);targetScale=next;if(count>0)pop=1;if(nextState==='popped'){pop=7;balloonMat.emissive=new THREE.Color(0x8f254b);setTimeout(function(){balloonMat.emissive=new THREE.Color(0x000000);},500);}}};
         render();
       }).catch(function(){ var stage=q('pumpStage');if(stage){stage.classList.add('is-ready');} });
     }
