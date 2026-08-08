@@ -1,0 +1,537 @@
+import type { Env } from './types';
+import {
+  DEFAULT_PLINKO_CONTROL,
+  getPlinkoControl,
+  PLINKO_RISKS,
+  PLINKO_ROWS,
+  resetPlinkoControl,
+  savePlinkoControl,
+  type PlinkoRisk,
+  type PlinkoRow,
+} from './plinko-control';
+
+type Photo = { file_id: string; file_size?: number };
+type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
+type Message = { chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document };
+type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
+type Update = { message?: Message; callback_query?: Callback };
+type Button = { text: string; callback_data: string };
+type Keyboard = Button[][];
+type ImageKind = 'input' | 'drop' | 'house';
+type UploadSource = { fileId: string; size?: number; type: string };
+type PlinkoAdminState =
+  | { mode: 'edit'; row: PlinkoRow; risk: PlinkoRisk }
+  | { mode: 'image'; kind: ImageKind };
+
+type PresetKind = 'balanced' | 'center' | 'edges' | 'wide';
+
+const STATE_PREFIX = 'admin:plinko-control-input:';
+const MAX_IMAGE_BYTES = 2_000_000;
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+const IMAGE_KINDS: readonly ImageKind[] = ['input', 'drop', 'house'];
+
+export async function handlePlinkoControlAdminRequest(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (request.method !== 'POST' || url.pathname !== '/telegram/webhook') return null;
+  const update = await request.clone().json().catch(() => null) as Update | null;
+  if (!update || !env.BOT_TOKEN) return null;
+  if (update.callback_query) return handleCallback(env, env.BOT_TOKEN, update.callback_query);
+  if (update.message) return handleMessage(env, env.BOT_TOKEN, update.message);
+  return null;
+}
+
+async function handleCallback(env: Env, token: string, callback: Callback): Promise<Response | null> {
+  const data = String(callback.data || '');
+  if (!data.startsWith('botadmin:plinko:')) {
+    if (data.startsWith('botadmin:')) await clearState(env, callback.from.id);
+    return null;
+  }
+  if (!isAdmin(env, callback.from.id)) return ok();
+
+  await clearOtherAdminStates(env, callback.from.id);
+  await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
+  const chatId = callback.message?.chat.id ?? callback.from.id;
+  const messageId = callback.message?.message_id;
+  const parts = data.split(':');
+  const action = parts[2] || '';
+
+  if (action === 'list' || action === 'refresh') {
+    await clearState(env, callback.from.id);
+    await sendMainMenu(env, token, chatId, messageId);
+    return ok();
+  }
+
+  if (action === 'mode') {
+    await clearState(env, callback.from.id);
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    if (row && risk) await sendModeMenu(env, token, chatId, row, risk, messageId);
+    return ok();
+  }
+
+  if (action === 'edit') {
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    if (!row || !risk) return ok();
+    await setState(env, callback.from.id, { mode: 'edit', row, risk });
+    const config = await getPlinkoControl(env);
+    const item = config.rows[row][risk];
+    const lines = formatEditLines(item.multipliers, item.weights);
+    await upsert(
+      token,
+      chatId,
+      messageId,
+      `✏️ ویرایش Plinko · Rows ${row} · ${riskLabel(risk)}\n\nهر خانه را در یک خط با این فرمت بفرستید:\nشماره | ضریب | شانس درصد\n\nتعداد خطوط باید دقیقاً ${Number(row) + 1} باشد و مجموع شانس‌ها باید 100% شود.\n\n${lines}`,
+      [[{ text: '⬅️ لغو', callback_data: modeCallback(row, risk) }]],
+    );
+    return ok();
+  }
+
+  if (action === 'preset') {
+    await clearState(env, callback.from.id);
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    const preset = normalizePreset(parts[5]);
+    if (!row || !risk || !preset) return ok();
+    const config = await getPlinkoControl(env);
+    applyPreset(config.rows[row][risk], preset);
+    await savePlinkoControl(env, config);
+    await sendModeMenu(env, token, chatId, row, risk, messageId, `✅ Preset ${presetLabel(preset)} اعمال شد.`);
+    return ok();
+  }
+
+  if (action === 'normalize') {
+    await clearState(env, callback.from.id);
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    if (!row || !risk) return ok();
+    const config = await getPlinkoControl(env);
+    config.rows[row][risk].weights = normalizeWeights(config.rows[row][risk].weights);
+    await savePlinkoControl(env, config);
+    await sendModeMenu(env, token, chatId, row, risk, messageId, '✅ شانس‌ها روی مجموع 100% نرمال شدند.');
+    return ok();
+  }
+
+  if (action === 'resetmode') {
+    await clearState(env, callback.from.id);
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    if (!row || !risk) return ok();
+    if (parts[5] !== 'confirm') {
+      await upsert(
+        token,
+        chatId,
+        messageId,
+        `⚠️ تنظیمات Rows ${row} · ${riskLabel(risk)} به مقدار پیش‌فرض برگردد؟`,
+        [[
+          { text: '✅ بله، ریست', callback_data: `botadmin:plinko:resetmode:${row}:${risk}:confirm` },
+          { text: '⬅️ لغو', callback_data: modeCallback(row, risk) },
+        ]],
+      );
+      return ok();
+    }
+    const config = await getPlinkoControl(env);
+    config.rows[row][risk] = cloneRiskConfig(DEFAULT_PLINKO_CONTROL.rows[row][risk]);
+    await savePlinkoControl(env, config);
+    await sendModeMenu(env, token, chatId, row, risk, messageId, '✅ همین مود به پیش‌فرض برگشت.');
+    return ok();
+  }
+
+  if (action === 'resetall') {
+    await clearState(env, callback.from.id);
+    if (parts[3] !== 'confirm') {
+      await upsert(
+        token,
+        chatId,
+        messageId,
+        '⚠️ تمام ۹ مود Plinko به مقادیر پیش‌فرض برگردند؟',
+        [[
+          { text: '✅ ریست همه', callback_data: 'botadmin:plinko:resetall:confirm' },
+          { text: '⬅️ لغو', callback_data: 'botadmin:plinko:list' },
+        ]],
+      );
+      return ok();
+    }
+    await resetPlinkoControl(env);
+    await sendMainMenu(env, token, chatId, messageId, '✅ تمام مودهای Plinko به پیش‌فرض برگشتند.');
+    return ok();
+  }
+
+  if (action === 'images') {
+    await clearState(env, callback.from.id);
+    await sendImagesMenu(token, chatId, messageId);
+    return ok();
+  }
+
+  if (action === 'image') {
+    const kind = normalizeImageKind(parts[3]);
+    if (!kind) return ok();
+    await setState(env, callback.from.id, { mode: 'image', kind });
+    await upsert(
+      token,
+      chatId,
+      messageId,
+      `${imageLabel(kind)}\n\nتصویر را بفرستید. PNG، JPG، WebP یا SVG تا حداکثر 2MB مجاز است.\nبرای حفظ فرمت اصلی می‌توانید تصویر را به‌صورت File/Document بفرستید.`,
+      [[{ text: '⬅️ لغو', callback_data: 'botadmin:plinko:images' }]],
+    );
+    return ok();
+  }
+
+  return ok();
+}
+
+async function handleMessage(env: Env, token: string, message: Message): Promise<Response | null> {
+  const adminId = message.from?.id;
+  if (!adminId) return null;
+  const text = String(message.text || '').trim();
+
+  if (isAdminCommand(text)) {
+    await clearState(env, adminId);
+    return null;
+  }
+  if (!isAdmin(env, adminId)) return null;
+
+  const state = await getState(env, adminId);
+  if (!state) return null;
+
+  if (text === '/cancel' || text === 'لغو') {
+    await clearState(env, adminId);
+    if (state.mode === 'edit') await sendModeMenu(env, token, message.chat.id, state.row, state.risk);
+    else await sendImagesMenu(token, message.chat.id);
+    return ok();
+  }
+
+  if (state.mode === 'edit') {
+    const parsed = parseEditLines(text, Number(state.row) + 1);
+    if (!parsed.ok) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${parsed.error}\n\nفرمت هر خط: شماره | ضریب | شانس درصد` }).catch(() => undefined);
+      return ok();
+    }
+    const total = parsed.weights.reduce((sum, value) => sum + value, 0);
+    if (Math.abs(total - 100) > 0.05) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ مجموع شانس‌ها ${trimNumber(total)}% است؛ باید دقیقاً 100% باشد.` }).catch(() => undefined);
+      return ok();
+    }
+    try {
+      const config = await getPlinkoControl(env);
+      config.rows[state.row][state.risk] = { multipliers: parsed.multipliers, weights: parsed.weights };
+      await savePlinkoControl(env, config);
+      await clearState(env, adminId);
+      await sendModeMenu(env, token, message.chat.id, state.row, state.risk, undefined, '✅ ضریب‌ها و شانس‌های این مود ذخیره شدند.');
+    } catch (error) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}` }).catch(() => undefined);
+    }
+    return ok();
+  }
+
+  const source = imageFromMessage(message);
+  if (!source) {
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: '❌ یک تصویر PNG، JPG، WebP یا SVG بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
+    return ok();
+  }
+  try {
+    await savePlinkoImage(env, token, state.kind, source);
+    await clearState(env, adminId);
+    await tg(token, 'sendMessage', {
+      chat_id: message.chat.id,
+      text: `✅ ${imageLabel(state.kind)} ذخیره شد.`,
+      reply_markup: { inline_keyboard: [[{ text: '🖼 تصاویر Plinko', callback_data: 'botadmin:plinko:images' }], [{ text: '🎯 Plinko Control', callback_data: 'botadmin:plinko:list' }]] },
+    }).catch(() => undefined);
+  } catch (error) {
+    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'آپلود انجام نشد.'}` }).catch(() => undefined);
+  }
+  return ok();
+}
+
+async function sendMainMenu(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
+  const config = await getPlinkoControl(env);
+  const rows: Keyboard = PLINKO_ROWS.map((row) => PLINKO_RISKS.map((risk) => ({
+    text: `${row} · ${riskShortLabel(risk)}`,
+    callback_data: modeCallback(row, risk),
+  })));
+  rows.push([
+    { text: '🖼 تصاویر Plinko', callback_data: 'botadmin:plinko:images' },
+    { text: '♻️ ریست همه', callback_data: 'botadmin:plinko:resetall' },
+  ]);
+  rows.push([
+    { text: '🔄 بروزرسانی', callback_data: 'botadmin:plinko:refresh' },
+    { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
+  ]);
+  const updated = config.updatedAt ? `\nآخرین تغییر: ${formatUpdatedAt(config.updatedAt)}` : '';
+  await upsert(
+    token,
+    chatId,
+    messageId,
+    `${notice ? notice + '\n\n' : ''}🎯 Plinko Control\n\nهر ۹ ترکیب Rows و Risk مستقل هستند. مود موردنظر را مستقیم انتخاب کنید.${updated}`,
+    rows,
+  );
+}
+
+async function sendModeMenu(
+  env: Env,
+  token: string,
+  chatId: number,
+  row: PlinkoRow,
+  risk: PlinkoRisk,
+  messageId?: number,
+  notice = '',
+): Promise<void> {
+  const config = await getPlinkoControl(env);
+  const item = config.rows[row][risk];
+  const total = item.weights.reduce((sum, value) => sum + value, 0);
+  const expected = expectedReturn(item.multipliers, item.weights);
+  const houses = item.multipliers.map((multiplier, index) =>
+    `#${index + 1}  ${trimNumber(multiplier)}x · ${trimNumber(item.weights[index])}%`
+  ).join('\n');
+  await upsert(
+    token,
+    chatId,
+    messageId,
+    `${notice ? notice + '\n\n' : ''}🎯 Rows ${row} · ${riskLabel(risk)}\n\n${houses}\n\nمجموع شانس: ${trimNumber(total)}%\nExpected Return: ${expected.toFixed(4)}x`,
+    [
+      [{ text: '✏️ ویرایش همه خانه‌ها', callback_data: `botadmin:plinko:edit:${row}:${risk}` }],
+      [
+        { text: '⚖️ Balanced', callback_data: `botadmin:plinko:preset:${row}:${risk}:balanced` },
+        { text: '🎯 More Center', callback_data: `botadmin:plinko:preset:${row}:${risk}:center` },
+      ],
+      [
+        { text: '↔️ More Edges', callback_data: `botadmin:plinko:preset:${row}:${risk}:edges` },
+        { text: '🪽 Wider Edges', callback_data: `botadmin:plinko:preset:${row}:${risk}:wide` },
+      ],
+      [
+        { text: '🧮 Normalize 100%', callback_data: `botadmin:plinko:normalize:${row}:${risk}` },
+        { text: '♻️ ریست این مود', callback_data: `botadmin:plinko:resetmode:${row}:${risk}` },
+      ],
+      [{ text: '⬅️ همه مودها', callback_data: 'botadmin:plinko:list' }],
+    ],
+  );
+}
+
+async function sendImagesMenu(token: string, chatId: number, messageId?: number): Promise<void> {
+  await upsert(token, chatId, messageId, '🖼 تصاویر Plinko\n\nتصویر موردنظر را برای جایگزینی انتخاب کنید.', [
+    [
+      { text: '🎛 Bet Input', callback_data: 'botadmin:plinko:image:input' },
+      { text: '🔘 Drop Ball', callback_data: 'botadmin:plinko:image:drop' },
+    ],
+    [{ text: '🏁 Result Houses', callback_data: 'botadmin:plinko:image:house' }],
+    [
+      { text: '🎯 Plinko Control', callback_data: 'botadmin:plinko:list' },
+      { text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
+    ],
+  ]);
+}
+
+function formatEditLines(multipliers: number[], weights: number[]): string {
+  return multipliers.map((multiplier, index) => `${index + 1} | ${trimNumber(multiplier)} | ${trimNumber(weights[index])}`).join('\n');
+}
+
+function parseEditLines(text: string, expected: number):
+  | { ok: true; multipliers: number[]; weights: number[] }
+  | { ok: false; error: string } {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length !== expected) return { ok: false, error: `باید دقیقاً ${expected} خط بفرستید؛ الان ${lines.length} خط دریافت شد.` };
+  const multipliers: number[] = [];
+  const weights: number[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const parts = lines[index].split('|').map((part) => part.trim());
+    if (parts.length !== 3) return { ok: false, error: `خط ${index + 1} سه بخش ندارد.` };
+    const lineNumber = Number(parts[0]);
+    const multiplier = Number(parts[1]);
+    const weight = Number(parts[2].replace('%', ''));
+    if (lineNumber !== index + 1) return { ok: false, error: `شماره خط ${index + 1} باید ${index + 1} باشد.` };
+    if (!Number.isFinite(multiplier) || multiplier < 0.01 || multiplier > 1000) return { ok: false, error: `ضریب خط ${index + 1} باید بین 0.01 و 1000 باشد.` };
+    if (!Number.isFinite(weight) || weight < 0 || weight > 100) return { ok: false, error: `شانس خط ${index + 1} باید بین 0 و 100 باشد.` };
+    multipliers.push(roundValue(multiplier, 6));
+    weights.push(roundValue(weight, 10));
+  }
+  return { ok: true, multipliers, weights };
+}
+
+function applyPreset(item: { multipliers: number[]; weights: number[] }, kind: PresetKind): void {
+  const count = item.weights.length;
+  const center = (count - 1) / 2;
+  item.weights = item.weights.map((_, index) => {
+    const distance = Math.abs(index - center) / (center || 1);
+    if (kind === 'center') return (1 - distance) * 24 + 2;
+    if (kind === 'edges') return distance * 22 + 2;
+    if (kind === 'wide') return distance > 0.75 ? 18 : distance > 0.45 ? 7 : 2;
+    return 100 / count;
+  });
+  item.weights = normalizeWeights(item.weights);
+  if (kind === 'wide') {
+    item.multipliers = item.multipliers.map((multiplier, index) => {
+      const distance = Math.abs(index - center) / (center || 1);
+      return distance > 0.75 ? Math.max(Number(multiplier) || 0.01, 5) : multiplier;
+    });
+  }
+}
+
+function normalizeWeights(weights: number[]): number[] {
+  const positive = weights.map((value) => Math.max(0, Number(value) || 0));
+  const sum = positive.reduce((total, value) => total + value, 0);
+  if (sum <= 0) return positive.map(() => roundValue(100 / positive.length, 10)).mapWithAdjust?.() as never;
+  const normalized = positive.map((value) => roundValue(value * 100 / sum, 10));
+  const difference = roundValue(100 - normalized.reduce((total, value) => total + value, 0), 10);
+  const index = normalized.findLastIndex((value) => value > 0);
+  if (index >= 0) normalized[index] = roundValue(normalized[index] + difference, 10);
+  return normalized;
+}
+
+function expectedReturn(multipliers: number[], weights: number[]): number {
+  const total = weights.reduce((sum, value) => sum + Number(value || 0), 0) || 1;
+  return multipliers.reduce((sum, multiplier, index) => sum + Number(multiplier || 0) * Number(weights[index] || 0), 0) / total;
+}
+
+function cloneRiskConfig(value: { multipliers: number[]; weights: number[] }): { multipliers: number[]; weights: number[] } {
+  return { multipliers: value.multipliers.slice(), weights: value.weights.slice() };
+}
+
+function imageFromMessage(message: Message): UploadSource | null {
+  const photo = message.photo?.at(-1);
+  if (photo?.file_id) return { fileId: photo.file_id, size: photo.file_size, type: 'image/jpeg' };
+  const doc = message.document;
+  if (!doc?.file_id) return null;
+  const mime = String(doc.mime_type || '').split(';')[0].trim().toLowerCase();
+  const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
+  const type = ext === 'png' ? 'image/png'
+    : ext === 'webp' ? 'image/webp'
+      : ext === 'svg' ? 'image/svg+xml'
+        : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+          : IMAGE_TYPES.has(mime) ? mime : '';
+  return type ? { fileId: doc.file_id, size: doc.file_size, type } : null;
+}
+
+async function savePlinkoImage(env: Env, token: string, kind: ImageKind, source: UploadSource): Promise<void> {
+  if (!IMAGE_TYPES.has(source.type)) throw new Error('فرمت تصویر پشتیبانی نمی‌شود.');
+  if (source.size && source.size > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید حداکثر 2MB باشد.');
+  const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
+  if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
+  const response = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
+  if (!response.ok) throw new Error('دانلود تصویر از تلگرام ناموفق بود.');
+  const bytes = await response.arrayBuffer();
+  if (!bytes.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید حداکثر 2MB باشد.');
+  const version = String(Date.now());
+  await env.ASSETS.put(`plinko-control/${kind}`, bytes, {
+    httpMetadata: { contentType: source.type },
+    customMetadata: { version },
+  });
+}
+
+function normalizeRow(value: unknown): PlinkoRow | null {
+  const row = String(value || '') as PlinkoRow;
+  return PLINKO_ROWS.includes(row) ? row : null;
+}
+
+function normalizeRisk(value: unknown): PlinkoRisk | null {
+  const risk = String(value || '').toLowerCase() as PlinkoRisk;
+  return PLINKO_RISKS.includes(risk) ? risk : null;
+}
+
+function normalizePreset(value: unknown): PresetKind | null {
+  const preset = String(value || '').toLowerCase();
+  return preset === 'balanced' || preset === 'center' || preset === 'edges' || preset === 'wide' ? preset : null;
+}
+
+function normalizeImageKind(value: unknown): ImageKind | null {
+  const kind = String(value || '').toLowerCase() as ImageKind;
+  return IMAGE_KINDS.includes(kind) ? kind : null;
+}
+
+function riskLabel(risk: PlinkoRisk): string {
+  return risk === 'low' ? 'Easy' : risk === 'high' ? 'Hard' : 'Medium';
+}
+
+function riskShortLabel(risk: PlinkoRisk): string {
+  return risk === 'low' ? 'Easy' : risk === 'high' ? 'Hard' : 'Medium';
+}
+
+function presetLabel(kind: PresetKind): string {
+  return kind === 'center' ? 'More Center' : kind === 'edges' ? 'More Edges' : kind === 'wide' ? 'Wider Edges' : 'Balanced';
+}
+
+function imageLabel(kind: ImageKind): string {
+  return kind === 'input' ? '🎛 تصویر Bet Input' : kind === 'house' ? '🏁 تصویر Result Houses' : '🔘 تصویر Drop Ball';
+}
+
+function modeCallback(row: PlinkoRow, risk: PlinkoRisk): string {
+  return `botadmin:plinko:mode:${row}:${risk}`;
+}
+
+function trimNumber(value: unknown): string {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return String(Number(number.toFixed(10)));
+}
+
+function roundValue(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : value;
+}
+
+async function clearOtherAdminStates(env: Env, adminId: number): Promise<void> {
+  await Promise.all([
+    env.BOT_CACHE.delete(`admin:crash-ghost-live-bets-input:${adminId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:slot-live-bets-input:${adminId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:online-count-input:${adminId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:section-access-input:${adminId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:game-card-upload:${adminId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`botadmin:state:${adminId}`).catch(() => undefined),
+  ]);
+}
+
+async function getState(env: Env, adminId: number): Promise<PlinkoAdminState | null> {
+  const state = await env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as PlinkoAdminState | null;
+  if (!state || (state.mode !== 'edit' && state.mode !== 'image')) return null;
+  return state;
+}
+
+async function setState(env: Env, adminId: number, state: PlinkoAdminState): Promise<void> {
+  await clearOtherAdminStates(env, adminId);
+  await env.BOT_CACHE.put(stateKey(adminId), JSON.stringify(state), { expirationTtl: 900 });
+}
+
+function clearState(env: Env, adminId: number): Promise<void> {
+  return env.BOT_CACHE.delete(stateKey(adminId)).catch(() => undefined);
+}
+
+function stateKey(adminId: number): string {
+  return `${STATE_PREFIX}${adminId}`;
+}
+
+function isAdmin(env: Env, adminId: unknown): boolean {
+  return String(env.BOT_ADMIN || '').split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean).includes(String(adminId || ''));
+}
+
+function isAdminCommand(text: string): boolean {
+  const value = text.trim().toLowerCase();
+  return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
+}
+
+async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
+  if (messageId) {
+    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
+    if (edited) return;
+  }
+  await tg(token, 'sendMessage', payload);
+}
+
+async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({})) as { ok?: boolean; result?: T; description?: string };
+  if (!response.ok || !data.ok) throw new Error(data.description || `Telegram ${method} failed`);
+  return data.result as T;
+}
+
+function ok(): Response {
+  return Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+}
