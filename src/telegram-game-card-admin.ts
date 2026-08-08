@@ -13,7 +13,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -29,7 +29,18 @@ const BACKGROUND_GAME_IDS = new Set(BACKGROUND_GAMES.map(([id]) => id));
 const STATE_PREFIX = 'admin:game-card-upload:';
 const BACKGROUND_STATE_PREFIX = 'background:';
 const CRASH_STAGE_STATE_PREFIX = 'crash-stage:';
+const RANK_STATE_PREFIX = 'rank:';
+const GHOST_ASSET_STATE_PREFIX = 'ghost-asset:';
 const TON_STATE = 'ton-icon';
+const HOME_SLOT_STATE = 'home-slot';
+const RANKS = ['Rookie', 'Explorer', 'Pro', 'Elite', 'Master', 'Legend', 'Titan'] as const;
+const GHOST_ASSETS = [
+  ['background', 'Background اصلی'], ['background1', 'Background 1'], ['background2', 'Background 2'],
+  ['background3', 'Background 3'], ['background4', 'Background 4'], ['background5', 'Background 5'],
+  ['background6', 'Background 6'], ['ground', 'زمین'], ['moon', 'ماه'], ['ghost', 'روح اصلی'],
+  ['ghostidle', 'روح ثابت'], ['ghostmove', 'روح متحرک'], ['tree1', 'درخت 1'], ['tree2', 'درخت 2'],
+  ['tree3', 'درخت 3'], ['house1', 'خانه 1'], ['house2', 'خانه 2'], ['house3', 'خانه 3'],
+] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -105,9 +116,14 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:gamebackgrounds'
       || data === 'botadmin:crashstage'
       || data === 'botadmin:tonlogo'
+      || data === 'botadmin:homeslot'
+      || data === 'botadmin:ranks'
+      || data === 'botadmin:ghostassets'
       || data.startsWith('botadmin:gameimage:')
       || data.startsWith('botadmin:gamebackground:')
       || data.startsWith('botadmin:crashstage:')
+      || data.startsWith('botadmin:rank:')
+      || data.startsWith('botadmin:ghostasset:')
       || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
@@ -140,6 +156,27 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await upsert(token, chatId, messageId, '💎 لوگوی TON\n\nبرای حفظ فرمت و شفافیت، تصویر PNG را حتماً به‌صورت File/Document بفرستید.', [
         [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
       ]);
+    } else if (data === 'botadmin:homeslot') {
+      await env.BOT_CACHE.put(stateKey(callback.from.id), HOME_SLOT_STATE, { expirationTtl: 900 });
+      await promptImage(token, chatId, messageId, '🎰 تصویر اسلات صفحه Home', 'تصویری که داخل کادر شیشه‌ای اسلات در Home نمایش داده می‌شود را بفرستید.', 'botadmin:imagesmenu');
+    } else if (data === 'botadmin:ranks') {
+      await clearState(env, callback.from.id);
+      await sendRankMenu(env, token, chatId, messageId);
+    } else if (data === 'botadmin:ghostassets') {
+      await clearState(env, callback.from.id);
+      await sendGhostAssetMenu(env, token, chatId, messageId);
+    } else if (data.startsWith('botadmin:rank:')) {
+      const rank = normalizeRank(data.slice('botadmin:rank:'.length));
+      if (rank) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${RANK_STATE_PREFIX}${rank}`, { expirationTtl: 900 });
+        await promptImage(token, chatId, messageId, `🏆 تصویر رنک ${rank}`, 'تصویر شخصیت این رنک را بفرستید.', 'botadmin:ranks');
+      }
+    } else if (data.startsWith('botadmin:ghostasset:')) {
+      const asset = normalizeGhostAsset(data.slice('botadmin:ghostasset:'.length));
+      if (asset) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${GHOST_ASSET_STATE_PREFIX}${asset}`, { expirationTtl: 900 });
+        await promptImage(token, chatId, messageId, `👻 ${ghostAssetLabel(asset)}`, 'تصویر داخل کادر بازی Ghost Run را بفرستید.', 'botadmin:ghostassets');
+      }
     } else if (data.startsWith('botadmin:gamebackground:')) {
       const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
       if (game) {
@@ -193,6 +230,8 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     if (target.kind === 'game') await sendGameMenu(token, message.chat.id);
     else if (target.kind === 'background') await sendBackgroundMenu(token, message.chat.id);
     else if (target.kind === 'crash-stage') await sendCrashStageMenu(env, token, message.chat.id);
+    else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id);
+    else if (target.kind === 'ghost-asset') await sendGhostAssetMenu(env, token, message.chat.id);
     else await sendImagesMenu(token, message.chat.id);
     return ok();
   }
@@ -245,6 +284,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
         caption: successText,
         reply_markup: { inline_keyboard: [[{ text: '🚀 تصاویر داخل Crash', callback_data: 'botadmin:crashstage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
       }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: successText, reply_markup: { inline_keyboard: [[{ text: '🚀 تصاویر داخل Crash', callback_data: 'botadmin:crashstage' }]] } }));
+    } else if (target.kind === 'home-slot') {
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/home-lottery-slot.png?v=${Date.now()}`, '✅ تصویر اسلات صفحه Home ذخیره شد.', '🎰 تغییر دوباره', 'botadmin:homeslot');
+    } else if (target.kind === 'rank') {
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/rank-character/${target.rank}.png?v=${Date.now()}`, `✅ تصویر رنک ${target.rank} ذخیره شد.`, '🏆 تصاویر رنک‌ها', 'botadmin:ranks');
+    } else if (target.kind === 'ghost-asset') {
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/ghost-run-asset/${target.asset}.png?v=${Date.now()}`, `✅ ${ghostAssetLabel(target.asset)} ذخیره شد.`, '👻 تصاویر Ghost Run', 'botadmin:ghostassets');
     } else {
       await tg(token, 'sendPhoto', {
         chat_id: message.chat.id,
@@ -274,6 +319,11 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
+    [
+      { text: '🎰 اسلات Home', callback_data: 'botadmin:homeslot' },
+      { text: '🏆 تصاویر رنک‌ها', callback_data: 'botadmin:ranks' },
+    ],
+    [{ text: '👻 تصاویر داخل Ghost Run', callback_data: 'botadmin:ghostassets' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ]);
 }
@@ -305,6 +355,34 @@ async function sendCrashStageMenu(env: Env, token: string, chatId: number, messa
   await upsert(token, chatId, messageId, '🚀 تصاویر عمودی داخل کادر Crash\n\nImage 1 پایین‌ترین/شروع مسیر است و Image 10 بالاترین/آخر مسیر. هر 10 تصویر به‌ترتیب عمودی به هم وصل می‌شوند.', rows);
 }
 
+async function sendRankMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const present = await Promise.all(RANKS.map((rank) => env.ASSETS.head(`rank-character/${rank}`).then(Boolean).catch(() => false)));
+  const buttons = RANKS.map((rank, index) => ({ text: `${present[index] ? '✅ ' : ''}${rank}`, callback_data: `botadmin:rank:${rank}` }));
+  const rows: Keyboard = [];
+  for (let index = 0; index < buttons.length; index += 2) rows.push(buttons.slice(index, index + 2));
+  rows.push([{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]);
+  await upsert(token, chatId, messageId, '🏆 تصاویر رنک‌ها\n\nرنک موردنظر را انتخاب و تصویر جدیدش را ارسال کنید. علامت ✅ یعنی قبلاً تصویری برای آن آپلود شده است.', rows);
+}
+
+async function sendGhostAssetMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const present = await Promise.all(GHOST_ASSETS.map(([asset]) => env.ASSETS.head(`ghost-run-assets/${asset}`).then(Boolean).catch(() => false)));
+  const buttons = GHOST_ASSETS.map(([asset, title], index) => ({ text: `${present[index] ? '✅ ' : ''}${title}`, callback_data: `botadmin:ghostasset:${asset}` }));
+  const rows: Keyboard = [];
+  for (let index = 0; index < buttons.length; index += 2) rows.push(buttons.slice(index, index + 2));
+  rows.push([{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]);
+  await upsert(token, chatId, messageId, '👻 تصاویر داخل کادر بازی Ghost Run\n\nبخش موردنظر صحنه را انتخاب کنید و تصویر جایگزین را بفرستید.', rows);
+}
+
+async function promptImage(token: string, chatId: number, messageId: number | undefined, title: string, description: string, back: string): Promise<void> {
+  await upsert(token, chatId, messageId, `${title}\n\n${description}\n\nPNG، JPG و WebP پشتیبانی می‌شوند. برای حفظ کیفیت و شفافیت بهتر است تصویر را به‌صورت File/Document بفرستید.`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
+}
+
+async function sendSavedImage(token: string, chatId: number, photo: string, caption: string, buttonText: string, callbackData: string): Promise<void> {
+  const reply_markup = { inline_keyboard: [[{ text: buttonText, callback_data: callbackData }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] };
+  await tg(token, 'sendPhoto', { chat_id: chatId, photo, caption, reply_markup })
+    .catch(() => tg(token, 'sendMessage', { chat_id: chatId, text: caption, reply_markup }));
+}
+
 async function saveImage(env: Env, token: string, target: UploadTarget, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
@@ -316,14 +394,25 @@ async function saveImage(env: Env, token: string, target: UploadTarget, source: 
   const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   const contentType = source.via === 'document' ? source.type : (TYPES.has(responseType) ? responseType : source.type);
   const version = String(Date.now());
-  const assetKey = target.kind === 'ton' ? 'ton-icon' : target.kind === 'background' ? sectionBackgroundR2Key(target.game) : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
+  const assetKey = target.kind === 'ton' ? 'ton-icon'
+    : target.kind === 'home-slot' ? 'home-lottery-slot'
+      : target.kind === 'rank' ? `rank-character/${target.rank}`
+        : target.kind === 'ghost-asset' ? `ghost-run-assets/${target.asset}`
+          : target.kind === 'background' ? sectionBackgroundR2Key(target.game)
+            : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
   const metadata = target.kind === 'ton'
     ? { version, assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
     : target.kind === 'background'
       ? { version, sectionId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` }
       : target.kind === 'crash-stage'
         ? { version, assetId: `crash-stage-${target.slot}`, slot: String(target.slot), contentType, uploadedVia: `telegram-admin-${source.via}` }
-        : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
+        : target.kind === 'home-slot'
+          ? { version, assetId: 'home-lottery-slot', contentType, uploadedVia: `telegram-admin-${source.via}` }
+          : target.kind === 'rank'
+            ? { version, rank: target.rank, contentType, uploadedVia: `telegram-admin-${source.via}` }
+            : target.kind === 'ghost-asset'
+              ? { version, kind: target.asset, contentType, uploadedVia: `telegram-admin-${source.via}` }
+              : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: metadata,
@@ -376,6 +465,15 @@ function normalizeCrashStageSlot(value: unknown): number | null {
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
+  if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
+  if (raw.startsWith(RANK_STATE_PREFIX)) {
+    const rank = normalizeRank(raw.slice(RANK_STATE_PREFIX.length));
+    return rank ? { kind: 'rank', rank } : null;
+  }
+  if (raw.startsWith(GHOST_ASSET_STATE_PREFIX)) {
+    const asset = normalizeGhostAsset(raw.slice(GHOST_ASSET_STATE_PREFIX.length));
+    return asset ? { kind: 'ghost-asset', asset } : null;
+  }
   if (raw.startsWith(BACKGROUND_STATE_PREFIX)) {
     const game = normalizeBackgroundGame(raw.slice(BACKGROUND_STATE_PREFIX.length));
     return game ? { kind: 'background', game } : null;
@@ -387,6 +485,9 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const game = normalizeGame(raw);
   return game ? { kind: 'game', game } : null;
 }
+function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }
+function normalizeGhostAsset(value: unknown): string | null { const clean = String(value || '').trim().toLowerCase(); return GHOST_ASSETS.some(([asset]) => asset === clean) ? clean : null; }
+function ghostAssetLabel(asset: string): string { return GHOST_ASSETS.find(([id]) => id === asset)?.[1] || asset; }
 function label(game: string): string { return GAMES.find(([id]) => id === game)?.[1] || game; }
 function backgroundLabel(game: string): string { return BACKGROUND_GAMES.find(([id]) => id === game)?.[1] || game; }
 function gameKey(game: string): string { return `game-card-images/${game}`; }
