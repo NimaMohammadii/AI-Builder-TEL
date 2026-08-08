@@ -1,4 +1,5 @@
 import { adminUsersJson, resetUserEverywhere } from './admin-users';
+import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
 import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 import { getUserControls, setUserBanned, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
@@ -105,12 +106,10 @@ function isBotAdmin(env: Env, userId: unknown): boolean {
 }
 
 async function sendAdminHome(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
-  const data = await adminUsersJson(env);
-  const text = ['🛡 پنل مدیریت ربات گیم', '', `👥 تعداد کل کاربران: ${data.stats.total ?? (data.users as AdminUser[]).length}`, `🟢 آنلاین: ${data.stats.online ?? 0}   ⚪️ غیرفعال: ${data.stats.inactive ?? 0}`, `💎 مجموع موجودی: ${formatTon(data.stats.totalTonBalanceNano)} TON`, '', 'از منوی زیر بخش موردنظر را انتخاب کنید.'].join('\n');
-  await upsertMessage(token, tg, chatId, messageId, text, [[{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }], [{ text: '↩️ بخش کاربران برگشتی', callback_data: 'botadmin:returns' }], [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }], [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }], [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }], [{ text: '📣 پیام همگانی در چت ربات', callback_data: 'botadmin:askbroadcast' }]]);
+  void tg;
+  await sendCurrentAdminHome(env, token, chatId, messageId);
   return true;
 }
-
 
 async function sendReturnUsersMenu(env: Env, token: string, chatId: number, tg: TgApi, messageId?: number): Promise<true> {
   const data = await adminUsersJson(env);
@@ -304,7 +303,6 @@ async function copyAdminMessageToChat(token: string, tg: TgApi, message: Telegra
 async function cleanupAdminInput(token: string, tg: TgApi, message: TelegramMessage): Promise<void> {
   await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 }
-
 
 async function toggleUserBan(env: Env, token: string, chatId: number, tg: TgApi, userId: string, banned: boolean, messageId?: number, page = 0): Promise<true> {
   await setUserBanned(env, userId, banned);
