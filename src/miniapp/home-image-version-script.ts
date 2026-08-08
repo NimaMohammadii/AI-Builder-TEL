@@ -19,18 +19,50 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
   ].join('');
   var introAppliedUrl='';
   var tonLogoAppliedUrl='';
+  var tonLogoInFlight=null;
+  var introInFlight=null;
+  var tonLogoCheckedAt=0;
+  var META_CACHE_MS=300000;
+  var TON_META_KEY='vexaTonLogoMeta:v1';
+  var INTRO_META_KEY='vexaHomeIntroImageMeta:v1';
   function cacheIntro(url){try{if(!url||!('caches'in window))return;var req=new Request(url,{cache:'force-cache'});caches.open('vexa-home-intro-images-v1').then(function(cache){cache.match(req).then(function(hit){if(hit)return;fetch(req,{cache:'force-cache'}).then(function(res){if(res&&res.ok)cache.put(req,res.clone())}).catch(function(){})}).catch(function(){})}).catch(function(){})}catch(e){}}
   function setRewardsIntroAspect(url){try{var img=new Image();img.onload=function(){if(!img.naturalWidth||!img.naturalHeight)return;var ratio=img.naturalWidth+'/'+img.naturalHeight;document.querySelectorAll('#rewards .rewards-home-intro-card,#rewards .rewards-home-intro-image-frame').forEach(function(n){n.style.setProperty('--rewards-intro-aspect',ratio);n.style.setProperty('aspect-ratio',ratio,'important');n.style.setProperty('height','auto','important');n.style.setProperty('min-height','0','important')})};img.src=url}catch(e){}}
   function applyIntroUrl(url){if(!url)return;if(introAppliedUrl!==url){introAppliedUrl=url;cacheIntro(url);setRewardsIntroAspect(url)}var bg='url("'+String(url).replace(/"/g,'')+'")';var nodes=document.querySelectorAll('#home .home-intro-card');for(var i=0;i<nodes.length;i++)nodes[i].style.setProperty('background-image',bg,'important');var frames=document.querySelectorAll('#home .home-intro-image-frame,#rewards .home-intro-image-frame,#rewards .rewards-home-intro-image-frame');for(var j=0;j<frames.length;j++){frames[j].style.setProperty('background-image',bg,'important');if(frames[j].classList&&frames[j].classList.contains('rewards-home-intro-image-frame')){frames[j].style.setProperty('background-size','100% 100%','important');frames[j].style.setProperty('background-position','center center','important')}}var rewardCards=document.querySelectorAll('#rewards .rewards-home-intro-card');for(var k=0;k<rewardCards.length;k++){rewardCards[k].style.setProperty('background-image','none','important');rewardCards[k].style.setProperty('--rewards-intro-bg',bg)}}
   function applyTonLogo(url){if(!url)return;tonLogoAppliedUrl=url;var icons=document.querySelectorAll('.ton-mini-icon img');for(var i=0;i<icons.length;i++){if(icons[i].getAttribute('src')!==url)icons[i].setAttribute('src',url)}}
-  function loadTonLogo(force){try{if(!force&&tonLogoAppliedUrl){applyTonLogo(tonLogoAppliedUrl);return}fetch('/app/api/uploaded-images?context=home&t='+Date.now(),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.ok?r.json():null}).then(function(meta){if(meta&&meta.tonIconUrl)applyTonLogo(meta.tonIconUrl)}).catch(function(){})}catch(e){}}
-  function loadIntroImageVersion(force){try{var cached=JSON.parse(localStorage.getItem('vexaHomeIntroImageMeta:v1')||'null');if(cached&&cached.url)applyIntroUrl(cached.url);if(!force&&cached&&cached.checkedAt&&Date.now()-Number(cached.checkedAt)<60000)return;fetch('/app/api/home-intro-image-meta?t='+Date.now(),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.json()}).then(function(meta){if(meta&&meta.url){meta.checkedAt=Date.now();try{localStorage.setItem('vexaHomeIntroImageMeta:v1',JSON.stringify(meta))}catch(e){}applyIntroUrl(meta.url)}}).catch(function(){})}catch(e){}}
+  function readMeta(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
+  function saveMeta(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}}
+  function loadTonLogo(force){
+    try{
+      var cached=readMeta(TON_META_KEY);if(cached&&cached.url){applyTonLogo(cached.url);tonLogoCheckedAt=Math.max(tonLogoCheckedAt,Number(cached.checkedAt)||0)}
+      var now=Date.now();if(!force&&tonLogoAppliedUrl&&tonLogoCheckedAt&&now-tonLogoCheckedAt<META_CACHE_MS)return Promise.resolve(cached);
+      if(tonLogoInFlight)return tonLogoInFlight;
+      tonLogoInFlight=fetch('/app/api/uploaded-images?context=home',{cache:'no-store',headers:{'accept':'application/json'}})
+        .then(function(r){return r.ok?r.json():null})
+        .then(function(meta){tonLogoCheckedAt=Date.now();if(meta&&meta.tonIconUrl){var next={url:meta.tonIconUrl,checkedAt:tonLogoCheckedAt};saveMeta(TON_META_KEY,next);applyTonLogo(meta.tonIconUrl);return next}return meta})
+        .catch(function(){return cached})
+        .finally(function(){tonLogoInFlight=null});
+      return tonLogoInFlight;
+    }catch(e){return Promise.resolve(null)}
+  }
+  function loadIntroImageVersion(force){
+    try{
+      var cached=readMeta(INTRO_META_KEY);if(cached&&cached.url)applyIntroUrl(cached.url);
+      if(!force&&cached&&cached.checkedAt&&Date.now()-Number(cached.checkedAt)<META_CACHE_MS)return Promise.resolve(cached);
+      if(introInFlight)return introInFlight;
+      introInFlight=fetch('/app/api/home-intro-image-meta',{headers:{'accept':'application/json'}})
+        .then(function(r){return r.ok?r.json():null})
+        .then(function(meta){if(meta&&meta.url){meta.checkedAt=Date.now();saveMeta(INTRO_META_KEY,meta);applyIntroUrl(meta.url)}return meta})
+        .catch(function(){return cached})
+        .finally(function(){introInFlight=null});
+      return introInFlight;
+    }catch(e){return Promise.resolve(null)}
+  }
   function style(){var s=document.getElementById('home-lottery-slot-size-fix');if(!s){s=document.createElement('style');s.id='home-lottery-slot-size-fix';document.head.appendChild(s)}if(s.textContent!==css)s.textContent=css}
   function premium(card,tone){if(!card)return false;var b=card.querySelector('.vexa-premium-corner');if(b)b.remove();card.classList.remove('is-blue','is-bronze');return true}
   function apply(){style();loadTonLogo(false);loadIntroImageVersion(false);var roots=Array.prototype.slice.call(document.querySelectorAll('#home #homeLuckyCodeSection,#home .home-lucky-card'));if(!roots.length)return false;var done=false;roots.forEach(function(r){done=premium(r.querySelector('.home-live-winner-card:nth-child(1)'),'red')||done;done=premium(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue')||done;done=premium(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')||done});return done}
   function watch(){if(apply())return;if(observer||!window.MutationObserver)return;var home=document.querySelector('main.app')||document.body;observer=new MutationObserver(function(){if(apply()&&observer){observer.disconnect();observer=null}});observer.observe(home,{childList:true,subtree:true})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});else watch();
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)loadTonLogo(true)});
-  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){loadTonLogo(true)};
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadTonLogo(false);loadIntroImageVersion(false)}});
+  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){return loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
 })();
 `;
