@@ -1,6 +1,7 @@
 import type { Env } from './types';
+import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
-import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
+import { setSpecialWheelEnabled } from './special-wheel-mode';
 import { sectionBackgroundR2Key } from './section-backgrounds';
 
 type Photo = { file_id: string; file_size?: number };
@@ -259,34 +260,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 }
 
 async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const wheelEnabled = await isSpecialWheelEnabled(env);
-  await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`, [
-    [
-      { text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' },
-      { text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' },
-    ],
-    [
-      { text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' },
-      { text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' },
-    ],
-    [
-      { text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' },
-      { text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' },
-    ],
-    [
-      { text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' },
-      { text: '👥 Online Counts', callback_data: 'botadmin:online:list' },
-    ],
-    [
-      { text: '🎰 Slot Live Bets', callback_data: 'botadmin:slotlive:list:0' },
-      { text: '🚀 Crash Live Bets', callback_data: 'botadmin:crashlive:list:0' },
-    ],
-    [
-      { text: '👻 Ghost Run Live Bets', callback_data: 'botadmin:ghostlive:list:0' },
-      { text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
-    ],
-    [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
-  ]);
+  await sendCurrentAdminHome(env, token, chatId, messageId);
 }
 
 async function sendImagesMenu(token: string, chatId: number, messageId?: number): Promise<void> {
