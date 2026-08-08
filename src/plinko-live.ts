@@ -344,7 +344,7 @@ function cleanMultiplier(value: unknown): number {
   return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
-function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users, multipliers = DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers): PlinkoResult {
+function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users, multipliers = DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers): PlinkoResult {
   const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * users.length) % users.length;
   const persona = users[personaIndex] || DEFAULT_PLINKO_VIRTUAL_USERS.users[0];
   const multiplier = multipliers[Math.floor(seededUnit('mult:' + createdAt) * multipliers.length)] || 1;
@@ -374,14 +374,14 @@ async function virtualUsersForResult(env?: Env): Promise<PlinkoVirtualUser[]> {
 }
 
 async function virtualMultipliersForResult(env?: Env): Promise<number[]> {
-  if (!env) return DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
+  if (!env) return DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
   try {
     const config = await getPlinkoControl(env);
-    const multipliers = config.rows['13'].low.multipliers;
-    return multipliers.length ? multipliers : DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
+    const multipliers = config.rows['12'].low.multipliers;
+    return multipliers.length ? multipliers : DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
   } catch (error) {
     console.warn('load plinko multipliers failed', error);
-    return DEFAULT_PLINKO_CONTROL.rows['13'].low.multipliers;
+    return DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
   }
 }
 
