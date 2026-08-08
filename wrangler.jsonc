@@ -17,6 +17,10 @@
       {
         "name": "PLINKO_LIVE",
         "class_name": "PlinkoLiveRoom"
+      },
+      {
+        "name": "SECTION_LOCK_EVENTS",
+        "class_name": "SectionLockEvents"
       }
     ]
   },
@@ -31,6 +35,10 @@
     {
       "tag": "v4",
       "deleted_classes": ["SectionLockEvents"]
+    },
+    {
+      "tag": "v5",
+      "new_sqlite_classes": ["SectionLockEvents"]
     }
   ],
   "d1_databases": [
