@@ -1,11 +1,12 @@
 export const GHOST_RUN_SECTION = `
 <section id="ghostrun" class="view ghost-run-view" aria-label="Ghost Run">
   <style>
+    [data-lazy-section-host="ghostrun"]{display:contents!important}
     body:has(#ghostrun.active) .content,body:has(#ghostrun.active) .view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important}
     #ghostrun{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important}
-    #ghostrun.ghost-run-view{height:100%!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun.ghost-run-view{height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;scrollbar-width:none!important;-ms-overflow-style:none!important;padding:0 0 calc(128px + env(safe-area-inset-bottom))!important;touch-action:pan-y!important}
     #ghostrun.ghost-run-view::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
-    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;min-height:100%!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:visible!important;padding-bottom:calc(90px + env(safe-area-inset-bottom))!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+    #ghostrun .ghost-run-screen{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;min-height:100%!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:visible!important;padding-bottom:0!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
     #ghostrun .ghost-run-screen::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
     #ghostrun .ghost-run-scene{order:1!important;width:calc(100vw - 24px)!important;width:calc(100dvw - 24px)!important;max-width:430px!important;margin:10px auto 0!important;border-radius:34px!important;box-shadow:0 24px 70px rgba(0,0,0,.50),inset 0 1px 0 rgba(255,255,255,.12)!important;background:#000!important;background-color:#000!important;background-image:none!important;border:1px solid rgba(255,255,255,.12)!important;overflow:hidden!important}
     #ghostrun .ghost-run-controls{order:2!important;margin-top:8px!important}
@@ -57,6 +58,44 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .crash-live-lost{color:#ff5b6b!important;font-size:12px!important;font-weight:930!important}
     #ghostrun .crash-live-row.cashout .crash-live-amount,#ghostrun .crash-live-plus{color:#78ffb3!important}
     #ghostrun .crash-live-plus{display:inline-block!important;margin-right:3px!important;font-weight:950!important}
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-controls,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-win-card,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-bet-card,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-move-button,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-row{
+      border:0!important;
+      outline:0!important;
+      background:rgba(13,13,13,.54)!important;
+      background-color:rgba(13,13,13,.54)!important;
+      background-image:none!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;
+      backdrop-filter:blur(10px) saturate(1.12)!important;
+      -webkit-backdrop-filter:blur(10px) saturate(1.12)!important;
+    }
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-controls,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-win-card,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive{
+      border-radius:28px!important;
+    }
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-bet-card,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-move-button,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-row{
+      border-radius:18px!important;
+    }
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-bet-card>strong,
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-win-card>strong,
+    html body:has(#ghostrun.active) main.app #ghostrun [data-ghost-bet-input],
+    html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-auto input{
+      background:transparent!important;
+      background-color:transparent!important;
+      box-shadow:none!important;
+      backdrop-filter:none!important;
+      -webkit-backdrop-filter:none!important;
+    }
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive{overflow:hidden!important}
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-list{max-height:none!important;overflow:visible!important;padding-right:0!important;scrollbar-width:none!important}
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-list::-webkit-scrollbar{display:none!important}
     @media(max-width:380px){#ghostrun .ghost-run-scene{border-radius:30px!important}#ghostrun .ghost-run-ghost{width:58px!important;height:70px!important;bottom:72px!important}}
   </style>
   <div class="ghost-run-screen" data-ghost-state="idle">
