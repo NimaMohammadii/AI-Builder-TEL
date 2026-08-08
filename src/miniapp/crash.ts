@@ -62,6 +62,65 @@ const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
 })();
 `;
 
+const CRASH_VERTICAL_BACKGROUNDS_SCRIPT = `
+(function(){
+  function install(){
+    var root=document.getElementById('crash');
+    var stage=root&&root.querySelector('.crash-stage');
+    var multiplier=document.getElementById('crashMultiplier');
+    if(!root||!stage||!multiplier||stage.querySelector('.crash-vertical-background-strip'))return;
+
+    var style=document.getElementById('crashVerticalBackgroundStyle');
+    if(!style){
+      style=document.createElement('style');
+      style.id='crashVerticalBackgroundStyle';
+      style.textContent='#crash .crash-vertical-background-strip{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:flex!important;flex-direction:column!important;z-index:0!important;pointer-events:none!important;transform:translate3d(0,-900%,0);will-change:transform!important}#crash .crash-vertical-background-panel{flex:0 0 100%!important;width:100%!important;height:100%!important;min-height:100%!important;background-color:transparent!important;background-repeat:no-repeat!important;background-size:cover!important;background-position:center center!important;pointer-events:none!important}';
+      document.head.appendChild(style);
+    }
+
+    var strip=document.createElement('div');
+    strip.className='crash-vertical-background-strip';
+    strip.id='crashVerticalBackgroundStrip';
+    strip.setAttribute('aria-hidden','true');
+    for(var slot=10;slot>=1;slot--){
+      var panel=document.createElement('div');
+      panel.className='crash-vertical-background-panel';
+      panel.setAttribute('data-crash-background-slot',String(slot));
+      strip.appendChild(panel);
+    }
+    stage.insertBefore(strip,stage.firstChild);
+
+    function cssUrl(url){var clean=String(url||'').split("'").join('').split(')').join('').split('"').join('');return "url('"+clean+"')"}
+    function loadImages(){
+      fetch('/app/api/crash-stage-images',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+        var images=j&&j.images;if(!images)return;
+        Object.keys(images).forEach(function(key){
+          var url=images[key];if(!url)return;
+          var panel=strip.querySelector('[data-crash-background-slot="'+key+'"]');
+          if(panel)panel.style.setProperty('background-image',cssUrl(url),'important');
+          try{var img=new Image();img.decoding='async';img.src=url}catch(e){}
+        });
+      }).catch(function(){});
+    }
+    function updatePosition(){
+      var value=parseFloat(String(multiplier.textContent||'1').replace(/x/i,''));
+      if(!Number.isFinite(value))value=1;
+      var step=Math.max(0,Math.min(9,value-1));
+      var height=Math.max(1,stage.clientHeight||stage.getBoundingClientRect().height||1);
+      var y=-(9-step)*height;
+      strip.style.transform='translate3d(0,'+y.toFixed(2)+'px,0)';
+    }
+
+    var observer=new MutationObserver(updatePosition);
+    observer.observe(multiplier,{childList:true,characterData:true,subtree:true});
+    window.addEventListener('resize',updatePosition,{passive:true});
+    loadImages();
+    updatePosition();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
+`;
+
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <style>
     html body:has(#crash.active){isolation:isolate!important;background:#000!important}
@@ -113,6 +172,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
   </div>
   <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
+  <script>${CRASH_VERTICAL_BACKGROUNDS_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
   <script>${CRASH_LIVE_D1_SCRIPT}</script>
   <script>${CRASH_BACK_BUTTON_SCRIPT}</script>
