@@ -42,3 +42,62 @@ export async function rateLimit(kv: KVNamespace, key: string, limit: number, win
 export function gameBotToken(env: Env): string {
   return env.BOT_TOKEN;
 }
+
+export async function validateTelegramInitData(initDataInput: unknown, tokenInput: unknown): Promise<string> {
+  const initData = String(initDataInput || '').trim();
+  const token = String(tokenInput || '').trim();
+  if (!initData) throw new Error('Open the Mini App inside Telegram');
+  if (!token) throw new Error('Bot token is not configured');
+
+  const params = new URLSearchParams(initData);
+  const receivedHash = String(params.get('hash') || '').toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(receivedHash)) throw new Error('Invalid Telegram session');
+  params.delete('hash');
+
+  const authDate = Number(params.get('auth_date'));
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(authDate) || authDate <= 0 || authDate > now + 300 || now - authDate > 86400) {
+    throw new Error('Telegram session expired');
+  }
+
+  const checkString = Array.from(params.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  const encoder = new TextEncoder();
+  const webAppKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode('WebAppData'),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const secret = await crypto.subtle.sign('HMAC', webAppKey, encoder.encode(token));
+  const secretKey = await crypto.subtle.importKey(
+    'raw',
+    secret,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', secretKey, encoder.encode(checkString));
+  const expected = Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  if (!timingSafeEqual(expected, receivedHash)) throw new Error('Invalid Telegram session');
+
+  let user: { id?: unknown } = {};
+  try {
+    user = JSON.parse(String(params.get('user') || '{}')) as { id?: unknown };
+  } catch {
+    throw new Error('Invalid Telegram session');
+  }
+  const userId = String(user.id ?? '').replace(/[^0-9]/g, '').slice(0, 24);
+  if (!userId) throw new Error('Missing Telegram user');
+  return userId;
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < a.length; index += 1) mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  return mismatch === 0;
+}
