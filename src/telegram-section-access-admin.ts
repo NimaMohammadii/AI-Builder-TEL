@@ -138,6 +138,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
     `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n⭐️ قیمت اسپین‌های بعدی: ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nبخش موردنظر را انتخاب کنید.`,
     [
       [{ text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' }],
+      [{ text: '👥 Online Counts', callback_data: 'botadmin:online:list' }],
       [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
       [{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }],
       [{ text: '🚀 10 تصویر داخل Crash', callback_data: 'botadmin:crashstage' }],
