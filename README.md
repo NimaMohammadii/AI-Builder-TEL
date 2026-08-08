@@ -8,8 +8,6 @@ The project uses one Telegram bot and one Telegram token:
 BOT_TOKEN=123456789:replace-with-your-game-bot-token
 ```
 
-There is no AI provider, AI chat, bot builder, generated bot runtime, `OPENAI_API_KEY`, `XAI_API_KEY`, `AI_BOT_TOKEN`, or `GAME_BOT_TOKEN`.
-
 ## Stack
 
 - Cloudflare Workers
@@ -74,13 +72,13 @@ npm run deploy
 After deployment, open:
 
 ```text
-https://v.vexaagent.workers.dev/setup-webhook
+https://vexa.games/setup-webhook
 ```
 
 The webhook is registered at:
 
 ```text
-https://v.vexaagent.workers.dev/telegram/webhook
+https://vexa.games/telegram/webhook
 ```
 
 ## Cloudflare bindings

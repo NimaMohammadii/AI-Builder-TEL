@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Tick due predict rounds
         env:
-          PUBLIC_BASE_URL: https://builder-tel.vexaagent.workers.dev
+          PUBLIC_BASE_URL: https://vexa.games
         run: |
           set -euo pipefail
           for market in bitcoin ton; do

@@ -36,7 +36,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ai-builder-tel",
+      "database_name": "vexa-games",
       "database_id": "25a5e2ad-6f6d-4232-966a-2d2de68909f3"
     }
   ],
@@ -53,7 +53,7 @@
   "r2_buckets": [
     {
       "binding": "ASSETS",
-      "bucket_name": "ai-builder-tel-assets"
+      "bucket_name": "vexa-games-assets"
     }
   ]
 }

@@ -585,11 +585,8 @@ async function loadUserProfile(env: Env, userId: string): Promise<UserProfile> {
     }>().catch(() => null);
   const extended = base ? await env.DB.prepare('SELECT region_code, language_code, timezone FROM app_users WHERE telegram_user_id = ? LIMIT 1')
     .bind(userId).first<{ region_code: string | null; language_code: string | null; timezone: string | null }>().catch(() => null) : null;
-  const bot = base ? null : await env.DB.prepare(`SELECT telegram_user_id, first_name, username, current_section, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at
-    FROM bot_users WHERE telegram_user_id = ? ORDER BY datetime(COALESCE(last_seen_at, updated_at, created_at)) DESC LIMIT 1`)
-    .bind(userId).first<{ telegram_user_id: string; first_name: string | null; username: string | null; current_section: string | null; last_seen_at: string | null; created_at: string | null }>().catch(() => null);
   const controls = await getUserControls(env, userId).catch(() => null);
-  const source = base || bot;
+  const source = base;
   return {
     userId,
     firstName: source?.first_name || '—',
@@ -600,7 +597,7 @@ async function loadUserProfile(env: Env, userId: string): Promise<UserProfile> {
     regionCode: extended?.region_code || '—',
     languageCode: extended?.language_code || '—',
     timezone: extended?.timezone || '—',
-    source: base ? 'app_users' : bot ? 'bot_users' : '—',
+    source: base ? 'app_users' : '—',
     balanceNano: Math.max(0, Math.floor(Number(controls?.tonBalanceNano || 0))),
   };
 }
