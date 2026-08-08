@@ -15,7 +15,9 @@ import {
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
-type Button = { text: string; callback_data: string };
+type CallbackButton = { text: string; callback_data: string };
+type CopyButton = { text: string; copy_text: { text: string } };
+type Button = CallbackButton | CopyButton;
 type Keyboard = Button[][];
 type GameKind = 'crash' | 'ghost';
 type LiveBet = { amount: number; cashoutMultiplier: number };
@@ -29,6 +31,7 @@ const STATE_PREFIX = 'admin:crash-ghost-live-bets-input:';
 const PAGE_SIZE = 10;
 const MAX_USERS = 100;
 const MAX_BETS = 12;
+const MAX_COPY_TEXT = 256;
 
 export async function handleCrashGhostLiveBetsAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
@@ -42,7 +45,7 @@ export async function handleCrashGhostLiveBetsAdminRequest(request: Request, env
 
 async function handleCallback(env: Env, token: string, callback: Callback): Promise<Response | null> {
   const data = String(callback.data || '');
-  const game = data.startsWith('botadmin:crashlive:') ? 'crash' : data.startsWith('botadmin:ghostlive:') ? 'ghost' : null;
+  const game: GameKind | null = data.startsWith('botadmin:crashlive:') ? 'crash' : data.startsWith('botadmin:ghostlive:') ? 'ghost' : null;
   if (!game) {
     if (data.startsWith('botadmin:')) await clearState(env, callback.from.id);
     return null;
@@ -53,9 +56,8 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
   const chatId = callback.message?.chat.id ?? callback.from.id;
   const messageId = callback.message?.message_id;
-  const prefix = game === 'crash' ? 'botadmin:crashlive:' : 'botadmin:ghostlive:';
-  const rest = data.slice(prefix.length);
-  const parts = rest.split(':');
+  const prefix = gamePrefix(game);
+  const parts = data.slice(prefix.length).split(':');
   const action = parts[0] || 'list';
   const page = Math.max(0, Number(parts[1]) || 0);
 
@@ -68,7 +70,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'bulk') {
     const users = await getUsers(env, game);
     await setState(env, callback.from.id, { mode: 'bulk', game, page });
-    const lines = users.map((user) => formatUserLine(game, user)).join('\n');
+    const lines = users.map((user) => formatUserLine(user)).join('\n');
     await upsert(token, chatId, messageId,
       `${gameTitle(game)} — ویرایش سریع همه\n\nکل لیست را ادیت کنید و دوباره بفرستید. برای حذف کاربر، خطش را پاک کنید. برای اضافه کردن، یک خط جدید بسازید.\n\n${formatHelp(game)}\n\n${lines}`,
       [[{ text: '⬅️ لغو', callback_data: `${prefix}list:${page}` }]],
@@ -78,8 +80,11 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
 
   if (action === 'add') {
     await setState(env, callback.from.id, { mode: 'add', game, page });
+    const example = game === 'ghost'
+      ? 'ShadowX | 2.5 | 0.5@1.35, 1.2@2.1'
+      : 'RocketX | 3 | 5@1.35, 12@2.1';
     await upsert(token, chatId, messageId,
-      `${gameTitle(game)} — افزودن کاربر\n\nیک خط بفرستید:\n${formatHelp(game)}\n\n${game === 'ghost' ? 'مثال: ShadowX | 2.5 | 0.5@1.35, 1.2@2.1' : 'مثال: RocketX | 5@1.35, 12@2.1'}`,
+      `${gameTitle(game)} — افزودن کاربر\n\nیک خط بفرستید:\n${formatHelp(game)}\n\nمثال: ${example}`,
       [[{ text: '⬅️ لغو', callback_data: `${prefix}list:${page}` }]],
     );
     return ok();
@@ -90,11 +95,18 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const editPage = Math.max(0, Number(parts[2]) || 0);
     const users = await getUsers(env, game);
     const user = users[index];
-    if (!user) return sendUsersMenu(env, token, chatId, game, editPage, messageId, '❌ کاربر پیدا نشد.').then(() => ok());
+    if (!user) {
+      await sendUsersMenu(env, token, chatId, game, editPage, messageId, '❌ کاربر پیدا نشد.');
+      return ok();
+    }
     await setState(env, callback.from.id, { mode: 'edit', game, userIndex: index, page: editPage });
+    const line = formatUserLine(user);
+    const keyboard: Keyboard = [];
+    if (line.length <= MAX_COPY_TEXT) keyboard.push([{ text: '📋 کپی همین خط', copy_text: { text: line } }]);
+    keyboard.push([{ text: '⬅️ لغو', callback_data: `${prefix}list:${editPage}` }]);
     await upsert(token, chatId, messageId,
-      `${gameTitle(game)} — ویرایش ${user.name}\n\nهمین یک خط را تغییر بده و بفرست:\n\n${formatUserLine(game, user)}\n\n${formatHelp(game)}`,
-      [[{ text: '⬅️ لغو', callback_data: `${prefix}list:${editPage}` }]],
+      `${gameTitle(game)} — ویرایش ${user.name}\n\nهمین یک خط را تغییر بده و بفرست:\n\n${line}\n\n${formatHelp(game)}${line.length > MAX_COPY_TEXT ? '\n\n⚠️ این خط بیشتر از محدودیت ۲۵۶ کاراکتری دکمه Copy تلگرام است.' : ''}`,
+      keyboard,
     );
     return ok();
   }
@@ -121,7 +133,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'reset') {
     if (parts[1] !== 'confirm') {
       await upsert(token, chatId, messageId,
-        `♻️ ${gameTitle(game)}\n\nهمه کاربران و Bet Optionهای این بازی به پیش‌فرض خودش برمی‌گردد.`,
+        `♻️ ${gameTitle(game)}\n\nهمه کاربران، زمان ورود و Bet Optionهای این بازی به پیش‌فرض خودش برمی‌گردد.`,
         [[{ text: '✅ ریست کن', callback_data: `${prefix}reset:confirm:${page}` }], [{ text: '⬅️ انصراف', callback_data: `${prefix}list:${page}` }]],
       );
       return ok();
@@ -165,7 +177,6 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     const parsed = parseUserLine(state.game, text);
     if (!parsed) throw new Error(lineError(state.game));
     const users = await getUsers(env, state.game);
-
     if (state.mode === 'add') {
       if (users.length >= MAX_USERS) throw new Error(`حداکثر ${MAX_USERS} کاربر مجاز است.`);
       users.push(parsed);
@@ -191,19 +202,16 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
   const safePage = Math.min(Math.max(0, page), totalPages - 1);
   const start = safePage * PAGE_SIZE;
   const visible = users.slice(start, start + PAGE_SIZE);
-  const prefix = game === 'crash' ? 'botadmin:crashlive:' : 'botadmin:ghostlive:';
+  const prefix = gamePrefix(game);
   const lines = visible.map((user, localIndex) => {
     const number = start + localIndex + 1;
     const bets = user.bets.map((bet) => `${trimNumber(bet.amount)}→${trimNumber(bet.cashoutMultiplier)}x`).join(', ');
-    return game === 'ghost'
-      ? `${number}. ${user.name} · ${trimNumber(user.betSecond)}s · ${bets}`
-      : `${number}. ${user.name} · ${bets}`;
+    return `${number}. ${user.name} · ${trimNumber(user.betSecond)}s · ${bets}`;
   });
 
   const rows: Keyboard = [
     [{ text: '✏️ ویرایش سریع همه', callback_data: `${prefix}bulk:${safePage}` }, { text: '➕ افزودن کاربر', callback_data: `${prefix}add:${safePage}` }],
   ];
-
   visible.forEach((user, localIndex) => {
     const index = start + localIndex;
     rows.push([
@@ -211,7 +219,6 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
       { text: '🗑', callback_data: `${prefix}delete:${index}:${safePage}` },
     ]);
   });
-
   if (totalPages > 1) {
     rows.push([
       { text: '◀️', callback_data: `${prefix}list:${Math.max(0, safePage - 1)}` },
@@ -222,8 +229,11 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
   rows.push([{ text: '♻️ Reset', callback_data: `${prefix}reset:ask:${safePage}` }, { text: '🔄 Refresh', callback_data: `${prefix}refresh:${safePage}` }]);
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
 
+  const timing = game === 'crash'
+    ? 'هر کاربر زمان ورود مستقل ۰ تا ۸ ثانیه دارد؛ ۰ یعنی ابتدای بازه‌ی Live Bets و ۸ یعنی نزدیک شروع راند.'
+    : 'هر کاربر زمان ورود مستقل ۰ تا ۶.۵ ثانیه در Ghost Run دارد.';
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}${gameTitle(game)}\n\n${game === 'ghost' ? 'کاملاً مستقل از Crash. زمان ظاهر شدن هر کاربر (second) هم مخصوص Ghost Run است.' : 'کاملاً مستقل از Ghost Run. اینجا فقط نام، مبلغ Bet و Cashout Multiplierهای Crash تنظیم می‌شوند.'}\n\n${lines.join('\n') || 'بدون کاربر'}\n\nبرای سرعت، ویرایش سریع همه را بزنید تا کل لیست را با یک پیام تغییر دهید.`,
+    `${notice ? notice + '\n\n' : ''}${gameTitle(game)}\n\n${timing}\nاین تنظیمات کاملاً از بازی دیگر مستقل است.\n\n${lines.join('\n') || 'بدون کاربر'}\n\nبرای سرعت، ویرایش سریع همه را بزنید تا کل لیست را با یک پیام تغییر دهید.`,
     rows,
   );
 }
@@ -237,12 +247,13 @@ function parseBulk(game: GameKind, text: string): LiveUser[] | null {
 
 function parseUserLine(game: GameKind, line: string): LiveUser | null {
   const parts = line.split('|').map((part) => part.trim());
-  if ((game === 'crash' && parts.length !== 2) || (game === 'ghost' && parts.length !== 3)) return null;
+  if (parts.length !== 3) return null;
   const name = cleanName(parts[0]);
   if (!name) return null;
-  const betSecond = game === 'ghost' ? Number(parts[1]) : 0;
-  if (game === 'ghost' && (!Number.isFinite(betSecond) || betSecond < 0 || betSecond > 6.5)) return null;
-  const rawBets = parts[game === 'ghost' ? 2 : 1].split(',').map((part) => part.trim()).filter(Boolean);
+  const betSecond = Number(parts[1]);
+  const maxSecond = game === 'crash' ? 8 : 6.5;
+  if (!Number.isFinite(betSecond) || betSecond < 0 || betSecond > maxSecond) return null;
+  const rawBets = parts[2].split(',').map((part) => part.trim()).filter(Boolean);
   if (!rawBets.length || rawBets.length > MAX_BETS) return null;
   const bets: LiveBet[] = [];
   for (const raw of rawBets) {
@@ -254,18 +265,18 @@ function parseUserLine(game: GameKind, line: string): LiveUser | null {
     if (!Number.isFinite(cashoutMultiplier) || cashoutMultiplier < 1.01 || cashoutMultiplier > 60) return null;
     bets.push({ amount, cashoutMultiplier });
   }
-  return { name, betSecond: game === 'ghost' ? Math.round(betSecond * 10) / 10 : 0, bets };
+  return { name, betSecond: Math.round(betSecond * 10) / 10, bets };
 }
 
-function formatUserLine(game: GameKind, user: LiveUser): string {
+function formatUserLine(user: LiveUser): string {
   const bets = user.bets.map((bet) => `${trimNumber(bet.amount)}@${trimNumber(bet.cashoutMultiplier)}`).join(', ');
-  return game === 'ghost' ? `${user.name} | ${trimNumber(user.betSecond)} | ${bets}` : `${user.name} | ${bets}`;
+  return `${user.name} | ${trimNumber(user.betSecond)} | ${bets}`;
 }
 
 function formatHelp(game: GameKind): string {
-  return game === 'ghost'
-    ? 'فرمت Ghost: Name | second | amount@multiplier, amount@multiplier'
-    : 'فرمت Crash: Name | amount@multiplier, amount@multiplier';
+  return game === 'crash'
+    ? 'فرمت Crash: Name | second(0-8) | amount@multiplier, amount@multiplier'
+    : 'فرمت Ghost: Name | second(0-6.5) | amount@multiplier, amount@multiplier';
 }
 
 function bulkError(game: GameKind): string {
@@ -273,7 +284,8 @@ function bulkError(game: GameKind): string {
 }
 
 function lineError(game: GameKind): string {
-  return `فرمت درست نیست. ${formatHelp(game)}. ${game === 'ghost' ? 'second باید بین 0 تا 6.5 باشد. ' : ''}Multiplier باید بین 1.01 تا 60 باشد.`;
+  const maxSecond = game === 'crash' ? '8' : '6.5';
+  return `فرمت درست نیست. ${formatHelp(game)}. second باید بین 0 تا ${maxSecond} و Multiplier بین 1.01 تا 60 باشد.`;
 }
 
 async function getUsers(env: Env, game: GameKind): Promise<LiveUser[]> {
@@ -295,7 +307,7 @@ async function resetUsers(env: Env, game: GameKind): Promise<void> {
 }
 
 function fromCrashUser(user: CrashVirtualUser): LiveUser {
-  return { name: user.name, betSecond: 0, bets: user.bets.map((bet) => ({ ...bet })) };
+  return { name: user.name, betSecond: user.betSecond, bets: user.bets.map((bet) => ({ ...bet })) };
 }
 
 function fromGhostUser(user: GhostRunVirtualUser): LiveUser {
@@ -317,6 +329,10 @@ function trimNumber(value: number): string {
 
 function gameTitle(game: GameKind): string {
   return game === 'ghost' ? '👻 Ghost Run Live Bets' : '🚀 Crash Live Bets';
+}
+
+function gamePrefix(game: GameKind): string {
+  return game === 'ghost' ? 'botadmin:ghostlive:' : 'botadmin:crashlive:';
 }
 
 async function getState(env: Env, userId: number): Promise<State | null> {
