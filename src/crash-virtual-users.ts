@@ -29,7 +29,6 @@ export async function ensureCrashVirtualColumns(db:D1Database){
   await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_order INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
 }
 
-
 export async function seedCrashVirtualUsers(db:D1Database, roundId:number, revealStartMs = Date.now(), revealEndMs = revealStartMs){
   const found = await db.prepare('SELECT COUNT(*) AS n FROM crash_live_bets WHERE round_id=? AND is_virtual=1').bind(roundId).first<{n:number}>();
   if(Number(found?.n||0)>0)return;
@@ -47,12 +46,12 @@ export async function seedCrashVirtualUsers(db:D1Database, roundId:number, revea
     const amount = option ? Math.max(1, Math.floor(option.amount * NANO)) : amountNano(roundId,i,risk);
     const target = option ? option.cashoutMultiplier : targetCashout(roundId,i,risk,stop);
     const username = configured ? configured.name : scheduledName(roundId,hourSlot,i);
-    const revealAt = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    const automaticReveal = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    const revealAt = configured ? configuredRevealAt(configured,revealStartMs,revealEndMs,automaticReveal) : automaticReveal;
     batch.push(stmt.bind(roundId,'virtual_'+hourSlot+'_'+roundId+'_'+i,username,amount,target,revealAt,i + 1,revealAt,revealAt));
   }
   if(batch.length)await db.batch(batch);
 }
-
 
 export async function buildCrashVirtualLiveBets(env:{DB:D1Database; BOT_CACHE:any}, roundId:number, revealStartMs = Date.now(), revealEndMs = revealStartMs, now = Date.now(), state = getCrashRoundState(now)){
   const configuredUsers = await getCrashVirtualUsers(env).then((config) => config.users).catch((error) => { console.warn('load crash virtual users failed', error); return [] as CrashVirtualUser[]; });
@@ -64,7 +63,8 @@ export async function buildCrashVirtualLiveBets(env:{DB:D1Database; BOT_CACHE:an
     const option = pickConfiguredBet(configured, roundId, i) || { amount: 1, cashoutMultiplier: 1.5 };
     const amount = Math.max(1, Math.floor(Number(option.amount || 1) * NANO));
     const target = Math.max(1.01, Math.floor(Number(option.cashoutMultiplier || 1.5) * 100) / 100);
-    const revealAt = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    const automaticReveal = Math.floor(revealStartMs + (count < 2 ? 0 : revealWindow * (i / (count - 1))));
+    const revealAt = configuredRevealAt(configured,revealStartMs,revealEndMs,automaticReveal);
     const settled = virtualStatus(roundId, target, stop, state);
     return {
       round_id: roundId,
@@ -84,6 +84,13 @@ export async function buildCrashVirtualLiveBets(env:{DB:D1Database; BOT_CACHE:an
   });
 }
 
+function configuredRevealAt(user:CrashVirtualUser,revealStartMs:number,revealEndMs:number,fallback:number){
+  const raw = Number(user.betSecond);
+  if(!Number.isFinite(raw))return fallback;
+  const windowSeconds = Math.max(0,(revealEndMs-revealStartMs)/1000);
+  const second = Math.max(0,Math.min(8,windowSeconds,raw));
+  return Math.min(revealEndMs,Math.max(revealStartMs,Math.floor(revealStartMs+second*1000)));
+}
 
 function virtualStatus(roundId:number,target:number,stop:number,state:CrashRoundState){
   if(roundId < state.id || (roundId === state.id && state.waiting))return target < stop ? { status: 'cashout', cashoutMultiplier: target } : { status: 'crashed', cashoutMultiplier: null };
