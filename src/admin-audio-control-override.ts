@@ -5,15 +5,15 @@ export const ADMIN_AUDIO_CONTROL_OVERRIDE_SCRIPT = `<script>
   function apply(){
     var play=document.getElementById('playMiniAudio');
     var stop=document.getElementById('stopMiniAudio');
-    if(play){play.innerHTML=playSvg();play.setAttribute('aria-label','Play in mini app')}
-    if(stop){stop.innerHTML=stopSvg();stop.setAttribute('aria-label','Stop in mini app')}
+    if(play&&play.getAttribute('data-vexa-audio-icon')!=='1'){play.innerHTML=playSvg();play.setAttribute('aria-label','Play in mini app');play.setAttribute('data-vexa-audio-icon','1')}
+    if(stop&&stop.getAttribute('data-vexa-audio-icon')!=='1'){stop.innerHTML=stopSvg();stop.setAttribute('aria-label','Stop in mini app');stop.setAttribute('data-vexa-audio-icon','1')}
     if(document.getElementById('adminAudioIconOverride'))return;
     var s=document.createElement('style');
     s.id='adminAudioIconOverride';
     s.textContent='#sectionAudio .audio-action{font-size:0!important;height:42px!important;border-radius:999px!important;background:rgba(255,255,255,.045)!important;border:1px solid rgba(255,255,255,.18)!important;color:#fff!important;display:grid!important;place-items:center!important;padding:0!important;box-shadow:0 14px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.16)!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important}#sectionAudio .audio-action svg{width:22px;height:22px;fill:currentColor;display:block;filter:drop-shadow(0 2px 7px rgba(0,0,0,.35))}#sectionAudio .audio-action.active{background:rgba(255,255,255,.075)!important;color:#fff!important;border-color:rgba(255,255,255,.28)!important}';
     document.head.appendChild(s);
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
-  setInterval(apply,500);
+  function observe(){apply();if(!window.MutationObserver||!document.body)return;var queued=false;new MutationObserver(function(){if(queued)return;queued=true;queueMicrotask(function(){queued=false;apply()})}).observe(document.body,{childList:true,subtree:true})}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
 })();
 </script>`;
