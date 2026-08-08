@@ -8,14 +8,34 @@ const PREDICT_SETTINGS_SCRIPT = `
     window.__vexaPredictLazyFetchGuard=1;
     (function(){
       var nativeFetch=window.fetch&&window.fetch.bind(window);
-      var waiting=[];
+      var waiting={};
+      var inFlight={};
       if(!nativeFetch)return;
-      function isPredictApi(input){var url=String((input&&input.url)||input||'');return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0}
+      function urlOf(input){return String((input&&input.url)||input||'')}
+      function methodOf(input,init){return String((init&&init.method)||(input&&input.method)||'GET').toUpperCase()}
+      function isPredictApi(input){var url=urlOf(input);return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0}
       function isPredictActive(){var root=document.getElementById('predictzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
-      function flush(){if(!isPredictActive()||!waiting.length)return;var jobs=waiting.splice(0);jobs.forEach(function(job){nativeFetch(job.input,job.init).then(job.resolve,job.reject)})}
-      window.fetch=function(input,init){if(isPredictApi(input)&&!isPredictActive()){return new Promise(function(resolve,reject){waiting.push({input:input,init:init,resolve:resolve,reject:reject})})}return nativeFetch(input,init)};
-      document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view="predictzone"],[data-view="predict"]'):null;if(target){setTimeout(flush,80);setTimeout(flush,260);setTimeout(flush,700)}},true);
-      document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(flush,80)});
+      function sharedFetch(input,init){
+        if(methodOf(input,init)!=='GET')return nativeFetch(input,init);
+        var key=urlOf(input);var hit=inFlight[key];if(hit)return hit.then(function(r){return r.clone()});
+        var base=nativeFetch(input,init);
+        inFlight[key]=base.then(function(r){return r.clone()}).finally(function(){delete inFlight[key]});
+        return base;
+      }
+      function flush(){
+        if(!isPredictActive())return;
+        var jobs=waiting;waiting={};
+        Object.keys(jobs).forEach(function(key){var job=jobs[key];sharedFetch(job.input,job.init).then(function(response){job.clients.forEach(function(client){client.resolve(response.clone())})},function(error){job.clients.forEach(function(client){client.reject(error)})})});
+      }
+      window.fetch=function(input,init){
+        if(!isPredictApi(input))return nativeFetch(input,init);
+        if(isPredictActive())return sharedFetch(input,init);
+        if(methodOf(input,init)!=='GET')return nativeFetch(input,init);
+        var key=urlOf(input);
+        return new Promise(function(resolve,reject){var job=waiting[key];if(!job){job=waiting[key]={input:input,init:init,clients:[]}}job.clients.push({resolve:resolve,reject:reject})});
+      };
+      document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view="predictzone"],[data-view="predict"]'):null;if(target)queueMicrotask(flush)},true);
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)queueMicrotask(flush)});
       if(window.MutationObserver){var root=document.getElementById('predictzone');if(root)new MutationObserver(flush).observe(root,{attributes:true,attributeFilter:['class']})}
     })();
   }
