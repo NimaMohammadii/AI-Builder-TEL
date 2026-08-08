@@ -4,6 +4,7 @@ import { PUBLIC_BASE_URL } from './utils';
 import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 import { getUserControls, setUserBanned, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
 import { formatTonAmount, getFinanceLimits, getFinanceStats, setFinanceLimits, tonToNano } from './admin-finance-controls';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
@@ -382,11 +383,10 @@ async function upsertMessage(env: Env, token: string, tg: TgApi, chatId: number,
 }
 
 async function getAdminMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
-  const value = Number(await env.BOT_CACHE.get(`botadmin:menu:${chatId}`).catch(() => null));
-  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+  return getTelegramMenuMessageId(env, chatId);
 }
 async function setAdminMenuMessageId(env: Env, chatId: number, messageId: number): Promise<void> {
-  await env.BOT_CACHE.put(`botadmin:menu:${chatId}`, String(messageId), { expirationTtl: 60 * 60 * 24 * 30 });
+  await setTelegramMenuMessageId(env, chatId, messageId);
 }
 
 async function getAdminState(env: Env, adminId: unknown): Promise<AdminState | null> { return env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as Promise<AdminState | null>; }

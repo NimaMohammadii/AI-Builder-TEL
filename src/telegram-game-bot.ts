@@ -3,6 +3,7 @@ import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-de
 import { handleSpecialWheelPreCheckout, handleSpecialWheelSuccessfulPayment } from './special-wheel-engine';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type TelegramApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type TelegramEnvelope<T = unknown> = {
@@ -11,6 +12,7 @@ type TelegramEnvelope<T = unknown> = {
   description?: string;
   error_code?: number;
 };
+type TelegramSentMessage = { message_id?: number };
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
   const token = botToken(env);
@@ -73,14 +75,15 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
     if (adminHandled) return;
 
     if (adminCommand) {
-      await telegram(token, 'sendMessage', {
-        chat_id: message.chat.id,
+      await deleteIncomingMessage(token, message.chat.id, message.message_id);
+      await replaceMenuMessage(env, token, message.chat.id, {
         text: `دسترسی ادمین برای این حساب فعال نیست.\n\nآیدی عددی تلگرام شما: ${message.from?.id ?? message.chat.id}\nاین عدد را داخل BOT_ADMIN قرار بدهید.`,
       }).catch(() => undefined);
       return;
     }
 
-    await sendGameHome(token, message.chat.id);
+    await deleteIncomingMessage(token, message.chat.id, message.message_id);
+    await sendGameHome(env, token, message.chat.id);
   }
 }
 
@@ -89,9 +92,8 @@ function isAdminCommand(text: string | undefined): boolean {
   return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
 }
 
-async function sendGameHome(token: string, chatId: number): Promise<void> {
-  await telegram(token, 'sendMessage', {
-    chat_id: chatId,
+async function sendGameHome(env: Env, token: string, chatId: number): Promise<void> {
+  await replaceMenuMessage(env, token, chatId, {
     text: 'Open the Mini App',
     reply_markup: {
       inline_keyboard: [[{
@@ -100,6 +102,22 @@ async function sendGameHome(token: string, chatId: number): Promise<void> {
       }]],
     },
   });
+}
+
+async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>): Promise<void> {
+  const messageId = await getTelegramMenuMessageId(env, chatId);
+  const payload = { chat_id: chatId, ...content };
+  if (messageId) {
+    const edited = await telegram(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
+    if (edited) return;
+    await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
+  }
+  const sent = await telegram<TelegramSentMessage>(token, 'sendMessage', payload);
+  if (sent?.message_id) await setTelegramMenuMessageId(env, chatId, sent.message_id);
+}
+
+async function deleteIncomingMessage(token: string, chatId: number, messageId: number): Promise<void> {
+  await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
 }
 
 function botToken(env: Env): string {

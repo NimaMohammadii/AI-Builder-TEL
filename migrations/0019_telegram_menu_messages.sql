@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS telegram_menu_messages (
+  chat_id INTEGER PRIMARY KEY,
+  message_id INTEGER NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
