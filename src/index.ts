@@ -59,7 +59,7 @@ app.post('/app/api/level/xp', async (c) => {
     const body = await c.req.json().catch(() => ({})) as LevelXpBody;
     const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
     const rawEvents = Array.isArray(body.events) ? body.events : [body];
-    const events = rawEvents.slice(0, 40);
+    const events = rawEvents.slice(0, 120);
     let profile = await getUserLevel(c.env, userId);
     let leveledUp = false;
     let previousLevel = profile.level;
@@ -89,7 +89,7 @@ app.post('/admin/panel', async (c) => {
   const key = String(form.get('key') ?? '');
   if (!isAdminPassword(c.env, key)) return html(adminHtml('Wrong admin key.'));
   const challenge = await createAdminPasswordChallenge(c.env);
-  if (challenge.ok === false) return html(adminHtml(challenge.error));
+  if (challenge.ok === false) return html(adminCodeHtml(challenge.challengeId));
   return html(adminCodeHtml(challenge.challengeId));
 });
 app.post('/admin/verify', async (c) => {
@@ -154,7 +154,7 @@ app.post('/admin/api/upload-home-intro-image', async (c) => {
   const form = await c.req.formData();
   const file = form.get('image');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
+  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
   const version = String(Date.now());
   await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
   return c.json({ ok: true, url: `/app/api/home-intro-image-cached.png?v=${version}` });
