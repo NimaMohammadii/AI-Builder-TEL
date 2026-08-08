@@ -142,6 +142,9 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
         { text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' },
       ],
       [
+        { text: '💸 Gram Withdrawals', callback_data: 'botadmin:gw:l:pending:0' },
+      ],
+      [
         { text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' },
         { text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' },
       ],
