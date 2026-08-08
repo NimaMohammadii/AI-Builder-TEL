@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
-import { isSpecialWheelEnabled } from './special-wheel-mode';
+import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
 import { getSpecialWheelPriceStars } from './special-wheel-engine';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
@@ -30,7 +30,8 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     || data === 'botadmin:access:list'
     || data === 'botadmin:access:refresh'
     || data.startsWith('botadmin:access:select:')
-    || data.startsWith('botadmin:access:unlock:');
+    || data.startsWith('botadmin:access:unlock:')
+    || data.startsWith('botadmin:specialwheel:');
   if (!ours) return null;
   if (!isAdmin(env, callback.from.id)) return ok();
 
@@ -40,6 +41,13 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
 
   if (data === 'botadmin:home') {
     await clearAdminInputStates(env, callback.from.id);
+    await sendHome(env, token, chatId, messageId);
+    return ok();
+  }
+
+  if (data.startsWith('botadmin:specialwheel:')) {
+    await clearAdminInputStates(env, callback.from.id);
+    await setSpecialWheelEnabled(env, data.endsWith(':on'));
     await sendHome(env, token, chatId, messageId);
     return ok();
   }
@@ -149,7 +157,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
 async function sendAccessMenu(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const locks = await getSectionAccess(env);
-  const lockMap = new Map(locks.map((lock) => [lock.sectionId, lock]));
+  const lockMap = new Map(locks.map((lock) => [lock.sectionId, lock] as const));
   const textLines = ACCESS_SECTIONS.map(([id, label]) => {
     const lock = lockMap.get(id);
     return lock ? `🔒 ${label} — ${formatSeconds(lock.lockedUntil - now)} باقی‌مانده` : `🔓 ${label}`;
