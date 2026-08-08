@@ -139,6 +139,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
     [
       [{ text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' }],
       [{ text: '👥 Online Counts', callback_data: 'botadmin:online:list' }],
+      [{ text: '🎰 Slot Live Bets', callback_data: 'botadmin:slotlive:list:0' }],
       [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
       [{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }],
       [{ text: '🚀 10 تصویر داخل Crash', callback_data: 'botadmin:crashstage' }],
