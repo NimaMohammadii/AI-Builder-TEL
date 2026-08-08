@@ -9,7 +9,7 @@ export const WHEEL_SECTION = `
     .wheel-view{position:relative;box-sizing:border-box;height:100%;min-height:100%;padding:0 14px calc(96px + env(safe-area-inset-bottom));background:transparent!important;color:#fff;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
     .wheel-wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;display:grid;gap:12px}
 
-    /* Exact ai-configa wheel component */
+    /* Wheel component */
     .wheel-stage{position:relative;width:min(74vw,286px);height:auto;aspect-ratio:1;margin:20px auto 13px;display:block}
     .wheel-rotor{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:conic-gradient(from 0deg,#E8D5DA 0deg 72deg,#1A0B0F 72deg 360deg);border:1px solid rgba(232,213,218,.22);box-shadow:0 26px 70px rgba(0,0,0,.56),inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 0 7px rgba(8,3,5,.16);will-change:transform;transform:rotate(0deg)}
     .wheel-rotor:after{content:"";position:absolute;inset:7px;border-radius:50%;border:1px solid rgba(232,213,218,.11);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 1px 0 rgba(0,0,0,.18);pointer-events:none}
@@ -20,7 +20,7 @@ export const WHEEL_SECTION = `
     .wheel-hub:after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px solid rgba(232,213,218,.07);pointer-events:none}
     .wheel-pointer{position:absolute;z-index:6;left:50%;top:-3px;width:0;height:0;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:23px solid #fff;filter:drop-shadow(0 5px 8px rgba(0,0,0,.65))}
 
-    /* Original AI-Builder-TEL controls, unchanged */
+    /* Original wheel controls, unchanged */
     .wheel-panel{position:relative;border:0!important;border-radius:28px;background:transparent!important;box-shadow:none!important;padding:12px 14px 14px;margin-bottom:48px}
     .wheel-controls{display:grid;gap:10px}
     .wheel-input-row{display:grid;grid-template-columns:1fr auto auto;gap:8px}

@@ -26,7 +26,7 @@ export const LEVEL_SYNC_SCRIPT = `
   var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,tower:1,slot:1,coinflip:1,hilo:1,ghostrun:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-4',min:1,max:4,text:'Start your Vexa journey.'},
-    {name:'Explorer',range:'Level 5-9',min:5,max:9,text:'Discover games, AI and rewards.'},
+    {name:'Explorer',range:'Level 5-9',min:5,max:9,text:'Discover games and rewards.'},
     {name:'Pro',range:'Level 10-15',min:10,max:15,text:'Consistent player with real momentum.'},
     {name:'Elite',range:'Level 16-24',min:16,max:24,text:'Premium status and strong activity.'},
     {name:'Master',range:'Level 25-39',min:25,max:39,text:'Advanced user with high control.'},

@@ -290,7 +290,7 @@ export function miniAppShellHtml(): string {
             <h1 id="brandTitle">Vexa FLOW</h1>
             <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)">Starter</div>
           </div>
-          <p id="userLine">AI Bot Control</p>
+          <p id="userLine">Game Control</p>
         </div>
       </div>
       <div class="top-balance-wrap">

@@ -61,11 +61,7 @@ async function aggregate(env: Env, where: string): Promise<{ amountNano: number;
 
 async function activeUsers(env: Env, where: string): Promise<number> {
   try {
-    const row = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, last_seen_at, updated_at, created_at FROM app_users
-      UNION ALL
-      SELECT telegram_user_id, last_seen_at, updated_at, created_at FROM bot_users
-    ) SELECT COUNT(DISTINCT telegram_user_id) AS count FROM all_users WHERE ${where}`).first<{ count: number | string }>();
+    const row = await env.DB.prepare(`SELECT COUNT(DISTINCT telegram_user_id) AS count FROM app_users WHERE ${where}`).first<{ count: number | string }>();
     return Number(row?.count || 0);
   } catch { return 0; }
 }

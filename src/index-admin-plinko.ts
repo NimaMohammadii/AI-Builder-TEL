@@ -6,7 +6,7 @@ import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
-import { setTelegramWebhook } from './telegram-agent-safe';
+import { setTelegramWebhook } from './telegram-game-bot';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';

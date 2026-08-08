@@ -1,4 +1,4 @@
-import type { Env, TelegramUpdate } from './types';
+import type { Env } from './types';
 import { getUserLevel } from './levels';
 import { ensureTonBalanceColumn, getUserControls } from './user-controls';
 
@@ -30,26 +30,6 @@ type BulkDeleteResult = { ok: true; deleted: Record<string, number>; kvDeleted: 
 const CLIENT_RESET_PREFIX = 'miniapp-client-reset:';
 const CLIENT_RESET_ALL_KEY = 'miniapp-client-reset:all';
 const CLIENT_RESET_TTL_SECONDS = 180 * 24 * 60 * 60;
-
-export async function trackTelegramBotUser(env: Env, botId: string, update: TelegramUpdate): Promise<void> {
-  const from = update.message?.from ?? update.callback_query?.from ?? update.pre_checkout_query?.from;
-  if (!from?.id) return;
-  const section = update.callback_query ? 'callback' : update.pre_checkout_query ? 'payment' : cleanSection(update.message?.text?.startsWith('/') ? update.message.text.slice(1) : 'message');
-  try {
-    await env.DB.prepare(`INSERT INTO bot_users (bot_id, telegram_user_id, first_name, username, current_section, last_seen_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT(bot_id, telegram_user_id) DO UPDATE SET
-        first_name = excluded.first_name,
-        username = excluded.username,
-        current_section = excluded.current_section,
-        last_seen_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP`)
-      .bind(botId, String(from.id), cleanText(from.first_name, 120), cleanText(from.username, 80), section)
-      .run();
-  } catch (error) {
-    console.warn('track telegram bot user failed', error);
-  }
-}
 
 export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; banned: boolean; tonBalanceNano: number; winChancePercent: number; resetVersion: string; resetAllVersion: string } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
@@ -91,14 +71,10 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
-  const rows = await env.DB.prepare(`WITH all_users AS (
-      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source, region_code, language_code, timezone, return_count FROM app_users
-      UNION ALL
-      SELECT telegram_user_id, first_name, username, current_section, NULL AS ton_balance_nano, COALESCE(last_seen_at, updated_at) AS last_seen_at, created_at,
-        CASE WHEN bot_id = 'main' THEN 'ai_bot' WHEN bot_id = 'game' THEN 'game_bot' ELSE 'user_bot' END AS source, NULL AS region_code, NULL AS language_code, NULL AS timezone, 1 AS return_count
-      FROM bot_users
-    ), ranked AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn FROM all_users
+  const rows = await env.DB.prepare(`WITH ranked AS (
+      SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, 'game_bot' AS source, region_code, language_code, timezone, return_count,
+        ROW_NUMBER() OVER (PARTITION BY telegram_user_id ORDER BY datetime(COALESCE(last_seen_at, created_at)) DESC) AS rn
+      FROM app_users
     )
     SELECT telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, created_at, source, region_code, language_code, timezone, return_count
     FROM ranked
@@ -139,11 +115,10 @@ export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<st
     };
   }));
   const online = users.filter((user) => user.isActive).length;
-  const aiBot = users.filter((user) => user.source === 'ai_bot').length;
   const gameBot = users.filter((user) => user.source === 'game_bot').length;
   const userBot = users.filter((user) => user.source === 'user_bot').length;
   const totalTonBalanceNano = users.reduce((sum, user) => sum + Number(user.tonBalanceNano || 0), 0);
-  return { users, stats: { total: users.length, online, inactive: users.length - online, aiBot, gameBot, userBot, totalTonBalanceNano } };
+  return { users, stats: { total: users.length, online, inactive: users.length - online, gameBot, userBot, totalTonBalanceNano } };
 }
 
 export async function resetUserEverywhere(env: Env, userIdInput: unknown): Promise<{ ok: true; userId: string; deleted: Record<string, number>; kvDeleted: number; resetVersion: string }> {
@@ -170,7 +145,6 @@ export async function resetAllUsersEverywhere(env: Env): Promise<BulkDeleteResul
 function userTableDeletes(): Array<[string, string]> {
   return [
     ['app_users', 'telegram_user_id'],
-    ['bot_users', 'telegram_user_id'],
     ['user_controls', 'user_id'],
     ['ton_transactions', 'user_id'],
     ['ton_withdrawals', 'user_id'],
@@ -211,12 +185,8 @@ async function safeDeleteAll(env: Env, table: string): Promise<number> {
 async function deleteUserKv(env: Env, userId: string): Promise<number> {
   const keys = new Set<string>([
     `admin:user-controls:${userId}`,
-    `builder-ai-chat:${userId}`,
-    `builder-ai-history:${userId}`,
-    `builder-pending-action:${userId}`,
     `vexaUserControls:${userId}`,
   ]);
-  await collectKvByPrefix(env, `agent-dsl-state:`, keys, userId);
   await collectKvByPrefix(env, `image-mode:`, keys, userId);
   let count = 0;
   for (const key of keys) {
@@ -228,11 +198,7 @@ async function deleteUserKv(env: Env, userId: string): Promise<number> {
 async function deleteAllUserKv(env: Env): Promise<number> {
   const prefixes = [
     'admin:user-controls:',
-    'builder-ai-chat:',
-    'builder-ai-history:',
-    'builder-pending-action:',
     'vexaUserControls:',
-    'agent-dsl-state:',
     'image-mode:',
   ];
   let count = 0;
@@ -294,7 +260,6 @@ async function collectKvByPrefix(env: Env, prefix: string, keys: Set<string>, us
 }
 
 function sourceLabel(source: string): string {
-  if (source === 'ai_bot') return 'AI Bot';
   if (source === 'game_bot') return 'Game Bot';
   if (source === 'user_bot') return 'User Bot';
   return source || 'Unknown';

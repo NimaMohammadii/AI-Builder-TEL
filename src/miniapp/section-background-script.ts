@@ -8,8 +8,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
     'home-deposit-card':['#home [data-section-background-target="home-deposit-card"]','#home [data-action="open-deposit"]','#home .home-deposit-card'],
     'home-withdraw-card':['#home [data-section-background-target="home-withdraw-card"]','#home [data-action="open-withdraw"]','#home .home-withdraw-card'],
     connect:['#connect'],
-    'ai-miniapp':['[data-admin-image-slot="ai-miniapp"]','[data-section-background-target="ai-miniapp"]'],
-    'ai-chat':['[data-admin-image-slot="ai-chat"]','[data-section-background-target="ai-chat"]'],
     playzone:['#playzone','#playzone .play-zone-stage'],
     predict:['#predictzone','#predict'],
     'predict-zone-card':['#playzone .play-zone-predict-card','#playzone [data-admin-image-slot="predict-zone-card"]','#predictzone .predict-zone-glass-card'],
