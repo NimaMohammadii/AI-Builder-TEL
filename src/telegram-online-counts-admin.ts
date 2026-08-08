@@ -39,6 +39,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   }
   if (!isAdmin(env, callback.from.id)) return ok();
 
+  await clearOtherAdminStates(env, callback.from.id);
   await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
   const chatId = callback.message?.chat.id ?? callback.from.id;
   const messageId = callback.message?.message_id;
@@ -136,7 +137,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   const text = String(message.text || '').trim();
 
   if (isAdminCommand(text)) {
-    await clearState(env, userId);
+    await Promise.all([clearState(env, userId), clearOtherAdminStates(env, userId)]);
     return null;
   }
 
@@ -241,10 +242,10 @@ async function sendSectionMenu(env: Env, token: string, chatId: number, sectionI
 }
 
 function parseRange(text: string): OnlineCountRange | null {
-  const matches = text.match(/\d+/g);
-  if (!matches || matches.length !== 2) return null;
-  const a = Number(matches[0]);
-  const b = Number(matches[1]);
+  const match = text.trim().match(/^(\d{1,6})\s*(?:[-–—,:]\s*|\s+)(\d{1,6})$/);
+  if (!match) return null;
+  const a = Number(match[1]);
+  const b = Number(match[2]);
   if (!validCount(a) || !validCount(b)) return null;
   return a <= b ? { min: a, max: b } : { min: b, max: a };
 }
@@ -254,12 +255,10 @@ function parseBulkRanges(text: string): OnlineCountRange[] | null {
   if (lines.length !== 24) return null;
   const ranges: OnlineCountRange[] = [];
   for (let index = 0; index < 24; index += 1) {
-    const matches = lines[index].match(/\d+/g);
-    if (!matches || (matches.length !== 2 && matches.length !== 3)) return null;
-    const values = matches.map(Number);
-    if (values.length === 3 && values[0] !== index) return null;
-    const min = values.length === 3 ? values[1] : values[0];
-    const max = values.length === 3 ? values[2] : values[1];
+    const match = lines[index].match(/^(\d{1,2})\s+(\d{1,6})\s+(\d{1,6})$/);
+    if (!match || Number(match[1]) !== index) return null;
+    const min = Number(match[2]);
+    const max = Number(match[3]);
     if (!validCount(min) || !validCount(max)) return null;
     ranges.push(min <= max ? { min, max } : { min: max, max: min });
   }
@@ -303,7 +302,7 @@ async function getState(env: Env, userId: number): Promise<OnlineState | null> {
   const raw = await env.BOT_CACHE.get(stateKey(userId)).catch(() => null);
   if (!raw) return null;
   try {
-    const state = JSON.parse(raw) as Partial<OnlineState> & { mode?: string; sectionId?: string; hour?: number };
+    const state = JSON.parse(raw) as { mode?: string; sectionId?: string; hour?: number };
     const sectionId = normalizeSectionId(state.sectionId);
     if (!sectionId) return null;
     if (state.mode === 'bulk') return { mode: 'bulk', sectionId };
@@ -320,6 +319,14 @@ function setState(env: Env, userId: number, state: OnlineState): Promise<void> {
 
 function clearState(env: Env, userId: number): Promise<void> {
   return env.BOT_CACHE.delete(stateKey(userId)).catch(() => undefined);
+}
+
+async function clearOtherAdminStates(env: Env, userId: number): Promise<void> {
+  await Promise.all([
+    env.BOT_CACHE.delete(`admin:section-access-input:${userId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:game-card-upload:${userId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`botadmin:state:${userId}`).catch(() => undefined),
+  ]);
 }
 
 function stateKey(userId: number): string {
