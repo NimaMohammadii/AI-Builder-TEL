@@ -311,7 +311,6 @@ body:has(#ghostrun.active) .top {
   width: 86px;
   height: 100px;
   animation: ghostRunFloat 1.35s ease-in-out infinite;
-  background: url('/app/api/ghost-run-asset/ghostIdle.png') center/contain no-repeat;
 }
 #ghostrun .ghost-run-ghost-glow {
   position: absolute;
@@ -456,9 +455,6 @@ body:has(#ghostrun.active) .top {
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-rock { animation-duration: 2.7s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-plant { animation-duration: 3.1s; }
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-mushroom { animation-duration: 3.5s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ghost {
-  background-image: url('/app/api/ghost-run-asset/ghostMove.png');
-}
 #ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-main-button {
   background: linear-gradient(180deg, #8d1438, #4c071d);
   color: #fff;
@@ -537,63 +533,6 @@ body:has(#ghostrun.active) .top {
   display: none !important;
   background: transparent !important;
 }
-#ghostrun .ghost-run-moon {
-  background: url('/app/api/ghost-run-asset/moon.png') center/contain no-repeat !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-#ghostrun .ghost-run-moon:before,
-#ghostrun .ghost-run-moon:after,
-#ghostrun .ghost-run-rock,
-#ghostrun .ghost-run-plant,
-#ghostrun .ghost-run-mushroom,
-#ghostrun .ghost-run-layer-far,
-#ghostrun .ghost-run-layer-mid,
-#ghostrun .ghost-run-near-realism,
-#ghostrun .ghost-run-layer-near {
-  display: none !important;
-}
-#ghostrun .ghost-run-ground {
-  left: -50% !important;
-  right: -50% !important;
-  height: 132px !important;
-  background: url('/app/api/ghost-run-asset/ground.png') 0 bottom / auto 100% repeat-x !important;
-  box-shadow: none !important;
-  animation: ghostRunUploadedGround 3.6s linear infinite;
-}
-#ghostrun .ghost-run-ground:before { display: none !important; }
-#ghostrun .ghost-run-uploaded-trees,
-#ghostrun .ghost-run-uploaded-houses {
-  position: absolute;
-  z-index: 4;
-  pointer-events: none;
-  background-repeat: repeat-x;
-  background-position: 0 bottom;
-  background-size: auto 100%;
-  filter: drop-shadow(0 18px 18px rgba(0,0,0,.36));
-}
-#ghostrun .ghost-run-uploaded-tree-1 { left: -30%; right: -30%; bottom: 76px; height: 220px; background-image: url('/app/api/ghost-run-asset/tree1.png'); animation: ghostRunUploadedTree1 8.5s linear infinite; opacity: .82; }
-#ghostrun .ghost-run-uploaded-tree-2 { left: -25%; right: -25%; bottom: 68px; height: 250px; background-image: url('/app/api/ghost-run-asset/tree2.png'); animation: ghostRunUploadedTree2 6.6s linear infinite; opacity: .9; }
-#ghostrun .ghost-run-uploaded-tree-3 { left: -20%; right: -20%; bottom: 58px; height: 285px; background-image: url('/app/api/ghost-run-asset/tree3.png'); animation: ghostRunUploadedTree3 5.2s linear infinite; opacity: .98; }
-#ghostrun .ghost-run-uploaded-house-1 { left: -30%; right: -30%; bottom: 73px; height: 150px; background-image: url('/app/api/ghost-run-asset/house1.png'); animation: ghostRunUploadedHouse1 9.5s linear infinite; opacity: .86; }
-#ghostrun .ghost-run-uploaded-house-2 { left: -25%; right: -25%; bottom: 66px; height: 170px; background-image: url('/app/api/ghost-run-asset/house2.png'); animation: ghostRunUploadedHouse2 7.5s linear infinite; opacity: .9; }
-#ghostrun .ghost-run-uploaded-house-3 { left: -20%; right: -20%; bottom: 60px; height: 190px; background-image: url('/app/api/ghost-run-asset/house3.png'); animation: ghostRunUploadedHouse3 6s linear infinite; opacity: .95; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-ground { animation-duration: 1.8s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-tree-1 { animation-duration: 5.2s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-tree-2 { animation-duration: 4s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-tree-3 { animation-duration: 3.1s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-house-1 { animation-duration: 5.8s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-house-2 { animation-duration: 4.6s; }
-#ghostrun .ghost-run-screen[data-ghost-state='running'] .ghost-run-uploaded-house-3 { animation-duration: 3.7s; }
-@keyframes ghostRunUploadedGround { to { background-position: -420px bottom; } }
-@keyframes ghostRunUploadedBackground { to { background-position: -900px center; } }
-@keyframes ghostRunUploadedTree1 { to { background-position: -360px bottom; } }
-@keyframes ghostRunUploadedTree2 { to { background-position: -430px bottom; } }
-@keyframes ghostRunUploadedTree3 { to { background-position: -520px bottom; } }
-@keyframes ghostRunUploadedHouse1 { to { background-position: -390px bottom; } }
-@keyframes ghostRunUploadedHouse2 { to { background-position: -470px bottom; } }
-@keyframes ghostRunUploadedHouse3 { to { background-position: -560px bottom; } }
-
 /* Ghost Run risk-control system: fear, claim, and cinematic Reaper states. */
 #ghostrun .ghost-run-screen[data-ghost-state='idle'] .ghost-run-ground,
 #ghostrun .ghost-run-screen[data-ghost-state='movingForward'] .ghost-run-ground,
