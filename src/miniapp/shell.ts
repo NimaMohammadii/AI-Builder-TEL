@@ -62,6 +62,8 @@ import { PREDICT_ENTRY_LOADER_SCRIPT } from './predict-entry-loader-script';
 import { PREDICT_CARD_ACTIONS_SCRIPT } from './predict-card-actions-script';
 import { FOOTBALL_PREDICT_SCRIPT } from './football-predict-script';
 import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
+import { SECTION_ACCESS_SCRIPT } from './section-access-script';
+import { SECTION_ACCESS_STYLES } from './section-access-styles';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
@@ -160,6 +162,7 @@ const STYLES = [
   SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
+  SECTION_ACCESS_STYLES,
 ].join('');
 
 const INITIAL_SECTIONS = [
@@ -252,6 +255,7 @@ const SCRIPTS = [
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
   GAME_LIVE_COUNT_SCRIPT,
   TELEGRAM_BACK_BUTTON_SCRIPT,
+  SECTION_ACCESS_SCRIPT,
   SECTION_BACKGROUND_SCRIPT,
   MINIAPP_AUDIO_SCRIPT,
   XP_BAR_EFFECTS_SCRIPT,
