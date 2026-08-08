@@ -39,7 +39,7 @@ import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-coun
 import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
 import { WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
-import { PLAY_ZONE_SECTION } from './play-zone';
+import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
@@ -250,6 +250,7 @@ const SCRIPTS = [
   HOME_BLANK_CARDS_SCRIPT,
   HOME_SLOT_TUNING_SCRIPT,
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
+  PLAY_ZONE_VISIBILITY_SCRIPT,
   GAME_LIVE_COUNT_SCRIPT,
   TELEGRAM_BACK_BUTTON_SCRIPT,
   SECTION_ACCESS_SCRIPT,

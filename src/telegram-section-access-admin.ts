@@ -152,6 +152,7 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
         { text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' },
         { text: '👥 Online Counts', callback_data: 'botadmin:online:list' },
       ],
+      [{ text: '🎮 نمایش کارت‌های Play Hub', callback_data: 'botadmin:playcards' }],
       [
         { text: '🎰 Slot Live Bets', callback_data: 'botadmin:slotlive:list:0' },
         { text: '🚀 Crash Live Bets', callback_data: 'botadmin:crashlive:list:0' },

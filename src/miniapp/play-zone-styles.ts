@@ -1,4 +1,6 @@
 export const PLAY_ZONE_STYLES = `
+html:not(.play-zone-visibility-ready) #playzone [data-play-zone-card-id]{display:none!important}
+[data-play-zone-card-id][hidden]{display:none!important}
 .app{padding-top:calc(40px + env(safe-area-inset-top))!important}
 .content{height:calc(100dvh - 92px - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;overflow:hidden!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
 .content::-webkit-scrollbar,.play-zone-view::-webkit-scrollbar,.play-zone-stage::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
