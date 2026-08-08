@@ -1,6 +1,7 @@
 import type { Env } from './types';
-import { adjustUserTonBalance, assertUserNotBanned, getUserControls } from './user-controls';
+import { adjustUserTonBalance, assertUserNotBanned, ensureTonBalanceColumn, getUserControls } from './user-controls';
 import { getFinanceLimits } from './admin-finance-controls';
+import { ensureTonTransactionsTable } from './ton-transactions';
 
 const TON_NANO = 1_000_000_000;
 const MIN_WITHDRAW_NANO = 10 * TON_NANO;
@@ -74,27 +75,61 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   const controls = await getUserControls(env, userId);
   if (controls.tonBalanceNano < amountNano) throw new Error('Not enough Gram balance');
 
-  await ensureTonWithdrawalsTable(env);
-  await enforceDailyWithdrawalLimit(env, userId, amountNano);
+  await Promise.all([
+    ensureTonWithdrawalsTable(env),
+    ensureTonBalanceColumn(env),
+    ensureTonTransactionsTable(env),
+  ]);
+
   const id = 'wd_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+  const transactionId = 'txn_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+  const description = 'Withdrawal request to ' + shortWallet(wallet);
+  const metadataJson = JSON.stringify({ walletAddress: wallet, displayCurrency: 'Gram' });
 
-  await env.DB.prepare(`INSERT INTO ton_withdrawals (id, user_id, wallet_address, amount_nano, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
-    .bind(id, userId, wallet, amountNano)
-    .run();
+  const results = await env.DB.batch([
+    env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
+      VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(telegram_user_id) DO NOTHING`).bind(userId),
+    env.DB.prepare(`UPDATE app_users
+      SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP
+      WHERE telegram_user_id = ?
+        AND ton_balance_nano >= ?
+        AND (
+          SELECT COALESCE(SUM(amount_nano), 0)
+          FROM ton_withdrawals
+          WHERE user_id = ?
+            AND status != 'rejected'
+            AND date(created_at) = date('now')
+        ) + ? <= ?`)
+      .bind(amountNano, userId, amountNano, userId, amountNano, DAILY_WITHDRAW_LIMIT_NANO),
+    env.DB.prepare(`INSERT INTO ton_withdrawals
+      (id, user_id, wallet_address, amount_nano, status, created_at, updated_at)
+      SELECT ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      WHERE changes() = 1`)
+      .bind(id, userId, wallet, amountNano),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id, user_id, kind, title, description, amount_nano, balance_after_nano, status, reference_id, reference_type, metadata_json, created_at)
+      SELECT ?, ?, 'withdraw', 'Gram withdrawal', ?, ?, a.ton_balance_nano, 'pending', ?, 'ton_withdrawal', ?, CURRENT_TIMESTAMP
+      FROM app_users a
+      JOIN ton_withdrawals w ON w.id = ? AND w.user_id = a.telegram_user_id
+      WHERE a.telegram_user_id = ? AND w.status = 'pending'`)
+      .bind(transactionId, userId, description, -amountNano, id, metadataJson, id, userId),
+  ]);
 
-  await adjustUserTonBalance(env, userId, -amountNano, {
-    kind: 'withdraw',
-    title: 'Gram withdrawal',
-    description: 'Withdrawal request to ' + shortWallet(wallet),
-    referenceId: id,
-    referenceType: 'ton_withdrawal',
-    status: 'pending',
-    metadata: { walletAddress: wallet, displayCurrency: 'Gram' },
-  });
+  const reserved = Number(results[1]?.meta?.changes ?? 0) === 1;
+  if (!reserved) {
+    const [current, usedTodayNano] = await Promise.all([
+      getUserControls(env, userId),
+      getDailyWithdrawalUsedNano(env, userId),
+    ]);
+    if (current.tonBalanceNano < amountNano) throw new Error('Not enough Gram balance');
+    const remainingNano = Math.max(0, DAILY_WITHDRAW_LIMIT_NANO - usedTodayNano);
+    throw new Error(`Daily withdrawal limit is 100 Gram. Remaining today: ${formatGramAmount(remainingNano)} Gram`);
+  }
 
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
-  return rowToWithdrawal(row ?? fallbackRow(id, userId, wallet, amountNano, 'pending'));
+  if (!row) throw new Error('Withdrawal reservation failed');
+  return rowToWithdrawal(row);
 }
 
 export async function listUserTonWithdrawals(env: Env, userIdInput: unknown): Promise<{ withdrawals: TonWithdrawal[] }> {
@@ -263,7 +298,7 @@ async function markWithdrawalTransaction(env: Env, withdrawalId: string, status:
     .catch(() => undefined);
 }
 
-async function enforceDailyWithdrawalLimit(env: Env, userId: string, amountNano: number): Promise<void> {
+async function getDailyWithdrawalUsedNano(env: Env, userId: string): Promise<number> {
   const row = await env.DB.prepare(`SELECT COALESCE(SUM(amount_nano), 0) AS totalNano
     FROM ton_withdrawals
     WHERE user_id = ?
@@ -271,11 +306,7 @@ async function enforceDailyWithdrawalLimit(env: Env, userId: string, amountNano:
       AND date(created_at) = date('now')`)
     .bind(userId)
     .first<{ totalNano: number | string | null }>();
-  const usedTodayNano = Number(row?.totalNano || 0);
-  if (usedTodayNano + amountNano > DAILY_WITHDRAW_LIMIT_NANO) {
-    const remainingNano = Math.max(0, DAILY_WITHDRAW_LIMIT_NANO - usedTodayNano);
-    throw new Error(`Daily withdrawal limit is 100 Gram. Remaining today: ${formatGramAmount(remainingNano)} Gram`);
-  }
+  return Math.max(0, Number(row?.totalNano || 0));
 }
 
 function formatGramAmount(nano: number): string {
