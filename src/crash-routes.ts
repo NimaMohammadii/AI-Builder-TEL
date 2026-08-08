@@ -1,5 +1,6 @@
 import app from './index';
 import { getCrashVirtualUsers } from './crash-virtual-users-config';
+import { getGhostRunVirtualUsers } from './ghost-run-virtual-users-config';
 import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs } from './crash-virtual-users';
 
 const CACHE_NONE = 'no-store';
@@ -11,7 +12,7 @@ const REVEAL_END_BEFORE_START_MS = 180;
 
 app.get('/app/api/ghost-run-virtual-users', async (c) => {
   const [virtualConfig, realUsers] = await Promise.all([
-    getCrashVirtualUsers(c.env),
+    getGhostRunVirtualUsers(c.env),
     getGhostRunRealUsers(c.env.DB).catch((error) => { console.warn('load ghost run real users failed', error); return []; }),
   ]);
   const seen = new Set<string>();
