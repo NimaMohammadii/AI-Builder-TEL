@@ -2,6 +2,7 @@ import './deposit-method-icon-routes';
 import './withdrawal-admin-routes';
 import app from './index-with-admin-refresh';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
+import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
@@ -48,6 +49,9 @@ export default {
         { headers: { 'cache-control': 'no-store' } },
       );
     }
+
+    const crashGhostLiveBetsAdminResponse = await handleCrashGhostLiveBetsAdminRequest(request, runtimeEnv);
+    if (crashGhostLiveBetsAdminResponse) return crashGhostLiveBetsAdminResponse;
 
     const slotLiveBetsAdminResponse = await handleSlotLiveBetsAdminRequest(request, runtimeEnv);
     if (slotLiveBetsAdminResponse) return slotLiveBetsAdminResponse;
