@@ -5,6 +5,7 @@ import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-eff
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
+import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
 
@@ -47,6 +48,9 @@ export default {
         { headers: { 'cache-control': 'no-store' } },
       );
     }
+
+    const slotLiveBetsAdminResponse = await handleSlotLiveBetsAdminRequest(request, runtimeEnv);
+    if (slotLiveBetsAdminResponse) return slotLiveBetsAdminResponse;
 
     const onlineCountsAdminResponse = await handleOnlineCountsAdminRequest(request, runtimeEnv);
     if (onlineCountsAdminResponse) return onlineCountsAdminResponse;
