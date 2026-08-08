@@ -304,7 +304,7 @@ async function sendBackgroundMenu(token: string, chatId: number, messageId?: num
 }
 
 async function sendCrashStageMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const present = await Promise.all(Array.from({ length: 10 }, (_, index) => env.ASSETS.head(crashStageKey(index + 1)).then(() => true).catch(() => false)));
+  const present = await Promise.all(Array.from({ length: 10 }, (_, index) => env.ASSETS.head(crashStageKey(index + 1)).then((object) => Boolean(object)).catch(() => false)));
   const rows: Keyboard = [];
   for (let i = 1; i <= 10; i += 2) {
     rows.push([i, i + 1].map((slot) => ({ text: `${present[slot - 1] ? '✅ ' : ''}Image ${slot}`, callback_data: `botadmin:crashstage:${slot}` })));
