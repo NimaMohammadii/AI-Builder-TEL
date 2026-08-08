@@ -40,14 +40,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
 
   if (data === 'botadmin:home') {
     await clearAdminInputStates(env, callback.from.id);
-    await sendHome(env, token, chatId, messageId);
+    await sendAdminHome(env, token, chatId, messageId);
     return ok();
   }
 
   if (data.startsWith('botadmin:specialwheel:')) {
     await clearAdminInputStates(env, callback.from.id);
     await setSpecialWheelEnabled(env, data.endsWith(':on'));
-    await sendHome(env, token, chatId, messageId);
+    await sendAdminHome(env, token, chatId, messageId);
     return ok();
   }
 
@@ -93,7 +93,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (isAdminCommand(text)) {
     if (!isAdmin(env, userId)) return null;
     await clearAdminInputStates(env, userId);
-    await sendHome(env, token, message.chat.id);
+    await sendAdminHome(env, token, message.chat.id);
     return ok();
   }
 
@@ -128,7 +128,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   return ok();
 }
 
-async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+export async function sendAdminHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
   const wheelEnabled = await isSpecialWheelEnabled(env);
   await upsert(token, chatId, messageId,
     `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`,
