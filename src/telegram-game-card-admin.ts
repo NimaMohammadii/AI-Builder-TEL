@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
 import { getSpecialWheelPriceStars, setSpecialWheelPriceStars } from './special-wheel-engine';
+import { sectionBackgroundR2Key } from './section-backgrounds';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -12,7 +13,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'ton' } | { kind: 'wheel-price' };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'ton' } | { kind: 'wheel-price' };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -20,7 +21,13 @@ const GAMES = [
   ['coinflip', 'Pump'], ['ghostrun', 'Ghost Run'],
 ] as const;
 const GAME_IDS = new Set(GAMES.map(([id]) => id));
+const BACKGROUND_GAMES = [
+  ['ghostrun', 'Ghost Run'],
+  ['coinflip', 'Pump'],
+] as const;
+const BACKGROUND_GAME_IDS = new Set(BACKGROUND_GAMES.map(([id]) => id));
 const STATE_PREFIX = 'admin:game-card-upload:';
+const BACKGROUND_STATE_PREFIX = 'background:';
 const TON_STATE = 'ton-icon';
 const WHEEL_PRICE_STATE = 'special-wheel-price';
 const MAX_BYTES = 10_000_000;
@@ -59,7 +66,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   const callback = update.callback_query;
   if (callback) {
     const data = callback.data || '';
-    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:tonlogo' || data === 'botadmin:specialwheelprice' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:specialwheel:');
+    const ours = data === 'botadmin:home' || data === 'botadmin:gameimages' || data === 'botadmin:gamebackgrounds' || data === 'botadmin:tonlogo' || data === 'botadmin:specialwheelprice' || data.startsWith('botadmin:gameimage:') || data.startsWith('botadmin:gamebackground:') || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
     await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
@@ -83,11 +90,22 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:gameimages') {
       await clearState(env, callback.from.id);
       await sendGameMenu(token, chatId, messageId);
+    } else if (data === 'botadmin:gamebackgrounds') {
+      await clearState(env, callback.from.id);
+      await sendBackgroundMenu(token, chatId, messageId);
     } else if (data === 'botadmin:tonlogo') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), TON_STATE, { expirationTtl: 900 });
       await upsert(token, chatId, messageId, '💎 لوگوی TON\n\nبرای حفظ فرمت و شفافیت، تصویر PNG را حتماً به‌صورت File/Document بفرستید.', [
         [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
       ]);
+    } else if (data.startsWith('botadmin:gamebackground:')) {
+      const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
+      if (game) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${BACKGROUND_STATE_PREFIX}${game}`, { expirationTtl: 900 });
+        await upsert(token, chatId, messageId, `🌄 بک‌گراند ${backgroundLabel(game)}\n\nتصویر را به‌صورت عکس معمولی یا File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
+          [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gamebackgrounds' }],
+        ]);
+      }
     } else {
       const game = normalizeGame(data.slice('botadmin:gameimage:'.length));
       if (game) {
@@ -123,6 +141,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, message.from.id);
     if (target.kind === 'game') await sendGameMenu(token, message.chat.id);
+    else if (target.kind === 'background') await sendBackgroundMenu(token, message.chat.id);
     else await sendHome(env, token, message.chat.id);
     return ok();
   }
@@ -168,6 +187,14 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
         caption: successText,
         reply_markup: { inline_keyboard: [[{ text: '💎 تغییر لوگوی TON', callback_data: 'botadmin:tonlogo' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]] },
       }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
+    } else if (target.kind === 'background') {
+      const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
+      await tg(token, 'sendPhoto', {
+        chat_id: message.chat.id,
+        photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
+        caption: successText,
+        reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]] },
+      }).catch(() => tg(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
     } else {
       await tg(token, 'sendPhoto', {
         chat_id: message.chat.id,
@@ -186,6 +213,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
   const [wheelEnabled, wheelPrice] = await Promise.all([isSpecialWheelEnabled(env), getSpecialWheelPriceStars(env)]);
   await upsert(token, chatId, messageId, `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n⭐️ قیمت اسپین‌های بعدی: ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nبخش موردنظر را انتخاب کنید.`, [
     [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
+    [{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
     [{ text: `⭐️ قیمت اسپین بعدی: ${wheelPrice === 0 ? 'رایگان' : wheelPrice}`, callback_data: 'botadmin:specialwheelprice' }],
@@ -207,6 +235,12 @@ async function sendGameMenu(token: string, chatId: number, messageId?: number): 
   await upsert(token, chatId, messageId, '🎮 تصاویر کارت بازی‌ها\n\nیک بازی را انتخاب کنید. تصویر را می‌توانید عادی یا به‌صورت فایل بفرستید.', rows);
 }
 
+async function sendBackgroundMenu(token: string, chatId: number, messageId?: number): Promise<void> {
+  const rows: Keyboard = BACKGROUND_GAMES.map(([id, name]) => [{ text: name, callback_data: `botadmin:gamebackground:${id}` }]);
+  rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
+  await upsert(token, chatId, messageId, '🌄 بک‌گراند بازی‌ها\n\nGhost Run یا Pump را انتخاب کنید و تصویر بک‌گراند را بفرستید.', rows);
+}
+
 async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'wheel-price' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
@@ -217,10 +251,13 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
   if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   const contentType = source.via === 'document' ? source.type : (TYPES.has(responseType) ? responseType : source.type);
-  const assetKey = target.kind === 'ton' ? 'ton-icon' : gameKey(target.game);
+  const version = String(Date.now());
+  const assetKey = target.kind === 'ton' ? 'ton-icon' : target.kind === 'background' ? sectionBackgroundR2Key(target.game) : gameKey(target.game);
   const metadata = target.kind === 'ton'
-    ? { version: String(Date.now()), assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
-    : { version: String(Date.now()), gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
+    ? { version, assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
+    : target.kind === 'background'
+      ? { version, sectionId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` }
+      : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: metadata,
@@ -262,14 +299,23 @@ function normalizeGame(value: unknown): string | null {
   const game = String(value || '').replace(/\.png$/i, '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
   return GAME_IDS.has(game as never) ? game : null;
 }
+function normalizeBackgroundGame(value: unknown): string | null {
+  const game = String(value || '').replace(/\.png$/i, '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+  return BACKGROUND_GAME_IDS.has(game as never) ? game : null;
+}
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === WHEEL_PRICE_STATE) return { kind: 'wheel-price' };
+  if (raw.startsWith(BACKGROUND_STATE_PREFIX)) {
+    const game = normalizeBackgroundGame(raw.slice(BACKGROUND_STATE_PREFIX.length));
+    return game ? { kind: 'background', game } : null;
+  }
   const game = normalizeGame(raw);
   return game ? { kind: 'game', game } : null;
 }
 function label(game: string): string { return GAMES.find(([id]) => id === game)?.[1] || game; }
+function backgroundLabel(game: string): string { return BACKGROUND_GAMES.find(([id]) => id === game)?.[1] || game; }
 function gameKey(game: string): string { return `game-card-images/${game}`; }
 function stateKey(id: number): string { return `${STATE_PREFIX}${id}`; }
 function clearState(env: Env, id: number): Promise<void> { return env.BOT_CACHE.delete(stateKey(id)).catch(() => undefined); }
