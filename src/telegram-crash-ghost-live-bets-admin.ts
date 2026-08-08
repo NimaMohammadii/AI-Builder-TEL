@@ -131,14 +131,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   }
 
   if (action === 'reset') {
+    const resetPage = Math.max(0, Number(parts[2]) || 0);
     if (parts[1] !== 'confirm') {
       await upsert(token, chatId, messageId,
         `♻️ ${gameTitle(game)}\n\nهمه کاربران، زمان ورود و Bet Optionهای این بازی به پیش‌فرض خودش برمی‌گردد.`,
-        [[{ text: '✅ ریست کن', callback_data: `${prefix}reset:confirm:${page}` }], [{ text: '⬅️ انصراف', callback_data: `${prefix}list:${page}` }]],
+        [[{ text: '✅ ریست کن', callback_data: `${prefix}reset:confirm:${resetPage}` }], [{ text: '⬅️ انصراف', callback_data: `${prefix}list:${resetPage}` }]],
       );
       return ok();
     }
-    const resetPage = Math.max(0, Number(parts[2]) || 0);
     await resetUsers(env, game);
     await sendUsersMenu(env, token, chatId, game, resetPage, messageId, '✅ پیش‌فرض‌های همین بازی بازیابی شد.');
     return ok();
