@@ -83,7 +83,7 @@ export async function handleGramWithdrawalAdminRequest(request: Request, env: En
 
 export async function notifyAdminGramWithdrawal(env: Env, withdrawal: TonWithdrawal): Promise<void> {
   if (!withdrawal?.id) return;
-  await ensureNotificationStorage(env, withdrawal.id);
+  await ensureNotificationStorage(env);
 
   const existing = await env.DB.prepare('SELECT admin_notified_at FROM ton_withdrawals WHERE id = ?')
     .bind(withdrawal.id)
@@ -138,6 +138,7 @@ async function flushPendingGramNotifications(env: Env): Promise<void> {
   await ensureNotificationStorage(env);
   const rows = await env.DB.prepare(`SELECT * FROM ton_withdrawals
     WHERE admin_notified_at IS NULL
+      AND admin_notification_error IS NOT NULL
     ORDER BY datetime(created_at) ASC
     LIMIT 12`)
     .all<WithdrawalRow>();
@@ -616,23 +617,9 @@ async function ensureStorage(env: Env): Promise<void> {
   await ensureNotificationStorage(env);
 }
 
-async function ensureNotificationStorage(env: Env, preserveId = ''): Promise<void> {
-  const columns = await env.DB.prepare('PRAGMA table_info(ton_withdrawals)').all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }));
-  const names = new Set((columns.results ?? []).map((column) => String(column.name || '')));
-  const hadNotifiedColumn = names.has('admin_notified_at');
-  if (!hadNotifiedColumn) {
-    await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notified_at TEXT').run().catch(() => undefined);
-  }
-  if (!names.has('admin_notification_error')) {
-    await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notification_error TEXT').run().catch(() => undefined);
-  }
-  if (!hadNotifiedColumn) {
-    if (preserveId) {
-      await env.DB.prepare('UPDATE ton_withdrawals SET admin_notified_at = CURRENT_TIMESTAMP WHERE id != ? AND admin_notified_at IS NULL').bind(preserveId).run();
-    } else {
-      await env.DB.prepare('UPDATE ton_withdrawals SET admin_notified_at = CURRENT_TIMESTAMP WHERE admin_notified_at IS NULL').run();
-    }
-  }
+async function ensureNotificationStorage(env: Env): Promise<void> {
+  await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notified_at TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notification_error TEXT').run().catch(() => undefined);
 }
 
 async function recordNotificationError(env: Env, id: string, error: string): Promise<void> {
