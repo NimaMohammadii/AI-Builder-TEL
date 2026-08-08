@@ -138,10 +138,10 @@ export const SECTION_BACKGROUND_STYLES = `
   background-color: #000 !important;
 }
 .view.has-admin-background::before {
-  content: "" !important;
-  display: block !important;
+  content: "";
   position: sticky;
   top: 0;
+  display: block;
   width: 100%;
   height: 0;
   pointer-events: none;
@@ -189,7 +189,7 @@ html body:has(#ghostrun.active) .top {
 html body:has(#ghostrun.active) .top,
 html body:has(#ghostrun.active) .content {
   position: relative !important;
-  z-index: 1;
+  z-index: 1 !important;
 }
 img[data-admin-bg-overridden="1"] {
   display: block !important;
