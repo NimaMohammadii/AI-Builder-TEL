@@ -1,7 +1,6 @@
 import { mobileAdminCodeHtml, mobileAdminLoginHtml, mobileAdminPanelHtml } from './admin-mobile';
 import { ADMIN_PLINKO_CONTROL_SCRIPT } from './admin-plinko-control-panel';
 import { ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT } from './admin-plinko-virtual-users-panel';
-import { ADMIN_CRASH_VIRTUAL_USERS_SCRIPT } from './admin-crash-virtual-users-panel';
 import { ADMIN_PREDICT_PANEL_SCRIPT } from './admin-predict-panel';
 import { ADMIN_FOOTBALL_PANEL_SCRIPT } from './admin-football-panel';
 import { ADMIN_AUDIO_PANEL_SCRIPT } from './admin-audio-panel';
@@ -39,7 +38,7 @@ export function adminCodeHtml(challengeId: string, message?: string): string {
 }
 
 export function adminPanelHtml(): string {
-  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT + ADMIN_CRASH_VIRTUAL_USERS_SCRIPT + '</body></html>');
+  return adminPanelWithFixes().replace('</body></html>', ADMIN_LAYOUT_CSS + ADMIN_AUDIO_PANEL_SCRIPT + ADMIN_PREDICT_PANEL_SCRIPT + ADMIN_FOOTBALL_PANEL_SCRIPT + ADMIN_PLINKO_CONTROL_SCRIPT + ADMIN_PLINKO_VIRTUAL_USERS_SCRIPT + '</body></html>');
 }
 
 export function defaultCreditIconSvg(): string {
