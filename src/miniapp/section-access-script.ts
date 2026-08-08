@@ -7,7 +7,9 @@ export const SECTION_ACCESS_SCRIPT = `
   var cache=null;
   var inFlight=null;
   var lastFetchAt=0;
-  var CACHE_MS=10000;
+  var CACHE_MS=Number.POSITIVE_INFINITY;
+  var liveSocket=null;
+  var liveReconnectTimer=0;
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
@@ -24,6 +26,17 @@ export const SECTION_ACCESS_SCRIPT = `
     if(fill){fill.style.transition='none';fill.style.width=progress+'%';requestAnimationFrame(function(){if(!fill||!fill.isConnected)return;fill.style.transition='width '+remaining+'s linear';fill.style.width='100%'})}
     if(remaining<=0){location.reload();return}
     expiryTimer=setTimeout(function(){expiryTimer=0;location.reload()},Math.ceil(remaining*1000)+50);
+  }
+  function applyLivePayload(payload){
+    if(!payload||!payload.locks)return;
+    cache={locks:payload.locks};lastFetchAt=Date.now();apply(cache);
+  }
+  function connectLive(){
+    if(liveSocket||!userId()||!window.WebSocket)return;
+    var initData=String((tg&&tg.initData)||'');if(!initData)return;
+    var proto=location.protocol==='https:'?'wss:':'ws:';
+    var endpoint=proto+'//'+location.host+'/app/api/section-access/live?initData='+encodeURIComponent(initData);
+    try{liveSocket=new WebSocket(endpoint);liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,3000)};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null}
   }
   function apply(j){
     var active=document.querySelector('.view.active');var section=active&&active.id||'home';
@@ -50,6 +63,6 @@ export const SECTION_ACCESS_SCRIPT = `
   document.addEventListener('visibilitychange',function(){if(!document.hidden)load(false)});
   window.addEventListener('focus',function(){load(false)});
   window.addEventListener('online',function(){load(false)});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false)});else load(false);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false);connectLive()});else{load(false);connectLive()}
 })();
 `;
