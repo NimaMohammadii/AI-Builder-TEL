@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { publishSectionAccess } from './section-lock-events';
 
 const ACCESS_KEY = 'admin:miniapp-section-access';
 
@@ -61,6 +62,7 @@ export async function setSectionLock(env: Env, sectionIdInput: unknown, minutesI
   const locks = (await getSectionAccess(env)).filter((lock) => lock.sectionId !== sectionId);
   locks.push({ sectionId, lockedFrom: now, lockedUntil: now + minutes * 60 });
   await saveSectionAccess(env, locks);
+  await publishSectionAccess(env, locks).catch(() => undefined);
   return locks;
 }
 
@@ -69,6 +71,7 @@ export async function clearSectionLock(env: Env, sectionIdInput: unknown): Promi
   if (!sectionId) throw new Error('Unknown mini app section.');
   const locks = (await getSectionAccess(env)).filter((lock) => lock.sectionId !== sectionId);
   await saveSectionAccess(env, locks);
+  await publishSectionAccess(env, locks).catch(() => undefined);
   return locks;
 }
 
