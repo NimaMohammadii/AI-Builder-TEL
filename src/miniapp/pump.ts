@@ -13,7 +13,7 @@ export const PUMP_SECTION = String.raw`
     }
     .pump-page { width:min(100%,430px); min-height:calc(100vh - 74px); margin:0 auto; display:flex; flex-direction:column; box-sizing:border-box; }
     .pump-stage {
-      position:relative; width:100%; height:min(52vh,420px); min-height:330px; flex:0 0 auto;
+      position:relative; width:100%; height:min(60vh,475px); min-height:360px; flex:0 0 auto;
       overflow:hidden; background:transparent; isolation:isolate;
     }
     .pump-stage::before {
@@ -23,7 +23,7 @@ export const PUMP_SECTION = String.raw`
     }
     #pumpCanvas { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; }
     .pump-controls {
-      width:100%; margin-top:4px; padding:16px; box-sizing:border-box; border-radius:26px;
+      width:100%; margin-top:18px; padding:16px; box-sizing:border-box; border-radius:26px;
       border:1px solid rgba(255,255,255,.11); background:rgba(16,3,10,.38);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 36px rgba(0,0,0,.22);
       backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
@@ -48,7 +48,7 @@ export const PUMP_SECTION = String.raw`
     .pump-action:disabled,.pump-cashout:disabled,.pump-bet-row button:disabled,.pump-bet-row input:disabled { opacity:.48; }
     .pump-stage.is-burst #pumpCanvas { animation:pumpBurst .48s ease both; }
     @keyframes pumpBurst { 0%{filter:brightness(1)} 45%{filter:brightness(2.2) saturate(1.45)} 100%{filter:brightness(.56)} }
-    @media(max-height:700px){ .pump-stage{height:330px;min-height:330px;} }
+    @media(max-height:700px){ .pump-stage{height:390px;min-height:360px;} }
   </style>
 
   <div class="pump-page">
@@ -116,20 +116,20 @@ export const PUMP_SECTION = String.raw`
         var canvas=q('pumpCanvas'),stage=q('pumpStage');if(!canvas||!stage)return;
         var renderer=new THREE.WebGLRenderer({canvas:canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
         renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;renderer.outputColorSpace=THREE.SRGBColorSpace;
-        var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(29,1,.1,100);camera.position.set(0,.15,9.4);
+        var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(29,1,.1,100);camera.position.set(0,.12,10.8);
         var balloonRoot=new THREE.Group();scene.add(balloonRoot);
         var material=new THREE.MeshPhysicalMaterial({color:0x570725,metalness:.1,roughness:.1,clearcoat:1,clearcoatRoughness:.035,reflectivity:1,iridescence:.16,iridescenceIOR:1.35});
-        var balloon=new THREE.Mesh(new THREE.SphereGeometry(1.83,96,72),material);balloon.scale.set(.91,1.16,.91);balloonRoot.add(balloon);
+        var balloon=new THREE.Mesh(new THREE.SphereGeometry(1.83,96,72),material);balloon.scale.set(.74,.96,.74);balloonRoot.add(balloon);
         var knot=new THREE.Mesh(new THREE.ConeGeometry(.14,.30,28),new THREE.MeshPhysicalMaterial({color:0x360010,metalness:.45,roughness:.14,clearcoat:.8}));knot.position.y=-2.15;knot.rotation.z=Math.PI;balloonRoot.add(knot);
-        var topLight=new THREE.DirectionalLight(0xffe1ed,3.3);topLight.position.set(-3,5,6);scene.add(topLight);
-        var sideLight=new THREE.PointLight(0xd70d5b,26,10,2);sideLight.position.set(3,.6,3);scene.add(sideLight);
-        var rimLight=new THREE.PointLight(0xff9dcc,17,9,2);rimLight.position.set(-3,-1,-1);scene.add(rimLight);
-        var ambient=new THREE.HemisphereLight(0x6e1437,0x060103,2.15);scene.add(ambient);
-        var targetScale=1,pulse=0,clock=new THREE.Clock();
+        var topLight=new THREE.DirectionalLight(0xffd9e7,2.75);topLight.position.set(-3,5,6);scene.add(topLight);
+        var ambient=new THREE.HemisphereLight(0x401326,0x050103,1.05);scene.add(ambient);
+        var targetScale=1,pulse=0,clock=new THREE.Clock(),baseScale={x:.74,y:.96,z:.74};
         function resize(){var r=stage.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
         resize();window.addEventListener('resize',resize);
-        (function loop(){requestAnimationFrame(loop);if(!document.body.contains(canvas)){renderer.dispose();return;}var t=clock.getElapsedTime(),breath=1+Math.sin(t*1.05)*.010,stretch=1+pulse*.045;
-          balloonRoot.rotation.y=Math.sin(t*.32)*.075;balloonRoot.position.y=Math.sin(t*.7)*.045;balloonRoot.scale.set(targetScale*breath*stretch,targetScale*breath*(1-pulse*.026),targetScale*breath*stretch);pulse*=.89;renderer.render(scene,camera);
+        (function loop(){requestAnimationFrame(loop);if(!document.body.contains(canvas)){renderer.dispose();return;}var t=clock.getElapsedTime(),breath=1+Math.sin(t*1.05)*.008,stretch=1+pulse*.065;
+          balloonRoot.rotation.y=Math.sin(t*.32)*.075;balloonRoot.position.y=Math.sin(t*.7)*.045;
+          balloon.scale.set(baseScale.x*targetScale*breath*stretch,baseScale.y*targetScale*(1-pulse*.045),baseScale.z*targetScale*breath*stretch);
+          knot.scale.set(1+Math.min(.12,pulse*.02),1,1+Math.min(.12,pulse*.02)); pulse*=.89;renderer.render(scene,camera);
         })();
         scene3d={setState:function(value,count,nextState){targetScale=1+Math.min(.40,(Math.max(1,value)-1)*.075+count*.013);if(count>0)pulse=1;if(nextState==='popped'){pulse=7;material.emissive=new THREE.Color(0xa00036);setTimeout(function(){material.emissive=new THREE.Color(0x000000);},420);}}};
         render();
