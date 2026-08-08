@@ -18,8 +18,7 @@ export class SectionLockEvents {
     const url = new URL(request.url);
     if (request.headers.get('Upgrade') === 'websocket' && url.pathname === '/connect') {
       const pair = new WebSocketPair();
-      const client = pair[0];
-      const server = pair[1];
+      const [client, server] = Object.values(pair);
       server.accept();
       this.sessions.add(server);
       server.addEventListener('close', () => this.sessions.delete(server));
