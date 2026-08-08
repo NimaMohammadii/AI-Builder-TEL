@@ -10,6 +10,7 @@ import { cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from '.
 import type { Env } from './types';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS, resetOnlineUserCountConfig, saveOnlineUserCountConfig } from './online-user-counts';
 import { isAdminSession } from './admin-auth';
+import { clearSectionLock, getSectionAccess, isMiniAppAdmin, setSectionLock } from './section-access';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
@@ -46,6 +47,8 @@ const userWinChanceSchema = z.object({ userId: z.string().min(1).max(80), winCha
 const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
 const audioEnabledSchema = z.object({ enabled: z.boolean() });
 const playZoneCardVisibilitySchema = z.object({ gameId: z.string().min(1).max(40), visible: z.boolean() });
+const sectionAccessLockSchema = z.object({ sectionId: z.string().min(1).max(40), minutes: z.number().int().min(1).max(43_200) });
+const sectionAccessUnlockSchema = z.object({ sectionId: z.string().min(1).max(40) });
 
 app.get('/setup-webhook', async (c) => {
   const result = await setTelegramWebhook(c.env);
@@ -131,6 +134,29 @@ function normalizeUploadedImagesContext(context: string | undefined): string | n
 }
 app.get('/app/api/online-user-counts', async (c) => c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }));
 app.get('/app/api/user-controls', zValidator('query', userIdSchema), async (c) => c.json(await publicUserControls(c.env, c.req.valid('query').userId)));
+app.get('/app/api/section-access', zValidator('query', userIdSchema), async (c) => {
+  const userId = c.req.valid('query').userId;
+  const locks = await getSectionAccess(c.env);
+  if (isMiniAppAdmin(c.env, userId)) return c.json({ ok: true, locks: {}, serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
+  const bySection = Object.fromEntries(locks.map((lock) => [lock.sectionId, { ...lock, serverNow: Math.floor(Date.now() / 1000) }]));
+  return c.json({ ok: true, locks: bySection, serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
+});
+app.get('/admin/api/section-access', async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  return c.json({ ok: true, locks: await getSectionAccess(c.env), serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
+});
+app.post('/admin/api/section-access/lock', zValidator('json', sectionAccessLockSchema), async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try { return c.json({ ok: true, locks: await setSectionLock(c.env, body.sectionId, body.minutes) }, 200, { 'cache-control': 'no-store' }); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save lock' }, 400); }
+});
+app.post('/admin/api/section-access/unlock', zValidator('json', sectionAccessUnlockSchema), async (c) => {
+  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
+  const body = c.req.valid('json');
+  try { return c.json({ ok: true, locks: await clearSectionLock(c.env, body.sectionId) }, 200, { 'cache-control': 'no-store' }); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not open section' }, 400); }
+});
 app.get('/admin/api/miniapp-audio', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getMiniappAudioJson(c.env)); });
 app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
 app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
