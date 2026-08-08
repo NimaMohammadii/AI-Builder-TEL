@@ -1,8 +1,8 @@
 export const CHICKEN_CROSS_STYLES = `
 body.cc-game-open .tabs{opacity:0!important;transform:translateY(90px)!important;pointer-events:none!important}
-#hilo{--cc-wine:#64102f;--cc-rose:#ff6d9f;position:relative!important;height:calc(100% + 8px)!important;margin:0 -16px -8px!important;width:calc(100% + 32px)!important;padding:0!important;overflow:hidden!important;background:#050205!important}
+#hilo{--cc-wine:#64102f;--cc-rose:#ff6d9f;position:relative!important;height:calc(100% + 8px)!important;min-height:calc(100dvh - 64px)!important;margin:0 -16px -8px!important;width:calc(100% + 32px)!important;padding:0!important;overflow:hidden!important;background:#050205!important}
 #hilo.active{display:block!important}
-#hilo .cc-world{position:absolute;inset:0;overflow:hidden;background:radial-gradient(circle at 50% 18%,#210710 0,#090306 48%,#020102 100%)}
+#hilo .cc-world{position:absolute;inset:0;min-height:calc(100dvh - 64px);overflow:hidden;background:radial-gradient(circle at 50% 18%,#210710 0,#090306 48%,#020102 100%)}
 #hilo canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:0}
 #hilo .cc-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(2,0,1,.04) 0%,transparent 24%,transparent 54%,rgba(2,0,1,.28) 72%,#030102 100%);box-shadow:inset 0 0 80px rgba(0,0,0,.42)}
 #hilo .cc-render-loading{position:absolute;z-index:8;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.54);font-size:11px;font-weight:850;letter-spacing:.15em;text-transform:uppercase;background:radial-gradient(circle at 50% 44%,rgba(89,11,41,.20),transparent 32%);transition:opacity .45s ease,visibility .45s ease}
