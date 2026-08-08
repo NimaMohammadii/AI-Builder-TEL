@@ -11,6 +11,7 @@ import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';
 import { isAdminSession } from './admin-auth';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -119,18 +120,21 @@ app.get('/app/api/stars/deposits', async (c) => {
 
 app.post('/app/api/ton/withdrawals', async (c) => {
   try {
-    const body = await c.req.json() as { userId?: string; amountTon?: unknown; walletAddress?: unknown };
-    return c.json(await createTonWithdrawal(c.env, body.userId, body.amountTon, body.walletAddress));
+    const body = await c.req.json() as { initData?: unknown; amountGram?: unknown; amountTon?: unknown; walletAddress?: unknown };
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    return c.json(await createTonWithdrawal(c.env, userId, body.amountGram ?? body.amountTon, body.walletAddress));
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not create TON withdrawal' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create Gram withdrawal' }, 400);
   }
 });
 
 app.get('/app/api/ton/withdrawals', async (c) => {
   try {
-    return c.json(await listUserTonWithdrawals(c.env, String(c.req.query('userId') || '')));
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    return c.json(await listUserTonWithdrawals(c.env, userId));
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON withdrawals' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Gram withdrawals' }, 400);
   }
 });
 
