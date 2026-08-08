@@ -6,6 +6,9 @@ import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
+import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin';
+import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
+import { gameBotToken, validateTelegramInitData } from './utils';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
@@ -33,6 +36,16 @@ export default {
     }) as Env;
 
     const url = new URL(request.url);
+    if (request.method === 'POST' && url.pathname === '/app/api/play-zone-card-visibility') {
+      try {
+        const body = await request.json().catch(() => ({})) as { initData?: unknown };
+        const userId = await validateTelegramInitData(body.initData, gameBotToken(runtimeEnv));
+        const state = await getPlayZoneCardVisibility(runtimeEnv);
+        return Response.json({ ok: true, admin: isPlayZoneVisibilityAdmin(runtimeEnv, userId), hiddenIds: state.hiddenIds }, { headers: { 'cache-control': 'no-store' } });
+      } catch {
+        return Response.json({ ok: false, hiddenIds: [] }, { status: 401, headers: { 'cache-control': 'no-store' } });
+      }
+    }
     if (request.method === 'GET' && url.pathname === '/setup-webhook') {
       const [webhook, menu] = await Promise.all([
         setTelegramWebhook(env),
@@ -69,6 +82,9 @@ export default {
 
     const sectionAccessAdminResponse = await handleSectionAccessAdminRequest(request, runtimeEnv);
     if (sectionAccessAdminResponse) return sectionAccessAdminResponse;
+
+    const playZoneCardAdminResponse = await handlePlayZoneCardAdminRequest(request, runtimeEnv);
+    if (playZoneCardAdminResponse) return playZoneCardAdminResponse;
 
     const gameCardAdminResponse = await handleGameCardAdminRequest(request, runtimeEnv);
     if (gameCardAdminResponse) return gameCardAdminResponse;

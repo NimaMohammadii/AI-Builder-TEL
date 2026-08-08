@@ -44,3 +44,25 @@ export const PLAY_ZONE_SECTION = `
   </div>
 </section>
 `;
+
+export const PLAY_ZONE_VISIBILITY_SCRIPT = `
+(function(){
+  var root=document.documentElement;
+  function finish(hidden,admin){
+    var blocked={};(hidden||[]).forEach(function(id){blocked[String(id)]=true});
+    document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){
+      var hide=!admin&&blocked[card.getAttribute('data-play-zone-card-id')];
+      card.hidden=!!hide;card.setAttribute('aria-hidden',hide?'true':'false');
+    });
+    root.classList.add('play-zone-visibility-ready');
+  }
+  function load(){
+    var tg=window.Telegram&&window.Telegram.WebApp;
+    var initData=String(tg&&tg.initData||'');
+    if(!initData)return;
+    fetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})})
+      .then(function(r){if(!r.ok)throw new Error('unauthorized');return r.json()})
+      .then(function(data){finish(data.hiddenIds,data.admin)}).catch(function(){});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+})();`;

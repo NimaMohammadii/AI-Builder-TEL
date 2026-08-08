@@ -42,6 +42,10 @@ export async function setPlayZoneCardVisibility(env: Env, gameId: unknown, visib
   return getPlayZoneCardVisibility(env);
 }
 
+export function isPlayZoneVisibilityAdmin(env: Env, userId: unknown): boolean {
+  return String(env.BOT_ADMIN || '').split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean).includes(String(userId || ''));
+}
+
 export function normalizePlayZoneCardId(value: unknown): PlayZoneCardId {
   const id = String(value ?? '').replace(/[^a-zA-Z0-9_-]/g, '').trim().toLowerCase();
   if (!PLAY_ZONE_CARD_IDS.has(id)) throw new Error('Unknown Play Zone card');
