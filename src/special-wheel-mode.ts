@@ -99,6 +99,9 @@ export const SPECIAL_WHEEL_OVERLAY = `
   var rotation=0;
   var spinning=false;
   var state=null;
+  var refreshInFlight=null;
+  var lastRefreshAt=0;
+  var REFRESH_TTL_MS=15000;
   var starSvg='<svg class="special-wheel-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.1l2.72 5.51 6.08.88-4.4 4.29 1.04 6.06L12 16.98l-5.44 2.86 1.04-6.06-4.4-4.29 6.08-.88L12 3.1z" fill="#c49528" stroke="#c49528" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>';
   var loaderHtml='<span class="special-wheel-loader" aria-label="Loading"></span>';
 
@@ -156,8 +159,17 @@ export const SPECIAL_WHEEL_OVERLAY = `
     if(state&&(state.freeAvailable||Number(state.paidSpins)>0||price===0)){button.textContent='Spin';return}
     button.innerHTML='<span>'+price+'</span>'+starSvg;
   }
-  async function refresh(){
-    try{var response=await fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId()),{cache:'no-store'});if(!response.ok)return;var data=await response.json();applyActive(data.active===true);if(data.state)state=data.state;renderButton()}catch(e){}
+  function refresh(force){
+    if(document.hidden&&!force)return Promise.resolve(null);
+    var now=Date.now();
+    if(!force&&lastRefreshAt&&now-lastRefreshAt<REFRESH_TTL_MS){renderButton();return Promise.resolve(state)}
+    if(refreshInFlight)return refreshInFlight;
+    refreshInFlight=fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId()),{cache:'no-store'})
+      .then(function(response){return response.ok?response.json():null})
+      .then(function(data){if(!data)return null;lastRefreshAt=Date.now();applyActive(data.active===true);if(data.state)state=data.state;renderButton();return data})
+      .catch(function(){return null})
+      .finally(function(){refreshInFlight=null});
+    return refreshInFlight;
   }
   function animateTo(index,done){
     var current=((rotation%360)+360)%360,target=(360-(Number(index)||0)*60)%360,delta=(target-current+360)%360;rotation+=1440+delta;
@@ -169,7 +181,7 @@ export const SPECIAL_WHEEL_OVERLAY = `
     var data=await response.json().catch(function(){return {ok:false,error:'Spin failed'}});
     if(!response.ok||!data.ok){if(data.state)state=data.state;throw new Error(data.error||'Spin failed')}
     animateTo(data.prizeIndex,function(){
-      state=data.state||state;result.classList.remove('is-visible');result.textContent=data.prizeMessage||data.prizeLabel||'Just for fun';void result.offsetWidth;result.classList.add('is-visible');
+      state=data.state||state;lastRefreshAt=Date.now();result.classList.remove('is-visible');result.textContent=data.prizeMessage||data.prizeLabel||'Just for fun';void result.offsetWidth;result.classList.add('is-visible');
       try{var h=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback;if(h)h.notificationOccurred('success')}catch(e){}
       spinning=false;button.disabled=false;renderButton();
     });
@@ -183,10 +195,10 @@ export const SPECIAL_WHEEL_OVERLAY = `
     try{await performSpin()}catch(error){if(error&&error.message==='payment_required')throw new Error('Payment received. Tap Spin again when Telegram finishes processing it.');throw error}
   }
   if(button&&rotor){button.addEventListener('click',async function(){if(spinning)return;spinning=true;button.disabled=true;result.classList.remove('is-visible');result.textContent='';renderButton();try{var price=state?Math.max(0,Number(state.priceStars)||0):18;if(state&&(state.freeAvailable||Number(state.paidSpins)>0||price===0))await performSpin();else await buyAndSpin()}catch(error){spinning=false;button.disabled=false;result.textContent=error&&error.message?error.message:'Something went wrong';result.classList.add('is-visible');renderButton()}})}
-  refresh();
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
-  window.addEventListener('focus',refresh);
-  window.addEventListener('online',refresh);
-  window.addEventListener('vexa:section-mounted',refresh);
+  refresh(true);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh(false)});
+  window.addEventListener('focus',function(){refresh(false)});
+  window.addEventListener('online',function(){refresh(false)});
+  window.addEventListener('vexa:section-mounted',function(){refresh(false)});
 })();
 </script>`;
