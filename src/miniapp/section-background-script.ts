@@ -25,7 +25,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     tower:playZoneCardSelectors('tower'),
     coinflip:playZoneCardSelectors('coinflip'),
     hilo:playZoneCardSelectors('hilo'),
-    ghostrun:['#ghostrun .ghost-run-scene','#ghostrun .ghost-run-background-panel','#ghostrun','#playzone [data-play-zone-card-id="ghostrun"]','#playzone [data-play-zone-card-id="ghostrun"] .game-card','#playzone [data-play-zone-card-id="ghostrun"] .game-image img'],
+    ghostrun:['#ghostrun','#playzone [data-play-zone-card-id="ghostrun"]','#playzone [data-play-zone-card-id="ghostrun"] .game-card','#playzone [data-play-zone-card-id="ghostrun"] .game-image img'],
     'wheel-separator':['#wheel .wheel-separator','[data-section-background-target="wheel-separator"]'],
     'global-loading':['[data-section-background-target="global-loading"]']
   };
@@ -158,20 +158,23 @@ export const SECTION_BACKGROUND_STYLES = `
 .predict-zone-card.has-admin-background,
 .play-zone-predict-card.has-admin-background,
 .play-zone-predict-image-slot.has-admin-background,
-.play-zone-stage.has-admin-background,
-.ghost-run-scene.has-admin-background,
-.ghost-run-background-panel.has-admin-background {
+.play-zone-stage.has-admin-background {
   background-image: var(--admin-section-background-image) !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
-#ghostrun .ghost-run-scene.has-admin-background,
-#ghostrun .ghost-run-background-panel.has-admin-background {
+#ghostrun.ghost-run-view.has-admin-background {
+  background-color: #000 !important;
   background-image: var(--admin-section-background-image) !important;
   background-size: cover !important;
-  background-position: center !important;
+  background-position: center top !important;
   background-repeat: no-repeat !important;
+}
+#ghostrun.ghost-run-view.has-admin-background .ghost-run-screen {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 img[data-admin-bg-overridden="1"] {
   display: block !important;
