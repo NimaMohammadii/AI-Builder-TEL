@@ -7,6 +7,7 @@ import { adminSessionCookie, clearAdminSessionCookie, createAdminPasswordChallen
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-counts';
 import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
+import { registerChickenCrossRoutes } from './chicken-cross-routes';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
 import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
@@ -117,6 +118,7 @@ app.post('/admin/api/upload-home-intro-image', async (c) => {
 
 registerFriendGameRoutes(app);
 registerWheelRoutes(app);
+registerChickenCrossRoutes(app);
 
 app.post('/telegram/webhook', async (c) => {
   const update = await c.req.json<TelegramUpdate>().catch(() => null);
