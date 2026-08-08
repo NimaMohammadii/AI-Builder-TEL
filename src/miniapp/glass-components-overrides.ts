@@ -262,15 +262,4 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   backdrop-filter:blur(10px) saturate(1.18)!important;
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view .ghost-run-controls,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view .ghost-run-win-card,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view .ghost-run-bet-card,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view .ghost-run-move-button,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view #ghostLive,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view #ghostLive .crash-live-row,
-html body:has(#ghostrun.active) main.app #ghostrun.ghost-run-view #ghostLive .crash-live-toggle{
-  background:rgba(26,11,15,.54)!important;
-  background-color:rgba(26,11,15,.54)!important;
-  background-image:none!important;
-}
 `;
