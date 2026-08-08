@@ -7,7 +7,7 @@ import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './t
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
 import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin';
-import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
+import { getPlayZoneCardVisibility } from './play-zone-card-visibility';
 import { gameBotToken, validateTelegramInitData } from './utils';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
@@ -39,9 +39,9 @@ export default {
     if (request.method === 'POST' && url.pathname === '/app/api/play-zone-card-visibility') {
       try {
         const body = await request.json().catch(() => ({})) as { initData?: unknown };
-        const userId = await validateTelegramInitData(body.initData, gameBotToken(runtimeEnv));
+        await validateTelegramInitData(body.initData, gameBotToken(runtimeEnv));
         const state = await getPlayZoneCardVisibility(runtimeEnv);
-        return Response.json({ ok: true, admin: isPlayZoneVisibilityAdmin(runtimeEnv, userId), hiddenIds: state.hiddenIds }, { headers: { 'cache-control': 'no-store' } });
+        return Response.json({ ok: true, hiddenIds: state.hiddenIds }, { headers: { 'cache-control': 'no-store' } });
       } catch {
         return Response.json({ ok: false, hiddenIds: [] }, { status: 401, headers: { 'cache-control': 'no-store' } });
       }
