@@ -155,9 +155,12 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
       ],
       [
         { text: '👻 Ghost Run Live Bets', callback_data: 'botadmin:ghostlive:list:0' },
-        { text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
+        { text: '🎯 Plinko Control', callback_data: 'botadmin:plinko:list' },
       ],
-      [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
+      [
+        { text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
+        { text: wheelEnabled ? '❌ گردونه موقت' : '✅ گردونه موقت', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` },
+      ],
     ],
   );
 }
