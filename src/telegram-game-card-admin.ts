@@ -14,7 +14,7 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -32,15 +32,18 @@ const BACKGROUND_STATE_PREFIX = 'background:';
 const CRASH_STAGE_STATE_PREFIX = 'crash-stage:';
 const RANK_STATE_PREFIX = 'rank:';
 const GHOST_ASSET_STATE_PREFIX = 'ghost-asset:';
+const SLOT_SYMBOL_STATE_PREFIX = 'slot-symbol:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
 const RANKS = ['Rookie', 'Explorer', 'Pro', 'Elite', 'Master', 'Legend', 'Titan'] as const;
 const GHOST_ASSETS = [
   ['background', 'Background اصلی'], ['background1', 'Background 1'], ['background2', 'Background 2'],
   ['background3', 'Background 3'], ['background4', 'Background 4'], ['background5', 'Background 5'],
-  ['background6', 'Background 6'], ['ground', 'زمین'], ['moon', 'ماه'], ['ghost', 'روح اصلی'],
-  ['ghostidle', 'روح ثابت'], ['ghostmove', 'روح متحرک'], ['tree1', 'درخت 1'], ['tree2', 'درخت 2'],
-  ['tree3', 'درخت 3'], ['house1', 'خانه 1'], ['house2', 'خانه 2'], ['house3', 'خانه 3'],
+  ['background6', 'Background 6'],
+] as const;
+const SLOT_SYMBOLS = [
+  ['cherry', '🍒 گیلاس'], ['lemon', '🍋 لیمو'], ['orange', '🍊 پرتقال'], ['grape', '🍇 انگور'],
+  ['watermelon', '🍉 هندوانه'], ['diamond', '💎 الماس'], ['gold', '⭐ طلایی'], ['lucky7', '7️⃣ عدد ۷'],
 ] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -120,11 +123,13 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:homeslot'
       || data === 'botadmin:ranks'
       || data === 'botadmin:ghostassets'
+      || data === 'botadmin:slotsymbols'
       || data.startsWith('botadmin:gameimage:')
       || data.startsWith('botadmin:gamebackground:')
       || data.startsWith('botadmin:crashstage:')
       || data.startsWith('botadmin:rank:')
       || data.startsWith('botadmin:ghostasset:')
+      || data.startsWith('botadmin:slotsymbol:')
       || data.startsWith('botadmin:specialwheel:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
@@ -166,6 +171,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:ghostassets') {
       await clearState(env, callback.from.id);
       await sendGhostAssetMenu(env, token, chatId, messageId);
+    } else if (data === 'botadmin:slotsymbols') {
+      await clearState(env, callback.from.id);
+      await sendSlotSymbolMenu(env, token, chatId, messageId);
     } else if (data.startsWith('botadmin:rank:')) {
       const rank = normalizeRank(data.slice('botadmin:rank:'.length));
       if (rank) {
@@ -177,6 +185,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       if (asset) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${GHOST_ASSET_STATE_PREFIX}${asset}`, { expirationTtl: 900 });
         await promptImage(token, chatId, messageId, `👻 ${ghostAssetLabel(asset)}`, 'تصویر داخل کادر بازی Ghost Run را بفرستید.', 'botadmin:ghostassets');
+      }
+    } else if (data.startsWith('botadmin:slotsymbol:')) {
+      const symbol = normalizeSlotSymbol(data.slice('botadmin:slotsymbol:'.length));
+      if (symbol) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${SLOT_SYMBOL_STATE_PREFIX}${symbol}`, { expirationTtl: 900 });
+        await promptImage(token, chatId, messageId, `🎰 ${slotSymbolLabel(symbol)}`, 'تصویر این شکل اسلات را بفرستید. تصویر بلافاصله روی ریل‌های بازی استفاده می‌شود.', 'botadmin:slotsymbols');
       }
     } else if (data.startsWith('botadmin:gamebackground:')) {
       const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
@@ -238,6 +252,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     else if (target.kind === 'crash-stage') await sendCrashStageMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'ghost-asset') await sendGhostAssetMenu(env, token, message.chat.id, menuMessageId);
+    else if (target.kind === 'slot-symbol') await sendSlotSymbolMenu(env, token, message.chat.id, menuMessageId);
     else await sendImagesMenu(token, message.chat.id, menuMessageId);
     return ok();
   }
@@ -295,6 +310,8 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/rank-character/${target.rank}.png?v=${Date.now()}`, `✅ تصویر رنک ${target.rank} ذخیره شد.`, '🏆 تصاویر رنک‌ها', 'botadmin:ranks');
     } else if (target.kind === 'ghost-asset') {
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/ghost-run-asset/${target.asset}.png?v=${Date.now()}`, `✅ ${ghostAssetLabel(target.asset)} ذخیره شد.`, '👻 تصاویر Ghost Run', 'botadmin:ghostassets');
+    } else if (target.kind === 'slot-symbol') {
+      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/slot-symbols/${target.symbol}?v=${Date.now()}`, `✅ ${slotSymbolLabel(target.symbol)} ذخیره شد و روی ریل‌های Slot نمایش داده می‌شود.`, '🎰 شکل‌های اسلات', 'botadmin:slotsymbols');
     } else {
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
@@ -325,6 +342,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
+    [{ text: '🎰 شکل‌های بازی Slot', callback_data: 'botadmin:slotsymbols' }],
     [
       { text: '🎰 اسلات Home', callback_data: 'botadmin:homeslot' },
       { text: '🏆 تصاویر رنک‌ها', callback_data: 'botadmin:ranks' },
@@ -379,6 +397,15 @@ async function sendGhostAssetMenu(env: Env, token: string, chatId: number, messa
   await upsert(token, chatId, messageId, '👻 تصاویر داخل کادر بازی Ghost Run\n\nبخش موردنظر صحنه را انتخاب کنید و تصویر جایگزین را بفرستید.', rows);
 }
 
+async function sendSlotSymbolMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const present = await Promise.all(SLOT_SYMBOLS.map(([symbol]) => env.ASSETS.head(`slot-symbol/${symbol}`).then(Boolean).catch(() => false)));
+  const buttons = SLOT_SYMBOLS.map(([symbol, title], index) => ({ text: `${present[index] ? '✅ ' : ''}${title}`, callback_data: `botadmin:slotsymbol:${symbol}` }));
+  const rows: Keyboard = [];
+  for (let index = 0; index < buttons.length; index += 2) rows.push(buttons.slice(index, index + 2));
+  rows.push([{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]);
+  await upsert(token, chatId, messageId, '🎰 شکل‌های بازی Slot\n\nیکی از ۸ شکل را انتخاب کنید و تصویر PNG، JPG یا WebP آن را بفرستید. علامت ✅ یعنی تصویر آن شکل قبلاً آپلود شده است.', rows);
+}
+
 async function promptImage(token: string, chatId: number, messageId: number | undefined, title: string, description: string, back: string): Promise<void> {
   await upsert(token, chatId, messageId, `${title}\n\n${description}\n\nPNG، JPG و WebP پشتیبانی می‌شوند. برای حفظ کیفیت و شفافیت بهتر است تصویر را به‌صورت File/Document بفرستید.`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
 }
@@ -427,6 +454,7 @@ async function saveImage(env: Env, token: string, target: UploadTarget, source: 
     : target.kind === 'home-slot' ? 'home-lottery-slot'
       : target.kind === 'rank' ? `rank-character/${target.rank}`
         : target.kind === 'ghost-asset' ? `ghost-run-assets/${target.asset}`
+          : target.kind === 'slot-symbol' ? `slot-symbol/${target.symbol}`
           : target.kind === 'background' ? sectionBackgroundR2Key(target.game)
             : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
   const metadata = target.kind === 'ton'
@@ -441,6 +469,8 @@ async function saveImage(env: Env, token: string, target: UploadTarget, source: 
             ? { version, rank: target.rank, contentType, uploadedVia: `telegram-admin-${source.via}` }
             : target.kind === 'ghost-asset'
               ? { version, kind: target.asset, contentType, uploadedVia: `telegram-admin-${source.via}` }
+              : target.kind === 'slot-symbol'
+                ? { version, symbolId: target.symbol, contentType, uploadedVia: `telegram-admin-${source.via}` }
               : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
@@ -503,6 +533,10 @@ function normalizeTarget(value: unknown): UploadTarget | null {
     const asset = normalizeGhostAsset(raw.slice(GHOST_ASSET_STATE_PREFIX.length));
     return asset ? { kind: 'ghost-asset', asset } : null;
   }
+  if (raw.startsWith(SLOT_SYMBOL_STATE_PREFIX)) {
+    const symbol = normalizeSlotSymbol(raw.slice(SLOT_SYMBOL_STATE_PREFIX.length));
+    return symbol ? { kind: 'slot-symbol', symbol } : null;
+  }
   if (raw.startsWith(BACKGROUND_STATE_PREFIX)) {
     const game = normalizeBackgroundGame(raw.slice(BACKGROUND_STATE_PREFIX.length));
     return game ? { kind: 'background', game } : null;
@@ -517,6 +551,8 @@ function normalizeTarget(value: unknown): UploadTarget | null {
 function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }
 function normalizeGhostAsset(value: unknown): string | null { const clean = String(value || '').trim().toLowerCase(); return GHOST_ASSETS.some(([asset]) => asset === clean) ? clean : null; }
 function ghostAssetLabel(asset: string): string { return GHOST_ASSETS.find(([id]) => id === asset)?.[1] || asset; }
+function normalizeSlotSymbol(value: unknown): string | null { const clean = String(value || '').trim().toLowerCase(); return SLOT_SYMBOLS.some(([symbol]) => symbol === clean) ? clean : null; }
+function slotSymbolLabel(symbol: string): string { return SLOT_SYMBOLS.find(([id]) => id === symbol)?.[1] || symbol; }
 function label(game: string): string { return GAMES.find(([id]) => id === game)?.[1] || game; }
 function backgroundLabel(game: string): string { return BACKGROUND_GAMES.find(([id]) => id === game)?.[1] || game; }
 function gameKey(game: string): string { return `game-card-images/${game}`; }
