@@ -166,6 +166,13 @@ export const SECTION_BACKGROUND_STYLES = `
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
+#ghostrun .ghost-run-scene.has-admin-background,
+#ghostrun .ghost-run-background-panel.has-admin-background {
+  background-image: var(--admin-section-background-image) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
 img[data-admin-bg-overridden="1"] {
   display: block !important;
 }
