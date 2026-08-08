@@ -1,15 +1,16 @@
 import './deposit-method-icon-routes';
-import './withdrawal-admin-routes';
 import app from './index-with-admin-refresh';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
+import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
+import type { TonWithdrawal } from './ton-withdrawals';
 
 export { PlinkoLiveRoom } from './plinko-live';
 
@@ -63,13 +64,24 @@ export default {
     const plinkoControlAdminResponse = await handlePlinkoControlAdminRequest(request, runtimeEnv);
     if (plinkoControlAdminResponse) return plinkoControlAdminResponse;
 
+    const gramWithdrawalAdminResponse = await handleGramWithdrawalAdminRequest(request, runtimeEnv);
+    if (gramWithdrawalAdminResponse) return gramWithdrawalAdminResponse;
+
     const sectionAccessAdminResponse = await handleSectionAccessAdminRequest(request, runtimeEnv);
     if (sectionAccessAdminResponse) return sectionAccessAdminResponse;
 
     const gameCardAdminResponse = await handleGameCardAdminRequest(request, runtimeEnv);
     if (gameCardAdminResponse) return gameCardAdminResponse;
 
+    const isNewGramWithdrawal = request.method === 'POST' && url.pathname === '/app/api/ton/withdrawals';
     const response = await app.fetch(request, runtimeEnv as never, ctx);
+    if (isNewGramWithdrawal && response.ok) {
+      const withdrawal = await response.clone().json().catch(() => null) as TonWithdrawal | null;
+      if (withdrawal?.id) {
+        await notifyAdminGramWithdrawal(runtimeEnv, withdrawal).catch((error) => console.warn('Gram withdrawal notification failed', error));
+      }
+    }
+
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) return response;
     const html = await response.text();
