@@ -1,7 +1,6 @@
 import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
-import { getSpecialWheelPriceStars } from './special-wheel-engine';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
@@ -130,32 +129,35 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 }
 
 async function sendHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const [wheelEnabled, wheelPrice] = await Promise.all([
-    isSpecialWheelEnabled(env),
-    getSpecialWheelPriceStars(env),
-  ]);
+  const wheelEnabled = await isSpecialWheelEnabled(env);
   await upsert(token, chatId, messageId,
-    `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n⭐️ قیمت اسپین‌های بعدی: ${wheelPrice === 0 ? 'رایگان' : `${wheelPrice} Stars`}\n\nبخش موردنظر را انتخاب کنید.`,
+    `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`,
     [
-      [{ text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' }],
-      [{ text: '👥 Online Counts', callback_data: 'botadmin:online:list' }],
-      [{ text: '🎰 Slot Live Bets', callback_data: 'botadmin:slotlive:list:0' }],
       [
-        { text: '🚀 Crash Live Bets', callback_data: 'botadmin:crashlive:list:0' },
-        { text: '👻 Ghost Run Live Bets', callback_data: 'botadmin:ghostlive:list:0' },
+        { text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' },
+        { text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' },
       ],
-      [{ text: '🎮 تصاویر کارت بازی‌ها', callback_data: 'botadmin:gameimages' }],
-      [{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }],
-      [{ text: '🚀 10 تصویر داخل Crash', callback_data: 'botadmin:crashstage' }],
-      [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
+      [
+        { text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' },
+        { text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' },
+      ],
+      [
+        { text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' },
+        { text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' },
+      ],
+      [
+        { text: '🔐 قفل بخش‌ها', callback_data: 'botadmin:access:list' },
+        { text: '👥 Online Counts', callback_data: 'botadmin:online:list' },
+      ],
+      [
+        { text: '🎰 Slot Live Bets', callback_data: 'botadmin:slotlive:list:0' },
+        { text: '🚀 Crash Live Bets', callback_data: 'botadmin:crashlive:list:0' },
+      ],
+      [
+        { text: '👻 Ghost Run Live Bets', callback_data: 'botadmin:ghostlive:list:0' },
+        { text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
+      ],
       [{ text: wheelEnabled ? '❌ غیرفعال کردن صفحه گردونه' : '✅ فعال کردن صفحه گردونه', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` }],
-      [{ text: `⭐️ قیمت اسپین بعدی: ${wheelPrice === 0 ? 'رایگان' : wheelPrice}`, callback_data: 'botadmin:specialwheelprice' }],
-      [{ text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' }],
-      [{ text: '↩️ کاربران برگشتی', callback_data: 'botadmin:returns' }],
-      [{ text: '📊 آمار مالی و آنلاین', callback_data: 'botadmin:financestats' }],
-      [{ text: '⚙️ حدود واریز/برداشت', callback_data: 'botadmin:financelimits' }],
-      [{ text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' }],
-      [{ text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' }],
     ],
   );
 }
@@ -164,28 +166,37 @@ async function sendAccessMenu(env: Env, token: string, chatId: number, messageId
   const now = Math.floor(Date.now() / 1000);
   const locks = await getSectionAccess(env);
   const lockMap = new Map(locks.map((lock) => [lock.sectionId, lock] as const));
-  const textLines = ACCESS_SECTIONS.map(([id, label]) => {
+  const activeLines = ACCESS_SECTIONS.flatMap(([id, label]) => {
     const lock = lockMap.get(id);
-    return lock ? `🔒 ${label} — ${formatSeconds(lock.lockedUntil - now)} باقی‌مانده` : `🔓 ${label}`;
+    return lock ? [`🔒 ${label} — ${formatSeconds(lock.lockedUntil - now)} باقی‌مانده`] : [];
   });
   const rows: Keyboard = [];
+  const unlockedButtons: Button[] = [];
+
   for (const [id, label] of ACCESS_SECTIONS) {
     const lock = lockMap.get(id);
     if (lock) {
       rows.push([
-        { text: `⏱ تمدید ${label}`, callback_data: `botadmin:access:select:${id}` },
-        { text: '🔓 باز کردن', callback_data: `botadmin:access:unlock:${id}` },
+        { text: `⏱ ${label}`, callback_data: `botadmin:access:select:${id}` },
+        { text: `🔓 باز کردن`, callback_data: `botadmin:access:unlock:${id}` },
       ]);
     } else {
-      rows.push([{ text: `🔒 قفل ${label}`, callback_data: `botadmin:access:select:${id}` }]);
+      unlockedButtons.push({ text: `🔒 ${label}`, callback_data: `botadmin:access:select:${id}` });
     }
   }
+
+  for (let index = 0; index < unlockedButtons.length; index += 2) {
+    rows.push(unlockedButtons.slice(index, index + 2));
+  }
+
   rows.push([
     { text: '🔄 بروزرسانی', callback_data: 'botadmin:access:refresh' },
     { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
   ]);
+
+  const status = activeLines.length ? `قفل‌های فعال:\n${activeLines.join('\n')}` : 'در حال حاضر هیچ بخشی قفل نیست.';
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}🔐 قفل بخش‌های مینی‌اپ\n\n${textLines.join('\n')}\n\nبرای قفل یا تمدید، بخش را انتخاب کنید و مدت را به دقیقه بفرستید. قفل‌ها در پایان زمان خودکار باز می‌شوند.`,
+    `${notice ? notice + '\n\n' : ''}🔐 قفل بخش‌های مینی‌اپ\n\n${status}\n\nبرای قفل کردن یک بخش روی نامش بزنید. بخش‌های آزاد دو‌تایی چیده شده‌اند؛ قفل‌های فعال دکمه تمدید و باز کردن جدا دارند.`,
     rows,
   );
 }
