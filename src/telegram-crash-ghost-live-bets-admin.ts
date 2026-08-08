@@ -203,11 +203,6 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
   const start = safePage * PAGE_SIZE;
   const visible = users.slice(start, start + PAGE_SIZE);
   const prefix = gamePrefix(game);
-  const lines = visible.map((user, localIndex) => {
-    const number = start + localIndex + 1;
-    const bets = user.bets.map((bet) => `${trimNumber(bet.amount)}→${trimNumber(bet.cashoutMultiplier)}x`).join(', ');
-    return `${number}. ${user.name} · ${trimNumber(user.betSecond)}s · ${bets}`;
-  });
 
   const rows: Keyboard = [
     [{ text: '✏️ ویرایش سریع همه', callback_data: `${prefix}bulk:${safePage}` }, { text: '➕ افزودن کاربر', callback_data: `${prefix}add:${safePage}` }],
@@ -230,10 +225,11 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
 
   const timing = game === 'crash'
-    ? 'هر کاربر زمان ورود مستقل ۰ تا ۸ ثانیه دارد؛ ۰ یعنی ابتدای بازه‌ی Live Bets و ۸ یعنی نزدیک شروع راند.'
-    : 'هر کاربر زمان ورود مستقل ۰ تا ۶.۵ ثانیه در Ghost Run دارد.';
+    ? 'زمان ورود هر کاربر: ۰ تا ۸ ثانیه.'
+    : 'زمان ورود هر کاربر: ۰ تا ۶.۵ ثانیه.';
+  const pageText = totalPages > 1 ? `\nصفحه ${safePage + 1} از ${totalPages}` : '';
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}${gameTitle(game)}\n\n${timing}\nاین تنظیمات کاملاً از بازی دیگر مستقل است.\n\n${lines.join('\n') || 'بدون کاربر'}\n\nبرای سرعت، ویرایش سریع همه را بزنید تا کل لیست را با یک پیام تغییر دهید.`,
+    `${notice ? notice + '\n\n' : ''}${gameTitle(game)}\n\n👥 تعداد کاربران: ${users.length}\n${timing}${pageText}\n\nکاربر را از دکمه‌های زیر انتخاب کنید.`,
     rows,
   );
 }
