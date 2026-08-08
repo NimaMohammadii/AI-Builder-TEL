@@ -2,7 +2,6 @@ export const LEVEL_SYNC_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
-  var queue=Promise.resolve();
   var profile=null;
   var flushingXp=false;
   var PLAY_XP_INTERVAL_MS=3600000;
@@ -20,6 +19,7 @@ export const LEVEL_SYNC_SCRIPT = `
   var renderedTotalXp=-1;
   var flushTimer=0;
   var observedSection='';
+  var exitDrained=false;
   var PROFILE_STALE_MS=60000;
   var FORCE_PROFILE_RELOAD_MS=120000;
   var FLUSH_DEBOUNCE_MS=2500;
@@ -34,6 +34,7 @@ export const LEVEL_SYNC_SCRIPT = `
     {name:'Titan',range:'Level 60+',min:60,max:999,text:'The highest Vexa FLOW status.'}
   ];
   function id(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
+  function initData(){return String((tg&&tg.initData)||'').trim()}
   function section(){var active=document.querySelector('.view.active');return active&&active.id?active.id:'home'}
   function isGameSection(name){return !!gameSections[String(name||section()).replace(/^view-/,'')]}
   function todayKey(){return new Date().toISOString().slice(0,10)}
@@ -83,12 +84,23 @@ export const LEVEL_SYNC_SCRIPT = `
   function popup(level,rankName){var t=document.getElementById('toast');if(!t)return;t.textContent='Level Up '+level+' • '+rankName;t.style.display='block';setTimeout(function(){t.style.display='none'},2500)}
   function xpToast(amount){var t=document.getElementById('toast');if(!t)return;t.textContent='+'+amount+' XP';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
   function preview(amount){amount=Math.max(0,Math.floor(Number(amount)||0));if(!amount)return;var p=clean(profile||{level:1,xp:0,totalXp:0});var old=p.level;p.xp+=amount;p.totalXp+=amount;while(p.xp>=p.nextLevelXp){p.xp-=p.nextLevelXp;p.level++;p.nextLevelXp=need(p.level)}p.progressPercent=Math.max(0,Math.min(100,Math.floor((p.xp/p.nextLevelXp)*100)));p.xpLeft=Math.max(0,p.nextLevelXp-p.xp);p.rankName=rank(p.level);render(p);if(p.level>old)popup(p.level,p.rankName)}
-  function xpBody(ev){return JSON.stringify({userId:ev.userId,amount:ev.amount,source:ev.source||'activity',metadata:ev.metadata||{section:section()},eventId:ev.eventId})}
-  function flushPendingXp(){var userId=id();if(flushTimer){clearTimeout(flushTimer);flushTimer=0}if(!userId||flushingXp)return;var pending=loadPendingXp();if(!pending.length)return;flushingXp=true;queue=queue.then(function(){function step(){var list=loadPendingXp();if(!list.length)return Promise.resolve();var ev=list[0];return fetch('/app/api/level/xp',{method:'POST',cache:'no-store',headers:{'content-type':'application/json','cache-control':'no-store'},body:xpBody(ev)}).then(function(r){if(!r.ok)throw new Error('xp sync failed');return r.json().catch(function(){return null})}).then(function(j){list=loadPendingXp();if(list.length&&list[0].eventId===ev.eventId)list.shift();else list=list.filter(function(x){return x.eventId!==ev.eventId});savePendingXp(list);if(j&&j.profile)render(j.profile,{authoritative:true,force:true});if(j&&j.leveledUp&&j.profile)popup(j.profile.level,j.profile.rankName);return step()})}return step()}).catch(function(){}).then(function(){flushingXp=false})}
+  function xpBatchBody(events){return JSON.stringify({initData:initData(),events:(Array.isArray(events)?events:[]).map(function(ev){return{amount:ev.amount,source:ev.source||'activity',metadata:ev.metadata||{section:section()},eventId:ev.eventId}})})}
+  function flushPendingXp(){
+    if(flushTimer){clearTimeout(flushTimer);flushTimer=0}
+    var userId=id();if(!userId||flushingXp)return;
+    var pending=loadPendingXp();if(!pending.length)return;
+    flushingXp=true;
+    var sentIds={};pending.forEach(function(ev){sentIds[ev.eventId]=1});
+    fetch('/app/api/level/xp',{method:'POST',cache:'no-store',headers:{'content-type':'application/json','cache-control':'no-store'},body:xpBatchBody(pending)})
+      .then(function(r){if(!r.ok)throw new Error('xp sync failed');return r.json().catch(function(){return null})})
+      .then(function(j){var remaining=loadPendingXp().filter(function(ev){return !sentIds[ev.eventId]});savePendingXp(remaining);if(j&&j.profile)render(j.profile,{authoritative:true,force:true});if(j&&j.leveledUp&&j.profile)popup(j.profile.level,j.profile.rankName)})
+      .catch(function(){})
+      .finally(function(){flushingXp=false});
+  }
   function scheduleFlushPendingXp(force){if(force){flushPendingXp();return}if(flushTimer||flushingXp||!loadPendingXp().length)return;flushTimer=setTimeout(function(){flushTimer=0;flushPendingXp()},FLUSH_DEBOUNCE_MS)}
   function add(amount,source,metadata){var userId=id();amount=Math.max(0,Math.floor(Number(amount)||0));if(!userId||!amount)return;var ev={eventId:xpEventId(),userId:userId,amount:amount,source:source||'activity',metadata:metadata||{section:section()}};var pending=loadPendingXp();pending.push(ev);savePendingXp(pending);preview(amount);scheduleFlushPendingXp(false)}
   function awardDailyOpen(){var userId=id();if(!userId||dailyChecked)return;dailyChecked=true;try{var key=dailyStorageKey(),today=todayKey();if(localStorage.getItem(key)===today)return;localStorage.setItem(key,today);add(DAILY_XP_AMOUNT,'daily-open',{date:today});xpToast(DAILY_XP_AMOUNT)}catch(e){}}
-  function load(opts){opts=opts||{};var userId=id();if(!userId)return;loadPlayMs();loadCachedProfile();var now=Date.now();if(loadingProfile)return;if(opts.force&&lastProfileLoadAt&&now-lastProfileLoadAt<FORCE_PROFILE_RELOAD_MS){scheduleFlushPendingXp(false);awardDailyOpen();return}if(!opts.force&&lastProfileLoadAt&&now-lastProfileLoadAt<PROFILE_STALE_MS){scheduleFlushPendingXp(false);awardDailyOpen();return}loadingProfile=true;lastProfileLoadAt=now;fetch('/app/api/level?userId='+encodeURIComponent(userId),{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json'}}).then(function(r){return r.json()}).then(function(p){render(p,{authoritative:true,force:true});scheduleFlushPendingXp(false);awardDailyOpen()}).catch(function(){scheduleFlushPendingXp(false);awardDailyOpen()}).then(function(){loadingProfile=false})}
+  function load(opts){opts=opts||{};var userId=id();if(!userId)return;loadPlayMs();loadCachedProfile();var now=Date.now();if(loadingProfile)return;if(opts.force&&lastProfileLoadAt&&now-lastProfileLoadAt<FORCE_PROFILE_RELOAD_MS){scheduleFlushPendingXp(false);awardDailyOpen();return}if(!opts.force&&lastProfileLoadAt&&now-lastProfileLoadAt<PROFILE_STALE_MS){scheduleFlushPendingXp(false);awardDailyOpen();return}loadingProfile=true;lastProfileLoadAt=now;fetch('/app/api/level',{cache:'no-store',headers:{'cache-control':'no-store','accept':'application/json','x-telegram-init-data':initData()}}).then(function(r){if(!r.ok)throw new Error('level sync failed');return r.json()}).then(function(p){render(p,{authoritative:true,force:true});scheduleFlushPendingXp(false);awardDailyOpen()}).catch(function(){scheduleFlushPendingXp(false);awardDailyOpen()}).then(function(){loadingProfile=false})}
   function clearPlayTimer(){if(playTimer){clearTimeout(playTimer);playTimer=0}}
   function schedulePlayTimer(){clearPlayTimer();if(!id()||document.hidden||!isGameSection(section()))return;var remaining=Math.max(1000,Math.min(PLAY_XP_INTERVAL_MS-playMs,ACTIVE_WINDOW_MS-(Date.now()-lastActivityAt)));if(remaining>0&&remaining<=ACTIVE_WINDOW_MS)playTimer=setTimeout(function(){playTimer=0;smartTick(true)},remaining+25)}
   function tickPlayXp(){var now=Date.now();var elapsed=Math.max(0,Math.min(ACTIVE_WINDOW_MS,now-lastTickAt));lastTickAt=now;if(!id())return;if(document.hidden){clearPlayTimer();return}if(!isGameSection(section())){savePlayMs();clearPlayTimer();return}if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();clearPlayTimer();return}playMs+=elapsed;while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs();schedulePlayTimer()}
@@ -97,12 +109,12 @@ export const LEVEL_SYNC_SCRIPT = `
   function noteSectionChange(){var current=section();if(current===observedSection)return;observedSection=current;smartTick(true);schedulePlayTimer()}
   window.VexaLevel={add:add,load:function(){load({force:true})},openRanks:openRankModal,flushPlayXp:function(){smartTick(true);scheduleFlushPendingXp(true)}};
   ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section()))refreshFromUserIntent(false)},true)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs();clearPlayTimer()}else{lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})}});
-  window.addEventListener('focus',function(){lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs();clearPlayTimer()}else{exitDrained=false;lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})}});
+  window.addEventListener('focus',function(){exitDrained=false;lastTickAt=Date.now();refreshFromUserIntent(false);load({force:false})});
   window.addEventListener('online',function(){scheduleFlushPendingXp(true);load({force:false})});
   document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var a=b.getAttribute('data-action')||'';var view=b.getAttribute('data-view')||'';if(view||a){setTimeout(function(){refreshFromUserIntent(false)},80)}},true);
   try{new MutationObserver(function(){noteSectionChange()}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})}catch(e){}
-  function drainOnExit(){smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(navigator.sendBeacon)pending.slice(0,20).forEach(function(ev){navigator.sendBeacon('/app/api/level/xp',new Blob([xpBody(ev)],{type:'application/json'}))})}catch(e){}}
+  function drainOnExit(){if(exitDrained)return;exitDrained=true;smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(pending.length&&navigator.sendBeacon)navigator.sendBeacon('/app/api/level/xp',new Blob([xpBatchBody(pending)],{type:'application/json'}))}catch(e){}}
   window.addEventListener('pagehide',drainOnExit);
   window.addEventListener('beforeunload',drainOnExit);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){observedSection=section();load({force:true});markActivity();lastTickAt=Date.now();schedulePlayTimer()});else{observedSection=section();load({force:true});markActivity();lastTickAt=Date.now();schedulePlayTimer()}
