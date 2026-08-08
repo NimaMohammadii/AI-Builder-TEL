@@ -5,6 +5,7 @@ import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-eff
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
+import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
@@ -58,6 +59,9 @@ export default {
 
     const onlineCountsAdminResponse = await handleOnlineCountsAdminRequest(request, runtimeEnv);
     if (onlineCountsAdminResponse) return onlineCountsAdminResponse;
+
+    const plinkoControlAdminResponse = await handlePlinkoControlAdminRequest(request, runtimeEnv);
+    if (plinkoControlAdminResponse) return plinkoControlAdminResponse;
 
     const sectionAccessAdminResponse = await handleSectionAccessAdminRequest(request, runtimeEnv);
     if (sectionAccessAdminResponse) return sectionAccessAdminResponse;
