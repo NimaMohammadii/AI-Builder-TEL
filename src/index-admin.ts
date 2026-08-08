@@ -77,7 +77,6 @@ app.get('/app/api/section-backgrounds', async (c) => {
     { id: 'crash', label: 'Crash', description: 'Crash background' },
     { id: 'slot', label: 'Slot', description: 'Slot background' },
     { id: 'ghostrun', label: 'Ghost Run', description: 'Ghost Run background' },
-    { id: 'coinflip', label: 'Pump', description: 'Pump background' },
   ];
   const sections = await Promise.all(adminSections.map((section) => sectionBackgroundInfo(c.env, section)));
   const preload = sections.map((section) => section.backgroundUrl).filter(Boolean);
