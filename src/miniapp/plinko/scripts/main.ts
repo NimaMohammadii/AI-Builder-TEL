@@ -678,7 +678,6 @@ export const PLINKO_SCRIPT = `
     return ball;
   }
   function drop() {
-    smartLoadPlinkoControl(false);
     init();
     primeAudio();
     if (!state) return false;
