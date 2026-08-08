@@ -1,7 +1,7 @@
-import { CRASH_PERFORMANCE_SCRIPT } from './crash-performance-script';
-import { CRASH_LIVE_D1_SCRIPT } from './crash-live-d1-script';
-import { CRASH_BACK_BUTTON_SCRIPT } from './crash-back-button-script';
-import { CRASH_BREAK_FX_SCRIPT } from './crash-break-fx-script';
+import { CRASH_PERFORMANCE_SCRIPT } from './scripts/performance';
+import { CRASH_LIVE_D1_SCRIPT } from './scripts/live-bets';
+import { CRASH_BACK_BUTTON_SCRIPT } from './scripts/back-button';
+import { CRASH_BREAK_FX_SCRIPT } from './scripts/break-effect';
 
 const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
 (function(){
