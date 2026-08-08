@@ -34,7 +34,7 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .ghost-run-forward-button:before{transform:translate(-66%,-50%) rotate(135deg)!important}
     #ghostrun .ghost-run-move-button:active,#ghostrun .ghost-run-move-button[data-holding='1']{background:rgba(26,11,15,.68)!important;transform:scale(.985)!important}
     #ghostrun .ghost-run-move-button:disabled{opacity:.28!important}
-    #ghostrun .crash-live{order:3!important;margin:0 12px 10px!important;border-radius:32px!important;background:rgba(26,11,15,.54)!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
+    #ghostrun .crash-live{order:3!important;margin:0 12px 10px!important;border-radius:32px!important;background:rgba(13,13,13,.54)!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;padding:14px!important;overflow:visible!important;transition:max-height .34s cubic-bezier(.2,.8,.2,1),padding .28s ease,opacity .2s ease!important;max-height:none!important;display:flex!important;flex-direction:column!important;min-height:0!important}
     #ghostrun .crash-live:not(.open){max-height:54px!important;padding-bottom:12px!important;overflow:hidden!important}
     #ghostrun .crash-live-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;color:rgba(255,255,255,.50)!important;font-size:13px!important;font-weight:850!important;letter-spacing:-.02em!important}
     #ghostrun .crash-live-title{display:inline-flex!important;align-items:center!important;gap:7px!important;color:rgba(255,255,255,.58)!important;min-width:0!important}
@@ -59,10 +59,19 @@ export const GHOST_RUN_SECTION = `
     #ghostrun .crash-live-row.cashout .crash-live-amount,#ghostrun .crash-live-plus{color:#78ffb3!important}
     #ghostrun .crash-live-plus{display:inline-block!important;margin-right:3px!important;font-weight:950!important}
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-controls,
+    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive{
+      border:0!important;
+      outline:0!important;
+      background:rgba(13,13,13,.54)!important;
+      background-color:rgba(13,13,13,.54)!important;
+      background-image:none!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;
+      backdrop-filter:blur(10px) saturate(1.12)!important;
+      -webkit-backdrop-filter:blur(10px) saturate(1.12)!important;
+    }
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-win-card,
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-bet-card,
     html body:has(#ghostrun.active) main.app #ghostrun .ghost-run-move-button,
-    html body:has(#ghostrun.active) main.app #ghostrun #ghostLive,
     html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-row,
     html body:has(#ghostrun.active) main.app #ghostrun #ghostLive .crash-live-toggle{
       border:0!important;
@@ -117,7 +126,7 @@ export const GHOST_RUN_SECTION = `
       <div class="ghost-run-layer ghost-run-layer-far"></div>
       <div class="ghost-run-layer ghost-run-layer-mid"></div>
       <div class="ghost-run-layer ghost-run-near-realism"></div>
-      <div class="ghost-run-layer ghost-run-layer-near"></div>
+      <div class="ghost-run-layer ghost-run-near"></div>
       <div class="ghost-run-uploaded-trees ghost-run-uploaded-tree-1"></div>
       <div class="ghost-run-uploaded-trees ghost-run-uploaded-tree-2"></div>
       <div class="ghost-run-uploaded-trees ghost-run-uploaded-tree-3"></div>
