@@ -1127,12 +1127,6 @@ export const PLINKO_SCRIPT = `
   });
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) stopAuto();
-    else if (active()) smartLoadPlinkoControl(true);
-  });
-  window.addEventListener('focus', function () {
-    if (active()) {
-      smartLoadPlinkoControl(true);
-    }
   });
   window.addEventListener('vexa-credit-sync', function (ev) {
     if (ev && ev.detail) forcePoints(ev.detail);

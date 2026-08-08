@@ -10,6 +10,7 @@ import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin'
 import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
 import { gameBotToken, validateTelegramInitData } from './utils';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
+import { getSectionAccess, isMiniAppAdmin } from './section-access';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
@@ -39,9 +40,13 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/app/api/section-access/live' && request.headers.get('Upgrade') === 'websocket') {
       try {
-        await validateTelegramInitData(url.searchParams.get('initData') || '', gameBotToken(runtimeEnv));
+        const userId = await validateTelegramInitData(url.searchParams.get('initData') || '', gameBotToken(runtimeEnv));
+        const locks = await getSectionAccess(runtimeEnv);
+        const headers = new Headers(request.headers);
+        headers.set('x-section-lock-admin', isMiniAppAdmin(runtimeEnv, userId) ? '1' : '0');
+        headers.set('x-section-lock-initial', JSON.stringify(locks));
         const id = runtimeEnv.SECTION_LOCK_EVENTS.idFromName('global');
-        return runtimeEnv.SECTION_LOCK_EVENTS.get(id).fetch(new Request('https://section-lock-events/connect', { headers: request.headers }));
+        return runtimeEnv.SECTION_LOCK_EVENTS.get(id).fetch(new Request('https://section-lock-events/connect', { headers }));
       } catch {
         return new Response('Unauthorized', { status: 401 });
       }

@@ -161,7 +161,6 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var adminSchedule=null;
   var adminScheduleFetchedAt=0;
   var adminScheduleInFlight=null;
-  var adminScheduleTtl=20*60*1000;
   var adminScheduleCacheKey='vexa-live-count:admin-schedule:v1';
   var storagePrefix='vexa-live-count:';
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
@@ -193,8 +192,8 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function refreshCounts(){if(document.hidden)return;Object.keys(games).forEach(function(id){var n=count(id);if(isPlayZoneActive())setCount(id,n);else counts[id]=n});renderBadge()}
   function needsLiveCountRefresh(){return !document.hidden&&(isPlayZoneActive()||!!activeGame())}
   function needsAdminSchedule(){return needsLiveCountRefresh()}
-  function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt&&(Date.now()-adminScheduleFetchedAt)<adminScheduleTtl)}
-  function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt||Date.now()-Number(cached.fetchedAt)>=adminScheduleTtl)return false;adminSchedule=cached.schedule;adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
+  function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt)}
+  function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt)return false;adminSchedule=cached.schedule;adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
   function writeCachedAdminSchedule(schedule){var payload=JSON.stringify({schedule:schedule,fetchedAt:adminScheduleFetchedAt});try{sessionStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}try{localStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}}
   function applyAdminSchedule(schedule,fetchedAt){if(!schedule)return;adminSchedule=schedule;adminScheduleFetchedAt=fetchedAt||Date.now();counts={};countBuckets={};writeCachedAdminSchedule(schedule);refreshCounts()}
   function loadAdminSchedule(){if(!needsAdminSchedule())return Promise.resolve(false);if(isAdminScheduleFresh()||readCachedAdminSchedule()){refreshCounts();return Promise.resolve(true)}if(adminScheduleInFlight)return adminScheduleInFlight;adminScheduleInFlight=fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){applyAdminSchedule(j.schedule,Date.now());return true}return false}).catch(function(){return false}).then(function(result){adminScheduleInFlight=null;return result},function(err){adminScheduleInFlight=null;throw err});return adminScheduleInFlight}

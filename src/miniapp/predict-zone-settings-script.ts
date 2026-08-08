@@ -81,7 +81,6 @@ const PREDICT_SETTINGS_SCRIPT = `
   }else{
     load(false);
   }
-  window.addEventListener('focus',function(){load(false)});
   window.VexaReloadPredictSettings=function(){return load(true)};
 })();
 `;

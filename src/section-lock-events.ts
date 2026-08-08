@@ -12,7 +12,7 @@ function messageFor(locks: SectionLock[]): LockMessage {
 }
 
 export class SectionLockEvents {
-  private sessions = new Set<WebSocket>();
+  private sessions = new Map<WebSocket, { admin: boolean }>();
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -20,16 +20,25 @@ export class SectionLockEvents {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       server.accept();
-      this.sessions.add(server);
+      const admin = request.headers.get('x-section-lock-admin') === '1';
+      this.sessions.set(server, { admin });
       server.addEventListener('close', () => this.sessions.delete(server));
       server.addEventListener('error', () => this.sessions.delete(server));
+      try {
+        const raw = request.headers.get('x-section-lock-initial') || '[]';
+        const locks = admin ? [] : JSON.parse(raw) as SectionLock[];
+        server.send(JSON.stringify(messageFor(Array.isArray(locks) ? locks : [])));
+      } catch {
+        server.send(JSON.stringify(messageFor([])));
+      }
       return new Response(null, { status: 101, webSocket: client });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
       const locks = await request.json().catch(() => []) as SectionLock[];
       const payload = JSON.stringify(messageFor(Array.isArray(locks) ? locks : []));
-      for (const socket of this.sessions) {
-        try { socket.send(payload); } catch { this.sessions.delete(socket); }
+      const emptyPayload = JSON.stringify(messageFor([]));
+      for (const [socket, session] of this.sessions) {
+        try { socket.send(session.admin ? emptyPayload : payload); } catch { this.sessions.delete(socket); }
       }
       return Response.json({ ok: true });
     }

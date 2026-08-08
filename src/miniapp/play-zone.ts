@@ -48,6 +48,8 @@ export const PLAY_ZONE_SECTION = `
 export const PLAY_ZONE_VISIBILITY_SCRIPT = `
 (function(){
   var root=document.documentElement;
+  var loaded=false;
+  var inFlight=null;
   function finish(hidden,admin){
     var blocked={};(hidden||[]).forEach(function(id){blocked[String(id)]=true});
     document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){
@@ -57,12 +59,19 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     root.classList.add('play-zone-visibility-ready');
   }
   function load(){
+    if(loaded)return Promise.resolve();
+    if(inFlight)return inFlight;
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
-    if(!initData)return;
-    fetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})})
+    if(!initData)return Promise.resolve();
+    inFlight=fetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})})
       .then(function(r){if(!r.ok)throw new Error('unauthorized');return r.json()})
-      .then(function(data){finish(data.hiddenIds,data.admin)}).catch(function(){});
+      .then(function(data){loaded=true;finish(data.hiddenIds,data.admin)}).catch(function(){}).finally(function(){inFlight=null});
+    return inFlight;
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+  function active(){var el=document.getElementById('playzone');return !!(el&&el.classList.contains('active'))}
+  function loadIfActive(){if(active())load()}
+  window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='playzone')load()});
+  if(window.MutationObserver){var play=document.getElementById('playzone');if(play)new MutationObserver(loadIfActive).observe(play,{attributes:true,attributeFilter:['class']})}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadIfActive);else loadIfActive();
 })();`;

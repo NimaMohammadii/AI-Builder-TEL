@@ -3,8 +3,8 @@ export const ACTIVITY_CORE_SCRIPT = `
   var tg=window.Telegram&&window.Telegram.WebApp;
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var lastPayload='';
-  var lastSent=0;
   var lastSection='';
+  var firstStatePromise=null;
   var resetHandled=false;
   function activeSection(){var active=document.querySelector('.view.active');return active&&active.id?active.id:'home'}
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
@@ -21,12 +21,11 @@ export const ACTIVITY_CORE_SCRIPT = `
   function isAllowedBannedTarget(target){var el=target&&target.closest?target.closest('[data-view],.tabs .tab,[data-tab]'):null;return !!el}
   function bannedControl(target){if(!isBanned||!target||!target.closest)return null;if(isAllowedBannedTarget(target))return null;return target.closest('button,[role="button"],[data-action],a[href],input,select,textarea')}
   function stopIfBanned(ev){var control=bannedControl(ev.target);if(!control)return;showBanOverlay();if(ev.cancelable!==false)ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation()}
-  function sendActivity(force){if(document.hidden)return;var section=activeSection();var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:section};if(!body.userId)return;var encoded=JSON.stringify(body);var now=Date.now();var sectionChanged=section!==lastSection;if(!force&&!sectionChanged&&encoded===lastPayload&&now-lastSent<300000)return;lastPayload=encoded;lastSent=now;lastSection=section;fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true}).then(function(r){return r.json().catch(function(){return null})}).then(function(j){if(j&&j.ok){if(needsReset(j)){clearUserCache(j);return}applyBanState(!!j.banned);if(j.banned)return;if(j.tonBalanceNano!==undefined)applyServerTonBalance(j.tonBalanceNano);if(j.winChancePercent!==undefined&&window.VexaGameChance&&window.VexaGameChance.set)window.VexaGameChance.set(j.winChancePercent)}}).catch(function(){});}
+  function sendActivity(force){if(document.hidden)return Promise.resolve(null);var section=activeSection();var body={userId:userId(),username:user.username||null,firstName:user.first_name||null,section:section};if(!body.userId)return Promise.resolve(null);var encoded=JSON.stringify(body);var sectionChanged=section!==lastSection;if(!force&&!sectionChanged&&encoded===lastPayload)return Promise.resolve(null);lastPayload=encoded;lastSection=section;var request=fetch('/app/api/activity',{method:'POST',headers:{'content-type':'application/json'},body:encoded,keepalive:true}).then(function(r){return r.json().catch(function(){return null})}).then(function(j){if(j&&j.ok){if(needsReset(j)){clearUserCache(j);return j}applyBanState(!!j.banned);if(!j.banned){if(j.tonBalanceNano!==undefined)applyServerTonBalance(j.tonBalanceNano);if(j.winChancePercent!==undefined&&window.VexaGameChance&&window.VexaGameChance.set)window.VexaGameChance.set(j.winChancePercent)}try{window.dispatchEvent(new CustomEvent('vexa-initial-user-state',{detail:j}))}catch(e){}}return j}).catch(function(){return null});if(!firstStatePromise){firstStatePromise=request;window.VexaInitialUserState=request}return request;}
   function smartSync(){sendActivity(false)}
   document.addEventListener('pointerdown',stopIfBanned,true);
   document.addEventListener('touchstart',stopIfBanned,true);
   document.addEventListener('click',function(ev){if(bannedControl(ev.target)){stopIfBanned(ev);return}var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(b&&(b.getAttribute('data-action')||b.getAttribute('data-tab')||b.closest('.tabs')))setTimeout(function(){smartSync();},120);},true);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)sendActivity(false)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){sendActivity(true)});else sendActivity(true)
 })();
 `;

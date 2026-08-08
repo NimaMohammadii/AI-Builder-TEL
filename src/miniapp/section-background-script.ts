@@ -26,7 +26,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     'wheel-separator':['#wheel .wheel-separator','[data-section-background-target="wheel-separator"]'],
     'global-loading':['[data-section-background-target="global-loading"]']
   };
-  function cssUrl(url){return 'url("'+String(url).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'")'}
+  function cssUrl(url){return 'url("'+String(url).replace(/\\\\/g,'\\\\\\\\').replace(/"/g,'\\\\"')+'")'}
   function add(list,el){if(el&&list.indexOf(el)<0)list.push(el)}
   function sectionIdFromImage(img){var shell=img&&img.closest&&img.closest('[data-play-zone-card-id]');return shell&&shell.getAttribute('data-play-zone-card-id')||''}
   function defaultPlayZoneImageUrl(id){return id?'/app/api/section-lock-image/'+id+'/locked.png?v=1':''}
@@ -93,18 +93,15 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   var cache=null;
   var inFlight=null;
-  var lastLoadAt=0;
-  var LOAD_TTL=300000;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
   function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='ghostrun')return false;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
   function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
-    var now=Date.now();
-    if(!force&&cache&&now-lastLoadAt<LOAD_TTL){apply(cache.sections);return Promise.resolve(cache)}
+    if(!force&&cache){apply(cache.sections);return Promise.resolve(cache)}
     if(inFlight)return inFlight;
     inFlight=fetch('/app/api/section-backgrounds',{credentials:'same-origin',cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
-      .then(function(j){if(j){cache=j;lastLoadAt=Date.now();apply(j.sections)}return j})
+      .then(function(j){if(j){cache=j;apply(j.sections)}return j})
       .catch(function(){return cache})
       .finally(function(){inFlight=null});
     return inFlight;
@@ -120,8 +117,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
     window.VexaRefreshPlayZoneImages.__adminBgWrapped=true;
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false)});else load(false);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load(false)});
-  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-view],button,[data-action]');if(b)setTimeout(function(){load(false)},120)},true);
 })();
 `;
 

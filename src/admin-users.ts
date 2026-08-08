@@ -31,7 +31,7 @@ const CLIENT_RESET_PREFIX = 'miniapp-client-reset:';
 const CLIENT_RESET_ALL_KEY = 'miniapp-client-reset:all';
 const CLIENT_RESET_TTL_SECONDS = 180 * 24 * 60 * 60;
 
-export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; banned: boolean; tonBalanceNano: number; winChancePercent: number; resetVersion: string; resetAllVersion: string } | { ok: false; error: string }> {
+export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; banned: boolean; tonBalanceNano: number; winChancePercent: number; resetVersion: string; resetAllVersion: string; level: Awaited<ReturnType<typeof getUserLevel>> } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
   if (!userId) return { ok: false, error: 'Missing user id' };
   const username = cleanText(payload.username, 80);
@@ -41,8 +41,11 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
   try {
     await ensureTonBalanceColumn(env);
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
-    const controls = await getUserControls(env, userId);
-    const resetState = await getClientResetState(env, userId);
+    const [controls, resetState, level] = await Promise.all([
+      getUserControls(env, userId),
+      getClientResetState(env, userId),
+      getUserLevel(env, userId),
+    ]);
     const tonBalanceNano = Math.max(0, Math.floor(Number(controls.tonBalanceNano ?? 0) || 0));
     await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, ton_balance_nano, last_seen_at, updated_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -58,7 +61,7 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, section, tonBalanceNano)
       .run();
-    return { ok: true, banned: controls.banned, tonBalanceNano, winChancePercent: controls.winChancePercent, ...resetState };
+    return { ok: true, banned: controls.banned, tonBalanceNano, winChancePercent: controls.winChancePercent, ...resetState, level };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };

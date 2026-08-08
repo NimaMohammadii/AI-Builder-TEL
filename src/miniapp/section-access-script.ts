@@ -4,12 +4,10 @@ export const SECTION_ACCESS_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var expiryTimer=0;
   var last='';
-  var cache=null;
-  var inFlight=null;
-  var lastFetchAt=0;
-  var CACHE_MS=Number.POSITIVE_INFINITY;
+  var cache={locks:{}};
   var liveSocket=null;
   var liveReconnectTimer=0;
+  var reconnectAttempt=0;
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
@@ -24,19 +22,21 @@ export const SECTION_ACCESS_SCRIPT = `
     var offset=Number(lock.serverNow||0)-Date.now()/1000,from=Number(lock.lockedFrom)||0,until=Number(lock.lockedUntil)||0,total=Math.max(1,until-from);
     var now=Date.now()/1000+offset,progress=Math.min(100,Math.max(0,(now-from)/total*100)),remaining=Math.max(0,until-now);
     if(fill){fill.style.transition='none';fill.style.width=progress+'%';requestAnimationFrame(function(){if(!fill||!fill.isConnected)return;fill.style.transition='width '+remaining+'s linear';fill.style.width='100%'})}
-    if(remaining<=0){location.reload();return}
-    expiryTimer=setTimeout(function(){expiryTimer=0;location.reload()},Math.ceil(remaining*1000)+50);
+    if(remaining<=0){expireLocks();return}
+    expiryTimer=setTimeout(function(){expiryTimer=0;expireLocks()},Math.ceil(remaining*1000)+50);
   }
+  function expireLocks(){var now=Date.now()/1000,source=cache&&cache.locks||{},next={},changed=false;Object.keys(source).forEach(function(id){var lock=source[id];if(lock&&Number(lock.lockedUntil)>now)next[id]=lock;else changed=true});if(changed){cache={locks:next};last='__expired__'}apply(cache)}
   function applyLivePayload(payload){
     if(!payload||!payload.locks)return;
-    cache={locks:payload.locks};lastFetchAt=Date.now();apply(cache);
+    cache={locks:payload.locks};apply(cache);
   }
+  function reconnectDelay(){return Math.min(30000,1000*Math.pow(2,Math.min(reconnectAttempt++,5)))}
   function connectLive(){
     if(liveSocket||!userId()||!window.WebSocket)return;
     var initData=String((tg&&tg.initData)||'');if(!initData)return;
     var proto=location.protocol==='https:'?'wss:':'ws:';
     var endpoint=proto+'//'+location.host+'/app/api/section-access/live?initData='+encodeURIComponent(initData);
-    try{liveSocket=new WebSocket(endpoint);liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,3000)};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null}
+    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
   }
   function apply(j){
     var active=document.querySelector('.view.active');var section=active&&active.id||'home';
@@ -45,24 +45,11 @@ export const SECTION_ACCESS_SCRIPT = `
     if(signature===last)return;
     last=signature;if(lock)render(lock);else remove();
   }
-  function load(force){
-    var id=userId();if(!id){remove();return Promise.resolve(null)}
-    if(document.hidden&&!force)return Promise.resolve(cache);
-    var now=Date.now();
-    if(!force&&cache&&now-lastFetchAt<CACHE_MS){apply(cache);return Promise.resolve(cache)}
-    if(inFlight)return inFlight;
-    inFlight=fetch('/app/api/section-access?userId='+encodeURIComponent(id),{cache:'no-store'})
-      .then(function(r){return r.ok?r.json():null})
-      .then(function(j){if(j){cache=j;lastFetchAt=Date.now();apply(j)}return j})
-      .catch(function(){if(cache)apply(cache);return cache})
-      .finally(function(){inFlight=null});
-    return inFlight;
-  }
-  window.VexaSectionLocks={reload:function(){return load(false)},refresh:function(){return load(true)}};
-  window.addEventListener('vexa:section-mounted',function(){queueMicrotask(function(){load(false)})});
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load(false)});
-  window.addEventListener('focus',function(){load(false)});
-  window.addEventListener('online',function(){load(false)});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false);connectLive()});else{load(false);connectLive()}
+  function reapply(){expireLocks();return Promise.resolve(cache)}
+  window.VexaSectionLocks={reload:reapply,refresh:function(){if(liveSocket)try{liveSocket.close()}catch(e){}else connectLive();return Promise.resolve(cache)}};
+  window.addEventListener('vexa:section-mounted',function(){queueMicrotask(reapply)});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(liveReconnectTimer)}else if(!liveSocket)connectLive()});
+  window.addEventListener('online',function(){if(!liveSocket)connectLive()});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',connectLive);else connectLive()
 })();
 `;

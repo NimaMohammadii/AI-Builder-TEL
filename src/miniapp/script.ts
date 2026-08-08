@@ -109,6 +109,7 @@ export const MINIAPP_SCRIPT = `
     setText('brandTitle',sectionTitles[id]||'Vexa');
     setHeaderGlassMode(id);
     syncTelegramBackButton(id);
+    try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
     if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
     if(id==='wallet'&&window.__vexaWalletLoad)setTimeout(window.__vexaWalletLoad,80)
@@ -203,7 +204,6 @@ export const MINIAPP_SCRIPT = `
   setText('brandTitle',sectionTitles.home);
   setHeaderGlassMode('home');
   syncTelegramBackButton('home');
-  userLine();
   setTimeout(openInitialTarget,250);
   setTimeout(openInitialTarget,900);
 })();

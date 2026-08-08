@@ -62,7 +62,6 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
   function apply(){style();loadTonLogo(false);loadIntroImageVersion(false);var roots=Array.prototype.slice.call(document.querySelectorAll('#home #homeLuckyCodeSection,#home .home-lucky-card'));if(!roots.length)return false;var done=false;roots.forEach(function(r){done=premium(r.querySelector('.home-live-winner-card:nth-child(1)'),'red')||done;done=premium(r.querySelector('.home-live-winner-card:nth-child(2)'),'blue')||done;done=premium(r.querySelector('.home-live-winner-card:nth-child(3)'),'bronze')||done});return done}
   function watch(){if(apply())return;if(observer||!window.MutationObserver)return;var home=document.querySelector('main.app')||document.body;observer=new MutationObserver(function(){if(apply()&&observer){observer.disconnect();observer=null}});observer.observe(home,{childList:true,subtree:true})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});else watch();
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){loadTonLogo(false);loadIntroImageVersion(false)}});
   window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){return loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
 })();
 `;
