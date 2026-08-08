@@ -25,7 +25,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     tower:playZoneCardSelectors('tower'),
     coinflip:playZoneCardSelectors('coinflip'),
     hilo:playZoneCardSelectors('hilo'),
-    ghostrun:['#ghostrun','#playzone [data-play-zone-card-id="ghostrun"]','#playzone [data-play-zone-card-id="ghostrun"] .game-card','#playzone [data-play-zone-card-id="ghostrun"] .game-image img'],
+    ghostrun:['#ghostrun .ghost-run-screen'],
     'wheel-separator':['#wheel .wheel-separator','[data-section-background-target="wheel-separator"]'],
     'global-loading':['[data-section-background-target="global-loading"]']
   };
@@ -36,8 +36,10 @@ export const SECTION_BACKGROUND_SCRIPT = `
   function targets(id){
     var list=[];
     (targetSelectors[id]||[]).forEach(function(selector){try{Array.prototype.forEach.call(document.querySelectorAll(selector),function(el){add(list,el)})}catch(e){}});
-    add(list,document.getElementById(id));
-    add(list,document.getElementById(aliases[id]||''));
+    if(id!=='ghostrun'){
+      add(list,document.getElementById(id));
+      add(list,document.getElementById(aliases[id]||''));
+    }
     try{Array.prototype.forEach.call(document.querySelectorAll('[data-section-background-target="'+String(id).replace(/"/g,'\\"')+'"]'),function(el){add(list,el)})}catch(e){}
     return list;
   }
@@ -164,17 +166,12 @@ export const SECTION_BACKGROUND_STYLES = `
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
-#ghostrun.ghost-run-view.has-admin-background {
+#ghostrun .ghost-run-screen.has-admin-background {
   background-color: #000 !important;
   background-image: var(--admin-section-background-image) !important;
   background-size: cover !important;
   background-position: center top !important;
   background-repeat: no-repeat !important;
-}
-#ghostrun.ghost-run-view.has-admin-background .ghost-run-screen {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
 }
 img[data-admin-bg-overridden="1"] {
   display: block !important;
