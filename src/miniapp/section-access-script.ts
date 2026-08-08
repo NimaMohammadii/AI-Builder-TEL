@@ -4,8 +4,11 @@ export const SECTION_ACCESS_SCRIPT = `
   var user=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
   var expiryTimer=0;
   var last='';
+  var cache=null;
+  var inFlight=null;
+  var lastFetchAt=0;
+  var CACHE_MS=10000;
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
   function render(lock){
@@ -22,15 +25,31 @@ export const SECTION_ACCESS_SCRIPT = `
     if(remaining<=0){location.reload();return}
     expiryTimer=setTimeout(function(){expiryTimer=0;location.reload()},Math.ceil(remaining*1000)+50);
   }
-  async function load(){
-    var id=userId();if(!id)return remove();
-    try{var r=await fetch('/app/api/section-access?userId='+encodeURIComponent(id),{cache:'no-store'});var j=await r.json();var active=document.querySelector('.view.active');var section=active&&active.id||'home';var lock=j&&j.locks&&((j.locks.app)||j.locks[section]);var signature=lock?lock.sectionId+':'+lock.lockedUntil:'';if(signature===last)return;last=signature;if(lock)render(lock);else remove()}catch(e){}
+  function apply(j){
+    var active=document.querySelector('.view.active');var section=active&&active.id||'home';
+    var lock=j&&j.locks&&((j.locks.app)||j.locks[section]);
+    var signature=lock?lock.sectionId+':'+lock.lockedUntil:'';
+    if(signature===last)return;
+    last=signature;if(lock)render(lock);else remove();
   }
-  window.VexaSectionLocks={reload:load};
-  window.addEventListener('vexa:section-mounted',function(){setTimeout(load,0)});
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
-  window.addEventListener('focus',load);
-  window.addEventListener('online',load);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+  function load(force){
+    var id=userId();if(!id){remove();return Promise.resolve(null)}
+    if(document.hidden&&!force)return Promise.resolve(cache);
+    var now=Date.now();
+    if(!force&&cache&&now-lastFetchAt<CACHE_MS){apply(cache);return Promise.resolve(cache)}
+    if(inFlight)return inFlight;
+    inFlight=fetch('/app/api/section-access?userId='+encodeURIComponent(id),{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(j){if(j){cache=j;lastFetchAt=Date.now();apply(j)}return j})
+      .catch(function(){if(cache)apply(cache);return cache})
+      .finally(function(){inFlight=null});
+    return inFlight;
+  }
+  window.VexaSectionLocks={reload:function(){return load(false)},refresh:function(){return load(true)}};
+  window.addEventListener('vexa:section-mounted',function(){queueMicrotask(function(){load(false)})});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)load(false)});
+  window.addEventListener('focus',function(){load(false)});
+  window.addEventListener('online',function(){load(false)});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load(false)});else load(false);
 })();
 `;
