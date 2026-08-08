@@ -11,14 +11,27 @@ import { registerChickenCrossRoutes } from './chicken-cross-routes';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
 import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
+import { addUserXp, getUserLevel } from './levels';
 import type { Env, TelegramUpdate } from './types';
-import { PUBLIC_BASE_URL } from './utils';
+import { gameBotToken, PUBLIC_BASE_URL, validateTelegramInitData } from './utils';
 
 const app = new Hono<{ Bindings: Env }>();
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
 const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
+
+type LevelXpEventInput = {
+  amount?: unknown;
+  source?: unknown;
+  metadata?: unknown;
+  eventId?: unknown;
+};
+
+type LevelXpBody = LevelXpEventInput & {
+  initData?: unknown;
+  events?: LevelXpEventInput[];
+};
 
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', () => html(miniAppHtml()));
@@ -30,6 +43,37 @@ app.get('/app/api/online-user-counts', async (c) =>
 app.get('/app/api/special-wheel-mode', (c) => specialWheelStatusResponse(c.req.raw, c.env));
 app.post('/app/api/special-wheel/invoice', (c) => createSpecialWheelInvoiceResponse(c.req.raw, c.env));
 app.post('/app/api/special-wheel/spin', (c) => specialWheelSpinResponse(c.req.raw, c.env));
+
+app.get('/app/api/level', async (c) => {
+  try {
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    return c.json(await getUserLevel(c.env, userId), 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load level' }, 401, { 'cache-control': 'no-store' });
+  }
+});
+
+app.post('/app/api/level/xp', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as LevelXpBody;
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    const rawEvents = Array.isArray(body.events) ? body.events : [body];
+    const events = rawEvents.slice(0, 40);
+    let profile = await getUserLevel(c.env, userId);
+    let leveledUp = false;
+    let previousLevel = profile.level;
+    for (const event of events) {
+      const result = await addUserXp(c.env, userId, event.amount, event.source, event.metadata, event.eventId);
+      profile = result.profile;
+      if (result.leveledUp) leveledUp = true;
+      previousLevel = Math.min(previousLevel, result.previousLevel);
+    }
+    return c.json({ ok: true, processed: events.length, profile, leveledUp, previousLevel }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not sync XP' }, 400, { 'cache-control': 'no-store' });
+  }
+});
 
 app.get('/admin', () => html(adminHtml()));
 app.get('/admin/', () => html(adminHtml()));
@@ -110,7 +154,7 @@ app.post('/admin/api/upload-home-intro-image', async (c) => {
   const form = await c.req.formData();
   const file = form.get('image');
   if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
+  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
   const version = String(Date.now());
   await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
   return c.json({ ok: true, url: `/app/api/home-intro-image-cached.png?v=${version}` });
