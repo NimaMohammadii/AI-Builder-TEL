@@ -1,5 +1,11 @@
 import type { Env } from './types';
-import { approveTonWithdrawal, listAdminTonWithdrawals, rejectTonWithdrawal, type TonWithdrawal } from './ton-withdrawals';
+import {
+  approveTonWithdrawal,
+  listAdminTonWithdrawals,
+  markTonWithdrawalPaid,
+  rejectTonWithdrawal,
+  type TonWithdrawal,
+} from './ton-withdrawals';
 import { getUserControls } from './user-controls';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
@@ -16,10 +22,13 @@ type WithdrawalRow = {
   amount_nano: number;
   status: string;
   tx_hash?: string | null;
+  submission_ref?: string | null;
   error_message?: string | null;
   approved_at?: string | null;
   paid_at?: string | null;
   rejected_at?: string | null;
+  admin_notified_at?: string | null;
+  admin_notification_error?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -53,6 +62,7 @@ type LedgerRow = {
 
 const PAGE_SIZE = 8;
 const STATE_PREFIX = 'admin:gram-withdrawal-input:';
+const NOTIFIED_PREFIX = 'admin:gram-withdrawal-notified:';
 const FILTERS: readonly Filter[] = ['pending', 'failed', 'processing', 'paid', 'rejected', 'all'];
 
 export async function handleGramWithdrawalAdminRequest(request: Request, env: Env): Promise<Response | null> {
@@ -60,27 +70,80 @@ export async function handleGramWithdrawalAdminRequest(request: Request, env: En
   if (request.method !== 'POST' || url.pathname !== '/telegram/webhook') return null;
   const update = await request.clone().json().catch(() => null) as Update | null;
   if (!update || !env.BOT_TOKEN) return null;
+
+  const actorId = update.callback_query?.from.id ?? update.message?.from?.id;
+  if (actorId && isAdmin(env, actorId)) {
+    await flushPendingGramNotifications(env).catch((error) => console.warn('Gram notification recovery failed', error));
+  }
+
   if (update.callback_query) return handleCallback(env, env.BOT_TOKEN, update.callback_query);
   if (update.message) return handleMessage(env, env.BOT_TOKEN, update.message);
   return null;
 }
 
 export async function notifyAdminGramWithdrawal(env: Env, withdrawal: TonWithdrawal): Promise<void> {
+  if (!withdrawal?.id) return;
+  await ensureNotificationStorage(env, withdrawal.id);
+
+  const existing = await env.DB.prepare('SELECT admin_notified_at FROM ton_withdrawals WHERE id = ?')
+    .bind(withdrawal.id)
+    .first<{ admin_notified_at: string | null }>()
+    .catch(() => null);
+  if (existing?.admin_notified_at) return;
+
   const token = String(env.BOT_TOKEN || '').trim();
   const admins = adminIds(env);
-  if (!token || !admins.length || !withdrawal?.id) return;
+  if (!token || !admins.length) {
+    await recordNotificationError(env, withdrawal.id, 'BOT_TOKEN or BOT_ADMIN is not configured');
+    return;
+  }
+
   const [profile, ledger] = await Promise.all([
     loadUserProfile(env, withdrawal.userId),
     loadLedger(env, withdrawal.id),
   ]);
   const text = trimTelegramText(`🆕 New Gram Withdrawal\n\n${detailText(withdrawal, profile, ledger)}`);
   const reply_markup = { inline_keyboard: detailKeyboard(withdrawal, 'pending', 0) };
-  await Promise.all(admins.map((chatId) => tg(token, 'sendMessage', {
-    chat_id: chatId,
-    text,
-    reply_markup,
-    disable_web_page_preview: true,
-  }).catch((error) => console.warn('send Gram withdrawal admin notification failed', error))));
+  const errors: string[] = [];
+
+  for (const chatId of admins) {
+    const delivered = await env.BOT_CACHE.get(notificationKey(withdrawal.id, chatId)).catch(() => null);
+    if (delivered === '1') continue;
+    try {
+      await tg(token, 'sendMessage', {
+        chat_id: chatId,
+        text,
+        reply_markup,
+        disable_web_page_preview: true,
+      });
+      await env.BOT_CACHE.put(notificationKey(withdrawal.id, chatId), '1').catch(() => undefined);
+    } catch (error) {
+      errors.push(`${chatId}: ${error instanceof Error ? error.message : 'Telegram send failed'}`);
+    }
+  }
+
+  if (errors.length) {
+    await recordNotificationError(env, withdrawal.id, errors.join(' | '));
+    return;
+  }
+
+  await env.DB.prepare(`UPDATE ton_withdrawals
+    SET admin_notified_at = COALESCE(admin_notified_at, CURRENT_TIMESTAMP), admin_notification_error = NULL
+    WHERE id = ?`)
+    .bind(withdrawal.id)
+    .run();
+}
+
+async function flushPendingGramNotifications(env: Env): Promise<void> {
+  await ensureNotificationStorage(env);
+  const rows = await env.DB.prepare(`SELECT * FROM ton_withdrawals
+    WHERE admin_notified_at IS NULL
+    ORDER BY datetime(created_at) ASC
+    LIMIT 12`)
+    .all<WithdrawalRow>();
+  for (const row of rows.results ?? []) {
+    await notifyAdminGramWithdrawal(env, rowToWithdrawal(row));
+  }
 }
 
 async function handleCallback(env: Env, token: string, callback: Callback): Promise<Response | null> {
@@ -121,10 +184,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
       await sendMissing(token, chatId, messageId);
       return ok();
     }
+    if (!['pending', 'failed'].includes(withdrawal.status)) {
+      await sendDetail(env, token, chatId, id, filter, page, messageId, '⚠️ This request can no longer be submitted.');
+      return ok();
+    }
     await upsert(token, chatId, messageId,
-      `⚠️ Confirm Gram withdrawal\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nWallet: ${withdrawal.walletAddress}\n\nThis action sends the real on-chain payout.`,
+      `⚠️ Confirm Gram payout\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nWallet: ${withdrawal.walletAddress}\n\nThis submits the real payout exactly once. There is no polling and no automatic retry. After submission the request stays Processing until you externally verify it and choose Mark Paid (No Resend).`,
       [[
-        { text: '✅ Confirm Approve', callback_data: cb('ac', id, filter, page) },
+        { text: '✅ Submit Payout Once', callback_data: cb('ac', id, filter, page) },
         { text: 'Cancel', callback_data: cb('v', id, filter, page) },
       ]],
     );
@@ -137,11 +204,60 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const filter = normalizeFilter(parts[4]);
     const page = normalizePage(parts[5]);
     if (!id) return ok();
-    let notice = '✅ Withdrawal approved and payout completed.';
+    let notice = '✅ Payout submitted exactly once. No polling or automatic resend is running. Verify the existing submission externally, then use Mark Paid (No Resend).';
     try {
-      await approveTonWithdrawal(env, id);
+      const result = await approveTonWithdrawal(env, id);
+      if (result.status !== 'processing' && result.status !== 'paid') {
+        notice = `⚠️ Payout was not submitted. Current status: ${result.status}.`;
+      }
     } catch (error) {
-      notice = `❌ Approve failed: ${error instanceof Error ? error.message : 'Unknown payout error'}`;
+      const current = await loadWithdrawal(env, id).catch(() => null);
+      if (current?.status === 'processing') {
+        notice = `⚠️ Submission state is uncertain: ${error instanceof Error ? error.message : 'Unknown submit error'}\n\nSafety lock is active: no automatic resend and no automatic refund.`;
+      } else {
+        notice = `❌ Payout preparation failed before a safe submission: ${error instanceof Error ? error.message : 'Unknown payout error'}`;
+      }
+    }
+    await sendDetail(env, token, chatId, id, filter, page, messageId, notice);
+    return ok();
+  }
+
+  if (action === 'm') {
+    await clearState(env, callback.from.id);
+    const id = cleanId(parts[3]);
+    const filter = normalizeFilter(parts[4]);
+    const page = normalizePage(parts[5]);
+    if (!id) return ok();
+    const withdrawal = await loadWithdrawal(env, id);
+    if (!withdrawal) {
+      await sendMissing(token, chatId, messageId);
+      return ok();
+    }
+    if (withdrawal.status !== 'processing') {
+      await sendDetail(env, token, chatId, id, filter, page, messageId, '⚠️ Only a Processing request can be marked paid.');
+      return ok();
+    }
+    await upsert(token, chatId, messageId,
+      `✅ Confirm Mark Paid\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nSubmission ref: ${valueOrDash(withdrawal.submissionRef)}\n\nThis DOES NOT send any funds and DOES NOT retry the payout. Use it only after you externally verify the existing submission.`,
+      [[
+        { text: '✅ Mark Paid (No Resend)', callback_data: cb('mc', id, filter, page) },
+        { text: 'Cancel', callback_data: cb('v', id, filter, page) },
+      ]],
+    );
+    return ok();
+  }
+
+  if (action === 'mc') {
+    await clearState(env, callback.from.id);
+    const id = cleanId(parts[3]);
+    const filter = normalizeFilter(parts[4]);
+    const page = normalizePage(parts[5]);
+    if (!id) return ok();
+    let notice = '✅ Marked Paid. No funds were resent.';
+    try {
+      await markTonWithdrawalPaid(env, id);
+    } catch (error) {
+      notice = `❌ Mark Paid failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
     await sendDetail(env, token, chatId, id, filter, page, messageId, notice);
     return ok();
@@ -157,9 +273,13 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
       await sendMissing(token, chatId, messageId);
       return ok();
     }
+    if (!['pending', 'failed'].includes(withdrawal.status)) {
+      await sendDetail(env, token, chatId, id, filter, page, messageId, '⚠️ This request cannot be rejected or refunded in its current status.');
+      return ok();
+    }
     await setState(env, callback.from.id, { mode: 'reject', withdrawalId: id, filter, page });
     await upsert(token, chatId, messageId,
-      `❌ Reject & Refund\n\nRequest: ${id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\n\nSend the rejection reason as a message, or use the default reason below. Rejecting refunds the reserved balance to the user.`,
+      `❌ Reject & Refund\n\nRequest: ${id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\n\nSend the rejection reason as a message, or use the default reason below. Rejecting refunds the reserved balance. Processing requests can never be refunded from here.`,
       [[
         { text: 'Reject with default reason', callback_data: cb('rd', id, filter, page) },
         { text: 'Cancel', callback_data: cb('v', id, filter, page) },
@@ -265,7 +385,7 @@ async function sendList(env: Env, token: string, chatId: number, filter: Filter,
   const shownFrom = total ? safePage * PAGE_SIZE + 1 : 0;
   const shownTo = total ? Math.min(total, shownFrom + withdrawals.length - 1) : 0;
   await upsert(token, chatId, messageId,
-    `💸 Gram Withdrawals\n\nFilter: ${filterLabel(filter)}\nTotal: ${total}\nShowing: ${shownFrom}-${shownTo}\n\nNew requests are pushed here automatically. No polling is used.`,
+    `💸 Gram Withdrawals\n\nFilter: ${filterLabel(filter)}\nTotal: ${total}\nShowing: ${shownFrom}-${shownTo}\n\nNew requests are pushed automatically. Failed notifications are retried only on a real admin event. No polling is used.`,
     rows,
   );
 }
@@ -300,6 +420,7 @@ function detailText(withdrawal: TonWithdrawal, profile: UserProfile, ledger: Led
     `Amount (nano): ${withdrawal.amountNano}`,
     `Wallet: ${withdrawal.walletAddress}`,
     `Request ID: ${withdrawal.id}`,
+    `Submission ref: ${valueOrDash(withdrawal.submissionRef)}`,
     '',
     '👤 User',
     `User ID: ${withdrawal.userId}`,
@@ -317,12 +438,15 @@ function detailText(withdrawal: TonWithdrawal, profile: UserProfile, ledger: Led
     '🕒 Request timeline',
     `Created: ${valueOrDash(withdrawal.createdAt)}`,
     `Updated: ${valueOrDash(withdrawal.updatedAt)}`,
-    `Approved: ${valueOrDash(withdrawal.approvedAt)}`,
+    `Approved / submitted: ${valueOrDash(withdrawal.approvedAt)}`,
     `Paid: ${valueOrDash(withdrawal.paidAt)}`,
     `Rejected: ${valueOrDash(withdrawal.rejectedAt)}`,
     `Tx hash: ${valueOrDash(withdrawal.txHash)}`,
     `Error / Reject reason: ${valueOrDash(withdrawal.errorMessage)}`,
   ];
+  if (withdrawal.status === 'processing') {
+    lines.push('', '🛡 Safety: this payout will not be resent or refunded automatically. Verify the existing submission externally.');
+  }
   if (ledger) {
     lines.push(
       '',
@@ -331,8 +455,8 @@ function detailText(withdrawal: TonWithdrawal, profile: UserProfile, ledger: Led
       `Status: ${ledger.status}`,
       `Amount (nano): ${ledger.amount_nano}`,
       `Balance after: ${formatGram(ledger.balance_after_nano)} Gram`,
-      `Title: ${valueOrDash(ledger.title)}`,
-      `Description: ${valueOrDash(ledger.description)}`,
+      `Title: ${valueOrDash(displayGramText(ledger.title))}`,
+      `Description: ${valueOrDash(displayGramText(ledger.description))}`,
       `Created: ${valueOrDash(ledger.created_at)}`,
       `Metadata: ${shortMetadata(ledger.metadata_json)}`,
     );
@@ -347,6 +471,8 @@ function detailKeyboard(withdrawal: TonWithdrawal, filter: Filter, page: number)
       { text: '✅ Approve', callback_data: cb('a', withdrawal.id, filter, page) },
       { text: '❌ Reject & Refund', callback_data: cb('r', withdrawal.id, filter, page) },
     ]);
+  } else if (withdrawal.status === 'processing') {
+    rows.push([{ text: '✅ Mark Paid (No Resend)', callback_data: cb('m', withdrawal.id, filter, page) }]);
   }
   rows.push([{ text: '📄 Download Details', callback_data: cb('d', withdrawal.id) }]);
   rows.push([{ text: '⬅️ Back to Withdrawals', callback_data: cb('l', filter, page) }]);
@@ -363,12 +489,19 @@ async function sendDetailFile(env: Env, token: string, chatId: number, id: strin
     loadUserProfile(env, withdrawal.userId),
     loadLedger(env, withdrawal.id),
   ]);
+  const { amountTon: _legacyAmountTon, ...gramWithdrawal } = withdrawal;
+  const exportLedger = ledger ? {
+    ...ledger,
+    title: displayGramText(ledger.title),
+    description: displayGramText(ledger.description),
+    metadata: parseMetadata(ledger.metadata_json),
+  } : null;
   const content = JSON.stringify({
     exportedAt: new Date().toISOString(),
     displayCurrency: 'Gram',
-    withdrawal,
+    withdrawal: gramWithdrawal,
     user: profile,
-    ledger: ledger ? { ...ledger, metadata: parseMetadata(ledger.metadata_json) } : null,
+    ledger: exportLedger,
   }, null, 2);
   await sendDocument(token, chatId, `gram-withdrawal-${withdrawal.id}.json`, content, 'application/json', `Gram withdrawal ${withdrawal.id}`);
 }
@@ -376,9 +509,11 @@ async function sendDetailFile(env: Env, token: string, chatId: number, id: strin
 async function sendCsv(env: Env, token: string, chatId: number, filter: Filter): Promise<void> {
   await ensureStorage(env);
   const where = filter === 'all' ? '' : 'WHERE w.status = ?';
-  const sql = `SELECT w.id, w.user_id, w.wallet_address, w.amount_nano, w.status, w.tx_hash, w.error_message, w.approved_at, w.paid_at, w.rejected_at, w.created_at, w.updated_at,
+  const sql = `SELECT w.id, w.user_id, w.wallet_address, w.amount_nano, w.status, w.tx_hash, w.submission_ref, w.error_message,
+    w.approved_at, w.paid_at, w.rejected_at, w.created_at, w.updated_at, w.admin_notified_at, w.admin_notification_error,
     a.first_name, a.username, a.current_section, a.last_seen_at,
-    t.id AS transaction_id, t.status AS transaction_status, t.balance_after_nano, t.title AS transaction_title, t.description AS transaction_description, t.metadata_json AS transaction_metadata, t.created_at AS transaction_created_at
+    t.id AS transaction_id, t.status AS transaction_status, t.balance_after_nano, t.title AS transaction_title,
+    t.description AS transaction_description, t.metadata_json AS transaction_metadata, t.created_at AS transaction_created_at
     FROM ton_withdrawals w
     LEFT JOIN app_users a ON a.telegram_user_id = w.user_id
     LEFT JOIN ton_transactions t ON t.id = (
@@ -394,14 +529,14 @@ async function sendCsv(env: Env, token: string, chatId: number, filter: Filter):
     : await env.DB.prepare(sql).bind(filter).all<Record<string, unknown>>();
   const rows = result.results ?? [];
   const headers = [
-    'request_id', 'user_id', 'first_name', 'username', 'amount_gram', 'amount_nano', 'wallet_address', 'status', 'tx_hash', 'error_or_reject_reason',
-    'created_at', 'updated_at', 'approved_at', 'paid_at', 'rejected_at', 'current_section', 'last_seen_at',
+    'request_id', 'user_id', 'first_name', 'username', 'amount_gram', 'amount_nano', 'wallet_address', 'status', 'submission_ref', 'tx_hash', 'error_or_reject_reason',
+    'created_at', 'updated_at', 'approved_at', 'paid_at', 'rejected_at', 'admin_notified_at', 'admin_notification_error', 'current_section', 'last_seen_at',
     'transaction_id', 'transaction_status', 'balance_after_gram', 'transaction_title', 'transaction_description', 'transaction_metadata', 'transaction_created_at',
   ];
   const csv = [headers.join(',')].concat(rows.map((row) => [
-    row.id, row.user_id, row.first_name, row.username, formatGram(Number(row.amount_nano || 0)), row.amount_nano, row.wallet_address, row.status, row.tx_hash, row.error_message,
-    row.created_at, row.updated_at, row.approved_at, row.paid_at, row.rejected_at, row.current_section, row.last_seen_at,
-    row.transaction_id, row.transaction_status, formatGram(Number(row.balance_after_nano || 0)), row.transaction_title, row.transaction_description, row.transaction_metadata, row.transaction_created_at,
+    row.id, row.user_id, row.first_name, row.username, formatGram(Number(row.amount_nano || 0)), row.amount_nano, row.wallet_address, row.status, row.submission_ref, row.tx_hash, row.error_message,
+    row.created_at, row.updated_at, row.approved_at, row.paid_at, row.rejected_at, row.admin_notified_at, row.admin_notification_error, row.current_section, row.last_seen_at,
+    row.transaction_id, row.transaction_status, formatGram(Number(row.balance_after_nano || 0)), displayGramText(row.transaction_title), displayGramText(row.transaction_description), row.transaction_metadata, row.transaction_created_at,
   ].map(csvCell).join(','))).join('\n');
   await sendDocument(token, chatId, `gram-withdrawals-${filter}-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv', `${filterLabel(filter)} Gram withdrawals · ${rows.length} rows`);
 }
@@ -478,17 +613,49 @@ async function loadLedger(env: Env, withdrawalId: string): Promise<LedgerRow | n
 
 async function ensureStorage(env: Env): Promise<void> {
   await listAdminTonWithdrawals(env, 'pending').catch(() => ({ withdrawals: [] }));
+  await ensureNotificationStorage(env);
+}
+
+async function ensureNotificationStorage(env: Env, preserveId = ''): Promise<void> {
+  const columns = await env.DB.prepare('PRAGMA table_info(ton_withdrawals)').all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }));
+  const names = new Set((columns.results ?? []).map((column) => String(column.name || '')));
+  const hadNotifiedColumn = names.has('admin_notified_at');
+  if (!hadNotifiedColumn) {
+    await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notified_at TEXT').run().catch(() => undefined);
+  }
+  if (!names.has('admin_notification_error')) {
+    await env.DB.prepare('ALTER TABLE ton_withdrawals ADD COLUMN admin_notification_error TEXT').run().catch(() => undefined);
+  }
+  if (!hadNotifiedColumn) {
+    if (preserveId) {
+      await env.DB.prepare('UPDATE ton_withdrawals SET admin_notified_at = CURRENT_TIMESTAMP WHERE id != ? AND admin_notified_at IS NULL').bind(preserveId).run();
+    } else {
+      await env.DB.prepare('UPDATE ton_withdrawals SET admin_notified_at = CURRENT_TIMESTAMP WHERE admin_notified_at IS NULL').run();
+    }
+  }
+}
+
+async function recordNotificationError(env: Env, id: string, error: string): Promise<void> {
+  await env.DB.prepare(`UPDATE ton_withdrawals
+    SET admin_notification_error = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND admin_notified_at IS NULL`)
+    .bind(String(error || 'Notification failed').slice(0, 500), id)
+    .run()
+    .catch(() => undefined);
 }
 
 function rowToWithdrawal(row: WithdrawalRow): TonWithdrawal {
+  const amount = Number(row.amount_nano || 0) / 1_000_000_000;
   return {
     id: row.id,
     userId: row.user_id,
     walletAddress: row.wallet_address,
     amountNano: Number(row.amount_nano || 0),
-    amountTon: Number(row.amount_nano || 0) / 1_000_000_000,
+    amountTon: amount,
+    amountGram: amount,
     status: row.status,
     txHash: row.tx_hash || null,
+    submissionRef: row.submission_ref || null,
     errorMessage: row.error_message || null,
     approvedAt: row.approved_at || null,
     paidAt: row.paid_at || null,
@@ -543,19 +710,23 @@ function valueOrDash(value: unknown): string {
   return text || '—';
 }
 
+function displayGramText(value: unknown): string {
+  return String(value ?? '').replace(/\bTON\b/gi, 'Gram');
+}
+
 function shortButtonText(value: string): string {
   const text = String(value || '').trim();
   return text.length > 22 ? text.slice(0, 19) + '…' : text || 'User';
 }
 
 function shortMetadata(value: string | null): string {
-  const text = String(value || '').trim();
+  const text = displayGramText(value);
   return text ? (text.length > 500 ? text.slice(0, 497) + '...' : text) : '—';
 }
 
 function parseMetadata(value: string | null): unknown {
   if (!value) return null;
-  try { return JSON.parse(value); } catch { return value; }
+  try { return JSON.parse(displayGramText(value)); } catch { return displayGramText(value); }
 }
 
 function trimTelegramText(value: string): string {
@@ -630,6 +801,10 @@ function clearState(env: Env, adminId: number): Promise<void> {
 
 function stateKey(adminId: number): string {
   return `${STATE_PREFIX}${adminId}`;
+}
+
+function notificationKey(withdrawalId: string, adminId: number): string {
+  return `${NOTIFIED_PREFIX}${withdrawalId}:${adminId}`;
 }
 
 function adminIds(env: Env): number[] {
