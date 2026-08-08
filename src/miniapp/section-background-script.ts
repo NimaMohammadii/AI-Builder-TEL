@@ -164,12 +164,32 @@ export const SECTION_BACKGROUND_STYLES = `
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
-body:has(#ghostrun.active) #ghostrun .ghost-run-screen {
+html body:has(#ghostrun.active)::before {
+  content: "" !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
   background-color: #000 !important;
   background-image: url('/app/api/section-background/ghostrun.png') !important;
   background-size: cover !important;
-  background-position: center top !important;
+  background-position: center center !important;
   background-repeat: no-repeat !important;
+}
+html body:has(#ghostrun.active) .app,
+html body:has(#ghostrun.active) .content,
+html body:has(#ghostrun.active) #ghostrun.ghost-run-view,
+html body:has(#ghostrun.active) #ghostrun .ghost-run-screen,
+html body:has(#ghostrun.active) .top {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+html body:has(#ghostrun.active) .top,
+html body:has(#ghostrun.active) .content {
+  position: relative !important;
+  z-index: 1 !important;
 }
 img[data-admin-bg-overridden="1"] {
   display: block !important;
