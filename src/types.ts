@@ -1,6 +1,7 @@
 export type Env = {
   DB: D1Database;
   BOT_CACHE: KVNamespace;
+  SECTION_LOCK_EVENTS: DurableObjectNamespace;
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
   BOT_TOKEN: string;
