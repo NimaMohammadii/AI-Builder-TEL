@@ -157,7 +157,7 @@ export const SPECIAL_WHEEL_OVERLAY = `
     button.innerHTML='<span>'+price+'</span>'+starSvg;
   }
   async function refresh(){
-    try{var response=await fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId())+'&t='+Date.now(),{cache:'no-store'});if(!response.ok)return;var data=await response.json();applyActive(data.active===true);if(data.state)state=data.state;renderButton()}catch(e){}
+    try{var response=await fetch('/app/api/special-wheel-mode?userId='+encodeURIComponent(userId()),{cache:'no-store'});if(!response.ok)return;var data=await response.json();applyActive(data.active===true);if(data.state)state=data.state;renderButton()}catch(e){}
   }
   function animateTo(index,done){
     var current=((rotation%360)+360)%360,target=(360-(Number(index)||0)*60)%360,delta=(target-current+360)%360;rotation+=1440+delta;
@@ -174,16 +174,19 @@ export const SPECIAL_WHEEL_OVERLAY = `
       spinning=false;button.disabled=false;renderButton();
     });
   }
-  async function waitForPaidSpin(){for(var i=0;i<12;i++){await new Promise(function(resolve){setTimeout(resolve,500)});await refresh();if(state&&Number(state.paidSpins)>0)return true}return false}
   async function buyAndSpin(){
     if(state&&Number(state.priceStars)===0){await performSpin();return}
     var response=await fetch('/app/api/special-wheel/invoice',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData()}),cache:'no-store'});var data=await response.json().catch(function(){return {ok:false,error:'Payment failed'}});if(!response.ok||!data.ok)throw new Error(data.error||'Payment failed');
-    if(data.free===true||Number(data.priceStars)===0){await refresh();await performSpin();return}
+    if(data.free===true||Number(data.priceStars)===0){await performSpin();return}
     var tg=window.Telegram&&Telegram.WebApp;if(!tg||typeof tg.openInvoice!=='function'){location.href=data.invoiceLink;return}
     await new Promise(function(resolve,reject){tg.openInvoice(data.invoiceLink,function(status){if(status==='paid')resolve();else if(status==='cancelled'||status==='failed')reject(new Error(status==='cancelled'?'Payment cancelled':'Payment failed'));else reject(new Error('Payment was not completed'))})});
-    if(!(await waitForPaidSpin()))throw new Error('Payment received. Please try again in a moment.');await performSpin();
+    try{await performSpin()}catch(error){if(error&&error.message==='payment_required')throw new Error('Payment received. Tap Spin again when Telegram finishes processing it.');throw error}
   }
   if(button&&rotor){button.addEventListener('click',async function(){if(spinning)return;spinning=true;button.disabled=true;result.classList.remove('is-visible');result.textContent='';renderButton();try{var price=state?Math.max(0,Number(state.priceStars)||0):18;if(state&&(state.freeAvailable||Number(state.paidSpins)>0||price===0))await performSpin();else await buyAndSpin()}catch(error){spinning=false;button.disabled=false;result.textContent=error&&error.message?error.message:'Something went wrong';result.classList.add('is-visible');renderButton()}})}
-  refresh();setInterval(refresh,2000);document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
+  refresh();
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
+  window.addEventListener('focus',refresh);
+  window.addEventListener('online',refresh);
+  window.addEventListener('vexa:section-mounted',refresh);
 })();
 </script>`;
