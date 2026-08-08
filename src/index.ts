@@ -174,7 +174,7 @@ app.post('/telegram/webhook', async (c) => {
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((error, c) => {
   console.error(error);
-  return c.json({ error: 'Internal error' }, 500));
+  return c.json({ error: 'Internal error' }, 500);
 });
 
 function html(content: string, extraHeaders: Record<string, string> = {}): Response {
