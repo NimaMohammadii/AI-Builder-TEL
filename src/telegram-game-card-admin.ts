@@ -3,6 +3,7 @@ import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access
 import { PUBLIC_BASE_URL } from './utils';
 import { setSpecialWheelEnabled } from './special-wheel-mode';
 import { sectionBackgroundR2Key } from './section-backgrounds';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -395,8 +396,7 @@ async function replaceUploadPrompt(env: Env, token: string, message: Message, te
 }
 
 async function trackedMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
-  const value = Number(await env.BOT_CACHE.get(`botadmin:menu:${chatId}`).catch(() => null));
-  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+  return getTelegramMenuMessageId(env, chatId);
 }
 
 async function deleteTrackedMenu(env: Env, token: string, chatId: number): Promise<void> {
@@ -409,7 +409,7 @@ async function deleteMessage(token: string, chatId: number, messageId: number): 
 }
 
 async function trackMenuMessage(env: Env, chatId: number, messageId: number | undefined): Promise<void> {
-  if (messageId) await env.BOT_CACHE.put(`botadmin:menu:${chatId}`, String(messageId), { expirationTtl: 60 * 60 * 24 * 30 });
+  if (messageId) await setTelegramMenuMessageId(env, chatId, messageId);
 }
 
 async function saveImage(env: Env, token: string, target: UploadTarget, source: UploadSource): Promise<void> {

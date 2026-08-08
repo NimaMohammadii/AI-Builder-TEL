@@ -3,6 +3,7 @@ import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-de
 import { handleSpecialWheelPreCheckout, handleSpecialWheelSuccessfulPayment } from './special-wheel-engine';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type TelegramApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type TelegramEnvelope<T = unknown> = {
@@ -12,8 +13,6 @@ type TelegramEnvelope<T = unknown> = {
   error_code?: number;
 };
 type TelegramSentMessage = { message_id?: number };
-
-const MENU_MESSAGE_TTL = 60 * 60 * 24 * 30;
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
   const token = botToken(env);
@@ -106,9 +105,7 @@ async function sendGameHome(env: Env, token: string, chatId: number): Promise<vo
 }
 
 async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>): Promise<void> {
-  const key = `botadmin:menu:${chatId}`;
-  const stored = Number(await env.BOT_CACHE.get(key).catch(() => null));
-  const messageId = Number.isSafeInteger(stored) && stored > 0 ? stored : undefined;
+  const messageId = await getTelegramMenuMessageId(env, chatId);
   const payload = { chat_id: chatId, ...content };
   if (messageId) {
     const edited = await telegram(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
@@ -116,7 +113,7 @@ async function replaceMenuMessage(env: Env, token: string, chatId: number, conte
     await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
   }
   const sent = await telegram<TelegramSentMessage>(token, 'sendMessage', payload);
-  if (sent?.message_id) await env.BOT_CACHE.put(key, String(sent.message_id), { expirationTtl: MENU_MESSAGE_TTL });
+  if (sent?.message_id) await setTelegramMenuMessageId(env, chatId, sent.message_id);
 }
 
 async function deleteIncomingMessage(token: string, chatId: number, messageId: number): Promise<void> {

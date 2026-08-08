@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
@@ -165,12 +166,11 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
       ],
     ],
   );
-  if (activeMessageId) await env.BOT_CACHE.put(`botadmin:menu:${chatId}`, String(activeMessageId), { expirationTtl: 60 * 60 * 24 * 30 });
+  if (activeMessageId) await setTelegramMenuMessageId(env, chatId, activeMessageId);
 }
 
 async function getTrackedMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
-  const value = Number(await env.BOT_CACHE.get(`botadmin:menu:${chatId}`).catch(() => null));
-  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+  return getTelegramMenuMessageId(env, chatId);
 }
 
 async function sendAccessMenu(env: Env, token: string, chatId: number, messageId?: number, notice = ''): Promise<void> {
