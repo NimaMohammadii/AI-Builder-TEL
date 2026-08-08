@@ -3,7 +3,6 @@ import {
   getSlotVirtualUsers,
   resetSlotVirtualUsers,
   saveSlotVirtualUsers,
-  type SlotVirtualUser,
 } from './slot-virtual-users';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
@@ -78,7 +77,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     }
     await setState(env, callback.from.id, { mode: 'add-user', page });
     await upsert(token, chatId, messageId,
-      '➕ افزودن کاربر مجازی Slot\n\nنام کاربر را بفرستید. بعد از ساخت، دو نتیجه پیش‌فرض برایش قرار می‌گیرد و می‌توانید نتیجه‌ها را تغییر دهید.',
+      '➕ افزودن کاربر مجازی Slot\n\nنام کاربر را بفرستید. بعد از ساخت، مستقیم وارد صفحه همان کاربر می‌شوید و ریل‌ها را همان‌جا تغییر می‌دهید.',
       [[{ text: '⬅️ لغو', callback_data: `botadmin:slotlive:list:${page}` }]],
     );
     return ok();
@@ -90,7 +89,10 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     if (index === null) return ok();
     const config = await getSlotVirtualUsers(env);
     const user = config.users[index];
-    if (!user) return sendUsersMenu(env, token, chatId, page, messageId, '❌ کاربر پیدا نشد.').then(() => ok());
+    if (!user) {
+      await sendUsersMenu(env, token, chatId, page, messageId, '❌ کاربر پیدا نشد.');
+      return ok();
+    }
     await setState(env, callback.from.id, { mode: 'rename', userIndex: index, page });
     await upsert(token, chatId, messageId,
       `✏️ تغییر نام\n\nنام فعلی: ${safe(user.name)}\n\nنام جدید را بفرستید.`,
@@ -112,15 +114,27 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     }
     user.results.push([0, 0, 0]);
     await saveSlotVirtualUsers(env, config);
-    await sendUserPanel(env, token, chatId, index, page, messageId, '✅ نتیجه جدید اضافه شد.');
+    await sendUserPanel(env, token, chatId, index, page, messageId, '✅ نتیجه جدید اضافه شد؛ ریل‌هایش همین پایین قابل تغییرند.');
     return ok();
   }
 
-  if (action === 'result') {
+  if (action === 'cycle') {
     const userIndex = validIndex(parts[3]);
     const resultIndex = validIndex(parts[4]);
-    const page = Number(parts[5]) || 0;
-    if (userIndex !== null && resultIndex !== null) await sendResultPanel(env, token, chatId, userIndex, resultIndex, page, messageId);
+    const reel = validReel(parts[5]);
+    const page = Number(parts[6]) || 0;
+    if (userIndex === null || resultIndex === null || reel === null) return ok();
+
+    const config = await getSlotVirtualUsers(env);
+    const result = config.users[userIndex]?.results[resultIndex];
+    if (!result) {
+      await sendUserPanel(env, token, chatId, userIndex, page, messageId, '❌ نتیجه پیدا نشد.');
+      return ok();
+    }
+    const current = validSymbol(result[reel]) ?? 0;
+    result[reel] = (current + 1) % SYMBOLS.length;
+    await saveSlotVirtualUsers(env, config);
+    await sendUserPanel(env, token, chatId, userIndex, page, messageId);
     return ok();
   }
 
@@ -142,30 +156,11 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     return ok();
   }
 
-  if (action === 'reel') {
+  // Backward compatibility for buttons left in older Telegram messages.
+  if (action === 'result' || action === 'reel' || action === 'symbol') {
     const userIndex = validIndex(parts[3]);
-    const resultIndex = validIndex(parts[4]);
-    const reel = validReel(parts[5]);
-    const page = Number(parts[6]) || 0;
-    if (userIndex !== null && resultIndex !== null && reel !== null) {
-      await sendSymbolPicker(env, token, chatId, userIndex, resultIndex, reel, page, messageId);
-    }
-    return ok();
-  }
-
-  if (action === 'symbol') {
-    const userIndex = validIndex(parts[3]);
-    const resultIndex = validIndex(parts[4]);
-    const reel = validReel(parts[5]);
-    const symbol = validSymbol(parts[6]);
-    const page = Number(parts[7]) || 0;
-    if (userIndex === null || resultIndex === null || reel === null || symbol === null) return ok();
-    const config = await getSlotVirtualUsers(env);
-    const result = config.users[userIndex]?.results[resultIndex];
-    if (!result) return ok();
-    result[reel] = symbol;
-    await saveSlotVirtualUsers(env, config);
-    await sendResultPanel(env, token, chatId, userIndex, resultIndex, page, messageId, '✅ نماد ذخیره شد.');
+    const page = Number(parts[action === 'result' ? 5 : action === 'reel' ? 6 : 7]) || 0;
+    if (userIndex !== null) await sendUserPanel(env, token, chatId, userIndex, page, messageId);
     return ok();
   }
 
@@ -297,7 +292,7 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, pageInput 
     { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
   ]);
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}🎰 Slot Live Bets\n\nکاربران مجازی و نتیجه‌های تصادفی که در Live Bets بازی Slot نمایش داده می‌شوند.\n\nتعداد کاربران: ${config.users.length}${config.updatedAt ? `\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}\nصفحه ${page + 1} از ${pageCount}`,
+    `${notice ? notice + '\n\n' : ''}🎰 Slot Live Bets\n\nکاربر را انتخاب کنید؛ تمام نتیجه‌ها و ۳ ریل هر نتیجه همان صفحه قابل تغییرند.\n\nتعداد کاربران: ${config.users.length}${config.updatedAt ? `\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}\nصفحه ${page + 1} از ${pageCount}`,
     rows,
   );
 }
@@ -306,59 +301,28 @@ async function sendUserPanel(env: Env, token: string, chatId: number, userIndex:
   const config = await getSlotVirtualUsers(env);
   const user = config.users[userIndex];
   if (!user) return sendUsersMenu(env, token, chatId, page, messageId, '❌ کاربر پیدا نشد.');
-  const resultLines = user.results.map((result, index) => `${index + 1}. ${resultText(result)}`);
+
   const rows: Keyboard = [];
-  for (let index = 0; index < user.results.length; index += 2) {
-    rows.push([index, index + 1].filter((item) => item < user.results.length).map((item) => ({
-      text: `🎲 نتیجه ${item + 1} • ${resultText(user.results[item])}`,
-      callback_data: `botadmin:slotlive:result:${userIndex}:${item}:${page}`,
+  user.results.forEach((result, resultIndex) => {
+    rows.push([
+      { text: `🎲 نتیجه ${resultIndex + 1}: ${resultText(result)}`, callback_data: `botadmin:slotlive:user:${userIndex}:${page}` },
+      { text: '🗑', callback_data: `botadmin:slotlive:delresult:${userIndex}:${resultIndex}:${page}` },
+    ]);
+    rows.push([0, 1, 2].map((reel) => ({
+      text: `R${reel + 1} ${symbolIcon(result[reel])}`,
+      callback_data: `botadmin:slotlive:cycle:${userIndex}:${resultIndex}:${reel}:${page}`,
     })));
-  }
+  });
+
   rows.push([{ text: '➕ افزودن نتیجه', callback_data: `botadmin:slotlive:addresult:${userIndex}:${page}` }]);
   rows.push([
     { text: '✏️ تغییر نام', callback_data: `botadmin:slotlive:rename:${userIndex}:${page}` },
     { text: '🗑 حذف کاربر', callback_data: `botadmin:slotlive:removeask:${userIndex}:${page}` },
   ]);
   rows.push([{ text: '⬅️ لیست کاربران', callback_data: `botadmin:slotlive:list:${page}` }]);
-  await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}👤 ${safe(user.name)}\n\nنتیجه‌ها هر بار که این کاربر در Live Bets ظاهر شود به‌صورت تصادفی انتخاب می‌شوند.\n\n${resultLines.join('\n')}`,
-    rows,
-  );
-}
 
-async function sendResultPanel(env: Env, token: string, chatId: number, userIndex: number, resultIndex: number, page: number, messageId?: number, notice = ''): Promise<void> {
-  const config = await getSlotVirtualUsers(env);
-  const user = config.users[userIndex];
-  const result = user?.results[resultIndex];
-  if (!user || !result) return sendUserPanel(env, token, chatId, userIndex, page, messageId, '❌ نتیجه پیدا نشد.');
-  const rows: Keyboard = [
-    [0, 1, 2].map((reel) => ({
-      text: `ریل ${reel + 1}: ${symbolIcon(result[reel])}`,
-      callback_data: `botadmin:slotlive:reel:${userIndex}:${resultIndex}:${reel}:${page}`,
-    })),
-    [{ text: '🗑 حذف این نتیجه', callback_data: `botadmin:slotlive:delresult:${userIndex}:${resultIndex}:${page}` }],
-    [{ text: '⬅️ کاربر', callback_data: `botadmin:slotlive:user:${userIndex}:${page}` }],
-  ];
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}🎲 نتیجه ${resultIndex + 1} — ${safe(user.name)}\n\n${resultText(result)}\n\nهر ریل را جدا انتخاب کنید و نمادش را تغییر دهید.`,
-    rows,
-  );
-}
-
-async function sendSymbolPicker(env: Env, token: string, chatId: number, userIndex: number, resultIndex: number, reel: number, page: number, messageId?: number): Promise<void> {
-  const config = await getSlotVirtualUsers(env);
-  const result = config.users[userIndex]?.results[resultIndex];
-  if (!result) return;
-  const rows: Keyboard = [];
-  for (let index = 0; index < SYMBOLS.length; index += 2) {
-    rows.push([index, index + 1].filter((item) => item < SYMBOLS.length).map((item) => ({
-      text: `${result[reel] === item ? '✅ ' : ''}${SYMBOLS[item][0]} ${SYMBOLS[item][1]}`,
-      callback_data: `botadmin:slotlive:symbol:${userIndex}:${resultIndex}:${reel}:${item}:${page}`,
-    })));
-  }
-  rows.push([{ text: '⬅️ نتیجه', callback_data: `botadmin:slotlive:result:${userIndex}:${resultIndex}:${page}` }]);
-  await upsert(token, chatId, messageId,
-    `🎰 انتخاب نماد ریل ${reel + 1}\n\nنماد فعلی: ${symbolIcon(result[reel])} ${symbolName(result[reel])}`,
+    `${notice ? notice + '\n\n' : ''}👤 ${safe(user.name)}\n\nهمه‌چیز همین‌جاست. هر نتیجه ۳ ریل دارد؛ روی هر ریل بزنید تا بین ۸ نماد Slot بچرخد و همان لحظه ذخیره شود.\n\n${user.results.map((result, index) => `${index + 1}. ${resultText(result)}`).join('\n')}`,
     rows,
   );
 }
@@ -367,7 +331,6 @@ function resultText(result: number[]): string {
   return [0, 1, 2].map((index) => symbolIcon(result[index])).join('  ');
 }
 function symbolIcon(index: number): string { return SYMBOLS[validSymbol(index) ?? 0][0]; }
-function symbolName(index: number): string { return SYMBOLS[validSymbol(index) ?? 0][1]; }
 function validIndex(value: unknown): number | null { const n = Number(value); return Number.isInteger(n) && n >= 0 ? n : null; }
 function validReel(value: unknown): number | null { const n = Number(value); return Number.isInteger(n) && n >= 0 && n < 3 ? n : null; }
 function validSymbol(value: unknown): number | null { const n = Number(value); return Number.isInteger(n) && n >= 0 && n < SYMBOLS.length ? n : null; }
@@ -397,6 +360,7 @@ async function clearOtherAdminStates(env: Env, userId: number): Promise<void> {
   await Promise.all([
     env.BOT_CACHE.delete(`admin:section-access-input:${userId}`).catch(() => undefined),
     env.BOT_CACHE.delete(`admin:online-count-input:${userId}`).catch(() => undefined),
+    env.BOT_CACHE.delete(`admin:crash-ghost-live-bets-input:${userId}`).catch(() => undefined),
     env.BOT_CACHE.delete(`admin:game-card-upload:${userId}`).catch(() => undefined),
     env.BOT_CACHE.delete(`botadmin:state:${userId}`).catch(() => undefined),
   ]);
