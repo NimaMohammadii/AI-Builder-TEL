@@ -14,6 +14,7 @@ import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin'
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
 import type { TonWithdrawal } from './ton-withdrawals';
+export { SectionLockEvents } from './section-lock-events';
 
 export { PlinkoLiveRoom } from './plinko-live';
 
@@ -36,6 +37,15 @@ export default {
     }) as Env;
 
     const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/app/api/section-access/live' && request.headers.get('Upgrade') === 'websocket') {
+      try {
+        await validateTelegramInitData(url.searchParams.get('initData') || '', gameBotToken(runtimeEnv));
+        const id = runtimeEnv.SECTION_LOCK_EVENTS.idFromName('global');
+        return runtimeEnv.SECTION_LOCK_EVENTS.get(id).fetch(new Request('https://section-lock-events/connect', { headers: request.headers }));
+      } catch {
+        return new Response('Unauthorized', { status: 401 });
+      }
+    }
     if (request.method === 'POST' && url.pathname === '/app/api/play-zone-card-visibility') {
       try {
         const body = await request.json().catch(() => ({})) as { initData?: unknown };
