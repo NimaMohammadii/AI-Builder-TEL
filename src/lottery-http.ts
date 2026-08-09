@@ -24,20 +24,27 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const state = await getLotteryUserState(env, userId);
       const serverNowMs = Date.now();
       const round = state.round;
+      const drawAtMs = Date.parse(String(round?.drawAt || ''));
       const nextRoundStartsAtMs = Date.parse(String(round?.nextRoundStartsAt || ''));
       const previousWinnersAtMs = Number.isFinite(nextRoundStartsAtMs)
         ? nextRoundStartsAtMs - LOTTERY_NEXT_ROUND_DELAY_MS
         : 0;
-      const waitingForWinner = round?.status === 'open'
-        || Boolean(round?.status === 'closed' && previousWinnersAtMs > serverNowMs);
+      const waitingForWinner = Boolean(
+        round?.status === 'closed'
+        && previousWinnersAtMs > serverNowMs,
+      );
       const roundId = waitingForWinner ? '' : (state.lastDraw?.roundId || '');
       const [winners, prizes] = await Promise.all([
         roundId ? getLotteryWinners(env, roundId) : Promise.resolve([]),
         getLotteryPrizes(env),
       ]);
       const nextDisplayChangeAtMs = waitingForWinner
-        ? (previousWinnersAtMs > serverNowMs ? previousWinnersAtMs : 0)
-        : (Number.isFinite(nextRoundStartsAtMs) && nextRoundStartsAtMs > serverNowMs ? nextRoundStartsAtMs : 0);
+        ? previousWinnersAtMs
+        : round?.status === 'open' && Number.isFinite(drawAtMs) && drawAtMs > serverNowMs
+          ? drawAtMs
+          : Number.isFinite(nextRoundStartsAtMs) && nextRoundStartsAtMs > serverNowMs
+            ? nextRoundStartsAtMs
+            : 0;
       return json({
         ok: true,
         serverNowMs,
