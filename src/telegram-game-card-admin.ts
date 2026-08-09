@@ -47,9 +47,11 @@ const SLOT_SYMBOLS = [
 ] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-// Card images use stable URLs in the Play Hub, so let the user's browser keep
-// the nine responses locally instead of reaching the Worker on every visit.
+// Versioned URLs are safe to cache forever (for example, Telegram's upload
+// confirmation preview). The Play Hub intentionally uses stable URLs, so those
+// responses must be re-fetched after an admin replaces an image.
 const GAME_CARD_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const LIVE_GAME_CARD_CACHE_CONTROL = 'no-store, max-age=0';
 
 export async function handleGameCardAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
@@ -67,20 +69,22 @@ export async function handleGameCardAdminRequest(request: Request, env: Env): Pr
 async function serveImage(request: Request, env: Env, raw: string): Promise<Response> {
   const game = normalizeGame(raw.replace(/\.png$/i, ''));
   if (!game) return new Response('Not found', { status: 404 });
+  const versioned = Boolean(new URL(request.url).searchParams.get('v'));
+  const cacheControl = versioned ? GAME_CARD_CACHE_CONTROL : LIVE_GAME_CARD_CACHE_CONTROL;
   const object = await env.ASSETS.get(gameKey(game)).catch(() => null);
   if (!object) {
     return new Response(null, {
       status: 302,
       headers: {
         location: new URL(`/app/api/section-lock-image/${game}/locked.png?v=1`, request.url).toString(),
-        'cache-control': GAME_CARD_CACHE_CONTROL,
+        'cache-control': cacheControl,
       },
     });
   }
   return new Response(object.body, {
     headers: {
       'content-type': object.httpMetadata?.contentType || 'image/jpeg',
-      'cache-control': GAME_CARD_CACHE_CONTROL,
+      'cache-control': cacheControl,
       'x-content-type-options': 'nosniff',
     },
   });
