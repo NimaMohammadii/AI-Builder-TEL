@@ -453,10 +453,10 @@ html body:has(#slot.active) #slot .slot-machine-shadow{display:none!important}
 html body:has(#slot.active) #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:28.6%!important;
+  top:29.2%!important;
   left:9.8%!important;
   width:80.4%!important;
-  height:49.7%!important;
+  height:47.8%!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:2.4%!important;
@@ -492,7 +492,7 @@ html body:has(#slot.active) #slot .slot-reel::after{
 html body:has(#slot.active) #slot .slot-reel-strip{transform-style:preserve-3d!important}
 html body:has(#slot.active) #slot .slot-symbol{
   width:100%!important;
-  height:calc((min(92vw,390px) * .497 * 900 / 845) / 3)!important;
+  height:calc((min(92vw,390px) * .478 * 900 / 845) / 3)!important;
   margin-left:0!important;
   display:grid!important;
   place-items:center!important;
@@ -545,6 +545,11 @@ html body:has(#slot.active) #slot .slot-simple-controls{
   display:grid!important;
   justify-items:center!important;
   gap:7px!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
 }
 html body:has(#slot.active) #slot .slot-simple-bet-row{
   width:100%!important;
