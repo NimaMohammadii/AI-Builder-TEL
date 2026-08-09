@@ -524,7 +524,7 @@ async function finalizeLotteryRound(env: Env, round: RoundRow): Promise<LotteryD
 
   const lock = `draw_${randomHex(24)}`;
   const acquired = await env.DB.prepare(`UPDATE lottery_rounds SET draw_lock=?,updated_at=CURRENT_TIMESTAMP
-    WHERE id=? AND status='open' AND (draw_lock IS NULL OR draw_lock='')`)
+    WHERE id=? AND status='open' AND (draw_lock IS NULL OR draw_lock='' OR datetime(updated_at)<=datetime('now','-60 seconds'))`)
     .bind(lock, round.id).run();
   if (Number(acquired.meta?.changes || 0) <= 0) {
     const stored = await env.DB.prepare('SELECT * FROM lottery_rounds WHERE id=?').bind(round.id).first<RoundRow>();
