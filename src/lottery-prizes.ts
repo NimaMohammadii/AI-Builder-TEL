@@ -21,6 +21,7 @@ type WinnerRow = {
   first_name?: string | null;
 };
 type CandidateRow = { id: string; user_id: string; code: string };
+type ExistingWinnerRow = { rank: number; user_id: string };
 
 export type LotteryPrize = {
   rank: number;
@@ -126,15 +127,15 @@ export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): P
   const roundId = String(roundIdInput || '').trim();
   if (!roundId) throw new Error('Missing Lottery round');
 
-  const existing = await getLotteryWinners(env, roundId);
-  if (existing.length) {
-    await payPendingLotteryWinners(env, roundId);
-    return getLotteryWinners(env, roundId);
-  }
-
   const prizes = await getLotteryPrizes(env);
-  const selectedUsers: string[] = [];
+  const existingRows = await env.DB.prepare(`SELECT rank,user_id FROM lottery_winners
+    WHERE round_id=? ORDER BY rank ASC`).bind(roundId).all<ExistingWinnerRow>();
+  const existing = existingRows.results || [];
+  const selectedUsers = existing.map((row) => String(row.user_id || '')).filter(Boolean);
+  const occupiedRanks = new Set(existing.map((row) => Math.floor(Number(row.rank) || 0)));
+
   for (let rank = 1; rank <= LOTTERY_WINNER_COUNT; rank += 1) {
+    if (occupiedRanks.has(rank)) continue;
     const candidate = await randomCandidate(env, roundId, selectedUsers);
     if (!candidate) break;
     const prizeNano = Math.max(0, Math.floor(Number(prizes[rank - 1]?.prizeNano) || 0));
@@ -143,11 +144,14 @@ export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): P
       (id,round_id,rank,user_id,ticket_id,ticket_code,prize_nano,payout_status,paid_at,created_at)
       VALUES (?,?,?,?,?,?,?,'pending',NULL,CURRENT_TIMESTAMP)`)
       .bind(winnerId, roundId, rank, candidate.user_id, candidate.id, candidate.code, prizeNano).run();
-    if (Number(result.meta?.changes || 0) > 0) selectedUsers.push(candidate.user_id);
-    else {
-      const saved = await env.DB.prepare('SELECT user_id FROM lottery_winners WHERE round_id=? AND rank=? LIMIT 1')
-        .bind(roundId, rank).first<{ user_id: string }>();
+    if (Number(result.meta?.changes || 0) > 0) {
+      selectedUsers.push(candidate.user_id);
+      occupiedRanks.add(rank);
+    } else {
+      const saved = await env.DB.prepare('SELECT rank,user_id FROM lottery_winners WHERE round_id=? AND rank=? LIMIT 1')
+        .bind(roundId, rank).first<ExistingWinnerRow>();
       if (saved?.user_id && !selectedUsers.includes(saved.user_id)) selectedUsers.push(saved.user_id);
+      if (saved?.rank) occupiedRanks.add(Number(saved.rank));
     }
   }
 
