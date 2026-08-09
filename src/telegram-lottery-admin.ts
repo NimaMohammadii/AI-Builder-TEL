@@ -65,6 +65,7 @@ async function handleCallback(env: Env, callback: Callback): Promise<Response> {
     }
 
     if (action === 'startnow') {
+      await getCurrentLotteryRound(env, false);
       const round = await startLotteryNow(env);
       const settings = await getLotterySettings(env);
       await sendLotteryMenu(env, chatId, messageId, `🚀 Lottery از همین الان شروع شد. Draw بعدی ${formatMinutes(settings.drawIntervalMinutes)} دیگر است.\nRound: ${round.id}`);
