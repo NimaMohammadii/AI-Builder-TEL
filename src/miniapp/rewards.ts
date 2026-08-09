@@ -11,6 +11,7 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
     #rewards .rewards-home-intro-card:after{display:none!important;content:none!important}
     #rewards .rewards-home-intro-image-frame{position:relative!important;z-index:1!important;width:100%!important;height:100%!important;min-height:0!important;display:block!important;overflow:visible!important;border:0!important;border-radius:0!important;aspect-ratio:var(--rewards-intro-aspect,12/5)!important;background:transparent url('/app/api/home-intro-image.png') center center/100% 100% no-repeat!important;box-shadow:none!important;filter:none!important;box-sizing:border-box!important}
     #rewards .rewards-live-winners{margin:0!important;display:block!important;min-height:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+    #rewards .rewards-winners-state-title{margin:0 8px 10px!important;color:rgba(255,255,255,.72)!important;font-size:13px!important;font-weight:850!important;line-height:1.2!important;letter-spacing:-.01em!important}
     #rewards .home-live-winners-list{height:auto!important;max-height:none!important;min-height:0!important;display:grid!important;align-content:start!important;gap:10px!important;overflow:visible!important;overscroll-behavior:auto!important;scrollbar-width:none!important;padding:0 2px 16px!important;background:transparent!important;box-shadow:none!important}
     #rewards .home-live-winners-list::-webkit-scrollbar{display:none!important}
     #rewards .home-live-winner-card{position:relative!important;overflow:hidden!important;min-height:64px!important;border:0!important;outline:0!important;border-radius:28px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;display:grid!important;grid-template-columns:42px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;padding:11px 14px!important;backdrop-filter:blur(3px) saturate(1.04)!important;-webkit-backdrop-filter:blur(3px) saturate(1.04)!important}
@@ -26,6 +27,7 @@ export const REWARDS_SECTION = `<section id="rewards" class="view rewards-view">
   </style>
   <div class="rewards-home-intro-card" aria-hidden="true"><div class="rewards-home-intro-image-frame"></div></div>
   <section class="rewards-live-winners" aria-label="Lottery Winners">
+    <div class="rewards-winners-state-title" id="lotteryRewardsStateTitle">Waiting for Winner</div>
     <div class="home-live-winners-list" id="lotteryRewardsWinnersList"></div>
   </section>
 </section>`;
