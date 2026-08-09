@@ -3,6 +3,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,pollStarted=false,drawRefreshPending=false;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
+  var officialSpinActive=false,suppressedWindowFocus=false;
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
@@ -16,8 +17,10 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
   function syncServerClock(payload,requestStartedAt,receivedAt){
     var serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(serverNow)||serverNow<=0)return;
-    var midpoint=(Number(requestStartedAt)||receivedAt)+((receivedAt-(Number(requestStartedAt)||receivedAt))/2);
-    serverOffsetMs=serverNow-midpoint;window.VexaLotteryServerOffsetMs=serverOffsetMs;
+    var started=Number(requestStartedAt)||receivedAt,total=Math.max(0,receivedAt-started),serverStarted=Number(payload&&payload.serverStartedAtMs);
+    var processing=Number.isFinite(serverStarted)&&serverStarted>0?Math.max(0,serverNow-serverStarted):0;
+    var transitRtt=Math.max(0,total-processing);
+    serverOffsetMs=(serverNow+(transitRtt/2))-receivedAt;window.VexaLotteryServerOffsetMs=serverOffsetMs;
   }
   function liveServerNow(){return Date.now()+serverOffsetMs}
   function roundTime(name,fallback){
@@ -27,20 +30,23 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     return Number.isFinite(drawAt)?drawAt+(Number(fallback)||0):0;
   }
   function formatCountdown(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+  function setManualSpinReserved(reserved){var button=q('#homeSlotSpinButton');if(!button)return;button.disabled=!!reserved;if(reserved)button.setAttribute('aria-disabled','true');else button.removeAttribute('aria-disabled')}
   function refreshLifecycle(){
     if(drawRefreshPending||busy)return;
     drawRefreshPending=true;load().finally(function(){drawRefreshPending=false})
   }
   function updateCountdown(){
     var round=state&&state.round,time=q('#homeDrawInfoCard [data-draw-time]'),now=liveServerNow();
-    if(!round){if(time)time.textContent='--:--:--';return}
+    if(!round){setManualSpinReserved(false);if(time)time.textContent='--:--:--';return}
     var drawAt=roundTime('drawAt',0);
     if(round.status==='open'){
+      setManualSpinReserved(!!(drawAt&&drawAt-now<=DRAW_ANIMATION_MS));
       if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}
       if(time)time.textContent='00:00:00';
       refreshLifecycle();
       return;
     }
+    setManualSpinReserved(true);
     if(time)time.textContent='00:00:00';
     var nextStartsAt=roundTime('nextRoundStartsAt',DRAW_DELAY_MS+DRAW_ANIMATION_MS+NEXT_ROUND_DELAY_MS);
     if(nextStartsAt&&now>=nextStartsAt)refreshLifecycle();
@@ -88,10 +94,25 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     updateCountdown();
   }
   function slotEngine(){return window.VexaLotterySlotEngine||null}
+  function replaySuppressedFocus(){
+    if(!suppressedWindowFocus)return;
+    suppressedWindowFocus=false;
+    setTimeout(function(){
+      try{window.dispatchEvent(new Event('focus'))}
+      catch(e){try{var event=document.createEvent('Event');event.initEvent('focus',false,false);window.dispatchEvent(event)}catch(x){}}
+    },0)
+  }
+  function setOfficialSpinActive(active){officialSpinActive=!!active;if(!officialSpinActive)replaySuppressedFocus()}
+  function guardOfficialSpinFocus(event){
+    if(!officialSpinActive||event&&event.target!==window)return;
+    suppressedWindowFocus=true;
+    if(event&&typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();
+  }
   function setStaticCode(code){
     var engine=slotEngine();
     if(!engine||typeof engine.setCode!=='function'){setTimeout(function(){setStaticCode(code)},80);return}
-    engine.setCode(code);
+    var applied=false;try{applied=engine.setCode(code)!==false}catch(e){applied=false}
+    if(!applied)setTimeout(function(){setStaticCode(code)},160);
   }
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
@@ -106,8 +127,10 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     var run=function(){
       var engine=slotEngine();
       if(!engine||typeof engine.spinTo!=='function'){drawSpinTimer=setTimeout(run,80);return}
-      var started=engine.spinTo(code,function(){haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId=''});
-      if(!started)drawSpinTimer=setTimeout(run,160);
+      setOfficialSpinActive(true);
+      var started=false;
+      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);setStaticCode(code);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId=''})}catch(e){started=false}
+      if(!started){setOfficialSpinActive(false);drawSpinTimer=setTimeout(run,160)}
     };
     drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
   }
@@ -126,7 +149,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     }
     if(drawId===lastDrawId)return;
     lastDrawId=drawId;
-    if(sameClosedRound&&animationEndsAt&&now<animationEndsAt)scheduleLiveDraw(drawId,code,won,Math.max(now,startAt));
+    if(sameClosedRound)scheduleLiveDraw(drawId,code,won,Math.max(now,startAt||now));
     else setStaticCode(code);
   }
   async function load(){
@@ -166,6 +189,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function startLiveSync(){if(pollStarted)return;pollStarted=true;setInterval(updateCountdown,250);setInterval(function(){if(!busy&&q('#home.active')&&!drawRefreshPending)load()},5000)}
   function init(){document.addEventListener('click',handleTicketControls,true);load();startLiveSync();window.VexaLotteryRefresh=load}
+  window.addEventListener('focus',guardOfficialSpinFocus,true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',function(){if(q('#home.active')&&!busy)load()});
 })();
