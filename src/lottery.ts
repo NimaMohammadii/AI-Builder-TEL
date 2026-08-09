@@ -5,8 +5,8 @@ export const LOTTERY_DEFAULT_TICKET_PRICE_NANO = 150_000_000;
 export const LOTTERY_DEFAULT_DRAW_INTERVAL_MINUTES = 24 * 60;
 export const LOTTERY_MAX_PURCHASE_QUANTITY = 20;
 export const LOTTERY_DRAW_DELAY_MS = 5_000;
-export const LOTTERY_DRAW_ANIMATION_MS = 4_500;
-export const LOTTERY_NEXT_ROUND_DELAY_MS = 5_000;
+export const LOTTERY_DRAW_ANIMATION_MS = 18_260;
+export const LOTTERY_NEXT_ROUND_DELAY_MS = 10_000;
 
 export type LotterySettings = {
   enabled: boolean;
@@ -127,12 +127,15 @@ export async function ensureLotteryTables(env: Env): Promise<void> {
   await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN winning_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN drawn_at TEXT').run().catch(() => undefined);
 
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_free_claims (
-    user_id TEXT PRIMARY KEY,
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_round_free_claims (
+    user_id TEXT NOT NULL,
+    round_id TEXT NOT NULL,
     claim_request_id TEXT NOT NULL,
     ticket_id TEXT,
-    claimed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    claimed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, round_id)
   )`).run();
+  await env.DB.prepare('DROP TABLE IF EXISTS lottery_free_claims').run().catch(() => undefined);
 
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_tickets (
     id TEXT PRIMARY KEY,
@@ -183,9 +186,8 @@ export async function getCurrentLotteryRound(env: Env, createIfMissing = true): 
 
   if (row) {
     const drawAtMs = Date.parse(row.draw_at);
-    const drawStartsAtMs = drawAtMs + LOTTERY_DRAW_DELAY_MS;
-    if (Number.isFinite(drawAtMs) && now < drawStartsAtMs) return publicRound(row);
-    if (Number.isFinite(drawAtMs) && now >= drawStartsAtMs) {
+    if (Number.isFinite(drawAtMs) && now < drawAtMs) return publicRound(row);
+    if (Number.isFinite(drawAtMs) && now >= drawAtMs) {
       await finalizeLotteryRound(env, row);
       row = null;
     }
@@ -277,7 +279,7 @@ export async function getLotteryUserState(env: Env, userId: string): Promise<Lot
   const lastDraw = await getLatestLotteryDraw(env);
   const openRound = round?.status === 'open' && Date.parse(round.drawAt) > Date.now() ? round : null;
   const tickets = openRound ? await listLotteryTickets(env, id, openRound.id, 100) : [];
-  const freeTicketAvailable = settings.freeTicketEnabled && !(await hasClaimedFreeTicket(env, id));
+  const freeTicketAvailable = Boolean(settings.freeTicketEnabled && openRound && !(await hasClaimedFreeTicket(env, id, openRound.id)));
   const controls = await getUserControls(env, id);
   const reason = !settings.enabled ? 'Lottery is disabled'
     : !settings.salesOpen ? 'Ticket sales are paused'
@@ -324,14 +326,17 @@ export async function buyLotteryTickets(env: Env, userId: string, quantityInput:
 
   const existing = await ticketsForPurchase(env, user, purchaseId);
   if (existing.length) {
-    const current = await getCurrentLotteryRound(env, false);
-    if (!current) throw new Error('Lottery round is unavailable');
-    const all = await listLotteryTickets(env, user, current.id, 250);
+    const existingRoundId = existing[0].roundId;
+    const roundRow = await env.DB.prepare('SELECT * FROM lottery_rounds WHERE id=?').bind(existingRoundId).first<RoundRow>();
+    if (!roundRow) throw new Error('Lottery round is unavailable');
+    const current = publicRound(roundRow);
+    const all = await listLotteryTickets(env, user, existingRoundId, 250);
     const controls = await getUserControls(env, user);
+    const settings = await getLotterySettings(env);
     return {
       tickets: existing,
       ticketCount: all.length,
-      freeTicketAvailable: !(await hasClaimedFreeTicket(env, user)),
+      freeTicketAvailable: settings.freeTicketEnabled && !(await hasClaimedFreeTicket(env, user, existingRoundId)),
       paidNano: existing.reduce((sum, ticket) => sum + ticket.priceNano, 0),
       gramBalanceNano: controls.tonBalanceNano,
       round: current,
@@ -353,8 +358,9 @@ export async function buyLotteryTickets(env: Env, userId: string, quantityInput:
 
   let freeReserved = false;
   if (settings.freeTicketEnabled) {
-    const claim = await env.DB.prepare(`INSERT OR IGNORE INTO lottery_free_claims (user_id,claim_request_id,ticket_id,claimed_at)
-      VALUES (?,?,NULL,CURRENT_TIMESTAMP)`).bind(user, purchaseId).run();
+    const claim = await env.DB.prepare(`INSERT OR IGNORE INTO lottery_round_free_claims
+      (user_id,round_id,claim_request_id,ticket_id,claimed_at)
+      VALUES (?,?,?,NULL,CURRENT_TIMESTAMP)`).bind(user, round.id, purchaseId).run();
     freeReserved = Number(claim.meta?.changes || 0) > 0;
   }
 
@@ -395,8 +401,9 @@ export async function buyLotteryTickets(env: Env, userId: string, quantityInput:
         if (inserted.length !== quantity) throw new Error('Ticket purchase was not fully saved');
         if (freeReserved) {
           const freeTicket = inserted.find((ticket) => ticket.isFree);
-          await env.DB.prepare('UPDATE lottery_free_claims SET ticket_id=? WHERE user_id=? AND claim_request_id=?')
-            .bind(freeTicket?.id || null, user, purchaseId).run();
+          await env.DB.prepare(`UPDATE lottery_round_free_claims SET ticket_id=?
+            WHERE user_id=? AND round_id=? AND claim_request_id=?`)
+            .bind(freeTicket?.id || null, user, round.id, purchaseId).run();
         }
       } catch (error) {
         lastError = error;
@@ -410,7 +417,7 @@ export async function buyLotteryTickets(env: Env, userId: string, quantityInput:
     return {
       tickets: inserted,
       ticketCount: Number(countRow?.count || 0),
-      freeTicketAvailable: settings.freeTicketEnabled && !(await hasClaimedFreeTicket(env, user)),
+      freeTicketAvailable: settings.freeTicketEnabled && !(await hasClaimedFreeTicket(env, user, round.id)),
       paidNano,
       gramBalanceNano: balanceNano,
       round,
@@ -423,8 +430,9 @@ export async function buyLotteryTickets(env: Env, userId: string, quantityInput:
       }).catch(() => undefined);
     }
     if (freeReserved) {
-      await env.DB.prepare('DELETE FROM lottery_free_claims WHERE user_id=? AND claim_request_id=? AND ticket_id IS NULL')
-        .bind(user, purchaseId).run().catch(() => undefined);
+      await env.DB.prepare(`DELETE FROM lottery_round_free_claims
+        WHERE user_id=? AND round_id=? AND claim_request_id=? AND ticket_id IS NULL`)
+        .bind(user, round.id, purchaseId).run().catch(() => undefined);
     }
     throw error;
   }
@@ -502,11 +510,10 @@ export async function setLotteryDrawMinutesFromNow(env: Env, minutesInput: unkno
 async function finalizeLotteryRound(env: Env, round: RoundRow): Promise<LotteryDraw | null> {
   if (round.status !== 'open') return null;
   const drawAtMs = Date.parse(round.draw_at);
-  const drawStartsAtMs = drawAtMs + LOTTERY_DRAW_DELAY_MS;
-  if (!Number.isFinite(drawAtMs) || Date.now() < drawStartsAtMs) return null;
+  if (!Number.isFinite(drawAtMs) || Date.now() < drawAtMs) return null;
 
   const winningCode = await randomTicketCodeForRound(env, round.id);
-  const drawnAt = new Date(drawStartsAtMs).toISOString();
+  const drawnAt = new Date().toISOString();
 
   await env.DB.prepare(`UPDATE lottery_rounds
     SET status='closed',
@@ -536,8 +543,9 @@ async function randomTicketCodeForRound(env: Env, roundIdValue: string): Promise
   return /^\d{5}$/.test(code) ? code : null;
 }
 
-async function hasClaimedFreeTicket(env: Env, userId: string): Promise<boolean> {
-  const row = await env.DB.prepare('SELECT user_id FROM lottery_free_claims WHERE user_id=? LIMIT 1').bind(userId).first<{ user_id: string }>();
+async function hasClaimedFreeTicket(env: Env, userId: string, roundIdValue: string): Promise<boolean> {
+  const row = await env.DB.prepare(`SELECT user_id FROM lottery_round_free_claims
+    WHERE user_id=? AND round_id=? LIMIT 1`).bind(userId, roundIdValue).first<{ user_id: string }>();
   return Boolean(row?.user_id);
 }
 
