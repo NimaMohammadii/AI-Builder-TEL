@@ -696,4 +696,22 @@ html body:has(#slot.active) #slot .slot-live{margin-top:30px!important}
 html body:has(#slot.active) #slot .slot-symbol-fallback{
   display:none!important;
 }
+/* Slot controls must not be wrapped by a glass card. */
+html body:has(#slot.active) #slot .slot-simple-controls,
+html body:has(#slot.active) #slot .slot-simple-controls::before,
+html body:has(#slot.active) #slot .slot-simple-controls::after{
+  background:none!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+html body:has(#slot.active) #slot .slot-simple-controls::before,
+html body:has(#slot.active) #slot .slot-simple-controls::after{
+  content:none!important;
+  display:none!important;
+}
+
 `;
