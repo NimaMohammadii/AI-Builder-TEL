@@ -4,6 +4,9 @@ import { adjustUserTonBalance, assertUserNotBanned, debitUserTonBalanceIfEnough,
 export const LOTTERY_DEFAULT_TICKET_PRICE_NANO = 150_000_000;
 export const LOTTERY_DEFAULT_DRAW_INTERVAL_MINUTES = 24 * 60;
 export const LOTTERY_MAX_PURCHASE_QUANTITY = 20;
+export const LOTTERY_DRAW_DELAY_MS = 5_000;
+export const LOTTERY_DRAW_ANIMATION_MS = 4_500;
+export const LOTTERY_NEXT_ROUND_DELAY_MS = 5_000;
 
 export type LotterySettings = {
   enabled: boolean;
@@ -21,6 +24,8 @@ export type LotteryRound = {
   status: 'open' | 'closed';
   opensAt: string;
   drawAt: string;
+  drawStartsAt: string;
+  nextRoundStartsAt: string;
   ticketPriceNano: number;
   createdAt: string;
   updatedAt: string;
@@ -173,15 +178,18 @@ export async function getLotterySettings(env: Env): Promise<LotterySettings> {
 
 export async function getCurrentLotteryRound(env: Env, createIfMissing = true): Promise<LotteryRound | null> {
   await ensureLotteryTables(env);
+  const now = Date.now();
   let row = await env.DB.prepare("SELECT * FROM lottery_rounds WHERE status='open' ORDER BY datetime(created_at) DESC LIMIT 1").first<RoundRow>();
-  let expiredDrawAt = '';
 
-  if (row && Date.parse(row.draw_at) <= Date.now()) {
-    expiredDrawAt = row.draw_at;
-    await finalizeLotteryRound(env, row);
-    row = null;
+  if (row) {
+    const drawAtMs = Date.parse(row.draw_at);
+    const drawStartsAtMs = drawAtMs + LOTTERY_DRAW_DELAY_MS;
+    if (Number.isFinite(drawAtMs) && now < drawStartsAtMs) return publicRound(row);
+    if (Number.isFinite(drawAtMs) && now >= drawStartsAtMs) {
+      await finalizeLotteryRound(env, row);
+      row = null;
+    }
   }
-  if (row) return publicRound(row);
 
   const latestClosed = await env.DB.prepare("SELECT * FROM lottery_rounds WHERE status='closed' ORDER BY datetime(COALESCE(drawn_at,updated_at)) DESC LIMIT 1").first<RoundRow>();
   if (!createIfMissing) return latestClosed ? publicRound(latestClosed) : null;
@@ -189,8 +197,20 @@ export async function getCurrentLotteryRound(env: Env, createIfMissing = true): 
   const settings = await getLotterySettings(env);
   if (!settings.enabled) return latestClosed ? publicRound(latestClosed) : null;
 
-  const opensAt = new Date().toISOString();
-  const drawAt = nextScheduledDraw(settings.nextDrawAt, settings.drawIntervalMinutes, expiredDrawAt || latestClosed?.draw_at || '');
+  if (latestClosed) {
+    const nextRoundStartsAtMs = roundNextStartsAtMs(latestClosed);
+    if (Number.isFinite(nextRoundStartsAtMs) && now < nextRoundStartsAtMs) return publicRound(latestClosed);
+  }
+
+  const opensAtMs = now;
+  const opensAt = new Date(opensAtMs).toISOString();
+  let drawAtMs = opensAtMs + settings.drawIntervalMinutes * 60_000;
+  if (!latestClosed) {
+    const configured = Date.parse(settings.nextDrawAt);
+    if (Number.isFinite(configured) && configured > opensAtMs + 5_000) drawAtMs = configured;
+  }
+  const drawAt = new Date(drawAtMs).toISOString();
+
   if (drawAt !== settings.nextDrawAt) {
     await env.DB.prepare('UPDATE lottery_settings SET next_draw_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=1').bind(drawAt).run();
   }
@@ -210,25 +230,35 @@ export async function getCurrentLotteryRound(env: Env, createIfMissing = true): 
 }
 
 export async function startLotteryNow(env: Env): Promise<LotteryRound> {
-  await getCurrentLotteryRound(env, false);
+  await ensureLotteryTables(env);
   const current = await getLotterySettings(env);
   const now = new Date().toISOString();
   const drawAt = new Date(Date.now() + current.drawIntervalMinutes * 60_000).toISOString();
-  await updateLotterySettings(env, { enabled: true, salesOpen: true, nextDrawAt: drawAt });
 
-  let round = await getCurrentLotteryRound(env, true);
-  if (!round || round.status !== 'open') round = await getCurrentLotteryRound(env, true);
-  if (!round || round.status !== 'open') throw new Error('Could not start Lottery round');
+  await env.DB.prepare(`UPDATE lottery_settings
+    SET enabled=1,sales_open=1,next_draw_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=1`).bind(drawAt).run();
 
-  await env.DB.prepare(`UPDATE lottery_rounds
-    SET opens_at=?,draw_at=?,ticket_price_nano=?,winning_code=NULL,drawn_at=NULL,updated_at=CURRENT_TIMESTAMP
-    WHERE id=? AND status='open'`)
-    .bind(now, drawAt, current.ticketPriceNano, round.id).run();
-  await env.DB.prepare('UPDATE lottery_settings SET next_draw_at=?,enabled=1,sales_open=1,updated_at=CURRENT_TIMESTAMP WHERE id=1').bind(drawAt).run();
+  let row = await env.DB.prepare("SELECT * FROM lottery_rounds WHERE status='open' ORDER BY datetime(created_at) DESC LIMIT 1").first<RoundRow>();
+  if (row) {
+    await env.DB.prepare(`UPDATE lottery_rounds
+      SET opens_at=?,draw_at=?,ticket_price_nano=?,winning_code=NULL,drawn_at=NULL,updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND status='open'`)
+      .bind(now, drawAt, current.ticketPriceNano, row.id).run();
+  } else {
+    const id = roundId();
+    try {
+      await env.DB.prepare(`INSERT INTO lottery_rounds
+        (id,status,opens_at,draw_at,ticket_price_nano,winning_code,drawn_at,created_at,updated_at)
+        VALUES (?,'open',?,?,?,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`)
+        .bind(id, now, drawAt, current.ticketPriceNano).run();
+    } catch {
+      // A concurrent admin action may have created the round first.
+    }
+  }
 
-  const updated = await env.DB.prepare('SELECT * FROM lottery_rounds WHERE id=?').bind(round.id).first<RoundRow>();
-  if (!updated) throw new Error('Could not load started Lottery round');
-  return publicRound(updated);
+  row = await env.DB.prepare("SELECT * FROM lottery_rounds WHERE status='open' ORDER BY datetime(created_at) DESC LIMIT 1").first<RoundRow>();
+  if (!row) throw new Error('Could not start Lottery round');
+  return publicRound(row);
 }
 
 export async function getLatestLotteryDraw(env: Env): Promise<LotteryDraw | null> {
@@ -470,9 +500,13 @@ export async function setLotteryDrawMinutesFromNow(env: Env, minutesInput: unkno
 }
 
 async function finalizeLotteryRound(env: Env, round: RoundRow): Promise<LotteryDraw | null> {
-  if (round.status !== 'open' || Date.parse(round.draw_at) > Date.now()) return null;
-  const generatedCode = secureFiveDigitCode();
-  const drawnAt = new Date().toISOString();
+  if (round.status !== 'open') return null;
+  const drawAtMs = Date.parse(round.draw_at);
+  const drawStartsAtMs = drawAtMs + LOTTERY_DRAW_DELAY_MS;
+  if (!Number.isFinite(drawAtMs) || Date.now() < drawStartsAtMs) return null;
+
+  const winningCode = await randomTicketCodeForRound(env, round.id);
+  const drawnAt = new Date(drawStartsAtMs).toISOString();
 
   await env.DB.prepare(`UPDATE lottery_rounds
     SET status='closed',
@@ -480,10 +514,26 @@ async function finalizeLotteryRound(env: Env, round: RoundRow): Promise<LotteryD
         drawn_at=COALESCE(drawn_at,?),
         updated_at=CURRENT_TIMESTAMP
     WHERE id=? AND status='open'`)
-    .bind(generatedCode, drawnAt, round.id).run();
+    .bind(winningCode, drawnAt, round.id).run();
 
   const stored = await env.DB.prepare('SELECT * FROM lottery_rounds WHERE id=?').bind(round.id).first<RoundRow>();
   return stored?.winning_code ? publicDraw(stored) : null;
+}
+
+async function randomTicketCodeForRound(env: Env, roundIdValue: string): Promise<string | null> {
+  const countRow = await env.DB.prepare(`SELECT COUNT(*) AS count FROM lottery_tickets
+    WHERE round_id=? AND COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5))!=''`)
+    .bind(roundIdValue).first<{ count: number }>();
+  const count = Math.max(0, Math.floor(Number(countRow?.count || 0)));
+  if (!count) return null;
+
+  const offset = secureRandomIndex(count);
+  const row = await env.DB.prepare(`SELECT COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5)) AS code
+    FROM lottery_tickets WHERE round_id=?
+    ORDER BY datetime(created_at) ASC,id ASC LIMIT 1 OFFSET ?`)
+    .bind(roundIdValue, offset).first<{ code: string }>();
+  const code = String(row?.code || '').replace(/[^0-9]/g, '').slice(-5).padStart(5, '0');
+  return /^\d{5}$/.test(code) ? code : null;
 }
 
 async function hasClaimedFreeTicket(env: Env, userId: string): Promise<boolean> {
@@ -511,11 +561,18 @@ function publicSettings(row: SettingsRow): LotterySettings {
 }
 
 function publicRound(row: RoundRow): LotteryRound {
+  const drawAtMs = Date.parse(row.draw_at);
+  const drawStartsAtMs = Number.isFinite(drawAtMs) ? drawAtMs + LOTTERY_DRAW_DELAY_MS : 0;
+  const nextRoundStartsAtMs = Number.isFinite(drawAtMs)
+    ? drawAtMs + LOTTERY_DRAW_DELAY_MS + LOTTERY_DRAW_ANIMATION_MS + LOTTERY_NEXT_ROUND_DELAY_MS
+    : 0;
   return {
     id: row.id,
     status: row.status,
     opensAt: row.opens_at,
     drawAt: row.draw_at,
+    drawStartsAt: drawStartsAtMs ? new Date(drawStartsAtMs).toISOString() : '',
+    nextRoundStartsAt: nextRoundStartsAtMs ? new Date(nextRoundStartsAtMs).toISOString() : '',
     ticketPriceNano: Math.max(0, Math.floor(Number(row.ticket_price_nano) || 0)),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -586,14 +643,10 @@ function normalizeFutureDate(value: unknown, fallbackMinutes: number): string {
   return new Date(Date.now() + Math.max(1, fallbackMinutes) * 60_000).toISOString();
 }
 
-function nextScheduledDraw(preferred: unknown, intervalMinutes: number, anchor: unknown): string {
-  const intervalMs = Math.max(1, intervalMinutes) * 60_000;
-  const now = Date.now();
-  const preferredMs = Date.parse(String(preferred || ''));
-  const anchorMs = Date.parse(String(anchor || ''));
-  let target = Number.isFinite(preferredMs) ? preferredMs : (Number.isFinite(anchorMs) ? anchorMs + intervalMs : now + intervalMs);
-  while (target <= now + 5_000) target += intervalMs;
-  return new Date(target).toISOString();
+function roundNextStartsAtMs(round: RoundRow): number {
+  const drawAtMs = Date.parse(round.draw_at);
+  if (!Number.isFinite(drawAtMs)) return 0;
+  return drawAtMs + LOTTERY_DRAW_DELAY_MS + LOTTERY_DRAW_ANIMATION_MS + LOTTERY_NEXT_ROUND_DELAY_MS;
 }
 
 function roundId(): string {
@@ -617,15 +670,21 @@ function ticketCodes(quantity: number): string[] {
 }
 
 function secureFiveDigitCode(): string {
-  const max = 0x1_0000_0000;
-  const limit = Math.floor(max / 100_000) * 100_000;
+  return String(secureRandomIndex(100_000)).padStart(5, '0');
+}
+
+function secureRandomIndex(maxExclusive: number): number {
+  const maxValue = Math.floor(Number(maxExclusive));
+  if (!Number.isSafeInteger(maxValue) || maxValue <= 0 || maxValue > 0x1_0000_0000) throw new Error('Invalid random range');
+  const range = 0x1_0000_0000;
+  const limit = Math.floor(range / maxValue) * maxValue;
   const bytes = new Uint32Array(1);
   let value = 0;
   do {
     crypto.getRandomValues(bytes);
     value = bytes[0];
   } while (value >= limit);
-  return String(value % 100_000).padStart(5, '0');
+  return value % maxValue;
 }
 
 function randomHex(length: number): string {
