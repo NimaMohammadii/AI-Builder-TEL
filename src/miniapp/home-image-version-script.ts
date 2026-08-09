@@ -62,6 +62,7 @@ export const HOME_IMAGE_VERSION_SCRIPT = `
     try{
       var cached=readMeta(HOME_SLOT_META_KEY);
       if(cached&&cached.url)applyHomeSlotUrl(cached.url);
+      if(!force&&cached&&cached.checkedAt&&Date.now()-Number(cached.checkedAt)<META_CACHE_MS){homeSlotCheckedAt=Number(cached.checkedAt)||0;return Promise.resolve(cached)}
       if(!force&&homeSlotCheckedAt)return Promise.resolve(cached);
       if(homeSlotInFlight)return homeSlotInFlight;
       homeSlotInFlight=fetch('/app/api/home-lottery-slot-meta',{cache:'no-store',credentials:'same-origin',headers:{'accept':'application/json'}})
