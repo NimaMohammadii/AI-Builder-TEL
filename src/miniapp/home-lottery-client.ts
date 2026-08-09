@@ -7,6 +7,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function q(s,r){return (r||document).querySelector(s)}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
+  function gramPrice(nano){var value=Math.max(0,Number(nano)||0)/1000000000,text=value.toFixed(4).replace(/0+$/,'');var dot=text.indexOf('.');if(dot<0)return text+'.00';var decimals=text.length-dot-1;if(decimals===0)return text+'00';if(decimals===1)return text+'0';return text}
   function purchaseId(){
     try{if(crypto&&crypto.randomUUID)return 'lp_'+crypto.randomUUID().replace(/-/g,'')}catch(e){}
     try{var bytes=new Uint8Array(12);crypto.getRandomValues(bytes);return 'lp_'+Array.prototype.map.call(bytes,function(v){return v.toString(16).padStart(2,'0')}).join('')}catch(e){}
@@ -51,8 +52,8 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function purchaseCostNano(){if(!state)return 0;var free=state.freeTicketAvailable?1:0;return Math.max(0,quantity-free)*Math.max(0,Number(state.settings&&state.settings.ticketPriceNano)||150000000)}
   function remainingLimit(){if(!state||!state.settings)return MAX_QTY;var limit=Math.max(0,Number(state.settings.maxTicketsPerUser)||0);if(!limit)return MAX_QTY;return Math.max(0,limit-Math.max(0,Number(state.ticketCount)||0))}
   function maxSelectable(){return Math.max(1,Math.min(MAX_QTY,remainingLimit()||1))}
-  function gramIcon(){return '<svg viewBox="0 0 56 56" width="18" height="18" fill="none" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#0098EA"/><path d="M17.4 18.8c.8-1.2 2.1-1.9 3.6-1.9h14c1.5 0 2.8.7 3.6 1.9.8 1.2.8 2.7.1 4L30.4 38c-.5.9-1.4 1.4-2.4 1.4s-1.9-.5-2.4-1.4l-8.3-15.2c-.7-1.3-.7-2.8.1-4Zm4.1 2.1 6.5 12 6.5-12h-13Z" fill="#fff"/></svg>'}
-  function paidButtonHtml(cost){return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px">'+gramIcon()+'<span>'+gram(cost)+'</span></span>'}
+  function balanceIconSrc(){var img=q('.top-balance-pill .ton-mini-icon img');return String(img&&(img.getAttribute('src')||img.src)||'')}
+  function paidButtonHtml(cost){var src=balanceIconSrc(),icon=src?'<img src="'+src+'" alt="" aria-hidden="true" style="width:18px;height:18px;display:block;object-fit:contain">':'';return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon+'<span>'+gramPrice(cost)+'</span></span>'}
   function prizeRowsHtml(prizes){
     var rows=Array.isArray(prizes)?prizes:[],html='';
     for(var i=0;i<15;i++){
@@ -77,7 +78,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(busy){button.textContent='Getting Ticket…';button.removeAttribute('aria-label')}
       else if(limitReached){button.textContent='Ticket limit reached';button.removeAttribute('aria-label')}
       else if(state&&state.canBuy&&cost<=0){button.textContent='Get Free Ticket';button.setAttribute('aria-label','Get Free Ticket')}
-      else if(state&&state.canBuy){button.innerHTML=paidButtonHtml(cost);button.setAttribute('aria-label',gram(cost)+' GRAM')}
+      else if(state&&state.canBuy){button.innerHTML=paidButtonHtml(cost);button.setAttribute('aria-label',gramPrice(cost)+' GRAM')}
       else if(state&&state.reason){button.textContent=state.reason;button.removeAttribute('aria-label')}
       else if(!initData()){button.textContent='Open in Telegram';button.removeAttribute('aria-label')}
       button.disabled=busy||!state||!state.canBuy||!initData()||limitReached;
