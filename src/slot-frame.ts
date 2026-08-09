@@ -1,6 +1,5 @@
 import app from './index';
 import type { Env } from './types';
-import { isAdminSession } from './admin-auth';
 
 const KEY = 'slot-frame';
 const SLOT_SPIN_AUDIO_KEY = 'slot-spin-audio';
@@ -45,19 +44,6 @@ type SlotControlId = typeof SLOT_CONTROLS[number]['id'];
 type SlotSymbolId = typeof SLOT_SYMBOLS[number]['id'];
 
 type DiceAssetId = typeof DICE_ASSETS[number]['id'];
-
-function adminCookieValue(cookie: string | undefined): string {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-function isAdmin(env: Env, key: string): Promise<boolean> {
-  return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
-}
-
-async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
-  return isAdminSession(c.env, c.req.header('cookie'));
-}
 
 function slotSymbolKey(id: SlotSymbolId): string {
   return `${SYMBOL_PREFIX}${id}`;
@@ -244,21 +230,6 @@ app.get('/app/api/home-lottery-slot.png', async (c) => {
   });
 });
 
-app.post('/admin/api/upload-home-lottery-slot', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(HOME_LOTTERY_SLOT_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: homeLotterySlotUrl(version), version }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload lottery slot image' }, 400, { 'cache-control': 'no-store' });
-  }
-});
-
 app.get('/app/api/slot-symbols', async (c) => {
   return c.json({ ok: true, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
 });
@@ -304,69 +275,4 @@ app.get('/app/api/uploaded-audio/slot-spin', async (c) => {
       'content-length': String(head.size),
     },
   });
-});
-
-app.post('/admin/api/upload-slot-frame', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, slotFrameUrl: `/app/api/uploaded-image/slot-frame.png?v=${version}`, version }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload slot frame' }, 400, { 'cache-control': 'no-store' });
-  }
-});
-
-app.post('/admin/api/upload-slot-control', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const id = String(form.get('id') || '') as SlotControlId;
-    const file = form.get('image');
-    if (!SLOT_CONTROL_IDS.has(id)) return c.json({ error: 'Choose a valid Slot control image.' }, 400);
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(slotControlKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, id, imageUrl: slotControlUrl(id, version), version, controls: await controlPayload(c.env) }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot control image' }, 400, { 'cache-control': 'no-store' });
-  }
-});
-
-
-app.post('/admin/api/upload-slot-symbol', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const id = String(form.get('id') || '') as SlotSymbolId;
-    const file = form.get('image');
-    if (!SLOT_SYMBOL_IDS.has(id)) return c.json({ error: 'Choose a valid Slot symbol.' }, 400);
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(slotSymbolKey(id), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, id, imageUrl: slotSymbolUrl(id, version), version, symbols: await symbolPayload(c.env) }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot symbol' }, 400, { 'cache-control': 'no-store' });
-  }
-});
-
-app.post('/admin/api/upload-slot-spin-audio', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': 'no-store' });
-  try {
-    const form = await c.req.formData();
-    const file = form.get('audio');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an audio file.' }, 400);
-    if (!AUDIO_TYPES.has(file.type)) return c.json({ error: 'Only MP3, WAV, OGG, WebM, M4A or AAC audio files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(SLOT_SPIN_AUDIO_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, audioUrl: slotSpinAudioUrl(version), version }, 200, { 'cache-control': 'no-store' });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Slot spin audio' }, 400, { 'cache-control': 'no-store' });
-  }
 });

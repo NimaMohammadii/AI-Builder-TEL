@@ -14,7 +14,6 @@ export type Env = {
   TON_WITHDRAW_PAYOUT_TOKEN?: string;
   TON_WITHDRAW_WALLET_ADDRESS?: string;
   STARS_TO_NANOTON?: string;
-  ADMIN_KEY: string;
   BOT_ADMIN?: string;
 };
 

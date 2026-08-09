@@ -1,5 +1,4 @@
-import './deposit-method-icon-routes';
-import app from './index-with-admin-refresh';
+import app from './index-game-services';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';

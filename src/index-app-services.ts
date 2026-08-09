@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
-import './deposit-method-icon-routes';
 import { trackAppUser } from './admin-users';
 import { applyGameTonBalanceDelta, getUserControls, publicUserControls } from './user-controls';
 import { setTelegramWebhook } from './telegram-game-bot';
@@ -9,7 +8,6 @@ import { PUBLIC_BASE_URL } from './utils';
 import { cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from './section-backgrounds';
 import type { Env } from './types';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS, resetOnlineUserCountConfig, saveOnlineUserCountConfig } from './online-user-counts';
-import { isAdminSession } from './admin-auth';
 import { clearSectionLock, getSectionAccess, isMiniAppAdmin, setSectionLock } from './section-access';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -141,58 +139,14 @@ app.get('/app/api/section-access', zValidator('query', userIdSchema), async (c) 
   const bySection = Object.fromEntries(locks.map((lock) => [lock.sectionId, { ...lock, serverNow: Math.floor(Date.now() / 1000) }]));
   return c.json({ ok: true, locks: bySection, serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
 });
-app.get('/admin/api/section-access', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json({ ok: true, locks: await getSectionAccess(c.env), serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
-});
-app.post('/admin/api/section-access/lock', zValidator('json', sectionAccessLockSchema), async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = c.req.valid('json');
-  try { return c.json({ ok: true, locks: await setSectionLock(c.env, body.sectionId, body.minutes) }, 200, { 'cache-control': 'no-store' }); }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save lock' }, 400); }
-});
-app.post('/admin/api/section-access/unlock', zValidator('json', sectionAccessUnlockSchema), async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = c.req.valid('json');
-  try { return c.json({ ok: true, locks: await clearSectionLock(c.env, body.sectionId) }, 200, { 'cache-control': 'no-store' }); }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not open section' }, 400); }
-});
-app.get('/admin/api/miniapp-audio', async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); return c.json(await getMiniappAudioJson(c.env)); });
-app.post('/admin/api/miniapp-audio', async (c) => uploadMiniappAudio(c));
-app.post('/admin/api/miniapp-audio/enabled', zValidator('json', audioEnabledSchema), async (c) => { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const body = c.req.valid('json'); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, body.enabled ? '1' : '0'); return c.json(await getMiniappAudioJson(c.env)); });
-app.post('/admin/api/upload-ton-icon', async (c) => uploadImageToR2(c, 'icon', 'ton-icon', (version) => ({ tonIconUrl: `/app/api/uploaded-image/ton-icon.png?v=${version}` })));
-
-app.get('/admin/api/online-user-counts', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' });
-});
-app.post('/admin/api/online-user-counts', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const body = await c.req.json().catch(() => ({}));
-  try { return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await saveOnlineUserCountConfig(c.env, body)) }, 200, { 'cache-control': 'no-store' }); }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not save online counts' }, 400); }
-});
-app.post('/admin/api/online-user-counts/reset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await resetOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' });
-});
-
-app.post('/admin/api/upload-plinko-ball', async (c) => uploadImageToR2(c, 'image', 'plinko-ball', (version) => ({ plinkoBallUrl: `/app/api/uploaded-image/plinko-ball.png?v=${version}` })));
 
 
 async function getMiniappAudioJson(env: Env): Promise<Record<string, unknown>> { const object = await env.ASSETS.head(MINIAPP_AUDIO_KEY).catch(() => null); const enabled = (await env.BOT_CACHE.get(MINIAPP_AUDIO_ENABLED_KEY).catch(() => '0')) === '1'; const version = assetVersion(object); return { ok: true, hasAudio: Boolean(object), enabled: Boolean(object) && enabled, version, type: object?.httpMetadata?.contentType || '', url: object ? `/app/api/miniapp-audio-file?v=${version}` : null }; }
 async function getMiniappAudioResponse(env: Env): Promise<Response> { return Response.json(await getMiniappAudioJson(env), { headers: { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL } }); }
-async function uploadMiniappAudio(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: Record<string, unknown>, status?: number) => Response }): Promise<Response> { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const form = await c.req.formData(); const file = form.get('audio'); if (!(file instanceof File)) return c.json({ error: 'Choose an audio file.' }, 400); const extension = file.name.split('.').pop()?.toLowerCase() || ''; if (!AUDIO_TYPES.has(file.type) && !AUDIO_EXTENSIONS.has(extension)) return c.json({ error: 'Only MP3, WAV, OGG, WEBM, MP4, M4A or AAC audio files are allowed.' }, 400); if (file.size > 10_000_000) return c.json({ error: 'Audio must be under 10MB.' }, 400); const version = String(Date.now()); await c.env.ASSETS.put(MINIAPP_AUDIO_KEY, file.stream(), { httpMetadata: { contentType: file.type || audioContentTypeFromExtension(extension) }, customMetadata: { version } }); await c.env.BOT_CACHE.put(MINIAPP_AUDIO_ENABLED_KEY, '1'); return c.json(await getMiniappAudioJson(c.env)); }
 async function getAssetResponse(env: Env, key: string, fallbackUrl: string | null, options: { rangeHeader?: string; defaultContentType?: string; cacheControl?: string } = {}): Promise<Response> { const head = await env.ASSETS.head(key).catch(() => null); if (!head) return fallbackUrl ? Response.redirect(fallbackUrl, 302) : new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } }); const range = parseByteRange(options.rangeHeader, head.size); const object = await env.ASSETS.get(key, range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined).catch(() => null); if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } }); const headers = new Headers({ 'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || options.defaultContentType || 'image/png', 'cache-control': options.cacheControl || UPLOADED_IMAGE_CACHE_CONTROL, 'accept-ranges': 'bytes', 'content-length': String(range ? range.end - range.start + 1 : head.size) }); if (range) headers.set('content-range', `bytes ${range.start}-${range.end}/${head.size}`); return new Response(object.body, { status: range ? 206 : 200, headers }); }
 function parseByteRange(header: string | undefined, size: number): { start: number; end: number } | null { if (!header || !Number.isFinite(size) || size <= 0) return null; const match = header.match(/^bytes=(\d*)-(\d*)$/); if (!match || (!match[1] && !match[2])) return null; let start = match[1] ? Number(match[1]) : size - Number(match[2]); let end = match[2] ? Number(match[2]) : size - 1; if (!Number.isInteger(start) || !Number.isInteger(end)) return null; start = Math.max(0, start); end = Math.min(size - 1, end); return start <= end ? { start, end } : null; }
 function audioContentTypeFromExtension(extension: string): string { if (extension === 'wav') return 'audio/wav'; if (extension === 'ogg' || extension === 'oga') return 'audio/ogg'; if (extension === 'webm') return 'audio/webm'; if (extension === 'mp4' || extension === 'm4a') return 'audio/mp4'; if (extension === 'aac') return 'audio/aac'; return 'audio/mpeg'; }
-async function uploadImageToR2(c: { env: Env; req: { formData: () => Promise<FormData>; header: (name: string) => string | undefined }; json: (data: Record<string, unknown>, status?: number) => Response }, field: string, key: string, extra: (version: string) => Record<string, unknown>): Promise<Response> { if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401); const form = await c.req.formData(); const file = form.get(field); if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400); if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400); const version = String(Date.now()); await putR2Image(c.env, key, file, version); await cleanupLegacyImageKv(c.env, [`admin:${key}`, `admin:${key}-type`, `admin:${key}-version`]); return c.json({ ok: true, size: file.size, type: file.type, ...extra(version) }); }
-async function putR2Image(env: Env, key: string, file: File, version: string): Promise<void> { await env.ASSETS.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } }); }
-async function cleanupLegacyImageKv(env: Env, keys: string[]): Promise<void> { await Promise.all(keys.map((key) => env.BOT_CACHE.delete(key).catch(() => undefined))); }
 function assetVersion(object: { customMetadata?: Record<string, string> } | null): string { return object?.customMetadata?.version || '1'; }
 async function setGameMenuButton(token: string, url: string): Promise<{ ok: boolean; description?: string }> { const response = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ menu_button: { type: 'web_app', text: 'Vexa Games', web_app: { url } } }) }); return response.json() as Promise<{ ok: boolean; description?: string }>; }
 function escapeHtml(value: string): string { return value.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char] ?? char)); }
-function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }
 export default app;
