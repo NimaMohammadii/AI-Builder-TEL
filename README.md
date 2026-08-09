@@ -23,8 +23,7 @@ BOT_TOKEN=123456789:replace-with-your-game-bot-token
 - `GET /app` — game Mini App
 - `POST /telegram/webhook` — the single Telegram bot webhook
 - `GET /setup-webhook` — registers the webhook and Mini App menu button
-- `GET /admin` — web admin login
-- `/admin` inside Telegram — Telegram admin panel
+- `/admin` inside Telegram — the only admin panel
 
 ## Local setup
 
@@ -38,7 +37,6 @@ Set the game bot token and admin values:
 ```env
 BOT_TOKEN=123456789:your-game-bot-token
 BOT_ADMIN=123456789
-ADMIN_KEY=replace-with-a-strong-admin-password
 ```
 
 Run:
@@ -59,7 +57,6 @@ Set the admin secrets:
 
 ```bash
 npx wrangler secret put BOT_ADMIN
-npx wrangler secret put ADMIN_KEY
 ```
 
 Apply migrations and deploy:
@@ -84,7 +81,7 @@ https://vexa.games/telegram/webhook
 ## Cloudflare bindings
 
 - `DB` — D1 game/user/payment data
-- `BOT_CACHE` — admin sessions and runtime state
+- `BOT_CACHE` — bot panel and runtime state
 - `RATE_LIMITS` — game rate limits
 - `ASSETS` — uploaded images and game assets
 - `PLINKO_LIVE` — Plinko Durable Object

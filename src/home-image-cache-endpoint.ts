@@ -1,5 +1,4 @@
 import type { Env } from './types';
-import { isAdminSession } from './admin-auth';
 
 type AppLike = {
   get: (path: string, handler: (c: HandlerContext) => Promise<Response> | Response) => unknown;
@@ -23,7 +22,6 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg
 export function registerHomeImageCacheEndpoint(app: AppLike): void {
   app.get('/app/api/home-intro-image.png', async (c) => homeIntroImageResponse(c.env));
   app.get('/app/api/home-intro-image-meta', async (c) => homeIntroImageMetaResponse(c.env));
-  app.post('/admin/api/upload-home-intro-image', async (c) => uploadHomeIntroImage(c));
 }
 
 async function homeIntroImageMetaResponse(env: Env): Promise<Response> {
@@ -53,21 +51,6 @@ async function homeIntroImageResponse(env: Env): Promise<Response> {
       'cache-control': IMAGE_CACHE_CONTROL,
     },
   });
-}
-
-async function uploadHomeIntroImage(c: HandlerContext): Promise<Response> {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = pickImageFile(form);
-    if (!file) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version, uploadedAt: version } });
-    return c.json({ ok: true, url: `/app/api/home-intro-image.png?v=${encodeURIComponent(version)}`, version, size: file.size, type: file.type });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Home intro image' }, 400);
-  }
 }
 
 function pickImageFile(form: FormData): File | null {
@@ -103,17 +86,4 @@ function fallbackSvg(): string {
   <rect x="130" y="330" width="224" height="54" rx="27" fill="#fff" fill-opacity="0.92"/>
   <text x="162" y="366" fill="#21050d" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="800">Vexa Game</text>
 </svg>`;
-}
-
-function adminCookieValue(cookie: string | undefined): string {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-function isAdmin(c: HandlerContext, key: string): Promise<boolean> {
-  return Boolean(c.env.ADMIN_KEY && key && key === c.env.ADMIN_KEY);
-}
-
-async function isAdminRequest(c: HandlerContext): Promise<boolean> {
-  return isAdminSession(c.env, c.req.header('cookie'));
 }

@@ -2,7 +2,6 @@ import app from './index';
 import './predict-settings-routes';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
-import { isAdminSession } from './admin-auth';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -46,50 +45,6 @@ app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
     return getPredictImageResponse(c.env, predictCryptoCardImageKey(market));
   } catch {
     return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
-  }
-});
-
-app.get('/admin/api/predict-crypto-card-images', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
-});
-
-app.get('/admin/api/predict-button-images', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  return c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE });
-});
-
-app.post('/admin/api/predict-button-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  try {
-    const form = await c.req.formData();
-    const side = normalizePredictButtonSide(String(form.get('side') || ''));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
-    if (!PREDICT_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400, { 'cache-control': CACHE_NONE });
-    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400, { 'cache-control': CACHE_NONE });
-    const version = String(Date.now());
-    await c.env.ASSETS.put(predictButtonImageKey(side), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_NONE });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload predict button image' }, 400, { 'cache-control': CACHE_NONE });
-  }
-});
-
-app.post('/admin/api/predict-crypto-card-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  try {
-    const form = await c.req.formData();
-    const market = normalizePredictCryptoCardMarket(String(form.get('market') || ''));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
-    if (!PREDICT_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400, { 'cache-control': CACHE_NONE });
-    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400, { 'cache-control': CACHE_NONE });
-    const version = String(Date.now());
-    await c.env.ASSETS.put(predictCryptoCardImageKey(market), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_NONE });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload crypto card image' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
 
@@ -150,34 +105,12 @@ app.post('/app/api/predict-settle', async (c) => {
   }
 });
 
-app.get('/admin/api/predict-markets', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  return c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE });
-});
-
 app.get('/app/api/predict-market-image/:market', async (c) => {
   try {
     const market = normalizePredictMarket(c.req.param('market').replace(/\.png$/i, ''));
     return getPredictImageResponse(c.env, predictImageKey(market));
   } catch {
     return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
-  }
-});
-
-app.post('/admin/api/predict-market-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401, { 'cache-control': CACHE_NONE });
-  try {
-    const form = await c.req.formData();
-    const market = normalizePredictMarket(String(form.get('market') || ''));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400, { 'cache-control': CACHE_NONE });
-    if (!PREDICT_IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400, { 'cache-control': CACHE_NONE });
-    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400, { 'cache-control': CACHE_NONE });
-    const version = String(Date.now());
-    await c.env.ASSETS.put(predictImageKey(market), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_NONE });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload predict image' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
 
@@ -409,6 +342,3 @@ function cleanOptionalPrice(value: unknown): number { const n = Number(value); r
 function cleanDbText(value: unknown, message: string): string { const text = String(value ?? '').trim(); if (!text) throw new Error(message); return text; }
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
-function adminCookieValue(cookie: string | undefined): string { const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/); return match ? decodeURIComponent(match[1]) : ''; }
-function isAdmin(env: Env, key: string): Promise<boolean> { return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY); }
-async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> { return isAdminSession(c.env, c.req.header('cookie')); }

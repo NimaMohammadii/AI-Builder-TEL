@@ -1,4 +1,4 @@
-import app from './index-admin';
+import app from './index-app-services';
 import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plinko-control';
 import { getPlinkoVirtualUsers, resetPlinkoVirtualUsers, savePlinkoVirtualUsers } from './plinko-virtual-users';
 import { getCrashVirtualUsers, resetCrashVirtualUsers, saveCrashVirtualUsers } from './crash-virtual-users-config';
@@ -10,7 +10,6 @@ import { setTelegramWebhook } from './telegram-game-bot';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import type { Env } from './types';
-import { isAdminSession } from './admin-auth';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -42,23 +41,6 @@ app.get('/app/api/plinko-control-image/:kind', async (c) => {
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
 });
 
-app.post('/admin/api/upload-plinko-control-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const kind = normalizePlinkoControlImageKind(String(form.get('kind') || 'drop'));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 2_000_000) return c.json({ error: 'Image must be under 2MB.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(plinkoControlImageKey(kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, kind, url: `/app/api/plinko-control-image/${kind}.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Plinko control image' }, 400);
-  }
-});
-
 
 app.get('/app/api/ghost-run-asset/:kind', async (c) => {
   const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
@@ -70,23 +52,6 @@ app.get('/app/api/ghost-run-asset/:kind', async (c) => {
 app.get('/app/api/ghost-run-assets', async (c) => {
   const manifest = await getGhostRunAssetManifest(c.env);
   return c.json(manifest, 200, { 'cache-control': GHOST_RUN_ASSET_MANIFEST_CACHE_CONTROL });
-});
-
-app.post('/admin/api/upload-ghost-run-asset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const kind = normalizeGhostRunAssetKind(String(form.get('kind') || 'background'));
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    if (file.size > 3_000_000) return c.json({ error: 'Image must be under 3MB.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(ghostRunAssetKey(kind), file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, kind, url: `/app/api/ghost-run-asset/${kind}.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Ghost Run asset' }, 400);
-  }
 });
 
 app.get('/app/api/main-bot', async (c) => {
@@ -219,119 +184,6 @@ app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
 
-
-
-app.post('/admin/api/upload-crash-tip-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(CRASH_TIP_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, url: `/app/api/crash-tip-image.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Crash image' }, 400);
-  }
-});
-
-app.get('/admin/api/plinko-control', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await getPlinkoControlPayload(c.env));
-});
-
-app.post('/admin/api/plinko-control', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    return c.json(await savePlinkoControl(c.env, await c.req.json()));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save Plinko control' }, 400);
-  }
-});
-
-app.post('/admin/api/plinko-control/reset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await resetPlinkoControl(c.env));
-});
-
-
-app.get('/admin/api/plinko-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await getPlinkoVirtualUsers(c.env));
-});
-
-app.post('/admin/api/plinko-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    return c.json(await savePlinkoVirtualUsers(c.env, await c.req.json()));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save Plinko virtual users' }, 400);
-  }
-});
-
-app.post('/admin/api/plinko-virtual-users/reset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await resetPlinkoVirtualUsers(c.env));
-});
-
-
-
-app.get('/admin/api/crash-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await getCrashVirtualUsers(c.env));
-});
-
-app.post('/admin/api/crash-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    return c.json(await saveCrashVirtualUsers(c.env, await c.req.json()));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save Crash virtual users' }, 400);
-  }
-});
-
-app.post('/admin/api/crash-virtual-users/reset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await resetCrashVirtualUsers(c.env));
-});
-
-app.get('/admin/api/slot-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await getSlotVirtualUsers(c.env));
-});
-
-app.post('/admin/api/slot-virtual-users', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    return c.json(await saveSlotVirtualUsers(c.env, await c.req.json()));
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not save Slot virtual users' }, 400);
-  }
-});
-
-app.post('/admin/api/slot-virtual-users/reset', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  return c.json(await resetSlotVirtualUsers(c.env));
-});
-
-app.post('/admin/api/upload-mines-tile-image', async (c) => {
-  if (!(await isAdminRequest(c))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  try {
-    const form = await c.req.formData();
-    const kind = String(form.get('kind') || '') === 'bomb' ? 'bomb' : 'safe';
-    const file = form.get('image');
-    if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-    if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG, SVG or WebP files are allowed.' }, 400);
-    const version = String(Date.now());
-    await c.env.ASSETS.put(`mines-tile/${kind}`, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-    return c.json({ ok: true, kind, url: `/app/api/uploaded-image/mines-${kind}.png?v=${version}` });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not upload Mines image' }, 400);
-  }
-});
-
-
 async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CONTROL): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
@@ -368,19 +220,6 @@ function defaultPlinkoControlImageSvg(kind: 'drop' | 'input' | 'house'): string 
 
 function cleanTelegramUserId(value: unknown): string {
   return String(value || '').replace(/[^0-9]/g, '').slice(0, 32);
-}
-
-function adminCookieValue(cookie: string | undefined): string {
-  const match = (cookie ?? '').match(/(?:^|;\s*)vexa_admin=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-function isAdmin(env: Env, key: string): Promise<boolean> {
-  return Boolean(env.ADMIN_KEY && key && key === env.ADMIN_KEY);
-}
-
-async function isAdminRequest(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<boolean> {
-  return isAdminSession(c.env, c.req.header('cookie'));
 }
 
 export { PlinkoLiveRoom };

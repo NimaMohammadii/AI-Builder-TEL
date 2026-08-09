@@ -1,9 +1,5 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
 import { miniAppHtml } from './miniapp-game';
-import { adminCodeHtml, adminHtml, adminPanelHtml } from './admin';
-import { adminSessionCookie, clearAdminSessionCookie, createAdminPasswordChallenge, isAdminPassword, isAdminSession, verifyAdminCode } from './admin-auth';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-counts';
 import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
@@ -19,7 +15,6 @@ const app = new Hono<{ Bindings: Env }>();
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
-const adminLoginSchema = z.object({ key: z.string().min(1).max(500) });
 
 type LevelXpEventInput = {
   amount?: unknown;
@@ -75,37 +70,6 @@ app.post('/app/api/level/xp', async (c) => {
   }
 });
 
-app.get('/admin', () => html(adminHtml()));
-app.get('/admin/', () => html(adminHtml()));
-app.post('/admin/login', zValidator('json', adminLoginSchema), async (c) => {
-  const { key } = c.req.valid('json');
-  if (!isAdminPassword(c.env, key)) return c.json({ error: 'Wrong admin key' }, 401);
-  const challenge = await createAdminPasswordChallenge(c.env);
-  if (challenge.ok === false) return c.json({ error: challenge.error, retryAfter: challenge.retryAfter }, challenge.status as 401 | 429 | 500 | 502);
-  return c.json(challenge);
-});
-app.post('/admin/panel', async (c) => {
-  const form = await c.req.formData();
-  const key = String(form.get('key') ?? '');
-  if (!isAdminPassword(c.env, key)) return html(adminHtml('Wrong admin key.'));
-  const challenge = await createAdminPasswordChallenge(c.env);
-  if (challenge.ok === false) return html(adminHtml(challenge.error));
-  return html(adminCodeHtml(challenge.challengeId));
-});
-app.post('/admin/verify', async (c) => {
-  const form = await c.req.formData();
-  const result = await verifyAdminCode(c.env, String(form.get('challenge') ?? ''), String(form.get('code') ?? ''));
-  if (result.ok === false) return html(result.status === 429 ? adminHtml(result.error) : adminCodeHtml(String(form.get('challenge') ?? ''), result.error));
-  return html(adminPanelHtml(), { 'set-cookie': adminSessionCookie(result.sessionToken) });
-});
-app.get('/admin/panel', async (c) => {
-  if (!(await isAdminSession(c.env, c.req.header('cookie')))) return c.redirect('/admin');
-  return html(adminPanelHtml());
-});
-app.post('/admin/logout', () =>
-  new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json', 'set-cookie': clearAdminSessionCookie() } }),
-);
-
 app.get('/app/api/credit-icon', (c) => c.redirect('/app/api/credit-icon.png'));
 app.get('/app/api/credit-icon.png', async (c) => {
   const icon = await c.env.ASSETS.get('credit-icon').catch(() => null);
@@ -118,16 +82,6 @@ app.get('/app/api/credit-icon.png', async (c) => {
     });
   }
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
-});
-app.post('/admin/upload-credit-icon', async (c) => {
-  if (!(await isAdminSession(c.env, c.req.header('cookie')))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const form = await c.req.formData();
-  const file = form.get('icon');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  const version = String(Date.now());
-  await c.env.ASSETS.put('credit-icon', file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-  return c.json({ ok: true, size: file.size, type: file.type, creditIconUrl: `/app/api/credit-icon.png?v=${version}` });
 });
 
 app.get('/app/api/home-intro-image-cached.png', async (c) => {
@@ -148,16 +102,6 @@ app.get('/app/api/home-intro-image-meta', async (c) => {
     200,
     { 'cache-control': 'private, max-age=300' },
   );
-});
-app.post('/admin/api/upload-home-intro-image', async (c) => {
-  if (!(await isAdminSession(c.env, c.req.header('cookie')))) return c.json({ error: 'Unauthorized. Login again.' }, 401);
-  const form = await c.req.formData();
-  const file = form.get('image');
-  if (!(file instanceof File)) return c.json({ error: 'Choose an image file.' }, 400);
-  if (!IMAGE_TYPES.has(file.type)) return c.json({ error: 'Only PNG, JPG, JPEG or WebP files are allowed.' }, 400);
-  const version = String(Date.now());
-  await c.env.ASSETS.put(HOME_INTRO_IMAGE_KEY, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { version } });
-  return c.json({ ok: true, url: `/app/api/home-intro-image-cached.png?v=${version}` });
 });
 
 registerFriendGameRoutes(app);
