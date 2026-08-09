@@ -409,7 +409,7 @@ html body:has(#slot.active) #slot .slot-live-symbol{
 /* Slot v2: curved three-reel cabinet and four independent image controls. */
 html body:has(#slot.active) #slot .slot-cabinet{
   width:min(92vw,390px)!important;
-  margin:12px auto 0!important;
+  margin:6px auto 0!important;
   transform:none!important;
   animation:none!important;
 }
@@ -453,10 +453,10 @@ html body:has(#slot.active) #slot .slot-machine-shadow{display:none!important}
 html body:has(#slot.active) #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:28.4%!important;
+  top:27.4%!important;
   left:9.8%!important;
   width:80.4%!important;
-  height:55.8%!important;
+  height:52.4%!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:2.4%!important;
@@ -492,7 +492,7 @@ html body:has(#slot.active) #slot .slot-reel::after{
 html body:has(#slot.active) #slot .slot-reel-strip{transform-style:preserve-3d!important}
 html body:has(#slot.active) #slot .slot-symbol{
   width:100%!important;
-  height:calc((min(92vw,390px) * .558 * 900 / 845) / 3)!important;
+  height:calc((min(92vw,390px) * .524 * 900 / 845) / 3)!important;
   margin-left:0!important;
   display:grid!important;
   place-items:center!important;
