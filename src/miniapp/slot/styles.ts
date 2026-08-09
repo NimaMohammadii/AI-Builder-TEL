@@ -143,7 +143,7 @@ body:has(#slot.active) header.top{
 #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:31.2%!important;
+  top:30.7%!important;
   left:9.8%!important;
   width:80.4%!important;
   height:43%!important;
@@ -163,7 +163,25 @@ body:has(#slot.active) header.top{
   mask-image:linear-gradient(to bottom,transparent 0,#000 8%,#000 92%,transparent 100%)!important;
 }
 #slot .slot-window::before,
-#slot .slot-window::after{display:none!important;content:none!important}
+#slot .slot-window::after{
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  z-index:6!important;
+  pointer-events:none!important;
+}
+#slot .slot-window::before{
+  top:0!important;
+  height:14%!important;
+  background:linear-gradient(to bottom,rgba(0,0,0,.58),rgba(0,0,0,0))!important;
+}
+#slot .slot-window::after{
+  bottom:0!important;
+  height:9%!important;
+  background:linear-gradient(to top,rgba(0,0,0,.34),rgba(0,0,0,0))!important;
+}
 #slot .slot-reel{
   position:relative!important;
   z-index:2!important;
