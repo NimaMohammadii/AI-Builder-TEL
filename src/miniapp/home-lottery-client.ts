@@ -2,7 +2,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 <script>
 (function(){
   var state=null,busy=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,pollStarted=false,drawRefreshPending=false;
-  var drawInitialized=false,lastDrawId='',slotBusy=false,queuedDrawCode='';
+  var drawInitialized=false,lastDrawId='',slotBusy=false,queuedDrawCode='',winnerEffectDrawId='';
   var ROW=34,REST_LOOP=20,DRAW_LOOPS=28;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
@@ -87,14 +87,29 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       setTimeout(function(){strip.style.setProperty('transition','none','important');strip.style.transform=reelY(indexFor(final,REST_LOOP));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){slotBusy=false;haptic('success');if(queuedDrawCode){var next=queuedDrawCode;queuedDrawCode='';setTimeout(function(){setSlotCode(next,true)},120)}}},duration+260+index*50)
     })
   }
+  function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
+  function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
+  function triggerWinnerEffect(drawId,delay){
+    if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;
+    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);
+    setTimeout(function(){
+      haptic('success');
+      var button=q('#homeConfettiButton');
+      if(button&&typeof button.click==='function')button.click();
+    },Math.max(0,Number(delay)||0));
+  }
   function applyDrawResult(){
-    var draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||'');
-    if(!drawInitialized){drawInitialized=true;if(drawId&&code){lastDrawId=drawId;setSlotCode(code,false)}else ensureReels();return}
-    if(drawId&&code&&drawId!==lastDrawId){lastDrawId=drawId;setSlotCode(code,true)}
+    var draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon);
+    if(!drawInitialized){
+      drawInitialized=true;
+      if(drawId&&code){lastDrawId=drawId;setSlotCode(code,false);if(won)triggerWinnerEffect(drawId,180)}else ensureReels();
+      return;
+    }
+    if(drawId&&code&&drawId!==lastDrawId){lastDrawId=drawId;setSlotCode(code,true);if(won)triggerWinnerEffect(drawId,4700)}
   }
   async function load(){
     var data=initData();
-    if(!data){state={ticketCount:0,tickets:[],lastDraw:null,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();applyDrawResult();return}
+    if(!data){state={ticketCount:0,tickets:[],lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();applyDrawResult();return}
     var started=Date.now();
     try{
       var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
@@ -102,7 +117,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
     }catch(error){
-      state={ticketCount:0,tickets:[],lastDraw:null,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
+      state={ticketCount:0,tickets:[],lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
     }
   }
   async function buy(){
