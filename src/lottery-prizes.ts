@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { ensureLevelTables } from './levels';
 import { ensureTonBalanceColumn } from './user-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
 
@@ -19,6 +20,7 @@ type WinnerRow = {
   created_at: string;
   username?: string | null;
   first_name?: string | null;
+  level?: number | null;
 };
 type CandidateRow = { id: string; user_id: string; code: string };
 type ExistingWinnerRow = { rank: number; user_id: string };
@@ -36,6 +38,7 @@ export type LotteryWinner = {
   displayName: string;
   username: string | null;
   avatarUrl: string | null;
+  level: number;
   ticketCode: string;
   prizeNano: number;
   paid: boolean;
@@ -95,6 +98,7 @@ export async function setLotteryPrize(env: Env, rankInput: unknown, prizeNanoInp
 
 export async function getLotteryWinners(env: Env, roundIdInput?: unknown): Promise<LotteryWinner[]> {
   await ensureLotteryPrizeTables(env);
+  await ensureLevelTables(env);
   let roundId = String(roundIdInput || '').trim();
   if (!roundId) {
     const latest = await env.DB.prepare(`SELECT round_id FROM lottery_winners
@@ -103,9 +107,10 @@ export async function getLotteryWinners(env: Env, roundIdInput?: unknown): Promi
   }
   if (!roundId) return [];
 
-  const rows = await env.DB.prepare(`SELECT w.*,u.username,u.first_name
+  const rows = await env.DB.prepare(`SELECT w.*,u.username,u.first_name,l.level
     FROM lottery_winners w
     LEFT JOIN app_users u ON u.telegram_user_id=w.user_id
+    LEFT JOIN user_levels l ON l.user_id=w.user_id
     WHERE w.round_id=?
     ORDER BY w.rank ASC
     LIMIT ?`).bind(roundId, LOTTERY_WINNER_COUNT).all<WinnerRow>();
@@ -238,6 +243,7 @@ function publicWinner(row: WinnerRow): LotteryWinner {
     displayName,
     username: username || null,
     avatarUrl: username ? `https://t.me/i/userpic/320/${encodeURIComponent(username)}.jpg` : null,
+    level: Math.max(1, Math.floor(Number(row.level) || 1)),
     ticketCode: code,
     prizeNano: Math.max(0, Math.floor(Number(row.prize_nano) || 0)),
     paid: String(row.payout_status || '') === 'paid',
