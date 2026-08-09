@@ -1187,7 +1187,7 @@ body:has(#slot.active) main { background:transparent!important; }
   font-size:34px!important;
   filter:drop-shadow(0 7px 10px rgba(0,0,0,.52))!important;
 }
-#slot .slot-cabinet .slot-symbol-image{width:51px!important;height:51px!important}
+#slot .slot-cabinet .slot-symbol-image{width:54px!important;height:54px!important}
 #slot .slot-simple-controls{
   position:relative;
   z-index:12;
@@ -1304,7 +1304,7 @@ body:has(#slot.active) main { background:transparent!important; }
 @media(max-width:380px){
   #slot .slot-cabinet{width:min(99vw,420px);margin-top:38px}
   #slot .slot-cabinet .slot-symbol{height:56px!important}
-  #slot .slot-cabinet .slot-symbol-image{width:47px!important;height:47px!important}
+  #slot .slot-cabinet .slot-symbol-image{width:50px!important;height:50px!important}
   #slot .slot-simple-controls{width:min(92vw,360px)}
   #slot .slot-simple-bet-row{grid-template-columns:69px minmax(0,1fr) 69px;gap:5px}
   #slot .slot-asset-step,#slot .slot-asset-input{height:69px}
