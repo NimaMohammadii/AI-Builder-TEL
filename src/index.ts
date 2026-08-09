@@ -15,6 +15,8 @@ const app = new Hono<{ Bindings: Env }>();
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
+const HOME_LOTTERY_SLOT_KEY = 'home-lottery-slot';
+const VERSIONED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 type LevelXpEventInput = {
   amount?: unknown;
@@ -29,7 +31,12 @@ type LevelXpBody = LevelXpEventInput & {
 };
 
 app.get('/', (c) => c.redirect('/app'));
-app.get('/app', () => html(miniAppHtml()));
+app.get('/app', async (c) => {
+  const slot = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  const version = String(slot?.customMetadata?.version || slot?.uploaded?.getTime?.() || '1');
+  const slotUrl = slot ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : undefined;
+  return html(miniAppHtml(slotUrl));
+});
 app.get('/app/health', (c) => c.json({ ok: true, page: 'game-miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, service: 'vexa-game', timestamp: new Date().toISOString() }));
 app.get('/app/api/online-user-counts', async (c) =>
@@ -82,6 +89,31 @@ app.get('/app/api/credit-icon.png', async (c) => {
     });
   }
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
+});
+
+app.get('/app/api/home-lottery-slot-meta', async (c) => {
+  const image = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  const version = String(image?.customMetadata?.version || image?.uploaded?.getTime?.() || '1');
+  return c.json(
+    {
+      ok: true,
+      hasImage: Boolean(image),
+      version,
+      url: image ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : null,
+    },
+    200,
+    { 'cache-control': 'no-store' },
+  );
+});
+app.get('/app/api/home-lottery-slot.png', async (c) => {
+  const image = await c.env.ASSETS.get(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  if (!image) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
+  return new Response(image.body, {
+    headers: {
+      'content-type': image.httpMetadata?.contentType ?? 'image/png',
+      'cache-control': c.req.query('v') ? VERSIONED_IMAGE_CACHE_CONTROL : 'public, max-age=300, must-revalidate',
+    },
+  });
 });
 
 app.get('/app/api/home-intro-image-cached.png', async (c) => {
