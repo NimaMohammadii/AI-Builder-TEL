@@ -2,10 +2,9 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 <script>
 (function(){
   var state=null,busy=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,pollStarted=false,drawRefreshPending=false;
-  var drawInitialized=false,lastDrawId='',slotBusy=false,queuedDrawCode='',winnerEffectDrawId='';
-  var ROW=34,REST_LOOP=20,DRAW_LOOPS=28,DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=4500,NEXT_ROUND_DELAY_MS=5000;
+  var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
+  var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
-  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
   function purchaseId(){
@@ -38,8 +37,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(round.status==='open'){
       if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}
       if(time)time.textContent='00:00:00';
-      var drawStartsAt=roundTime('drawStartsAt',DRAW_DELAY_MS);
-      if(drawStartsAt&&now>=drawStartsAt)refreshLifecycle();
+      refreshLifecycle();
       return;
     }
     if(time)time.textContent='00:00:00';
@@ -53,6 +51,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function purchaseCostNano(){if(!state)return 0;var free=state.freeTicketAvailable?1:0;return Math.max(0,quantity-free)*Math.max(0,Number(state.settings&&state.settings.ticketPriceNano)||150000000)}
   function remainingLimit(){if(!state||!state.settings)return MAX_QTY;var limit=Math.max(0,Number(state.settings.maxTicketsPerUser)||0);if(!limit)return MAX_QTY;return Math.max(0,limit-Math.max(0,Number(state.ticketCount)||0))}
   function maxSelectable(){return Math.max(1,Math.min(MAX_QTY,remainingLimit()||1))}
+  function paidButtonHtml(cost){return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><img src="/app/api/credit-icon.png" alt="" aria-hidden="true" style="width:18px;height:18px;display:block;object-fit:contain"><span>'+gram(cost)+'</span></span>'}
   function render(){
     var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');
     var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);
@@ -64,70 +63,63 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(minus)minus.disabled=busy||quantity<=1||limitReached;
     if(plus)plus.disabled=busy||quantity>=max||!state||!state.canBuy||limitReached;
     if(button){
-      var cost=purchaseCostNano(),label='';
-      if(limitReached)label='Ticket limit reached';
-      else if(state&&state.canBuy)label=(cost>0?gram(cost)+' GRAM':'FREE')+' · Get Ticket';
-      else if(state&&state.reason)label=state.reason;
-      else if(!initData())label='Open in Telegram';
-      button.textContent=busy?'Getting Ticket…':label;
+      var cost=purchaseCostNano();
+      if(busy){button.textContent='Getting Ticket…';button.removeAttribute('aria-label')}
+      else if(limitReached){button.textContent='Ticket limit reached';button.removeAttribute('aria-label')}
+      else if(state&&state.canBuy&&cost<=0){button.textContent='Get Free Ticket';button.setAttribute('aria-label','Get Free Ticket')}
+      else if(state&&state.canBuy){button.innerHTML=paidButtonHtml(cost);button.setAttribute('aria-label',gram(cost)+' GRAM')}
+      else if(state&&state.reason){button.textContent=state.reason;button.removeAttribute('aria-label')}
+      else if(!initData()){button.textContent='Open in Telegram';button.removeAttribute('aria-label')}
       button.disabled=busy||!state||!state.canBuy||!initData()||limitReached;
       button.classList.remove('is-ready');
     }
     updateCountdown();
   }
-  function reelY(index){return 'translate3d(0,-'+((index*ROW)+(ROW/2))+'px,0)'}
-  function indexFor(value,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(value)||0)))}
-  function reelDigits(){var html='';for(var cycle=0;cycle<90;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
-  function ensureReels(){
-    qa('#home .home-slot-number-reel').forEach(function(reel){
-      var strip=q('[data-slot-strip]',reel);if(!strip)return;
-      if(strip.dataset.lotteryDrawDigits!=='1'){strip.innerHTML=reelDigits();strip.dataset.lotteryDrawDigits='1'}
-      var value=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
-      if(!reel.classList.contains('is-spinning')){strip.style.setProperty('transition','none','important');strip.style.transform=reelY(indexFor(value,REST_LOOP));strip.style.willChange='auto'}
-    })
-  }
-  function setSlotCode(code,animate){
-    var clean=String(code||'').replace(/[^0-9]/g,'').padStart(5,'0').slice(-5);if(clean.length!==5)return;
-    ensureReels();
-    if(!animate){
-      qa('#home .home-slot-number-reel').slice(0,5).forEach(function(reel,index){var final=Number(clean.charAt(index));var strip=q('[data-slot-strip]',reel);if(!strip)return;reel.setAttribute('data-slot-value',String(final));strip.style.setProperty('transition','none','important');strip.style.transform=reelY(indexFor(final,REST_LOOP));strip.style.willChange='auto';reel.classList.remove('is-spinning')});
-      return;
-    }
-    if(slotBusy){queuedDrawCode=clean;return}
-    slotBusy=true;queuedDrawCode='';var reels=qa('#home .home-slot-number-reel').slice(0,5),pending=reels.length;
-    if(!pending){slotBusy=false;return}
-    reels.forEach(function(reel,index){
-      var strip=q('[data-slot-strip]',reel);if(!strip){pending--;return}
-      var current=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
-      var final=Number(clean.charAt(index)),loops=DRAW_LOOPS+index*2,duration=2300+index*420;
-      reel.setAttribute('data-slot-value',String(final));strip.style.setProperty('transition','none','important');strip.style.transform=reelY(indexFor(current,REST_LOOP));strip.style.willChange='transform';reel.classList.add('is-spinning');
-      setTimeout(function(){strip.style.setProperty('transition','transform '+duration+'ms cubic-bezier(.12,.74,.18,1)','important');strip.style.transform=reelY(indexFor(final,REST_LOOP+loops))},30+index*50);
-      setTimeout(function(){strip.style.setProperty('transition','none','important');strip.style.transform=reelY(indexFor(final,REST_LOOP));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){slotBusy=false;haptic('success');if(queuedDrawCode){var next=queuedDrawCode;queuedDrawCode='';setTimeout(function(){setSlotCode(next,true)},120)}}},duration+260+index*50)
-    })
+  function slotEngine(){return window.VexaLotterySlotEngine||null}
+  function setStaticCode(code){
+    var engine=slotEngine();
+    if(!engine||typeof engine.setCode!=='function'){setTimeout(function(){setStaticCode(code)},80);return}
+    engine.setCode(code);
   }
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
-  function triggerWinnerEffect(drawId,delay){
+  function triggerWinnerEffect(drawId){
     if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;
-    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);
-    setTimeout(function(){
-      haptic('success');
-      var button=q('#homeConfettiButton');
-      if(button&&typeof button.click==='function')button.click();
-    },Math.max(0,Number(delay)||0));
+    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');
+    var button=q('#homeConfettiButton');if(button&&typeof button.click==='function')button.click();
+  }
+  function scheduleLiveDraw(drawId,code,won,startAt){
+    if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
+    scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
+    var run=function(){
+      var engine=slotEngine();
+      if(!engine||typeof engine.spinTo!=='function'){drawSpinTimer=setTimeout(run,80);return}
+      var started=engine.spinTo(code,function(){haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId=''});
+      if(!started)drawSpinTimer=setTimeout(run,160);
+    };
+    drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
   }
   function applyDrawResult(){
     var draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon);
+    if(!drawId||!/^\\d{5}$/.test(code))return;
+    var round=state&&state.round,sameClosedRound=!!(round&&round.status==='closed'&&String(round.id||'')===drawId),now=liveServerNow();
+    var startAt=sameClosedRound?roundTime('drawStartsAt',DRAW_DELAY_MS):0;
+    var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;
+    var animationEndsAt=startAt?startAt+duration:0;
     if(!drawInitialized){
-      drawInitialized=true;
-      if(drawId&&code){lastDrawId=drawId;setSlotCode(code,false);if(won)triggerWinnerEffect(drawId,180)}else ensureReels();
+      drawInitialized=true;lastDrawId=drawId;
+      if(sameClosedRound&&animationEndsAt&&now<animationEndsAt){scheduleLiveDraw(drawId,code,won,Math.max(now,startAt))}
+      else{setStaticCode(code);if(won&&sameClosedRound)triggerWinnerEffect(drawId)}
       return;
     }
-    if(drawId&&code&&drawId!==lastDrawId){lastDrawId=drawId;setSlotCode(code,true);if(won)triggerWinnerEffect(drawId,DRAW_ANIMATION_MS+200)}
+    if(drawId===lastDrawId)return;
+    lastDrawId=drawId;
+    if(sameClosedRound&&animationEndsAt&&now<animationEndsAt)scheduleLiveDraw(drawId,code,won,Math.max(now,startAt));
+    else setStaticCode(code);
   }
   async function load(){
     var data=initData();
-    if(!data){state={ticketCount:0,tickets:[],lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();applyDrawResult();return}
+    if(!data){state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
     var started=Date.now();
     try{
       var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
@@ -135,7 +127,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
     }catch(error){
-      state={ticketCount:0,tickets:[],lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
+      state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
     }
   }
   async function buy(){
@@ -161,7 +153,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     haptic('light');render();
   }
   function startLiveSync(){if(pollStarted)return;pollStarted=true;setInterval(updateCountdown,250);setInterval(function(){if(!busy&&q('#home.active')&&!drawRefreshPending)load()},5000)}
-  function init(){document.addEventListener('click',handleTicketControls,true);ensureReels();load();startLiveSync();window.VexaLotteryRefresh=load}
+  function init(){document.addEventListener('click',handleTicketControls,true);load();startLiveSync();window.VexaLotteryRefresh=load}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',function(){if(q('#home.active')&&!busy)load()});
 })();
