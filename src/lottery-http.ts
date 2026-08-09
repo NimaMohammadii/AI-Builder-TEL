@@ -9,21 +9,22 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
   try {
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/state') {
       const userId = await authenticatedUser(request, env);
-      return json({ ok: true, ...(await getLotteryUserState(env, userId)) });
+      const serverNowMs = Date.now();
+      return json({ ok: true, serverNowMs, ...(await getLotteryUserState(env, userId)) });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/tickets') {
       const userId = await authenticatedUser(request, env);
       const state = await getLotteryUserState(env, userId);
       const tickets = await listLotteryTickets(env, userId, state.round?.id, 250);
-      return json({ ok: true, round: state.round, ticketCount: tickets.length, tickets });
+      return json({ ok: true, serverNowMs: Date.now(), round: state.round, ticketCount: tickets.length, tickets });
     }
 
     if (request.method === 'POST' && url.pathname === '/app/api/lottery/tickets') {
       const body = await request.json().catch(() => ({})) as { initData?: unknown; quantity?: unknown; purchaseId?: unknown };
       const userId = await validateTelegramInitData(body.initData, gameBotToken(env));
       const result = await buyLotteryTickets(env, userId, body.quantity, body.purchaseId);
-      return json({ ok: true, ...result });
+      return json({ ok: true, serverNowMs: Date.now(), ...result });
     }
 
     return json({ error: 'Lottery endpoint not found' }, 404);
