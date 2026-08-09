@@ -330,6 +330,8 @@ body:has(#slot.active) header.top{
   border-radius:50%!important;
   cursor:pointer!important;
 }
+#slot #slotBetMinus{transform:translateX(10px)}
+#slot #slotBetPlus{transform:translateX(-10px)}
 #slot .slot-asset-step span{
   position:absolute!important;
   inset:0!important;
