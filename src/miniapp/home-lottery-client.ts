@@ -51,7 +51,17 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function purchaseCostNano(){if(!state)return 0;var free=state.freeTicketAvailable?1:0;return Math.max(0,quantity-free)*Math.max(0,Number(state.settings&&state.settings.ticketPriceNano)||150000000)}
   function remainingLimit(){if(!state||!state.settings)return MAX_QTY;var limit=Math.max(0,Number(state.settings.maxTicketsPerUser)||0);if(!limit)return MAX_QTY;return Math.max(0,limit-Math.max(0,Number(state.ticketCount)||0))}
   function maxSelectable(){return Math.max(1,Math.min(MAX_QTY,remainingLimit()||1))}
-  function paidButtonHtml(cost){return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><img src="/app/api/credit-icon.png" alt="" aria-hidden="true" style="width:18px;height:18px;display:block;object-fit:contain"><span>'+gram(cost)+'</span></span>'}
+  function gramIcon(){return '<svg viewBox="0 0 56 56" width="18" height="18" fill="none" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#0098EA"/><path d="M17.4 18.8c.8-1.2 2.1-1.9 3.6-1.9h14c1.5 0 2.8.7 3.6 1.9.8 1.2.8 2.7.1 4L30.4 38c-.5.9-1.4 1.4-2.4 1.4s-1.9-.5-2.4-1.4l-8.3-15.2c-.7-1.3-.7-2.8.1-4Zm4.1 2.1 6.5 12 6.5-12h-13Z" fill="#fff"/></svg>'}
+  function paidButtonHtml(cost){return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px">'+gramIcon()+'<span>'+gram(cost)+'</span></span>'}
+  function prizeRowsHtml(prizes){
+    var rows=Array.isArray(prizes)?prizes:[],html='';
+    for(var i=0;i<15;i++){
+      var prize=rows[i]||{rank:i+1,prizeNano:0},rank=i+1,premium=rank<=3?'<div class="vexa-bonus-premium" aria-hidden="true"></div>':'';
+      html+='<article class="home-bonus-row home-bonus-top-card home-live-winner-card">'+premium+'<div class="home-live-winner-avatar home-bonus-rank-avatar">#'+rank+'</div><div class="home-live-winner-user" aria-hidden="true"></div><div class="home-live-winner-amount">'+gram(prize.prizeNano)+' GRAM</div></article>';
+    }
+    return html;
+  }
+  function renderPrizePanel(){var list=q('#homeBonusPanel .home-bonus-list');if(list&&state&&Array.isArray(state.prizes))list.innerHTML=prizeRowsHtml(state.prizes)}
   function render(){
     var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');
     var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);
@@ -73,6 +83,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       button.disabled=busy||!state||!state.canBuy||!initData()||limitReached;
       button.classList.remove('is-ready');
     }
+    renderPrizePanel();
     updateCountdown();
   }
   function slotEngine(){return window.VexaLotterySlotEngine||null}
@@ -119,7 +130,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   async function load(){
     var data=initData();
-    if(!data){state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
+    if(!data){state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
     var started=Date.now();
     try{
       var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
@@ -127,7 +138,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
     }catch(error){
-      state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
+      state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
     }
   }
   async function buy(){
