@@ -9,15 +9,17 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
   function syncServerClock(payload){var serverNow=Number(payload&&payload.serverNowMs);if(Number.isFinite(serverNow)&&serverNow>0)serverOffsetMs=serverNow-Date.now();window.VexaLotteryServerOffsetMs=serverOffsetMs}
   function liveServerNow(){return Date.now()+serverOffsetMs}
+  function scheduledDrawTarget(){
+    var raw=state&&state.round&&state.round.status==='open'?state.round.drawAt:(state&&state.settings&&state.settings.nextDrawAt||'');
+    var target=Date.parse(String(raw||''));if(!Number.isFinite(target))return 0;
+    var interval=Math.max(1,Number(state&&state.settings&&state.settings.drawIntervalMinutes)||1440)*60000;
+    var now=liveServerNow();while(target<=now)target+=interval;return target;
+  }
   function syncDrawTarget(){
     try{
-      var raw=state&&state.round&&state.round.status==='open'?state.round.drawAt:(state&&state.settings&&state.settings.nextDrawAt||'');
-      var target=Date.parse(String(raw||''));
-      if(!Number.isFinite(target))return;
-      var adjustedLocalTarget=target-serverOffsetMs;
-      localStorage.setItem('vexaNextDrawAt',String(adjustedLocalTarget));
-      window.VexaLotteryDrawAt=target;
-      window.VexaLotteryServerNow=liveServerNow;
+      var target=scheduledDrawTarget();if(!target)return;
+      localStorage.setItem('vexaNextDrawAt',String(target-serverOffsetMs));
+      window.VexaLotteryDrawAt=target;window.VexaLotteryServerNow=liveServerNow;
     }catch(e){}
   }
   function keepLegacyCountInSync(){try{localStorage.setItem('vexaFreeTickets',String(Math.max(0,Number(state&&state.ticketCount)||0)))}catch(e){}}
@@ -52,14 +54,14 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   async function load(){
     var data=initData();
-    if(!data){state={ticketCount:0,tickets:[],freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0}};render();return}
+    if(!data){state={ticketCount:0,tickets:[],freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
     try{
       var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
       var payload=await response.json().catch(function(){return null});
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload);state=payload;render();
     }catch(error){
-      state={ticketCount:0,tickets:[],freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0}};render();
+      state={ticketCount:0,tickets:[],freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
     }
   }
   async function buy(){
@@ -86,7 +88,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(target.hasAttribute('data-ticket-minus'))quantity=Math.max(1,quantity-1);
     haptic('light');render();
   }
-  function startLiveSync(){if(pollStarted)return;pollStarted=true;setInterval(function(){if(!busy&&q('#home.active'))load()},5000)}
+  function startLiveSync(){if(pollStarted)return;pollStarted=true;setInterval(syncDrawTarget,500);setInterval(function(){if(!busy&&q('#home.active'))load()},5000)}
   function init(){document.addEventListener('click',handleTicketControls,true);load();startLiveSync();window.VexaLotteryRefresh=load}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',function(){if(q('#home.active')&&!busy)load()});
