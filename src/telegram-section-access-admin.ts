@@ -144,6 +144,9 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
         { text: '💸 Gram Withdrawals', callback_data: 'botadmin:gw:l:pending:0' },
       ],
       [
+        { text: '🎟 Lottery', callback_data: 'botadmin:lottery:menu' },
+      ],
+      [
         { text: '🌍 تنظیمات رجین', callback_data: 'botadmin:regionsettings' },
         { text: '📣 پیام همگانی', callback_data: 'botadmin:askbroadcast' },
       ],
