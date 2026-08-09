@@ -65,15 +65,38 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch==='"'?'&quot;':'&#39;'})}
   function winnerMap(winners){var map={};(Array.isArray(winners)?winners:[]).forEach(function(item){var rank=Math.floor(Number(item&&item.rank)||0);if(rank>=1&&rank<=15)map[rank]=item});return map}
   function initial(name){var value=String(name||'').replace(/^@/,'').trim();return esc((value.charAt(0)||'•').toUpperCase())}
-  function cardHtml(rank,winner){
-    var rankText=String(rank).padStart(2,'0');
-    if(!winner)return '<article class="home-live-winner-card is-waiting" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+rank+'</div><div class="home-live-winner-user"><strong>Waiting for winner</strong><span>Rank #'+rankText+'</span></div><div class="home-live-winner-amount">—</div></article>';
-    var name=esc(winner.displayName||'Player'),code=esc(String(winner.ticketCode||'').padStart(5,'0').slice(-5));
-    return '<article class="home-live-winner-card" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+initial(winner.displayName)+'</div><div class="home-live-winner-user"><strong>'+name+'</strong><span>Ticket #'+code+'</span></div><div class="home-live-winner-amount">+'+gram(winner.prizeNano)+' GRAM</div></article>';
+  function maskedName(winner){
+    var username=String(winner&&winner.username||'').replace(/^@+/,'').trim();
+    if(!username)return esc(winner&&winner.displayName||'Player');
+    if(username.length===1)return '@'+esc(username);
+    if(username.length===2)return '@'+esc(username.charAt(0)+'*');
+    if(username.length<=4)return '@'+esc(username.charAt(0)+'**'+username.charAt(username.length-1));
+    return '@'+esc(username.slice(0,2)+'***'+username.slice(-2));
   }
-  function render(winners){
+  function avatarHtml(winner){
+    var url=String(winner&&winner.avatarUrl||'').trim();
+    if(url)return '<img class="home-live-winner-avatar" src="'+esc(url)+'" alt="" decoding="async" loading="lazy" data-avatar-fallback="'+initial(winner.displayName)+'"/>';
+    return '<div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+initial(winner&&winner.displayName)+'</div>';
+  }
+  function hydrateAvatars(root){
+    var images=(root||document).querySelectorAll('img.home-live-winner-avatar[data-avatar-fallback]');
+    for(var i=0;i<images.length;i++){
+      (function(img){
+        if(img.dataset.avatarBound==='1')return;img.dataset.avatarBound='1';
+        img.addEventListener('error',function(){var fallback=document.createElement('div');fallback.className='home-live-winner-avatar rewards-winner-avatar-fallback';fallback.textContent=img.getAttribute('data-avatar-fallback')||'•';img.replaceWith(fallback)},{once:true});
+      })(images[i]);
+    }
+  }
+  function cardHtml(rank,winner,waiting){
+    var rankText=String(rank).padStart(2,'0');
+    if(waiting)return '<article class="home-live-winner-card is-waiting" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+rank+'</div><div class="home-live-winner-user"><strong>Waiting for winner</strong><span>Rank #'+rankText+'</span></div><div class="home-live-winner-amount">—</div></article>';
+    if(!winner)return '<article class="home-live-winner-card" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+rank+'</div><div class="home-live-winner-user"><strong>No winner this round</strong><span>Rank #'+rankText+'</span></div><div class="home-live-winner-amount">—</div></article>';
+    var level=Math.max(1,Math.floor(Number(winner.level)||1));
+    return '<article class="home-live-winner-card" data-rank="'+rankText+'">'+avatarHtml(winner)+'<div class="home-live-winner-user"><strong>'+maskedName(winner)+'</strong><span>Level '+level+'</span></div><div class="home-live-winner-amount">+'+gram(winner.prizeNano)+' GRAM</div></article>';
+  }
+  function render(winners,waiting){
     var list=q('#lotteryRewardsWinnersList');if(!list)return;
-    var map=winnerMap(winners),html='';for(var rank=1;rank<=15;rank++)html+=cardHtml(rank,map[rank]);list.innerHTML=html;queue();
+    var map=winnerMap(winners),html='';for(var rank=1;rank<=15;rank++)html+=cardHtml(rank,map[rank],!!waiting);list.innerHTML=html;hydrateAvatars(list);queue();
   }
   function prepare(cards){for(var i=0;i<cards.length;i++)cards[i].setAttribute('data-rank',String(i+1).padStart(2,'0'))}
   function reset(cards){prepare(cards);for(var i=0;i<cards.length;i++){cards[i].style.setProperty('--rewards-card-progress','0');cards[i].setAttribute('data-rewards-hidden','0')}}
@@ -96,19 +119,18 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     try{
       var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
       var payload=await response.json().catch(function(){return null});
-      if(response.ok&&payload){render(payload.winners||[]);lastLoadedAt=Date.now()}
+      if(response.ok&&payload){render(payload.winners||[],!!payload.waitingForWinner);lastLoadedAt=Date.now()}
     }catch(e){}finally{loading=false}
   }
   function bind(){
     var rewards=document.getElementById('rewards');if(!rewards)return;
     if(!q('#lotteryRewardsWinnersList',rewards))return;
-    if(!rewards.querySelector('.home-live-winner-card'))render([]);
     var cards=rewards.querySelectorAll('.home-live-winner-card');reset(cards);
     if(rewards.dataset.winnersScrollBound!=='1'){
       rewards.dataset.winnersScrollBound='1';rewards.addEventListener('scroll',queue,{passive:true});window.addEventListener('resize',queue,{passive:true});
     }
     if(rewards.classList.contains('active'))loadWinners(true);queue();
-    if(!pollStarted){pollStarted=true;setInterval(function(){var r=document.getElementById('rewards');if(r&&r.classList.contains('active'))loadWinners(false)},10000)}
+    if(!pollStarted){pollStarted=true;setInterval(function(){var r=document.getElementById('rewards');if(r&&r.classList.contains('active'))loadWinners(false)},5000)}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
   document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');if(target)setTimeout(function(){bind();loadWinners(true)},60)},true);
