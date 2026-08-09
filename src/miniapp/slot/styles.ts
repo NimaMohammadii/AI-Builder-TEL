@@ -1148,11 +1148,11 @@ body:has(#slot.active) main { background:transparent!important; }
 }
 #slot .slot-cabinet .slot-window{
   position:absolute!important;
-  top:24.1%!important;
+  top:25%!important;
   left:18.1%!important;
   z-index:9!important;
   width:63.8%!important;
-  height:36%!important;
+  height:34%!important;
   margin:0!important;
   padding:0!important;
   gap:4px!important;
@@ -1196,7 +1196,6 @@ body:has(#slot.active) main { background:transparent!important; }
   filter:drop-shadow(0 7px 10px rgba(0,0,0,.52))!important;
 }
 #slot .slot-cabinet .slot-symbol-image{width:54px!important;height:54px!important}
-
 #slot .slot-simple-controls{
   position:relative;
   z-index:12;
@@ -1221,10 +1220,25 @@ body:has(#slot.active) main { background:transparent!important; }
   padding:0!important;
   border:0!important;
   outline:0!important;
-  background:transparent!important;
+  background:none!important;
+  background-color:transparent!important;
+  background-image:none!important;
   box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
   overflow:visible;
   isolation:isolate;
+}
+#slot .slot-asset-button::before,
+#slot .slot-asset-button::after,
+#slot .slot-asset-input::before,
+#slot .slot-asset-input::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
 }
 #slot .slot-asset-step{width:76px;height:76px;border-radius:50%!important}
 #slot .slot-asset-input{width:100%;height:76px;cursor:text}
