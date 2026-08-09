@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, updateLotterySettings } from './lottery';
+import { getCurrentLotteryRound, getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, startLotteryNow, updateLotterySettings } from './lottery';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
@@ -64,12 +64,18 @@ async function handleCallback(env: Env, callback: Callback): Promise<Response> {
       return ok();
     }
 
-    if (action === 'toggle') {
-      const field = arg;
+    if (action === 'startnow') {
+      const round = await startLotteryNow(env);
       const settings = await getLotterySettings(env);
-      if (field === 'enabled') await updateLotterySettings(env, { enabled: !settings.enabled });
-      else if (field === 'sales') await updateLotterySettings(env, { salesOpen: !settings.salesOpen });
-      else if (field === 'free') await updateLotterySettings(env, { freeTicketEnabled: !settings.freeTicketEnabled });
+      await sendLotteryMenu(env, chatId, messageId, `🚀 Lottery از همین الان شروع شد. Draw بعدی ${formatMinutes(settings.drawIntervalMinutes)} دیگر است.\nRound: ${round.id}`);
+      return ok();
+    }
+
+    if (action === 'toggle') {
+      const settings = await getLotterySettings(env);
+      if (arg === 'enabled') await updateLotterySettings(env, { enabled: !settings.enabled });
+      else if (arg === 'sales') await updateLotterySettings(env, { salesOpen: !settings.salesOpen });
+      else if (arg === 'free') await updateLotterySettings(env, { freeTicketEnabled: !settings.freeTicketEnabled });
       await sendLotteryMenu(env, chatId, messageId, '✅ تنظیمات ذخیره شد.');
       return ok();
     }
@@ -78,7 +84,7 @@ async function handleCallback(env: Env, callback: Callback): Promise<Response> {
       const minutes = Number(arg);
       if (![60, 360, 720, 1440].includes(minutes)) throw new Error('Invalid draw time');
       await setLotteryDrawMinutesFromNow(env, minutes);
-      await ensureOpenRound(env);
+      await getCurrentLotteryRound(env, true);
       await sendLotteryMenu(env, chatId, messageId, `✅ زمان Draw روی ${formatMinutes(minutes)} از الان تنظیم شد.`);
       return ok();
     }
@@ -111,9 +117,8 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!/^\d+$/.test(text)) throw new Error('تعداد دقیقه را فقط به‌صورت عدد صحیح بفرستید.');
       const minutes = Number(text);
       await setLotteryDrawMinutesFromNow(env, minutes);
-      await ensureOpenRound(env);
-      await clearState(env, userId);
-      await deleteIncoming(env.BOT_TOKEN, message);
+      await getCurrentLotteryRound(env, true);
+      await finishInput(env, message, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ Draw برای ${formatMinutes(minutes)} دیگر تنظیم شد.`);
       return;
     }
@@ -123,8 +128,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!Number.isFinite(gram) || gram <= 0 || gram > 1000) throw new Error('قیمت معتبر GRAM بفرستید. مثال: 0.15');
       const nano = Math.round(gram * NANO);
       await updateLotterySettings(env, { ticketPriceNano: nano });
-      await clearState(env, userId);
-      await deleteIncoming(env.BOT_TOKEN, message);
+      await finishInput(env, message, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ قیمت هر تیکت روی ${formatGram(nano)} GRAM تنظیم شد.`);
       return;
     }
@@ -133,8 +137,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!/^\d+$/.test(text)) throw new Error('یک عدد صحیح بفرستید. 0 یعنی بدون محدودیت.');
       const limit = Number(text);
       await updateLotterySettings(env, { maxTicketsPerUser: limit });
-      await clearState(env, userId);
-      await deleteIncoming(env.BOT_TOKEN, message);
+      await finishInput(env, message, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ سقف تیکت هر کاربر ${limit === 0 ? 'برداشته شد' : `روی ${limit} قرار گرفت`}.`);
       return;
     }
@@ -143,8 +146,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!/^\d+$/.test(text)) throw new Error('فاصله Draw را به دقیقه بفرستید. مثال: 1440');
       const minutes = Number(text);
       await updateLotterySettings(env, { drawIntervalMinutes: minutes });
-      await clearState(env, userId);
-      await deleteIncoming(env.BOT_TOKEN, message);
+      await finishInput(env, message, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ فاصله پیش‌فرض Draw روی ${formatMinutes(minutes)} تنظیم شد.`);
     }
   } catch (error) {
@@ -156,19 +158,15 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
   const overview = await getLotteryAdminOverview(env);
   const { settings, round, stats } = overview;
   const drawMs = round?.status === 'open' ? Date.parse(round.drawAt) - Date.now() : 0;
-  const status = settings.enabled ? 'فعال ✅' : 'غیرفعال ❌';
-  const sales = settings.salesOpen ? 'باز ✅' : 'بسته ❌';
-  const free = settings.freeTicketEnabled ? 'فعال ✅' : 'غیرفعال ❌';
-  const limit = settings.maxTicketsPerUser > 0 ? String(settings.maxTicketsPerUser) : 'بدون محدودیت';
   const text = [
     notice,
     '🎟 Lottery Control',
     '',
-    `وضعیت Lottery: ${status}`,
-    `فروش تیکت: ${sales}`,
-    `تیکت اول رایگان: ${free}`,
+    `وضعیت Lottery: ${settings.enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
+    `فروش تیکت: ${settings.salesOpen ? 'باز ✅' : 'بسته ❌'}`,
+    `تیکت اول رایگان: ${settings.freeTicketEnabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
     `قیمت هر تیکت: ${formatGram(settings.ticketPriceNano)} GRAM`,
-    `سقف هر کاربر: ${limit}`,
+    `سقف هر کاربر: ${settings.maxTicketsPerUser > 0 ? settings.maxTicketsPerUser : 'بدون محدودیت'}`,
     `فاصله پیش‌فرض Draw: ${formatMinutes(settings.drawIntervalMinutes)}`,
     '',
     `Round: ${round ? round.id : '—'}`,
@@ -183,9 +181,8 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
   ].filter(Boolean).join('\n');
 
   const rows: Keyboard = [
-    [
-      { text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' },
-    ],
+    [{ text: '🚀 Start Now', callback_data: 'botadmin:lottery:startnow' }],
+    [{ text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' }],
     [
       { text: settings.salesOpen ? '⏸ توقف فروش' : '▶️ شروع فروش', callback_data: 'botadmin:lottery:toggle:sales' },
       { text: settings.freeTicketEnabled ? '🎁 حذف رایگان' : '🎁 فعال کردن رایگان', callback_data: 'botadmin:lottery:toggle:free' },
@@ -227,25 +224,14 @@ async function prompt(env: Env, chatId: number, messageId: number | undefined, m
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
-async function ensureOpenRound(env: Env): Promise<void> {
-  const open = await env.DB.prepare("SELECT id FROM lottery_rounds WHERE status='open' ORDER BY datetime(created_at) DESC LIMIT 1").first<{ id: string }>().catch(() => null);
-  if (open?.id) return;
-  const settings = await getLotterySettings(env);
-  const id = `lr_${Date.now().toString(36)}_${randomHex(8)}`;
-  const now = new Date().toISOString();
-  const drawAt = Date.parse(settings.nextDrawAt) > Date.now() + 5_000
-    ? settings.nextDrawAt
-    : new Date(Date.now() + settings.drawIntervalMinutes * 60_000).toISOString();
-  if (drawAt !== settings.nextDrawAt) await updateLotterySettings(env, { nextDrawAt: drawAt });
-  await env.DB.prepare(`INSERT INTO lottery_rounds (id,status,opens_at,draw_at,ticket_price_nano,created_at,updated_at)
-    VALUES (?,'open',?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`)
-    .bind(id, now, drawAt, settings.ticketPriceNano).run();
+async function finishInput(env: Env, message: Message, userId: number): Promise<void> {
+  await clearState(env, userId);
+  await tg(env.BOT_TOKEN, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 }
 
 function normalizeMode(value: string): InputMode | null {
   return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' ? value : null;
 }
-
 function stateKey(userId: number): string { return `${STATE_PREFIX}${userId}`; }
 async function getState(env: Env, userId: number): Promise<InputMode | null> {
   const value = await env.BOT_CACHE.get(stateKey(userId)).catch(() => null);
@@ -257,7 +243,6 @@ function setState(env: Env, userId: number, mode: InputMode): Promise<void> {
 function clearState(env: Env, userId: number): Promise<void> {
   return env.BOT_CACHE.delete(stateKey(userId)).catch(() => undefined);
 }
-
 function isAdmin(env: Env, userId: unknown): boolean {
   return String(env.BOT_ADMIN || '').split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean).includes(String(userId || ''));
 }
@@ -279,13 +264,6 @@ function formatMinutes(minutes: number): string {
 function formatRemaining(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return 'الان';
   return formatMinutes(Math.max(1, Math.ceil(ms / 60_000)));
-}
-function randomHex(length: number): string {
-  const bytes = new Uint8Array(Math.ceil(length / 2));crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((value) => value.toString(16).padStart(2,'0')).join('').slice(0,length);
-}
-async function deleteIncoming(token: string, message: Message): Promise<void> {
-  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 }
 async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
   const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
