@@ -307,20 +307,29 @@ export const HOME_SLOT_TUNING_SCRIPT = `
     setTimeout(function(){layer.classList.add('is-ending')},5700);
     setTimeout(function(){layer.remove()},6200);
   }
-  function spin(){
-    if(busy)return;prepare();busy=true;
-    var btn=q('#homeSlotSpinButton');if(btn)btn.classList.add('is-spinning');
-    var reels=qa('#home .home-slot-number-reel');var pending=reels.length;
+  function cleanSpinCode(code){var value=String(code||'').replace(/[^0-9]/g,'');return value.length===5?value:''}
+  function setCode(code){
+    var clean=cleanSpinCode(code);if(!clean||busy)return false;prepare();
+    qa('#home .home-slot-number-reel').slice(0,5).forEach(function(reel,i){var strip=q('[data-slot-strip]',reel);if(!strip)return;var final=Number(clean.charAt(i));reel.setAttribute('data-slot-value',String(final));strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(final,restLoop));strip.style.willChange='auto';reel.classList.remove('is-spinning')});
+    return true;
+  }
+  function spin(targetCode,onComplete){
+    if(busy)return false;prepare();busy=true;
+    var clean=cleanSpinCode(targetCode),btn=q('#homeSlotSpinButton');if(btn)btn.classList.add('is-spinning');
+    var reels=qa('#home .home-slot-number-reel').slice(0,5);var pending=reels.length;
+    if(!pending){busy=false;if(btn)btn.classList.remove('is-spinning');return false}
     reels.forEach(function(reel,i){
       var strip=q('[data-slot-strip]',reel);if(!strip){pending--;return}
       var current=Math.max(0,Math.min(9,Math.floor(Number(reel.getAttribute('data-slot-value')||'0'))));
-      var final=Math.floor(Math.random()*10);var loops=spinLoops+i*2;var finalIndex=indexFor(final,restLoop+loops);
+      var final=clean?Number(clean.charAt(i)):Math.floor(Math.random()*10);var loops=spinLoops+i*2;var finalIndex=indexFor(final,restLoop+loops);
       reel.setAttribute('data-slot-value',String(final));
       strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(current,restLoop));strip.style.willChange='transform';reel.classList.add('is-spinning');
       setTimeout(function(){strip.style.setProperty('transition','transform '+(totalSpinMs+i*reelStopGapMs)+'ms linear','important');strip.style.transform=y(finalIndex)},30+i*60);
-      setTimeout(function(){strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(final,restLoop));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){if(btn)btn.classList.remove('is-spinning');busy=false}},totalSpinMs+i*reelStopGapMs+260);
+      setTimeout(function(){strip.style.setProperty('transition','none','important');strip.style.transform=y(indexFor(final,restLoop));strip.style.willChange='auto';reel.classList.remove('is-spinning');pending--;if(pending<=0){if(btn)btn.classList.remove('is-spinning');busy=false;if(typeof onComplete==='function'){try{onComplete()}catch(e){}}}},totalSpinMs+i*reelStopGapMs+260);
     });
+    return true;
   }
+  window.VexaLotterySlotEngine={spinTo:function(code,onComplete){if(manualMode)setManualMode(false);return spin(code,onComplete)},setCode:setCode,durationMs:totalSpinMs+(4*reelStopGapMs)+260};
   document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeSlotSpinButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();if(manualMode)setManualMode(false);spin()}if(t&&t.id==='homeSlotManualButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setManualMode(!manualMode)}if(t&&t.id==='homeConfettiButton'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();confetti()}var my=t&&t.closest&&t.closest('#homeTicketImageButton');if(my)tapAction(my);var bonus=t&&t.closest&&t.closest('#homeBonusButton');if(bonus){tapAction(bonus);e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setBonusPanel(true)}if(t&&t.id==='homeBonusClose'){e.preventDefault();setBonusPanel(false)}if(t&&t.id==='homeBonusBackdrop'){e.preventDefault();setBonusPanel(false)}},true);
   document.addEventListener('wheel',function(e){var r=reelFromTarget(e.target);if(manualMode&&r){e.preventDefault();manualStep(r,e.deltaY>0?1:-1);return}},{passive:false,capture:true});
   document.addEventListener('touchmove',function(e){if(manualMode&&reelFromTarget(e.target))e.preventDefault()},{passive:false,capture:true});
