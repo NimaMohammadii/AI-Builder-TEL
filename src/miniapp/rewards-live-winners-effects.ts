@@ -46,6 +46,8 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   border-color:rgba(255,255,255,.19)!important;
 }
 #rewards .home-live-winner-card[data-rewards-hidden="1"]{pointer-events:none!important}
+#rewards .rewards-winner-avatar-fallback{display:grid!important;place-items:center!important;background:rgba(255,255,255,.075)!important;color:#fff!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}
+#rewards .home-live-winner-card.is-waiting{opacity:.7}
 @media(max-width:380px){
   #rewards .rewards-live-winners{margin-top:clamp(160px,29dvh,300px)!important}
   #rewards .home-live-winner-card{grid-template-columns:42px minmax(0,1fr) auto 31px!important;gap:8px!important}
@@ -55,54 +57,61 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
 </style>
 <script id="vexa-rewards-live-winners-scroll-script">
 (function(){
-  var ticking=false;
+  var ticking=false,loading=false,lastLoadedAt=0,pollStarted=false;
+  function q(s,r){return (r||document).querySelector(s)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-  function prepare(cards){
-    for(var i=0;i<cards.length;i++){
-      cards[i].setAttribute('data-rank',String(i+1).padStart(2,'0'));
-    }
+  function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
+  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
+  function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch==='"'?'&quot;':'&#39;'})}
+  function winnerMap(winners){var map={};(Array.isArray(winners)?winners:[]).forEach(function(item){var rank=Math.floor(Number(item&&item.rank)||0);if(rank>=1&&rank<=15)map[rank]=item});return map}
+  function initial(name){var value=String(name||'').replace(/^@/,'').trim();return esc((value.charAt(0)||'•').toUpperCase())}
+  function cardHtml(rank,winner){
+    var rankText=String(rank).padStart(2,'0');
+    if(!winner)return '<article class="home-live-winner-card is-waiting" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+rank+'</div><div class="home-live-winner-user"><strong>Waiting for winner</strong><span>Rank #'+rankText+'</span></div><div class="home-live-winner-amount">—</div></article>';
+    var name=esc(winner.displayName||'Player'),code=esc(String(winner.ticketCode||'').padStart(5,'0').slice(-5));
+    return '<article class="home-live-winner-card" data-rank="'+rankText+'"><div class="home-live-winner-avatar rewards-winner-avatar-fallback">'+initial(winner.displayName)+'</div><div class="home-live-winner-user"><strong>'+name+'</strong><span>Ticket #'+code+'</span></div><div class="home-live-winner-amount">+'+gram(winner.prizeNano)+' GRAM</div></article>';
   }
-  function reset(cards){
-    prepare(cards);
-    for(var i=0;i<cards.length;i++){
-      cards[i].style.setProperty('--rewards-card-progress','0');
-      cards[i].setAttribute('data-rewards-hidden','0');
-    }
+  function render(winners){
+    var list=q('#lotteryRewardsWinnersList');if(!list)return;
+    var map=winnerMap(winners),html='';for(var rank=1;rank<=15;rank++)html+=cardHtml(rank,map[rank]);list.innerHTML=html;queue();
   }
+  function prepare(cards){for(var i=0;i<cards.length;i++)cards[i].setAttribute('data-rank',String(i+1).padStart(2,'0'))}
+  function reset(cards){prepare(cards);for(var i=0;i<cards.length;i++){cards[i].style.setProperty('--rewards-card-progress','0');cards[i].setAttribute('data-rewards-hidden','0')}}
   function apply(){
     ticking=false;
-    var rewards=document.getElementById('rewards');
-    if(!rewards)return;
-    var cards=rewards.querySelectorAll('.home-live-winner-card');
-    prepare(cards);
+    var rewards=document.getElementById('rewards');if(!rewards)return;
+    var cards=rewards.querySelectorAll('.home-live-winner-card');prepare(cards);
     if(!rewards.classList.contains('active')){reset(cards);return}
-    var y=Math.max(0,rewards.scrollTop||0);
-    var cardPitch=74;
-    var fadeDistance=44;
+    var y=Math.max(0,rewards.scrollTop||0),cardPitch=74,fadeDistance=44;
     for(var i=0;i<cards.length;i++){
-      var start=i*cardPitch;
-      var p=clamp((y-start)/fadeDistance,0,1);
-      cards[i].style.setProperty('--rewards-card-progress',String(p));
-      cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
+      var start=i*cardPitch,p=clamp((y-start)/fadeDistance,0,1);
+      cards[i].style.setProperty('--rewards-card-progress',String(p));cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
     }
   }
   function queue(){if(ticking)return;ticking=true;requestAnimationFrame(apply)}
+  async function loadWinners(force){
+    var rewards=document.getElementById('rewards'),data=initData();if(!rewards||!data||loading)return;
+    if(!force&&Date.now()-lastLoadedAt<5000)return;
+    loading=true;
+    try{
+      var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
+      var payload=await response.json().catch(function(){return null});
+      if(response.ok&&payload){render(payload.winners||[]);lastLoadedAt=Date.now()}
+    }catch(e){}finally{loading=false}
+  }
   function bind(){
-    var rewards=document.getElementById('rewards');
-    if(!rewards)return;
-    var cards=rewards.querySelectorAll('.home-live-winner-card');
-    reset(cards);
-    if(rewards.dataset.winnersScrollBound==='1'){queue();return}
-    rewards.dataset.winnersScrollBound='1';
-    rewards.addEventListener('scroll',queue,{passive:true});
-    window.addEventListener('resize',queue,{passive:true});
-    queue();
+    var rewards=document.getElementById('rewards');if(!rewards)return;
+    if(!q('#lotteryRewardsWinnersList',rewards))return;
+    if(!rewards.querySelector('.home-live-winner-card'))render([]);
+    var cards=rewards.querySelectorAll('.home-live-winner-card');reset(cards);
+    if(rewards.dataset.winnersScrollBound!=='1'){
+      rewards.dataset.winnersScrollBound='1';rewards.addEventListener('scroll',queue,{passive:true});window.addEventListener('resize',queue,{passive:true});
+    }
+    if(rewards.classList.contains('active'))loadWinners(true);queue();
+    if(!pollStarted){pollStarted=true;setInterval(function(){var r=document.getElementById('rewards');if(r&&r.classList.contains('active'))loadWinners(false)},10000)}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(ev){
-    var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');
-    if(target)setTimeout(bind,60);
-  },true);
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');if(target)setTimeout(function(){bind();loadWinners(true)},60)},true);
   window.addEventListener('vexa:section-mounted',bind);
 })();
 </script>`;
