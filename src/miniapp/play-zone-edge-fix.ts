@@ -453,10 +453,10 @@ html body:has(#slot.active) #slot .slot-machine-shadow{display:none!important}
 html body:has(#slot.active) #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:29.2%!important;
+  top:29.7%!important;
   left:9.8%!important;
   width:80.4%!important;
-  height:47.8%!important;
+  height:46%!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:2.4%!important;
@@ -492,7 +492,7 @@ html body:has(#slot.active) #slot .slot-reel::after{
 html body:has(#slot.active) #slot .slot-reel-strip{transform-style:preserve-3d!important}
 html body:has(#slot.active) #slot .slot-symbol{
   width:100%!important;
-  height:calc((min(92vw,390px) * .478 * 900 / 845) / 3)!important;
+  height:calc((min(92vw,390px) * .460 * 900 / 845) / 3)!important;
   margin-left:0!important;
   display:grid!important;
   place-items:center!important;
@@ -683,7 +683,7 @@ html body:has(#slot.active) #slot .slot-asset-button:disabled{opacity:.48!import
 html body:has(#slot.active) #slot .slot-live{margin-top:30px!important}
 @media(max-width:380px){
   html body:has(#slot.active) #slot .slot-cabinet{width:min(94vw,356px)!important;margin-top:10px!important}
-  html body:has(#slot.active) #slot .slot-symbol{height:calc((min(94vw,356px) * .558 * 900 / 845) / 3)!important}
+  html body:has(#slot.active) #slot .slot-symbol{height:calc((min(94vw,356px) * .460 * 900 / 845) / 3)!important}
   html body:has(#slot.active) #slot .slot-simple-controls{width:min(92vw,348px)!important;margin-top:-5px!important}
   html body:has(#slot.active) #slot .slot-simple-bet-row{grid-template-columns:58px minmax(0,1fr) 58px!important;gap:6px!important}
   html body:has(#slot.active) #slot .slot-asset-step{width:58px!important;height:58px!important}
