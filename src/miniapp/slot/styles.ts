@@ -85,9 +85,9 @@ body:has(#slot.active) header.top{
   position:relative!important;
   z-index:3!important;
   width:min(92vw,390px)!important;
-  margin:6px auto -100px!important;
+  margin:6px auto 0!important;
   transform:none!important;
-  transform-origin:50% 52%!important;
+  transform-origin:top center!important;
   transition:none!important;
   animation:none!important;
 }
@@ -178,6 +178,8 @@ body:has(#slot.active) header.top{
   transform:none!important;
   transform-style:preserve-3d!important;
 }
+#slot .slot-reel:first-child{transform:translateX(20px)!important}
+#slot .slot-reel:last-child{transform:translateX(-20px)!important}
 #slot .slot-reel::before,
 #slot .slot-reel::after{display:none!important;content:none!important}
 #slot .slot-reel-strip{
@@ -243,7 +245,6 @@ body:has(#slot.active) header.top{
   -webkit-backface-visibility:hidden!important;
 }
 #slot .slot-machine.is-win .slot-window{animation:slotWinPulse .7s ease both}
-#slot .slot-cabinet:has(.slot-machine.is-win){animation:slotCabinetWin .72s cubic-bezier(.16,.84,.24,1) both!important}
 
 #slot .slot-simple-controls{
   position:relative!important;
@@ -313,7 +314,16 @@ body:has(#slot.active) header.top{
   pointer-events:none!important;
   filter:drop-shadow(0 10px 14px rgba(0,0,0,.52))!important;
 }
-#slot .slot-asset-input img{display:none!important}
+#slot .slot-asset-input img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  pointer-events:none!important;
+  filter:drop-shadow(0 10px 14px rgba(0,0,0,.52))!important;
+}
+#slot .slot-asset-button>span,
+#slot .slot-asset-spin .slot-spin-label{visibility:hidden!important}
 #slot .slot-asset-step{
   width:64px!important;
   height:64px!important;
@@ -372,7 +382,7 @@ body:has(#slot.active) header.top{
 #slot .slot-asset-spin{
   width:min(76vw,300px)!important;
   height:82px!important;
-  margin:0 auto!important;
+  margin:-2px auto 0!important;
   border-radius:999px!important;
   cursor:pointer!important;
   transition:transform .15s ease,filter .15s ease,opacity .18s ease!important;
@@ -409,7 +419,7 @@ body:has(#slot.active) header.top{
 }
 #slot .slot-asset-spin:active,
 #slot .slot-asset-step:active{transform:scale(.96)!important;filter:brightness(.84)!important}
-#slot .slot-asset-button:disabled{opacity:.48!important;cursor:default!important}
+#slot .slot-asset-button:disabled{opacity:.48!important;cursor:default!important;filter:saturate(.55)!important}
 
 #slot .slot-live{
   position:relative!important;
@@ -506,12 +516,11 @@ body:has(#slot.active) header.top{
 #slot .slot-live-empty{font-size:12px!important;font-weight:820!important;color:rgba(255,255,255,.45)!important;padding:14px 0!important;text-align:center!important}
 
 @keyframes slotWinPulse{0%{transform:scale(1)}42%{transform:scale(1.018)}100%{transform:scale(1)}}
-@keyframes slotCabinetWin{0%{transform:scale(1)}38%{transform:scale(1.018) translateY(-2px)}100%{transform:scale(1)}}
 @keyframes slotLiveRowIn{0%{opacity:0;transform:translate3d(0,-12px,0) scale(.985);filter:blur(5px)}58%{opacity:1;transform:translate3d(0,2px,0) scale(1.006);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)}}
 @keyframes slotLiveSymbolPop{0%{opacity:0;transform:translateY(5px) scale(.72) rotate(-7deg)}70%{opacity:1;transform:translateY(-1px) scale(1.08) rotate(2deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
 
 @media(max-width:380px){
-  #slot .slot-cabinet{width:min(94vw,356px)!important;margin-top:10px!important;margin-bottom:-92px!important}
+  #slot .slot-cabinet{width:min(94vw,356px)!important;margin:10px auto 0!important}
   #slot .slot-symbol{height:calc((min(94vw,356px) * .460 * 900 / 845) / 3)!important}
   #slot .slot-simple-controls{width:min(92vw,348px)!important;margin-top:-5px!important}
   #slot .slot-simple-bet-row{grid-template-columns:58px minmax(0,1fr) 58px!important;gap:6px!important}
@@ -525,7 +534,6 @@ body:has(#slot.active) header.top{
 
 @media(prefers-reduced-motion:reduce){
   #slot .slot-cabinet,
-  #slot .slot-cabinet:has(.slot-machine.is-win),
   #slot .slot-live-row.is-entering,
   #slot .slot-live-symbol{animation:none!important}
   #slot .slot-symbol{transition:none!important}
