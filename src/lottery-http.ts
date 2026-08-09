@@ -9,14 +9,15 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
 
   try {
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/state') {
+      const serverStartedAtMs = Date.now();
       const userId = await authenticatedUser(request, env);
-      const serverNowMs = Date.now();
       const state = await getLotteryUserState(env, userId);
       const [lastDrawWon, prizes] = await Promise.all([
         userWonLotteryRound(env, userId, state.lastDraw?.roundId),
         getLotteryPrizes(env),
       ]);
-      return json({ ok: true, serverNowMs, ...state, prizes, lastDrawWon });
+      const serverNowMs = Date.now();
+      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, prizes, lastDrawWon });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
