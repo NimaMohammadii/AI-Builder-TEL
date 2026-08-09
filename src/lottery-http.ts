@@ -22,12 +22,13 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
       const userId = await authenticatedUser(request, env);
       const state = await getLotteryUserState(env, userId);
-      const roundId = state.lastDraw?.roundId || '';
+      const waitingForWinner = state.round?.status === 'open';
+      const roundId = waitingForWinner ? '' : (state.lastDraw?.roundId || '');
       const [winners, prizes] = await Promise.all([
         roundId ? getLotteryWinners(env, roundId) : Promise.resolve([]),
         getLotteryPrizes(env),
       ]);
-      return json({ ok: true, serverNowMs: Date.now(), roundId, winners, prizes });
+      return json({ ok: true, serverNowMs: Date.now(), roundId, waitingForWinner, winners, prizes });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/tickets') {
