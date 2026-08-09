@@ -3,7 +3,7 @@ import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access
 import { PUBLIC_BASE_URL } from './utils';
 import { setSpecialWheelEnabled } from './special-wheel-mode';
 import { sectionBackgroundR2Key } from './section-backgrounds';
-import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getTelegramMenuMessageId } from './telegram-menu-state';
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
@@ -307,48 +307,49 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 
     if (target.kind === 'ton') {
       const successText = `✅ لوگوی TON با فرمت ${source.type === 'image/png' ? 'PNG' : source.type === 'image/webp' ? 'WebP' : 'JPG'} ذخیره شد.`;
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+      await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/uploaded-image/ton-icon.png?v=${Date.now()}`,
         caption: successText,
         reply_markup: { inline_keyboard: [[{ text: '💎 تغییر لوگوی TON', callback_data: 'botadmin:tonlogo' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
-      await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'background') {
       const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+      await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
         caption: successText,
         reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
-      await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'crash-stage') {
       const successText = `✅ تصویر ${target.slot} از 10 کادر Crash ذخیره شد.`;
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+      await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/crash-stage-image/${target.slot}.png?v=${Date.now()}`,
         caption: successText,
         reply_markup: { inline_keyboard: [[{ text: '🚀 تصاویر داخل Crash', callback_data: 'botadmin:crashstage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText, reply_markup: { inline_keyboard: [[{ text: '🚀 تصاویر داخل Crash', callback_data: 'botadmin:crashstage' }]] } }));
-      await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'home-slot') {
-      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/home-lottery-slot.png?v=${Date.now()}`, '✅ تصویر اسلات صفحه Home ذخیره شد.', '🎰 تغییر دوباره', 'botadmin:homeslot');
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/home-lottery-slot.png?v=${Date.now()}`, '✅ تصویر اسلات صفحه Home ذخیره شد.', '🎰 تغییر دوباره', 'botadmin:homeslot');
     } else if (target.kind === 'rank') {
-      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/rank-character/${target.rank}.png?v=${Date.now()}`, `✅ تصویر رنک ${target.rank} ذخیره شد.`, '🏆 تصاویر رنک‌ها', 'botadmin:ranks');
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/rank-character/${target.rank}.png?v=${Date.now()}`, `✅ تصویر رنک ${target.rank} ذخیره شد.`, '🏆 تصاویر رنک‌ها', 'botadmin:ranks');
     } else if (target.kind === 'ghost-asset') {
-      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/ghost-run-asset/${target.asset}.png?v=${Date.now()}`, `✅ ${ghostAssetLabel(target.asset)} ذخیره شد.`, '👻 تصاویر Ghost Run', 'botadmin:ghostassets');
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/ghost-run-asset/${target.asset}.png?v=${Date.now()}`, `✅ ${ghostAssetLabel(target.asset)} ذخیره شد.`, '👻 تصاویر Ghost Run', 'botadmin:ghostassets');
     } else if (target.kind === 'slot-symbol') {
-      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/slot-symbols/${target.symbol}?v=${Date.now()}`, `✅ ${slotSymbolLabel(target.symbol)} ذخیره شد و روی ریل‌های Slot نمایش داده می‌شود.`, '🎰 شکل‌های اسلات', 'botadmin:slotsymbols');
+      await sendSavedImage(token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/slot-symbols/${target.symbol}?v=${Date.now()}`, `✅ ${slotSymbolLabel(target.symbol)} ذخیره شد و روی ریل‌های Slot نمایش داده می‌شود.`, '🎰 شکل‌های اسلات', 'botadmin:slotsymbols');
     } else {
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+      await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/game-card-image/${target.game}.png?v=${Date.now()}`,
         caption: `✅ تصویر کارت ${label(target.game)} ذخیره شد.`,
         reply_markup: { inline_keyboard: [[{ text: '🎮 تصاویر بازی‌ها', callback_data: 'botadmin:gameimages' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: `✅ تصویر کارت ${label(target.game)} ذخیره شد.` }));
-      await trackMenuMessage(env, message.chat.id, sent?.message_id);
     }
+    // Keep the confirmation/preview in the history, but always put a fresh
+    // admin home keyboard underneath it so the chat never ends at a bare
+    // upload confirmation. The previously tracked prompt was deleted above;
+    // sendAdminHome will replace that stale record with the new menu message.
+    await sendHome(env, token, message.chat.id).catch(() => undefined);
   } catch (error) {
     await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'آپلود انجام نشد.'}`);
   }
@@ -438,11 +439,10 @@ async function promptImage(token: string, chatId: number, messageId: number | un
   await upsert(token, chatId, messageId, `${title}\n\n${description}\n\nPNG، JPG و WebP پشتیبانی می‌شوند. برای حفظ کیفیت و شفافیت بهتر است تصویر را به‌صورت File/Document بفرستید.`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
 }
 
-async function sendSavedImage(env: Env, token: string, chatId: number, photo: string, caption: string, buttonText: string, callbackData: string): Promise<void> {
+async function sendSavedImage(token: string, chatId: number, photo: string, caption: string, buttonText: string, callbackData: string): Promise<void> {
   const reply_markup = { inline_keyboard: [[{ text: buttonText, callback_data: callbackData }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] };
-  const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', { chat_id: chatId, photo, caption, reply_markup })
+  await tg<{ message_id?: number }>(token, 'sendPhoto', { chat_id: chatId, photo, caption, reply_markup })
     .catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: chatId, text: caption, reply_markup }));
-  await trackMenuMessage(env, chatId, sent?.message_id);
 }
 
 async function replaceUploadPrompt(env: Env, token: string, message: Message, text: string): Promise<void> {
@@ -461,10 +461,6 @@ async function deleteTrackedMenu(env: Env, token: string, chatId: number): Promi
 
 async function deleteMessage(token: string, chatId: number, messageId: number): Promise<void> {
   await tg(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
-}
-
-async function trackMenuMessage(env: Env, chatId: number, messageId: number | undefined): Promise<void> {
-  if (messageId) await setTelegramMenuMessageId(env, chatId, messageId);
 }
 
 async function saveImage(env: Env, token: string, target: UploadTarget, source: UploadSource): Promise<void> {
