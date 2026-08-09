@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { getCurrentLotteryRound, getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, startLotteryNow, updateLotterySettings } from './lottery';
+import { getLotteryPrizes, LOTTERY_WINNER_COUNT, setLotteryPrize } from './lottery-prizes';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
@@ -7,7 +8,7 @@ type Callback = { id: string; data?: string; from: { id: number }; message?: { m
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
-type InputMode = 'draw' | 'price' | 'limit' | 'interval';
+type InputMode = 'draw' | 'price' | 'limit' | 'interval' | `prize:${number}`;
 
 const STATE_PREFIX = 'admin:lottery-input:';
 const NANO = 1_000_000_000;
@@ -64,6 +65,20 @@ async function handleCallback(env: Env, callback: Callback): Promise<Response> {
       return ok();
     }
 
+    if (action === 'prizes') {
+      await sendPrizeMenu(env, chatId, messageId);
+      return ok();
+    }
+
+    if (action === 'prize') {
+      const rank = Number(arg);
+      if (!Number.isInteger(rank) || rank < 1 || rank > LOTTERY_WINNER_COUNT) throw new Error('Invalid prize rank');
+      const mode = `prize:${rank}` as InputMode;
+      await setState(env, callback.from.id, mode);
+      await prompt(env, chatId, messageId, mode);
+      return ok();
+    }
+
     if (action === 'startnow') {
       await getCurrentLotteryRound(env, false);
       const round = await startLotteryNow(env);
@@ -110,7 +125,19 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
   try {
     if (text === '/cancel' || text === 'لغو') {
       await clearState(env, userId);
-      await sendLotteryMenu(env, message.chat.id, menuMessageId);
+      if (isPrizeMode(mode)) await sendPrizeMenu(env, message.chat.id, menuMessageId);
+      else await sendLotteryMenu(env, message.chat.id, menuMessageId);
+      return;
+    }
+
+    if (isPrizeMode(mode)) {
+      const rank = prizeRank(mode);
+      const gram = Number(text.replace(',', '.'));
+      if (!Number.isFinite(gram) || gram < 0 || gram > 1000) throw new Error('مبلغ جایزه معتبر GRAM بفرستید. مثال: 10 یا 0.5');
+      const nano = Math.round(gram * NANO);
+      await setLotteryPrize(env, rank, nano);
+      await finishInput(env, message, userId);
+      await sendPrizeMenu(env, message.chat.id, menuMessageId, `✅ جایزه رتبه #${rank} روی ${formatGram(nano)} GRAM تنظیم شد.`);
       return;
     }
 
@@ -165,8 +192,9 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
     '',
     `وضعیت Lottery: ${settings.enabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
     `فروش تیکت: ${settings.salesOpen ? 'باز ✅' : 'بسته ❌'}`,
-    `تیکت اول رایگان: ${settings.freeTicketEnabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
+    `تیکت رایگان هر Round: ${settings.freeTicketEnabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
     `قیمت هر تیکت: ${formatGram(settings.ticketPriceNano)} GRAM`,
+    `برنده در هر Round: ${LOTTERY_WINNER_COUNT} نفر`,
     `سقف هر کاربر: ${settings.maxTicketsPerUser > 0 ? settings.maxTicketsPerUser : 'بدون محدودیت'}`,
     `فاصله پیش‌فرض Draw: ${formatMinutes(settings.drawIntervalMinutes)}`,
     '',
@@ -183,6 +211,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
 
   const rows: Keyboard = [
     [{ text: '🚀 Start Now', callback_data: 'botadmin:lottery:startnow' }],
+    [{ text: '🏆 جوایز ۱۵ برنده', callback_data: 'botadmin:lottery:prizes' }],
     [{ text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' }],
     [
       { text: settings.salesOpen ? '⏸ توقف فروش' : '▶️ شروع فروش', callback_data: 'botadmin:lottery:toggle:sales' },
@@ -212,16 +241,48 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
-async function prompt(env: Env, chatId: number, messageId: number | undefined, mode: InputMode): Promise<void> {
-  const text = mode === 'draw'
-    ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
-    : mode === 'price'
-      ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
-      : mode === 'limit'
-        ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
-        : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
+async function sendPrizeMenu(env: Env, chatId: number, messageId?: number, notice = ''): Promise<void> {
+  const prizes = await getLotteryPrizes(env);
+  const lines = prizes.map((item) => `#${item.rank}: ${formatGram(item.prizeNano)} GRAM`);
+  const text = [
+    notice,
+    '🏆 Lottery Prizes',
+    '',
+    'هر Round تا ۱۵ پلیر واقعی و متفاوت برنده می‌شوند.',
+    'روی هر رتبه بزن و مبلغ جایزه همان رتبه را تغییر بده.',
+    '',
+    ...lines,
+  ].filter(Boolean).join('\n');
+
+  const rows: Keyboard = [];
+  for (let start = 1; start <= LOTTERY_WINNER_COUNT; start += 3) {
+    const row: Button[] = [];
+    for (let rank = start; rank < start + 3 && rank <= LOTTERY_WINNER_COUNT; rank += 1) {
+      const prize = prizes[rank - 1];
+      row.push({ text: `#${rank} · ${formatGram(prize?.prizeNano || 0)}`, callback_data: `botadmin:lottery:prize:${rank}` });
+    }
+    rows.push(row);
+  }
+  rows.push([{ text: '⬅️ Lottery Control', callback_data: 'botadmin:lottery:menu' }]);
+
   const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, `${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:lottery:menu' }]]);
+  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  if (active) await setTelegramMenuMessageId(env, chatId, active);
+}
+
+async function prompt(env: Env, chatId: number, messageId: number | undefined, mode: InputMode): Promise<void> {
+  const text = isPrizeMode(mode)
+    ? `🏆 جایزه رتبه #${prizeRank(mode)}\n\nمبلغ جایزه را به GRAM بفرستید.\nمثال: 10 یا 0.5\nبرای بدون جایزه: 0`
+    : mode === 'draw'
+      ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
+      : mode === 'price'
+        ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
+        : mode === 'limit'
+          ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
+          : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
+  const back = isPrizeMode(mode) ? 'botadmin:lottery:prizes' : 'botadmin:lottery:menu';
+  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
+  const active = await upsert(env.BOT_TOKEN, chatId, tracked, `${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
@@ -231,8 +292,14 @@ async function finishInput(env: Env, message: Message, userId: number): Promise<
 }
 
 function normalizeMode(value: string): InputMode | null {
-  return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' ? value : null;
+  if (value === 'draw' || value === 'price' || value === 'limit' || value === 'interval') return value;
+  const match = /^prize:(\d+)$/.exec(value);
+  if (!match) return null;
+  const rank = Number(match[1]);
+  return Number.isInteger(rank) && rank >= 1 && rank <= LOTTERY_WINNER_COUNT ? `prize:${rank}` as InputMode : null;
 }
+function isPrizeMode(mode: InputMode): boolean { return String(mode).startsWith('prize:'); }
+function prizeRank(mode: InputMode): number { return Math.max(1, Math.min(LOTTERY_WINNER_COUNT, Number(String(mode).split(':')[1]) || 1)); }
 function stateKey(userId: number): string { return `${STATE_PREFIX}${userId}`; }
 async function getState(env: Env, userId: number): Promise<InputMode | null> {
   const value = await env.BOT_CACHE.get(stateKey(userId)).catch(() => null);
