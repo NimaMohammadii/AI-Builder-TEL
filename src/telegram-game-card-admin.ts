@@ -7,14 +7,16 @@ import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-m
 
 type Photo = { file_id: string; file_size?: number };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
-type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document };
+type Audio = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document; audio?: Audio };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
-type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' };
+type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' | 'audio' };
+type AudioGame = 'slot' | 'dice';
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'audio'; game: AudioGame };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -33,8 +35,12 @@ const CRASH_STAGE_STATE_PREFIX = 'crash-stage:';
 const RANK_STATE_PREFIX = 'rank:';
 const GHOST_ASSET_STATE_PREFIX = 'ghost-asset:';
 const SLOT_SYMBOL_STATE_PREFIX = 'slot-symbol:';
+const AUDIO_STATE_PREFIX = 'audio:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
+const SLOT_AUDIO_KEY = 'slot-spin-audio';
+const DICE_AUDIO_KEY = 'miniapp/audio';
+const DICE_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const RANKS = ['Rookie', 'Explorer', 'Pro', 'Elite', 'Master', 'Legend', 'Titan'] as const;
 const GHOST_ASSETS = [
   ['background', 'Background اصلی'], ['background1', 'Background 1'], ['background2', 'Background 2'],
@@ -47,6 +53,8 @@ const SLOT_SYMBOLS = [
 ] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
+const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'oga', 'webm', 'mp4', 'm4a', 'aac']);
 // Versioned URLs are safe to cache forever (for example, Telegram's upload
 // confirmation preview). The Play Hub intentionally uses stable URLs, so those
 // responses must be re-fetched after an admin replaces an image.
@@ -144,6 +152,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     const data = callback.data || '';
     const ours = data === 'botadmin:home'
       || data === 'botadmin:imagesmenu'
+      || data === 'botadmin:audiomenu'
       || data === 'botadmin:gameimages'
       || data === 'botadmin:gamebackgrounds'
       || data === 'botadmin:crashstage'
@@ -152,6 +161,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:ranks'
       || data === 'botadmin:ghostassets'
       || data === 'botadmin:slotsymbols'
+      || data.startsWith('botadmin:audio:')
       || data.startsWith('botadmin:gameimage:')
       || data.startsWith('botadmin:gamebackground:')
       || data.startsWith('botadmin:crashstage:')
@@ -176,6 +186,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:imagesmenu') {
       await clearState(env, callback.from.id);
       await sendImagesMenu(token, chatId, messageId);
+    } else if (data === 'botadmin:audiomenu') {
+      await clearState(env, callback.from.id);
+      await sendAudioMenu(env, token, chatId, messageId);
     } else if (data === 'botadmin:gameimages') {
       await clearState(env, callback.from.id);
       await sendGameMenu(token, chatId, messageId);
@@ -202,6 +215,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:slotsymbols') {
       await clearState(env, callback.from.id);
       await sendSlotSymbolMenu(env, token, chatId, messageId);
+    } else if (data.startsWith('botadmin:audio:')) {
+      const game = normalizeAudioGame(data.slice('botadmin:audio:'.length));
+      if (game) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${AUDIO_STATE_PREFIX}${game}`, { expirationTtl: 900 });
+        await promptAudio(token, chatId, messageId, game);
+      }
     } else if (data.startsWith('botadmin:rank:')) {
       const rank = normalizeRank(data.slice('botadmin:rank:'.length));
       if (rank) {
@@ -281,7 +300,32 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'ghost-asset') await sendGhostAssetMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'slot-symbol') await sendSlotSymbolMenu(env, token, message.chat.id, menuMessageId);
+    else if (target.kind === 'audio') await sendAudioMenu(env, token, message.chat.id, menuMessageId);
     else await sendImagesMenu(token, message.chat.id, menuMessageId);
+    return ok();
+  }
+
+  if (target.kind === 'audio') {
+    const source = audioFromMessage(message);
+    if (!source) {
+      await replaceUploadPrompt(env, token, message, '❌ فایل صوتی MP3، WAV، OGG، WebM، M4A یا AAC بفرستید یا /cancel را بزنید.', 'botadmin:audiomenu');
+      return ok();
+    }
+    try {
+      await saveAudio(env, token, target.game, source);
+      await clearState(env, message.from.id);
+      await deleteMessage(token, message.chat.id, message.message_id);
+      await deleteTrackedMenu(env, token, message.chat.id);
+      const successText = `✅ صدای ${audioGameLabel(target.game)} ذخیره شد${target.game === 'dice' ? ' و فعال است.' : '.'}`;
+      const sent = await tg<{ message_id?: number }>(token, 'sendMessage', {
+        chat_id: message.chat.id,
+        text: successText,
+        reply_markup: { inline_keyboard: [[{ text: `🔊 تغییر صدای ${audioGameLabel(target.game)}`, callback_data: `botadmin:audio:${target.game}` }], [{ text: '🎵 صداهای بازی', callback_data: 'botadmin:audiomenu' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
+      });
+      await trackMenuMessage(env, message.chat.id, sent?.message_id);
+    } catch (error) {
+      await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'آپلود صدا انجام نشد.'}`, 'botadmin:audiomenu');
+    }
     return ok();
   }
 
@@ -360,7 +404,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
 }
 
 async function sendImagesMenu(token: string, chatId: number, messageId?: number): Promise<void> {
-  await upsert(token, chatId, messageId, '🖼 تصاویر و ظاهر\n\nبخش تصویری موردنظر را انتخاب کنید.', [
+  await upsert(token, chatId, messageId, '🖼 تصاویر و ظاهر\n\nبخش موردنظر را انتخاب کنید.', [
     [
       { text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' },
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
@@ -369,6 +413,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🚀 تصاویر Crash', callback_data: 'botadmin:crashstage' },
       { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
+    [{ text: '🎵 صداهای بازی', callback_data: 'botadmin:audiomenu' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: '🎰 شکل‌های بازی Slot', callback_data: 'botadmin:slotsymbols' }],
     [
@@ -377,6 +422,20 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     ],
     [{ text: '👻 تصاویر داخل Ghost Run', callback_data: 'botadmin:ghostassets' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ]);
+}
+
+async function sendAudioMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const [slotAudio, diceAudio] = await Promise.all([
+    env.ASSETS.head(SLOT_AUDIO_KEY).then(Boolean).catch(() => false),
+    env.ASSETS.head(DICE_AUDIO_KEY).then(Boolean).catch(() => false),
+  ]);
+  await upsert(token, chatId, messageId, '🎵 صداهای بازی\n\nصدای بازی را انتخاب کنید و فایل جدید را بفرستید. آپلود جدید مستقیماً جایگزین صدای فعلی می‌شود.', [
+    [
+      { text: `${slotAudio ? '✅ ' : ''}🎰 Slot`, callback_data: 'botadmin:audio:slot' },
+      { text: `${diceAudio ? '✅ ' : ''}🎲 Dice`, callback_data: 'botadmin:audio:dice' },
+    ],
+    [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
   ]);
 }
 
@@ -438,6 +497,10 @@ async function promptImage(token: string, chatId: number, messageId: number | un
   await upsert(token, chatId, messageId, `${title}\n\n${description}\n\nPNG، JPG و WebP پشتیبانی می‌شوند. برای حفظ کیفیت و شفافیت بهتر است تصویر را به‌صورت File/Document بفرستید.`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
 }
 
+async function promptAudio(token: string, chatId: number, messageId: number | undefined, game: AudioGame): Promise<void> {
+  await upsert(token, chatId, messageId, `🔊 صدای ${audioGameLabel(game)}\n\nفایل صوتی جدید را بفرستید. فایل قبلی مستقیماً جایگزین می‌شود.\n\nMP3، WAV، OGG، WebM، M4A و AAC پشتیبانی می‌شوند. حداکثر حجم ۱۰ مگابایت است.`, [[{ text: '⬅️ صداهای بازی', callback_data: 'botadmin:audiomenu' }]]);
+}
+
 async function sendSavedImage(env: Env, token: string, chatId: number, photo: string, caption: string, buttonText: string, callbackData: string): Promise<void> {
   const reply_markup = { inline_keyboard: [[{ text: buttonText, callback_data: callbackData }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] };
   const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', { chat_id: chatId, photo, caption, reply_markup })
@@ -445,9 +508,9 @@ async function sendSavedImage(env: Env, token: string, chatId: number, photo: st
   await trackMenuMessage(env, chatId, sent?.message_id);
 }
 
-async function replaceUploadPrompt(env: Env, token: string, message: Message, text: string): Promise<void> {
+async function replaceUploadPrompt(env: Env, token: string, message: Message, text: string, back = 'botadmin:imagesmenu'): Promise<void> {
   await deleteMessage(token, message.chat.id, message.message_id);
-  await upsert(token, message.chat.id, await trackedMenuMessageId(env, message.chat.id), text, [[{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]]);
+  await upsert(token, message.chat.id, await trackedMenuMessageId(env, message.chat.id), text, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
 }
 
 async function trackedMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
@@ -467,7 +530,26 @@ async function trackMenuMessage(env: Env, chatId: number, messageId: number | un
   if (messageId) await setTelegramMenuMessageId(env, chatId, messageId);
 }
 
-async function saveImage(env: Env, token: string, target: UploadTarget, source: UploadSource): Promise<void> {
+async function saveAudio(env: Env, token: string, game: AudioGame, source: UploadSource): Promise<void> {
+  if (source.size && source.size > MAX_BYTES) throw new Error('حجم صدا باید کمتر از ۱۰ مگابایت باشد.');
+  const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
+  if (!file.file_path) throw new Error('فایل صوتی از تلگرام دریافت نشد.');
+  const response = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
+  if (!response.ok) throw new Error('دانلود فایل صوتی ناموفق بود.');
+  const bytes = await response.arrayBuffer();
+  if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error('حجم صدا باید کمتر از ۱۰ مگابایت باشد.');
+  const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const contentType = AUDIO_TYPES.has(source.type) ? source.type : AUDIO_TYPES.has(responseType) ? responseType : 'audio/mpeg';
+  const version = String(Date.now());
+  const assetKey = game === 'slot' ? SLOT_AUDIO_KEY : DICE_AUDIO_KEY;
+  await env.ASSETS.put(assetKey, bytes, {
+    httpMetadata: { contentType },
+    customMetadata: { version, gameId: game, contentType, uploadedVia: `telegram-admin-${source.via}` },
+  });
+  if (game === 'dice') await env.BOT_CACHE.put(DICE_AUDIO_ENABLED_KEY, '1');
+}
+
+async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'audio' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
   if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
@@ -499,7 +581,7 @@ async function saveImage(env: Env, token: string, target: UploadTarget, source: 
               ? { version, kind: target.asset, contentType, uploadedVia: `telegram-admin-${source.via}` }
               : target.kind === 'slot-symbol'
                 ? { version, symbolId: target.symbol, contentType, uploadedVia: `telegram-admin-${source.via}` }
-              : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
+                : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: metadata,
@@ -517,6 +599,32 @@ function imageFromMessage(message: Message): UploadSource | null {
   const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
   const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : TYPES.has(mime) ? mime : '';
   return type ? { fileId: doc.file_id, size: doc.file_size, type, via: 'document' } : null;
+}
+
+function audioFromMessage(message: Message): UploadSource | null {
+  if (message.audio?.file_id) {
+    const mime = String(message.audio.mime_type || '').split(';')[0].trim().toLowerCase();
+    const ext = String(message.audio.file_name || '').split('.').pop()?.toLowerCase();
+    const type = audioContentType(mime, ext);
+    return type ? { fileId: message.audio.file_id, size: message.audio.file_size, type, via: 'audio' } : null;
+  }
+  const doc = message.document;
+  if (!doc?.file_id) return null;
+  const mime = String(doc.mime_type || '').split(';')[0].trim().toLowerCase();
+  const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
+  const type = audioContentType(mime, ext);
+  return type ? { fileId: doc.file_id, size: doc.file_size, type, via: 'document' } : null;
+}
+
+function audioContentType(mime: string, ext: string | undefined): string {
+  if (AUDIO_TYPES.has(mime)) return mime;
+  if (!ext || !AUDIO_EXTENSIONS.has(ext)) return '';
+  if (ext === 'mp3') return 'audio/mpeg';
+  if (ext === 'wav') return 'audio/wav';
+  if (ext === 'ogg' || ext === 'oga') return 'audio/ogg';
+  if (ext === 'webm') return 'audio/webm';
+  if (ext === 'aac') return 'audio/aac';
+  return 'audio/mp4';
 }
 
 async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
@@ -553,6 +661,10 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
+  if (raw.startsWith(AUDIO_STATE_PREFIX)) {
+    const game = normalizeAudioGame(raw.slice(AUDIO_STATE_PREFIX.length));
+    return game ? { kind: 'audio', game } : null;
+  }
   if (raw.startsWith(RANK_STATE_PREFIX)) {
     const rank = normalizeRank(raw.slice(RANK_STATE_PREFIX.length));
     return rank ? { kind: 'rank', rank } : null;
@@ -576,6 +688,8 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const game = normalizeGame(raw);
   return game ? { kind: 'game', game } : null;
 }
+function normalizeAudioGame(value: unknown): AudioGame | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'slot' || clean === 'dice' ? clean : null; }
+function audioGameLabel(game: AudioGame): string { return game === 'slot' ? 'Slot' : 'Dice'; }
 function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }
 function normalizeGhostAsset(value: unknown): string | null { const clean = String(value || '').trim().toLowerCase(); return GHOST_ASSETS.some(([asset]) => asset === clean) ? clean : null; }
 function ghostAssetLabel(asset: string): string { return GHOST_ASSETS.find(([id]) => id === asset)?.[1] || asset; }
