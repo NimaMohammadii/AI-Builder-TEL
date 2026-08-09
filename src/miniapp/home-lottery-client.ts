@@ -53,7 +53,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function remainingLimit(){if(!state||!state.settings)return MAX_QTY;var limit=Math.max(0,Number(state.settings.maxTicketsPerUser)||0);if(!limit)return MAX_QTY;return Math.max(0,limit-Math.max(0,Number(state.ticketCount)||0))}
   function maxSelectable(){return Math.max(1,Math.min(MAX_QTY,remainingLimit()||1))}
   function balanceIconSrc(){var img=q('.top-balance-pill .ton-mini-icon img');return String(img&&(img.getAttribute('src')||img.src)||'')}
-  function paidButtonHtml(cost){var src=balanceIconSrc(),icon=src?'<img src="'+src+'" alt="" aria-hidden="true" style="width:18px;height:18px;display:block;object-fit:contain">':'';return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon+'<span>'+gramPrice(cost)+'</span></span>'}
+  function paidButtonHtml(cost){var src=balanceIconSrc(),icon=src?'<img src="'+src+'" alt="" aria-hidden="true" style="width:22px;height:22px;display:block;object-fit:contain">':'';return '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon+'<span>'+gramPrice(cost)+'</span></span>'}
   function prizeRowsHtml(prizes){
     var rows=Array.isArray(prizes)?prizes:[],html='';
     for(var i=0;i<15;i++){
