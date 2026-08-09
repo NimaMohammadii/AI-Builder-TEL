@@ -150,6 +150,9 @@ export async function ensureLotteryTables(env: Env): Promise<void> {
     UNIQUE(user_id, purchase_id, id)
   )`).run();
   await env.DB.prepare('ALTER TABLE lottery_tickets ADD COLUMN ticket_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare(`INSERT OR IGNORE INTO lottery_round_free_claims
+    (user_id,round_id,claim_request_id,ticket_id,claimed_at)
+    SELECT user_id,round_id,purchase_id,id,created_at FROM lottery_tickets WHERE is_free=1`).run().catch(() => undefined);
 
   await env.DB.prepare(`UPDATE lottery_rounds SET status='closed',updated_at=CURRENT_TIMESTAMP
     WHERE status='open' AND id NOT IN (
