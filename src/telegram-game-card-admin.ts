@@ -55,6 +55,7 @@ const LIVE_GAME_CARD_CACHE_CONTROL = 'no-store, max-age=0';
 
 export async function handleGameCardAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
+  if (request.method === 'GET' && url.pathname === '/app/api/game-card-images') return serveGameCardManifest(env);
   const image = url.pathname.match(/^\/app\/api\/game-card-image\/([^/]+)$/);
   if (request.method === 'GET' && image) return serveImage(request, env, image[1]);
   const crashStageImage = url.pathname.match(/^\/app\/api\/crash-stage-image\/(\d+)(?:\.png)?$/);
@@ -88,6 +89,20 @@ async function serveImage(request: Request, env: Env, raw: string): Promise<Resp
       'x-content-type-options': 'nosniff',
     },
   });
+}
+
+async function serveGameCardManifest(env: Env): Promise<Response> {
+  const images: Record<string, string> = {};
+  await Promise.all(GAMES.map(async ([game]) => {
+    const object = await env.ASSETS.head(gameKey(game)).catch(() => null);
+    if (!object) {
+      images[game] = `/app/api/section-lock-image/${game}/locked.png?v=1`;
+      return;
+    }
+    const version = String(object.customMetadata?.version || object.uploaded?.getTime?.() || '1');
+    images[game] = `/app/api/game-card-image/${game}.png?v=${encodeURIComponent(version)}`;
+  }));
+  return Response.json({ images }, { headers: { 'cache-control': 'no-store' } });
 }
 
 async function serveCrashStageImage(request: Request, env: Env, raw: string): Promise<Response> {
