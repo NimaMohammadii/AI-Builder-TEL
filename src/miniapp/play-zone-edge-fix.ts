@@ -453,10 +453,10 @@ html body:has(#slot.active) #slot .slot-machine-shadow{display:none!important}
 html body:has(#slot.active) #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:29.7%!important;
+  top:31.2%!important;
   left:9.8%!important;
   width:80.4%!important;
-  height:46%!important;
+  height:43%!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:2.4%!important;
@@ -509,8 +509,8 @@ html body:has(#slot.active) #slot .slot-symbol{
   filter:none!important;
 }
 html body:has(#slot.active) #slot .slot-symbol-image{
-  width:80%!important;
-  height:80%!important;
+  width:76%!important;
+  height:76%!important;
   object-fit:contain!important;
   filter:drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
 }
