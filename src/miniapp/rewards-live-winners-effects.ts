@@ -57,7 +57,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
 </style>
 <script id="vexa-rewards-live-winners-scroll-script">
 (function(){
-  var ticking=false,loading=false,lastLoadedAt=0,pollStarted=false;
+  var ticking=false,loading=false,lastLoadedAt=0,pollStarted=false,phaseTimer=0;
   function q(s,r){return (r||document).querySelector(s)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
@@ -94,9 +94,17 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     var level=Math.max(1,Math.floor(Number(winner.level)||1));
     return '<article class="home-live-winner-card" data-rank="'+rankText+'">'+avatarHtml(winner)+'<div class="home-live-winner-user"><strong>'+maskedName(winner)+'</strong><span>Level '+level+'</span></div><div class="home-live-winner-amount">+'+gram(winner.prizeNano)+' GRAM</div></article>';
   }
+  function setStateTitle(waiting){var title=q('#lotteryRewardsStateTitle');if(title)title.textContent=waiting?'Waiting for Winner':'Previous Winners'}
   function render(winners,waiting){
     var list=q('#lotteryRewardsWinnersList');if(!list)return;
+    setStateTitle(!!waiting);
     var map=winnerMap(winners),html='';for(var rank=1;rank<=15;rank++)html+=cardHtml(rank,map[rank],!!waiting);list.innerHTML=html;hydrateAvatars(list);queue();
+  }
+  function schedulePhaseRefresh(payload){
+    if(phaseTimer){clearTimeout(phaseTimer);phaseTimer=0}
+    var next=Number(payload&&payload.nextDisplayChangeAtMs),serverNow=Number(payload&&payload.serverNowMs);
+    if(!Number.isFinite(next)||!Number.isFinite(serverNow)||next<=serverNow)return;
+    phaseTimer=setTimeout(function(){phaseTimer=0;loadWinners(true)},Math.max(80,next-serverNow+80));
   }
   function prepare(cards){for(var i=0;i<cards.length;i++)cards[i].setAttribute('data-rank',String(i+1).padStart(2,'0'))}
   function reset(cards){prepare(cards);for(var i=0;i<cards.length;i++){cards[i].style.setProperty('--rewards-card-progress','0');cards[i].setAttribute('data-rewards-hidden','0')}}
@@ -119,7 +127,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     try{
       var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
       var payload=await response.json().catch(function(){return null});
-      if(response.ok&&payload){render(payload.winners||[],!!payload.waitingForWinner);lastLoadedAt=Date.now()}
+      if(response.ok&&payload){render(payload.winners||[],!!payload.waitingForWinner);schedulePhaseRefresh(payload);lastLoadedAt=Date.now()}
     }catch(e){}finally{loading=false}
   }
   function bind(){
