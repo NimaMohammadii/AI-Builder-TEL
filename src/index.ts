@@ -4,6 +4,7 @@ import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-c
 import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
 import { registerChickenCrossRoutes } from './chicken-cross-routes';
+import { registerSlotAssetRoutes } from './slot-assets';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
 import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
@@ -139,6 +140,7 @@ app.get('/app/api/home-intro-image-meta', async (c) => {
 registerFriendGameRoutes(app);
 registerWheelRoutes(app);
 registerChickenCrossRoutes(app);
+registerSlotAssetRoutes(app);
 
 app.post('/telegram/webhook', async (c) => {
   const update = await c.req.json<TelegramUpdate>().catch(() => null);
