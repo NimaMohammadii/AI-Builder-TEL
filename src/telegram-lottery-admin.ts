@@ -153,7 +153,6 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
 }
 
 async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, notice = ''): Promise<void> {
-  await ensureOpenRound(env).catch(() => undefined);
   const overview = await getLotteryAdminOverview(env);
   const { settings, round, stats } = overview;
   const drawMs = round?.status === 'open' ? Date.parse(round.drawAt) - Date.now() : 0;
