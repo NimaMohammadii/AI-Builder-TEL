@@ -10,7 +10,9 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/state') {
       const userId = await authenticatedUser(request, env);
       const serverNowMs = Date.now();
-      return json({ ok: true, serverNowMs, ...(await getLotteryUserState(env, userId)) });
+      const state = await getLotteryUserState(env, userId);
+      const lastDrawWon = await userWonDraw(env, userId, state.lastDraw?.roundId, state.lastDraw?.winningCode);
+      return json({ ok: true, serverNowMs, ...state, lastDrawWon });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/tickets') {
@@ -33,6 +35,19 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
     const authError = /telegram|init data|unauthorized|auth/i.test(message);
     return json({ error: message }, authError ? 401 : 400);
   }
+}
+
+async function userWonDraw(env: Env, userId: string, roundId: unknown, winningCode: unknown): Promise<boolean> {
+  const round = String(roundId || '').trim();
+  const code = String(winningCode || '').replace(/[^0-9]/g, '').slice(-5).padStart(5, '0');
+  if (!round || !/^\d{5}$/.test(code)) return false;
+  const ticket = await env.DB.prepare(`SELECT id FROM lottery_tickets
+    WHERE user_id=? AND round_id=?
+      AND COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5))=?
+    LIMIT 1`)
+    .bind(userId, round, code)
+    .first<{ id: string }>();
+  return Boolean(ticket?.id);
 }
 
 async function authenticatedUser(request: Request, env: Env): Promise<string> {
