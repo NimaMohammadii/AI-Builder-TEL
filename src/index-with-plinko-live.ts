@@ -1,12 +1,15 @@
 import app from './index-game-services';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
+import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home-lottery-client';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';
+import { handleLotteryAdminRequest } from './telegram-lottery-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
 import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin';
 import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
+import { handleLotteryRequest } from './lottery-http';
 import { gameBotToken, validateTelegramInitData } from './utils';
 import { handleSectionAccessAdminRequest } from './telegram-section-access-admin';
 import { getSectionAccess, isMiniAppAdmin } from './section-access';
@@ -79,6 +82,9 @@ export default {
       );
     }
 
+    const lotteryResponse = await handleLotteryRequest(request, runtimeEnv);
+    if (lotteryResponse) return lotteryResponse;
+
     const crashGhostLiveBetsAdminResponse = await handleCrashGhostLiveBetsAdminRequest(request, runtimeEnv);
     if (crashGhostLiveBetsAdminResponse) return crashGhostLiveBetsAdminResponse;
 
@@ -93,6 +99,9 @@ export default {
 
     const gramWithdrawalAdminResponse = await handleGramWithdrawalAdminRequest(request, runtimeEnv);
     if (gramWithdrawalAdminResponse) return gramWithdrawalAdminResponse;
+
+    const lotteryAdminResponse = await handleLotteryAdminRequest(request, runtimeEnv);
+    if (lotteryAdminResponse) return lotteryAdminResponse;
 
     const sectionAccessAdminResponse = await handleSectionAccessAdminRequest(request, runtimeEnv);
     if (sectionAccessAdminResponse) return sectionAccessAdminResponse;
@@ -118,7 +127,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.delete('content-length');
     headers.set('cache-control', 'no-store');
-    return new Response(html.replace('</body>', `${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
+    return new Response(html.replace('</body>', `${HOME_LOTTERY_CLIENT_SCRIPT}${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
       status: response.status,
       statusText: response.statusText,
       headers,
