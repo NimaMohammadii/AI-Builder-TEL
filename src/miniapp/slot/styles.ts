@@ -237,7 +237,6 @@ body:has(#slot.active) header.top{
   pointer-events:none!important;
   opacity:1!important;
   filter:drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
-  transition:filter .16s ease!important;
 }
 #slot .slot-reel:first-child .slot-symbol-image{transform:translateX(-11%)!important}
 #slot .slot-reel:last-child .slot-symbol-image{transform:translateX(11%)!important}
@@ -262,9 +261,6 @@ body:has(#slot.active) header.top{
   will-change:transform!important;
   backface-visibility:hidden!important;
   -webkit-backface-visibility:hidden!important;
-}
-#slot .slot-machine.is-spinning .slot-symbol-image{
-  filter:blur(1.2px) drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
 }
 #slot .slot-machine.is-win .slot-window{animation:slotWinPulse .7s ease both}
 
