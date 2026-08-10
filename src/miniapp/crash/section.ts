@@ -20,7 +20,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     if(v<5)return .62+(v-3)*.08;
     return Math.min(1,.78+(1-Math.exp(-(v-5)*.12))*.22)
   }
-  function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(-35,Math.min(80,deg));return deg*Math.PI/180}
+  function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
   function canvasDpr(){return Math.min(1.4,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
   function loadStageImages(){
@@ -127,9 +127,8 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
             <span class="crash-flame-outer"></span>
             <span class="crash-flame-middle"></span>
             <span class="crash-flame-core"></span>
-            <i></i><i></i><i></i>
           </div>
-          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 108%" field-of-view="28deg" exposure="1.08" shadow-intensity=".9" shadow-softness=".9" auto-rotate auto-rotate-delay="0" rotation-per-second="18deg" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
+          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 108%" field-of-view="28deg" exposure="1.08" auto-rotate auto-rotate-delay="0" rotation-per-second="18deg" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
         </div>
       </div>
       <div class="crash-multiplier-wrap">
