@@ -3,9 +3,19 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,pollStarted=false,drawRefreshPending=false;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
-  var officialSpinActive=false,suppressedWindowFocus=false;
+  var officialSpinActive=false,suppressedWindowFocus=false,claimedObserver=null,claimedObservedNode=null;
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
+  function installRemovedControlStyle(){
+    if(q('#vexaLotteryRemovedControls'))return;
+    var style=document.createElement('style');style.id='vexaLotteryRemovedControls';
+    style.textContent='#homeSlotSpinButton,#homeSlotManualButton,#homeConfettiButton{display:none!important}';
+    document.head.appendChild(style);
+  }
+  function stripDrawControlButtons(){
+    ['homeSlotSpinButton','homeSlotManualButton','homeConfettiButton'].forEach(function(id){var el=q('#'+id);if(el&&el.parentNode)el.parentNode.removeChild(el)});
+    if(document.body)document.body.classList.remove('home-slot-manual-on');
+  }
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
   function gramPrice(nano){var value=Math.max(0,Number(nano)||0)/1000000000,text=value.toFixed(4).replace(/0+$/,'');var dot=text.indexOf('.');if(dot<0)return text+'.00';var decimals=text.length-dot-1;if(decimals===0)return text+'00';if(decimals===1)return text+'0';return text}
@@ -30,23 +40,20 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     return Number.isFinite(drawAt)?drawAt+(Number(fallback)||0):0;
   }
   function formatCountdown(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
-  function setManualSpinReserved(reserved){var button=q('#homeSlotSpinButton');if(!button)return;button.disabled=!!reserved;if(reserved)button.setAttribute('aria-disabled','true');else button.removeAttribute('aria-disabled')}
   function refreshLifecycle(){
     if(drawRefreshPending||busy)return;
     drawRefreshPending=true;load().finally(function(){drawRefreshPending=false})
   }
   function updateCountdown(){
     var round=state&&state.round,time=q('#homeDrawInfoCard [data-draw-time]'),now=liveServerNow();
-    if(!round){setManualSpinReserved(false);if(time)time.textContent='--:--:--';return}
+    if(!round){if(time)time.textContent='--:--:--';return}
     var drawAt=roundTime('drawAt',0);
     if(round.status==='open'){
-      setManualSpinReserved(!!(drawAt&&drawAt-now<=DRAW_ANIMATION_MS));
       if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}
       if(time)time.textContent='00:00:00';
       refreshLifecycle();
       return;
     }
-    setManualSpinReserved(true);
     if(time)time.textContent='00:00:00';
     var nextStartsAt=roundTime('nextRoundStartsAt',DRAW_DELAY_MS+DRAW_ANIMATION_MS+NEXT_ROUND_DELAY_MS);
     if(nextStartsAt&&now>=nextStartsAt)refreshLifecycle();
@@ -68,7 +75,26 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     }
     return html;
   }
-  function renderPrizePanel(){var list=q('#homeBonusPanel .home-bonus-list');if(list&&state&&Array.isArray(state.prizes))list.innerHTML=prizeRowsHtml(state.prizes)}
+  function roundTicketCount(){return Math.max(0,Math.floor(Number(state&&state.roundTicketCount)||0))}
+  function watchClaimedTotal(total){
+    if(!total||claimedObservedNode===total)return;
+    if(claimedObserver)claimedObserver.disconnect();
+    claimedObservedNode=total;
+    claimedObserver=new MutationObserver(function(){if(!q('[data-lottery-round-ticket-count]',total))setTimeout(renderClaimedTickets,0)});
+    claimedObserver.observe(total,{childList:true,subtree:true,characterData:true});
+  }
+  function renderClaimedTickets(){
+    var total=q('#homeBonusTotal');if(!total)return;
+    var value=q('[data-lottery-round-ticket-count]',total);
+    if(!value){
+      total.innerHTML='<span data-lottery-claimed-label>Claimed</span><span class="game-online-badge" data-lottery-claimed-dot aria-hidden="true"><i></i></span><span aria-hidden="true">:</span><span data-lottery-round-ticket-count>0</span>';
+      total.style.setProperty('gap','4px','important');
+      value=q('[data-lottery-round-ticket-count]',total);
+    }
+    if(value)value.textContent=roundTicketCount().toLocaleString('en-US');
+    watchClaimedTotal(total);
+  }
+  function renderPrizePanel(){var list=q('#homeBonusPanel .home-bonus-list');if(list&&state&&Array.isArray(state.prizes))list.innerHTML=prizeRowsHtml(state.prizes);renderClaimedTickets()}
   function render(){
     var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');
     var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);
@@ -116,10 +142,15 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
+  function playWinnerEffect(){
+    var button=q('#homeConfettiButton'),temporary=false;
+    if(!button){button=document.createElement('button');button.id='homeConfettiButton';button.type='button';button.setAttribute('aria-hidden','true');button.tabIndex=-1;document.body.appendChild(button);temporary=true}
+    try{if(typeof button.click==='function')button.click()}catch(e){}
+    if(temporary&&button.parentNode)button.parentNode.removeChild(button);
+  }
   function triggerWinnerEffect(drawId){
     if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;
-    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');
-    var button=q('#homeConfettiButton');if(button&&typeof button.click==='function')button.click();
+    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');playWinnerEffect();
   }
   function scheduleLiveDraw(drawId,code,won,startAt){
     if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
@@ -154,7 +185,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   async function load(){
     var data=initData();
-    if(!data){state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
+    if(!data){state={ticketCount:0,roundTicketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();return}
     var started=Date.now();
     try{
       var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
@@ -162,7 +193,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
     }catch(error){
-      state={ticketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
+      state={ticketCount:0,roundTicketCount:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
     }
   }
   async function buy(){
@@ -188,7 +219,8 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     haptic('light');render();
   }
   function startLiveSync(){if(pollStarted)return;pollStarted=true;setInterval(updateCountdown,250);setInterval(function(){if(!busy&&q('#home.active')&&!drawRefreshPending)load()},5000)}
-  function init(){document.addEventListener('click',handleTicketControls,true);load();startLiveSync();window.VexaLotteryRefresh=load}
+  function init(){stripDrawControlButtons();renderClaimedTickets();document.addEventListener('click',handleTicketControls,true);load();startLiveSync();window.VexaLotteryRefresh=load}
+  installRemovedControlStyle();
   window.addEventListener('focus',guardOfficialSpinFocus,true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',function(){if(q('#home.active')&&!busy)load()});
