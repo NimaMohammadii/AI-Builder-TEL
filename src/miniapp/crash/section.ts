@@ -144,7 +144,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
             <span class="crash-flame-core"></span>
             <i></i><i></i><i></i>
           </div>
-          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 105%" field-of-view="30deg" exposure="1.12" shadow-intensity="1.25" shadow-softness=".85" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
+          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 108%" field-of-view="28deg" exposure="1.08" shadow-intensity=".9" shadow-softness=".9" auto-rotate auto-rotate-delay="0" rotation-per-second="7deg" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
         </div>
       </div>
       <div class="crash-multiplier-wrap">
@@ -187,6 +187,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
   </div>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+  <script>customElements.whenDefined('model-viewer').then(function(){var ModelViewer=customElements.get('model-viewer');if(ModelViewer)ModelViewer.minimumRenderScale=1})</script>
   <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
   <script>${CRASH_HORIZONTAL_BACKGROUNDS_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
