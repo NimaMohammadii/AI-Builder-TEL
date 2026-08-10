@@ -12,12 +12,17 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const serverStartedAtMs = Date.now();
       const userId = await authenticatedUser(request, env);
       const state = await getLotteryUserState(env, userId);
-      const [lastDrawWon, prizes] = await Promise.all([
+      const roundTicketCountQuery = state.round
+        ? env.DB.prepare('SELECT COUNT(*) AS count FROM lottery_tickets WHERE round_id=?').bind(state.round.id).first<{ count: number }>()
+        : Promise.resolve(null);
+      const [lastDrawWon, prizes, roundTicketRow] = await Promise.all([
         userWonLotteryRound(env, userId, state.lastDraw?.roundId),
         getLotteryPrizes(env),
+        roundTicketCountQuery,
       ]);
+      const roundTicketCount = Math.max(0, Math.floor(Number(roundTicketRow?.count || 0)));
       const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, prizes, lastDrawWon });
+      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, roundTicketCount, prizes, lastDrawWon });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
