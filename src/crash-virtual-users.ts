@@ -4,7 +4,7 @@ const NANO = 1000000000;
 const HOUSE_EDGE = .04;
 const WAIT_BETWEEN_MS = 10000;
 const CRASH_HOLD_MS = 2200;
-const MAX_RUN_MS = 34000;
+const MAX_RUN_MS = 68000;
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const NAMES = ['Amir','Ali','Reza','Arman','Arya','Arvin','Arian','Kian','Sina','Saman','Sam','Radin','Rayan','Shayan','Mahan','Parsa','Navid','Nima','Nikan','Kaveh','Sepehr','Taha','Erfan','Amin','Alan','Ilya','Elia','Evan','Nolan','Milan','Matin','Bardia','Hirad','Dani','Omid','Pouya','Kasra','Arad','Mehrad','Nika','Ava','Mira','Luna','Daria','Aria','Tara','Maya','Lia','Nora','Elina','Lina','Dena','Raha','Yara','Vian','Mina','Roya','Aylin','Zara','Nila','Rima','Tina','Negin','Avin','Lara','Anita','Rosha','Kimia','Dorsa','Hana','Shadi','Nahal','Helia','Niki','Emma','Mia','Lena','Sofia','Ella','Nina','Ayla','Clara','Diana','Kira','Mona','Yana','Alex','Max','Nick','Ben','Ethan','Adam','Liam','Noah','Owen','Mason','Lucas','Logan','Dylan','Carter','Jason','Finn','Theo','Milo','Levi','Ezra','Simon','Victor','Oscar'];
@@ -213,7 +213,7 @@ function targetCashout(roundId:number,i:number,risk:number,stop:number){
 }
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
 function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
-function multAt(seconds:number){return 1+seconds*.12+seconds*seconds*.0042}
+function multAt(seconds:number){return 1+seconds*.06+seconds*seconds*.00105}
 function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
 function roundStop(roundId:number){return Math.min(rawRoundStop(roundId),maxReachableStop())}
 function stopTime(stop:number){let lo=0,hi=MAX_RUN_MS;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(multAt(mid/1000)>=stop)hi=mid;else lo=mid}return hi}
