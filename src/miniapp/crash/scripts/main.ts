@@ -32,7 +32,7 @@ export const CRASH_SCRIPT = `
     var flight=q('crashRocketFlight');if(!flight)return;
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
-    var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=Math.max(-35,Math.min(80,80-(115*turn)));
+    var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=Math.max(60,Math.min(80,80-(20*turn)));
     var travel=Math.min(560,Math.max(280,(window.innerWidth||360)-32))*.58,entryX=0;
     if(state==='waiting'){
       var entryT=Math.max(0,Math.min(1,(Number(entryElapsed)||0)/1100)),entryEase=1-Math.pow(1-entryT,4);
