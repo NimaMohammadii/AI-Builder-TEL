@@ -1,7 +1,7 @@
 export const SLOT_SCRIPT = `
 (function(){
   var symbols=[{id:'cherry',label:'Cherry'},{id:'lemon',label:'Lemon'},{id:'orange',label:'Orange'},{id:'grape',label:'Grape'},{id:'watermelon',label:'Watermelon'},{id:'diamond',label:'Diamond'},{id:'gold',label:'Gold Star or Bell'},{id:'lucky7',label:'Lucky 7'}];
-  var reelCount=3,symbolHeight=92,virtualCellCount=5,virtualStepMs=72,totalSpinMs=7600,reelStopGapMs=800,soundStopDelayMs=1000,NANO=1000000000;
+  var reelCount=3,symbolHeight=92,virtualCellCount=5,virtualStepMs=52,totalSpinMs=7600,reelStopGapMs=800,soundStopDelayMs=1000,NANO=1000000000;
   var amountNano=NANO,activeCostNano=0,spinning=false,currentIndexes=[0,1,2];
   var slotSound=null,slotAudio=null,slotAudioUrl='',slotSoundTimer=null,slotSoundStopTimer=null,liveTimer=null,liveRows=[],liveRowSeq=0,slotVirtualConfigLoaded=false,slotVirtualProfiles=[];
   var slotCache=window.__VEXA_SLOT_CACHE__||(window.__VEXA_SLOT_CACHE__={frame:null,controls:null,symbols:null,audio:null,images:{},symbolSignature:'',reelsSignature:''});
