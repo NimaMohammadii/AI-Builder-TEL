@@ -16,8 +16,8 @@ export const CRASH_LIVE_D1_SCRIPT = `
   function tgUser(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=String((u&&u.id)||localStorage.getItem('ownerId')||'local').trim();var name=u?String(u.first_name||u.last_name||'User'):'You';return{id:id||'local',name:name||'User'}}
   function cleanText(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function isCrashActive(){var active=document.querySelector('.view.active');return !!(active&&active.id==='crash'&&!document.hidden)}
-  function multAt(seconds){return 1+seconds*.12+seconds*seconds*.0042}
-  function stopTime(target){target=Math.max(1,Number(target)||1);var lo=0,hi=34000;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
+  function multAt(seconds){return 1+seconds*.06+seconds*seconds*.00105}
+  function stopTime(target){target=Math.max(1,Number(target)||1);var lo=0,hi=68000;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
   function clearEventTimers(){eventTimers.forEach(function(t){clearTimeout(t)});eventTimers=[]}
   function setEventTimer(delay,fn){var ms=Math.max(0,Math.floor(Number(delay)||0));var id=setTimeout(function(){eventTimers=eventTimers.filter(function(x){return x!==id});fn()},ms);eventTimers.push(id)}
   function scheduleRoundLoad(roundId,atMs){var delay=Math.max(0,Math.floor(Number(atMs||0)-Date.now()));setEventTimer(delay,function(){if(isCrashActive()&&currentScheduledRound===roundId)requestSync(true)})}
