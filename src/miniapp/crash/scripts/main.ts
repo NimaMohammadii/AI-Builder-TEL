@@ -32,6 +32,8 @@ export const CRASH_SCRIPT = `
     var flight=q('crashRocketFlight');if(!flight)return;
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
+    var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=70-(105*turn);
+    flight.style.setProperty('--rocket-angle',angle.toFixed(2)+'deg');
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
