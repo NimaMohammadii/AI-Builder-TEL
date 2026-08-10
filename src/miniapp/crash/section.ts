@@ -7,9 +7,9 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 (function(){
   if(window.__vexaCrashSpaceEnvironment)return;
   window.__vexaCrashSpaceEnvironment=true;
-  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),multiplier=document.getElementById('crashMultiplier');
+  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),multiplier=document.getElementById('crashMultiplier'),stageTrack=document.getElementById('crashStageBackgroundTrack');
   if(!canvas||!root)return;
-  var raf=0,delayTimer=0,lastTime=0,lastRender=0;
+  var raf=0,delayTimer=0,lastTime=0,lastRender=0,stageSignature='';
   function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
   function streakIntensity(){
     var v=multiplierValue();
@@ -23,6 +23,21 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(-35,Math.min(80,deg));return deg*Math.PI/180}
   function canvasDpr(){return Math.min(1.4,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
+  function loadStageImages(){
+    if(!stageTrack)return;
+    fetch('/app/api/crash-stage-images',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+      var images=j&&j.images||{},urls=[];
+      for(var i=1;i<=5;i++)urls.push(typeof images[String(i)]==='string'?images[String(i)]:'');
+      var signature=urls.join('|');if(signature===stageSignature)return;stageSignature=signature;
+      var sequence=urls.concat([urls[0]||'']),fragment=document.createDocumentFragment();
+      sequence.forEach(function(url,index){
+        var slide=document.createElement('div');slide.className='crash-stage-background-slide';
+        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading=index<2?'eager':'lazy';img.draggable=false;slide.appendChild(img)}
+        fragment.appendChild(slide)
+      });
+      stageTrack.replaceChildren(fragment);stageTrack.classList.toggle('ready',urls.some(Boolean))
+    }).catch(function(){})
+  }
   function fallback2d(){
     var ctx=canvas.getContext('2d');if(!ctx){var replacement=document.createElement('canvas');replacement.id=canvas.id;replacement.className=canvas.className;replacement.setAttribute('aria-hidden','true');canvas.replaceWith(replacement);canvas=replacement;ctx=canvas.getContext('2d')}if(!ctx)return;
     var particles=[],seed=90210;
@@ -34,7 +49,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       if(lastRender&&ms-lastRender<15.5){raf=requestAnimationFrame(frame);return}
       var dt=Math.min(34,Math.max(8,ms-(lastTime||ms)));lastTime=ms;lastRender=ms;
       var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(10+intensity*145)*dpr;
-      ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+      ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
         var p=particles[i],visibility=.91-intensity*.48;if(p.rank<visibility)continue;
         var travel=(ms*.001*speed*(.62+p.rank*.65)),span=Math.abs(dx)*w+Math.abs(dy)*h+180*dpr;
@@ -46,11 +61,12 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       ctx.globalAlpha=1;raf=requestAnimationFrame(frame)
     }
     window.addEventListener('resize',function(){resize(null)},{passive:true});
-    window.addEventListener('vexa-crash-visible',function(){resize(null)},{passive:true});
+    window.addEventListener('vexa-crash-visible',function(){resize(null);loadStageImages()},{passive:true});
     raf=requestAnimationFrame(frame)
   }
   function boot(){
-    var gl=canvas.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
+    loadStageImages();
+    var gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
     if(!gl){fallback2d();return}
     resize(gl);
     var vertex=[
@@ -76,7 +92,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'float exists=smoothstep(mix(.9982,.976,u_intensity),1.0,rnd);vec3 tint=mix(vec3(.79,.86,1.0),vec3(1.0,.89,.82),hash21(cell+seed+13.7)*.52);',
       'return tint*(trail*.30+head*.86)*exists*gain*mix(.20,1.0,u_intensity);',
       '}',
-      'void main(){vec2 uv=v_uv;vec3 color=vec3(0.0);color+=streakLayer(uv,27.0,21.4,.76);color+=streakLayer(uv+vec2(.17,.09),44.0,44.8,.46);gl_FragColor=vec4(color,1.0);}'
+      'void main(){vec2 uv=v_uv;vec3 color=vec3(0.0);color+=streakLayer(uv,27.0,21.4,.76);color+=streakLayer(uv+vec2(.17,.09),44.0,44.8,.46);float alpha=clamp(max(max(color.r,color.g),color.b)*3.2,0.0,1.0);gl_FragColor=vec4(color,alpha);}'
     ].join(String.fromCharCode(10));
     function shader(type,source){var s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){gl.deleteShader(s);return null}return s}
     var vs=shader(gl.VERTEX_SHADER,vertex),fs=shader(gl.FRAGMENT_SHADER,fragment);if(!vs||!fs){fallback2d();return}
@@ -90,7 +106,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     }
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();if(raf)cancelAnimationFrame(raf);raf=0});
     window.addEventListener('resize',function(){resize(gl)},{passive:true});
-    window.addEventListener('vexa-crash-visible',function(){resize(gl)},{passive:true});
+    window.addEventListener('vexa-crash-visible',function(){resize(gl);loadStageImages()},{passive:true});
     raf=requestAnimationFrame(frame)
   }
   boot();
@@ -103,15 +119,22 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
     html body:has(#crash.active) .app,html body:has(#crash.active) main.app,html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     html body:has(#crash.active) #crash .crash-page{position:relative!important;isolation:isolate!important}
-    html body:has(#crash.active) #crash #crashSpaceCanvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:auto!important;aspect-ratio:1/1!important;transform:none!important;z-index:0!important;border-radius:0!important;background:#000!important}
-    html body:has(#crash.active) #crash .crash-stage{position:relative!important;z-index:1!important;border-radius:0!important;overflow:visible!important;background:transparent!important;background-color:transparent!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-    html body:has(#crash.active) #crash .crash-controls{position:relative!important;z-index:2!important}
+    html body:has(#crash.active) #crash .crash-stage-background{position:absolute!important;left:0!important;top:0!important;width:100%!important;aspect-ratio:1/1!important;overflow:hidden!important;z-index:0!important;background:#000!important;pointer-events:none!important}
+    html body:has(#crash.active) #crash .crash-stage-background-track{display:flex!important;width:600%!important;height:100%!important;transform:translate3d(0,0,0);will-change:transform;animation:crashStageBackgroundPan 75s linear infinite!important}
+    html body:has(#crash.active) #crash .crash-stage-background-slide{flex:0 0 calc(100% / 6)!important;width:calc(100% / 6)!important;height:100%!important;background:#000!important;overflow:hidden!important}
+    html body:has(#crash.active) #crash .crash-stage-background-slide img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;user-select:none!important;-webkit-user-drag:none!important}
+    html body:has(#crash.active) #crash #crashSpaceCanvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:auto!important;aspect-ratio:1/1!important;transform:none!important;z-index:1!important;border-radius:0!important;background:transparent!important;pointer-events:none!important}
+    html body:has(#crash.active) #crash .crash-stage{position:relative!important;z-index:2!important;border-radius:0!important;overflow:visible!important;background:transparent!important;background-color:transparent!important;background-image:none!important;border:0!important;outline:0!important;box-shadow:0 0 6px 3px #000,0 0 14px 4px rgba(0,0,0,.92)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+    html body:has(#crash.active) #crash .crash-controls{position:relative!important;z-index:3!important}
     html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
     html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
     html body:has(#crash.active) #crash .crash-controls,html body:has(#crash.active) #crash #crashLive{border-radius:28px!important;background:#050505!important;border:1px solid rgba(255,255,255,.10)!important;outline:0!important;box-shadow:0 20px 58px rgba(0,0,0,.54),inset 0 1px 0 rgba(255,255,255,.08)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
     html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:8px!important}
+    @keyframes crashStageBackgroundPan{from{transform:translate3d(0,0,0)}to{transform:translate3d(-83.333333%,0,0)}}
+    @media(prefers-reduced-motion:reduce){html body:has(#crash.active) #crash .crash-stage-background-track{animation-duration:150s!important}}
   </style>
   <div class="crash-page">
+    <div class="crash-stage-background" aria-hidden="true"><div id="crashStageBackgroundTrack" class="crash-stage-background-track"></div></div>
     <canvas id="crashSpaceCanvas" class="crash-space-canvas" aria-hidden="true"></canvas>
     <div class="crash-stage">
       <div class="crash-history" id="crashHistory"></div>
