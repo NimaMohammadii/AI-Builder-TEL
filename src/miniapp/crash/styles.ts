@@ -6,6 +6,8 @@ body:has(#crash.active) .content{padding-bottom:0!important}
 #crash .crash-page{min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:4px 0 max(34px,env(safe-area-inset-bottom))}
 #crash .crash-stage{position:relative;width:100%;aspect-ratio:1/1;height:auto!important;min-height:0!important;max-height:none!important;flex:0 0 auto;border-radius:34px;overflow:hidden;background-color:#000!important;background-image:none!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;border:0!important;outline:0!important;box-shadow:0 22px 56px rgba(0,0,0,.24)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);isolation:isolate}
 #crash .crash-stage:before,#crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
+#crash .crash-space-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;background:#010207;pointer-events:none;border-radius:inherit}
+#crash .crash-history{position:relative;z-index:4}
 #crash .crash-chart-square{display:none!important}
 #crash .crash-rocket-scene{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;perspective:900px}
 #crash .crash-rocket-flight{--rocket-thrust:.3;position:absolute;left:50%;top:50%;width:min(56vw,220px);height:min(56vw,220px);transform:translate3d(-50%,-50%,0) rotate(-35deg) scale(.78);transform-origin:50% 50%;will-change:transform,opacity;animation:crashRocketDrift 3.6s ease-in-out infinite;transition:opacity .22s ease;opacity:1}
