@@ -21,10 +21,6 @@
       {
         "name": "SECTION_LOCK_EVENTS",
         "class_name": "SectionLockEvents"
-      },
-      {
-        "name": "GHOST_RUN_LIVE",
-        "class_name": "GhostRunRoundRoom"
       }
     ]
   },
@@ -43,15 +39,6 @@
     {
       "tag": "v5",
       "new_sqlite_classes": ["SectionLockEvents"]
-    },
-    {
-      "tag": "v6",
-      "renamed_classes": [
-        {
-          "from": "GhostRunLiveRoom",
-          "to": "GhostRunRoundRoom"
-        }
-      ]
     }
   ],
   "d1_databases": [
