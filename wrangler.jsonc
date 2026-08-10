@@ -39,6 +39,24 @@
     {
       "tag": "v5",
       "new_sqlite_classes": ["SectionLockEvents"]
+    },
+    {
+      "tag": "v6",
+      "renamed_classes": [
+        {
+          "from": "GhostRunLiveRoom",
+          "to": "GhostRunRoundRoom"
+        }
+      ]
+    },
+    {
+      "tag": "v7",
+      "renamed_classes": [
+        {
+          "from": "GhostRunRoundRoom",
+          "to": "GhostRunLiveRoom"
+        }
+      ]
     }
   ],
   "d1_databases": [
