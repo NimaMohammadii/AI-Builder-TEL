@@ -1,3 +1,4 @@
+import './crash-routes';
 import type { Env } from './types';
 
 export type CrashVirtualBetOption = { amount: number; cashoutMultiplier: number };
