@@ -29,15 +29,10 @@ export const CRASH_SCRIPT = `
   function previousRoundIds(state,count){var ids=[];for(var id=state.id-(state.waiting?0:1);ids.length<count;id--)ids.push(id);return ids}
   function targetBetRoundId(state){return state.waiting?state.id+1:state.id}
   function setRocket(value,state){
-    var flight=q('crashRocketFlight'),stage=flight&&flight.parentElement;if(!flight||!stage)return;
-    var model=q('crashRocket'),now=performance.now(),v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1),t=1-(1/(1+raw*.42)),w=Math.max(320,stage.clientWidth||360),h=Math.max(280,stage.clientHeight||340);
-    var running=state==='running',crashed=state==='crashed',pulse=running?Math.sin(now*.006)*1.5:0;
-    var x=running?-76+t*w*.12:-76,y=running?46-t*h*.25+pulse:46,thrust=running?.66+Math.min(.52,raw*.04):.18;
-    flight.style.rotate='90deg';
-    flight.style.scale='.78';
-    if(model&&customElements.get('model-viewer'))model.orientation='0deg '+((now*.012)%360).toFixed(3)+'deg 0deg';
-    flight.style.setProperty('--rocket-x',x.toFixed(2)+'px');
-    flight.style.setProperty('--rocket-y',y.toFixed(2)+'px');
+    var flight=q('crashRocketFlight');if(!flight)return;
+    var model=q('crashRocket'),now=performance.now(),v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
+    var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
+    if(model&&customElements.get('model-viewer'))model.orientation='0deg 0deg '+((now*.024)%360).toFixed(3)+'deg';
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
