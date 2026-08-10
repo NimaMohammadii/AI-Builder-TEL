@@ -143,7 +143,7 @@ body:has(#slot.active) header.top{
 #slot .slot-window{
   position:absolute!important;
   z-index:9!important;
-  top:30.7%!important;
+  top:30.2%!important;
   left:9.8%!important;
   width:80.4%!important;
   height:43%!important;
@@ -237,6 +237,7 @@ body:has(#slot.active) header.top{
   pointer-events:none!important;
   opacity:1!important;
   filter:drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
+  transition:filter .16s ease!important;
 }
 #slot .slot-reel:first-child .slot-symbol-image{transform:translateX(-11%)!important}
 #slot .slot-reel:last-child .slot-symbol-image{transform:translateX(11%)!important}
@@ -261,6 +262,9 @@ body:has(#slot.active) header.top{
   will-change:transform!important;
   backface-visibility:hidden!important;
   -webkit-backface-visibility:hidden!important;
+}
+#slot .slot-machine.is-spinning .slot-symbol-image{
+  filter:blur(1.2px) drop-shadow(0 10px 9px rgba(0,0,0,.96)) drop-shadow(0 0 15px rgba(0,0,0,.78))!important;
 }
 #slot .slot-machine.is-win .slot-window{animation:slotWinPulse .7s ease both}
 
@@ -343,13 +347,17 @@ body:has(#slot.active) header.top{
 #slot .slot-asset-button>span,
 #slot .slot-asset-spin .slot-spin-label{visibility:hidden!important}
 #slot .slot-asset-step{
+  --slot-step-x:0px;
   width:64px!important;
   height:64px!important;
   border-radius:50%!important;
   cursor:pointer!important;
+  transform:translateX(var(--slot-step-x)) scale(1)!important;
+  transform-origin:center!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease,opacity .18s ease!important;
 }
-#slot #slotBetMinus{transform:translateX(10px)}
-#slot #slotBetPlus{transform:translateX(-10px)}
+#slot #slotBetMinus{--slot-step-x:10px}
+#slot #slotBetPlus{--slot-step-x:-10px}
 #slot .slot-asset-step span{
   position:absolute!important;
   inset:0!important;
@@ -437,8 +445,11 @@ body:has(#slot.active) header.top{
   line-height:1!important;
   pointer-events:none!important;
 }
-#slot .slot-asset-spin:active,
-#slot .slot-asset-step:active{transform:scale(.96)!important;filter:brightness(.84)!important}
+#slot .slot-asset-spin:active{transform:scale(.96)!important;filter:brightness(.84)!important}
+#slot .slot-asset-step:active{
+  transform:translateX(var(--slot-step-x)) scale(.93)!important;
+  filter:brightness(.88)!important;
+}
 #slot .slot-asset-button:disabled{opacity:.48!important;cursor:default!important;filter:saturate(.55)!important}
 
 #slot .slot-live{
