@@ -32,10 +32,10 @@ export const CRASH_SCRIPT = `
     var flight=q('crashRocketFlight'),stage=flight&&flight.parentElement;if(!flight||!stage)return;
     var model=q('crashRocket'),now=performance.now(),v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1),t=1-(1/(1+raw*.42)),w=Math.max(320,stage.clientWidth||360),h=Math.max(280,stage.clientHeight||340);
     var running=state==='running',crashed=state==='crashed',pulse=running?Math.sin(now*.006)*1.5:0;
-    var x=running?4+t*w*.26:0,y=running?46-t*h*.25+pulse:46,thrust=running?.66+Math.min(.52,raw*.04):.18;
+    var x=running?-76+t*w*.12:-76,y=running?46-t*h*.25+pulse:46,thrust=running?.66+Math.min(.52,raw*.04):.18;
     flight.style.rotate='90deg';
     flight.style.scale='.78';
-    if(model)model.setAttribute('orientation','0deg '+((now*.008)%360).toFixed(3)+'deg 0deg');
+    if(model&&customElements.get('model-viewer'))model.orientation='0deg '+((now*.012)%360).toFixed(3)+'deg 0deg';
     flight.style.setProperty('--rocket-x',x.toFixed(2)+'px');
     flight.style.setProperty('--rocket-y',y.toFixed(2)+'px');
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
