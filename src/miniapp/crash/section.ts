@@ -9,24 +9,41 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   window.__vexaCrashSpaceEnvironment=true;
   var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),multiplier=document.getElementById('crashMultiplier');
   if(!canvas||!root)return;
-  var raf=0,delayTimer=0,lastTime=0,lastRender=0,cameraX=0,cameraY=0,targetX=0,targetY=0;
-  function multiplierProgress(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));if(!Number.isFinite(v))v=1;var raw=Math.max(0,v-1);return 1-(1/(1+raw*.42))}
+  var raf=0,delayTimer=0,lastTime=0,lastRender=0;
+  function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
+  function streakIntensity(){
+    var v=multiplierValue();
+    if(v<1.2)return .055+(v-1)*.475;
+    if(v<1.6)return .15+(v-1.2)*.375;
+    if(v<2.2)return .30+(v-1.6)*.2833333333;
+    if(v<3)return .47+(v-2.2)*.1875;
+    if(v<5)return .62+(v-3)*.08;
+    return Math.min(1,.78+(1-Math.exp(-(v-5)*.12))*.22)
+  }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(-35,Math.min(80,deg));return deg*Math.PI/180}
-  function canvasDpr(){return Math.min(1.5,Math.max(1,window.devicePixelRatio||1))}
+  function canvasDpr(){return Math.min(1.4,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
   function fallback2d(){
-    var ctx=canvas.getContext('2d');if(!ctx){var replacement=document.createElement('canvas');replacement.id=canvas.id;replacement.className=canvas.className;replacement.setAttribute('aria-hidden','true');canvas.replaceWith(replacement);canvas=replacement;ctx=canvas.getContext('2d')}if(!ctx)return;var stars=[],seed=90210;
+    var ctx=canvas.getContext('2d');if(!ctx){var replacement=document.createElement('canvas');replacement.id=canvas.id;replacement.className=canvas.className;replacement.setAttribute('aria-hidden','true');canvas.replaceWith(replacement);canvas=replacement;ctx=canvas.getContext('2d')}if(!ctx)return;
+    var particles=[],seed=90210;
     function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
-    for(var i=0;i<95;i++)stars.push({x:random(),y:random(),r:.22+random()*.72,z:.25+random()*.75,w:random()*6.283});
+    for(var i=0;i<42;i++)particles.push({x:random(),y:random(),rank:random(),width:.45+random()*.65,length:.55+random()*.9});
     resize(null);
     function frame(ms){
       raf=0;if(!root.classList.contains('active')||document.hidden){lastTime=0;lastRender=0;delayTimer=setTimeout(function(){delayTimer=0;if(!raf)raf=requestAnimationFrame(frame)},320);return}
       if(lastRender&&ms-lastRender<15.5){raf=requestAnimationFrame(frame);return}
-      var p=multiplierProgress(),dt=Math.min(34,Math.max(8,ms-(lastTime||ms)));lastTime=ms;lastRender=ms;targetX=p*.18;targetY=p*.22;var follow=1-Math.exp(-dt*.0035);cameraX+=(targetX-cameraX)*follow;cameraY+=(targetY-cameraY)*follow;
-      var w=canvas.width,h=canvas.height,dpr=canvasDpr(),starDx=ms*.0000008,starDy=ms*.0000005,intensity=.08+.92*Math.max(0,Math.min(1,p/.86)),angle=rocketAngleRad(),fx=Math.sin(angle),fy=-Math.cos(angle),bx=-fx,by=-fy,streakShift=ms*(.02+intensity*.14);ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#010207';ctx.fillRect(0,0,w,h);
-      for(var i=0;i<stars.length;i++){var s=stars[i],x=((s.x-starDx*s.z-cameraX*.005*s.z)%1+1)%1*w,y=((s.y+starDy*s.z+cameraY*.006*s.z)%1+1)%1*h,a=.66+.18*Math.sin(ms*.00042+s.w);ctx.globalAlpha=a;ctx.fillStyle=s.w>4.4?'#edf3ff':s.w<1.2?'#fff1e5':'#f8f8f6';ctx.beginPath();ctx.arc(x,y,s.r*dpr,0,Math.PI*2);ctx.fill();var threshold=6.20-intensity*1.45;if(s.w>threshold){var sx=((s.x*w+bx*streakShift)%w+w)%w,sy=((s.y*h+by*streakShift)%h+h)%h,trail=(5+intensity*28)*dpr;ctx.globalAlpha=.18+intensity*.58;ctx.strokeStyle=s.w>5.65?'#ffe8d8':'#e8f0ff';ctx.lineWidth=Math.max(.4,s.r*dpr*.62);ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+fx*trail,sy+fy*trail);ctx.stroke()}}
-      var px=w*.18-cameraX*w*.004,py=h*.77+cameraY*h*.004,pr=Math.min(w,h)*.085,g=ctx.createRadialGradient(px-pr*.28,py-pr*.38,pr*.04,px,py,pr);g.addColorStop(0,'#7f9ab0');g.addColorStop(.34,'#263d50');g.addColorStop(.7,'#07101b');g.addColorStop(1,'#000');ctx.globalAlpha=.94;ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-      raf=requestAnimationFrame(frame)
+      var dt=Math.min(34,Math.max(8,ms-(lastTime||ms)));lastTime=ms;lastRender=ms;
+      var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(10+intensity*145)*dpr;
+      ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+      for(var i=0;i<particles.length;i++){
+        var p=particles[i],visibility=.91-intensity*.48;if(p.rank<visibility)continue;
+        var travel=(ms*.001*speed*(.62+p.rank*.65)),span=Math.abs(dx)*w+Math.abs(dy)*h+180*dpr;
+        var offset=((travel+p.rank*span)%span),x=((p.x*w+dx*offset)%w+w)%w,y=((p.y*h+dy*offset)%h+h)%h;
+        var trail=(9+intensity*68)*p.length*dpr;
+        ctx.globalAlpha=.14+intensity*.60;ctx.strokeStyle=p.rank>.86?'#ffe9df':'#e8efff';ctx.lineWidth=p.width*dpr;
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-dx*trail,y-dy*trail);ctx.stroke();
+      }
+      ctx.globalAlpha=1;raf=requestAnimationFrame(frame)
     }
     window.addEventListener('resize',function(){resize(null)},{passive:true});
     window.addEventListener('vexa-crash-visible',function(){resize(null)},{passive:true});
@@ -42,49 +59,34 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'void main(){v_uv=a_position*.5+.5;gl_Position=vec4(a_position,0.0,1.0);}'
     ].join(String.fromCharCode(10));
     var fragment=[
-      'precision highp float;',
+      'precision mediump float;',
       'varying vec2 v_uv;',
-      'uniform vec2 u_resolution;',
       'uniform float u_time;',
-      'uniform float u_progress;',
-      'uniform vec2 u_camera;',
+      'uniform float u_intensity;',
       'uniform float u_rocket_angle;',
       'float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
-      'float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0)),f.x),f.y);}',
-      'float fbm(vec2 p){float f=0.0;f+=noise2(p)*.5;p=p*2.03+3.1;f+=noise2(p)*.25;p=p*2.01+1.7;f+=noise2(p)*.125;p=p*2.04+.9;f+=noise2(p)*.0625;return f;}',
-      'vec3 starLayer(vec2 uv,float scale,float seed,float radius,float gain){vec2 cell=floor(uv*scale),gv=fract(uv*scale)-.5;float rnd=hash21(cell+seed);vec2 jitter=vec2(hash21(cell+seed+2.31),hash21(cell+seed+6.77))-.5;vec2 delta=gv-jitter*.76;float core=(1.0-smoothstep(radius,radius*3.0,length(delta)))*smoothstep(.9915,1.0,rnd);float twinkle=.9+.1*sin(u_time*(.16+rnd*.24)+rnd*41.0);vec3 cool=vec3(.84,.89,1.0),warm=vec3(1.0,.92,.84);return mix(cool,warm,hash21(cell+seed+11.4)*.34)*core*gain*twinkle;}',
-      'vec3 streakLayer(vec2 uv,float cells,float seed,float intensity,float gain){vec2 direction=normalize(vec2(sin(u_rocket_angle),cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y+=u_time*mix(.018,.32,intensity);vec2 grid=rotated*vec2(cells,cells*.22),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;float width=mix(.012,.035,intensity),trailLength=mix(.055,.42,intensity);float trail=(1.0-smoothstep(width,width*2.8,abs(delta.x)))*(1.0-smoothstep(trailLength,trailLength+.11,abs(delta.y)));float head=1.0-smoothstep(width,width*4.2,length(delta-vec2(0.0,-trailLength*.72)));float exists=smoothstep(mix(.997,.979,intensity),1.0,rnd);vec3 tint=mix(vec3(.78,.86,1.0),vec3(1.0,.9,.8),hash21(cell+seed+13.7)*.55);return tint*(trail*.3+head*.82)*exists*gain*mix(.22,1.0,intensity);}',
-      'void main(){',
-      'vec2 uv=v_uv,aspectUv=uv-.5;aspectUv.x*=u_resolution.x/u_resolution.y;float intensity=.08+.92*smoothstep(0.0,.86,u_progress);',
-      'vec2 cam=u_camera,starDrift=vec2(-.08,.05)*u_time*.00042;',
-      'vec3 color=vec3(.00065,.00105,.0028);',
-      'vec2 dustUv=aspectUv*2.1+vec2(.38,-.14)+cam*.006+starDrift*.08;float dust=max(0.0,fbm(dustUv)-.54);color+=vec3(.018,.024,.044)*dust*.30;',
-      'color+=starLayer(uv+cam*.002+starDrift*.30,24.0,2.7,.038,.60);',
-      'color+=starLayer(uv+cam*.004+starDrift*.58,46.0,7.2,.035,.69);',
-      'color+=starLayer(uv+cam*.007+starDrift*.92,78.0,14.6,.032,.78);',
-      'color+=streakLayer(uv,32.0,21.4,intensity,.72);color+=streakLayer(uv+vec2(.19,.07),53.0,44.8,intensity,.44);',
-      'vec2 center=vec2(-.294,-.232)-cam*vec2(.005,.004)-starDrift*.08;float radius=.102;vec2 spherePos=aspectUv-center;float distanceToPlanet=length(spherePos);float edge=max(.0012,1.8/min(u_resolution.x,u_resolution.y));float planetMask=1.0-smoothstep(radius-edge,radius+edge,distanceToPlanet);vec2 local=spherePos/radius;float z=sqrt(max(0.0,1.0-dot(local,local)));vec3 normal=normalize(vec3(local,z));',
-      'vec3 lightDir=normalize(vec3(-.76,.54,1.12)),viewDir=vec3(0.0,0.0,1.0),halfDir=normalize(lightDir+viewDir);float nDotL=dot(normal,lightDir),daylight=smoothstep(-.13,.2,nDotL),directLight=pow(max(0.0,nDotL),.72);',
-      'vec2 globeUv=vec2(atan(normal.x,normal.z)/6.2831853+.5+u_time*.00028,asin(clamp(normal.y,-1.0,1.0))/3.1415926+.5);float continental=fbm(globeUv*vec2(5.3,8.7)+vec2(.31,-.24));continental=continental*.72+fbm(globeUv*vec2(11.7,5.4)+2.6)*.28;float landMask=smoothstep(.505,.585,continental);float elevation=fbm(globeUv*vec2(24.0,15.0)+5.7);',
-      'vec3 deepOcean=vec3(.004,.022,.052),shallowOcean=vec3(.018,.083,.118);vec3 ocean=mix(deepOcean,shallowOcean,smoothstep(.38,.68,continental));vec3 lowland=vec3(.075,.105,.071),highland=vec3(.19,.16,.105);vec3 land=mix(lowland,highland,smoothstep(.43,.72,elevation));vec3 surface=mix(ocean,land,landMask);',
-      'float illumination=.025+.975*directLight;surface*=illumination;float oceanSpec=pow(max(0.0,dot(normal,halfDir)),58.0)*(1.0-landMask)*daylight;surface+=vec3(.55,.68,.78)*oceanSpec*.62;',
-      'float cloudNoise=fbm(globeUv*vec2(17.0,8.0)+vec2(u_time*.0011,-.2));cloudNoise=cloudNoise*.7+fbm(globeUv*vec2(34.0,13.0)+vec2(u_time*.0018,4.1))*.3;float cloudMask=smoothstep(.61,.735,cloudNoise);surface*=1.0-cloudMask*.075;surface+=vec3(.72,.78,.81)*cloudMask*(.055+.945*directLight)*.66;',
-      'float cityNoise=fbm(globeUv*vec2(31.0,18.0)+9.3);float cityLights=smoothstep(.76,.84,cityNoise)*landMask*(1.0-daylight);surface+=vec3(1.0,.46,.12)*cityLights*.34;',
-      'float fresnel=pow(1.0-z,3.15);surface+=vec3(.075,.22,.46)*fresnel*(.18+.82*daylight);color=mix(color,surface,planetMask);',
-      'float outerAtmosphere=(1.0-smoothstep(radius,radius*1.19,distanceToPlanet))*(1.0-planetMask);float sunSide=.22+.78*smoothstep(-.35,.55,dot(normalize(vec3(local,0.25)),lightDir));color+=vec3(.055,.21,.56)*outerAtmosphere*sunSide*.52;',
-      'float vignette=1.0-smoothstep(.58,.92,length((uv-.5)*vec2(1.0,.92)));color*=.72+.28*vignette;color=pow(max(color,vec3(0.0)),vec3(.86));gl_FragColor=vec4(color,1.0);',
-      '}'
+      'vec3 streakLayer(vec2 uv,float cells,float seed,float gain){',
+      'vec2 direction=normalize(vec2(-sin(u_rocket_angle),cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);',
+      'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.018,.31,u_intensity);',
+      'vec2 grid=rotated*vec2(cells,cells*.20),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);',
+      'vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;',
+      'float width=mix(.009,.029,u_intensity),trailLength=mix(.045,.39,u_intensity);',
+      'float trail=(1.0-smoothstep(width,width*2.7,abs(delta.x)))*(1.0-smoothstep(trailLength,trailLength+.10,abs(delta.y)));',
+      'float head=1.0-smoothstep(width,width*3.8,length(delta-vec2(0.0,-trailLength*.70)));',
+      'float exists=smoothstep(mix(.9982,.976,u_intensity),1.0,rnd);vec3 tint=mix(vec3(.79,.86,1.0),vec3(1.0,.89,.82),hash21(cell+seed+13.7)*.52);',
+      'return tint*(trail*.30+head*.86)*exists*gain*mix(.20,1.0,u_intensity);',
+      '}',
+      'void main(){vec2 uv=v_uv;vec3 color=vec3(0.0);color+=streakLayer(uv,27.0,21.4,.76);color+=streakLayer(uv+vec2(.17,.09),44.0,44.8,.46);gl_FragColor=vec4(color,1.0);}'
     ].join(String.fromCharCode(10));
     function shader(type,source){var s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){gl.deleteShader(s);return null}return s}
     var vs=shader(gl.VERTEX_SHADER,vertex),fs=shader(gl.FRAGMENT_SHADER,fragment);if(!vs||!fs){fallback2d();return}
     var program=gl.createProgram();gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS)){fallback2d();return}
     gl.useProgram(program);var buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);var position=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
-    var resolution=gl.getUniformLocation(program,'u_resolution'),time=gl.getUniformLocation(program,'u_time'),progress=gl.getUniformLocation(program,'u_progress'),camera=gl.getUniformLocation(program,'u_camera'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
+    var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
     function frame(ms){
       raf=0;if(!root.classList.contains('active')||document.hidden){lastTime=0;lastRender=0;delayTimer=setTimeout(function(){delayTimer=0;if(!raf)raf=requestAnimationFrame(frame)},320);return}
       if(lastRender&&ms-lastRender<15.5){raf=requestAnimationFrame(frame);return}
-      var p=multiplierProgress(),dt=Math.min(34,Math.max(8,ms-(lastTime||ms)));lastTime=ms;lastRender=ms;targetX=p*.18;targetY=p*.22;var follow=1-Math.exp(-dt*.0035);cameraX+=(targetX-cameraX)*follow;cameraY+=(targetY-cameraY)*follow;
-      gl.useProgram(program);gl.uniform2f(resolution,canvas.width,canvas.height);gl.uniform1f(time,ms*.001);gl.uniform1f(progress,p);gl.uniform2f(camera,cameraX,cameraY);gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
+      lastTime=ms;lastRender=ms;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity());gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
     }
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();if(raf)cancelAnimationFrame(raf);raf=0});
     window.addEventListener('resize',function(){resize(gl)},{passive:true});
@@ -97,7 +99,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <style>
     html body:has(#crash.active){isolation:isolate!important;background:#000!important}
-    html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Crash.PNG?v=1')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
+    html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background:#000!important;background-image:none!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
     html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
     html body:has(#crash.active) .app,html body:has(#crash.active) main.app,html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
@@ -106,8 +108,8 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:8px!important}
   </style>
   <div class="crash-page">
+    <canvas id="crashSpaceCanvas" class="crash-space-canvas" aria-hidden="true"></canvas>
     <div class="crash-stage">
-      <canvas id="crashSpaceCanvas" class="crash-space-canvas" aria-hidden="true"></canvas>
       <div class="crash-history" id="crashHistory"></div>
       <div id="crashRocketScene" class="crash-rocket-scene" aria-label="3D crash rocket">
         <div id="crashRocketFlight" class="crash-rocket-flight" data-state="waiting">
