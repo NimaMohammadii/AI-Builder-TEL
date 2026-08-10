@@ -79,7 +79,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       raf=0;if(!root.classList.contains('active')||document.hidden){delayTimer=setTimeout(function(){delayTimer=0;if(!raf)raf=requestAnimationFrame(frame)},320);return}
       resize(null);var p=multiplierProgress(),ease=Math.min(1,(ms-(lastTime||ms))/120);lastTime=ms;targetX=p*.9;targetY=p*1.15;cameraX+=(targetX-cameraX)*Math.max(.035,ease*.12);cameraY+=(targetY-cameraY)*Math.max(.035,ease*.12);
       var w=canvas.width,h=canvas.height,dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#010207';ctx.fillRect(0,0,w,h);
-      for(var i=0;i<stars.length;i++){var s=stars[i],x=((s.x-cameraX*.028*s.z)%1+1)%1*w,y=((s.y+cameraY*.035*s.z)%1+1)%1*h,a=.48+.34*Math.sin(ms*.0012+s.w);ctx.globalAlpha=a;ctx.fillStyle=s.w>3.2?'#dce7ff':'#ffe8d8';ctx.beginPath();ctx.arc(x,y,s.r*dpr,0,Math.PI*2);ctx.fill()}
+      for(var i=0;i<stars.length;i++){var s=stars[i],x=((s.x-cameraX*.028*s.z)%1+1)%1*w,y=((s.y+cameraY*.035*s.z)%1+1)%1*h,a=.48+.34*Math.sin(ms*.0012+s.w);ctx.globalAlpha=a;ctx.strokeStyle=s.w>3.2?'#dce7ff':'#ffe8d8';ctx.fillStyle=ctx.strokeStyle;var velocity=p*p*s.z,trail=velocity*22*dpr;if(trail>1.2){ctx.lineWidth=Math.max(.45,s.r*dpr*.72);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+trail*.66,y+trail);ctx.stroke()}else{ctx.beginPath();ctx.arc(x,y,s.r*dpr,0,Math.PI*2);ctx.fill()}}
       var px=w*.18-cameraX*w*.012,py=h*.77+cameraY*h*.008,pr=Math.min(w,h)*.085,g=ctx.createRadialGradient(px-pr*.28,py-pr*.38,pr*.04,px,py,pr);g.addColorStop(0,'#7f9ab0');g.addColorStop(.34,'#263d50');g.addColorStop(.7,'#07101b');g.addColorStop(1,'#000');ctx.globalAlpha=.94;ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       raf=requestAnimationFrame(frame)
     }
@@ -104,18 +104,26 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0)),f.x),f.y);}',
       'float fbm(vec2 p){float f=0.0;f+=noise2(p)*.5;p=p*2.03+3.1;f+=noise2(p)*.25;p=p*2.01+1.7;f+=noise2(p)*.125;p=p*2.04+.9;f+=noise2(p)*.0625;return f;}',
       'vec3 starLayer(vec2 uv,float scale,float seed,float radius,float gain){vec2 cell=floor(uv*scale),gv=fract(uv*scale)-.5;float rnd=hash21(cell+seed);vec2 jitter=vec2(hash21(cell+seed+2.31),hash21(cell+seed+6.77))-.5;vec2 delta=gv-jitter*.76;float core=(1.0-smoothstep(radius,radius*3.2,length(delta)))*smoothstep(.958,1.0,rnd);float twinkle=.72+.28*sin(u_time*(.62+rnd*1.18)+rnd*41.0);vec3 cool=vec3(.65,.76,1.0),warm=vec3(1.0,.82,.65);return mix(cool,warm,hash21(cell+seed+11.4))*core*gain*twinkle;}',
+      'vec3 streakLayer(vec2 uv,float cells,float seed,float speed,float gain){vec2 direction=normalize(vec2(-.68,-1.0)),across=vec2(-direction.y,direction.x);vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y+=u_time*(.025+speed*.88);vec2 grid=rotated*vec2(cells,cells*.22),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;float width=mix(.018,.044,speed),length=mix(.018,.47,smoothstep(.06,.88,speed));float trail=(1.0-smoothstep(width,width*2.8,abs(delta.x)))*(1.0-smoothstep(length,length+.12,abs(delta.y)));float head=1.0-smoothstep(width,width*4.2,length(delta-vec2(0.0,-length*.72)));float exists=smoothstep(.972,1.0,rnd);vec3 tint=mix(vec3(.62,.75,1.0),vec3(1.0,.86,.72),hash21(cell+seed+13.7));return tint*(trail*.38+head*.92)*exists*gain*smoothstep(.08,.9,speed);}',
       'void main(){',
-      'vec2 uv=v_uv,aspectUv=uv-.5;aspectUv.x*=u_resolution.x/u_resolution.y;',
-      'vec2 drift=vec2(u_time*.00008,-u_time*.000035),cam=u_camera;',
-      'vec3 color=vec3(.0012,.0018,.0045);',
-      'vec2 dustUv=aspectUv*2.1+vec2(.38,-.14)+cam*.018+drift*.16;float dust=fbm(dustUv)-.52;dust=max(0.0,dust);color+=vec3(.025,.032,.052)*dust*.42;',
-      'color+=starLayer(uv+cam*.013+drift,28.0,2.7,.046,.75);',
-      'color+=starLayer(uv+cam*.026+drift*1.7,54.0,7.2,.044,.92);',
-      'color+=starLayer(uv+cam*.047+drift*2.8,96.0,14.6,.041,1.16);',
-      'vec2 center=vec2(-.305,-.245)-cam*vec2(.012,.008);float radius=.086;vec2 spherePos=aspectUv-center;float distanceToPlanet=length(spherePos);float planetMask=1.0-smoothstep(radius-.0015,radius+.0015,distanceToPlanet);vec2 local=spherePos/radius;float z=sqrt(max(0.0,1.0-dot(local,local)));vec3 normal=normalize(vec3(local,z));vec3 lightDir=normalize(vec3(-.72,.58,1.08));float diffuse=max(0.0,dot(normal,lightDir));float terrain=fbm(local*3.7+vec2(.17,-.21));float clouds=fbm(local*8.3+vec2(u_time*.0012,.0));vec3 ocean=vec3(.012,.038,.071),land=vec3(.075,.105,.105);vec3 surface=mix(ocean,land,smoothstep(.49,.61,terrain));surface*=.055+.945*pow(diffuse,.82);surface+=vec3(.24,.27,.29)*smoothstep(.62,.75,clouds)*diffuse*.34;surface+=vec3(.12,.23,.36)*pow(1.0-z,3.3)*diffuse*.35;',
-      'color=mix(color,surface,planetMask);float atmosphere=(1.0-smoothstep(radius,radius*1.17,distanceToPlanet))*(1.0-planetMask);color+=vec3(.08,.23,.48)*atmosphere*.34;',
-      'float vignette=1.0-smoothstep(.58,.92,length((uv-.5)*vec2(1.0,.92)));color*=.72+.28*vignette;',
-      'color=pow(color,vec3(.88));gl_FragColor=vec4(color,1.0);',
+      'vec2 uv=v_uv,aspectUv=uv-.5;aspectUv.x*=u_resolution.x/u_resolution.y;float speed=smoothstep(.015,.9,u_progress);',
+      'vec2 drift=vec2(u_time*.00008,-u_time*.000035),cam=u_camera,flight=vec2(.68,.96)*u_time*(.0015+speed*.058);',
+      'vec3 color=vec3(.00065,.00105,.0028);',
+      'vec2 dustUv=aspectUv*2.1+vec2(.38,-.14)+cam*.018+flight*.035+drift*.16;float dust=max(0.0,fbm(dustUv)-.54);color+=vec3(.018,.024,.044)*dust*.34;',
+      'color+=starLayer(uv+cam*.013+flight*.24+drift,28.0,2.7,.046,.72);',
+      'color+=starLayer(uv+cam*.026+flight*.54+drift*1.7,54.0,7.2,.044,.88);',
+      'color+=starLayer(uv+cam*.047+flight+drift*2.8,96.0,14.6,.041,1.08);',
+      'color+=streakLayer(uv,39.0,21.4,speed,.78);color+=streakLayer(uv+vec2(.19,.07),67.0,44.8,speed,.48);',
+      'vec2 center=vec2(-.294,-.232)-cam*vec2(.012,.008)-flight*.012;float radius=.102;vec2 spherePos=aspectUv-center;float distanceToPlanet=length(spherePos);float edge=max(.0012,1.8/min(u_resolution.x,u_resolution.y));float planetMask=1.0-smoothstep(radius-edge,radius+edge,distanceToPlanet);vec2 local=spherePos/radius;float z=sqrt(max(0.0,1.0-dot(local,local)));vec3 normal=normalize(vec3(local,z));',
+      'vec3 lightDir=normalize(vec3(-.76,.54,1.12)),viewDir=vec3(0.0,0.0,1.0),halfDir=normalize(lightDir+viewDir);float nDotL=dot(normal,lightDir),daylight=smoothstep(-.13,.2,nDotL),directLight=pow(max(0.0,nDotL),.72);',
+      'vec2 globeUv=vec2(atan(normal.x,normal.z)/6.2831853+.5+u_time*.0017,asin(clamp(normal.y,-1.0,1.0))/3.1415926+.5);float continental=fbm(globeUv*vec2(5.3,8.7)+vec2(.31,-.24));continental=continental*.72+fbm(globeUv*vec2(11.7,5.4)+2.6)*.28;float landMask=smoothstep(.505,.585,continental);float elevation=fbm(globeUv*vec2(24.0,15.0)+5.7);',
+      'vec3 deepOcean=vec3(.004,.022,.052),shallowOcean=vec3(.018,.083,.118);vec3 ocean=mix(deepOcean,shallowOcean,smoothstep(.38,.68,continental));vec3 lowland=vec3(.075,.105,.071),highland=vec3(.19,.16,.105);vec3 land=mix(lowland,highland,smoothstep(.43,.72,elevation));vec3 surface=mix(ocean,land,landMask);',
+      'float illumination=.025+.975*directLight;surface*=illumination;float oceanSpec=pow(max(0.0,dot(normal,halfDir)),58.0)*(1.0-landMask)*daylight;surface+=vec3(.55,.68,.78)*oceanSpec*.62;',
+      'float cloudNoise=fbm(globeUv*vec2(17.0,8.0)+vec2(u_time*.0065,-.2));cloudNoise=cloudNoise*.7+fbm(globeUv*vec2(34.0,13.0)+vec2(u_time*.0105,4.1))*.3;float cloudMask=smoothstep(.61,.735,cloudNoise);surface*=1.0-cloudMask*.075;surface+=vec3(.72,.78,.81)*cloudMask*(.055+.945*directLight)*.66;',
+      'float cityNoise=fbm(globeUv*vec2(31.0,18.0)+9.3);float cityLights=smoothstep(.76,.84,cityNoise)*landMask*(1.0-daylight);surface+=vec3(1.0,.46,.12)*cityLights*.34;',
+      'float fresnel=pow(1.0-z,3.15);surface+=vec3(.075,.22,.46)*fresnel*(.18+.82*daylight);color=mix(color,surface,planetMask);',
+      'float outerAtmosphere=(1.0-smoothstep(radius,radius*1.19,distanceToPlanet))*(1.0-planetMask);float sunSide=.22+.78*smoothstep(-.35,.55,dot(normalize(vec3(local,0.25)),lightDir));color+=vec3(.055,.21,.56)*outerAtmosphere*sunSide*.52;',
+      'float vignette=1.0-smoothstep(.58,.92,length((uv-.5)*vec2(1.0,.92)));color*=.72+.28*vignette;color=pow(max(color,vec3(0.0)),vec3(.86));gl_FragColor=vec4(color,1.0);',
       '}'
     ].join(String.fromCharCode(10));
     function shader(type,source){var s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){gl.deleteShader(s);return null}return s}
