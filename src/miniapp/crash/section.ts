@@ -28,14 +28,16 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     fetch('/app/api/crash-stage-images',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
       var images=j&&j.images||{},urls=[];
       for(var i=1;i<=5;i++)urls.push(typeof images[String(i)]==='string'?images[String(i)]:'');
-      var signature=urls.join('|');if(signature===stageSignature)return;stageSignature=signature;
+      var signature=urls.join('|');if(signature===stageSignature)return;stageSignature=signature;stageTrack.classList.remove('ready');
       var sequence=urls.concat([urls[0]||'']),fragment=document.createDocumentFragment();
-      sequence.forEach(function(url,index){
+      sequence.forEach(function(url){
         var slide=document.createElement('div');slide.className='crash-stage-background-slide';
-        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading=index<2?'eager':'lazy';img.draggable=false;slide.appendChild(img)}
+        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading='eager';img.draggable=false;slide.appendChild(img)}
         fragment.appendChild(slide)
       });
-      stageTrack.replaceChildren(fragment);stageTrack.classList.toggle('ready',urls.some(Boolean))
+      stageTrack.replaceChildren(fragment);
+      var pending=Array.from(stageTrack.querySelectorAll('img')).map(function(img){return typeof img.decode==='function'?img.decode().catch(function(){}):Promise.resolve()});
+      Promise.all(pending).then(function(){if(signature===stageSignature&&urls.some(Boolean))stageTrack.classList.add('ready')})
     }).catch(function(){})
   }
   function fallback2d(){
@@ -120,7 +122,8 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     html body:has(#crash.active) .app,html body:has(#crash.active) main.app,html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     html body:has(#crash.active) #crash .crash-page{position:relative!important;isolation:isolate!important}
     html body:has(#crash.active) #crash .crash-stage-background{position:absolute!important;left:0!important;top:0!important;width:100%!important;aspect-ratio:1/1!important;overflow:hidden!important;z-index:0!important;background:#000!important;pointer-events:none!important}
-    html body:has(#crash.active) #crash .crash-stage-background-track{display:flex!important;width:600%!important;height:100%!important;transform:translate3d(0,0,0);will-change:transform;animation:crashStageBackgroundPan 75s linear infinite!important}
+    html body:has(#crash.active) #crash .crash-stage-background-track{display:flex!important;width:600%!important;height:100%!important;transform:translate3d(0,0,0);will-change:transform;opacity:0;animation:crashStageBackgroundPan 75s linear infinite!important;animation-play-state:paused!important;transition:opacity .22s ease}
+    html body:has(#crash.active) #crash .crash-stage-background-track.ready{opacity:1;animation-play-state:running!important}
     html body:has(#crash.active) #crash .crash-stage-background-slide{flex:0 0 calc(100% / 6)!important;width:calc(100% / 6)!important;height:100%!important;background:#000!important;overflow:hidden!important}
     html body:has(#crash.active) #crash .crash-stage-background-slide img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;user-select:none!important;-webkit-user-drag:none!important}
     html body:has(#crash.active) #crash #crashSpaceCanvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:auto!important;aspect-ratio:1/1!important;transform:none!important;z-index:1!important;border-radius:0!important;background:transparent!important;pointer-events:none!important}
