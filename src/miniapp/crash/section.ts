@@ -66,7 +66,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'uniform float u_rocket_angle;',
       'float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
       'vec3 streakLayer(vec2 uv,float cells,float seed,float gain){',
-      'vec2 direction=normalize(vec2(-sin(u_rocket_angle),cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);',
+      'vec2 direction=normalize(vec2(-sin(u_rocket_angle),-cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);',
       'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.018,.31,u_intensity);',
       'vec2 grid=rotated*vec2(cells,cells*.20),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);',
       'vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;',
@@ -99,7 +99,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <style>
     html body:has(#crash.active){isolation:isolate!important;background:#000!important}
-    html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background:#000!important;background-image:none!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
+    html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Crash.PNG?v=1')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:none!important;animation:none!important;filter:none!important;opacity:1!important}
     html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
     html body:has(#crash.active) .app,html body:has(#crash.active) main.app,html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     html body:has(#crash.active) #crash .crash-page{position:relative!important;isolation:isolate!important}
