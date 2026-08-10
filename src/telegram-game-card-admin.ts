@@ -131,7 +131,7 @@ async function serveCrashStageImage(request: Request, env: Env, raw: string): Pr
 async function serveCrashStageManifest(env: Env): Promise<Response> {
   const images: Record<string, string | null> = {};
   const preload: string[] = [];
-  await Promise.all(Array.from({ length: 10 }, async (_, index) => {
+  await Promise.all(Array.from({ length: 5 }, async (_, index) => {
     const slot = index + 1;
     const object = await env.ASSETS.head(crashStageKey(slot)).catch(() => null);
     if (!object) { images[String(slot)] = null; return; }
@@ -251,7 +251,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       const slot = normalizeCrashStageSlot(data.slice('botadmin:crashstage:'.length));
       if (slot) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${CRASH_STAGE_STATE_PREFIX}${slot}`, { expirationTtl: 900 });
-        await upsert(token, chatId, messageId, `🚀 تصویر ${slot} از 10 داخل کادر Crash\n\nتصویر ${slot === 1 ? 'شروع/پایین‌ترین بخش' : slot === 10 ? 'آخر/بالاترین بخش' : `مرحله ${slot}`} است. برای حفظ کیفیت، تصویر را به‌صورت File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
+        await upsert(token, chatId, messageId, `🚀 تصویر ${slot} از 5 داخل Crash\n\n${slot === 1 ? 'Image 1 شروع مسیر افقی است.' : slot === 5 ? 'Image 5 آخر مسیر است و بعد از آن دوباره Image 1 می‌آید.' : `Image ${slot} بین تصویر قبلی و بعدی قرار می‌گیرد.`}\nلبه راست هر تصویر باید ادامه‌ی طبیعی لبه چپ تصویر بعدی باشد. برای حفظ کیفیت، تصویر را به‌صورت File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
           [{ text: '⬅️ بازگشت', callback_data: 'botadmin:crashstage' }],
         ]);
       }
@@ -368,7 +368,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
       await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'crash-stage') {
-      const successText = `✅ تصویر ${target.slot} از 10 کادر Crash ذخیره شد.`;
+      const successText = `✅ تصویر ${target.slot} از 5 مسیر افقی Crash ذخیره شد.`;
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
         photo: `${PUBLIC_BASE_URL}/app/api/crash-stage-image/${target.slot}.png?v=${Date.now()}`,
@@ -457,13 +457,12 @@ async function sendBackgroundMenu(token: string, chatId: number, messageId?: num
 }
 
 async function sendCrashStageMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const present = await Promise.all(Array.from({ length: 10 }, (_, index) => env.ASSETS.head(crashStageKey(index + 1)).then((object) => Boolean(object)).catch(() => false)));
+  const present = await Promise.all(Array.from({ length: 5 }, (_, index) => env.ASSETS.head(crashStageKey(index + 1)).then((object) => Boolean(object)).catch(() => false)));
+  const buttons = Array.from({ length: 5 }, (_, index) => ({ text: `${present[index] ? '✅ ' : ''}Image ${index + 1}`, callback_data: `botadmin:crashstage:${index + 1}` }));
   const rows: Keyboard = [];
-  for (let i = 1; i <= 10; i += 2) {
-    rows.push([i, i + 1].map((slot) => ({ text: `${present[slot - 1] ? '✅ ' : ''}Image ${slot}`, callback_data: `botadmin:crashstage:${slot}` })));
-  }
+  for (let index = 0; index < buttons.length; index += 2) rows.push(buttons.slice(index, index + 2));
   rows.push([{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]);
-  await upsert(token, chatId, messageId, '🚀 تصاویر عمودی داخل کادر Crash\n\nImage 1 پایین‌ترین/شروع مسیر است و Image 10 بالاترین/آخر مسیر. هر 10 تصویر به‌ترتیب عمودی به هم وصل می‌شوند.', rows);
+  await upsert(token, chatId, messageId, '🚀 ۵ تصویر افقی داخل Crash\n\nImage 1 تا Image 5 به‌ترتیب از چپ به راست حرکت می‌کنند. لبه راست هر تصویر باید ادامه‌ی لبه چپ تصویر بعدی باشد و بعد از Image 5 دوباره Image 1 نمایش داده می‌شود.', rows);
 }
 
 async function sendRankMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
@@ -655,7 +654,7 @@ function normalizeBackgroundGame(value: unknown): string | null {
 }
 function normalizeCrashStageSlot(value: unknown): number | null {
   const slot = Number(String(value || '').replace(/[^0-9]/g, ''));
-  return Number.isInteger(slot) && slot >= 1 && slot <= 10 ? slot : null;
+  return Number.isInteger(slot) && slot >= 1 && slot <= 5 ? slot : null;
 }
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
