@@ -1,6 +1,6 @@
 export const CRASH_SCRIPT = `
 (function(){
-  var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=34000, DAY_MS=86400000;
+  var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=68000, DAY_MS=86400000;
   var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null;
   function q(id){return document.getElementById(id)}
   function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
@@ -20,7 +20,7 @@ export const CRASH_SCRIPT = `
   function setTotal(seconds){var n=q('crashTotalTime');if(n)n.textContent='Total '+Math.max(0,Math.floor(seconds))+'s'}
   function seeded(seed){var x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
   function rawRoundStop(roundId){var u=Math.max(.000001,seeded(roundId));var raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
-  function multAt(seconds){return 1+seconds*.12+seconds*seconds*.0042}
+  function multAt(seconds){return 1+seconds*.06+seconds*seconds*.00105}
   function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
   function roundStop(roundId){return Math.min(rawRoundStop(roundId),maxReachableStop())}
   function stopTime(stop){var target=Math.max(1,Number(stop)||1),lo=0,hi=MAX_RUN_MS;for(var i=0;i<24;i++){var mid=(lo+hi)/2;if(multAt(mid/1000)>=target)hi=mid;else lo=mid}return hi}
