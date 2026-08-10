@@ -30,9 +30,8 @@ export const CRASH_SCRIPT = `
   function targetBetRoundId(state){return state.waiting?state.id+1:state.id}
   function setRocket(value,state){
     var flight=q('crashRocketFlight');if(!flight)return;
-    var model=q('crashRocket'),now=performance.now(),v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
+    var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
-    if(model&&customElements.get('model-viewer'))model.orientation='0deg 0deg '+((now*.024)%360).toFixed(3)+'deg';
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
