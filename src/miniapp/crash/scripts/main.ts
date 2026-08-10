@@ -30,13 +30,11 @@ export const CRASH_SCRIPT = `
   function targetBetRoundId(state){return state.waiting?state.id+1:state.id}
   function setRocket(value,state){
     var flight=q('crashRocketFlight'),stage=flight&&flight.parentElement;if(!flight||!stage)return;
-    var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1),t=1-(1/(1+raw*.48)),w=Math.max(320,stage.clientWidth||360),h=Math.max(280,stage.clientHeight||340);
-    var running=state==='running',crashed=state==='crashed';
-    var x=running?t*w*.20:0,y=running?38-t*h*.32:38,tilt=running?-3+t*15:-3,scale=running?.72+t*.10:.72,thrust=running?.72+Math.min(.48,raw*.035):.22;
+    var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1),t=1-(1/(1+raw*.42)),w=Math.max(320,stage.clientWidth||360),h=Math.max(280,stage.clientHeight||340);
+    var running=state==='running',crashed=state==='crashed',pulse=running?Math.sin(performance.now()*.006)*1.5:0;
+    var x=running?4+t*w*.26:0,y=running?46-t*h*.25+pulse:46,thrust=running?.66+Math.min(.52,raw*.04):.18;
     flight.style.setProperty('--rocket-x',x.toFixed(2)+'px');
     flight.style.setProperty('--rocket-y',y.toFixed(2)+'px');
-    flight.style.setProperty('--rocket-tilt',tilt.toFixed(2)+'deg');
-    flight.style.setProperty('--rocket-scale',scale.toFixed(3));
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
