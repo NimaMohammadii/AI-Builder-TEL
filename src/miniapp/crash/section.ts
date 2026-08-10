@@ -3,65 +3,6 @@ import { CRASH_LIVE_D1_SCRIPT } from './scripts/live-bets';
 import { CRASH_BACK_BUTTON_SCRIPT } from './scripts/back-button';
 import { CRASH_BREAK_FX_SCRIPT } from './scripts/break-effect';
 
-const CRASH_MULTIPLIER_DISPLAY_SCRIPT = `
-(function(){
-  function install(){
-    var el=document.getElementById('crashMultiplier');
-    if(!el||el.__vexaCrashSmoothText)return;
-    el.__vexaCrashSmoothText=true;
-    var desc=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
-    if(!desc||!desc.get||!desc.set)return;
-    var internal=false;
-    var target=1;
-    var display=1;
-    var raf=0;
-    var last=0;
-    function parse(value){var n=Number(String(value||'').replace(/x/i,''));return Number.isFinite(n)&&n>0?n:1}
-    function format(value){return Math.max(1,Number(value)||1).toFixed(2)+'x'}
-    function paint(value){internal=true;var text=format(value);desc.set.call(el,text);el.setAttribute('data-crash-text',text);internal=false}
-    function speedFor(value){
-      if(value<1.35)return .30;
-      if(value<1.75)return .44;
-      if(value<2.15)return .62;
-      if(value<2.5)return .86;
-      if(value<4)return 1.9;
-      return 4.2;
-    }
-    function frame(ts){
-      raf=0;
-      if(!last)last=ts;
-      var dt=Math.min(34,Math.max(8,ts-last));
-      last=ts;
-      if(target<=1.005||target<display-.015){display=target;paint(display);last=0;return}
-      var diff=target-display;
-      if(diff>0){
-        var maxStep=speedFor(display)*dt/1000;
-        var easeStep=diff*(1-Math.exp(-5.2*dt/1000));
-        var minStep=display<2.5?.0025:.006;
-        display=Math.min(target,display+Math.max(minStep,Math.min(maxStep,easeStep)));
-      }else{
-        display=target;
-      }
-      paint(display);
-      if(target>1.005&&target>=display)raf=requestAnimationFrame(frame);
-    }
-    Object.defineProperty(el,'textContent',{
-      configurable:true,
-      get:function(){return desc.get.call(el)},
-      set:function(value){
-        if(internal){desc.set.call(el,value);return}
-        var next=parse(value);
-        if(next<=1.005||next<target-.015){target=next;display=next;last=0;paint(display);return}
-        target=next;
-        if(!raf)raf=requestAnimationFrame(frame);
-      }
-    });
-    paint(parse(desc.get.call(el)||'1'));
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-})();
-`;
-
 const CRASH_HORIZONTAL_BACKGROUNDS_SCRIPT = `
 (function(){
   function install(){
@@ -188,7 +129,6 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   </div>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
   <script>customElements.whenDefined('model-viewer').then(function(){var ModelViewer=customElements.get('model-viewer');if(ModelViewer)ModelViewer.minimumRenderScale=1})</script>
-  <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
   <script>${CRASH_HORIZONTAL_BACKGROUNDS_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
   <script>${CRASH_LIVE_D1_SCRIPT}</script>
