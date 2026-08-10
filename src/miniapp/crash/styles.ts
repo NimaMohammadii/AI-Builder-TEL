@@ -1,5 +1,5 @@
 export const CRASH_STYLES = `
-#crash.crash-view{height:100%;overflow-y:auto!important;overflow-x:hidden!important;-webkit-over-scrolling:touch;scrollbar-width:none;padding-bottom:22px}
+#crash.crash-view{height:100%;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:22px}
 #crash.crash-view::-webkit-scrollbar{display:none}
 body:has(#crash.active) .tabs{display:none!important}
 body:has(#crash.active) .content{padding-bottom:0!important}
