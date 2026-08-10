@@ -21,6 +21,10 @@
       {
         "name": "SECTION_LOCK_EVENTS",
         "class_name": "SectionLockEvents"
+      },
+      {
+        "name": "GHOST_RUN_LIVE",
+        "class_name": "GhostRunLiveRoom"
       }
     ]
   },
