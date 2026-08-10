@@ -135,7 +135,18 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <div class="crash-page">
     <div class="crash-stage">
       <div class="crash-history" id="crashHistory"></div>
-      <canvas id="crashCanvas" class="crash-canvas" width="360" height="340" aria-label="Crash graph"></canvas>
+      <div id="crashRocketScene" class="crash-rocket-scene" aria-label="3D crash rocket">
+        <div id="crashRocketFlight" class="crash-rocket-flight" data-state="waiting">
+          <div class="crash-rocket-heat" aria-hidden="true"></div>
+          <div class="crash-rocket-flame" aria-hidden="true">
+            <span class="crash-flame-outer"></span>
+            <span class="crash-flame-middle"></span>
+            <span class="crash-flame-core"></span>
+            <i></i><i></i><i></i>
+          </div>
+          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 105%" field-of-view="30deg" exposure="1.12" shadow-intensity="1.25" shadow-softness=".85" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
+        </div>
+      </div>
       <div class="crash-multiplier-wrap">
         <div class="crash-multiplier" id="crashMultiplier">1.00x</div>
         <div class="crash-next-round" id="crashNextRound">Next round 5.0s</div>
@@ -175,6 +186,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
       </div>
     </div>
   </div>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
   <script>${CRASH_MULTIPLIER_DISPLAY_SCRIPT}</script>
   <script>${CRASH_HORIZONTAL_BACKGROUNDS_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
