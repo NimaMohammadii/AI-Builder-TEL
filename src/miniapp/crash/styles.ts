@@ -10,7 +10,7 @@ body:has(#crash.active) .content{padding-bottom:0!important}
 #crash .crash-history{position:relative;z-index:4}
 #crash .crash-chart-square{display:none!important}
 #crash .crash-rocket-scene{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;perspective:900px}
-#crash .crash-rocket-flight{--rocket-thrust:.3;--rocket-angle:70deg;position:absolute;left:50%;top:50%;width:min(56vw,220px);height:min(56vw,220px);transform:translate3d(-50%,-50%,0) rotate(var(--rocket-angle)) scale(.78);transform-origin:50% 50%;will-change:transform,opacity;animation:crashRocketDrift 3.6s ease-in-out infinite;transition:opacity .22s ease;opacity:1}
+#crash .crash-rocket-flight{--rocket-thrust:.3;--rocket-angle:80deg;--rocket-entry-x:0px;position:absolute;left:50%;top:50%;width:min(56vw,220px);height:min(56vw,220px);transform:translate3d(calc(-50% + var(--rocket-entry-x)), -50%,0) rotate(var(--rocket-angle)) scale(.78);transform-origin:50% 50%;will-change:transform,opacity;animation:crashRocketDrift 3.6s ease-in-out infinite;transition:opacity .22s ease;opacity:1}
 #crash .crash-rocket-model{position:absolute;inset:0;width:100%;height:100%;z-index:3;background:transparent!important;--poster-color:transparent;pointer-events:none;image-rendering:auto}
 #crash .crash-rocket-model::part(default-progress-bar){display:none}
 #crash .crash-rocket-flame{position:absolute;left:50%;top:83%;width:21%;height:calc(31% * var(--rocket-thrust));min-height:8px;z-index:1;transform:translateX(-50%);transform-origin:50% 0;filter:drop-shadow(0 10px 13px rgba(101,5,30,.72));opacity:calc(.18 + var(--rocket-thrust) * .82);will-change:height,opacity,filter}
@@ -23,7 +23,7 @@ body:has(#crash.active) .content{padding-bottom:0!important}
 #crash .crash-rocket-flame i:nth-of-type(2){animation-delay:.19s;left:38%}#crash .crash-rocket-flame i:nth-of-type(3){animation-delay:.41s;left:64%}
 #crash .crash-rocket-flight[data-state="waiting"]{--rocket-thrust:.18;opacity:1}
 #crash .crash-rocket-flight[data-state="crashed"]{--rocket-thrust:0;opacity:.15}
-@keyframes crashRocketDrift{0%,100%{transform:translate3d(calc(-50% - 2px),calc(-50% + 2px),0) rotate(var(--rocket-angle)) scale(.78)}50%{transform:translate3d(calc(-50% + 2px),calc(-50% - 2px),0) rotate(var(--rocket-angle)) scale(.78)}}
+@keyframes crashRocketDrift{0%,100%{transform:translate3d(calc(-50% + var(--rocket-entry-x) - 2px),calc(-50% + 2px),0) rotate(var(--rocket-angle)) scale(.78)}50%{transform:translate3d(calc(-50% + var(--rocket-entry-x) + 2px),calc(-50% - 2px),0) rotate(var(--rocket-angle)) scale(.78)}}
 @keyframes crashFlameOuter{0%{transform:translateX(-50%) scaleX(.88) scaleY(.94);filter:blur(3.6px)}100%{transform:translateX(-50%) scaleX(1.08) scaleY(1.06);filter:blur(2.6px)}}
 @keyframes crashFlameMiddle{0%{transform:translateX(-50%) scaleX(.84) scaleY(.92)}100%{transform:translateX(-50%) scaleX(1.08) scaleY(1.08)}}
 @keyframes crashFlameCore{0%{transform:translateX(-50%) scaleY(.86)}100%{transform:translateX(-50%) scaleY(1.13)}}
