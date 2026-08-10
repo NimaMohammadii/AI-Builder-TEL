@@ -9,7 +9,8 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   window.__vexaCrashSpaceEnvironment=true;
   var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),multiplier=document.getElementById('crashMultiplier'),stageTrack=document.getElementById('crashStageBackgroundTrack');
   if(!canvas||!root)return;
-  var raf=0,delayTimer=0,lastTime=0,lastRender=0,stageSignature='';
+  var raf=0,lastRender=0,stageSignature='',stageLoadState=0,booted=false;
+  function active(){return root.classList.contains('active')&&!document.hidden}
   function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
   function streakIntensity(){
     var v=multiplierValue();
@@ -21,24 +22,28 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     return Math.min(1,.78+(1-Math.exp(-(v-5)*.12))*.22)
   }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
-  function canvasDpr(){return Math.min(1.4,Math.max(1,window.devicePixelRatio||1))}
+  function canvasDpr(){return Math.min(1.15,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
   function loadStageImages(){
-    if(!stageTrack)return;
+    if(!stageTrack||stageLoadState)return;
+    stageLoadState=1;
     fetch('/app/api/crash-stage-images',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
-      var images=j&&j.images||{},urls=[];
+      if(!j){stageLoadState=0;return}
+      var images=j.images||{},urls=[];
       for(var i=1;i<=5;i++)urls.push(typeof images[String(i)]==='string'?images[String(i)]:'');
-      var signature=urls.join('|');if(signature===stageSignature)return;stageSignature=signature;stageTrack.classList.remove('ready');
+      var signature=urls.join('|');if(signature===stageSignature){stageLoadState=2;return}stageSignature=signature;stageTrack.classList.remove('ready');
       var sequence=urls.concat([urls[0]||'']),fragment=document.createDocumentFragment();
-      sequence.forEach(function(url){
+      sequence.forEach(function(url,index){
         var slide=document.createElement('div');slide.className='crash-stage-background-slide';
-        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading='eager';img.draggable=false;slide.appendChild(img)}
+        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading=index<2?'eager':'lazy';img.draggable=false;slide.appendChild(img)}
         fragment.appendChild(slide)
       });
       stageTrack.replaceChildren(fragment);
-      var pending=Array.from(stageTrack.querySelectorAll('img')).map(function(img){return typeof img.decode==='function'?img.decode().catch(function(){}):Promise.resolve()});
-      Promise.all(pending).then(function(){if(signature===stageSignature&&urls.some(Boolean))stageTrack.classList.add('ready')})
-    }).catch(function(){})
+      var first=stageTrack.querySelector('img');
+      function ready(){if(signature===stageSignature){stageLoadState=2;stageTrack.classList.add('ready')}}
+      if(!first){stageLoadState=2;return}
+      if(first.complete)ready();else{first.addEventListener('load',ready,{once:true});first.addEventListener('error',ready,{once:true})}
+    }).catch(function(){stageLoadState=0})
   }
   function fallback2d(){
     var ctx=canvas.getContext('2d');if(!ctx){var replacement=document.createElement('canvas');replacement.id=canvas.id;replacement.className=canvas.className;replacement.setAttribute('aria-hidden','true');canvas.replaceWith(replacement);canvas=replacement;ctx=canvas.getContext('2d')}if(!ctx)return;
@@ -47,9 +52,9 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     for(var i=0;i<42;i++)particles.push({x:random(),y:random(),rank:random(),width:.45+random()*.65,length:.55+random()*.9});
     resize(null);
     function frame(ms){
-      raf=0;if(!root.classList.contains('active')||document.hidden){lastTime=0;lastRender=0;delayTimer=setTimeout(function(){delayTimer=0;if(!raf)raf=requestAnimationFrame(frame)},320);return}
-      if(lastRender&&ms-lastRender<15.5){raf=requestAnimationFrame(frame);return}
-      var dt=Math.min(34,Math.max(8,ms-(lastTime||ms)));lastTime=ms;lastRender=ms;
+      raf=0;if(!active()){lastRender=0;return}
+      if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
+      lastRender=ms;
       var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(10+intensity*145)*dpr;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
@@ -62,13 +67,14 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       }
       ctx.globalAlpha=1;raf=requestAnimationFrame(frame)
     }
+    function resume(){resize(null);loadStageImages();if(active()&&!raf)raf=requestAnimationFrame(frame)}
     window.addEventListener('resize',function(){resize(null)},{passive:true});
-    window.addEventListener('vexa-crash-visible',function(){resize(null);loadStageImages()},{passive:true});
-    raf=requestAnimationFrame(frame)
+    window.addEventListener('vexa-crash-visible',resume,{passive:true});
+    if(active())raf=requestAnimationFrame(frame)
   }
   function boot(){
-    loadStageImages();
-    var gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
+    if(booted||!active())return;booted=true;loadStageImages();
+    var gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power'});
     if(!gl){fallback2d();return}
     resize(gl);
     var vertex=[
@@ -102,16 +108,18 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     gl.useProgram(program);var buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);var position=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
     var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
     function frame(ms){
-      raf=0;if(!root.classList.contains('active')||document.hidden){lastTime=0;lastRender=0;delayTimer=setTimeout(function(){delayTimer=0;if(!raf)raf=requestAnimationFrame(frame)},320);return}
-      if(lastRender&&ms-lastRender<15.5){raf=requestAnimationFrame(frame);return}
-      lastTime=ms;lastRender=ms;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity());gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
+      raf=0;if(!active()){lastRender=0;return}
+      if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
+      lastRender=ms;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity());gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
     }
+    function resume(){resize(gl);loadStageImages();if(active()&&!raf)raf=requestAnimationFrame(frame)}
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();if(raf)cancelAnimationFrame(raf);raf=0});
     window.addEventListener('resize',function(){resize(gl)},{passive:true});
-    window.addEventListener('vexa-crash-visible',function(){resize(gl);loadStageImages()},{passive:true});
+    window.addEventListener('vexa-crash-visible',resume,{passive:true});
     raf=requestAnimationFrame(frame)
   }
-  boot();
+  window.addEventListener('vexa-crash-visible',boot,{passive:true});
+  if(active())boot();
 })();
 `;
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
@@ -128,7 +136,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
             <span class="crash-flame-middle"></span>
             <span class="crash-flame-core"></span>
           </div>
-          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 108%" field-of-view="28deg" exposure="1.08" auto-rotate auto-rotate-delay="0" rotation-per-second="18deg" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
+          <model-viewer id="crashRocket" class="crash-rocket-model" src="/assets/Rocket3D.glb" alt="3D rocket" camera-orbit="0deg 78deg 108%" field-of-view="28deg" exposure="1.08" auto-rotate-delay="0" rotation-per-second="18deg" interaction-prompt="none" disable-zoom touch-action="none" loading="eager" reveal="auto"></model-viewer>
         </div>
       </div>
       <div class="crash-multiplier-wrap">
@@ -171,7 +179,6 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
   </div>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
-  <script>customElements.whenDefined('model-viewer').then(function(){var ModelViewer=customElements.get('model-viewer');if(ModelViewer)ModelViewer.minimumRenderScale=1})</script>
   <script>${CRASH_SPACE_ENVIRONMENT_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
   <script>${CRASH_LIVE_D1_SCRIPT}</script>
