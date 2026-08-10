@@ -46,7 +46,12 @@
     },
     {
       "tag": "v6",
-      "new_sqlite_classes": ["GhostRunRoundRoom"]
+      "renamed_classes": [
+        {
+          "from": "GhostRunLiveRoom",
+          "to": "GhostRunRoundRoom"
+        }
+      ]
     }
   ],
   "d1_databases": [
