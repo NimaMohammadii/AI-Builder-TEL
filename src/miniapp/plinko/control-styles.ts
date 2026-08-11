@@ -34,7 +34,6 @@ export const PLINKO_CONTROLS_MODERN_STYLES = `
 #plinko .plinko-bet-value,#plinko .plinko-hidden-status{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;left:-9999px!important}
 #plinko .plinko-stage{overflow:visible!important;background:transparent!important;background-image:none!important;box-shadow:none!important;border:0!important;filter:none!important}
 #plinko .plinko-canvas{clip-path:none!important;background:transparent!important;background-image:none!important}
-#plinko .plinko-house-image{display:none!important}
 #plinko .plinko-bet-editor,#plinko .plinko-bet-editor.active,#plinko .plinko-bet-box,#plinko .plinko-bet-box small,#plinko .plinko-bet-done{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 #plinko .plinko-bet-input{position:fixed!important;left:-9999px!important;top:0!important;width:1px!important;height:1px!important;opacity:.01!important;border:0!important;background:transparent!important;color:#fff!important;text-align:center!important;font-size:22px!important;font-weight:900!important;outline:none!important;pointer-events:auto!important;z-index:-1!important}
 @media(max-width:380px){#plinko .plinko-controls{width:94vw!important;padding:12px 13px 14px!important;gap:8px!important}#plinko .plinko-console-row{grid-template-columns:68px minmax(0,1fr)!important;gap:8px!important}#plinko .plinko-console-actions{grid-template-columns:68px minmax(0,1fr)!important;gap:8px!important}}
