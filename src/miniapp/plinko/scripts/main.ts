@@ -3,7 +3,7 @@ export const PLINKO_SCRIPT = `
   var state = null;
   var rows = 12;
   var risk = 'easy';
-  var roundRequesting = false;
+  var pendingRounds = 0;
   var NANO = 1000000000;
   var credit = readPoints();
   var iconUrl = '/assets/plinko-glass/ball.webp';
@@ -418,7 +418,7 @@ export const PLINKO_SCRIPT = `
   function setRows(next) {
     var value = Number(next);
     if ([8, 12, 16].indexOf(value) === -1 || value === rows) return;
-    if (hasBalls() || roundRequesting) {
+    if (hasBalls() || pendingRounds > 0) {
       show('Wait for the current balls to finish');
       return;
     }
@@ -429,7 +429,7 @@ export const PLINKO_SCRIPT = `
   function setRisk(next) {
     var value = String(next || '').toLowerCase();
     if (['easy', 'medium', 'hard'].indexOf(value) === -1 || value === risk) return;
-    if (hasBalls() || roundRequesting) {
+    if (hasBalls() || pendingRounds > 0) {
       show('Wait for the current balls to finish');
       return;
     }
@@ -616,13 +616,13 @@ export const PLINKO_SCRIPT = `
   async function drop() {
     init();
     primeAudio();
-    if (!state || roundRequesting) return false;
-    if (
-      state.balls &&
-      state.balls.filter(function (ball) {
-        return ball && !ball.remote;
-      }).length >= MAX_LOCAL_BALLS
-    ) {
+    if (!state) return false;
+    var localCount = state.balls
+      ? state.balls.filter(function (ball) {
+          return ball && !ball.remote;
+        }).length
+      : 0;
+    if (localCount + pendingRounds >= MAX_LOCAL_BALLS) {
       show('Please wait for a few balls to finish');
       return false;
     }
@@ -641,12 +641,14 @@ export const PLINKO_SCRIPT = `
       show('Telegram user not found');
       return false;
     }
-    roundRequesting = true;
+    var reservedAmount = roundCurrency(value);
+    pendingRounds += 1;
+    changeLocalPoints(-reservedAmount);
     try {
       var response = await fetch('/app/api/plinko/round', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ initData: initData, amount: roundCurrency(value), rows: rows, risk: risk }),
+        body: JSON.stringify({ initData: initData, amount: reservedAmount, rows: rows, risk: risk }),
       });
       var data = await response.json().catch(function () { return null; });
       if (!response.ok || !data || data.ok !== true) throw new Error(data && data.error ? data.error : 'Could not drop ball');
@@ -654,7 +656,7 @@ export const PLINKO_SCRIPT = `
       var ball = spawnBall({
         id: localId,
         userId: payload.userId,
-        amount: Number(data.amount) || value,
+        amount: Number(data.amount) || reservedAmount,
         name: payload.name,
         photoUrl: payload.photoUrl,
         seed: localId,
@@ -663,14 +665,14 @@ export const PLINKO_SCRIPT = `
         total: data.total,
       });
       if (!ball) return false;
-      changeLocalPoints(-roundCurrency(Number(data.amount) || value));
-      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: roundCurrency(Number(data.amount) || value), roundId: localId });
+      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: roundCurrency(Number(data.amount) || reservedAmount), roundId: localId });
       return true;
     } catch (error) {
+      changeLocalPoints(reservedAmount);
       show(error && error.message ? error.message : 'Could not drop ball');
       return false;
     } finally {
-      roundRequesting = false;
+      pendingRounds = Math.max(0, pendingRounds - 1);
     }
   }
   function controlAdjustedBin(ball, bin) {
