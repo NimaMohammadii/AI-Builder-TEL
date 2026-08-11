@@ -9,14 +9,20 @@ html body:has(#crash.active) #crash.crash-view .crash-controls,#crash .crash-con
 #crash .crash-field b>span:first-child{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}
 #crash .crash-field i{font-style:normal!important;font-size:18px!important;line-height:normal!important;color:rgba(255,255,255,.72)!important;font-weight:800!important;flex:0 0 auto!important}
 #crash .crash-auto-field{margin-top:0!important}
+#crash .crash-auto-control{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:7px!important;min-width:0!important}
 #crash .crash-auto{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:3px!important;width:auto!important;min-width:0!important;height:auto!important;min-height:0!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important}
 #crash .crash-auto input{width:50px!important;min-width:0!important;height:auto!important;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-align:right!important;font:inherit!important;font-size:20px!important;font-weight:950!important;line-height:1!important;letter-spacing:-.04em!important;box-shadow:none!important;appearance:textfield!important;-moz-appearance:textfield!important}
 #crash .crash-auto input::-webkit-outer-spin-button,#crash .crash-auto input::-webkit-inner-spin-button,#crash .crash-bet-main input::-webkit-outer-spin-button,#crash .crash-bet-main input::-webkit-inner-spin-button{appearance:none!important;-webkit-appearance:none!important;margin:0!important}
 #crash .crash-auto span{display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;color:#fff!important;font-size:20px!important;font-weight:950!important;line-height:1!important;flex:0 0 auto!important}
+#crash .crash-auto-stepper{display:grid!important;grid-template-rows:1fr 1fr!important;gap:2px!important;width:24px!important;height:34px!important;flex:0 0 24px!important}
+#crash .crash-auto-stepper button{width:24px!important;height:16px!important;min-width:0!important;min-height:0!important;padding:0!important;border:0!important;outline:0!important;border-radius:7px!important;background:rgba(255,255,255,.07)!important;color:rgba(255,255,255,.76)!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;transition:transform .14s ease,background .14s ease!important}
+#crash .crash-auto-stepper button:active{transform:scale(.92)!important;background:rgba(255,255,255,.12)!important}
+#crash .crash-auto-stepper svg{width:11px!important;height:11px!important;display:block!important}
+#crash .crash-auto-stepper path{fill:none!important;stroke:currentColor!important;stroke-width:2.1!important;stroke-linecap:round!important;stroke-linejoin:round!important}
 #crash .crash-bet{display:grid!important;grid-template-columns:.58fr 1.84fr .58fr!important;gap:7px!important;align-items:center!important}
 #crash .crash-bet button{height:40px!important;border:0!important;outline:0!important;border-radius:20px!important;background:rgba(13,13,13,.54)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:18px!important;font-weight:900!important;letter-spacing:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;text-shadow:none!important;overflow:hidden!important}
 #crash .crash-bet-main{height:42px!important;border:0!important;outline:0!important;border-radius:20px!important;background:rgba(13,13,13,.54)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0 12px!important;min-width:0!important;font-size:20px!important;font-weight:950!important;overflow:hidden!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
-#crash .crash-bet-main input{width:100%!important;height:42px!important;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-align:center!important;font-size:20px!important;font-weight:950!important;letter-spacing:-.025em!important;box-shadow:none!important;padding:0!important;appearance:textfield!important;-moz-appearance:textfield!important}
+#crash .crash-bet-main input{width:100%!important;height:42px!important;border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-align:center!important;font-size:20px!important;font-weight:950!important;letter-spacing:-.025em!important;box-shadow:none!important;padding:0!important;appearance:none!important;-webkit-appearance:none!important;-moz-appearance:textfield!important}
 #crash.bet-locked .crash-bet button,#crash.bet-locked .crash-bet-main{opacity:.55!important;pointer-events:none!important}
 #crash.bet-locked .crash-bet-main input{opacity:1!important;pointer-events:none!important}
 #crash .crash-bet-main input::placeholder,#crash .crash-auto input::placeholder{color:rgba(255,255,255,.42)!important;-webkit-text-fill-color:rgba(255,255,255,.42)!important}
@@ -60,7 +66,7 @@ html body:has(#crash.active) #crash.crash-view #crashLive,#crash .crash-live{bor
 #crash .crash-live-row.cashout .crash-live-amount{color:#78ffb3!important;-webkit-text-fill-color:#78ffb3!important;text-shadow:0 0 14px rgba(120,255,179,.16)!important}
 #crash .crash-live-plus{display:inline-block!important;margin-right:3px!important;color:#78ffb3!important;-webkit-text-fill-color:#78ffb3!important;font-weight:950!important}
 #crash .crash-live-row.crashed .crash-live-amount,#crash .crash-live-row.crashed .crash-live-status{color:rgba(255,255,255,.62)!important;-webkit-text-fill-color:rgba(255,255,255,.62)!important;text-shadow:none!important}
-@media(max-width:380px){#crash .crash-field small,#crash .crash-label{font-size:10px!important}#crash .crash-primary,#crash .crash-secondary{height:44px!important;font-size:15px!important}}
+@media(max-width:380px){#crash .crash-field small,#crash .crash-label{font-size:10px!important}#crash .crash-primary,#crash .crash-secondary{height:46px!important;font-size:15px!important}}
 `;
 
 const CRASH_BASE_STYLES = `
@@ -101,9 +107,9 @@ html body:has(#crash.active) #crash.crash-view .crash-stage{position:relative;wi
 @keyframes crashShardBottom{0%{transform:translate3d(0,0,0) rotate(0);opacity:0}12%{opacity:.82}100%{transform:translate3d(14px,18px,0) rotate(8deg);opacity:0}}
 #crash .crash-next-round{margin-top:6px;color:rgba(255,255,255,.60);font-size:10px;font-weight:850;letter-spacing:.02em;text-shadow:0 8px 18px rgba(0,0,0,.42)}
 #crash .crash-hidden-state,#crash .crash-starting,#crash .crash-network{display:none!important}
-body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0 10px!important}
+body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0 4px 0 16px!important}
 body #crash .crash-bet-main::before{content:""!important;display:block!important;width:30px!important;height:30px!important;flex:0 0 30px!important;transform:translateY(2px)!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
-body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important}
+body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important;border:0!important;outline:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;background-image:none!important;-webkit-appearance:none!important;appearance:none!important}
 `;
 
 const CRASH_SECTION_STYLES = `
@@ -112,7 +118,8 @@ html body:has(#crash.active)::before{content:""!important;display:block!importan
 html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
 html body:has(#crash.active) .app,html body:has(#crash.active) main.app{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
 html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;overflow:visible!important}
-html body:has(#crash.active):has(#crashLive.open) .app{overflow-y:auto!important;overscroll-behavior-y:none!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}
+html body:has(#crash.active):has(#crashLive.open) .app{overflow-y:auto!important;overscroll-behavior-y:none!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;scroll-behavior:smooth!important;scrollbar-width:none!important}
+html body:has(#crash.active):has(#crashLive.open) #crash.crash-view{overflow-y:visible!important}
 html body:has(#crash.active):has(#crashLive.open) .app::-webkit-scrollbar{display:none!important}
 html body:has(#crash.active):has(#crashLive.open) .top{position:sticky!important;top:0!important;z-index:60!important;isolation:isolate!important}
 html body:has(#crash.active):has(#crashLive.open) .top>*{position:relative!important;z-index:2!important}
@@ -128,7 +135,7 @@ html body:has(#crash.active) #crash #crashSpaceCanvas{position:absolute!importan
 html body:has(#crash.active) #crash .crash-controls{position:relative!important;z-index:3!important}
 html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
 html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
-html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:6px 0 0!important;padding:12px!important}
+html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:12px!important}
 @keyframes crashStageBackgroundPan{from{transform:translate3d(0,0,0)}to{transform:translate3d(-83.333333%,0,0)}}
 @media(prefers-reduced-motion:reduce){html body:has(#crash.active) #crash .crash-stage-background-track{animation-duration:150s!important}}
 `;
