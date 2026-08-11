@@ -37,7 +37,7 @@ export const BOOT_LOADER_SCRIPT = `
   function useStageManifest(manifest){
     if(!manifest||!manifest.images)return manifest;
     window.__vexaCrashStageManifest=manifest;
-    stageUrls(manifest).forEach(function(url){image(url)});
+    window.__vexaCrashStageImagesReady=Promise.allSettled(stageUrls(manifest).map(function(url){return image(url)})).then(function(){return true});
     return manifest
   }
   try{
@@ -53,6 +53,7 @@ export const BOOT_LOADER_SCRIPT = `
     })
     .catch(function(){return window.__vexaCrashStageManifest||null});
   window.__vexaCrashStageManifestPromise=stagePromise;
-  window.__vexaCrashAssetsReady=Promise.allSettled([image(BG),image(TON),binary(ROCKET),stagePromise]).then(function(){return true});
+  var stagesReady=stagePromise.then(function(){return window.__vexaCrashStageImagesReady||true});
+  window.__vexaCrashAssetsReady=Promise.allSettled([image(BG),image(TON),binary(ROCKET),stagesReady]).then(function(){return true});
 })();
 `;
