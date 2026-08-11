@@ -112,7 +112,7 @@ html body:has(#crash.active)::before{content:""!important;display:block!importan
 html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
 html body:has(#crash.active) .app,html body:has(#crash.active) main.app{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
 html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;overflow:visible!important}
-html body:has(#crash.active):has(#crashLive.open) .app{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}
+html body:has(#crash.active):has(#crashLive.open) .app{overflow-y:auto!important;overscroll-behavior-y:none!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}
 html body:has(#crash.active):has(#crashLive.open) .app::-webkit-scrollbar{display:none!important}
 html body:has(#crash.active):has(#crashLive.open) .top{position:sticky!important;top:0!important;z-index:60!important;isolation:isolate!important}
 html body:has(#crash.active):has(#crashLive.open) .top>*{position:relative!important;z-index:2!important}
