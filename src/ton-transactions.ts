@@ -16,6 +16,12 @@ export type TonTransactionMeta = {
   output?: string;
 };
 
+export type TonTransactionWrite = {
+  amountNano: number;
+  balanceAfterNano: number;
+  meta?: TonTransactionMeta;
+};
+
 type TonTransactionRow = {
   id: string;
   user_id: string;
@@ -30,7 +36,6 @@ type TonTransactionRow = {
   metadata_json: string | null;
   created_at: string;
 };
-
 
 type TonDepositSourceRow = {
   id: string;
@@ -98,9 +103,43 @@ export async function ensureTonTransactionsTable(env: Env): Promise<void> {
 }
 
 export async function recordTonTransaction(env: Env, userId: string, amountNano: number, balanceAfterNano: number, meta: TonTransactionMeta = {}): Promise<TonTransaction> {
+  const transactions = await recordTonTransactions(env, userId, [{ amountNano, balanceAfterNano, meta }]);
+  return transactions[0] ?? emptyTransaction(userId, balanceAfterNano, meta);
+}
+
+export async function recordTonTransactions(env: Env, userId: string, writes: TonTransactionWrite[]): Promise<TonTransaction[]> {
+  const rows = (Array.isArray(writes) ? writes : [])
+    .map((write) => buildTransactionRow(userId, write.amountNano, write.balanceAfterNano, write.meta || {}))
+    .filter((row): row is TonTransactionRow => Boolean(row));
+  if (!rows.length) return [];
+  try {
+    await insertTonTransactionRows(env, rows);
+  } catch (error) {
+    if (!isMissingTonTransactionsTable(error)) throw error;
+    await ensureTonTransactionsTable(env);
+    await insertTonTransactionRows(env, rows);
+  }
+  return rows.map(rowToTransaction);
+}
+
+async function insertTonTransactionRows(env: Env, rows: TonTransactionRow[]): Promise<void> {
+  const CHUNK_SIZE = 40;
+  for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
+    const chunk = rows.slice(offset, offset + CHUNK_SIZE);
+    const values = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+    const bindings: unknown[] = [];
+    for (const row of chunk) {
+      bindings.push(row.id, row.user_id, row.kind, row.title, row.description, row.amount_nano, row.balance_after_nano, row.status, row.reference_id, row.reference_type, row.metadata_json, row.created_at);
+    }
+    await env.DB.prepare(`INSERT INTO ton_transactions (id, user_id, kind, title, description, amount_nano, balance_after_nano, status, reference_id, reference_type, metadata_json, created_at) VALUES ${values}`)
+      .bind(...bindings)
+      .run();
+  }
+}
+
+function buildTransactionRow(userId: string, amountNano: number, balanceAfterNano: number, meta: TonTransactionMeta): TonTransactionRow | null {
   const value = Math.floor(Number(amountNano) || 0);
-  if (!value) return emptyTransaction(userId, balanceAfterNano, meta);
-  await ensureTonTransactionsTable(env);
+  if (!value) return null;
   const kind = cleanKind(meta.kind);
   const title = cleanText(meta.title || titleForKind(kind, value), 90);
   const description = cleanNullable(meta.description, 180);
@@ -108,14 +147,8 @@ export async function recordTonTransaction(env: Env, userId: string, amountNano:
   const referenceId = cleanNullable(meta.referenceId || meta.roundId, 120);
   const referenceType = cleanNullable(meta.referenceType || kind, 60);
   const metadataJson = meta.metadata ? JSON.stringify(meta.metadata).slice(0, 2000) : null;
-  const id = 'txn_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
-  await env.DB.prepare(`INSERT INTO ton_transactions (id, user_id, kind, title, description, amount_nano, balance_after_nano, status, reference_id, reference_type, metadata_json, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
-    .bind(id, userId, kind, title, description, value, Math.max(0, Math.floor(Number(balanceAfterNano) || 0)), status, referenceId, referenceType, metadataJson)
-    .run();
-  const row = await env.DB.prepare('SELECT * FROM ton_transactions WHERE id = ?').bind(id).first<TonTransactionRow>();
-  return rowToTransaction(row ?? {
-    id,
+  return {
+    id: 'txn_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22),
     user_id: userId,
     kind,
     title,
@@ -127,27 +160,49 @@ export async function recordTonTransaction(env: Env, userId: string, amountNano:
     reference_type: referenceType,
     metadata_json: metadataJson,
     created_at: new Date().toISOString(),
-  });
+  };
+}
+
+function isMissingTonTransactionsTable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /no such table:\s*ton_transactions/i.test(message);
 }
 
 export async function listUserTonTransactions(env: Env, userId: string, limit = 50): Promise<{ transactions: TonTransaction[] }> {
-  await ensureTonTransactionsTable(env);
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 50)));
-  const rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
-    .bind(cleanUserId(userId), safeLimit)
-    .all<TonTransactionRow>();
+  let rows;
+  try {
+    rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
+      .bind(cleanUserId(userId), safeLimit)
+      .all<TonTransactionRow>();
+  } catch (error) {
+    if (!isMissingTonTransactionsTable(error)) throw error;
+    await ensureTonTransactionsTable(env);
+    rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
+      .bind(cleanUserId(userId), safeLimit)
+      .all<TonTransactionRow>();
+  }
   return { transactions: (rows.results ?? []).map(rowToTransaction) };
 }
 
 export async function listUserTonWalletTransactions(env: Env, userId: string, limit = 100): Promise<{ transactions: TonTransaction[] }> {
-  await ensureTonTransactionsTable(env);
   const safeUserId = cleanUserId(userId);
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 100)));
-  const [ledgerRows, tonDepositRows, starDepositRows, withdrawalRows] = await Promise.all([
-    env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
+  let ledgerRows: TonTransactionRow[];
+  try {
+    ledgerRows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
       .bind(safeUserId, safeLimit)
       .all<TonTransactionRow>()
-      .then((rows) => rows.results ?? []),
+      .then((rows) => rows.results ?? []);
+  } catch (error) {
+    if (!isMissingTonTransactionsTable(error)) throw error;
+    await ensureTonTransactionsTable(env);
+    ledgerRows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
+      .bind(safeUserId, safeLimit)
+      .all<TonTransactionRow>()
+      .then((rows) => rows.results ?? []);
+  }
+  const [tonDepositRows, starDepositRows, withdrawalRows] = await Promise.all([
     readWalletSourceRows<TonDepositSourceRow>(env, `SELECT id, user_id, amount_ton, ton_balance_nano, status, tx_hash, created_at, updated_at FROM ton_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
     readWalletSourceRows<StarsDepositSourceRow>(env, `SELECT id, user_id, stars_amount, amount_nano, status, created_at, updated_at FROM stars_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
     readWalletSourceRows<WithdrawalSourceRow>(env, `SELECT id, user_id, wallet_address, amount_nano, status, created_at, updated_at FROM ton_withdrawals WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
@@ -168,7 +223,6 @@ export async function listUserTonWalletTransactions(env: Env, userId: string, li
   merged.sort((a, b) => transactionTime(b) - transactionTime(a) || b.id.localeCompare(a.id));
   return { transactions: merged.slice(0, safeLimit) };
 }
-
 
 async function readWalletSourceRows<T>(env: Env, sql: string, userId: string, limit: number): Promise<T[]> {
   return env.DB.prepare(sql).bind(userId, limit).all<T>().then((rows) => rows.results ?? []).catch(() => []);
@@ -208,7 +262,7 @@ function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
 
 function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
   const amountNano = -Math.abs(Number(row.amount_nano || 0));
-  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, withdrawalHistoryStatus(row.status), 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
+  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, row.status, 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
 }
 
 function withdrawalTitle(status: string): string {
