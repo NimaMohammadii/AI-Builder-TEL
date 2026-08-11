@@ -12,8 +12,9 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   var raf=0,lastRender=0,stageSignature='',stageLoadState=0,booted=false;
   function active(){return root.classList.contains('active')&&!document.hidden}
   function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
-  function streakIntensity(){
-    var v=multiplierValue(),t=Math.max(0,Math.min(1,(v-1.7)/2.3));
+  function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v<1.4)return 1;if(v>=2.2)return 3;var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
+  function streakIntensity(value){
+    var v=Number.isFinite(value)?value:multiplierValue(),t=Math.max(0,Math.min(1,(v-1.7)/2.3));
     return Math.min(1,.32+(1-Math.pow(1-t,2))*.68)
   }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
@@ -50,7 +51,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       raf=0;if(!active()){lastRender=0;return}
       if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
       lastRender=ms;
-      var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*dpr;
+      var v=multiplierValue(),intensity=streakIntensity(v),boost=speedBoost(v),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*boost*dpr;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
         var p=particles[i],visibility=.84-intensity*.36;if(p.rank<visibility)continue;
@@ -82,11 +83,12 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'varying vec2 v_uv;',
       'uniform float u_time;',
       'uniform float u_intensity;',
+      'uniform float u_speed_boost;',
       'uniform float u_rocket_angle;',
       'float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
       'vec3 streakLayer(vec2 uv,float cells,float seed,float gain){',
       'vec2 direction=normalize(vec2(-sin(u_rocket_angle),-cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);',
-      'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.15,.72,u_intensity);',
+      'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.15,.72,u_intensity)*u_speed_boost;',
       'vec2 grid=rotated*vec2(cells,cells*.20),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);',
       'vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;',
       'float width=mix(.009,.029,u_intensity),trailLength=mix(.045,.39,u_intensity);',
@@ -101,11 +103,11 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     var vs=shader(gl.VERTEX_SHADER,vertex),fs=shader(gl.FRAGMENT_SHADER,fragment);if(!vs||!fs){fallback2d();return}
     var program=gl.createProgram();gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS)){fallback2d();return}
     gl.useProgram(program);var buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);var position=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
-    var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
+    var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),speedBoostUniform=gl.getUniformLocation(program,'u_speed_boost'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
     function frame(ms){
       raf=0;if(!active()){lastRender=0;return}
       if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
-      lastRender=ms;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity());gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
+      lastRender=ms;var v=multiplierValue();gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity(v));gl.uniform1f(speedBoostUniform,speedBoost(v));gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
     }
     function resume(){resize(gl);loadStageImages();if(active()&&!raf)raf=requestAnimationFrame(frame)}
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();if(raf)cancelAnimationFrame(raf);raf=0});
