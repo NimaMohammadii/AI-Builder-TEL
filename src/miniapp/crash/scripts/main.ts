@@ -45,7 +45,7 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(!rocketDriftReady){
       rocketDriftReady=true;
-      flight.style.setProperty('--rocket-shake','3.2px');
+      flight.style.setProperty('--rocket-shake','12px');
       flight.style.setProperty('--rocket-drift-duration','6.4s');
     }
     var motionState=running&&v>=1.8?'boost':'calm';
