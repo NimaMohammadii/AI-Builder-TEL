@@ -3,8 +3,6 @@ export const PLINKO_SCRIPT = `
   var state = null;
   var rows = 12;
   var risk = 'easy';
-  var autoRunning = false;
-  var autoTimer = 0;
   var roundRequesting = false;
   var NANO = 1000000000;
   var credit = readPoints();
@@ -26,7 +24,6 @@ export const PLINKO_SCRIPT = `
     ? 2
     : 2.25;
   var MAX_LOCAL_BALLS = 24;
-  var AUTO_INTERVAL = 650;
   var multipliers = {
     8: {
       easy: [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
@@ -188,13 +185,6 @@ export const PLINKO_SCRIPT = `
       button.classList.toggle('active', selected);
       button.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
-    var autoButton = document.querySelector('[data-action="plinko-auto"]');
-    if (autoButton) {
-      autoButton.classList.toggle('active', autoRunning);
-      autoButton.setAttribute('aria-pressed', autoRunning ? 'true' : 'false');
-      var autoState = autoButton.querySelector('small');
-      if (autoState) autoState.textContent = autoRunning ? 'On' : 'Off';
-    }
   }
   function controlItem() {
     var rk = String(rows);
@@ -683,43 +673,6 @@ export const PLINKO_SCRIPT = `
       roundRequesting = false;
     }
   }
-  function stopAuto() {
-    autoRunning = false;
-    if (autoTimer) clearTimeout(autoTimer);
-    autoTimer = 0;
-    syncControlPanel();
-  }
-  async function autoTick() {
-    if (!autoRunning || !active() || document.hidden) {
-      stopAuto();
-      return;
-    }
-    var localCount = state && state.balls
-      ? state.balls.filter(function (ball) { return ball && !ball.remote; }).length
-      : 0;
-    if (localCount < MAX_LOCAL_BALLS) {
-      var ok = await drop();
-      if (!ok) {
-        stopAuto();
-        return;
-      }
-    }
-    if (!autoRunning || !active() || document.hidden) {
-      stopAuto();
-      return;
-    }
-    autoTimer = setTimeout(autoTick, AUTO_INTERVAL);
-  }
-  function setAutoRunning(next) {
-    if (!next) {
-      stopAuto();
-      return;
-    }
-    if (autoRunning) return;
-    autoRunning = true;
-    syncControlPanel();
-    autoTick();
-  }
   function controlAdjustedBin(ball, bin) {
     if (
       ball &&
@@ -1072,15 +1025,7 @@ export const PLINKO_SCRIPT = `
         setRisk(riskOption);
         return;
       }
-      if ((button.hasAttribute('data-view') || button.hasAttribute('data-game-view')) && !inPlinko) {
-        stopAuto();
-      }
       var action = button.getAttribute('data-action');
-      if (action === 'plinko-auto') {
-        ev.preventDefault();
-        ev.stopPropagation();
-        setAutoRunning(!autoRunning);
-      }
       if (action === 'drop-plinko-ball') {
         ev.preventDefault();
         ev.stopPropagation();
@@ -1091,9 +1036,6 @@ export const PLINKO_SCRIPT = `
   );
   document.addEventListener('input', function (ev) {
     if (ev.target && ev.target.id === 'plinkoBet') syncControlPanel();
-  });
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) stopAuto();
   });
   window.addEventListener('vexa-ton-balance-sync', function (ev) {
     if (ev && ev.detail) forcePoints(ev.detail);
@@ -1107,8 +1049,6 @@ export const PLINKO_SCRIPT = `
     if (id === 'plinko') {
       smartLoadPlinkoControl(false);
       init();
-    } else {
-      stopAuto();
     }
   });
   window.plinkoReloadControl = function () {
