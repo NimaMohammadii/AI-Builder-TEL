@@ -53,7 +53,7 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-mid-75',mid75.toFixed(2)+'px');
     var motionState=running&&v>=1.8?'boost':'calm';
     if(flight.getAttribute('data-motion')!==motionState)flight.setAttribute('data-motion',motionState);
-    var rocket=q('crashRocket'),spinCurve=1-Math.pow(1-spinProgress,2),baseSpin=running?18+spinCurve*162:18,spin=running?baseSpin*speedBoost(v):18;
+    var rocket=q('crashRocket'),spinCurve=1-Math.pow(1-spinProgress,2),baseSpin=running?18+spinCurve*162:18,axisSpinBoost=v>=8?4:v>=5?2.5:1,spin=running?baseSpin*speedBoost(v)*axisSpinBoost:18;
     if(rocket&&(lastRocketSpin<0||Math.abs(spin-lastRocketSpin)>=3||(!running&&lastRocketSpin!==18))){
       lastRocketSpin=spin;
       var spinValue=spin.toFixed(1)+'deg';
