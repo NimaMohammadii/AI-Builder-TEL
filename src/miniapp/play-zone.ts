@@ -117,7 +117,8 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   }
   function active(){var el=document.getElementById('playzone');return !!(el&&el.classList.contains('active'))}
   function loadIfActive(){if(active())load()}
+  function loadInitial(){window.__vexaPlayZoneVisibilityReady=load()}
   window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='playzone')load()});
   if(window.MutationObserver){var play=document.getElementById('playzone');if(play)new MutationObserver(loadIfActive).observe(play,{attributes:true,attributeFilter:['class']})}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadIfActive);else loadIfActive();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadInitial,{once:true});else loadInitial();
 })();`;
