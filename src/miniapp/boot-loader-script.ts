@@ -1,8 +1,59 @@
 export const BOOT_LOADER_SCRIPT = `
 (function(){
-  function hide(){var boot=document.getElementById('vexaBoot');if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
-  if(document.readyState==='complete')setTimeout(hide,650);else window.addEventListener('load',function(){setTimeout(hide,650)});
-  setTimeout(hide,2200);
+  var bootHidden=false;
+  function hide(){if(bootHidden)return;bootHidden=true;var boot=document.getElementById('vexaBoot');if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
+  function windowReady(){return document.readyState==='complete'?Promise.resolve(true):new Promise(function(resolve){window.addEventListener('load',function(){resolve(true)},{once:true})})}
+  function observeUntil(check){
+    return new Promise(function(resolve){
+      var observer=null,done=false;
+      function test(){if(done)return;var value=false;try{value=check()}catch(e){}if(!value)return;done=true;if(observer)observer.disconnect();resolve(value)}
+      test();if(done)return;
+      observer=new MutationObserver(test);
+      observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','class','data-vexa-home-slot-url']});
+      test();
+    })
+  }
+  function imageReady(img){
+    return new Promise(function(resolve){
+      if(!img){resolve(false);return}
+      var done=false,source=String(img.currentSrc||img.src||'');
+      function cleanup(){try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
+      function finish(ok){if(done)return;done=true;cleanup();resolve(ok)}
+      function decode(){if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(true)});else finish(true)}
+      function loaded(){decode()}
+      function failed(){setTimeout(function(){var next=String(img.currentSrc||img.src||'');if(next&&next!==source){cleanup();imageReady(img).then(resolve);return}finish(false)},0)}
+      if(img.complete){if(img.naturalWidth>0)decode();else failed();return}
+      img.addEventListener('load',loaded,{once:true});img.addEventListener('error',failed,{once:true});
+    })
+  }
+  function homeReady(){
+    return observeUntil(function(){
+      var section=document.getElementById('homeLuckyCodeSection');
+      var draw=document.getElementById('homeDrawInfoCard');
+      var baseStyle=document.getElementById('homeLuckyCodeStyle');
+      var tuningStyle=document.getElementById('homeSlotTuningStyle');
+      var img=document.querySelector('#home .home-lottery-slot-image');
+      return section&&draw&&baseStyle&&tuningStyle&&img?img:false
+    }).then(function(img){return imageReady(img)})
+  }
+  function playHubReady(){
+    return observeUntil(function(){
+      var tg=window.Telegram&&window.Telegram.WebApp;
+      var needsVisibility=!!String(tg&&tg.initData||'');
+      if(needsVisibility&&!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
+      var cards=document.querySelectorAll('#playzone [data-play-zone-card-id]');
+      var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
+      if(cards.length!==9||imgs.length!==9)return false;
+      for(var i=0;i<imgs.length;i++){var src=String(imgs[i].getAttribute('src')||'');if(!src||src.indexOf('data:image/gif')===0)return false}
+      return Array.prototype.slice.call(imgs)
+    }).then(function(imgs){return Promise.allSettled(imgs.map(function(img){return imageReady(img)})).then(function(){return true})})
+  }
+  function revealWhenReady(){
+    if(window.__vexaInitialUiReadyStarted)return;
+    window.__vexaInitialUiReadyStarted=true;
+    window.__vexaInitialUiReady=Promise.all([windowReady(),homeReady(),playHubReady()]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
 
   var BG='/assets/Crash.PNG?v=1';
   var TON='/app/api/uploaded-image/ton-icon.png';
