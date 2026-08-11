@@ -33,6 +33,7 @@ export const CRASH_SCRIPT = `
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
     var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=Math.max(60,Math.min(80,80-(20*turn)));
+    var speedMotion=running?Math.max(0,Math.min(1,(v-1.35)/5.65)):0,shake=2+speedMotion*5,duration=3.6-speedMotion*3.1;
     var travel=Math.min(560,Math.max(280,(window.innerWidth||360)-32))*.58,entryX=0;
     if(state==='waiting'){
       var entryT=Math.max(0,Math.min(1,(Number(entryElapsed)||0)/1100)),entryEase=1-Math.pow(1-entryT,4);
@@ -41,6 +42,8 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-angle',angle.toFixed(2)+'deg');
     flight.style.setProperty('--rocket-entry-x',entryX.toFixed(2)+'px');
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
+    flight.style.setProperty('--rocket-shake',shake.toFixed(2)+'px');
+    flight.style.setProperty('--rocket-drift-duration',duration.toFixed(2)+'s');
     try{window.__vexaCrashRocketAngleDeg=angle}catch(e){}
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
