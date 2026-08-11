@@ -12,7 +12,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   var raf=0,lastRender=0,stageSignature='',stageLoadState=0,booted=false;
   function active(){return root.classList.contains('active')&&!document.hidden}
   function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
-  function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v<1.4)return 1;if(v>=2.2)return 3;var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
+  function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v>=2.2)return 3;if(v<1.4){var t=(v-1)/.4;return 1+t*t*(3-2*t)}var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
   function streakIntensity(value){
     var v=Number.isFinite(value)?value:multiplierValue(),t=Math.max(0,Math.min(1,(v-1.7)/2.3));
     return Math.min(1,.32+(1-Math.pow(1-t,2))*.68)
