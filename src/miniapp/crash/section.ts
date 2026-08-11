@@ -168,7 +168,7 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
             <span>Live Bets</span>
           </span>
           <div class="crash-live-head-actions">
-            <b id="crashLiveTotal">0 TON</b>
+            <b id="crashLiveTotal">0 Gram</b>
             <button id="crashLiveToggle" class="crash-live-toggle" type="button" aria-label="Toggle live bets" aria-expanded="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
             </button>
