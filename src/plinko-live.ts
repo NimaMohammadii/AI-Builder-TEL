@@ -86,7 +86,6 @@ export class PlinkoLiveRoom {
     this.sockets.add(server);
     server.addEventListener('close', () => this.sockets.delete(server));
     server.addEventListener('error', () => this.sockets.delete(server));
-    await this.scheduleVirtualAlarm();
     const history = await this.history();
     safeSend(server, { type: 'plinko-history', events: history.events, hourlyTurnover: history.hourlyTurnover, hourStartedAt: history.hourStartedAt });
     return new Response(null, { status: 101, webSocket: client });
@@ -137,7 +136,6 @@ export class PlinkoLiveRoom {
 
   async alarm(): Promise<void> {
     await this.ensureVirtualFeed(true);
-    await this.scheduleVirtualAlarm();
   }
 
   private async ensureVirtualFeed(allowPublish = false): Promise<void> {
@@ -152,10 +150,7 @@ export class PlinkoLiveRoom {
       generated.push(makeVirtualResult(nextAt, virtualUsers, virtualMultipliers));
       nextAt += VIRTUAL_INTERVAL_MS + Math.floor(seededUnit('gap:' + nextAt) * 2600);
     }
-    if (!generated.length) {
-      await this.scheduleVirtualAlarm();
-      return;
-    }
+    if (!generated.length) return;
     const newestLast = generated[generated.length - 1].createdAt;
     const next = [...generated.reverse(), ...history.events].filter(isRecentResult).filter(uniqueResultById).slice(0, HISTORY_LIMIT);
     await this.state.storage.put(HISTORY_KEY, next);
@@ -166,11 +161,6 @@ export class PlinkoLiveRoom {
       const freshHistory = await this.history();
       generated.slice().reverse().forEach((event) => this.publish({ type: 'plinko-result', event, hourlyTurnover: freshHistory.hourlyTurnover, hourStartedAt: freshHistory.hourStartedAt }));
     }
-    await this.scheduleVirtualAlarm();
-  }
-
-  private async scheduleVirtualAlarm(): Promise<void> {
-    await this.state.storage.setAlarm(Date.now() + VIRTUAL_INTERVAL_MS).catch(() => undefined);
   }
 
   private publish(value: unknown): void {
