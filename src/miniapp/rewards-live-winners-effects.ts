@@ -57,7 +57,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
 </style>
 <script id="vexa-rewards-live-winners-scroll-script">
 (function(){
-  var ticking=false,loading=false,lastLoadedAt=0,pollStarted=false,phaseTimer=0;
+  var ticking=false,loading=false,lastRequestAt=0,phaseTimer=0,retryTimer=0,retryDelay=1000;
   function q(s,r){return (r||document).querySelector(s)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
@@ -100,6 +100,12 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     setStateTitle(!!waiting);
     var map=winnerMap(winners),html='';for(var rank=1;rank<=15;rank++)html+=cardHtml(rank,map[rank],!!waiting);list.innerHTML=html;hydrateAvatars(list);queue();
   }
+  function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
+  function scheduleRetry(){
+    var rewards=document.getElementById('rewards');if(retryTimer||!rewards||!rewards.classList.contains('active')||document.hidden)return;
+    var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));
+    retryTimer=setTimeout(function(){retryTimer=0;loadWinners(true)},delay);
+  }
   function schedulePhaseRefresh(payload){
     if(phaseTimer){clearTimeout(phaseTimer);phaseTimer=0}
     var next=Number(payload&&payload.nextDisplayChangeAtMs),serverNow=Number(payload&&payload.serverNowMs);
@@ -121,14 +127,15 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   }
   function queue(){if(ticking)return;ticking=true;requestAnimationFrame(apply)}
   async function loadWinners(force){
-    var rewards=document.getElementById('rewards'),data=initData();if(!rewards||!data||loading)return;
-    if(!force&&Date.now()-lastLoadedAt<5000)return;
-    loading=true;
+    var rewards=document.getElementById('rewards'),data=initData();if(!rewards||!data||loading)return false;
+    var now=Date.now();if(!force&&now-lastRequestAt<500)return false;
+    loading=true;lastRequestAt=now;
     try{
       var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
       var payload=await response.json().catch(function(){return null});
-      if(response.ok&&payload){render(payload.winners||[],!!payload.waitingForWinner);schedulePhaseRefresh(payload);lastLoadedAt=Date.now()}
-    }catch(e){}finally{loading=false}
+      if(!response.ok||!payload)throw new Error('Could not load Lottery winners');
+      clearRetry();retryDelay=1000;render(payload.winners||[],!!payload.waitingForWinner);schedulePhaseRefresh(payload);return true;
+    }catch(e){scheduleRetry();return false}finally{loading=false}
   }
   function bind(){
     var rewards=document.getElementById('rewards');if(!rewards)return;
@@ -137,11 +144,13 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     if(rewards.dataset.winnersScrollBound!=='1'){
       rewards.dataset.winnersScrollBound='1';rewards.addEventListener('scroll',queue,{passive:true});window.addEventListener('resize',queue,{passive:true});
     }
-    if(rewards.classList.contains('active'))loadWinners(true);queue();
-    if(!pollStarted){pollStarted=true;setInterval(function(){var r=document.getElementById('rewards');if(r&&r.classList.contains('active'))loadWinners(false)},5000)}
+    if(rewards.classList.contains('active'))loadWinners(false);queue();
   }
+  function refreshWhenVisible(){var rewards=document.getElementById('rewards');if(!document.hidden&&rewards&&rewards.classList.contains('active'))loadWinners(false)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');if(target)setTimeout(function(){bind();loadWinners(true)},60)},true);
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');if(target)setTimeout(function(){bind();loadWinners(false)},60)},true);
   window.addEventListener('vexa:section-mounted',bind);
+  window.addEventListener('focus',refreshWhenVisible);
+  document.addEventListener('visibilitychange',refreshWhenVisible);
 })();
 </script>`;
