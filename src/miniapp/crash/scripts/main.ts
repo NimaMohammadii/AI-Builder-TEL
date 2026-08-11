@@ -1,7 +1,7 @@
 export const CRASH_SCRIPT = `
 (function(){
   var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=68000, DAY_MS=86400000;
-  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0;
+  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketMotionLevel=-1;
   function q(id){return document.getElementById(id)}
   function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
   function balance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
@@ -33,7 +33,7 @@ export const CRASH_SCRIPT = `
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
     var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=Math.max(60,Math.min(80,80-(20*turn)));
-    var speedMotion=running?Math.max(0,Math.min(1,(v-1.35)/5.65)):0,shake=2+speedMotion*5,duration=3.6-speedMotion*3.1;
+    var speedMotion=running?Math.max(0,Math.min(1,(v-1.35)/5.65)):0,motionLevel=running?Math.round(speedMotion*8):0;
     var travel=Math.min(560,Math.max(280,(window.innerWidth||360)-32))*.58,entryX=0;
     if(state==='waiting'){
       var entryT=Math.max(0,Math.min(1,(Number(entryElapsed)||0)/1100)),entryEase=1-Math.pow(1-entryT,4);
@@ -42,8 +42,13 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-angle',angle.toFixed(2)+'deg');
     flight.style.setProperty('--rocket-entry-x',entryX.toFixed(2)+'px');
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
-    flight.style.setProperty('--rocket-shake',shake.toFixed(2)+'px');
-    flight.style.setProperty('--rocket-drift-duration',duration.toFixed(2)+'s');
+    if(lastRocketMotionLevel!==motionLevel){
+      lastRocketMotionLevel=motionLevel;
+      var motionT=motionLevel/8,shake=2+motionT*5,duration=3.6-motionT*3.1,spin=18+motionT*162,rocket=q('crashRocket');
+      flight.style.setProperty('--rocket-shake',shake.toFixed(2)+'px');
+      flight.style.setProperty('--rocket-drift-duration',duration.toFixed(2)+'s');
+      if(rocket){var spinValue=spin.toFixed(0)+'deg';if(rocket.getAttribute('rotation-per-second')!==spinValue)rocket.setAttribute('rotation-per-second',spinValue)}
+    }
     try{window.__vexaCrashRocketAngleDeg=angle}catch(e){}
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
