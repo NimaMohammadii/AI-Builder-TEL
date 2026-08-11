@@ -37,7 +37,14 @@ export const BOOT_LOADER_SCRIPT = `
   }
   function backgroundUrl(el){
     if(!el||!window.getComputedStyle)return '';
-    try{var value=String(getComputedStyle(el).backgroundImage||'');var match=value.match(/url\((['"]?)(.*?)\1\)/);return match&&match[2]?match[2]:''}catch(e){return ''}
+    try{
+      var value=String(getComputedStyle(el).backgroundImage||'');
+      var start=value.indexOf('url(');if(start<0)return '';
+      var end=value.indexOf(')',start+4);if(end<0)return '';
+      var raw=value.slice(start+4,end).trim();
+      if(raw.length>1&&((raw.charAt(0)==='"'&&raw.charAt(raw.length-1)==='"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
+      return raw
+    }catch(e){return ''}
   }
   function urlReady(url,ms){
     url=String(url||'');if(!url||url==='none')return Promise.resolve(true);
