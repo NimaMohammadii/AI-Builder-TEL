@@ -33,7 +33,7 @@ export const CRASH_SCRIPT = `
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
     var running=state==='running',crashed=state==='crashed',thrust=running?.66+Math.min(.52,raw*.04):.18;
     var turn=state==='waiting'?0:1-Math.exp(-Math.max(0,v-2.2)*.18),angle=Math.max(60,Math.min(80,80-(20*turn)));
-    var speedMotion=running?Math.max(0,Math.min(1,(v-1.35)/5.65)):0;
+    var spinProgress=running?Math.max(0,Math.min(1,(v-1.7)/2.3)):0;
     var travel=Math.min(560,Math.max(280,(window.innerWidth||360)-32))*.58,entryX=0;
     if(state==='waiting'){
       var entryT=Math.max(0,Math.min(1,(Number(entryElapsed)||0)/1100)),entryEase=1-Math.pow(1-entryT,4);
@@ -44,11 +44,11 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(!rocketDriftReady){
       rocketDriftReady=true;
-      flight.style.setProperty('--rocket-shake','2.5px');
-      flight.style.setProperty('--rocket-drift-duration','5.2s');
+      flight.style.setProperty('--rocket-shake','3.2px');
+      flight.style.setProperty('--rocket-drift-duration','6.4s');
     }
-    var rocket=q('crashRocket'),spinCurve=speedMotion*speedMotion*(3-2*speedMotion),spin=running?18+spinCurve*162:18;
-    if(rocket&&(lastRocketSpin<0||Math.abs(spin-lastRocketSpin)>=1.5||(!running&&lastRocketSpin!==18))){
+    var rocket=q('crashRocket'),spinCurve=1-Math.pow(1-spinProgress,2),spin=running?18+spinCurve*162:18;
+    if(rocket&&(lastRocketSpin<0||Math.abs(spin-lastRocketSpin)>=1||(!running&&lastRocketSpin!==18))){
       lastRocketSpin=spin;
       var spinValue=spin.toFixed(1)+'deg';
       if(rocket.getAttribute('rotation-per-second')!==spinValue)rocket.setAttribute('rotation-per-second',spinValue)
