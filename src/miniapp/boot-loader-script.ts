@@ -62,6 +62,8 @@ export const BOOT_LOADER_SCRIPT = `
     if(!lazy||typeof lazy.ensure!=='function'){startAssets();return}
     lazy.ensure('crash');
     var rocket=document.getElementById('crashRocket');
+    var rocketSrc=rocket?String(rocket.getAttribute('src')||''):'';
+    if(rocket&&rocketSrc)rocket.removeAttribute('src');
     if(rocket){
       rocketReady=new Promise(function(resolve){
         var done=false;
@@ -75,7 +77,8 @@ export const BOOT_LOADER_SCRIPT = `
     var liveRequest=live&&typeof live.load==='function'?Promise.resolve(live.load()).catch(function(){return false}):Promise.resolve(false);
     window.__vexaCrashLiveWarmupPromise=liveRequest;
     var liveGate=Promise.race([liveRequest,new Promise(function(resolve){setTimeout(resolve,1200)})]);
-    liveGate.then(startAssets,startAssets)
+    function releaseHeavy(){if(rocket&&rocketSrc&&!rocket.getAttribute('src'))rocket.setAttribute('src',rocketSrc);return startAssets()}
+    liveGate.then(releaseHeavy,releaseHeavy)
   }
   setTimeout(warmCrash,0);
 })();
