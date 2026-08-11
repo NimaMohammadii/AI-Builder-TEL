@@ -31,6 +31,21 @@ type LevelXpBody = LevelXpEventInput & {
   events?: LevelXpEventInput[];
 };
 
+type StaticAssetsEnv = Env & { STATIC_ASSETS: { fetch(request: Request): Promise<Response> } };
+
+async function serveCrashStaticAsset(request: Request, env: Env, assetPath: string): Promise<Response> {
+  const staticAssets = (env as StaticAssetsEnv).STATIC_ASSETS;
+  if (!staticAssets) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const assetUrl = new URL(request.url);
+  assetUrl.pathname = assetPath;
+  assetUrl.search = '';
+  const upstream = await staticAssets.fetch(new Request(assetUrl.toString(), request));
+  const headers = new Headers(upstream.headers);
+  headers.set('cache-control', new URL(request.url).searchParams.has('v') ? VERSIONED_IMAGE_CACHE_CONTROL : 'public, max-age=300, must-revalidate');
+  headers.set('x-content-type-options', 'nosniff');
+  return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+}
+
 app.get('/', (c) => c.redirect('/app'));
 app.get('/app', async (c) => {
   const slot = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
@@ -38,6 +53,8 @@ app.get('/app', async (c) => {
   const slotUrl = slot ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : undefined;
   return html(miniAppHtml(slotUrl));
 });
+app.get('/assets/Crash.PNG', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Crash.PNG'));
+app.get('/assets/Rocket3D.glb', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Rocket3D.glb'));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'game-miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, service: 'vexa-game', timestamp: new Date().toISOString() }));
 app.get('/app/api/online-user-counts', async (c) =>
