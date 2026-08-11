@@ -8,7 +8,7 @@ html body:has(#crash.active) #crash.crash-view .crash-controls,#crash .crash-con
 #crash .crash-field b{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;margin-top:0!important;font-size:20px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.04em!important;font-variant-numeric:tabular-nums lining-nums!important;white-space:nowrap!important;color:#fff!important;min-width:0!important;overflow:hidden!important}
 #crash .crash-field b>span:first-child{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}
 #crash .crash-field i{font-style:normal!important;font-size:18px!important;line-height:normal!important;color:rgba(255,255,255,.72)!important;font-weight:800!important;flex:0 0 auto!important}
-#crash .crash-auto-field{margin-top:0!important;padding-right:0!important}
+#crash .crash-auto-field{margin-top:0!important;padding-right:8px!important}
 #crash .crash-auto-control{display:grid!important;grid-template-columns:auto 36px 36px!important;align-items:center!important;justify-content:end!important;column-gap:0!important;min-width:0!important;height:40px!important}
 #crash .crash-auto-control>b{grid-column:1!important;grid-row:1!important;justify-self:end!important;margin-right:6px!important}
 #crash .crash-auto{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:3px!important;width:auto!important;min-width:0!important;height:auto!important;min-height:0!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important}
@@ -17,8 +17,8 @@ html body:has(#crash.active) #crash.crash-view .crash-controls,#crash .crash-con
 #crash .crash-auto span{display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;color:#fff!important;font-size:20px!important;font-weight:950!important;line-height:1!important;flex:0 0 auto!important}
 #crash .crash-auto-stepper{display:contents!important}
 #crash .crash-auto-stepper button{width:36px!important;height:36px!important;min-width:0!important;min-height:0!important;padding:0!important;border:0!important;outline:0!important;border-radius:15px!important;background:rgba(13,13,13,.54)!important;color:rgba(255,255,255,.94)!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 10px 24px rgba(0,0,0,.20)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;transition:transform .2s cubic-bezier(.2,.8,.2,1),background .18s ease,box-shadow .18s ease!important}
-#crash .crash-auto-stepper button:first-child{grid-column:3!important;grid-row:1!important;width:36px!important;height:36px!important;border-radius:12px 20px 20px 12px!important}
-#crash .crash-auto-stepper button:last-child{grid-column:2!important;grid-row:1!important;border-radius:15px 8px 8px 15px!important}
+#crash .crash-auto-stepper button:first-child{grid-column:3!important;grid-row:1!important;width:36px!important;height:36px!important;border-radius:15px!important}
+#crash .crash-auto-stepper button:last-child{grid-column:2!important;grid-row:1!important;border-radius:15px!important}
 #crash .crash-auto-stepper button:active{transform:translateY(1px) scale(.93)!important;background:rgba(13,13,13,.70)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 4px 12px rgba(0,0,0,.18)!important}
 #crash .crash-auto-stepper svg{width:18px!important;height:18px!important;display:block!important;transition:transform .2s cubic-bezier(.2,.8,.2,1)!important}
 #crash .crash-auto-stepper button:active svg{transform:scale(.88)!important}
@@ -112,8 +112,8 @@ html body:has(#crash.active) #crash.crash-view .crash-stage{position:relative;wi
 #crash .crash-next-round{margin-top:6px;color:rgba(255,255,255,.60);font-size:10px;font-weight:850;letter-spacing:.02em;text-shadow:0 8px 18px rgba(0,0,0,.42)}
 #crash .crash-hidden-state,#crash .crash-starting,#crash .crash-network{display:none!important}
 body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0 10px!important}
-body #crash .crash-bet-main::before{content:""!important;display:block!important;width:30px!important;height:30px!important;flex:0 0 30px!important;transform:translateY(2px)!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
-body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+body #crash .crash-bet-main::before{content:""!important;display:block!important;width:30px!important;height:30px!important;flex:0 0 30px!important;transform:translate(4px,2px)!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
+body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transform:translateX(4px)!important}
 `;
 
 const CRASH_SECTION_STYLES = `
