@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import app from './index';
 import { trackAppUser } from './admin-users';
-import { applyGameTonBalanceDelta, getUserControls, publicUserControls } from './user-controls';
+import { applyGameTonBalanceDeltas, publicUserControls } from './user-controls';
 import { setTelegramWebhook } from './telegram-game-bot';
-import { PUBLIC_BASE_URL } from './utils';
+import { gameBotToken, PUBLIC_BASE_URL, validateTelegramInitData } from './utils';
 import { cleanSectionId, sectionBackgroundInfo, sectionBackgroundR2Key } from './section-backgrounds';
 import type { Env } from './types';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS, resetOnlineUserCountConfig, saveOnlineUserCountConfig } from './online-user-counts';
@@ -33,12 +33,11 @@ const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'pl
   plinko: ['credit', 'ton', 'plinko'],
 };
 
-
 const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
-const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int().optional(), section: z.string().max(40).optional(), deltas: z.array(z.object({ deltaNano: z.number().int(), section: z.string().max(40).optional() })).max(100).optional() });
+const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initData: z.string().min(1).max(8192), deltaNano: z.number().int().optional(), section: z.string().max(40).optional(), deltas: z.array(z.object({ deltaNano: z.number().int(), section: z.string().max(40).optional() })).max(100).optional() });
 const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBalanceNano: z.number().int().nonnegative() });
 const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userWinChanceSchema = z.object({ userId: z.string().min(1).max(80), winChancePercent: z.number().int().min(0).max(100) });
@@ -60,14 +59,14 @@ app.post('/app/api/activity', zValidator('json', activitySchema), async (c) => c
 app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSchema), async (c) => {
   const body = c.req.valid('json');
   try {
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    if (userId !== body.userId) throw new Error('Telegram user mismatch');
     const deltas = body.deltas?.length ? body.deltas : [{ deltaNano: body.deltaNano ?? 0, section: body.section }];
-    let controls = await getUserControls(c.env, body.userId);
-    for (const item of deltas) controls = await applyGameTonBalanceDelta(c.env, body.userId, item.deltaNano, { metadata: { section: item.section || 'unknown' } });
-    return c.json(controls);
+    if (deltas.some((item) => String(item.section || '').trim().toLowerCase() === 'plinko')) throw new Error('Plinko balance is settled by the secure round endpoint.');
+    return c.json(await applyGameTonBalanceDeltas(c.env, userId, deltas));
   }
   catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); }
 });
-
 
 app.get('/app/api/section-backgrounds', async (c) => {
   const adminSections = [
@@ -118,7 +117,6 @@ app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse
 app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
 app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
 
-
 function uploadedImageAssetScopeForSections(sections: string[] | null): Array<'credit' | 'ton' | 'plinko' | 'mines'> {
   if (!sections) return ['credit', 'ton', 'plinko', 'mines'];
   const scope: Array<'credit' | 'ton' | 'plinko' | 'mines'> = ['credit', 'ton'];
@@ -139,7 +137,6 @@ app.get('/app/api/section-access', zValidator('query', userIdSchema), async (c) 
   const bySection = Object.fromEntries(locks.map((lock) => [lock.sectionId, { ...lock, serverNow: Math.floor(Date.now() / 1000) }]));
   return c.json({ ok: true, locks: bySection, serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
 });
-
 
 async function getMiniappAudioJson(env: Env): Promise<Record<string, unknown>> { const object = await env.ASSETS.head(MINIAPP_AUDIO_KEY).catch(() => null); const enabled = (await env.BOT_CACHE.get(MINIAPP_AUDIO_ENABLED_KEY).catch(() => '0')) === '1'; const version = assetVersion(object); return { ok: true, hasAudio: Boolean(object), enabled: Boolean(object) && enabled, version, type: object?.httpMetadata?.contentType || '', url: object ? `/app/api/miniapp-audio-file?v=${version}` : null }; }
 async function getMiniappAudioResponse(env: Env): Promise<Response> { return Response.json(await getMiniappAudioJson(env), { headers: { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL } }); }
