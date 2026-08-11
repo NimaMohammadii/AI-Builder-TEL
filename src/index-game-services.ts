@@ -9,6 +9,7 @@ import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { setTelegramWebhook } from './telegram-game-bot';
 import { registerRankCharacterRoutes } from './rank-character-routes';
 import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
+import { settleGameTonBalanceRound } from './user-controls';
 import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
@@ -23,14 +24,42 @@ const WALLET_HERO_IMAGE_KEY = 'wallet/hero-image';
 const CRASH_TIP_IMAGE_KEY = 'crash-tip/image';
 const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
 const GHOST_RUN_ASSET_KINDS = new Set(['background', 'background1', 'background2', 'background3', 'background4', 'background5', 'background6']);
+const NANO_PER_TON = 1_000_000_000;
 
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
-
-
-
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
+app.post('/app/api/plinko/round', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as { initData?: unknown; amount?: unknown; rows?: unknown; risk?: unknown };
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    const amount = cleanPlinkoAmount(body.amount);
+    const rows = cleanPlinkoRows(body.rows);
+    const risk = cleanPlinkoRisk(body.risk);
+    const control = await getPlinkoControl(c.env);
+    if (control.enabled === false) throw new Error('Plinko is disabled');
+    const item = control.rows[String(rows) as '8' | '12' | '16'][risk];
+    const targetBinIndex = chooseWeightedIndex(item.weights);
+    const multiplier = roundPlinkoAmount(item.multipliers[targetBinIndex] || 0);
+    const total = roundPlinkoAmount(amount * multiplier);
+    const roundId = 'plinko_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
+    const controls = await settleGameTonBalanceRound(
+      c.env,
+      userId,
+      Math.round(amount * NANO_PER_TON),
+      Math.round(total * NANO_PER_TON),
+      {
+        referenceId: roundId,
+        referenceType: 'plinko_round',
+        metadata: { section: 'plinko', rows, risk, multiplier, targetBinIndex, amount, total },
+      },
+    );
+    return c.json({ ok: true, roundId, targetBinIndex, multiplier, amount, total, tonBalanceNano: controls.tonBalanceNano }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not play Plinko round' }, 400, { 'cache-control': 'no-store' });
+  }
+});
 app.get('/app/api/plinko-virtual-users', async (c) => c.json(await getPlinkoVirtualUsers(c.env)));
 app.get('/app/api/slot-virtual-users', async (c) => c.json(await getSlotVirtualUsers(c.env)));
 
@@ -40,7 +69,6 @@ app.get('/app/api/plinko-control-image/:kind', async (c) => {
   if (!object) return new Response(defaultPlinkoControlImageSvg(kind), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': HOME_IMAGE_CACHE_CONTROL } });
 });
-
 
 app.get('/app/api/ghost-run-asset/:kind', async (c) => {
   const kind = normalizeGhostRunAssetKind(c.req.param('kind'));
@@ -183,19 +211,55 @@ app.get('/app/api/crash-tip-image.png', async (c) => imageFromR2(c.env, CRASH_TI
 app.get('/app/api/uploaded-image/mines-safe.png', async (c) => imageFromR2(c.env, 'mines-tile/safe'));
 app.get('/app/api/uploaded-image/mines-bomb.png', async (c) => imageFromR2(c.env, 'mines-tile/bomb'));
 
-
 async function imageFromR2(env: Env, key: string, cacheControl = IMAGE_CACHE_CONTROL): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
   return new Response(object.body, { headers: { 'content-type': object.httpMetadata?.contentType || 'image/png', 'cache-control': cacheControl } });
 }
 
-
 async function getPlinkoControlPayload(env: Env) {
-  const config = await getPlinkoControl(env);
-  const house = await env.ASSETS.head(plinkoControlImageKey('house')).catch(() => null);
-  const houseVersion = house?.customMetadata?.version || house?.uploaded?.getTime?.() || '';
-  return { ...config, assets: { houseVersion: String(houseVersion || '') } };
+  return getPlinkoControl(env);
+}
+
+function cleanPlinkoAmount(value: unknown): number {
+  const amount = roundPlinkoAmount(value);
+  if (!Number.isFinite(amount) || amount < 0.01) throw new Error('Minimum amount is 0.01');
+  if (amount > 1_000_000) throw new Error('Invalid Plinko amount');
+  return amount;
+}
+
+function roundPlinkoAmount(value: unknown): number {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.round((Math.max(0, number) + Number.EPSILON) * 100) / 100;
+}
+
+function cleanPlinkoRows(value: unknown): 8 | 12 | 16 {
+  const rows = Number(value);
+  if (rows !== 8 && rows !== 12 && rows !== 16) throw new Error('Invalid Plinko rows');
+  return rows;
+}
+
+function cleanPlinkoRisk(value: unknown): 'low' | 'medium' | 'high' {
+  const risk = String(value || '').trim().toLowerCase();
+  if (risk === 'easy' || risk === 'low') return 'low';
+  if (risk === 'medium') return 'medium';
+  if (risk === 'hard' || risk === 'high') return 'high';
+  throw new Error('Invalid Plinko risk');
+}
+
+function chooseWeightedIndex(weights: number[]): number {
+  const safeWeights = Array.isArray(weights) ? weights.map((value) => Math.max(0, Number(value) || 0)) : [];
+  const total = safeWeights.reduce((sum, value) => sum + value, 0);
+  if (!safeWeights.length || total <= 0) throw new Error('Invalid Plinko configuration');
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  let roll = (bytes[0] / 4294967296) * total;
+  for (let index = 0; index < safeWeights.length; index += 1) {
+    roll -= safeWeights[index];
+    if (roll <= 0) return index;
+  }
+  return safeWeights.length - 1;
 }
 
 function normalizePlinkoControlImageKind(value: string): 'drop' | 'input' | 'house' {
@@ -216,7 +280,6 @@ function defaultPlinkoControlImageSvg(kind: 'drop' | 'input' | 'house'): string 
   }
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 748 96"><rect width="748" height="96" fill="none"/><rect x="0" y="0" width="748" height="96" rx="30" fill="#191919" stroke="#4d4d4d" stroke-width="3"/><text x="374" y="59" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="800">Drop Ball</text></svg>';
 }
-
 
 function cleanTelegramUserId(value: unknown): string {
   return String(value || '').replace(/[^0-9]/g, '').slice(0, 32);
