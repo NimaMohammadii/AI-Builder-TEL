@@ -280,7 +280,11 @@ export function miniAppShellHtml(): string {
   <meta name="theme-color" content="#12070a"/>
   <title>Vexa FLOW</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>${STYLES}</style>
+  <style>${STYLES}
+    #rankPill:empty,#userLine:empty{display:none!important}
+    .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
+    .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
+  </style>
 </head>
 <body>
   <div id="vexaBoot" class="vexa-boot">
@@ -294,16 +298,16 @@ export function miniAppShellHtml(): string {
         <img class="logo" src="${GAME_BOT_PROFILE_IMAGE}" alt="Vexa App"/>
         <div>
           <div style="display:flex;align-items:center;gap:9px;min-width:0">
-            <h1 id="brandTitle">Vexa FLOW</h1>
-            <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)">Starter</div>
+            <h1 id="brandTitle">Lucky Zone</h1>
+            <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)"></div>
           </div>
-          <p id="userLine">Game Control</p>
+          <p id="userLine"></p>
         </div>
       </div>
       <div class="top-balance-wrap">
         <button class="top-balance-pill" type="button" data-action="open-transactions" aria-label="Open transaction history">
           <span class="ton-mini-icon"><img src="${TON_LOGO_PNG}" alt="" decoding="async"/></span>
-          <b id="topTonBalance" data-ton-balance-display>0</b>
+          <b id="topTonBalance" data-ton-balance-display></b>
         </button>
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
       </div>
