@@ -37,10 +37,11 @@ export const PLINKO_PANEL_SCRIPT = `
   document.addEventListener('keydown',function(ev){var input=document.querySelector('[data-plinko-bet-input]');if(input&&document.activeElement===input){if(ev.key==='Enter'){ev.preventDefault();input.blur();restoreInlineInput(true)}if(ev.key==='Escape'){ev.preventDefault();input.blur();restoreInlineInput(false)}return}var editor=document.querySelector('[data-plinko-bet-editor]');if(!editor||!editor.classList.contains('active'))return;if(ev.key==='Escape')closeEditor(false);if(ev.key==='Enter')closeEditor(true)});
   document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='plinkoBet')setBet(ev.target.value);if(ev.target&&ev.target.hasAttribute&&ev.target.hasAttribute('data-plinko-bet-input')){var hidden=q('plinkoBet'),open=document.querySelector('[data-plinko-bet-input-open]');if(hidden)hidden.value=ev.target.value;if(open)open.textContent=money(ev.target.value);renderStats()}});
   document.addEventListener('focusout',function(ev){if(ev.target&&ev.target.hasAttribute&&ev.target.hasAttribute('data-plinko-bet-input'))restoreInlineInput(true)});
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncHeaderCredit()});
-  window.addEventListener('focus',syncHeaderCredit);window.addEventListener('vexa-ton-balance-sync',syncHeaderCredit);window.addEventListener('vexa-credit-sync',syncHeaderCredit);window.addEventListener('vexa-credit-game-change',syncHeaderCredit);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&isPlinkoActive())syncHeaderCredit()});
+  window.addEventListener('focus',function(){if(isPlinkoActive())syncHeaderCredit()});
+  window.addEventListener('vexa-ton-balance-sync',function(){if(isPlinkoActive())syncHeaderCredit()});
+  window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='plinko')syncHeaderCredit()});
   window.addEventListener('vexa-plinko-last-win',function(ev){setLastWin(ev&&ev.detail?ev.detail.total:0);renderStats()});
-  if(window.MutationObserver){var root=q('plinko');if(root)new MutationObserver(function(){if(isPlinkoActive())syncHeaderCredit()}).observe(root,{attributes:true,subtree:true,attributeFilter:['class']})}
   var start=function(){ensureFirstLoadStyle();setBet(currentBet());syncHeaderCredit()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 `;
