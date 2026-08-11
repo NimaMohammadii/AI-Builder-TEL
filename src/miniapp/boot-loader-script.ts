@@ -1,30 +1,57 @@
 export const BOOT_LOADER_SCRIPT = `
 (function(){
   var bootHidden=false;
+  var READY_TIMEOUT_MS=12000;
   function hide(){if(bootHidden)return;bootHidden=true;var boot=document.getElementById('vexaBoot');if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
-  function windowReady(){return document.readyState==='complete'?Promise.resolve(true):new Promise(function(resolve){window.addEventListener('load',function(){resolve(true)},{once:true})})}
-  function observeUntil(check){
+  function settle(promise,ms,fallback){
     return new Promise(function(resolve){
-      var observer=null,done=false;
-      function test(){if(done)return;var value=false;try{value=check()}catch(e){}if(!value)return;done=true;if(observer)observer.disconnect();resolve(value)}
+      var done=false,timer=setTimeout(function(){finish(fallback)},ms);
+      function finish(value){if(done)return;done=true;clearTimeout(timer);resolve(value)}
+      Promise.resolve(promise).then(finish,function(){finish(fallback)})
+    })
+  }
+  function call(fn,ms,fallback){try{return typeof fn==='function'?settle(fn(),ms,fallback):Promise.resolve(fallback)}catch(e){return Promise.resolve(fallback)}}
+  function windowReady(){return document.readyState==='complete'?Promise.resolve(true):new Promise(function(resolve){window.addEventListener('load',function(){resolve(true)},{once:true})})}
+  function observeUntil(check,ms){
+    return new Promise(function(resolve){
+      var observer=null,done=false,timer=setTimeout(function(){finish(false)},ms);
+      function finish(value){if(done)return;done=true;clearTimeout(timer);if(observer)observer.disconnect();resolve(value)}
+      function test(){if(done)return;var value=false;try{value=check()}catch(e){}if(value)finish(value)}
       test();if(done)return;
-      observer=new MutationObserver(test);
-      observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','class','data-vexa-home-slot-url']});
+      if(window.MutationObserver){observer=new MutationObserver(test);observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','class','style','data-vexa-home-slot-url','data-ton-balance-raw']})}
       test();
     })
   }
-  function imageReady(img){
+  function imageReady(img,ms){
     return new Promise(function(resolve){
       if(!img){resolve(false);return}
-      var done=false,source=String(img.currentSrc||img.src||'');
-      function cleanup(){try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
-      function finish(ok){if(done)return;done=true;cleanup();resolve(ok)}
-      function decode(){if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(true)});else finish(true)}
-      function loaded(){decode()}
-      function failed(){setTimeout(function(){var next=String(img.currentSrc||img.src||'');if(next&&next!==source){cleanup();imageReady(img).then(resolve);return}finish(false)},0)}
-      if(img.complete){if(img.naturalWidth>0)decode();else failed();return}
-      img.addEventListener('load',loaded,{once:true});img.addEventListener('error',failed,{once:true});
+      var done=false,source=String(img.currentSrc||img.src||''),timer=setTimeout(function(){finish(false)},ms);
+      function cleanup(){clearTimeout(timer);try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
+      function finish(ok){if(done)return;done=true;cleanup();resolve(!!ok)}
+      function decode(){if(img.naturalWidth<=0){finish(false);return}if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(img.naturalWidth>0)});else finish(true)}
+      function loaded(){source=String(img.currentSrc||img.src||source);decode()}
+      function failed(){setTimeout(function(){if(done)return;var next=String(img.currentSrc||img.src||'');if(next&&next!==source){source=next;if(img.complete&&img.naturalWidth>0)decode();return}finish(false)},0)}
+      img.addEventListener('load',loaded);img.addEventListener('error',failed);
+      if(img.complete){if(img.naturalWidth>0)decode();else failed()}
     })
+  }
+  function backgroundUrl(el){
+    if(!el||!window.getComputedStyle)return '';
+    try{var value=String(getComputedStyle(el).backgroundImage||'');var match=value.match(/url\((['"]?)(.*?)\1\)/);return match&&match[2]?match[2]:''}catch(e){return ''}
+  }
+  function urlReady(url,ms){
+    url=String(url||'');if(!url||url==='none')return Promise.resolve(true);
+    var img=new Image();img.decoding='async';img.src=url;return imageReady(img,ms)
+  }
+  function headerAndHomeAssetsReady(){
+    var jobs=[];
+    jobs.push(call(window.VexaRefreshHomeLotterySlotImage,5500,false));
+    jobs.push(call(window.VexaRefreshHomeIntroImage,5500,false));
+    jobs.push(call(window.VexaRefreshTonLogo,5500,false));
+    jobs.push(call(window.VexaApplySectionBackgrounds,5500,false));
+    jobs.push(window.VexaTonBalance&&typeof window.VexaTonBalance.load==='function'?settle(window.VexaTonBalance.load(),5500,false):Promise.resolve(false));
+    if(window.VexaLevel&&typeof window.VexaLevel.load==='function')jobs.push(settle(window.VexaLevel.load(),5500,false));
+    return Promise.all(jobs)
   }
   function homeReady(){
     return observeUntil(function(){
@@ -34,27 +61,53 @@ export const BOOT_LOADER_SCRIPT = `
       var tuningStyle=document.getElementById('homeSlotTuningStyle');
       var img=document.querySelector('#home .home-lottery-slot-image');
       return section&&draw&&baseStyle&&tuningStyle&&img?img:false
-    }).then(function(img){return imageReady(img)})
+    },7000).then(function(firstImg){
+      if(!firstImg)return false;
+      return headerAndHomeAssetsReady().then(function(){
+        return observeUntil(function(){
+          var img=document.querySelector('#home .home-lottery-slot-image');
+          var balance=document.getElementById('topTonBalance');
+          return img&&balance&&String(balance.textContent||'').trim()?img:false
+        },2500)
+      }).then(function(finalImg){
+        if(!finalImg)return false;
+        var assets=[imageReady(finalImg,5000)];
+        var intro=document.querySelector('#home .home-intro-card');
+        var introUrl=backgroundUrl(intro);if(introUrl)assets.push(urlReady(introUrl,5000));
+        var home=document.getElementById('home');
+        var homeBg=backgroundUrl(home);if(homeBg)assets.push(urlReady(homeBg,5000));
+        var ton=document.querySelector('.top-balance-pill .ton-mini-icon img');
+        var tonSrc=ton?String(ton.currentSrc||ton.src||''):'';if(ton&&tonSrc&&tonSrc.indexOf('data:image/')!==0)assets.push(imageReady(ton,4500));
+        return settle(Promise.all(assets),6000,false).then(function(){return true})
+      })
+    })
   }
   function playHubReady(){
-    var manifestReady=window.__vexaPlayZoneImagesReady||Promise.resolve(true);
-    return Promise.resolve(manifestReady).then(function(){
+    var manifest=window.__vexaPlayZoneImagesReady||Promise.resolve(false);
+    var visibility=window.__vexaPlayZoneVisibilityReady||Promise.resolve(false);
+    return Promise.all([settle(manifest,6500,false),settle(visibility,6500,false)]).then(function(){
       return observeUntil(function(){
-        var tg=window.Telegram&&window.Telegram.WebApp;
-        var needsVisibility=!!String(tg&&tg.initData||'');
-        if(needsVisibility&&!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
+        if(!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
         var cards=document.querySelectorAll('#playzone [data-play-zone-card-id]');
         var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
         if(cards.length!==9||imgs.length!==9)return false;
         for(var i=0;i<imgs.length;i++){var src=String(imgs[i].getAttribute('src')||'');if(!src||src.indexOf('data:image/gif')===0)return false}
         return Array.prototype.slice.call(imgs)
-      }).then(function(imgs){return Promise.allSettled(imgs.map(function(img){return imageReady(img)})).then(function(){return true})})
+      },7000)
+    }).then(function(imgs){
+      if(!imgs||!imgs.length)return false;
+      return settle(Promise.all(imgs.map(function(img){return imageReady(img,5500)})),6500,false).then(function(){return true})
     })
   }
   function revealWhenReady(){
     if(window.__vexaInitialUiReadyStarted)return;
     window.__vexaInitialUiReadyStarted=true;
-    window.__vexaInitialUiReady=Promise.all([windowReady(),homeReady(),playHubReady()]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})});
+    var ready=Promise.all([
+      settle(windowReady(),8000,true),
+      settle(homeReady(),10000,false),
+      settle(playHubReady(),10000,false)
+    ]);
+    window.__vexaInitialUiReady=settle(ready,READY_TIMEOUT_MS,false).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})})
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
 
