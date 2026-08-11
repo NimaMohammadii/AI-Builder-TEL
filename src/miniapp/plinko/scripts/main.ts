@@ -5,6 +5,7 @@ export const PLINKO_SCRIPT = `
   var risk = 'easy';
   var autoRunning = false;
   var autoTimer = 0;
+  var roundRequesting = false;
   var NANO = 1000000000;
   var credit = readPoints();
   var iconUrl = '/assets/plinko-glass/ball.webp';
@@ -12,7 +13,6 @@ export const PLINKO_SCRIPT = `
   var houseStripUrl = '/assets/plinko-glass/houses.webp';
   var control = null;
   var lastStamp = '';
-  var houseImageUrl = '';
   var lastLoadAt = 0;
   var syncing = false;
   var audioCtx = null;
@@ -21,6 +21,7 @@ export const PLINKO_SCRIPT = `
   var BOARD_W = 360;
   var BOARD_H = 326;
   var CENTER_X = 180;
+  var CONTROL_TTL_MS = 30000;
   var MAX_RENDER_DPR = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')
     ? 2
     : 2.25;
@@ -107,20 +108,17 @@ export const PLINKO_SCRIPT = `
     });
     return credit;
   }
-  function changePoints(delta) {
+  function changeLocalPoints(delta) {
     var nano = Math.trunc((Number(delta) || 0) * NANO);
-    if (window.VexaTonBalance && typeof window.VexaTonBalance.add === 'function') {
-      window.VexaTonBalance.add(nano);
-      credit = readPoints();
+    if (window.VexaTonBalance && typeof window.VexaTonBalance.read === 'function' && typeof window.VexaTonBalance.write === 'function') {
+      var before = Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0));
+      var after = Math.max(0, before + nano);
+      window.VexaTonBalance.write(after, after - before, false);
+      credit = after / NANO;
       return;
     }
     credit = Math.max(0, credit + (Number(delta) || 0));
     renderPoints();
-    try {
-      window.dispatchEvent(
-        new CustomEvent('vexa-credit-game-change', { detail: { credit: credit, delta: delta } }),
-      );
-    } catch (e) {}
   }
   function forcePoints(next) {
     var value = Number(next) || 0;
@@ -220,38 +218,6 @@ export const PLINKO_SCRIPT = `
       return Number.isFinite(n) && n > 0 ? n : multipliers[rows][risk][index];
     });
   }
-  function currentWeights() {
-    var item = controlItem();
-    if (!item || !Array.isArray(item.weights) || item.weights.length !== houseCount()) return null;
-    return item.weights.map(function (value) {
-      var n = Number(value);
-      return Number.isFinite(n) ? clamp(n, 0, 100) : 0;
-    });
-  }
-  function chooseControlBin(ball, rng) {
-    try {
-      if (ball && ball.remote) return null;
-      var weights = currentWeights();
-      if (!weights || !weights.length || !state || weights.length !== state.bins.length) return null;
-      var total = weights.reduce(function (sum, value) {
-        return sum + Math.max(0, Number(value) || 0);
-      }, 0);
-      if (total <= 0) return null;
-      var roll = (rng || Math.random)() * total;
-      for (var i = 0; i < weights.length; i++) {
-        var weight = Math.max(0, Number(weights[i]) || 0);
-        if (weight <= 0) continue;
-        roll -= weight;
-        if (roll <= 0) return i;
-      }
-      for (var j = weights.length - 1; j >= 0; j--) {
-        if (Math.max(0, Number(weights[j]) || 0) > 0) return j;
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
   function pegRadius() {
     return rows === 8 ? 3.25 : rows === 12 ? 2.7 : 2.25;
   }
@@ -289,27 +255,11 @@ export const PLINKO_SCRIPT = `
       draw();
     };
     img.onerror = function () {
-      if (state && state.houseImg === img) {
-        state.houseImg = null;
-        dirty();
-        draw();
-      }
+      dirty();
+      draw();
     };
     img.src = url;
     return img;
-  }
-  function setHouseImageVersion(version) {
-    var next = version
-      ? '/app/api/plinko-control-image/house.png?v=' + encodeURIComponent(version)
-      : '';
-    if (next === houseImageUrl) return;
-    houseImageUrl = next;
-    if (state) {
-      state.houseImageUrl = next;
-      state.houseImg = loadHouseImage(next);
-      dirty();
-      draw();
-    }
   }
   function currentTelegramUser() {
     return window.Telegram &&
@@ -318,6 +268,9 @@ export const PLINKO_SCRIPT = `
       window.Telegram.WebApp.initDataUnsafe.user
       ? window.Telegram.WebApp.initDataUnsafe.user
       : null;
+  }
+  function currentTelegramInitData() {
+    return window.Telegram && window.Telegram.WebApp ? String(window.Telegram.WebApp.initData || '') : '';
   }
   function currentUserPayload() {
     var user = currentTelegramUser() || {};
@@ -382,11 +335,7 @@ export const PLINKO_SCRIPT = `
       })
       .then(function (data) {
         if (data && data.rows) {
-          var houseVersion =
-            data.assets && data.assets.houseVersion ? String(data.assets.houseVersion) : '';
-          setHouseImageVersion(houseVersion);
-          var stamp =
-            String(data.updatedAt || JSON.stringify(data.rows)) + '|house:' + houseVersion;
+          var stamp = String(data.updatedAt || JSON.stringify(data.rows));
           var changed = stamp !== lastStamp;
           control = data;
           lastStamp = stamp;
@@ -398,7 +347,7 @@ export const PLINKO_SCRIPT = `
   function requestSync(force) {
     var now = Date.now();
     if (!force && !active()) return Promise.resolve();
-    if (now - lastLoadAt < 1200) return Promise.resolve();
+    if (!force && now - lastLoadAt < CONTROL_TTL_MS) return Promise.resolve();
     if (syncing) return Promise.resolve();
     syncing = true;
     lastLoadAt = now;
@@ -479,7 +428,7 @@ export const PLINKO_SCRIPT = `
   function setRows(next) {
     var value = Number(next);
     if ([8, 12, 16].indexOf(value) === -1 || value === rows) return;
-    if (hasBalls()) {
+    if (hasBalls() || roundRequesting) {
       show('Wait for the current balls to finish');
       return;
     }
@@ -490,7 +439,7 @@ export const PLINKO_SCRIPT = `
   function setRisk(next) {
     var value = String(next || '').toLowerCase();
     if (['easy', 'medium', 'hard'].indexOf(value) === -1 || value === risk) return;
-    if (hasBalls()) {
+    if (hasBalls() || roundRequesting) {
       show('Wait for the current balls to finish');
       return;
     }
@@ -617,11 +566,6 @@ export const PLINKO_SCRIPT = `
       tokenImg: img,
       pegVisualImg: prev && prev.pegVisualImg ? prev.pegVisualImg : loadHouseImage(pegVisualUrl),
       houseStripImg: prev && prev.houseStripImg ? prev.houseStripImg : loadHouseImage(houseStripUrl),
-      houseImageUrl: houseImageUrl,
-      houseImg:
-        prev && prev.houseImageUrl === houseImageUrl
-          ? prev.houseImg
-          : loadHouseImage(houseImageUrl),
     };
     renderPoints();
     var rowsEl = q('plinkoRowsValue');
@@ -649,6 +593,7 @@ export const PLINKO_SCRIPT = `
     var rng = opts && opts.seed != null ? seededRandom(opts.seed) : Math.random;
     var startX = CENTER_X + (spread[activeTop % spread.length] || 0) + (rng() * 2 - 1);
     var vx = rng() * 0.2 - 0.1;
+    var requestedTarget = Number(opts && opts.targetBinIndex);
     var ball = {
       id: (opts && opts.id) || '',
       userId: (opts && opts.userId) || '',
@@ -667,20 +612,21 @@ export const PLINKO_SCRIPT = `
       sink: 0,
       settled: false,
       settleX: null,
-      targetBinIndex: null,
+      targetBinIndex: Number.isFinite(requestedTarget) && state.bins[requestedTarget] ? requestedTarget : null,
+      serverMultiplier: Number(opts && opts.multiplier),
+      serverTotal: Number(opts && opts.total),
       img: null,
       remote: !!(opts && opts.remote),
       rand: rng,
     };
-    ball.targetBinIndex = chooseControlBin(ball, rng);
     state.balls.push(ball);
     scheduleFrame(0);
     return ball;
   }
-  function drop() {
+  async function drop() {
     init();
     primeAudio();
-    if (!state) return false;
+    if (!state || roundRequesting) return false;
     if (
       state.balls &&
       state.balls.filter(function (ball) {
@@ -700,24 +646,42 @@ export const PLINKO_SCRIPT = `
       return false;
     }
     var payload = currentUserPayload();
-    if (!payload.userId) {
+    var initData = currentTelegramInitData();
+    if (!payload.userId || !initData) {
       show('Telegram user not found');
       return false;
     }
-    payload.amount = roundCurrency(value);
-    var localId = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-    var ball = spawnBall({
-      id: localId,
-      userId: payload.userId,
-      amount: value,
-      name: payload.name,
-      photoUrl: payload.photoUrl,
-      seed: localId,
-    });
-    if (!ball) return false;
-    changePoints(-value);
-    awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: value });
-    return true;
+    roundRequesting = true;
+    try {
+      var response = await fetch('/app/api/plinko/round', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ initData: initData, amount: roundCurrency(value), rows: rows, risk: risk }),
+      });
+      var data = await response.json().catch(function () { return null; });
+      if (!response.ok || !data || data.ok !== true) throw new Error(data && data.error ? data.error : 'Could not drop ball');
+      var localId = String(data.roundId || ('local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000)));
+      var ball = spawnBall({
+        id: localId,
+        userId: payload.userId,
+        amount: Number(data.amount) || value,
+        name: payload.name,
+        photoUrl: payload.photoUrl,
+        seed: localId,
+        targetBinIndex: data.targetBinIndex,
+        multiplier: data.multiplier,
+        total: data.total,
+      });
+      if (!ball) return false;
+      changeLocalPoints(-roundCurrency(Number(data.amount) || value));
+      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: roundCurrency(Number(data.amount) || value), roundId: localId });
+      return true;
+    } catch (error) {
+      show(error && error.message ? error.message : 'Could not drop ball');
+      return false;
+    } finally {
+      roundRequesting = false;
+    }
   }
   function stopAuto() {
     autoRunning = false;
@@ -725,7 +689,7 @@ export const PLINKO_SCRIPT = `
     autoTimer = 0;
     syncControlPanel();
   }
-  function autoTick() {
+  async function autoTick() {
     if (!autoRunning || !active() || document.hidden) {
       stopAuto();
       return;
@@ -733,7 +697,14 @@ export const PLINKO_SCRIPT = `
     var localCount = state && state.balls
       ? state.balls.filter(function (ball) { return ball && !ball.remote; }).length
       : 0;
-    if (localCount < MAX_LOCAL_BALLS && !drop()) {
+    if (localCount < MAX_LOCAL_BALLS) {
+      var ok = await drop();
+      if (!ok) {
+        stopAuto();
+        return;
+      }
+    }
+    if (!autoRunning || !active() || document.hidden) {
       stopAuto();
       return;
     }
@@ -767,10 +738,14 @@ export const PLINKO_SCRIPT = `
       ball.settleX = clamp(bin.x + bin.w / 2, bin.x + (ball.r || 0), bin.x + bin.w - (ball.r || 0));
     ball.settled = true;
     if (state) state.effects.push({ bin: bin, life: 18, max: 18 });
-    var mult = roundCurrency(Math.max(0, Number(bin && bin.mult) || 0));
-    var total = roundCurrency(Math.max(0, (Number(ball.amount) || 0) * mult));
+    var mult = !ball.remote && Number.isFinite(Number(ball.serverMultiplier))
+      ? roundCurrency(Math.max(0, Number(ball.serverMultiplier)))
+      : roundCurrency(Math.max(0, Number(bin && bin.mult) || 0));
+    var total = !ball.remote && Number.isFinite(Number(ball.serverTotal))
+      ? roundCurrency(Math.max(0, Number(ball.serverTotal)))
+      : roundCurrency(Math.max(0, (Number(ball.amount) || 0) * mult));
     if (!ball.remote) {
-      changePoints(total);
+      changeLocalPoints(total);
       var winEl = document.querySelector('[data-plinko-win]');
       if (winEl) winEl.textContent = fmtAmountInput(total);
       try {
@@ -793,6 +768,7 @@ export const PLINKO_SCRIPT = `
           multiplier: mult,
           total: total,
           amount: roundCurrency(Number(ball.amount) || 0),
+          roundId: ball.id,
         });
       } else {
         awardXP(4, 'game-lose', {
@@ -802,6 +778,7 @@ export const PLINKO_SCRIPT = `
           multiplier: mult,
           total: total,
           amount: roundCurrency(Number(ball.amount) || 0),
+          roundId: ball.id,
         });
       }
     }
@@ -1076,14 +1053,13 @@ export const PLINKO_SCRIPT = `
       ctx.restore();
     }
   }
-  document.addEventListener('pointerdown', primeAudio, { passive: true });
-  document.addEventListener('touchstart', primeAudio, { passive: true });
   document.addEventListener(
     'click',
     function (ev) {
       var button = ev.target && ev.target.closest && ev.target.closest('button');
-      primeAudio();
       if (!button) return;
+      var inPlinko = !!(button.closest && button.closest('#plinko'));
+      if (inPlinko) primeAudio();
       var rowOption = button.getAttribute('data-plinko-rows-option');
       if (rowOption) {
         ev.preventDefault();
@@ -1096,15 +1072,7 @@ export const PLINKO_SCRIPT = `
         setRisk(riskOption);
         return;
       }
-      if (
-        button.getAttribute('data-view') === 'plinko' ||
-        button.getAttribute('data-game-view') === 'plinko'
-      ) {
-        setTimeout(function () {
-          smartLoadPlinkoControl(true);
-          init(true);
-        }, 0);
-      } else if (button.hasAttribute('data-view') || button.hasAttribute('data-game-view')) {
+      if ((button.hasAttribute('data-view') || button.hasAttribute('data-game-view')) && !inPlinko) {
         stopAuto();
       }
       var action = button.getAttribute('data-action');
@@ -1127,15 +1095,21 @@ export const PLINKO_SCRIPT = `
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) stopAuto();
   });
-  window.addEventListener('vexa-credit-sync', function (ev) {
-    if (ev && ev.detail) forcePoints(ev.detail);
-  });
   window.addEventListener('vexa-ton-balance-sync', function (ev) {
     if (ev && ev.detail) forcePoints(ev.detail);
   });
   window.addEventListener('vexa-credit-icon-sync', function (ev) {
     if (ev && ev.detail && ev.detail.source === 'plinko-ball' && ev.detail.url)
       updateIcon(ev.detail.url);
+  });
+  window.addEventListener('vexa:view-changed', function (ev) {
+    var id = ev && ev.detail ? ev.detail.id : '';
+    if (id === 'plinko') {
+      smartLoadPlinkoControl(false);
+      init();
+    } else {
+      stopAuto();
+    }
   });
   window.plinkoReloadControl = function () {
     smartLoadPlinkoControl(true);
@@ -1145,7 +1119,7 @@ export const PLINKO_SCRIPT = `
   if (q('plinkoCanvasV2')) init(true);
   syncControlPanel();
   if (active()) {
-    smartLoadPlinkoControl(true);
+    smartLoadPlinkoControl(false);
   }
 })();
 `;
