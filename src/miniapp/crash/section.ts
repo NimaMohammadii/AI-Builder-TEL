@@ -4,53 +4,57 @@ import { CRASH_BACK_BUTTON_SCRIPT } from './scripts/back-button';
 import { CRASH_BREAK_FX_SCRIPT } from './scripts/break-effect';
 
 const CRASH_SPIN_BLUR_SCRIPT = `
-import { Effect, EffectAttribute, EffectPass } from 'https://cdn.jsdelivr.net/npm/postprocessing@6.38.2/build/index.js';
-import { Uniform } from 'three';
-(function(){
+(async function(){
   if(window.__vexaCrashSpinBlurSetup)return;
   window.__vexaCrashSpinBlurSetup=true;
-  var composer=document.getElementById('crashSpinComposer'),multiplier=document.getElementById('crashMultiplier');
-  if(!composer||!multiplier)return;
-  var fragment=[
-    'uniform float strength;',
-    'void mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){',
-    'if(strength<=0.001){outputColor=inputColor;return;}',
-    'float radius=mix(0.0,0.032,strength);',
-    'vec4 s0=texture2D(inputBuffer,uv+vec2(-radius,0.0));',
-    'vec4 s1=texture2D(inputBuffer,uv+vec2(-radius*.75,0.0));',
-    'vec4 s2=texture2D(inputBuffer,uv+vec2(-radius*.50,0.0));',
-    'vec4 s3=texture2D(inputBuffer,uv+vec2(-radius*.25,0.0));',
-    'vec4 s4=inputColor;',
-    'vec4 s5=texture2D(inputBuffer,uv+vec2(radius*.25,0.0));',
-    'vec4 s6=texture2D(inputBuffer,uv+vec2(radius*.50,0.0));',
-    'vec4 s7=texture2D(inputBuffer,uv+vec2(radius*.75,0.0));',
-    'vec4 s8=texture2D(inputBuffer,uv+vec2(radius,0.0));',
-    'float a0=s0.a*.06,a1=s1.a*.09,a2=s2.a*.12,a3=s3.a*.15,a4=s4.a*.16,a5=s5.a*.15,a6=s6.a*.12,a7=s7.a*.09,a8=s8.a*.06;',
-    'float a=max(a0+a1+a2+a3+a4+a5+a6+a7+a8,0.0001);',
-    'vec3 blurred=(s0.rgb*a0+s1.rgb*a1+s2.rgb*a2+s3.rgb*a3+s4.rgb*a4+s5.rgb*a5+s6.rgb*a6+s7.rgb*a7+s8.rgb*a8)/a;',
-    'float interior=smoothstep(.025,.18,inputColor.a);',
-    'outputColor=vec4(mix(inputColor.rgb,blurred,strength*interior),inputColor.a);',
-    '}'
-  ].join(String.fromCharCode(10));
-  class CrashSpinBlurEffect extends Effect{
-    constructor(){super('CrashSpinBlurEffect',fragment,{attributes:EffectAttribute.CONVOLUTION,uniforms:new Map([['strength',new Uniform(0)]])})}
-  }
-  var effect=new CrashSpinBlurEffect(),pass=new EffectPass(undefined,effect),attached=false,last=-1,observer=null;
-  function strengthFor(value){
-    var v=Math.max(1,Number(value)||1);if(v<5)return 0;if(v>=8)return 1;
-    var t=(v-5)/3;t=t*t*(3-2*t);return .62+.38*t
-  }
-  function sync(){
-    var v=parseFloat(String(multiplier.textContent||'1').replace(/x/i,'')),strength=strengthFor(v);
-    if(Math.abs(strength-last)<.004)return;last=strength;
-    effect.uniforms.get('strength').value=strength;
-    if(strength>0&& !attached){composer.addPass(pass,false,false);attached=true}
-    else if(strength<=0&&attached){composer.removePass(pass,false);attached=false}
-    if(attached)composer.queueRender()
-  }
-  customElements.whenDefined('effect-composer').then(function(){
+  try{
+    await import('https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer-module.min.js');
+    await customElements.whenDefined('model-viewer');
+    await import('https://cdn.jsdelivr.net/npm/@google/model-viewer-effects@1.4.0/dist/model-viewer-effects.min.js');
+    await customElements.whenDefined('effect-composer');
+    var PostProcessing=await import('https://cdn.jsdelivr.net/npm/postprocessing@6.38.2/build/index.js'),Three=await import('three');
+    var Effect=PostProcessing.Effect,EffectAttribute=PostProcessing.EffectAttribute,EffectPass=PostProcessing.EffectPass,Uniform=Three.Uniform;
+    var composer=document.getElementById('crashSpinComposer'),multiplier=document.getElementById('crashMultiplier');
+    if(!composer||!multiplier)return;
+    var fragment=[
+      'uniform float strength;',
+      'void mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){',
+      'if(strength<=0.001){outputColor=inputColor;return;}',
+      'float radius=mix(0.0,0.032,strength);',
+      'vec4 s0=texture2D(inputBuffer,uv+vec2(-radius,0.0));',
+      'vec4 s1=texture2D(inputBuffer,uv+vec2(-radius*.75,0.0));',
+      'vec4 s2=texture2D(inputBuffer,uv+vec2(-radius*.50,0.0));',
+      'vec4 s3=texture2D(inputBuffer,uv+vec2(-radius*.25,0.0));',
+      'vec4 s4=inputColor;',
+      'vec4 s5=texture2D(inputBuffer,uv+vec2(radius*.25,0.0));',
+      'vec4 s6=texture2D(inputBuffer,uv+vec2(radius*.50,0.0));',
+      'vec4 s7=texture2D(inputBuffer,uv+vec2(radius*.75,0.0));',
+      'vec4 s8=texture2D(inputBuffer,uv+vec2(radius,0.0));',
+      'float a0=s0.a*.06,a1=s1.a*.09,a2=s2.a*.12,a3=s3.a*.15,a4=s4.a*.16,a5=s5.a*.15,a6=s6.a*.12,a7=s7.a*.09,a8=s8.a*.06;',
+      'float a=max(a0+a1+a2+a3+a4+a5+a6+a7+a8,0.0001);',
+      'vec3 blurred=(s0.rgb*a0+s1.rgb*a1+s2.rgb*a2+s3.rgb*a3+s4.rgb*a4+s5.rgb*a5+s6.rgb*a6+s7.rgb*a7+s8.rgb*a8)/a;',
+      'float interior=smoothstep(.025,.18,inputColor.a);',
+      'outputColor=vec4(mix(inputColor.rgb,blurred,strength*interior),inputColor.a);',
+      '}'
+    ].join(String.fromCharCode(10));
+    class CrashSpinBlurEffect extends Effect{
+      constructor(){super('CrashSpinBlurEffect',fragment,{attributes:EffectAttribute.CONVOLUTION,uniforms:new Map([['strength',new Uniform(0)]])})}
+    }
+    var effect=new CrashSpinBlurEffect(),pass=new EffectPass(undefined,effect),attached=false,last=-1,observer=null;
+    function strengthFor(value){
+      var v=Math.max(1,Number(value)||1);if(v<5)return 0;if(v>=8)return 1;
+      var t=(v-5)/3;t=t*t*(3-2*t);return .62+.38*t
+    }
+    function sync(){
+      var v=parseFloat(String(multiplier.textContent||'1').replace(/x/i,'')),strength=strengthFor(v);
+      if(Math.abs(strength-last)<.004)return;last=strength;
+      effect.uniforms.get('strength').value=strength;
+      if(strength>0&&!attached){composer.addPass(pass,false,false);attached=true}
+      else if(strength<=0&&attached){composer.removePass(pass,false);attached=false}
+      if(attached)composer.queueRender()
+    }
     sync();observer=new MutationObserver(sync);observer.observe(multiplier,{childList:true,characterData:true,subtree:true})
-  });
+  }catch(e){window.__vexaCrashSpinBlurSetup=false}
 })();
 `;
 
@@ -227,8 +231,6 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
     </div>
   </div>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.min.js"}}</script>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer-module.min.js"></script>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer-effects@1.4.0/dist/model-viewer-effects.min.js"></script>
   <script type="module">${CRASH_SPIN_BLUR_SCRIPT}</script>
   <script>${CRASH_SPACE_ENVIRONMENT_SCRIPT}</script>
   <script>${CRASH_PERFORMANCE_SCRIPT}</script>
