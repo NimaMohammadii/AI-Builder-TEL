@@ -3,7 +3,7 @@ export const CRASH_SCRIPT = `
   var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=68000, DAY_MS=86400000;
   var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketSpin=-1, rocketDriftReady=false;
   function q(id){return document.getElementById(id)}
-  function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){if(n)n.style.display='none'},2200)}
+  function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
   function balance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
   function change(delta){var value=Math.floor(Number(delta)||0);if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function'&&typeof window.VexaTonBalance.write==='function'){window.VexaTonBalance.write(Math.max(0,balance()+value),value,false);return}window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:value,section:'crash'}}))}
   function emitBet(roundId,amountNano){try{window.dispatchEvent(new CustomEvent('vexa-crash-bet',{detail:{roundId:roundId,amountNano:amountNano}}))}catch(e){}}
