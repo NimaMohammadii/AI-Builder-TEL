@@ -28,7 +28,7 @@ export const CRASH_SCRIPT = `
   function locateRound(now){var dayStart=Math.floor(now/DAY_MS)*DAY_MS,baseId=Math.floor(dayStart/1000);if(!scheduleCache||scheduleCache.dayStart!==dayStart||now<scheduleCache.start){scheduleCache={dayStart:dayStart,baseId:baseId,localId:0,start:dayStart,cycle:cycleFor(baseId)}}while(now>=scheduleCache.start+scheduleCache.cycle.cycleMs){scheduleCache.start+=scheduleCache.cycle.cycleMs;scheduleCache.localId++;scheduleCache.cycle=cycleFor(scheduleCache.baseId+scheduleCache.localId)}var c=scheduleCache.cycle,local=now-scheduleCache.start,running=local<c.runMs,waitElapsed=running?0:local-c.runMs,nextIn=running?0:Math.max(0,WAIT_BETWEEN_MS-waitElapsed),inCrashHold=!running&&waitElapsed<CRASH_HOLD_MS;return{id:c.id,start:scheduleCache.start,local:local,runElapsed:Math.min(local,c.runMs),waitElapsed:waitElapsed,stop:c.stop,runMs:c.runMs,running:running,waiting:!running,inCrashHold:inCrashHold,nextIn:nextIn}}
   function previousRoundIds(state,count){var ids=[];for(var id=state.id-(state.waiting?0:1);ids.length<count;id--)ids.push(id);return ids}
   function targetBetRoundId(state){return state.waiting?state.id+1:state.id}
-  function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v<1.4)return 1;if(v>=2.2)return 3;var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
+  function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v>=2.2)return 3;if(v<1.4){var t=(v-1)/.4;return 1+t*t*(3-2*t)}var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
   function setRocket(value,state,entryElapsed){
     var flight=q('crashRocketFlight');if(!flight)return;
     var v=Math.max(1,Number(value)||1),raw=Math.max(0,v-1);
@@ -45,9 +45,12 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
     if(!rocketDriftReady){
       rocketDriftReady=true;
-      flight.style.setProperty('--rocket-shake','12px');
       flight.style.setProperty('--rocket-drift-duration','6.4s');
     }
+    var driftT=running?Math.max(0,Math.min(1,(v-1.7)/.1)):0,driftMix=driftT*driftT*(3-2*driftT),shake=12+24*driftMix,mid50=shake*(1-(2/3)*driftMix),mid75=shake*driftMix;
+    flight.style.setProperty('--rocket-shake',shake.toFixed(2)+'px');
+    flight.style.setProperty('--rocket-mid-50',mid50.toFixed(2)+'px');
+    flight.style.setProperty('--rocket-mid-75',mid75.toFixed(2)+'px');
     var motionState=running&&v>=1.8?'boost':'calm';
     if(flight.getAttribute('data-motion')!==motionState)flight.setAttribute('data-motion',motionState);
     var rocket=q('crashRocket'),spinCurve=1-Math.pow(1-spinProgress,2),baseSpin=running?18+spinCurve*162:18,spin=running?baseSpin*speedBoost(v):18;
