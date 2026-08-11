@@ -160,15 +160,21 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
-function withoutInitialHomeLottery(html: string): string {
-  const start = html.indexOf('  <section id="homeLuckyCodeSection">');
-  const end = start >= 0 ? html.indexOf('  <div id="depositSheet"', start) : -1;
-  if (start < 0 || end < 0) return html;
-  return html.slice(0, start) + html.slice(end);
+function initialHomeSection(html: string): string {
+  let clean = html;
+  const styleStart = clean.indexOf('  <style>');
+  const styleEnd = styleStart >= 0 ? clean.indexOf('  </style>', styleStart) : -1;
+  if (styleStart >= 0 && styleEnd >= 0) {
+    clean = clean.slice(0, styleStart) + clean.slice(styleEnd + '  </style>\n'.length);
+  }
+  const start = clean.indexOf('  <section id="homeLuckyCodeSection">');
+  const end = start >= 0 ? clean.indexOf('  <div id="depositSheet"', start) : -1;
+  if (start >= 0 && end >= 0) clean = clean.slice(0, start) + clean.slice(end);
+  return clean;
 }
 
 const INITIAL_SECTIONS = [
-  withoutInitialHomeLottery(HOME_SECTION),
+  initialHomeSection(HOME_SECTION),
   PLAY_ZONE_SECTION,
   REWARDS_SECTION,
 ].join('');
