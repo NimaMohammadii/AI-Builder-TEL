@@ -262,7 +262,7 @@ function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
 
 function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
   const amountNano = -Math.abs(Number(row.amount_nano || 0));
-  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, row.status, 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
+  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, withdrawalHistoryStatus(row.status), 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
 }
 
 function withdrawalTitle(status: string): string {
