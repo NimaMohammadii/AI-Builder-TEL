@@ -76,7 +76,7 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
       .catch(function(){if(!hasCached)fallback();return false});
   }
   window.VexaRefreshPlayZoneImages=refresh;
-  refresh();
+  window.__vexaPlayZoneImagesReady=refresh();
 })();
 `;
 
