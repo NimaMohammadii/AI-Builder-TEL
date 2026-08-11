@@ -8,7 +8,7 @@ import { registerSlotAssetRoutes } from './slot-assets';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
 import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
-import { addUserXp, getUserLevel } from './levels';
+import { addUserXpBatch, getUserLevel } from './levels';
 import type { Env, TelegramUpdate } from './types';
 import { gameBotToken, PUBLIC_BASE_URL, validateTelegramInitData } from './utils';
 
@@ -79,17 +79,8 @@ app.post('/app/api/level/xp', async (c) => {
     const body = await c.req.json().catch(() => ({})) as LevelXpBody;
     const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
     const rawEvents = Array.isArray(body.events) ? body.events : [body];
-    const events = rawEvents.slice(0, 120);
-    let profile = await getUserLevel(c.env, userId);
-    let leveledUp = false;
-    let previousLevel = profile.level;
-    for (const event of events) {
-      const result = await addUserXp(c.env, userId, event.amount, event.source, event.metadata, event.eventId);
-      profile = result.profile;
-      if (result.leveledUp) leveledUp = true;
-      previousLevel = Math.min(previousLevel, result.previousLevel);
-    }
-    return c.json({ ok: true, processed: events.length, profile, leveledUp, previousLevel }, 200, { 'cache-control': 'no-store' });
+    const result = await addUserXpBatch(c.env, userId, rawEvents.slice(0, 120));
+    return c.json({ ok: true, processed: result.processed, accepted: result.accepted, profile: result.profile, leveledUp: result.leveledUp, previousLevel: result.previousLevel }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not sync XP' }, 400, { 'cache-control': 'no-store' });
   }
