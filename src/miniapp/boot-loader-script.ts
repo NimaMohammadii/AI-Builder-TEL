@@ -37,16 +37,19 @@ export const BOOT_LOADER_SCRIPT = `
     }).then(function(img){return imageReady(img)})
   }
   function playHubReady(){
-    return observeUntil(function(){
-      var tg=window.Telegram&&window.Telegram.WebApp;
-      var needsVisibility=!!String(tg&&tg.initData||'');
-      if(needsVisibility&&!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
-      var cards=document.querySelectorAll('#playzone [data-play-zone-card-id]');
-      var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
-      if(cards.length!==9||imgs.length!==9)return false;
-      for(var i=0;i<imgs.length;i++){var src=String(imgs[i].getAttribute('src')||'');if(!src||src.indexOf('data:image/gif')===0)return false}
-      return Array.prototype.slice.call(imgs)
-    }).then(function(imgs){return Promise.allSettled(imgs.map(function(img){return imageReady(img)})).then(function(){return true})})
+    var manifestReady=window.__vexaPlayZoneImagesReady||Promise.resolve(true);
+    return Promise.resolve(manifestReady).then(function(){
+      return observeUntil(function(){
+        var tg=window.Telegram&&window.Telegram.WebApp;
+        var needsVisibility=!!String(tg&&tg.initData||'');
+        if(needsVisibility&&!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
+        var cards=document.querySelectorAll('#playzone [data-play-zone-card-id]');
+        var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
+        if(cards.length!==9||imgs.length!==9)return false;
+        for(var i=0;i<imgs.length;i++){var src=String(imgs[i].getAttribute('src')||'');if(!src||src.indexOf('data:image/gif')===0)return false}
+        return Array.prototype.slice.call(imgs)
+      }).then(function(imgs){return Promise.allSettled(imgs.map(function(img){return imageReady(img)})).then(function(){return true})})
+    })
   }
   function revealWhenReady(){
     if(window.__vexaInitialUiReadyStarted)return;
