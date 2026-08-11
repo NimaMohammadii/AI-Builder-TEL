@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { recordTonTransaction, type TonTransactionMeta } from './ton-transactions';
+import { recordTonTransaction, recordTonTransactions, type TonTransactionMeta, type TonTransactionWrite } from './ton-transactions';
 
 export type UserSectionBlock = {
   sectionId: string;
@@ -17,6 +17,11 @@ export type UserControls = {
   sectionBlocks: UserSectionBlock[];
 };
 
+export type GameTonBalanceDelta = {
+  deltaNano: number;
+  section?: string;
+};
+
 const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
 
 type StoredUserControls = {
@@ -31,25 +36,17 @@ type UserControlRow = { blocked_sections_json: string; win_chance_percent?: numb
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
   const id = cleanUserId(userId);
-  const saved = await readSectionControls(env, id);
-  const sectionBlocks = normalizeSectionBlocks(saved?.blockedSections);
-  return {
-    userId: id,
-    banned: saved?.banned === true,
-    tonBalanceNano: await readUserTonBalance(env, id),
-    winChancePercent: normalizeWinChance(saved?.winChancePercent),
-    blockedSections: sectionBlocks.filter((item) => item.blocked).map((item) => item.sectionId),
-    sectionBlocks,
-  };
+  const [saved, tonBalanceNano] = await Promise.all([readSectionControls(env, id), readUserTonBalance(env, id)]);
+  return shapeUserControls(id, saved, tonBalanceNano);
 }
 
 export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
   const before = await readUserTonBalance(env, id);
-  await writeUserTonBalance(env, id, tonBalanceNano);
-  const after = await readUserTonBalance(env, id);
+  const after = normalizeNano(tonBalanceNano);
+  await writeUserTonBalance(env, id, after);
   await recordTonTransaction(env, id, after - before, after, { kind: 'admin', title: 'Admin balance update', ...meta });
-  return getUserControls(env, id);
+  return controlsWithBalance(env, id, after);
 }
 
 export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
@@ -58,36 +55,103 @@ export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: 
   await addUserTonBalance(env, id, deltaNano);
   const after = await readUserTonBalance(env, id);
   await recordTonTransaction(env, id, after - before, after, meta);
-  return getUserControls(env, id);
+  return controlsWithBalance(env, id, after);
 }
 
 export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
-  if ((await getUserControls(env, id)).banned) throw new Error('Your access to all sections is blocked.');
+  await assertUserNotBanned(env, id);
   const baseDelta = Math.floor(Number(deltaNano) || 0);
   const before = await readUserTonBalance(env, id);
   await addUserTonBalance(env, id, baseDelta);
   const after = await readUserTonBalance(env, id);
   await recordTonTransaction(env, id, after - before, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta } });
-  return getUserControls(env, id);
+  return controlsWithBalance(env, id, after);
+}
+
+export async function applyGameTonBalanceDeltas(env: Env, userId: string, input: GameTonBalanceDelta[]): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  await assertUserNotBanned(env, id);
+  const deltas = (Array.isArray(input) ? input : []).slice(0, 100).map((item) => ({
+    deltaNano: Math.floor(Number(item?.deltaNano) || 0),
+    section: cleanGameSection(item?.section) || 'unknown',
+  })).filter((item) => item.deltaNano !== 0);
+  if (!deltas.length) return getUserControls(env, id);
+
+  await ensureAppUserBalanceRow(env, id);
+  const before = await readUserTonBalance(env, id);
+  const expression = deltas.reduce((sql) => `max(0, ${sql} + ?)`, 'ton_balance_nano');
+  const result = await env.DB.prepare(`UPDATE app_users SET ton_balance_nano = ${expression}, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ? RETURNING ton_balance_nano`)
+    .bind(...deltas.map((item) => item.deltaNano), id)
+    .first<{ ton_balance_nano: number }>();
+  const after = normalizeNano(result?.ton_balance_nano ?? before);
+
+  let running = before;
+  const writes: TonTransactionWrite[] = [];
+  for (const item of deltas) {
+    const next = Math.max(0, running + item.deltaNano);
+    const actual = next - running;
+    if (actual) {
+      writes.push({
+        amountNano: actual,
+        balanceAfterNano: next,
+        meta: {
+          kind: 'game',
+          title: item.deltaNano >= 0 ? 'Game reward' : 'Game bet',
+          metadata: { section: item.section, requestedDeltaNano: item.deltaNano },
+        },
+      });
+    }
+    running = next;
+  }
+  if (writes.length) await recordTonTransactions(env, id, writes);
+  return controlsWithBalance(env, id, after);
+}
+
+export async function settleGameTonBalanceRound(env: Env, userId: string, betNanoInput: number, payoutNanoInput: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
+  const id = cleanUserId(userId);
+  await assertUserNotBanned(env, id);
+  const betNano = normalizeNano(betNanoInput);
+  const payoutNano = normalizeNano(payoutNanoInput);
+  if (betNano <= 0) throw new Error('Invalid game amount');
+  await ensureAppUserBalanceRow(env, id);
+  const result = await env.DB.prepare(`UPDATE app_users
+    SET ton_balance_nano = ton_balance_nano - ? + ?, updated_at = CURRENT_TIMESTAMP
+    WHERE telegram_user_id = ? AND ton_balance_nano >= ?
+    RETURNING ton_balance_nano`)
+    .bind(betNano, payoutNano, id, betNano)
+    .first<{ ton_balance_nano: number }>();
+  if (!result) throw new Error('Insufficient balance');
+  const after = normalizeNano(result.ton_balance_nano);
+  const before = after + betNano - payoutNano;
+  const afterBet = Math.max(0, before - betNano);
+  const writes: TonTransactionWrite[] = [{
+    amountNano: -betNano,
+    balanceAfterNano: afterBet,
+    meta: { kind: 'game', title: 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), phase: 'bet', requestedDeltaNano: -betNano } },
+  }];
+  if (payoutNano > 0) writes.push({
+    amountNano: payoutNano,
+    balanceAfterNano: after,
+    meta: { kind: 'game', title: 'Game reward', ...meta, metadata: { ...(meta.metadata || {}), phase: 'payout', requestedDeltaNano: payoutNano } },
+  });
+  await recordTonTransactions(env, id, writes);
+  return controlsWithBalance(env, id, after);
 }
 
 export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amountNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
-  if ((await getUserControls(env, id)).banned) throw new Error('Your access to all sections is blocked.');
+  await assertUserNotBanned(env, id);
   const amount = normalizeNano(amountNano);
   if (amount <= 0) throw new Error('Invalid purchase amount');
-  await ensureTonBalanceColumn(env);
-  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
-    VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT(telegram_user_id) DO NOTHING`).bind(id).run();
+  await ensureAppUserBalanceRow(env, id);
   const result = await env.DB.prepare(`UPDATE app_users
     SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP
     WHERE telegram_user_id = ? AND ton_balance_nano >= ?`).bind(amount, id, amount).run();
   if ((result.meta?.changes || 0) <= 0) throw new Error('Insufficient balance');
   const after = await readUserTonBalance(env, id);
   await recordTonTransaction(env, id, -amount, after, { kind: 'adjustment', title: 'TON debit', ...meta });
-  return getUserControls(env, id);
+  return controlsWithBalance(env, id, after);
 }
 
 export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean, expiresAtInput: unknown = null): Promise<UserControls> {
@@ -117,8 +181,9 @@ export async function setUserWinChance(env: Env, userId: string, winChancePercen
 }
 
 export async function assertUserNotBanned(env: Env, userId: string): Promise<void> {
-  const controls = await getUserControls(env, userId);
-  if (controls.banned) throw new Error('Your access to all sections is blocked.');
+  const id = cleanUserId(userId);
+  const controls = await readSectionControls(env, id);
+  if (controls?.banned === true) throw new Error('Your access to all sections is blocked.');
 }
 
 export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; banned: boolean; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
@@ -126,15 +191,49 @@ export async function publicUserControls(env: Env, userId: string): Promise<{ us
   return { userId: controls.userId, banned: controls.banned, tonBalanceNano: controls.tonBalanceNano, winChancePercent: controls.winChancePercent, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
 }
 
+async function controlsWithBalance(env: Env, userId: string, tonBalanceNano: number): Promise<UserControls> {
+  const saved = await readSectionControls(env, userId);
+  return shapeUserControls(userId, saved, tonBalanceNano);
+}
+
+function shapeUserControls(userId: string, saved: StoredUserControls | null, tonBalanceNano: number): UserControls {
+  const sectionBlocks = normalizeSectionBlocks(saved?.blockedSections);
+  return {
+    userId,
+    banned: saved?.banned === true,
+    tonBalanceNano: normalizeNano(tonBalanceNano),
+    winChancePercent: normalizeWinChance(saved?.winChancePercent),
+    blockedSections: sectionBlocks.filter((item) => item.blocked).map((item) => item.sectionId),
+    sectionBlocks,
+  };
+}
+
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
-    await ensureUserControlsTable(env);
-    const row = await env.DB.prepare('SELECT blocked_sections_json, win_chance_percent, banned FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
-    if (row) return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent, banned: Number(row.banned || 0) === 1 };
+    const row = await readUserControlRow(env, userId);
+    if (row) return rowToStoredControls(userId, row);
   } catch (error) {
-    console.warn('read user section controls from D1 failed', error);
+    if (isMissingUserControlsSchema(error)) {
+      try {
+        await ensureUserControlsTable(env);
+        const row = await readUserControlRow(env, userId);
+        if (row) return rowToStoredControls(userId, row);
+      } catch (retryError) {
+        console.warn('read user section controls from D1 failed', retryError);
+      }
+    } else {
+      console.warn('read user section controls from D1 failed', error);
+    }
   }
   return env.BOT_CACHE.get(key(userId), 'json').catch(() => null) as Promise<StoredUserControls | null>;
+}
+
+async function readUserControlRow(env: Env, userId: string): Promise<UserControlRow | null> {
+  return env.DB.prepare('SELECT blocked_sections_json, win_chance_percent, banned FROM user_controls WHERE user_id = ?').bind(userId).first<UserControlRow>();
+}
+
+function rowToStoredControls(userId: string, row: UserControlRow): StoredUserControls {
+  return { userId, blockedSections: row.blocked_sections_json ? JSON.parse(row.blocked_sections_json) : [], winChancePercent: row.win_chance_percent, banned: Number(row.banned || 0) === 1 };
 }
 
 async function saveControls(env: Env, userId: string, sectionBlocks: UserSectionBlock[], winChancePercent: number, banned = false): Promise<void> {
@@ -162,18 +261,27 @@ async function ensureUserControlsTable(env: Env): Promise<void> {
   await env.DB.prepare('ALTER TABLE user_controls ADD COLUMN banned INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 }
 
+function isMissingUserControlsSchema(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /no such table:\s*user_controls|no such column:\s*(win_chance_percent|banned)/i.test(message);
+}
+
 export async function ensureTonBalanceColumn(env: Env): Promise<void> {
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN ton_balance_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 }
 
+async function ensureAppUserBalanceRow(env: Env, userId: string): Promise<void> {
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
+    VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO NOTHING`).bind(userId).run();
+}
+
 async function readUserTonBalance(env: Env, userId: string): Promise<number> {
-  await ensureTonBalanceColumn(env);
   const app = await env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ ton_balance_nano: number }>().catch(() => null);
   return normalizeNano(app?.ton_balance_nano ?? 0);
 }
 
 async function writeUserTonBalance(env: Env, userId: string, tonBalanceNano: number): Promise<void> {
-  await ensureTonBalanceColumn(env);
   const value = normalizeNano(tonBalanceNano);
   await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
     VALUES (?, 'home', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -185,7 +293,6 @@ async function writeUserTonBalance(env: Env, userId: string, tonBalanceNano: num
 }
 
 async function addUserTonBalance(env: Env, userId: string, deltaNano: number): Promise<void> {
-  await ensureTonBalanceColumn(env);
   const value = Math.floor(Number(deltaNano) || 0);
   await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
     VALUES (?, 'home', max(0, ?), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
