@@ -529,7 +529,7 @@ export const PLINKO_SCRIPT = `
     canvas.width = BOARD_W * dpr;
     canvas.height = BOARD_H * dpr;
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     var prev = state;
@@ -602,6 +602,7 @@ export const PLINKO_SCRIPT = `
       sink: 0,
       settled: false,
       settleX: null,
+      pendingServer: !!(opts && opts.pendingServer),
       targetBinIndex: Number.isFinite(requestedTarget) && state.bins[requestedTarget] ? requestedTarget : null,
       serverMultiplier: Number(opts && opts.multiplier),
       serverTotal: Number(opts && opts.total),
@@ -622,7 +623,7 @@ export const PLINKO_SCRIPT = `
           return ball && !ball.remote;
         }).length
       : 0;
-    if (localCount + pendingRounds >= MAX_LOCAL_BALLS) {
+    if (localCount >= MAX_LOCAL_BALLS) {
       show('Please wait for a few balls to finish');
       return false;
     }
@@ -642,6 +643,17 @@ export const PLINKO_SCRIPT = `
       return false;
     }
     var reservedAmount = roundCurrency(value);
+    var clientId = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+    var ball = spawnBall({
+      id: clientId,
+      userId: payload.userId,
+      amount: reservedAmount,
+      name: payload.name,
+      photoUrl: payload.photoUrl,
+      seed: clientId,
+      pendingServer: true,
+    });
+    if (!ball) return false;
     pendingRounds += 1;
     changeLocalPoints(-reservedAmount);
     try {
@@ -652,23 +664,24 @@ export const PLINKO_SCRIPT = `
       });
       var data = await response.json().catch(function () { return null; });
       if (!response.ok || !data || data.ok !== true) throw new Error(data && data.error ? data.error : 'Could not drop ball');
-      var localId = String(data.roundId || ('local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000)));
-      var ball = spawnBall({
-        id: localId,
-        userId: payload.userId,
-        amount: Number(data.amount) || reservedAmount,
-        name: payload.name,
-        photoUrl: payload.photoUrl,
-        seed: localId,
-        targetBinIndex: data.targetBinIndex,
-        multiplier: data.multiplier,
-        total: data.total,
-      });
-      if (!ball) return false;
-      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: roundCurrency(Number(data.amount) || reservedAmount), roundId: localId });
+      ball.id = String(data.roundId || clientId);
+      ball.amount = roundCurrency(Number(data.amount) || reservedAmount);
+      ball.targetBinIndex = Number.isFinite(Number(data.targetBinIndex)) && state && state.bins && state.bins[Number(data.targetBinIndex)]
+        ? Number(data.targetBinIndex)
+        : null;
+      ball.serverMultiplier = Number(data.multiplier);
+      ball.serverTotal = Number(data.total);
+      ball.pendingServer = false;
+      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: ball.amount, roundId: ball.id });
+      scheduleFrame(0);
       return true;
     } catch (error) {
+      if (state && state.balls) {
+        var index = state.balls.indexOf(ball);
+        if (index >= 0) state.balls.splice(index, 1);
+      }
       changeLocalPoints(reservedAmount);
+      draw();
       show(error && error.message ? error.message : 'Could not drop ball');
       return false;
     } finally {
@@ -830,6 +843,12 @@ export const PLINKO_SCRIPT = `
         ball.y += 0.48 * dt;
         ball.r *= 0.978;
         if (ball.sink > 30 || ball.r < 1.2) balls.splice(b, 1);
+        continue;
+      }
+      if (ball.pendingServer && ball.y >= 62) {
+        ball.y = 62;
+        ball.vx *= 0.92;
+        ball.vy = 0;
         continue;
       }
       ball.vy += 0.145 * dt;
