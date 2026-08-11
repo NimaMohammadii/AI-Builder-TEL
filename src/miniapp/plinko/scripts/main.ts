@@ -529,7 +529,7 @@ export const PLINKO_SCRIPT = `
     canvas.width = BOARD_W * dpr;
     canvas.height = BOARD_H * dpr;
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     var prev = state;
