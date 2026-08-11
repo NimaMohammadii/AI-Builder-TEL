@@ -101,8 +101,8 @@ html body:has(#crash.active) #crash.crash-view .crash-stage{position:relative;wi
 @keyframes crashShardBottom{0%{transform:translate3d(0,0,0) rotate(0);opacity:0}12%{opacity:.82}100%{transform:translate3d(14px,18px,0) rotate(8deg);opacity:0}}
 #crash .crash-next-round{margin-top:6px;color:rgba(255,255,255,.60);font-size:10px;font-weight:850;letter-spacing:.02em;text-shadow:0 8px 18px rgba(0,0,0,.42)}
 #crash .crash-hidden-state,#crash .crash-starting,#crash .crash-network{display:none!important}
-body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;padding:0 10px!important}
-body #crash .crash-bet-main::before{content:""!important;display:block!important;width:24px!important;height:24px!important;flex:0 0 24px!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
+body #crash .crash-bet-main{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0 10px!important}
+body #crash .crash-bet-main::before{content:""!important;display:block!important;width:30px!important;height:30px!important;flex:0 0 30px!important;transform:translateY(2px)!important;background:url('/app/api/uploaded-image/ton-icon.png') center/contain no-repeat!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.34))!important;opacity:.98!important;pointer-events:none!important}
 body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;flex:0 1 auto!important;text-align:left!important}
 `;
 
