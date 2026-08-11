@@ -13,13 +13,8 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   function active(){return root.classList.contains('active')&&!document.hidden}
   function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
   function streakIntensity(){
-    var v=multiplierValue();
-    if(v<1.2)return .055+(v-1)*.475;
-    if(v<1.6)return .15+(v-1.2)*.375;
-    if(v<2.2)return .30+(v-1.6)*.2833333333;
-    if(v<3)return .47+(v-2.2)*.1875;
-    if(v<5)return .62+(v-3)*.08;
-    return Math.min(1,.78+(1-Math.exp(-(v-5)*.12))*.22)
+    var v=multiplierValue(),t=Math.max(0,Math.min(1,(v-1.7)/2.3));
+    return Math.min(1,.32+(1-Math.pow(1-t,2))*.68)
   }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
   function canvasDpr(){return Math.min(1.15,Math.max(1,window.devicePixelRatio||1))}
@@ -55,14 +50,14 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       raf=0;if(!active()){lastRender=0;return}
       if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
       lastRender=ms;
-      var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(10+intensity*145)*dpr;
+      var intensity=streakIntensity(),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*dpr;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
-        var p=particles[i],visibility=.91-intensity*.48;if(p.rank<visibility)continue;
+        var p=particles[i],visibility=.84-intensity*.36;if(p.rank<visibility)continue;
         var travel=(ms*.001*speed*(.62+p.rank*.65)),span=Math.abs(dx)*w+Math.abs(dy)*h+180*dpr;
         var offset=((travel+p.rank*span)%span),x=((p.x*w+dx*offset)%w+w)%w,y=((p.y*h+dy*offset)%h+h)%h;
-        var trail=(9+intensity*68)*p.length*dpr;
-        ctx.globalAlpha=.14+intensity*.60;ctx.strokeStyle=p.rank>.86?'#ffe9df':'#e8efff';ctx.lineWidth=p.width*dpr;
+        var trail=(13+intensity*76)*p.length*dpr;
+        ctx.globalAlpha=.22+intensity*.62;ctx.strokeStyle=p.rank>.86?'#ffe9df':'#e8efff';ctx.lineWidth=p.width*dpr;
         ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-dx*trail,y-dy*trail);ctx.stroke();
       }
       ctx.globalAlpha=1;raf=requestAnimationFrame(frame)
@@ -91,14 +86,14 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       'float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
       'vec3 streakLayer(vec2 uv,float cells,float seed,float gain){',
       'vec2 direction=normalize(vec2(-sin(u_rocket_angle),-cos(u_rocket_angle))),across=vec2(-direction.y,direction.x);',
-      'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.018,.31,u_intensity);',
+      'vec2 rotated=vec2(dot(uv,across),dot(uv,direction));rotated.y-=u_time*mix(.15,.72,u_intensity);',
       'vec2 grid=rotated*vec2(cells,cells*.20),cell=floor(grid),gv=fract(grid)-.5;float rnd=hash21(cell+seed);',
       'vec2 jitter=(vec2(hash21(cell+seed+2.8),hash21(cell+seed+8.1))-.5)*vec2(.72,.68);vec2 delta=gv-jitter;',
       'float width=mix(.009,.029,u_intensity),trailLength=mix(.045,.39,u_intensity);',
       'float trail=(1.0-smoothstep(width,width*2.7,abs(delta.x)))*(1.0-smoothstep(trailLength,trailLength+.10,abs(delta.y)));',
       'float head=1.0-smoothstep(width,width*3.8,length(delta-vec2(0.0,-trailLength*.70)));',
-      'float exists=smoothstep(mix(.9982,.976,u_intensity),1.0,rnd);vec3 tint=mix(vec3(.79,.86,1.0),vec3(1.0,.89,.82),hash21(cell+seed+13.7)*.52);',
-      'return tint*(trail*.30+head*.86)*exists*gain*mix(.20,1.0,u_intensity);',
+      'float exists=smoothstep(mix(.992,.962,u_intensity),1.0,rnd);vec3 tint=mix(vec3(.79,.86,1.0),vec3(1.0,.89,.82),hash21(cell+seed+13.7)*.52);',
+      'return tint*(trail*.30+head*.86)*exists*gain*mix(.36,1.0,u_intensity);',
       '}',
       'void main(){vec2 uv=v_uv;vec3 color=vec3(0.0);color+=streakLayer(uv,27.0,21.4,.76);color+=streakLayer(uv+vec2(.17,.09),44.0,44.8,.46);float alpha=clamp(max(max(color.r,color.g),color.b)*3.2,0.0,1.0);gl_FragColor=vec4(color,alpha);}'
     ].join(String.fromCharCode(10));
