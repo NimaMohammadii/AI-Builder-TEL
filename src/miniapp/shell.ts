@@ -160,8 +160,15 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
+function withoutInitialHomeLottery(html: string): string {
+  const start = html.indexOf('  <section id="homeLuckyCodeSection">');
+  const end = start >= 0 ? html.indexOf('  <div id="depositSheet"', start) : -1;
+  if (start < 0 || end < 0) return html;
+  return html.slice(0, start) + html.slice(end);
+}
+
 const INITIAL_SECTIONS = [
-  HOME_SECTION,
+  withoutInitialHomeLottery(HOME_SECTION),
   PLAY_ZONE_SECTION,
   REWARDS_SECTION,
 ].join('');
