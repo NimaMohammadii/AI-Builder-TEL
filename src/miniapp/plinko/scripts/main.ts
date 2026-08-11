@@ -602,7 +602,6 @@ export const PLINKO_SCRIPT = `
       sink: 0,
       settled: false,
       settleX: null,
-      pendingServer: !!(opts && opts.pendingServer),
       targetBinIndex: Number.isFinite(requestedTarget) && state.bins[requestedTarget] ? requestedTarget : null,
       serverMultiplier: Number(opts && opts.multiplier),
       serverTotal: Number(opts && opts.total),
@@ -651,7 +650,6 @@ export const PLINKO_SCRIPT = `
       name: payload.name,
       photoUrl: payload.photoUrl,
       seed: clientId,
-      pendingServer: true,
     });
     if (!ball) return false;
     pendingRounds += 1;
@@ -671,7 +669,6 @@ export const PLINKO_SCRIPT = `
         : null;
       ball.serverMultiplier = Number(data.multiplier);
       ball.serverTotal = Number(data.total);
-      ball.pendingServer = false;
       awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: ball.amount, roundId: ball.id });
       scheduleFrame(0);
       return true;
@@ -843,12 +840,6 @@ export const PLINKO_SCRIPT = `
         ball.y += 0.48 * dt;
         ball.r *= 0.978;
         if (ball.sink > 30 || ball.r < 1.2) balls.splice(b, 1);
-        continue;
-      }
-      if (ball.pendingServer && ball.y >= 62) {
-        ball.y = 62;
-        ball.vx *= 0.92;
-        ball.vy = 0;
         continue;
       }
       ball.vy += 0.145 * dt;
