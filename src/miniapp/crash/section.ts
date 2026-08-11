@@ -150,7 +150,13 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
       <div class="crash-control-grid">
         <div class="crash-field crash-auto-field">
           <small>Auto Cash Out</small>
-          <b><span class="crash-auto"><input id="crashAutoCashout" inputmode="decimal" pattern="[0-9.]*" value="2.00"/><span>x</span></span></b>
+          <div class="crash-auto-control">
+            <b><span class="crash-auto"><input id="crashAutoCashout" inputmode="decimal" pattern="[0-9.]*" value="2.00"/><span>x</span></span></b>
+            <span class="crash-auto-stepper" aria-label="Adjust auto cash out">
+              <button type="button" data-action="crash-auto-up" aria-label="Increase auto cash out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5"/></svg></button>
+              <button type="button" data-action="crash-auto-down" aria-label="Decrease auto cash out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+            </span>
+          </div>
         </div>
       </div>
       <div class="crash-bet">
