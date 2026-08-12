@@ -85,10 +85,16 @@ export const CRASH_SCRIPT = `
     return 0
   }
   function renderFrame(ms,state){
-    var mode=state.inCrashHold?'crashed':state.waiting?'waiting':'running';
-    if(mode!==lastRenderState){lastRenderState=mode;try{if(typeof window.__vexaCrashSetRunning==='function')window.__vexaCrashSetRunning(mode==='running')}catch(e){}}
-    try{if(typeof window.__vexaCrashSpaceFrame==='function')window.__vexaCrashSpaceFrame(ms,current)}catch(e){}
-    try{if(typeof window.__vexaCrashBlurFrame==='function')window.__vexaCrashBlurFrame(current)}catch(e){}
+    var mode=state.inCrashHold?'crashed':state.waiting?'waiting':'running',changed=mode!==lastRenderState;
+    if(changed){
+      lastRenderState=mode;
+      try{if(typeof window.__vexaCrashSetRunning==='function')window.__vexaCrashSetRunning(mode==='running')}catch(e){}
+      try{if(typeof window.__vexaCrashBreakState==='function')window.__vexaCrashBreakState(mode)}catch(e){}
+    }
+    if(mode==='running'||changed){
+      try{if(typeof window.__vexaCrashSpaceFrame==='function')window.__vexaCrashSpaceFrame(ms,mode==='waiting'?1:current)}catch(e){}
+      try{if(typeof window.__vexaCrashBlurFrame==='function')window.__vexaCrashBlurFrame(mode==='running'?current:1)}catch(e){}
+    }
   }
   function update(ms){
     crashFrame=0;var active=isCrashActive();
