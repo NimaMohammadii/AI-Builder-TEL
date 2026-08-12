@@ -29,7 +29,6 @@ import { PLAY_ZONE_TOP_BLUR } from './play-zone-top-blur';
 import { PLAY_ZONE_ROW_IMAGE_FIX } from './play-zone-row-image-fix';
 import { PLAY_ZONE_EDGE_FIX } from './play-zone-edge-fix';
 import { HOME_OVERRIDES } from './home-overrides';
-import { TRANSACTIONS_GLOBAL_STYLES } from './transactions-global-styles';
 import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
@@ -37,14 +36,13 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
-import { WALLET_SECTION } from './wallet';
+import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
 import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
-import { DEPOSIT_ENHANCEMENTS_SCRIPT } from './deposit-enhancements-script';
 import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
@@ -135,7 +133,7 @@ const STYLES = [
   PLAY_ZONE_EDGE_FIX,
   HOME_OVERRIDES,
   HOME_INTRO_CARD_IMAGE_STYLES,
-  TRANSACTIONS_GLOBAL_STYLES,
+  WALLET_GLOBAL_STYLES,
   BALANCE_OVERRIDES,
   NAV_GLASS_OVERRIDES,
   GLASS_COMPONENTS_OVERRIDES,
@@ -155,8 +153,8 @@ function initialHomeSection(html: string): string {
     clean = clean.slice(0, styleStart) + clean.slice(styleEnd + '  </style>\n'.length);
   }
   const start = clean.indexOf('  <section id="homeLuckyCodeSection">');
-  const end = start >= 0 ? clean.indexOf('  <div id="depositSheet"', start) : -1;
-  if (start >= 0 && end >= 0) clean = clean.slice(0, start) + clean.slice(end);
+  const end = start >= 0 ? clean.indexOf('  </section>', start) : -1;
+  if (start >= 0 && end >= 0) clean = clean.slice(0, start) + clean.slice(end + '  </section>\n'.length);
   return clean;
 }
 
