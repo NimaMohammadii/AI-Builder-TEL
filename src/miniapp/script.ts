@@ -63,6 +63,8 @@ export const MINIAPP_SCRIPT = `
   function setDepositSheet(open){setSheetOpen('depositSheet','deposit-open',open)}
   function setWithdrawSheet(open){setSheetOpen('withdrawSheet','withdraw-open',open)}
   function setTransactionsSheet(open){setSheetOpen('transactionsSheet','transactions-open',open)}
+  function setWalletSheet(open){ensureSection('wallet');var s=q('wallet');if(!s)return;if(open&&s.parentElement!==document.body)document.body.appendChild(s);document.body.classList.toggle('wallet-open',!!open);s.classList.toggle('open',!!open);s.setAttribute('aria-hidden',open?'false':'true')}
+  function prepareDepositDefault(){var input=q('starsAmountSheet');if(input&&String(input.value||'').trim()==='100'){input.value='170';try{input.dispatchEvent(new Event('input',{bubbles:true}))}catch(e){}}}
   function handleBackButton(){show('home')}
   function syncTelegramBackButton(id){
     if(!tg||!tg.BackButton)return;
@@ -102,6 +104,7 @@ export const MINIAPP_SCRIPT = `
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
 
   function show(id){
+    if(id==='wallet'){setWalletSheet(true);return}
     ensureSection(id);
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
@@ -112,7 +115,6 @@ export const MINIAPP_SCRIPT = `
     try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
     if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
-    if(id==='wallet'&&window.__vexaWalletLoad)setTimeout(window.__vexaWalletLoad,80)
     removeLegacyLeagueAndRewards();
   }
 
@@ -124,6 +126,7 @@ export const MINIAPP_SCRIPT = `
       if(section&&ensureSection(section))show(section);
       if(target==='deposit'){
         show('home');
+        prepareDepositDefault();
         setDepositSheet(true);
       }
     }catch(e){}
@@ -182,9 +185,10 @@ export const MINIAPP_SCRIPT = `
     var stars=b.getAttribute('data-stars-deposit');if(stars){depositStars(stars);return}
     var a=b.getAttribute('data-action');
     if(a==='open-rewards'||a==='close-rewards'||a==='open-leaderboard'||a==='close-leaderboard'){removeLegacyLeagueAndRewards();return}
-    if(a==='open-deposit'){setDepositSheet(true);return}
+    if(a==='close-wallet'){setWalletSheet(false);return}
+    if(a==='open-deposit'){setWalletSheet(false);prepareDepositDefault();setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
-    if(a==='open-withdraw'){setWithdrawSheet(true);return}
+    if(a==='open-withdraw'){setWalletSheet(false);setWithdrawSheet(true);return}
     if(a==='close-withdraw'){setWithdrawSheet(false);return}
     if(a==='open-transactions'){setTransactionsSheet(true);return}
     if(a==='close-transactions'){setTransactionsSheet(false);return}

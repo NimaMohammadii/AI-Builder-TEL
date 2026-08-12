@@ -47,6 +47,19 @@ async function serveCrashStaticAsset(request: Request, env: Env, assetPath: stri
 }
 
 app.get('/', (c) => c.redirect('/app'));
+app.get('/tonconnect-manifest.json', (c) => c.json(
+  {
+    url: PUBLIC_BASE_URL,
+    name: 'Vexa Games',
+    iconUrl: `${PUBLIC_BASE_URL}/app/api/credit-icon.png`,
+  },
+  200,
+  {
+    'cache-control': 'public, max-age=300, must-revalidate',
+    'access-control-allow-origin': '*',
+    'x-content-type-options': 'nosniff',
+  },
+));
 app.get('/app', async (c) => {
   const slot = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
   const version = String(slot?.customMetadata?.version || slot?.uploaded?.getTime?.() || '1');
