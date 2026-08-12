@@ -62,10 +62,6 @@ export const PLINKO_SCRIPT = `
       n.style.display = 'none';
     }, 2200);
   }
-  function awardXP(amount, source, metadata) {
-    if (window.VexaLevel && typeof window.VexaLevel.add === 'function')
-      window.VexaLevel.add(amount, source, metadata || { section: 'plinko' });
-  }
   function roundCurrency(v) {
     var n = Math.max(0, Number(v) || 0);
     return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -674,7 +670,6 @@ export const PLINKO_SCRIPT = `
         forcePoints(data);
         return true;
       }
-      awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: ball.amount, roundId: ball.id });
       scheduleFrame(0);
       return true;
     } catch (error) {
@@ -743,27 +738,6 @@ export const PLINKO_SCRIPT = `
         );
       } catch (e) {}
       syncControlPanel();
-      if (total > roundCurrency(Number(ball.amount) || 0)) {
-        awardXP(mult >= 5 ? 50 : mult >= 2 ? 25 : 10, 'game-win', {
-          section: 'plinko',
-          event: 'settle',
-          result: 'win',
-          multiplier: mult,
-          total: total,
-          amount: roundCurrency(Number(ball.amount) || 0),
-          roundId: ball.id,
-        });
-      } else {
-        awardXP(4, 'game-lose', {
-          section: 'plinko',
-          event: 'settle',
-          result: 'no-win',
-          multiplier: mult,
-          total: total,
-          amount: roundCurrency(Number(ball.amount) || 0),
-          roundId: ball.id,
-        });
-      }
     }
   }
   function collide(ball, peg, left, right, prevX, prevY) {

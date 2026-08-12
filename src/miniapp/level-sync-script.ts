@@ -7,13 +7,10 @@ export const LEVEL_SYNC_SCRIPT = `
   var pendingXp=[];
   var pendingXpUserId='';
   var PLAY_XP_INTERVAL_MS=3600000;
-  var PLAY_XP_AMOUNT=600;
+  var PLAY_XP_AMOUNT=60;
   var DAILY_XP_AMOUNT=50;
-  var ACTIVE_WINDOW_MS=90000;
-  var lastActivityAt=Date.now();
-  var lastTickAt=Date.now();
-  var lastSmartTickAt=0;
   var playMs=0;
+  var playSessionStartedAt=0;
   var dailyChecked=false;
   var loadingProfile=false;
   var lastProfileLoadAt=0;
@@ -25,7 +22,6 @@ export const LEVEL_SYNC_SCRIPT = `
   var PROFILE_STALE_MS=60000;
   var FORCE_PROFILE_RELOAD_MS=120000;
   var FLUSH_DEBOUNCE_MS=2500;
-  var gameSections={plinko:1,mines:1,crash:1,wheel:1,dice:1,tower:1,slot:1,coinflip:1,hilo:1,ghostrun:1};
   var ranks=[
     {name:'Rookie',range:'Level 1-4',min:1,max:4,text:'Start your Vexa journey.'},
     {name:'Explorer',range:'Level 5-9',min:5,max:9,text:'Discover games and rewards.'},
@@ -38,9 +34,9 @@ export const LEVEL_SYNC_SCRIPT = `
   function id(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function initData(){return String((tg&&tg.initData)||'').trim()}
   function section(){var active=document.querySelector('.view.active');return active&&active.id?active.id:'home'}
-  function isGameSection(name){return !!gameSections[String(name||section()).replace(/^view-/,'')]}
+  function isPlinkoSection(name){return String(name||section()).replace(/^view-/,'')==='plinko'}
   function todayKey(){return new Date().toISOString().slice(0,10)}
-  function storageKey(){return 'vexa:play-xp-ms:'+id()}
+  function storageKey(){return 'vexa:plinko-xp-ms:'+id()}
   function dailyStorageKey(){return 'vexa:daily-xp:'+id()}
   function pendingXpKey(){return 'vexa:xp-pending:'+id()}
   function profileKey(){return 'vexa:level-profile:'+id()}
@@ -52,7 +48,6 @@ export const LEVEL_SYNC_SCRIPT = `
   function cacheProfile(p){try{var userId=id();if(userId&&p)localStorage.setItem(profileKey(),JSON.stringify(p))}catch(e){}}
   function loadCachedProfile(){try{var p=JSON.parse(localStorage.getItem(profileKey())||'null');if(p&&typeof p==='object')render(p,{force:true})}catch(e){}}
   function xpEventId(){return 'xpc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)}
-  function markActivity(){lastActivityAt=Date.now()}
   function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[s]||s})}
   function rank(level){level=Math.max(1,Math.floor(Number(level)||1));if(level>=60)return 'Titan';if(level>=40)return 'Legend';if(level>=25)return 'Master';if(level>=16)return 'Elite';if(level>=10)return 'Pro';if(level>=5)return 'Explorer';return 'Rookie'}
   function rankKey(value){return String(value||'Rookie').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40)||'Rookie'}
@@ -107,21 +102,22 @@ export const LEVEL_SYNC_SCRIPT = `
   function applyInitialUserState(state){if(!state||!state.level)return false;lastProfileLoadAt=Date.now();render(state.level,{authoritative:true,force:true});scheduleFlushPendingXp(false);awardDailyOpen();return true}
   function initialLoad(){loadPlayMs();loadPendingXp();loadCachedProfile();var shared=window.VexaInitialUserState;if(shared&&typeof shared.then==='function'){shared.then(function(state){if(!applyInitialUserState(state))load({force:true})}).catch(function(){load({force:true})});return}load({force:true})}
   function clearPlayTimer(){if(playTimer){clearTimeout(playTimer);playTimer=0}}
-  function schedulePlayTimer(){clearPlayTimer();if(!id()||document.hidden||!isGameSection(section()))return;var remaining=Math.max(1000,Math.min(PLAY_XP_INTERVAL_MS-playMs,ACTIVE_WINDOW_MS-(Date.now()-lastActivityAt)));if(remaining>0&&remaining<=ACTIVE_WINDOW_MS)playTimer=setTimeout(function(){playTimer=0;smartTick(true)},remaining+25)}
-  function tickPlayXp(){var now=Date.now();var elapsed=Math.max(0,Math.min(ACTIVE_WINDOW_MS,now-lastTickAt));lastTickAt=now;if(!id())return;if(document.hidden){clearPlayTimer();return}if(!isGameSection(section())){savePlayMs();clearPlayTimer();return}if(now-lastActivityAt>ACTIVE_WINDOW_MS){savePlayMs();clearPlayTimer();return}playMs+=elapsed;while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:section(),minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs();schedulePlayTimer()}
-  function smartTick(force){var now=Date.now();if(!force&&now-lastSmartTickAt<5000)return;lastSmartTickAt=now;tickPlayXp()}
-  function refreshFromUserIntent(force){markActivity();smartTick(!!force);scheduleFlushPendingXp(false)}
-  function noteSectionChange(){var current=section();if(current===observedSection)return;observedSection=current;smartTick(true);schedulePlayTimer()}
-  window.VexaLevel={add:add,load:function(){load({force:true})},openRanks:openRankModal,flushPlayXp:function(){smartTick(true);scheduleFlushPendingXp(true)}};
-  ['click','pointerdown','touchstart','keydown'].forEach(function(name){document.addEventListener(name,function(){if(isGameSection(section()))refreshFromUserIntent(false)},true)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){smartTick(true);savePlayMs();clearPlayTimer()}else{exitDrained=false;lastTickAt=Date.now();refreshFromUserIntent(false)}});
-  window.addEventListener('focus',function(){exitDrained=false;lastTickAt=Date.now();refreshFromUserIntent(false)});
+  function awardElapsedPlayTime(elapsed){playMs+=Math.max(0,Math.floor(Number(elapsed)||0));while(playMs>=PLAY_XP_INTERVAL_MS){playMs-=PLAY_XP_INTERVAL_MS;add(PLAY_XP_AMOUNT,'playtime',{section:'plinko',minutes:60});xpToast(PLAY_XP_AMOUNT)}savePlayMs()}
+  function settlePlaySession(){if(!playSessionStartedAt)return;var now=Date.now();var elapsed=Math.max(0,now-playSessionStartedAt);playSessionStartedAt=now;awardElapsedPlayTime(elapsed)}
+  function schedulePlayTimer(){clearPlayTimer();if(!playSessionStartedAt)return;var remaining=Math.max(1000,PLAY_XP_INTERVAL_MS-playMs);playTimer=setTimeout(function(){playTimer=0;settlePlaySession();schedulePlayTimer()},remaining+25)}
+  function startPlaySession(){if(!id()||document.hidden||!isPlinkoSection(section())||playSessionStartedAt)return;playSessionStartedAt=Date.now();schedulePlayTimer()}
+  function stopPlaySession(){if(playSessionStartedAt){settlePlaySession();playSessionStartedAt=0}clearPlayTimer();savePlayMs()}
+  function syncPlayPresence(){if(!document.hidden&&isPlinkoSection(section()))startPlaySession();else stopPlaySession()}
+  function noteSectionChange(){var current=section();if(current===observedSection)return;observedSection=current;syncPlayPresence()}
+  window.VexaLevel={add:add,load:function(){load({force:true})},openRanks:openRankModal,flushPlayXp:function(){settlePlaySession();schedulePlayTimer();scheduleFlushPendingXp(true)}};
+  document.addEventListener('visibilitychange',function(){if(document.hidden)stopPlaySession();else{exitDrained=false;startPlaySession()}});
+  window.addEventListener('focus',function(){exitDrained=false;startPlaySession()});
   window.addEventListener('online',function(){scheduleFlushPendingXp(true)});
   window.addEventListener('vexa-initial-user-state',function(ev){applyInitialUserState(ev&&ev.detail)});
-  window.addEventListener('vexa:view-changed',function(){noteSectionChange();refreshFromUserIntent(true)});
-  function drainOnExit(){if(exitDrained)return;exitDrained=true;smartTick(true);savePlayMs();try{var pending=loadPendingXp();if(pending.length&&navigator.sendBeacon)navigator.sendBeacon('/app/api/level/xp',new Blob([xpBatchBody(pending)],{type:'application/json'}))}catch(e){}}
+  window.addEventListener('vexa:view-changed',function(){noteSectionChange()});
+  function drainOnExit(){if(exitDrained)return;exitDrained=true;stopPlaySession();try{var pending=loadPendingXp();if(pending.length&&navigator.sendBeacon)navigator.sendBeacon('/app/api/level/xp',new Blob([xpBatchBody(pending)],{type:'application/json'}))}catch(e){}}
   window.addEventListener('pagehide',drainOnExit);
   window.addEventListener('beforeunload',drainOnExit);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){observedSection=section();initialLoad();markActivity();lastTickAt=Date.now();schedulePlayTimer()});else{observedSection=section();initialLoad();markActivity();lastTickAt=Date.now();schedulePlayTimer()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){observedSection=section();initialLoad();startPlaySession()});else{observedSection=section();initialLoad();startPlaySession()}
 })();
 `;
