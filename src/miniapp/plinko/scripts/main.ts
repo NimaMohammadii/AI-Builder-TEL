@@ -212,7 +212,7 @@ export const PLINKO_SCRIPT = `
     return rows === 8 ? 3.25 : rows === 12 ? 2.7 : 2.25;
   }
   function pegVisualRadius() {
-    return rows === 8 ? 5.2 : rows === 12 ? 3.6 : 1.55;
+    return rows === 8 ? 6.2 : rows === 12 ? 3.6 : 0.55;
   }
   function ballRadius() {
     return rows === 8 ? 7.3 : rows === 12 ? 6.45 : 5.8;
