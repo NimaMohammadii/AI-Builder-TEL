@@ -5,6 +5,8 @@ import { CRASH_BREAK_FX_SCRIPT } from './scripts/break-effect';
 
 const CRASH_SPIN_BLUR_SCRIPT = `
 (async function(){
+  self.ModelViewerElement=self.ModelViewerElement||{};
+  self.ModelViewerElement.powerPreference='low-power';
   if(window.__vexaCrashSpinBlurSetup)return;
   window.__vexaCrashSpinBlurSetup=true;
   try{
@@ -22,17 +24,13 @@ const CRASH_SPIN_BLUR_SCRIPT = `
       'if(strength<=0.001){outputColor=inputColor;return;}',
       'float radius=mix(0.0,0.032,strength);',
       'vec4 s0=texture2D(inputBuffer,uv+vec2(-radius,0.0));',
-      'vec4 s1=texture2D(inputBuffer,uv+vec2(-radius*.75,0.0));',
-      'vec4 s2=texture2D(inputBuffer,uv+vec2(-radius*.50,0.0));',
-      'vec4 s3=texture2D(inputBuffer,uv+vec2(-radius*.25,0.0));',
-      'vec4 s4=inputColor;',
-      'vec4 s5=texture2D(inputBuffer,uv+vec2(radius*.25,0.0));',
-      'vec4 s6=texture2D(inputBuffer,uv+vec2(radius*.50,0.0));',
-      'vec4 s7=texture2D(inputBuffer,uv+vec2(radius*.75,0.0));',
-      'vec4 s8=texture2D(inputBuffer,uv+vec2(radius,0.0));',
-      'float a0=s0.a*.06,a1=s1.a*.09,a2=s2.a*.12,a3=s3.a*.15,a4=s4.a*.16,a5=s5.a*.15,a6=s6.a*.12,a7=s7.a*.09,a8=s8.a*.06;',
-      'float a=max(a0+a1+a2+a3+a4+a5+a6+a7+a8,0.0001);',
-      'vec3 blurred=(s0.rgb*a0+s1.rgb*a1+s2.rgb*a2+s3.rgb*a3+s4.rgb*a4+s5.rgb*a5+s6.rgb*a6+s7.rgb*a7+s8.rgb*a8)/a;',
+      'vec4 s1=texture2D(inputBuffer,uv+vec2(-radius*.50,0.0));',
+      'vec4 s2=inputColor;',
+      'vec4 s3=texture2D(inputBuffer,uv+vec2(radius*.50,0.0));',
+      'vec4 s4=texture2D(inputBuffer,uv+vec2(radius,0.0));',
+      'float a0=s0.a*.12,a1=s1.a*.23,a2=s2.a*.30,a3=s3.a*.23,a4=s4.a*.12;',
+      'float a=max(a0+a1+a2+a3+a4,0.0001);',
+      'vec3 blurred=(s0.rgb*a0+s1.rgb*a1+s2.rgb*a2+s3.rgb*a3+s4.rgb*a4)/a;',
       'float interior=smoothstep(.025,.18,inputColor.a);',
       'outputColor=vec4(mix(inputColor.rgb,blurred,strength*interior),inputColor.a);',
       '}'
@@ -73,7 +71,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     return Math.min(1,.32+(1-Math.pow(1-t,2))*.68)
   }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
-  function canvasDpr(){return Math.min(1.15,Math.max(1,window.devicePixelRatio||1))}
+  function canvasDpr(){return Math.min(1.05,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
   function loadStageImages(){
     if(!stageTrack||stageLoadState)return;
