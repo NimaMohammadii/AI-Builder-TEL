@@ -19,7 +19,8 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string };
 type PlinkoAdminState =
-  | { mode: 'edit'; row: PlinkoRow; risk: PlinkoRisk }
+  | { mode: 'edit-all'; row: PlinkoRow; risk: PlinkoRisk }
+  | { mode: 'edit-house'; row: PlinkoRow; risk: PlinkoRisk; house: number }
   | { mode: 'image' };
 type PresetKind = 'balanced' | 'center' | 'edges' | 'wide';
 
@@ -70,15 +71,43 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const row = normalizeRow(parts[3]);
     const risk = normalizeRisk(parts[4]);
     if (!row || !risk) return ok();
-    await setState(env, callback.from.id, { mode: 'edit', row, risk });
+    await setState(env, callback.from.id, { mode: 'edit-all', row, risk });
     const config = await getPlinkoControl(env);
     const item = config.rows[row][risk];
-    await upsert(
+    await upsertCopyBlock(
       token,
       chatId,
       messageId,
-      `✏️ ویرایش Plinko · Rows ${row} · ${riskLabel(risk)}\n\nهر خانه را در یک خط با این فرمت بفرستید:\nشماره | ضریب | شانس درصد\n\nتعداد خطوط باید دقیقاً ${Number(row) + 1} باشد و مجموع شانس‌ها باید 100% شود.\n\n${formatEditLines(item.multipliers, item.weights)}`,
+      `✏️ ویرایش همه خانه‌ها · Rows ${row} · ${riskLabel(risk)}\n\nمتن زیر را Copy کنید، تغییر بدهید و بفرستید.\nفرمت: شماره | ضریب | شانس درصد\nتعداد خطوط باید دقیقاً ${Number(row) + 1} و مجموع شانس‌ها 100% باشد.`,
+      formatEditLines(item.multipliers, item.weights),
       [[{ text: '⬅️ لغو', callback_data: modeCallback(row, risk) }]],
+    );
+    return ok();
+  }
+
+  if (action === 'houses') {
+    await clearState(env, callback.from.id);
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    if (row && risk) await sendHousePicker(env, token, chatId, row, risk, messageId);
+    return ok();
+  }
+
+  if (action === 'house') {
+    const row = normalizeRow(parts[3]);
+    const risk = normalizeRisk(parts[4]);
+    const house = Number(parts[5]);
+    if (!row || !risk || !Number.isInteger(house) || house < 0 || house > Number(row)) return ok();
+    await setState(env, callback.from.id, { mode: 'edit-house', row, risk, house });
+    const config = await getPlinkoControl(env);
+    const item = config.rows[row][risk];
+    await upsertCopyBlock(
+      token,
+      chatId,
+      messageId,
+      `✏️ ویرایش خانه #${house + 1} · Rows ${row} · ${riskLabel(risk)}\n\nخط زیر را Copy کنید، ضریب یا شانس را تغییر بدهید و بفرستید.\nفرمت: شماره | ضریب | شانس درصد\n\nبرای حفظ مجموع 100%، بعد از تغییر شانس این خانه، شانس بقیه خانه‌ها به نسبت مقدار فعلی‌شان تنظیم می‌شود. ضرایب بقیه تغییر نمی‌کنند.`,
+      formatHouseLine(house, item.multipliers[house], item.weights[house]),
+      [[{ text: '⬅️ انتخاب خانه', callback_data: `botadmin:plinko:houses:${row}:${risk}` }]],
     );
     return ok();
   }
@@ -184,12 +213,12 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, adminId);
-    if (state.mode === 'edit') await sendModeMenu(env, token, message.chat.id, state.row, state.risk);
+    if (state.mode === 'edit-all' || state.mode === 'edit-house') await sendModeMenu(env, token, message.chat.id, state.row, state.risk);
     else await sendImagesReturn(token, message.chat.id, 'آپلود لغو شد.');
     return ok();
   }
 
-  if (state.mode === 'edit') {
+  if (state.mode === 'edit-all') {
     const parsed = parseEditLines(text, Number(state.row) + 1);
     if (!parsed.ok) {
       await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${parsed.error}\n\nفرمت هر خط: شماره | ضریب | شانس درصد` }).catch(() => undefined);
@@ -206,6 +235,34 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
       await savePlinkoControl(env, config);
       await clearState(env, adminId);
       await sendModeMenu(env, token, message.chat.id, state.row, state.risk, undefined, '✅ ضریب‌ها و شانس‌های این مود ذخیره شدند.');
+    } catch (error) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}` }).catch(() => undefined);
+    }
+    return ok();
+  }
+
+  if (state.mode === 'edit-house') {
+    const parsed = parseHouseLine(text, state.house);
+    if (!parsed.ok) {
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${parsed.error}\n\nفرمت: شماره | ضریب | شانس درصد` }).catch(() => undefined);
+      return ok();
+    }
+    try {
+      const config = await getPlinkoControl(env);
+      const item = config.rows[state.row][state.risk];
+      item.multipliers[state.house] = parsed.multiplier;
+      item.weights = replaceHouseWeight(item.weights, state.house, parsed.weight);
+      await savePlinkoControl(env, config);
+      await clearState(env, adminId);
+      await sendModeMenu(
+        env,
+        token,
+        message.chat.id,
+        state.row,
+        state.risk,
+        undefined,
+        `✅ خانه #${state.house + 1} ذخیره شد. مجموع شانس‌ها همچنان 100% است.`,
+      );
     } catch (error) {
       await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}` }).catch(() => undefined);
     }
@@ -271,6 +328,7 @@ async function sendModeMenu(
     `${notice ? notice + '\n\n' : ''}🎯 Rows ${row} · ${riskLabel(risk)}\n\n${houses}\n\nمجموع شانس: ${trimNumber(total)}%\nExpected Return: ${expected.toFixed(4)}x`,
     [
       [{ text: '✏️ ویرایش همه خانه‌ها', callback_data: `botadmin:plinko:edit:${row}:${risk}` }],
+      [{ text: '🏠 ویرایش یک خانه', callback_data: `botadmin:plinko:houses:${row}:${risk}` }],
       [
         { text: '⚖️ Balanced', callback_data: `botadmin:plinko:preset:${row}:${risk}:balanced` },
         { text: '🎯 More Center', callback_data: `botadmin:plinko:preset:${row}:${risk}:center` },
@@ -288,6 +346,32 @@ async function sendModeMenu(
   );
 }
 
+async function sendHousePicker(
+  env: Env,
+  token: string,
+  chatId: number,
+  row: PlinkoRow,
+  risk: PlinkoRisk,
+  messageId?: number,
+): Promise<void> {
+  const config = await getPlinkoControl(env);
+  const item = config.rows[row][risk];
+  const buttons = item.multipliers.map((multiplier, house) => ({
+    text: `#${house + 1} · ${trimNumber(multiplier)}x · ${trimNumber(item.weights[house])}%`,
+    callback_data: `botadmin:plinko:house:${row}:${risk}:${house}`,
+  }));
+  const keyboard: Keyboard = [];
+  for (let index = 0; index < buttons.length; index += 2) keyboard.push(buttons.slice(index, index + 2));
+  keyboard.push([{ text: '⬅️ برگشت به مود', callback_data: modeCallback(row, risk) }]);
+  await upsert(
+    token,
+    chatId,
+    messageId,
+    `🏠 ویرایش یک خانه · Rows ${row} · ${riskLabel(risk)}\n\nخانه موردنظر را انتخاب کنید:`,
+    keyboard,
+  );
+}
+
 async function sendImagesReturn(token: string, chatId: number, text: string): Promise<void> {
   await tg(token, 'sendMessage', {
     chat_id: chatId,
@@ -301,6 +385,10 @@ async function sendImagesReturn(token: string, chatId: number, text: string): Pr
 
 function formatEditLines(multipliers: number[], weights: number[]): string {
   return multipliers.map((multiplier, index) => `${index + 1} | ${trimNumber(multiplier)} | ${trimNumber(weights[index])}`).join('\n');
+}
+
+function formatHouseLine(house: number, multiplier: number, weight: number): string {
+  return `${house + 1} | ${trimNumber(multiplier)} | ${trimNumber(weight)}`;
 }
 
 function parseEditLines(text: string, expected: number):
@@ -323,6 +411,37 @@ function parseEditLines(text: string, expected: number):
     weights.push(roundValue(weight, 10));
   }
   return { ok: true, multipliers, weights };
+}
+
+function parseHouseLine(text: string, house: number):
+  | { ok: true; multiplier: number; weight: number }
+  | { ok: false; error: string } {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length !== 1) return { ok: false, error: 'فقط همان یک خط خانه را بفرستید.' };
+  const parts = lines[0].split('|').map((part) => part.trim());
+  if (parts.length !== 3) return { ok: false, error: 'خط باید سه بخش داشته باشد.' };
+  const lineNumber = Number(parts[0]);
+  const multiplier = Number(parts[1]);
+  const weight = Number(parts[2].replace('%', ''));
+  if (lineNumber !== house + 1) return { ok: false, error: `شماره خانه باید ${house + 1} باشد.` };
+  if (!Number.isFinite(multiplier) || multiplier < 0.01 || multiplier > 1000) return { ok: false, error: 'ضریب باید بین 0.01 و 1000 باشد.' };
+  if (!Number.isFinite(weight) || weight < 0 || weight > 100) return { ok: false, error: 'شانس باید بین 0 و 100 باشد.' };
+  return { ok: true, multiplier: roundValue(multiplier, 6), weight: roundValue(weight, 10) };
+}
+
+function replaceHouseWeight(weights: number[], house: number, nextWeight: number): number[] {
+  const result = weights.map((value) => Math.max(0, Number(value) || 0));
+  const remaining = roundValue(100 - nextWeight, 10);
+  const otherTotal = result.reduce((sum, value, index) => index === house ? sum : sum + value, 0);
+  const otherCount = Math.max(1, result.length - 1);
+  for (let index = 0; index < result.length; index += 1) {
+    if (index === house) result[index] = nextWeight;
+    else result[index] = roundValue(otherTotal > 0 ? result[index] * remaining / otherTotal : remaining / otherCount, 10);
+  }
+  const difference = roundValue(100 - result.reduce((sum, value) => sum + value, 0), 10);
+  const correctionIndex = house === result.length - 1 ? 0 : result.length - 1;
+  result[correctionIndex] = roundValue(result[correctionIndex] + difference, 10);
+  return result;
 }
 
 function applyPreset(item: { multipliers: number[]; weights: number[] }, kind: PresetKind): void {
@@ -452,7 +571,7 @@ async function clearOtherAdminStates(env: Env, adminId: number): Promise<void> {
 
 async function getState(env: Env, adminId: number): Promise<PlinkoAdminState | null> {
   const state = await env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as PlinkoAdminState | null;
-  if (!state || (state.mode !== 'edit' && state.mode !== 'image')) return null;
+  if (!state || (state.mode !== 'edit-all' && state.mode !== 'edit-house' && state.mode !== 'image')) return null;
   return state;
 }
 
@@ -485,6 +604,32 @@ async function upsert(token: string, chatId: number, messageId: number | undefin
     if (edited) return;
   }
   await tg(token, 'sendMessage', payload);
+}
+
+async function upsertCopyBlock(
+  token: string,
+  chatId: number,
+  messageId: number | undefined,
+  text: string,
+  copyText: string,
+  keyboard: Keyboard,
+): Promise<void> {
+  const payload = {
+    chat_id: chatId,
+    text: `${escapeHtml(text)}\n\n<pre>${escapeHtml(copyText)}</pre>`,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  };
+  if (messageId) {
+    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
+    if (edited) return;
+  }
+  await tg(token, 'sendMessage', payload);
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
