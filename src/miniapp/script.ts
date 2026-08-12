@@ -140,7 +140,6 @@ export const MINIAPP_SCRIPT = `
     var a=b.getAttribute('data-action');
     if(a==='open-rewards'||a==='close-rewards'||a==='open-leaderboard'||a==='close-leaderboard'){removeLegacyLeagueAndRewards();return}
     if(a==='close-wallet'){setWalletSheet(false);return}
-    if(a==='deposit-custom-stars'){depositStars(q('starsAmount')&&q('starsAmount').value);return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='save-user')saveUser();
   });
