@@ -81,7 +81,7 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
     }
     bindFinance();
   })();</script>
-  <div id="depositSheet" class="deposit-sheet" aria-hidden="true">
+  <div id="depositSheet" class="deposit-sheet deposit-choosing" aria-hidden="true">
     <div class="deposit-backdrop" data-action="close-deposit"></div>
     <div class="deposit-panel card">
       <div class="pad">
@@ -168,11 +168,11 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
       document.addEventListener('click',function(ev){
         var btn=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!btn)return;
         var action=btn.getAttribute('data-action');
-        if(action==='open-deposit'||action==='connect-deposit')setTimeout(showPicker,90);
+        if(action==='open-deposit'||action==='connect-deposit')showPicker();
         if(action==='choose-deposit-method'){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();pickMode(btn.getAttribute('data-method'),btn)}
-        if(action==='close-deposit')setTimeout(function(){var s=sheet();if(s){s.classList.remove('deposit-choosing','deposit-transitioning','deposit-paying-reveal');isTransitioning=false}},380);
+        if(action==='close-deposit'){var s=sheet();if(s){s.classList.add('deposit-choosing');s.classList.remove('deposit-transitioning','deposit-paying-reveal');isTransitioning=false}}
       },true);
-      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(ensurePicker,240)});else setTimeout(ensurePicker,240);
+      ensurePicker();
     })();
   </script>
 
