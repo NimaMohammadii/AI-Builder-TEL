@@ -1,7 +1,7 @@
 export const CRASH_SCRIPT = `
 (function(){
   var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=68000, DAY_MS=86400000;
-  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketTurnAt=0, rocketTurnRad=0, rocketDriftReady=false, lastRenderState='';
+  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketSpin=-1, rocketDriftReady=false, lastRenderState='';
   function q(id){return document.getElementById(id)}
   function show(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2200)}
   function balance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
@@ -43,7 +43,10 @@ export const CRASH_SCRIPT = `
     flight.style.setProperty('--rocket-angle',angle.toFixed(2)+'deg');
     flight.style.setProperty('--rocket-entry-x',entryX.toFixed(2)+'px');
     flight.style.setProperty('--rocket-thrust',crashed?'0':thrust.toFixed(3));
-    if(!rocketDriftReady){rocketDriftReady=true;flight.style.setProperty('--rocket-drift-duration','6.4s')}
+    if(!rocketDriftReady){
+      rocketDriftReady=true;
+      flight.style.setProperty('--rocket-drift-duration','6.4s');
+    }
     var driftT=running?Math.max(0,Math.min(1,(v-1.7)/.1)):0,driftMix=driftT*driftT*(3-2*driftT),shake=12+24*driftMix,mid50=shake*(1-(2/3)*driftMix),mid75=shake*driftMix;
     flight.style.setProperty('--rocket-shake',shake.toFixed(2)+'px');
     flight.style.setProperty('--rocket-mid-50',mid50.toFixed(2)+'px');
@@ -51,16 +54,11 @@ export const CRASH_SCRIPT = `
     var motionState=running&&v>=1.8?'boost':'calm';
     if(flight.getAttribute('data-motion')!==motionState)flight.setAttribute('data-motion',motionState);
     var rocket=q('crashRocket'),spinCurve=1-Math.pow(1-spinProgress,2),baseSpin=running?18+spinCurve*162:18,axisSpinBoost=v>=8?4:v>=5?2.5:1,spin=running?baseSpin*speedBoost(v)*axisSpinBoost:18;
-    if(rocket&&typeof rocket.resetTurntableRotation==='function'){
-      var turnNow=performance.now();
-      if(running){
-        if(!lastRocketTurnAt)lastRocketTurnAt=turnNow;
-        var turnDt=Math.max(0,Math.min(80,turnNow-lastRocketTurnAt));
-        lastRocketTurnAt=turnNow;
-        rocketTurnRad=(rocketTurnRad+(spin*Math.PI/180)*(turnDt/1000))%(Math.PI*2);
-        rocket.resetTurntableRotation(rocketTurnRad)
-      }else lastRocketTurnAt=0
-    }else if(!running)lastRocketTurnAt=0;
+    if(rocket&&(lastRocketSpin<0||Math.abs(spin-lastRocketSpin)>=3||(!running&&lastRocketSpin!==18))){
+      lastRocketSpin=spin;
+      var spinValue=spin.toFixed(1)+'deg';
+      if(rocket.getAttribute('rotation-per-second')!==spinValue)rocket.setAttribute('rotation-per-second',spinValue)
+    }
     try{window.__vexaCrashRocketAngleDeg=angle}catch(e){}
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
@@ -88,23 +86,30 @@ export const CRASH_SCRIPT = `
   }
   function renderFrame(ms,state){
     var mode=state.inCrashHold?'crashed':state.waiting?'waiting':'running',changed=mode!==lastRenderState;
-    if(changed){lastRenderState=mode;try{if(typeof window.__vexaCrashSetRunning==='function')window.__vexaCrashSetRunning(mode==='running')}catch(e){}try{if(typeof window.__vexaCrashBreakState==='function')window.__vexaCrashBreakState(mode)}catch(e){}}
-    if(mode==='running'||changed){try{if(typeof window.__vexaCrashSpaceFrame==='function')window.__vexaCrashSpaceFrame(ms,mode==='waiting'?1:current)}catch(e){}try{if(typeof window.__vexaCrashBlurFrame==='function')window.__vexaCrashBlurFrame(mode==='running'?current:1)}catch(e){}}
+    if(changed){
+      lastRenderState=mode;
+      try{if(typeof window.__vexaCrashSetRunning==='function')window.__vexaCrashSetRunning(mode==='running')}catch(e){}
+      try{if(typeof window.__vexaCrashBreakState==='function')window.__vexaCrashBreakState(mode)}catch(e){}
+    }
+    if(mode==='running'||changed){
+      try{if(typeof window.__vexaCrashSpaceFrame==='function')window.__vexaCrashSpaceFrame(ms,mode==='waiting'?1:current)}catch(e){}
+      try{if(typeof window.__vexaCrashBlurFrame==='function')window.__vexaCrashBlurFrame(mode==='running'?current:1)}catch(e){}
+    }
   }
   function update(ms){
     crashFrame=0;var active=isCrashActive();
-    if(active&&lastActiveRender&&ms-lastActiveRender<32){scheduleUpdate(Math.max(1,32-(ms-lastActiveRender)));return}
-    if(active)lastActiveRender=ms;else{lastActiveRender=0;lastRenderState='';lastRocketTurnAt=0}
+    if(active&&lastActiveRender&&ms-lastActiveRender<32){crashFrame=requestAnimationFrame(update);return}
+    if(active)lastActiveRender=ms;else{lastActiveRender=0;lastRenderState=''}
     var now=Date.now(),state=locateRound(now);
     if(currentRoundId!==state.id){currentRoundId=state.id;current=1;lastHistoryId=null;roundEndSignalId=null;if(activeBet&&activeBet.roundId<state.id)lockBetControls(false)}
     if(active){setTotal(state.local/1000);if(state.inCrashHold){nextLabel('Crashed');setCountdown('Crashed',false);status('Crashed');if(roundEndSignalId!==state.id){roundEndSignalId=state.id;window.dispatchEvent(new CustomEvent('vexa-round-ended',{detail:{roundId:state.id,multiplier:state.stop}}))}showRocketCrashed(state)}else if(state.waiting){var waitLeft=(state.nextIn/1000).toFixed(1);nextLabel('Round starts '+waitLeft+'s');setCountdown(waitLeft+'s',false);status('Waiting');setRocketIdle(state)}else{nextLabel('');setCountdown('',true);status('Running');current=Math.min(state.stop,multAt(state.runElapsed/1000));mult(current);setRocket(current,'running',0);maybeAutoCashout(state)}renderFrame(ms,state);if(state.waiting&&lastHistoryId!==state.id){lastHistoryId=state.id;renderHistory(state)}}else if(activeBet&&activeBet.roundId===state.id&&!activeBet.settled&&!activeBet.cashed&&state.running){current=Math.min(state.stop,multAt(state.runElapsed/1000));maybeAutoCashout(state)}
     settleIfNeeded(state);if(active)buttons(state);
-    if(active){if(state.running)scheduleUpdate(0);else{var visualDelay=state.inCrashHold?Math.min(100,Math.max(16,CRASH_HOLD_MS-state.waitElapsed+16)):Math.min(100,Math.max(16,state.nextIn));scheduleUpdate(visualDelay)}}else{var delay=inactiveDelay(state);if(delay)scheduleUpdate(delay)}
+    if(active)scheduleUpdate(0);else{var delay=inactiveDelay(state);if(delay)scheduleUpdate(delay)}
   }
   function half(){var state=locateRound(Date.now());if(betLocked(state))return;var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(MIN_BET_NANO,Math.floor(value/2)))}
   function doubleAmount(){var state=locateRound(Date.now());if(betLocked(state))return;var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(MIN_BET_NANO,Math.min(balance(),value*2)))}
   function cleanDecimalInput(input){if(!input)return;var raw=String(input.value||'').replace(/,/g,'.'),out='',dot=false;for(var i=0;i<raw.length;i++){var ch=raw.charAt(i);if(ch>='0'&&ch<='9'){out+=ch;continue}if(ch==='.'&&!dot){out+=ch;dot=true}}if(out!==raw)input.value=out}
-  function bind(){mult(1);status('Waiting');renderHistory(locateRound(Date.now()));var a=q('crashAction'),input=q('crashAmount'),auto=q('crashAutoCashout');if(a)a.onclick=action;if(input){input.setAttribute('step','0.01');input.setAttribute('inputmode','decimal');input.addEventListener('input',function(){cleanDecimalInput(input)});input.addEventListener('change',normalizeAmount);input.addEventListener('blur',normalizeAmount)}if(auto){auto.addEventListener('input',function(){cleanDecimalInput(auto)});auto.addEventListener('change',normalizeAutoCashout);auto.addEventListener('blur',normalizeAutoCashout)}document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var act=b.getAttribute('data-action');if(act==='crash-half'){ev.preventDefault();half()}if(act==='crash-double'){ev.preventDefault();doubleAmount()}if(b.getAttribute('data-game-view')==='crash'||b.getAttribute('data-view')==='crash')setTimeout(function(){normalizeAmount();lastActiveRender=0;lastRocketTurnAt=0;scheduleUpdate(0)},120)});window.addEventListener('vexa-crash-visible',function(){lastActiveRender=0;lastRenderState='';lastRocketTurnAt=0;scheduleUpdate(0)});window.addEventListener('vexa-crash-bet-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance)change(activeBet.amount);activeBet=null;lockBetControls(false);show(d.error||'Bet failed');scheduleUpdate(0)});window.addEventListener('vexa-crash-cashout-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance&&activeBet.payoutNano)change(-activeBet.payoutNano);activeBet.cashed=false;activeBet.settled=false;activeBet.payoutNano=0;show(d.error||'Cashout failed');scheduleUpdate(0)});document.addEventListener('visibilitychange',function(){if(!document.hidden){lastActiveRender=0;lastRenderState='';lastRocketTurnAt=0;scheduleUpdate(0)}});window.addEventListener('resize',function(){var state=locateRound(Date.now());setRocket(state.running?current:state.stop,state.inCrashHold?'crashed':state.running?'running':'waiting',state.waiting?Math.max(0,state.waitElapsed-CRASH_HOLD_MS):0)});scheduleUpdate(0)}
+  function bind(){mult(1);status('Waiting');renderHistory(locateRound(Date.now()));var a=q('crashAction'),input=q('crashAmount'),auto=q('crashAutoCashout');if(a)a.onclick=action;if(input){input.setAttribute('step','0.01');input.setAttribute('inputmode','decimal');input.addEventListener('input',function(){cleanDecimalInput(input)});input.addEventListener('change',normalizeAmount);input.addEventListener('blur',normalizeAmount)}if(auto){auto.addEventListener('input',function(){cleanDecimalInput(auto)});auto.addEventListener('change',normalizeAutoCashout);auto.addEventListener('blur',normalizeAutoCashout)}document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var act=b.getAttribute('data-action');if(act==='crash-half'){ev.preventDefault();half()}if(act==='crash-double'){ev.preventDefault();doubleAmount()}if(b.getAttribute('data-game-view')==='crash'||b.getAttribute('data-view')==='crash')setTimeout(function(){normalizeAmount();lastActiveRender=0;scheduleUpdate(0)},120)});window.addEventListener('vexa-crash-visible',function(){lastActiveRender=0;lastRenderState='';scheduleUpdate(0)});window.addEventListener('vexa-crash-bet-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance)change(activeBet.amount);activeBet=null;lockBetControls(false);show(d.error||'Bet failed');scheduleUpdate(0)});window.addEventListener('vexa-crash-cashout-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance&&activeBet.payoutNano)change(-activeBet.payoutNano);activeBet.cashed=false;activeBet.settled=false;activeBet.payoutNano=0;show(d.error||'Cashout failed');scheduleUpdate(0)});document.addEventListener('visibilitychange',function(){if(!document.hidden){lastActiveRender=0;lastRenderState='';scheduleUpdate(0)}});window.addEventListener('resize',function(){var state=locateRound(Date.now());setRocket(state.running?current:state.stop,state.inCrashHold?'crashed':state.running?'running':'waiting',state.waiting?Math.max(0,state.waitElapsed-CRASH_HOLD_MS):0)});scheduleUpdate(0)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
