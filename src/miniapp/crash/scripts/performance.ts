@@ -10,14 +10,19 @@ export const CRASH_PERFORMANCE_SCRIPT = `
     if(active&&running)rocket.setAttribute('auto-rotate','');
     else rocket.removeAttribute('auto-rotate');
   }
-  function setRunning(next){running=!!next;syncRocket()}
   function setActive(next){
     next=!!next&&!document.hidden;
     if(active===next){syncRocket();return}
     active=next;syncRocket();emit(active?'vexa-crash-visible':'vexa-crash-hidden');
   }
-  function syncFromDom(){var root=q('crash');setActive(!!(root&&root.classList.contains('active')))}
-  window.addEventListener('vexa-crash-render-state',function(ev){var d=ev&&ev.detail||{};setRunning(d.state==='running')},{passive:true});
+  function syncFromDom(){
+    var root=q('crash'),flight=q('crashRocketFlight');
+    running=!!(flight&&flight.getAttribute('data-state')==='running');
+    setActive(!!(root&&root.classList.contains('active')))
+  }
+  window.__vexaCrashSetRunning=function(next){
+    next=!!next;if(running===next)return;running=next;syncRocket()
+  };
   customElements.whenDefined('model-viewer').then(function(){
     var ModelViewer=customElements.get('model-viewer');
     if(ModelViewer){ModelViewer.minimumRenderScale=.65;try{ModelViewer.powerPreference='low-power'}catch(e){}}
