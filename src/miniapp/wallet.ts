@@ -204,7 +204,249 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
 </div>`;
 
 export const WALLET_GLOBAL_STYLES = `
-body > #transactionsSheet.deposit-sheet,#transactionsSheet.deposit-sheet{position:fixed!important;inset:0!important;z-index:120!important;display:none;align-items:center!important;justify-content:center!important;padding:20px 16px calc(92px + env(safe-area-inset-bottom))!important}
+.deposit-presets b{font-family:var(--font-num);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1,"kern" 1}
+.deposit-sheet{position:fixed;inset:0;z-index:120;display:none}.deposit-sheet.open{display:block}.deposit-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.52);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}.deposit-panel{position:absolute;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:528px;margin:0 auto;padding:16px;border-radius:32px;background:linear-gradient(180deg,rgba(24,24,24,.84),rgba(8,8,8,.72));animation:depositIn .28s cubic-bezier(.2,.8,.2,1)}.deposit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.deposit-head h3{margin:0;font-size:24px;font-weight:780;letter-spacing:-.055em}.deposit-close{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:24px}.deposit-copy{color:rgba(255,255,255,.58);font-size:12.5px;line-height:1.45;margin:12px 0;font-weight:470}.deposit-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.deposit-presets button{height:70px;border-radius:22px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.065);color:#fff}.deposit-presets b{display:block;font-size:20px;font-weight:780}.deposit-presets span{display:block;color:rgba(255,255,255,.52);font-size:11px}.deposit-custom{display:grid;grid-template-columns:1fr 86px;gap:8px;margin-top:9px}.deposit-custom input{height:50px;border-radius:20px;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)}.deposit-custom button{border-radius:20px;background:#fff;color:#050505;font-weight:760}.deposit-status{min-height:18px;margin:10px 2px 0;color:rgba(255,255,255,.56);font-size:11.5px}@keyframes depositIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.deposit-panel,.deposit-close,.deposit-custom button,.deposit-presets button{
+  border:0!important;
+  outline:0!important;
+  background:rgba(255,255,255,.035)!important;
+  color:#fff;
+  box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  backdrop-filter:blur(10px) saturate(1.18)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
+}
+.deposit-presets button,.deposit-close{
+  text-shadow:0 1px 10px rgba(0,0,0,.28);
+}
+.deposit-panel{
+  background:rgba(255,255,255,.04)!important;
+  border:0!important;
+  overflow:hidden!important;
+}
+#depositSheet.deposit-sheet.open,#withdrawSheet.deposit-sheet.open{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:20px 16px calc(92px + env(safe-area-inset-bottom))!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+#depositSheet.deposit-sheet.open .deposit-panel,#withdrawSheet.deposit-sheet.open .deposit-panel{
+  display:block!important;
+  width:min(100%,528px)!important;
+  height:auto!important;
+  max-height:min(78vh,620px)!important;
+  margin:auto!important;
+  padding:0!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transform:translateY(0) scale(1)!important;
+  z-index:2!important;
+  background:rgba(8,8,8,.72)!important;
+  border-radius:32px!important;
+  overflow:auto!important;
+}
+#depositSheet.deposit-sheet.open .deposit-panel .pad,#withdrawSheet.deposit-sheet.open .deposit-panel .pad{
+  display:block!important;
+  padding:24px 22px!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#depositSheet .deposit-title,#withdrawSheet .deposit-title{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin:0 0 14px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+}
+#depositSheet .deposit-title-main,#withdrawSheet .deposit-title-main{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+}
+#depositSheet .deposit-credit-icon,#withdrawSheet .withdraw-title-icon{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  max-height:34px!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+  display:grid!important;
+  place-items:center!important;
+  flex:0 0 auto!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.055)!important;
+  color:#fff!important;
+}
+#withdrawSheet .withdraw-title-icon svg{
+  width:24px!important;
+  height:24px!important;
+  display:block!important;
+}
+#depositSheet .deposit-title h3,#withdrawSheet .deposit-title h3{
+  margin:0!important;
+  font-size:20px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+  white-space:nowrap!important;
+  color:#fff!important;
+}
+#depositSheet .deposit-copy,#withdrawSheet .deposit-copy{
+  display:block!important;
+  margin:8px auto 18px!important;
+  max-width:330px!important;
+  text-align:center!important;
+  color:rgba(255,255,255,.76)!important;
+  font-size:16px!important;
+  line-height:1.36!important;
+  font-weight:750!important;
+  letter-spacing:-.035em!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+#depositSheet .deposit-custom-field,#withdrawSheet .deposit-custom-field{
+  display:block!important;
+  margin:0 auto 12px!important;
+  max-width:340px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+}
+#depositSheet .deposit-custom-field label,#withdrawSheet .deposit-custom-field label{
+  display:block!important;
+  text-align:center!important;
+  color:rgba(255,255,255,.58)!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:.14em!important;
+  text-transform:uppercase!important;
+  margin:0 0 10px!important;
+}
+#depositSheet .deposit-amount-row,#withdrawSheet .deposit-amount-row{
+  height:58px!important;
+  min-height:58px!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.052)!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:0 14px 0 18px!important;
+  overflow:hidden!important;
+}
+#withdrawSheet .withdraw-wallet-row{
+  grid-template-columns:1fr!important;
+  padding-right:18px!important;
+}
+#depositSheet .deposit-amount-row input,#withdrawSheet .deposit-amount-row input{
+  height:100%!important;
+  min-width:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  color:#fff!important;
+  text-align:left!important;
+  font-size:17px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+  padding:0!important;
+  letter-spacing:-.015em!important;
+}
+#depositSheet .deposit-ton-equivalent{
+  white-space:nowrap!important;
+  color:rgba(255,255,255,.72)!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  background:rgba(255,255,255,.065)!important;
+  border-radius:999px!important;
+  padding:8px 10px!important;
+  line-height:1!important;
+}
+#depositSheet .deposit-pay-button,#withdrawSheet .deposit-pay-button{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:min(100%,340px)!important;
+  height:54px!important;
+  margin:0 auto 10px!important;
+  border-radius:999px!important;
+  font-size:16px!important;
+  font-weight:900!important;
+  color:#fff!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+}
+#depositSheet .deposit-stars-logo{
+  display:grid!important;
+  justify-items:center!important;
+  gap:7px!important;
+  margin:4px auto 0!important;
+  color:rgba(255,255,255,.72)!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+}
+#depositSheet .deposit-stars-logo svg{
+  width:52px!important;
+  height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  display:block!important;
+}
+#withdrawSheet .withdraw-status{
+  min-height:18px!important;
+  margin:0 auto 0!important;
+  max-width:340px!important;
+  text-align:center!important;
+  color:rgba(255,255,255,.62)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+}
+#withdrawSheet .withdraw-success{
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#withdrawSheet .withdraw-success.show{
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  margin:18px auto 0!important;
+  max-width:340px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+#withdrawSheet .withdraw-success:not(.show){
+  display:none!important;
+}
+#depositSheet.deposit-sheet.open .deposit-backdrop,#withdrawSheet.deposit-sheet.open .deposit-backdrop{
+  z-index:0!important;
+}
+.deposit-backdrop{background:rgba(0,0,0,.34)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important}body > #transactionsSheet.deposit-sheet,#transactionsSheet.deposit-sheet{position:fixed!important;inset:0!important;z-index:120!important;display:none;align-items:center!important;justify-content:center!important;padding:20px 16px calc(92px + env(safe-area-inset-bottom))!important}
 body > #transactionsSheet.deposit-sheet.open,#transactionsSheet.deposit-sheet.open{display:flex!important}
 body > #transactionsSheet .deposit-backdrop,#transactionsSheet .deposit-backdrop{position:absolute!important;inset:0!important;background:rgba(0,0,0,.30)!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important}
 body > #transactionsSheet .deposit-panel,#transactionsSheet .deposit-panel{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:min(100%,528px)!important;max-height:min(82vh,650px)!important;margin:auto!important;border-radius:32px!important;background:rgba(8,8,8,.34)!important;border:0!important;box-shadow:0 22px 62px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(2px) saturate(1.08)!important;-webkit-backdrop-filter:blur(2px) saturate(1.08)!important;overflow:auto!important;animation:depositCenterIn .34s cubic-bezier(.18,.88,.22,1.08)!important}
@@ -309,7 +551,7 @@ const TON_WALLET_DEPOSIT_SCRIPT = `
   function installStyles(){if(q('vexa-ton-wallet-deposit-style'))return;var style=document.createElement('style');style.id='vexa-ton-wallet-deposit-style';style.textContent='#depositSheet .deposit-action-row{width:min(100%,340px)!important;margin:0 auto 18px!important;display:grid!important;grid-template-columns:1fr 132px!important;gap:10px!important;align-items:center!important}#depositSheet .deposit-action-row .deposit-pay-button{width:100%!important;margin:0!important;height:44px!important;background:linear-gradient(135deg,rgba(92,14,36,.84),rgba(45,6,19,.88))!important;transition:background .28s ease,transform .28s ease,opacity .28s ease!important}#depositSheet .deposit-action-row .deposit-pay-button.ton-mode{background:linear-gradient(135deg,rgba(92,14,36,.84),rgba(45,6,19,.88))!important}.deposit-mode-switch{height:42px!important;align-self:center!important;border-radius:999px!important;background:rgba(255,255,255,.035)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)!important;padding:3px!important;display:grid!important;grid-template-columns:1fr 1fr!important;position:relative!important;overflow:hidden!important;border:0!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important}.deposit-mode-switch:before{content:"";position:absolute!important;top:3px!important;bottom:3px!important;left:3px!important;width:calc(50% - 3px)!important;border-radius:999px!important;background:rgba(255,255,255,.105)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 8px 18px rgba(0,0,0,.16)!important;transition:transform .34s cubic-bezier(.16,1,.3,1),background .26s ease!important}.deposit-mode-switch.ton:before{transform:translateX(100%)!important;background:rgba(0,46,70,.30)!important}.deposit-mode-switch button{appearance:none!important;-webkit-appearance:none!important;position:relative!important;z-index:1!important;border:0!important;background:transparent!important;box-shadow:none!important;color:rgba(255,255,255,.42)!important;font-size:10.5px!important;font-weight:850!important;letter-spacing:.01em!important;border-radius:999px!important;padding:0!important;margin:0!important;line-height:1!important;min-width:0!important;outline:0!important}.deposit-mode-switch:not(.ton) button[data-mode="stars"],.deposit-mode-switch.ton button[data-mode="ton"]{color:rgba(255,255,255,.94)!important}#tonAmountSheet{height:100%!important;width:100%!important;min-width:0!important;background:transparent!important;border:0!important;color:#fff!important;font:inherit!important;font-size:20px!important;font-weight:850!important;outline:0!important;padding:0!important}.ton-wallet-status{min-height:17px!important;margin:8px 0 0!important;text-align:center!important;color:rgba(255,255,255,.62)!important;font-size:11px!important;font-weight:750!important;line-height:1.35!important}.ton-wallet-status.success{color:#42f594!important}.ton-wallet-status.error{color:#ff7b9a!important}.ton-wallet-status.pending{color:#ffcf6b!important}';document.head.appendChild(style)}
   function ensureUi(){installStyles();installDoneOverlayStyle();ensureTonInput();setFinanceCopy();var pay=document.querySelector('#depositSheet [data-action="deposit-custom-stars-sheet"],#depositSheet [data-action="confirm-ton-payment"]');if(!pay)return;pay.id='depositMainPayButton';var old=q('tonWalletDepositBox');if(old)old.remove();if(!q('depositPaymentModeSwitch')){var row=document.createElement('div');row.className='deposit-action-row';pay.parentNode.insertBefore(row,pay);row.appendChild(pay);row.insertAdjacentHTML('beforeend','<div id="depositPaymentModeSwitch" class="deposit-mode-switch" role="switch" aria-label="Payment method Stars"><button type="button" data-action="set-deposit-mode" data-mode="stars">Stars</button><button type="button" data-action="set-deposit-mode" data-mode="ton">TON</button></div>');row.insertAdjacentHTML('afterend','<p id="tonWalletDepositStatus" class="ton-wallet-status"></p>')}setMode(depositMode);loadTonConnect().catch(function(){})}
   function syncOnAppEvent(){if(depositMode==='ton')loadTonUsd();verifyPendingDeposit()}
-  function bind(){ensureUi();loadFinanceCopy();setDepositNav(false);document.addEventListener('input',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet'].indexOf(ev.target.id)!==-1)syncModeUi()});document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setDepositNav(false);loadFinanceCopy();setTimeout(ensureUi,40);verifyPendingDeposit();if(depositMode==='ton')loadTonUsd()}if(action==='open-withdraw'){loadFinanceCopy()}if(action==='set-deposit-mode'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();setMode(button.getAttribute('data-mode'));setDepositNav(true)}if(action==='confirm-ton-payment'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();confirmTonPayment()}},true);document.addEventListener('visibilitychange',function(){if(!document.hidden)syncOnAppEvent()});window.addEventListener('focus',syncOnAppEvent);window.addEventListener('online',syncOnAppEvent);setTimeout(ensureUi,220);setTimeout(ensureUi,900)}
+  function bind(){ensureUi();loadFinanceCopy();setDepositNav(false);document.addEventListener('input',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet'].indexOf(ev.target.id)!==-1)syncModeUi()});document.addEventListener('click',function(ev){var button=ev.target&&ev.target.closest?ev.target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='close-wallet'){closeWallet();return}if(action==='open-deposit'){ensureWallet();setDepositNav(false);loadFinanceCopy();setTimeout(ensureUi,40);verifyPendingDeposit();if(depositMode==='ton')loadTonUsd()}if(action==='open-withdraw'){loadFinanceCopy()}if(action==='set-deposit-mode'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();setMode(button.getAttribute('data-mode'));setDepositNav(true)}if(action==='confirm-ton-payment'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();confirmTonPayment()}},true);document.addEventListener('visibilitychange',function(){if(!document.hidden)syncOnAppEvent()});window.addEventListener('focus',syncOnAppEvent);window.addEventListener('online',syncOnAppEvent);setTimeout(ensureUi,220);setTimeout(ensureUi,900)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
@@ -321,6 +563,9 @@ const DEPOSIT_CORE_SCRIPT = `
   var loadingTonUsd=false;
   var tg=window.Telegram&&window.Telegram.WebApp;
   function q(id){return document.getElementById(id)}
+  function ensureWallet(){return q('wallet')||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure('wallet'),q('wallet'))}
+  function closeWallet(){var sheet=q('wallet');document.body.classList.remove('wallet-open');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.hide&&back.hide()}catch(e){}}
+  function openWallet(){var sheet=ensureWallet();if(!sheet)return;if(sheet.parentElement!==document.body)document.body.appendChild(sheet);document.body.classList.add('wallet-open');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.onClick&&back.onClick(closeWallet);back&&back.show&&back.show()}catch(e){}}
   function currentUserId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
   function escapeHtml(value){return String(value||'').replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c})}
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2600)}
@@ -394,7 +639,7 @@ const DEPOSIT_CORE_SCRIPT = `
   function openTransactions(){setSheet('transactionsSheet',true);loadTransactions()}
   function resetWithdraw(){var status=q('withdrawStatus');var success=q('withdrawSuccess');var content=document.querySelector('.withdraw-content');if(status)status.textContent='';if(success){success.classList.remove('show');success.setAttribute('aria-hidden','true')}if(content)content.classList.remove('withdraw-done')}
   async function submitWithdraw(){var initData=String(tg&&tg.initData||'').trim();var amount=q('withdrawAmountTon');var wallet=q('withdrawWalletAddress');var status=q('withdrawStatus');var success=q('withdrawSuccess');var content=document.querySelector('.withdraw-content');var requested=Number(String(amount&&amount.value||'').replace(',', '.'));if(!initData){toast('Open the Mini App inside Telegram');if(status)status.textContent='Open the Mini App inside Telegram';return}if(!Number.isFinite(requested)||requested<=0){toast('Enter a valid Gram amount');if(status)status.textContent='Enter a valid Gram amount';return}if(requested<10){toast('Minimum withdrawal is 10 Gram');if(status)status.textContent='Minimum withdrawal is 10 Gram';return}if(requested>100){toast('Maximum withdrawal is 100 Gram');if(status)status.textContent='Maximum withdrawal is 100 Gram';return}if(status)status.textContent='Submitting withdrawal request';if(success){success.classList.remove('show');success.setAttribute('aria-hidden','true')}if(content)content.classList.remove('withdraw-done');try{await api('/app/api/ton/withdrawals',{initData:initData,amountGram:amount&&amount.value,walletAddress:wallet&&wallet.value});if(status)status.textContent='';if(content)content.classList.add('withdraw-done');if(success){success.classList.add('show');success.setAttribute('aria-hidden','false')}if(window.VexaTonBalance&&window.VexaTonBalance.load)setTimeout(function(){window.VexaTonBalance.load()},500)}catch(error){if(status)status.textContent=error&&error.message?error.message:'Withdrawal failed';toast(error&&error.message?error.message:'Withdrawal failed')}}
-  function bind(){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();ensureDepositStatus();updateEquivalent();syncOpenState();['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){var sheet=q(id);if(sheet&&window.MutationObserver)new MutationObserver(syncOpenState).observe(sheet,{attributes:true,attributeFilter:['class','aria-hidden']})});document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet'){clearDepositStatus();updateEquivalent()}if(ev.target&&ev.target.id==='withdrawAmountTon'){updateWithdrawEquivalent()}});document.addEventListener('focusin',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setDepositKeyboard(true)});document.addEventListener('focusout',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setTimeout(function(){var a=document.activeElement;if(!a||!['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(a.id))setDepositKeyboard(false)},80)});document.addEventListener('click',function(ev){var target=ev.target;var creditTarget=target&&target.closest&&target.closest('[data-ton-balance-display],.top-balance-pill,.ton-mini-icon');if(creditTarget){ev.preventDefault();ev.stopPropagation();openTransactions();return}var button=target&&target.closest?target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setSheet('depositSheet',true);clearDepositStatus();updateEquivalent()}if(action==='close-deposit'){setDepositKeyboard(false);setSheet('depositSheet',false)}if(action==='open-withdraw'){resetWithdraw();setSheet('withdrawSheet',true);updateWithdrawEquivalent();loadTonUsd()}if(action==='close-withdraw'){setDepositKeyboard(false);setSheet('withdrawSheet',false)}if(action==='submit-withdraw'){submitWithdraw()}if(action==='deposit-custom-stars-sheet'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();submitStarsSheet();return}if(action==='open-transactions'){openTransactions()}if(action==='close-transactions'){setSheet('transactionsSheet',false)}},true)}
+  function bind(){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();ensureDepositStatus();updateEquivalent();syncOpenState();['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){var sheet=q(id);if(sheet&&window.MutationObserver)new MutationObserver(syncOpenState).observe(sheet,{attributes:true,attributeFilter:['class','aria-hidden']})});document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='starsAmountSheet'){clearDepositStatus();updateEquivalent()}if(ev.target&&ev.target.id==='withdrawAmountTon'){updateWithdrawEquivalent()}});document.addEventListener('focusin',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setDepositKeyboard(true)});document.addEventListener('focusout',function(ev){if(ev.target&&['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(ev.target.id))setTimeout(function(){var a=document.activeElement;if(!a||!['starsAmountSheet','tonAmountSheet','withdrawAmountTon','withdrawWalletAddress'].includes(a.id))setDepositKeyboard(false)},80)});document.addEventListener('click',function(ev){var target=ev.target;var walletTarget=target&&target.closest&&target.closest('[data-view="wallet"]');if(walletTarget){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();openWallet();return}var creditTarget=target&&target.closest&&target.closest('[data-ton-balance-display],.top-balance-pill,.ton-mini-icon');if(creditTarget){ev.preventDefault();ev.stopPropagation();openTransactions();return}var button=target&&target.closest?target.closest('button'):null;if(!button)return;var action=button.getAttribute('data-action');if(action==='open-deposit'){setSheet('depositSheet',true);clearDepositStatus();updateEquivalent()}if(action==='close-deposit'){setDepositKeyboard(false);setSheet('depositSheet',false)}if(action==='open-withdraw'){ensureWallet();resetWithdraw();setSheet('withdrawSheet',true);updateWithdrawEquivalent();loadTonUsd()}if(action==='close-withdraw'){setDepositKeyboard(false);setSheet('withdrawSheet',false)}if(action==='submit-withdraw'){submitWithdraw()}if(action==='deposit-custom-stars-sheet'){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();submitStarsSheet();return}if(action==='open-transactions'){openTransactions()}if(action==='close-transactions'){setSheet('transactionsSheet',false)}},true)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
