@@ -13,7 +13,7 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
     #wallet .wallet-sheet-title{min-width:0!important}
     #wallet .wallet-sheet-title strong{display:block!important;color:#fff!important;font-size:20px!important;font-weight:950!important;letter-spacing:-.035em!important;line-height:1.05!important}
     #wallet .wallet-sheet-title span{display:block!important;margin-top:5px!important;color:rgba(255,255,255,.48)!important;font-size:11px!important;font-weight:700!important}
-    #wallet .wallet-sheet-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:16px!important;background:rgba(255,255,255,.075)!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(255,255,255,.045),0 10px 22px rgba(0,0,0,.18)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
+    #wallet .wallet-sheet-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:15px!important;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022))!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 36px rgba(0,0,0,.24)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
     #wallet .wallet-sheet-close svg{width:19px!important;height:19px!important;display:block!important}
     #wallet .wallet-sheet-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;position:relative!important;z-index:3!important;transition:opacity .20s ease,transform .30s cubic-bezier(.16,1,.3,1)!important}
     #wallet .wallet-sheet-action{margin:0!important;border:0!important;border-radius:28px!important;padding:14px!important;min-height:154px!important;color:#fff!important;text-align:left!important;display:grid!important;gap:10px!important;align-content:space-between!important;background:rgba(13,13,13,.54)!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;transition:transform .16s cubic-bezier(.2,.9,.18,1)!important}
@@ -31,17 +31,13 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
     body.wallet-open.deposit-open #depositSheet.deposit-sheet.open .deposit-panel,body.wallet-open.withdraw-open #withdrawSheet.deposit-sheet.open .deposit-panel{position:absolute!important;left:50%!important;right:auto!important;top:auto!important;bottom:0!important;z-index:2!important;width:min(100%,560px)!important;height:min(440px,calc(100vh - 20px))!important;max-height:min(440px,calc(100vh - 20px))!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:auto!important;opacity:1!important;visibility:visible!important;transform:translateX(-50%)!important;animation:walletFinanceContentIn .30s .05s cubic-bezier(.16,1,.3,1) both!important}
     body.wallet-open.deposit-open #depositSheet .deposit-panel .pad,body.wallet-open.withdraw-open #withdrawSheet .deposit-panel .pad{padding:24px 18px calc(18px + env(safe-area-inset-bottom))!important;display:block!important;background:transparent!important}
     body.wallet-open.deposit-open #depositSheet .deposit-title,body.wallet-open.withdraw-open #withdrawSheet .deposit-title{margin:0 auto 16px!important;width:min(100%,370px)!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon,body.wallet-open.deposit-open #depositSheet .deposit-close,body.wallet-open.withdraw-open #withdrawSheet .deposit-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:16px!important;background:rgba(255,255,255,.075)!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(255,255,255,.045),0 10px 22px rgba(0,0,0,.18)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
+    body.wallet-open.deposit-open #depositSheet.deposit-sheet .deposit-wallet-icon,body.wallet-open.deposit-open #depositSheet.deposit-sheet .deposit-close,body.wallet-open.withdraw-open #withdrawSheet.deposit-sheet .deposit-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:15px!important;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022))!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 36px rgba(0,0,0,.24)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
     body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon:before,body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon:after{display:none!important;content:none!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon svg{width:20px!important;height:20px!important;display:block!important;overflow:visible!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon svg path,body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon svg rect,body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon svg circle{vector-effect:non-scaling-stroke!important}
+    body.wallet-open.deposit-open #depositSheet .deposit-wallet-icon svg{width:19px!important;height:19px!important;display:block!important;overflow:visible!important}
     body.wallet-open.deposit-open #depositSheet .deposit-copy,body.wallet-open.withdraw-open #withdrawSheet .deposit-copy{width:min(100%,340px)!important;margin:0 auto 16px!important}
     body.wallet-open.deposit-open #depositSheet .deposit-amount-row,body.wallet-open.withdraw-open #withdrawSheet .deposit-amount-row{height:44px!important;min-height:44px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.20)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
     body.wallet-open.deposit-open #depositSheet .deposit-pay-button,body.wallet-open.withdraw-open #withdrawSheet .deposit-pay-button{width:min(100%,340px)!important;height:42px!important;min-height:42px!important;border:0!important;border-radius:17px!important;background:rgba(255,255,255,.12)!important;color:#fff!important;font-size:13px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(255,255,255,.055),0 12px 24px rgba(0,0,0,.20)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
     body.wallet-open.deposit-open #depositSheet .deposit-method-screen{width:min(100%,370px)!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-method-option{min-height:76px!important;border:0!important;border-radius:28px!important;padding:10px 12px!important;background:rgba(13,13,13,.54)!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-method-image{width:44px!important;height:44px!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
-    body.wallet-open.deposit-open #depositSheet .deposit-method-image img{width:42px!important;height:42px!important;filter:none!important}
     body.wallet-open.deposit-open #depositSheet .deposit-mode-switch{background:rgba(0,0,0,.20)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important}
     body.wallet-open.deposit-open #depositSheet .deposit-ton-equivalent{border-radius:16px!important;background:rgba(255,255,255,.075)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(255,255,255,.045)!important}
 
@@ -62,7 +58,6 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
     </div>
   </section>
   <script>(function(){
-    var root=document.getElementById('wallet');if(!root)return;
     var observed=[];
     function gramify(node){
       if(!node)return;
@@ -72,21 +67,13 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
     }
     function polishWalletIcon(sheet){
       if(!sheet||sheet.id!=='depositSheet')return;
-      var icon=sheet.querySelector('.deposit-wallet-icon');if(!icon||icon.getAttribute('data-vexa-wallet-icon')==='1')return;
-      icon.setAttribute('data-vexa-wallet-icon','1');
-      icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="6.5" width="16" height="11.5" rx="3.25" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 10.2H20v4.1h-4.4a2.05 2.05 0 1 1 0-4.1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.1" cy="12.25" r=".72" fill="currentColor"/></svg>';
+      var icon=sheet.querySelector('.deposit-wallet-icon');if(!icon||icon.getAttribute('data-vexa-wallet-icon')==='2')return;
+      icon.setAttribute('data-vexa-wallet-icon','2');
+      icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.5 8.25A2.75 2.75 0 0 1 8.25 5.5h8.5A2.75 2.75 0 0 1 19.5 8.25v7.5a2.75 2.75 0 0 1-2.75 2.75h-8.5a2.75 2.75 0 0 1-2.75-2.75v-7.5Z" stroke="currentColor" stroke-width="1.65"/><path d="M15.25 10.25H20v3.5h-4.75a1.75 1.75 0 1 1 0-3.5Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><circle cx="15.55" cy="12" r=".62" fill="currentColor"/></svg>';
     }
-    function clearLegacyFinanceLayout(id){var sheet=document.getElementById(id);if(!sheet)return;sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
     function bindFinance(){
       ['depositSheet','withdrawSheet','transactionsSheet'].forEach(function(id){var sheet=document.getElementById(id);if(!sheet)return;gramify(sheet);polishWalletIcon(sheet);if(observed.indexOf(sheet)>=0||!window.MutationObserver)return;observed.push(sheet);new MutationObserver(function(mutations){for(var i=0;i<mutations.length;i++){var target=mutations[i].target;var el=target&&target.nodeType===3?target.parentElement:target;if(el&&el.closest&&el.closest('#depositSheet,#withdrawSheet,#transactionsSheet')){gramify(sheet);break}}}).observe(sheet,{subtree:true,childList:true,characterData:true})})
     }
     bindFinance();
-    root.addEventListener('click',function(ev){
-      var button=ev.target&&ev.target.closest?ev.target.closest('button[data-action="open-deposit"],button[data-action="open-withdraw"]'):null;
-      bindFinance();
-      if(!button)return;
-      var id=button.getAttribute('data-action')==='open-deposit'?'depositSheet':'withdrawSheet';
-      requestAnimationFrame(function(){clearLegacyFinanceLayout(id);bindFinance()});
-    });
   })();</script>
 </div>`;
