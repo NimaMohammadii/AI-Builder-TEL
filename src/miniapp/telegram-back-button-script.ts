@@ -17,7 +17,6 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       var title=document.getElementById('brandTitle');if(title)title.textContent=id==='home'?'Home':'Vexa';
     }
     function shouldShow(){
-      if(isActive('wallet'))return true;
       var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip','hilo'];
       for(var i=0;i<games.length;i++)if(isActive(games[i]))return true;
       var p=document.getElementById('predictzone');
@@ -36,7 +35,6 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       }
       var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip','hilo'];
       for(var i=0;i<games.length;i++){if(isActive(games[i])){setView('playzone');sync();return;}}
-      if(isActive('wallet')){setView('home');sync();return;}
       sync();
     }
     function sync(){shouldShow()?show():hide()}
