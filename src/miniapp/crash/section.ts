@@ -14,8 +14,8 @@ const CRASH_SPIN_BLUR_SCRIPT = `
     await customElements.whenDefined('effect-composer');
     var PostProcessing=await import('https://cdn.jsdelivr.net/npm/postprocessing@6.38.2/build/index.js'),Three=await import('three');
     var Effect=PostProcessing.Effect,EffectAttribute=PostProcessing.EffectAttribute,EffectPass=PostProcessing.EffectPass,Uniform=Three.Uniform;
-    var composer=document.getElementById('crashSpinComposer'),multiplier=document.getElementById('crashMultiplier');
-    if(!composer||!multiplier)return;
+    var composer=document.getElementById('crashSpinComposer');
+    if(!composer)return;
     var fragment=[
       'uniform float strength;',
       'void mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){',
@@ -40,20 +40,21 @@ const CRASH_SPIN_BLUR_SCRIPT = `
     class CrashSpinBlurEffect extends Effect{
       constructor(){super('CrashSpinBlurEffect',fragment,{attributes:EffectAttribute.CONVOLUTION,uniforms:new Map([['strength',new Uniform(0)]])})}
     }
-    var effect=new CrashSpinBlurEffect(),pass=new EffectPass(undefined,effect),attached=false,last=-1,observer=null;
+    var effect=new CrashSpinBlurEffect(),pass=new EffectPass(undefined,effect),attached=false,last=-1;
     function strengthFor(value){
       var v=Math.max(1,Number(value)||1);if(v<5)return 0;if(v>=8)return 1;
       var t=(v-5)/3;t=t*t*(3-2*t);return .62+.38*t
     }
-    function sync(){
-      var v=parseFloat(String(multiplier.textContent||'1').replace(/x/i,'')),strength=strengthFor(v);
+    function sync(value){
+      var strength=strengthFor(value);
       if(Math.abs(strength-last)<.004)return;last=strength;
       effect.uniforms.get('strength').value=strength;
       if(strength>0&&!attached){composer.addPass(pass,false,false);attached=true}
       else if(strength<=0&&attached){composer.removePass(pass,false);attached=false}
       if(attached)composer.queueRender()
     }
-    sync();observer=new MutationObserver(sync);observer.observe(multiplier,{childList:true,characterData:true,subtree:true})
+    window.__vexaCrashBlurFrame=sync;
+    sync(1)
   }catch(e){window.__vexaCrashSpinBlurSetup=false}
 })();
 `;
@@ -62,14 +63,13 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 (function(){
   if(window.__vexaCrashSpaceEnvironment)return;
   window.__vexaCrashSpaceEnvironment=true;
-  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),multiplier=document.getElementById('crashMultiplier'),stageTrack=document.getElementById('crashStageBackgroundTrack');
+  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),stageTrack=document.getElementById('crashStageBackgroundTrack');
   if(!canvas||!root)return;
-  var raf=0,lastRender=0,stageSignature='',stageLoadState=0,booted=false;
+  var stageSignature='',stageLoadState=0,booted=false;
   function active(){return root.classList.contains('active')&&!document.hidden}
-  function multiplierValue(){var v=parseFloat(String(multiplier&&multiplier.textContent||'1').replace(/x/i,''));return Number.isFinite(v)?Math.max(1,v):1}
   function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v>=2.2)return 3;if(v<1.4){var t=(v-1)/.4;return 1+t*t*(3-2*t)}var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
   function streakIntensity(value){
-    var v=Number.isFinite(value)?value:multiplierValue(),t=Math.max(0,Math.min(1,(v-1.7)/2.3));
+    var v=Number.isFinite(value)?Math.max(1,value):1,t=Math.max(0,Math.min(1,(v-1.7)/2.3));
     return Math.min(1,.32+(1-Math.pow(1-t,2))*.68)
   }
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
@@ -104,11 +104,9 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
     for(var i=0;i<42;i++)particles.push({x:random(),y:random(),rank:random(),width:.45+random()*.65,length:.55+random()*.9});
     resize(null);
-    function frame(ms){
-      raf=0;if(!active()){lastRender=0;return}
-      if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
-      lastRender=ms;
-      var v=multiplierValue(),intensity=streakIntensity(v),boost=speedBoost(v),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*boost*dpr;
+    function frame(ms,value){
+      if(!active())return;
+      var v=Number.isFinite(value)?Math.max(1,value):1,intensity=streakIntensity(v),boost=speedBoost(v),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*boost*dpr;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
         var p=particles[i],visibility=.84-intensity*.36;if(p.rank<visibility)continue;
@@ -118,12 +116,13 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
         ctx.globalAlpha=.22+intensity*.62;ctx.strokeStyle=p.rank>.86?'#ffe9df':'#e8efff';ctx.lineWidth=p.width*dpr;
         ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-dx*trail,y-dy*trail);ctx.stroke();
       }
-      ctx.globalAlpha=1;raf=requestAnimationFrame(frame)
+      ctx.globalAlpha=1
     }
-    function resume(){resize(null);loadStageImages();if(active()&&!raf)raf=requestAnimationFrame(frame)}
+    function resume(){resize(null);loadStageImages()}
+    window.__vexaCrashSpaceFrame=frame;
     window.addEventListener('resize',function(){resize(null)},{passive:true});
     window.addEventListener('vexa-crash-visible',resume,{passive:true});
-    if(active())raf=requestAnimationFrame(frame)
+    if(active())loadStageImages()
   }
   function boot(){
     if(booted||!active())return;booted=true;loadStageImages();
@@ -161,16 +160,16 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     var program=gl.createProgram();gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS)){fallback2d();return}
     gl.useProgram(program);var buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);var position=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
     var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),speedBoostUniform=gl.getUniformLocation(program,'u_speed_boost'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
-    function frame(ms){
-      raf=0;if(!active()){lastRender=0;return}
-      if(lastRender&&ms-lastRender<32){raf=requestAnimationFrame(frame);return}
-      lastRender=ms;var v=multiplierValue();gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity(v));gl.uniform1f(speedBoostUniform,speedBoost(v));gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6);raf=requestAnimationFrame(frame)
+    function frame(ms,value){
+      if(!active())return;
+      var v=Number.isFinite(value)?Math.max(1,value):1;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity(v));gl.uniform1f(speedBoostUniform,speedBoost(v));gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6)
     }
-    function resume(){resize(gl);loadStageImages();if(active()&&!raf)raf=requestAnimationFrame(frame)}
-    canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();if(raf)cancelAnimationFrame(raf);raf=0});
+    function resume(){resize(gl);loadStageImages()}
+    window.__vexaCrashSpaceFrame=frame;
+    canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();window.__vexaCrashSpaceFrame=null;booted=false});
+    canvas.addEventListener('webglcontextrestored',function(){booted=false;boot()});
     window.addEventListener('resize',function(){resize(gl)},{passive:true});
-    window.addEventListener('vexa-crash-visible',resume,{passive:true});
-    raf=requestAnimationFrame(frame)
+    window.addEventListener('vexa-crash-visible',resume,{passive:true})
   }
   window.addEventListener('vexa-crash-visible',boot,{passive:true});
   if(active())boot();
