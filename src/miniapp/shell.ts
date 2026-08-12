@@ -145,21 +145,8 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
-function initialHomeSection(html: string): string {
-  let clean = html;
-  const styleStart = clean.indexOf('  <style>');
-  const styleEnd = styleStart >= 0 ? clean.indexOf('  </style>', styleStart) : -1;
-  if (styleStart >= 0 && styleEnd >= 0) {
-    clean = clean.slice(0, styleStart) + clean.slice(styleEnd + '  </style>\n'.length);
-  }
-  const start = clean.indexOf('  <section id="homeLuckyCodeSection">');
-  const end = start >= 0 ? clean.indexOf('  </section>', start) : -1;
-  if (start >= 0 && end >= 0) clean = clean.slice(0, start) + clean.slice(end + '  </section>\n'.length);
-  return clean;
-}
-
 const INITIAL_SECTIONS = [
-  initialHomeSection(HOME_SECTION),
+  HOME_SECTION,
   PLAY_ZONE_SECTION,
   REWARDS_SECTION,
 ].join('');
