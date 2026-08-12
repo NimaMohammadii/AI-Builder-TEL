@@ -32,6 +32,11 @@ export const MINIAPP_SCRIPT = `
     var panel=s.querySelector('.deposit-panel');
     if(open){
       if(s.parentElement!==document.body)document.body.appendChild(s);
+      if(document.body.classList.contains('wallet-open')){
+        s.removeAttribute('style');
+        if(panel)panel.removeAttribute('style');
+        return;
+      }
       s.style.setProperty('position','fixed','important');
       s.style.setProperty('inset','0','important');
       s.style.setProperty('z-index','10080','important');
@@ -186,9 +191,9 @@ export const MINIAPP_SCRIPT = `
     var a=b.getAttribute('data-action');
     if(a==='open-rewards'||a==='close-rewards'||a==='open-leaderboard'||a==='close-leaderboard'){removeLegacyLeagueAndRewards();return}
     if(a==='close-wallet'){setWalletSheet(false);return}
-    if(a==='open-deposit'){setWalletSheet(false);prepareDepositDefault();setDepositSheet(true);return}
+    if(a==='open-deposit'){prepareDepositDefault();setDepositSheet(true);return}
     if(a==='close-deposit'){setDepositSheet(false);return}
-    if(a==='open-withdraw'){setWalletSheet(false);setWithdrawSheet(true);return}
+    if(a==='open-withdraw'){setWithdrawSheet(true);return}
     if(a==='close-withdraw'){setWithdrawSheet(false);return}
     if(a==='open-transactions'){setTransactionsSheet(true);return}
     if(a==='close-transactions'){setTransactionsSheet(false);return}
