@@ -145,9 +145,9 @@ export class PlinkoLiveRoom {
     let nextAt = storedLast > 0 ? storedLast + VIRTUAL_INTERVAL_MS : Math.max(now - 45000, currentHourStartedAt());
     const generated: PlinkoResult[] = [];
     const virtualUsers = await virtualUsersForResult(this.env);
-    const virtualMultipliers = await virtualMultipliersForResult(this.env);
+    const virtualMode = await virtualModeForResult(this.env);
     while (nextAt <= now && generated.length < VIRTUAL_MAX_CATCHUP) {
-      generated.push(makeVirtualResult(nextAt, virtualUsers, virtualMultipliers));
+      generated.push(makeVirtualResult(nextAt, virtualUsers, virtualMode));
       nextAt += VIRTUAL_INTERVAL_MS + Math.floor(seededUnit('gap:' + nextAt) * 2600);
     }
     if (!generated.length) return;
@@ -334,10 +334,11 @@ function cleanMultiplier(value: unknown): number {
   return Math.min(1000000, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
-function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users, multipliers = DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers): PlinkoResult {
+function makeVirtualResult(createdAt: number, users = DEFAULT_PLINKO_VIRTUAL_USERS.users, mode = DEFAULT_PLINKO_CONTROL.rows['12'].low): PlinkoResult {
   const personaIndex = Math.floor(seededUnit('persona:' + createdAt) * users.length) % users.length;
   const persona = users[personaIndex] || DEFAULT_PLINKO_VIRTUAL_USERS.users[0];
-  const multiplier = multipliers[Math.floor(seededUnit('mult:' + createdAt) * multipliers.length)] || 1;
+  const multiplierIndex = seededWeightedIndex(mode.weights, 'mult:' + createdAt);
+  const multiplier = mode.multipliers[multiplierIndex] || 1;
   const amount = roundAmount(persona.amount);
   return {
     id: 'virtual-plinko-' + createdAt.toString(36),
@@ -363,16 +364,30 @@ async function virtualUsersForResult(env?: Env): Promise<PlinkoVirtualUser[]> {
   }
 }
 
-async function virtualMultipliersForResult(env?: Env): Promise<number[]> {
-  if (!env) return DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
+async function virtualModeForResult(env?: Env) {
+  if (!env) return DEFAULT_PLINKO_CONTROL.rows['12'].low;
   try {
     const config = await getPlinkoControl(env);
-    const multipliers = config.rows['12'].low.multipliers;
-    return multipliers.length ? multipliers : DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
+    const mode = config.rows['12'].low;
+    return mode.multipliers.length === mode.weights.length && mode.multipliers.length
+      ? mode
+      : DEFAULT_PLINKO_CONTROL.rows['12'].low;
   } catch (error) {
-    console.warn('load plinko multipliers failed', error);
-    return DEFAULT_PLINKO_CONTROL.rows['12'].low.multipliers;
+    console.warn('load plinko mode failed', error);
+    return DEFAULT_PLINKO_CONTROL.rows['12'].low;
   }
+}
+
+function seededWeightedIndex(weights: number[], seed: string): number {
+  const safeWeights = weights.map((value) => Math.max(0, Number(value) || 0));
+  const total = safeWeights.reduce((sum, value) => sum + value, 0);
+  if (!safeWeights.length || total <= 0) return 0;
+  let roll = seededUnit(seed) * total;
+  for (let index = 0; index < safeWeights.length; index += 1) {
+    roll -= safeWeights[index];
+    if (roll <= 0) return index;
+  }
+  return safeWeights.length - 1;
 }
 
 function seededUnit(seed: string): number {

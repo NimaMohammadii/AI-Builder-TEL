@@ -41,6 +41,7 @@ app.post('/app/api/plinko/round', async (c) => {
     if (control.enabled === false) throw new Error('Plinko is disabled');
     const item = control.rows[String(rows) as '8' | '12' | '16'][risk];
     const targetBinIndex = chooseWeightedIndex(item.weights);
+    const path = buildPlinkoPath(rows, targetBinIndex);
     const multiplier = roundPlinkoAmount(item.multipliers[targetBinIndex] || 0);
     const total = roundPlinkoAmount(amount * multiplier);
     const roundId = 'plinko_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
@@ -52,10 +53,21 @@ app.post('/app/api/plinko/round', async (c) => {
       {
         referenceId: roundId,
         referenceType: 'plinko_round',
-        metadata: { section: 'plinko', rows, risk, multiplier, targetBinIndex, amount, total },
+        metadata: { section: 'plinko', rows, risk, multiplier, targetBinIndex, path: path.join(''), amount, total },
       },
     );
-    return c.json({ ok: true, roundId, targetBinIndex, multiplier, amount, total, tonBalanceNano: controls.tonBalanceNano }, 200, { 'cache-control': 'no-store' });
+    return c.json({
+      ok: true,
+      roundId,
+      targetBinIndex,
+      path,
+      multiplier,
+      multipliers: item.multipliers,
+      controlUpdatedAt: control.updatedAt,
+      amount,
+      total,
+      tonBalanceNano: controls.tonBalanceNano,
+    }, 200, { 'cache-control': 'no-store' });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not play Plinko round' }, 400, { 'cache-control': 'no-store' });
   }
@@ -252,14 +264,46 @@ function chooseWeightedIndex(weights: number[]): number {
   const safeWeights = Array.isArray(weights) ? weights.map((value) => Math.max(0, Number(value) || 0)) : [];
   const total = safeWeights.reduce((sum, value) => sum + value, 0);
   if (!safeWeights.length || total <= 0) throw new Error('Invalid Plinko configuration');
-  const bytes = new Uint32Array(1);
-  crypto.getRandomValues(bytes);
-  let roll = (bytes[0] / 4294967296) * total;
+  let roll = secureRandomUnit() * total;
   for (let index = 0; index < safeWeights.length; index += 1) {
     roll -= safeWeights[index];
     if (roll <= 0) return index;
   }
   return safeWeights.length - 1;
+}
+
+function buildPlinkoPath(rows: 8 | 12 | 16, targetBinIndex: number): number[] {
+  if (!Number.isInteger(targetBinIndex) || targetBinIndex < 0 || targetBinIndex > rows) {
+    throw new Error('Invalid Plinko target');
+  }
+
+  const path: number[] = [];
+  let rightsRemaining = targetBinIndex;
+  for (let step = 0; step < rows; step += 1) {
+    const stepsRemaining = rows - step;
+    const goRight = rightsRemaining > 0 && secureRandomInt(stepsRemaining) < rightsRemaining;
+    path.push(goRight ? 1 : 0);
+    if (goRight) rightsRemaining -= 1;
+  }
+  return path;
+}
+
+function secureRandomUnit(): number {
+  const values = new Uint32Array(2);
+  crypto.getRandomValues(values);
+  return (values[0] * 2_097_152 + (values[1] >>> 11)) / 9_007_199_254_740_992;
+}
+
+function secureRandomInt(maxExclusive: number): number {
+  if (!Number.isSafeInteger(maxExclusive) || maxExclusive <= 0 || maxExclusive > 4_294_967_296) {
+    throw new Error('Invalid secure random range');
+  }
+  const limit = Math.floor(4_294_967_296 / maxExclusive) * maxExclusive;
+  const values = new Uint32Array(1);
+  do {
+    crypto.getRandomValues(values);
+  } while (values[0] >= limit);
+  return values[0] % maxExclusive;
 }
 
 function normalizePlinkoControlImageKind(value: string): 'drop' | 'input' | 'house' {

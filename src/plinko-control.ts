@@ -27,9 +27,6 @@ export interface PlinkoControlConfig {
 type AdminSettingRow = { value_json: string };
 
 const KEY = 'admin:plinko-control';
-const MEMORY_TTL_MS = 30_000;
-let memoryConfig: PlinkoControlConfig | null = null;
-let memoryExpiresAt = 0;
 
 export const PLINKO_ROWS: readonly PlinkoRow[] = ['8', '12', '16'];
 export const PLINKO_RISKS: readonly PlinkoRisk[] = ['low', 'medium', 'high'];
@@ -79,11 +76,8 @@ export const DEFAULT_PLINKO_CONTROL: PlinkoControlConfig = {
 };
 
 export async function getPlinkoControl(env: Env): Promise<PlinkoControlConfig> {
-  if (memoryConfig && Date.now() < memoryExpiresAt) return cloneConfig(memoryConfig);
   const saved = await readConfig(env);
-  const config = saved ? normalizePlinkoConfig(saved) : cloneDefault();
-  cacheConfig(config);
-  return cloneConfig(config);
+  return saved ? normalizePlinkoConfig(saved) : cloneDefault();
 }
 
 export async function savePlinkoControl(env: Env, value: unknown): Promise<PlinkoControlConfig> {
@@ -91,7 +85,6 @@ export async function savePlinkoControl(env: Env, value: unknown): Promise<Plink
   validatePlinkoChanceTotals(config);
   config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
-  cacheConfig(config);
   return cloneConfig(config);
 }
 
@@ -99,31 +92,19 @@ export async function resetPlinkoControl(env: Env): Promise<PlinkoControlConfig>
   const config = cloneDefault();
   config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
-  cacheConfig(config);
   return cloneConfig(config);
 }
 
 async function readConfig(env: Env): Promise<unknown | null> {
-  const cached = await env.BOT_CACHE.get(KEY).catch(() => null);
-  if (cached) {
-    try { return JSON.parse(cached); } catch {}
-  }
-
   try {
     const row = await readConfigRow(env);
-    if (row?.value_json) {
-      await env.BOT_CACHE.put(KEY, row.value_json).catch(() => undefined);
-      return JSON.parse(row.value_json);
-    }
+    if (row?.value_json) return JSON.parse(row.value_json);
   } catch (error) {
     if (isMissingAdminSettingsError(error)) {
       try {
         await ensureAdminSettingsTable(env);
         const row = await readConfigRow(env);
-        if (row?.value_json) {
-          await env.BOT_CACHE.put(KEY, row.value_json).catch(() => undefined);
-          return JSON.parse(row.value_json);
-        }
+        if (row?.value_json) return JSON.parse(row.value_json);
       } catch (retryError) {
         console.warn('read plinko control from D1 failed', retryError);
       }
@@ -148,7 +129,6 @@ async function writeConfig(env: Env, config: PlinkoControlConfig): Promise<void>
       updated_at = CURRENT_TIMESTAMP`)
     .bind(KEY, raw)
     .run();
-  await env.BOT_CACHE.put(KEY, raw).catch(() => undefined);
 }
 
 async function ensureAdminSettingsTable(env: Env): Promise<void> {
@@ -162,11 +142,6 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
 function isMissingAdminSettingsError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error || '');
   return /no such table:\s*admin_settings/i.test(message);
-}
-
-function cacheConfig(config: PlinkoControlConfig): void {
-  memoryConfig = cloneConfig(config);
-  memoryExpiresAt = Date.now() + MEMORY_TTL_MS;
 }
 
 function normalizePlinkoConfig(input: any): PlinkoControlConfig {

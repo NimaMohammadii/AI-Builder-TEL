@@ -479,7 +479,7 @@ export const PLINKO_SCRIPT = `
       var y = top + row * rowGap;
       var pr = row === pegRows - 1 ? r * 0.7 : r;
       for (var i = 0; i < count; i++)
-        pegs.push({ key: row + ':' + i, x: start + i * slotGap, y: y, r: pr, vr: vr, hit: 0 });
+        pegs.push({ key: row + ':' + i, row: row, index: i, x: start + i * slotGap, y: y, r: pr, vr: vr, hit: 0 });
     }
     return pegs;
   }
@@ -506,16 +506,6 @@ export const PLINKO_SCRIPT = `
   }
   function binIndexFromX(x, bins, left, right) {
     return clamp(Math.floor((x - left) / ((right - left) / bins.length)), 0, bins.length - 1);
-  }
-  function targetBinForBall(ball, bins, left, right) {
-    if (
-      ball &&
-      ball.targetBinIndex !== null &&
-      Number.isFinite(Number(ball.targetBinIndex)) &&
-      bins &&
-      bins[ball.targetBinIndex]
-    ) return bins[ball.targetBinIndex];
-    return bins[binIndexFromX(ball.x, bins, left, right)];
   }
   function init(force) {
     var canvas = q('plinkoCanvasV2');
@@ -581,8 +571,10 @@ export const PLINKO_SCRIPT = `
     }).length;
     var spread = [0, -6, 6, -12, 12, -3, 3, -9, 9];
     var rng = opts && opts.seed != null ? seededRandom(opts.seed) : Math.random;
-    var startX = CENTER_X + (spread[activeTop % spread.length] || 0) + (rng() * 2 - 1);
-    var vx = rng() * 0.2 - 0.1;
+    var requestedPath = opts && Array.isArray(opts.path) ? opts.path.slice() : null;
+    var guided = requestedPath && requestedPath.length === rows;
+    var startX = guided ? CENTER_X : CENTER_X + (spread[activeTop % spread.length] || 0) + (rng() * 2 - 1);
+    var vx = guided ? 0 : rng() * 0.2 - 0.1;
     var requestedTarget = Number(opts && opts.targetBinIndex);
     var ball = {
       id: (opts && opts.id) || '',
@@ -603,6 +595,9 @@ export const PLINKO_SCRIPT = `
       settled: false,
       settleX: null,
       targetBinIndex: Number.isFinite(requestedTarget) && state.bins[requestedTarget] ? requestedTarget : null,
+      path: guided ? requestedPath : null,
+      pathStep: 0,
+      pathRights: 0,
       serverMultiplier: Number(opts && opts.multiplier),
       serverTotal: Number(opts && opts.total),
       img: null,
@@ -622,7 +617,7 @@ export const PLINKO_SCRIPT = `
           return ball && !ball.remote;
         }).length
       : 0;
-    if (localCount >= MAX_LOCAL_BALLS) {
+    if (localCount + pendingRounds >= MAX_LOCAL_BALLS) {
       show('Please wait for a few balls to finish');
       return false;
     }
@@ -643,15 +638,7 @@ export const PLINKO_SCRIPT = `
     }
     var reservedAmount = roundCurrency(value);
     var clientId = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-    var ball = spawnBall({
-      id: clientId,
-      userId: payload.userId,
-      amount: reservedAmount,
-      name: payload.name,
-      photoUrl: payload.photoUrl,
-      seed: clientId,
-    });
-    if (!ball) return false;
+    var settledData = null;
     pendingRounds += 1;
     changeLocalPoints(-reservedAmount);
     try {
@@ -662,22 +649,37 @@ export const PLINKO_SCRIPT = `
       });
       var data = await response.json().catch(function () { return null; });
       if (!response.ok || !data || data.ok !== true) throw new Error(data && data.error ? data.error : 'Could not drop ball');
-      ball.id = String(data.roundId || clientId);
-      ball.amount = roundCurrency(Number(data.amount) || reservedAmount);
-      ball.targetBinIndex = Number.isFinite(Number(data.targetBinIndex)) && state && state.bins && state.bins[Number(data.targetBinIndex)]
-        ? Number(data.targetBinIndex)
-        : null;
-      ball.serverMultiplier = Number(data.multiplier);
-      ball.serverTotal = Number(data.total);
+      settledData = data;
+      var targetBinIndex = Number(data.targetBinIndex);
+      var path = normalizeServerPath(data.path, rows, targetBinIndex);
+      if (!path || !state || !state.bins || !state.bins[targetBinIndex]) {
+        forcePoints(data);
+        show('Invalid Plinko path');
+        return false;
+      }
+      applyRoundMultipliers(data.multipliers);
+      var ball = spawnBall({
+        id: String(data.roundId || clientId),
+        userId: payload.userId,
+        amount: roundCurrency(Number(data.amount) || reservedAmount),
+        name: payload.name,
+        photoUrl: payload.photoUrl,
+        seed: String(data.roundId || clientId),
+        targetBinIndex: targetBinIndex,
+        path: path,
+        multiplier: Number(data.multiplier),
+        total: Number(data.total),
+      });
+      if (!ball) {
+        forcePoints(data);
+        return true;
+      }
       awardXP(2, 'game-start', { section: 'plinko', event: 'drop-ball', amount: ball.amount, roundId: ball.id });
       scheduleFrame(0);
       return true;
     } catch (error) {
-      if (state && state.balls) {
-        var index = state.balls.indexOf(ball);
-        if (index >= 0) state.balls.splice(index, 1);
-      }
-      changeLocalPoints(reservedAmount);
+      if (settledData) forcePoints(settledData);
+      else changeLocalPoints(reservedAmount);
       draw();
       show(error && error.message ? error.message : 'Could not drop ball');
       return false;
@@ -685,20 +687,36 @@ export const PLINKO_SCRIPT = `
       pendingRounds = Math.max(0, pendingRounds - 1);
     }
   }
-  function controlAdjustedBin(ball, bin) {
-    if (
-      ball &&
-      ball.targetBinIndex !== null &&
-      Number.isFinite(Number(ball.targetBinIndex)) &&
-      state &&
-      state.bins &&
-      state.bins[ball.targetBinIndex]
-    ) return state.bins[ball.targetBinIndex];
-    return bin;
+  function normalizeServerPath(value, expectedRows, targetBinIndex) {
+    if (!Array.isArray(value) || value.length !== expectedRows || !Number.isInteger(targetBinIndex)) return null;
+    var rights = 0;
+    var path = [];
+    for (var i = 0; i < value.length; i++) {
+      var step = Number(value[i]);
+      if (step !== 0 && step !== 1) return null;
+      path.push(step);
+      rights += step;
+    }
+    return rights === targetBinIndex ? path : null;
+  }
+  function applyRoundMultipliers(value) {
+    if (!Array.isArray(value) || value.length !== houseCount() || !state || !state.bins) return;
+    var item = controlItem();
+    var next = [];
+    for (var i = 0; i < value.length; i++) {
+      var multiplier = Number(value[i]);
+      if (!Number.isFinite(multiplier) || multiplier <= 0) return;
+      next.push(multiplier);
+    }
+    if (item) item.multipliers = next.slice();
+    for (var j = 0; j < state.bins.length; j++) {
+      state.bins[j].mult = next[j];
+      state.bins[j].label = label(next[j]);
+    }
+    dirty();
   }
   function settle(ball, bin) {
     if (ball.settled) return;
-    bin = controlAdjustedBin(ball, bin);
     if (bin && Number.isFinite(Number(bin.x)) && Number.isFinite(Number(bin.w)))
       ball.settleX = clamp(bin.x + bin.w / 2, bin.x + (ball.r || 0), bin.x + bin.w - (ball.r || 0));
     ball.settled = true;
@@ -804,8 +822,19 @@ export const PLINKO_SCRIPT = `
       var vt = ball.vx * tx + ball.vy * ty;
       ball.vx -= vt * 0.035 * tx;
       ball.vy -= vt * 0.035 * ty;
-      ball.vx += (ballRandom(ball) - 0.5) * 0.024;
+      if (!ball.path) ball.vx += (ballRandom(ball) - 0.5) * 0.024;
       ball.vx = clamp(ball.vx, -1.45, 1.45);
+    }
+    if (ball.path && peg.row === ball.pathStep && peg.index === ball.pathRights + 1) {
+      var goRight = ball.path[ball.pathStep] === 1;
+      var direction = goRight ? 1 : -1;
+      var slotGap = 352 / houseCount();
+      var nextTargetX = peg.x + direction * slotGap / 2;
+      var pathTravel = rows === 8 ? 22.6 : rows === 12 ? 17.2 : 15.35;
+      ball.vx = clamp((nextTargetX - ball.x) / pathTravel, -1.45, 1.45);
+      ball.vy = -0.25;
+      ball.pathRights += goRight ? 1 : 0;
+      ball.pathStep += 1;
     }
     ball.vx *= 0.992;
     ball.vy *= 0.992;
@@ -846,18 +875,7 @@ export const PLINKO_SCRIPT = `
       ball.vx *= 0.996;
       if (ball.vy > 2.25) ball.vy = 2.25;
       if (ball.vy < -0.44) ball.vy = -0.44;
-      ball.vx += (ballRandom(ball) - 0.5) * 0.01 * dt;
-      if (
-        ball.targetBinIndex !== null &&
-        Number.isFinite(Number(ball.targetBinIndex)) &&
-        bins &&
-        bins[ball.targetBinIndex] &&
-        ball.y > binTop - 24
-      ) {
-        var target = bins[ball.targetBinIndex];
-        var targetX = target.x + target.w / 2;
-        ball.vx += clamp(targetX - ball.x, -28, 28) * 0.006 * dt;
-      }
+      if (!ball.path) ball.vx += (ballRandom(ball) - 0.5) * 0.01 * dt;
       var prevX = ball.x,
         prevY = ball.y;
       ball.x += ball.vx * dt;
@@ -876,15 +894,12 @@ export const PLINKO_SCRIPT = `
         var peg = pegs[p];
         if (peg.y < minY) continue;
         if (peg.y > maxY) break;
+        if (ball.path && (peg.row !== ball.pathStep || peg.index !== ball.pathRights + 1)) continue;
         collide(ball, peg, left, right, prevX, prevY);
       }
       if (ball.y + ball.r > binTop + 5) {
         var physicalIndex = binIndexFromX(ball.x, bins, left, right);
-        var bin = targetBinForBall(ball, bins, left, right);
-        if (bin !== bins[physicalIndex] && ball.y > binTop + 2) {
-          var center = bin.x + bin.w / 2;
-          ball.x += clamp(center - ball.x, -0.55, 0.55) * dt;
-        }
+        var bin = bins[physicalIndex];
         for (var s = 1; s < bins.length; s++) {
           var wall = left + (s * (right - left)) / bins.length;
           if (Math.abs(ball.x - wall) < ball.r && ball.y > binTop - 6 && ball.y < binBottom) {
@@ -909,7 +924,7 @@ export const PLINKO_SCRIPT = `
       }
       if (ball.y > 316) {
         if (!ball.settled) {
-          settle(ball, targetBinForBall(ball, bins, left, right));
+          settle(ball, bins[binIndexFromX(ball.x, bins, left, right)]);
         }
         balls.splice(b, 1);
       }
