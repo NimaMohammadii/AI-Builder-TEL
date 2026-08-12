@@ -82,12 +82,7 @@ export const MINIAPP_SCRIPT = `
     try{
       var params=new URLSearchParams(location.search);
       var section=(params.get('section')||location.hash.replace(/^#/, '')||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40);
-      var target=params.get('open');
       if(section&&ensureSection(section))show(section);
-      if(target==='deposit'){
-        show('wallet');
-        setTimeout(function(){var button=document.querySelector('#wallet [data-action="open-deposit"]');if(button)button.click()},0);
-      }
     }catch(e){}
   }
 
