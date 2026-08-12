@@ -114,19 +114,6 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
 }
 `;
 
-const FINANCE_CLOSE_BUTTON_SCRIPT = `
-(function(){
-  function apply(){
-    var style=document.getElementById('vexa-finance-close-minimal-style');
-    if(!style){style=document.createElement('style');style.id='vexa-finance-close-minimal-style';document.head.appendChild(style)}
-    style.textContent='#depositSheet .deposit-close,#withdrawSheet .deposit-close{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:999px!important;background:rgba(255,255,255,.035)!important;color:#fff!important;display:grid!important;place-items:center!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important}#depositSheet .deposit-close svg,#withdrawSheet .deposit-close svg{width:20px!important;height:20px!important;display:block!important}#depositSheet .deposit-close svg path,#withdrawSheet .deposit-close svg path{stroke:currentColor!important;stroke-width:2.6!important;stroke-linecap:round!important}#depositSheet .deposit-close:active,#withdrawSheet .deposit-close:active{transform:scale(.94)!important;background:rgba(255,255,255,.055)!important}';
-    ['depositSheet','withdrawSheet'].forEach(function(id){var b=document.querySelector('#'+id+' .deposit-close');if(!b)return;b.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>'});
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
-  document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest&&ev.target.closest('[data-action="open-deposit"],[data-action="open-withdraw"]');if(a)setTimeout(apply,20)},true);
-})();
-`;
-
 const STYLES = [
   MINIAPP_STYLES,
   PLINKO_STYLES,
@@ -257,7 +244,6 @@ const SCRIPTS = [
   ACTIVITY_SCRIPT,
   TON_BALANCE_SCRIPT,
   DEPOSIT_ENHANCEMENTS_SCRIPT,
-  FINANCE_CLOSE_BUTTON_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
   HOME_BLANK_CARDS_SCRIPT,
   HOME_SLOT_TUNING_SCRIPT,
