@@ -20,7 +20,7 @@ export const CRASH_PERFORMANCE_SCRIPT = `
   }
   function syncRocket(){
     var rocket=q('crashRocket');
-    if(rocket){if(active&&running)rocket.setAttribute('auto-rotate','');else rocket.removeAttribute('auto-rotate')}
+    if(rocket)rocket.removeAttribute('auto-rotate');
     syncMotion()
   }
   function setActive(next){
