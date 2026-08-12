@@ -112,14 +112,14 @@ html body:has(#ghostrun.active) #ghostrun #ghostLive .crash-live-row{background:
   if(doubleButton){doubleButton.textContent='2x';doubleButton.setAttribute('aria-label','Double bet')}
   if(controls&&startButton&&ghostBox&&ghostBox.parentElement!==controls)startButton.insertAdjacentElement('afterend',ghostBox);
   var phase='connecting',placedBetNano=0,activeBetNano=0,cashed=false,crashed=false;
-  var multiplier=1,raf=0,position=18,backgroundOffset=0,graveUrl='',localBalanceNano=0;
+  var multiplier=1,raf=0,position=18,backgroundOffset=0,graveUrl='';
   var bettingMs=6500,restartMs=4400;
   var liveRows=[],liveSeq=1,liveLoaded=false,historyMultipliers=[1.18,1.47,2.03,1.09,3.26,1.72,1.31,2.54,1.15,4.08];
   var socket=null,reconnectTimer=0,reconnectAttempt=0,serverOffsetMs=0,clockSynced=false,liveState=null,lastEndedRound=-1;
   function tonToNano(v){var n=parseFloat(String(v||'').replace(',','.'));return Number.isFinite(n)&&n>0?Math.floor(n*1e9):0}
   function nanoToTon(v){return Math.max(0,Math.floor(Number(v)||0))/1e9}
-  function readBalance(){if(window.VexaTonBalance&&window.VexaTonBalance.read)return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));return localBalanceNano||Math.max(0,Math.floor(Number(root.dataset.walletBalanceNano||0)||0))}
-  function changeBalance(delta){localBalanceNano=Math.max(0,readBalance()+Math.floor(Number(delta)||0));root.dataset.walletBalanceNano=String(localBalanceNano);if(window.VexaTonBalance&&window.VexaTonBalance.add)window.VexaTonBalance.add(Math.floor(Number(delta)||0),'ghostrun');else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(delta)||0),section:'ghostrun'}}))}
+  function readBalance(){if(window.VexaTonBalance&&window.VexaTonBalance.read)return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));return 0}
+  function changeBalance(delta){if(window.VexaTonBalance&&window.VexaTonBalance.add)window.VexaTonBalance.add(Math.floor(Number(delta)||0),'ghostrun')}
   function initData(){try{return String(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData||'')}catch(e){return ''}}
   function wsUrl(){var p=location.protocol==='https:'?'wss:':'ws:';return p+'//'+location.host+'/app/api/ghost-run/live/ws?initData='+encodeURIComponent(initData())}
   function connected(){return !!(socket&&socket.readyState===1)}
