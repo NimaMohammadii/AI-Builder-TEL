@@ -90,7 +90,7 @@ export const PLINKO_SCRIPT = `
   function readPoints() {
     if (window.VexaTonBalance && typeof window.VexaTonBalance.read === 'function')
       return Math.max(0, Math.floor(Number(window.VexaTonBalance.read()) || 0)) / NANO;
-    return Math.max(0, Number((q('plinkoCredit') || {}).textContent || '1000') || 1000);
+    return 0;
   }
   function renderPoints() {
     credit = readPoints();
@@ -110,8 +110,6 @@ export const PLINKO_SCRIPT = `
       credit = after / NANO;
       return;
     }
-    credit = Math.max(0, credit + (Number(delta) || 0));
-    renderPoints();
   }
   function forcePoints(next) {
     var value = Number(next) || 0;

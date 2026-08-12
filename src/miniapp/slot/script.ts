@@ -8,7 +8,7 @@ export const SLOT_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function fromNano(value){return (Math.max(0,Math.floor(Number(value)||0))/NANO).toFixed(2)}
   function readPointBalance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
-  function addPointDelta(deltaNano){var delta=Math.floor(Number(deltaNano)||0);if(window.VexaTonBalance){window.VexaTonBalance.add(delta);return}window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:delta}}))}
+  function addPointDelta(deltaNano){var delta=Math.floor(Number(deltaNano)||0);if(window.VexaTonBalance)window.VexaTonBalance.add(delta,'slot')}
   function awardXP(amount,source,metadata){if(window.VexaLevel&&typeof window.VexaLevel.add==='function')window.VexaLevel.add(amount,source,metadata||{section:'slot'})}
   function setBrand(title){var brand=q('brandTitle');if(brand)brand.textContent=title}
   function setResultText(text){var node=q('slotResultText');if(node)node.textContent=text}

@@ -35,7 +35,7 @@ export const MINES_SCRIPT = `
   function tone(freq,duration,type,gain){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();var osc=audioCtx.createOscillator();var vol=audioCtx.createGain();osc.type=type||'sine';osc.frequency.value=freq;vol.gain.value=0.0001;osc.connect(vol);vol.connect(audioCtx.destination);var now=audioCtx.currentTime;vol.gain.exponentialRampToValueAtTime(gain||0.035,now+0.012);vol.gain.exponentialRampToValueAtTime(0.0001,now+duration);osc.start(now);osc.stop(now+duration+0.02)}catch(e){}}
   function sound(name){if(name==='start'){tone(240,.09,'sine',.026);setTimeout(function(){tone(360,.11,'sine',.026)},55)}else if(name==='safe'){tone(520,.075,'triangle',.022);setTimeout(function(){tone(720,.08,'triangle',.018)},38)}else if(name==='mine'){tone(120,.18,'sawtooth',.026);setTimeout(function(){tone(72,.24,'sine',.022)},70)}else if(name==='cash'){tone(620,.08,'triangle',.025);setTimeout(function(){tone(880,.1,'triangle',.022)},55);setTimeout(function(){tone(1180,.12,'sine',.018)},120)}}
   function readTonBalance(){return window.VexaTonBalance?Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0)):0}
-  function addTonDelta(deltaNano){if(window.VexaTonBalance)window.VexaTonBalance.add(Math.floor(Number(deltaNano)||0));else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{deltaNano:Math.floor(Number(deltaNano)||0)}}))}
+  function addTonDelta(deltaNano){if(window.VexaTonBalance)window.VexaTonBalance.add(Math.floor(Number(deltaNano)||0),'mines')}
   function addGameXp(amount,source,metadata){
     if(!window.VexaLevel||typeof window.VexaLevel.add!=='function')return;
     window.VexaLevel.add(amount,source,Object.assign({game:'mines'},metadata||{}));
