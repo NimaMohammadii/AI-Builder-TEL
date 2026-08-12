@@ -16,9 +16,9 @@ export const PLINKO_SCRIPT = `
   var audioCtx = null;
   var lastSoundAt = 0;
   var MIN_BET = 0.01;
-  var BOARD_W = 360;
+  var BOARD_W = 376;
   var BOARD_H = 326;
-  var CENTER_X = 180;
+  var CENTER_X = 188;
   var CONTROL_TTL_MS = 30000;
   var MAX_RENDER_DPR = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')
     ? 2
@@ -212,7 +212,7 @@ export const PLINKO_SCRIPT = `
     return rows === 8 ? 3.25 : rows === 12 ? 2.7 : 2.25;
   }
   function pegVisualRadius() {
-    return rows === 8 ? 5.2 : rows === 12 ? 3.6 : 2.05;
+    return rows === 8 ? 5.2 : rows === 12 ? 3.6 : 1.55;
   }
   function ballRadius() {
     return rows === 8 ? 7.3 : rows === 12 ? 6.45 : 5.8;
@@ -468,7 +468,7 @@ export const PLINKO_SCRIPT = `
       pegRows = rows,
       rowGap = (bottom - top) / Math.max(1, pegRows - 1);
     var slotCount = houseCount();
-    var slotLeft = 4,
+    var slotLeft = 12,
       slotWidth = 352,
       slotGap = slotWidth / slotCount;
     var r = pegRadius(),
@@ -487,7 +487,7 @@ export const PLINKO_SCRIPT = `
     var mult = currentMultipliers();
     var count = houseCount();
     var bins = [];
-    var left = 4,
+    var left = 12,
       top = 260,
       width = 352,
       height = 14,
@@ -967,7 +967,7 @@ export const PLINKO_SCRIPT = `
           0,
           sourceWidth,
           state.houseStripImg.naturalHeight,
-          4 + h * targetWidth,
+          12 + h * targetWidth,
           253,
           targetWidth,
           28,
