@@ -5,6 +5,8 @@ import { CRASH_BREAK_FX_SCRIPT } from './scripts/break-effect';
 
 const CRASH_SPIN_BLUR_SCRIPT = `
 (async function(){
+  self.ModelViewerElement=self.ModelViewerElement||{};
+  self.ModelViewerElement.powerPreference='low-power';
   if(window.__vexaCrashSpinBlurSetup)return;
   window.__vexaCrashSpinBlurSetup=true;
   try{
