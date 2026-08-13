@@ -180,7 +180,7 @@ async function recentUserBetsJson(env: Env, market: string, userId: string) { re
 async function getBet(env: Env, id: string) { const b = await env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(cleanDbText(id, 'Prediction bet is not ready')).first<BetRow>(); return b ? betJson(b) : null; }
 async function fetchPrice(market: ExtraMarket | 'ton'): Promise<number> {
   const oil = market === 'oil';
-  const spotSymbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'TONUSDT';
+  const spotSymbol = market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : 'GRAMUSDT';
   const url = oil ? 'https://fapi.binance.com/fapi/v1/ticker/price?symbol=CLUSDT' : `https://api.binance.com/api/v3/ticker/price?symbol=${spotSymbol}`;
   const res = await fetch(url, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error('Price feed is unavailable');
