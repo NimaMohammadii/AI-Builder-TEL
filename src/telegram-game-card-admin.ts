@@ -15,8 +15,9 @@ type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' | 'audio' };
 type AudioGame = 'slot' | 'dice';
+type PaymentMethod = 'stars' | 'gram' | 'nft';
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'audio'; game: AudioGame };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'audio'; game: AudioGame };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -35,6 +36,7 @@ const CRASH_STAGE_STATE_PREFIX = 'crash-stage:';
 const RANK_STATE_PREFIX = 'rank:';
 const GHOST_ASSET_STATE_PREFIX = 'ghost-asset:';
 const SLOT_SYMBOL_STATE_PREFIX = 'slot-symbol:';
+const PAYMENT_METHOD_STATE_PREFIX = 'payment-method:';
 const AUDIO_STATE_PREFIX = 'audio:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
@@ -51,6 +53,9 @@ const SLOT_SYMBOLS = [
   ['cherry', '🍒 گیلاس'], ['lemon', '🍋 لیمو'], ['orange', '🍊 پرتقال'], ['grape', '🍇 انگور'],
   ['watermelon', '🍉 هندوانه'], ['diamond', '💎 الماس'], ['gold', '⭐ طلایی'], ['lucky7', '7️⃣ عدد ۷'],
 ] as const;
+const PAYMENT_METHODS = [
+  ['stars', '⭐ Stars'], ['gram', '💎 Gram'], ['nft', '🖼 NFT'],
+] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
@@ -66,6 +71,8 @@ export async function handleGameCardAdminRequest(request: Request, env: Env): Pr
   if (request.method === 'GET' && url.pathname === '/app/api/game-card-images') return serveGameCardManifest(env);
   const image = url.pathname.match(/^\/app\/api\/game-card-image\/([^/]+)$/);
   if (request.method === 'GET' && image) return serveImage(request, env, image[1]);
+  const paymentMethodImage = url.pathname.match(/^\/app\/api\/uploaded-image\/payment-method\/([^/]+?)(?:\.png)?$/);
+  if (request.method === 'GET' && paymentMethodImage) return servePaymentMethodImage(request, env, paymentMethodImage[1]);
   const crashStageImage = url.pathname.match(/^\/app\/api\/crash-stage-image\/(\d+)(?:\.png)?$/);
   if (request.method === 'GET' && crashStageImage) return serveCrashStageImage(request, env, crashStageImage[1]);
   if (request.method === 'GET' && url.pathname === '/app/api/crash-stage-images') return serveCrashStageManifest(env);
@@ -113,6 +120,29 @@ async function serveGameCardManifest(env: Env): Promise<Response> {
   return Response.json({ images }, { headers: { 'cache-control': 'no-store' } });
 }
 
+async function servePaymentMethodImage(request: Request, env: Env, raw: string): Promise<Response> {
+  const method = normalizePaymentMethod(raw.replace(/\.png$/i, ''));
+  if (!method) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const head = await env.ASSETS.head(paymentMethodKey(method)).catch(() => null);
+  if (!head) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const url = new URL(request.url);
+  if (!url.searchParams.get('v')) {
+    const version = String(head.customMetadata?.version || head.uploaded?.getTime?.() || '1');
+    url.search = '';
+    url.searchParams.set('v', version);
+    return new Response(null, { status: 302, headers: { location: url.toString(), 'cache-control': 'no-store' } });
+  }
+  const object = await env.ASSETS.get(paymentMethodKey(method)).catch(() => null);
+  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  return new Response(object.body, {
+    headers: {
+      'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || 'image/png',
+      'cache-control': GAME_CARD_CACHE_CONTROL,
+      'x-content-type-options': 'nosniff',
+    },
+  });
+}
+
 async function serveCrashStageImage(request: Request, env: Env, raw: string): Promise<Response> {
   const slot = normalizeCrashStageSlot(raw);
   if (!slot) return new Response('Not found', { status: 404 });
@@ -152,6 +182,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     const data = callback.data || '';
     const ours = data === 'botadmin:home'
       || data === 'botadmin:imagesmenu'
+      || data === 'botadmin:paymentmethods'
       || data === 'botadmin:audiomenu'
       || data === 'botadmin:gameimages'
       || data === 'botadmin:gamebackgrounds'
@@ -161,6 +192,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:ranks'
       || data === 'botadmin:ghostassets'
       || data === 'botadmin:slotsymbols'
+      || data.startsWith('botadmin:paymentmethod:')
       || data.startsWith('botadmin:audio:')
       || data.startsWith('botadmin:gameimage:')
       || data.startsWith('botadmin:gamebackground:')
@@ -186,6 +218,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:imagesmenu') {
       await clearState(env, callback.from.id);
       await sendImagesMenu(token, chatId, messageId);
+    } else if (data === 'botadmin:paymentmethods') {
+      await clearState(env, callback.from.id);
+      await sendPaymentMethodMenu(env, token, chatId, messageId);
     } else if (data === 'botadmin:audiomenu') {
       await clearState(env, callback.from.id);
       await sendAudioMenu(env, token, chatId, messageId);
@@ -215,6 +250,12 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:slotsymbols') {
       await clearState(env, callback.from.id);
       await sendSlotSymbolMenu(env, token, chatId, messageId);
+    } else if (data.startsWith('botadmin:paymentmethod:')) {
+      const method = normalizePaymentMethod(data.slice('botadmin:paymentmethod:'.length));
+      if (method) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${PAYMENT_METHOD_STATE_PREFIX}${method}`, { expirationTtl: 900 });
+        await promptImage(token, chatId, messageId, `💳 تصویر روش پرداخت ${paymentMethodLabel(method)}`, 'تصویر جدید این روش پرداخت را بفرستید. بعد از آپلود، نسخه جدید خودکار جای نسخه قبلی را می‌گیرد.', 'botadmin:paymentmethods');
+      }
     } else if (data.startsWith('botadmin:audio:')) {
       const game = normalizeAudioGame(data.slice('botadmin:audio:'.length));
       if (game) {
@@ -300,6 +341,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'ghost-asset') await sendGhostAssetMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'slot-symbol') await sendSlotSymbolMenu(env, token, message.chat.id, menuMessageId);
+    else if (target.kind === 'payment-method') await sendPaymentMethodMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'audio') await sendAudioMenu(env, token, message.chat.id, menuMessageId);
     else await sendImagesMenu(token, message.chat.id, menuMessageId);
     return ok();
@@ -384,6 +426,8 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/ghost-run-asset/${target.asset}.png?v=${Date.now()}`, `✅ ${ghostAssetLabel(target.asset)} ذخیره شد.`, '👻 تصاویر Ghost Run', 'botadmin:ghostassets');
     } else if (target.kind === 'slot-symbol') {
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/slot-symbols/${target.symbol}?v=${Date.now()}`, `✅ ${slotSymbolLabel(target.symbol)} ذخیره شد و روی ریل‌های Slot نمایش داده می‌شود.`, '🎰 شکل‌های اسلات', 'botadmin:slotsymbols');
+    } else if (target.kind === 'payment-method') {
+      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/payment-method/${target.method}.png?v=${Date.now()}`, `✅ تصویر روش پرداخت ${paymentMethodLabel(target.method)} ذخیره شد.`, '💳 تصاویر روش پرداخت', 'botadmin:paymentmethods');
     } else {
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
@@ -405,6 +449,7 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
 
 async function sendImagesMenu(token: string, chatId: number, messageId?: number): Promise<void> {
   await upsert(token, chatId, messageId, '🖼 تصاویر و ظاهر\n\nبخش موردنظر را انتخاب کنید.', [
+    [{ text: '💳 تصاویر روش پرداخت', callback_data: 'botadmin:paymentmethods' }],
     [
       { text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' },
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
@@ -422,6 +467,15 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     ],
     [{ text: '👻 تصاویر داخل Ghost Run', callback_data: 'botadmin:ghostassets' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ]);
+}
+
+async function sendPaymentMethodMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const present = await Promise.all(PAYMENT_METHODS.map(([method]) => env.ASSETS.head(paymentMethodKey(method)).then(Boolean).catch(() => false)));
+  const buttons = PAYMENT_METHODS.map(([method, title], index) => ({ text: `${present[index] ? '✅ ' : ''}${title}`, callback_data: `botadmin:paymentmethod:${method}` }));
+  await upsert(token, chatId, messageId, '💳 تصاویر روش پرداخت\n\nStars، Gram یا NFT را انتخاب کنید و تصویر جدیدش را بفرستید. علامت ✅ یعنی قبلاً برای آن تصویر آپلود شده است.', [
+    buttons,
+    [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
   ]);
 }
 
@@ -564,8 +618,9 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
       : target.kind === 'rank' ? `rank-character/${target.rank}`
         : target.kind === 'ghost-asset' ? `ghost-run-assets/${target.asset}`
           : target.kind === 'slot-symbol' ? `slot-symbol/${target.symbol}`
-          : target.kind === 'background' ? sectionBackgroundR2Key(target.game)
-            : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
+            : target.kind === 'payment-method' ? paymentMethodKey(target.method)
+              : target.kind === 'background' ? sectionBackgroundR2Key(target.game)
+                : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
   const metadata = target.kind === 'ton'
     ? { version, assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
     : target.kind === 'background'
@@ -580,7 +635,9 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
               ? { version, kind: target.asset, contentType, uploadedVia: `telegram-admin-${source.via}` }
               : target.kind === 'slot-symbol'
                 ? { version, symbolId: target.symbol, contentType, uploadedVia: `telegram-admin-${source.via}` }
-                : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
+                : target.kind === 'payment-method'
+                  ? { version, paymentMethod: target.method, contentType, uploadedVia: `telegram-admin-${source.via}` }
+                  : { version, gameId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` };
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: metadata,
@@ -660,6 +717,10 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
+  if (raw.startsWith(PAYMENT_METHOD_STATE_PREFIX)) {
+    const method = normalizePaymentMethod(raw.slice(PAYMENT_METHOD_STATE_PREFIX.length));
+    return method ? { kind: 'payment-method', method } : null;
+  }
   if (raw.startsWith(AUDIO_STATE_PREFIX)) {
     const game = normalizeAudioGame(raw.slice(AUDIO_STATE_PREFIX.length));
     return game ? { kind: 'audio', game } : null;
@@ -687,6 +748,9 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const game = normalizeGame(raw);
   return game ? { kind: 'game', game } : null;
 }
+function normalizePaymentMethod(value: unknown): PaymentMethod | null { const clean = String(value || '').replace(/\.png$/i, '').trim().toLowerCase(); return clean === 'stars' || clean === 'gram' || clean === 'nft' ? clean : null; }
+function paymentMethodLabel(method: PaymentMethod): string { return PAYMENT_METHODS.find(([id]) => id === method)?.[1] || method; }
+function paymentMethodKey(method: PaymentMethod): string { return `payment-method/${method}`; }
 function normalizeAudioGame(value: unknown): AudioGame | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'slot' || clean === 'dice' ? clean : null; }
 function audioGameLabel(game: AudioGame): string { return game === 'slot' ? 'Slot' : 'Dice'; }
 function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }
