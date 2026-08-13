@@ -7,7 +7,10 @@ import { gameBotToken } from './utils';
 const MIN_STARS_DEPOSIT = 2;
 const TELEGRAM_STAR_REWARD_USD = 0.013;
 const TELEGRAM_WITHDRAW_RATE_X1000 = 1300;
-const GRAM_USD_TICKER_URL = 'https://data-api.binance.vision/api/v3/ticker/price?symbol=GRAMUSDT';
+const GRAM_USD_TICKER_URLS = [
+  'https://data-api.binance.vision/api/v3/ticker/price?symbol=GRAMUSDT',
+  'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT',
+] as const;
 const RATE_CACHE_MS = 60_000;
 
 type StarDepositRow = {
@@ -179,6 +182,9 @@ async function getStarsGramRate(): Promise<StarsGramRate> {
   starsGramRatePromise = fetchStarsGramRate().then((value) => {
     starsGramRateCache = { value, expiresAt: Date.now() + RATE_CACHE_MS };
     return value;
+  }).catch((error) => {
+    if (starsGramRateCache) return starsGramRateCache.value;
+    throw error;
   }).finally(() => {
     starsGramRatePromise = null;
   });
@@ -186,13 +192,25 @@ async function getStarsGramRate(): Promise<StarsGramRate> {
 }
 
 async function fetchStarsGramRate(): Promise<StarsGramRate> {
-  const gramResponse = await fetch(GRAM_USD_TICKER_URL, {
-    cf: { cacheTtl: 1, cacheEverything: false },
-  } as RequestInit);
-  if (!gramResponse.ok) throw new Error('Gram price feed is unavailable');
-  const gramTicker = await gramResponse.json() as BinanceTickerResponse;
-  const gramUsd = Number(gramTicker && gramTicker.price);
-  if (!Number.isFinite(gramUsd) || gramUsd <= 0) throw new Error('Gram price feed is unavailable');
+  let gramUsd = 0;
+  for (const url of GRAM_USD_TICKER_URLS) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: 'application/json' },
+        cf: { cacheTtl: 1, cacheEverything: false },
+      } as RequestInit);
+      if (!response.ok) continue;
+      const ticker = await response.json() as BinanceTickerResponse;
+      const value = Number(ticker && ticker.price);
+      if (Number.isFinite(value) && value > 0) {
+        gramUsd = value;
+        break;
+      }
+    } catch {
+      // Try the next official Binance market-data endpoint.
+    }
+  }
+  if (!gramUsd) throw new Error('Gram price feed is unavailable');
   const gramPerStar = TELEGRAM_STAR_REWARD_USD / gramUsd;
   if (!Number.isFinite(gramPerStar) || gramPerStar <= 0) throw new Error('Stars to Gram rate is unavailable');
   return {
