@@ -570,7 +570,7 @@ const DEPOSIT_CORE_SCRIPT = `
   function closeWallet(){var sheet=q('wallet');document.body.classList.remove('wallet-open');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.hide&&back.hide()}catch(e){}}
   function openWallet(){var sheet=ensureWallet();if(!sheet)return;if(sheet.parentElement!==document.body)document.body.appendChild(sheet);document.body.classList.add('wallet-open');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.onClick&&back.onClick(closeWallet);back&&back.show&&back.show()}catch(e){}}
   function currentUserId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
-  function escapeHtml(value){return String(value||'').replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt',"'":'&#39;','\"':'&quot;'}[c]||c})}
+  function escapeHtml(value){return String(value||'').replace(/[&<>'\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c})}
   function toast(text){var n=q('toast');if(!n)return;n.textContent=text;n.style.display='block';setTimeout(function(){n.style.display='none'},2600)}
   function normalizeNumericText(value){
     var text=String(value==null?'':value).trim();
