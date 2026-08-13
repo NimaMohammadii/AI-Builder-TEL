@@ -4,8 +4,10 @@ import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
 import { gameBotToken } from './utils';
 
-const DEFAULT_STAR_TO_NANO = 5_890_080; // Fragment 0.0061355 TON minus 4% commission.
 const MIN_STARS_DEPOSIT = 2;
+const TELEGRAM_APP_CONFIG_URL = 'https://core.telegram.org/api/config';
+const GRAM_USD_TICKER_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT';
+const RATE_CACHE_MS = 60_000;
 
 type StarDepositRow = {
   id: string;
@@ -25,6 +27,17 @@ type TelegramInvoiceLinkResponse = {
   description?: string;
 };
 
+type BinanceTickerResponse = {
+  price?: string;
+};
+
+export type StarsGramRate = {
+  telegramWithdrawRateX1000: number;
+  gramUsd: number;
+  gramPerStar: number;
+  updatedAt: string;
+};
+
 export type StarDeposit = {
   id: string;
   userId: string;
@@ -36,14 +49,18 @@ export type StarDeposit = {
   updatedAt: string;
 };
 
+let starsGramRateCache: { value: StarsGramRate; expiresAt: number } | null = null;
+let starsGramRatePromise: Promise<StarsGramRate> | null = null;
+
 export async function createStarsDeposit(env: Env, userId: string, starsInput: unknown): Promise<StarDeposit> {
   const user = cleanUserId(userId);
   const stars = cleanStarsAmount(starsInput);
   await assertUserNotBanned(env, user);
-  const amountNano = starsToNano(env, stars);
+  const rate = await getStarsGramRate();
+  const amountNano = starsToNano(stars, rate);
   const limits = await getFinanceLimits(env);
-  if (amountNano < limits.minDepositNano) throw new Error(`Minimum deposit is ${formatTonAmount(limits.minDepositNano)} TON`);
-  if (limits.maxDepositNano && amountNano > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} TON`);
+  if (amountNano < limits.minDepositNano) throw new Error(`Minimum deposit is ${formatTonAmount(limits.minDepositNano)} Gram`);
+  if (limits.maxDepositNano && amountNano > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} Gram`);
   const id = 'stars_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
   await ensureStarsDepositsTable(env);
   await env.DB.prepare(`INSERT INTO stars_deposits (id, user_id, stars_amount, amount_nano, status, created_at, updated_at)
@@ -55,12 +72,15 @@ export async function createStarsDeposit(env: Env, userId: string, starsInput: u
   return rowToDeposit(row ?? { id, user_id: user, stars_amount: stars, amount_nano: amountNano, status: 'pending', telegram_payment_charge_id: null, provider_payment_charge_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, invoiceLink);
 }
 
-export async function listUserStarsDeposits(env: Env, userId: string): Promise<{ deposits: StarDeposit[] }> {
+export async function listUserStarsDeposits(env: Env, userId: string): Promise<{ deposits: StarDeposit[]; rate: StarsGramRate }> {
   await ensureStarsDepositsTable(env);
-  const rows = await env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
-    .bind(cleanUserId(userId))
-    .all<StarDepositRow>();
-  return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)) };
+  const [rows, rate] = await Promise.all([
+    env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
+      .bind(cleanUserId(userId))
+      .all<StarDepositRow>(),
+    getStarsGramRate(),
+  ]);
+  return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)), rate };
 }
 
 export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckoutQuery): Promise<void> {
@@ -95,7 +115,7 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
   await adjustUserTonBalance(env, row.user_id, row.amount_nano, {
     kind: 'deposit',
     title: 'Stars purchase',
-    description: `${row.stars_amount} Stars converted to TON balance`,
+    description: `${row.stars_amount} Stars converted to Gram balance`,
     referenceId: row.id,
     referenceType: 'stars_deposit',
     status: 'completed',
@@ -107,14 +127,14 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
   const token = gameBotToken(env);
   if (!token || token.length < 20) throw new Error('Could not create Stars invoice');
-  const tonText = formatTon(amountNano);
+  const gramText = formatGram(amountNano);
   const response = await telegram<TelegramInvoiceLinkResponse>(token, 'createInvoiceLink', {
-    title: 'Vexa TON Balance',
-    description: `${stars} Stars → ${tonText}`,
+    title: 'Vexa Gram Balance',
+    description: `${stars} Stars → ${gramText}`,
     payload: id,
     provider_token: '',
     currency: 'XTR',
-    prices: [{ label: `${tonText}`, amount: stars }],
+    prices: [{ label: `${gramText}`, amount: stars }],
   });
   if (!response.ok || !response.result) throw new Error('Could not create Stars invoice');
   return response.result;
@@ -148,19 +168,61 @@ function rowToDeposit(row: StarDepositRow, invoiceLink: string | null): StarDepo
   };
 }
 
-function starsToNano(env: Env, stars: number): number {
-  const rate = Number(envValue(env, 'STARS_TO_NANOTON') || DEFAULT_STAR_TO_NANO);
-  const safeRate = Number.isSafeInteger(rate) && rate > 0 ? rate : DEFAULT_STAR_TO_NANO;
-  const result = stars * safeRate;
+async function getStarsGramRate(): Promise<StarsGramRate> {
+  const now = Date.now();
+  if (starsGramRateCache && starsGramRateCache.expiresAt > now) return starsGramRateCache.value;
+  if (starsGramRatePromise) return starsGramRatePromise;
+  starsGramRatePromise = fetchStarsGramRate().then((value) => {
+    starsGramRateCache = { value, expiresAt: Date.now() + RATE_CACHE_MS };
+    return value;
+  }).finally(() => {
+    starsGramRatePromise = null;
+  });
+  return starsGramRatePromise;
+}
+
+async function fetchStarsGramRate(): Promise<StarsGramRate> {
+  const [telegramResponse, gramResponse] = await Promise.all([
+    fetch(TELEGRAM_APP_CONFIG_URL, {
+      headers: { accept: 'text/html' },
+      cf: { cacheTtl: 60, cacheEverything: true },
+    } as RequestInit),
+    fetch(GRAM_USD_TICKER_URL, {
+      cf: { cacheTtl: 1, cacheEverything: false },
+    } as RequestInit),
+  ]);
+  if (!telegramResponse.ok) throw new Error('Telegram Stars rate is unavailable');
+  if (!gramResponse.ok) throw new Error('Gram price feed is unavailable');
+  const [telegramConfig, gramTicker] = await Promise.all([
+    telegramResponse.text(),
+    gramResponse.json() as Promise<BinanceTickerResponse>,
+  ]);
+  const rateMatch = telegramConfig.match(/stars_usd_withdraw_rate_x1000(?:&quot;|&#34;|")?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i);
+  const telegramWithdrawRateX1000 = Number(rateMatch && rateMatch[1]);
+  const gramUsd = Number(gramTicker && gramTicker.price);
+  if (!Number.isFinite(telegramWithdrawRateX1000) || telegramWithdrawRateX1000 <= 0) throw new Error('Telegram Stars rate is unavailable');
+  if (!Number.isFinite(gramUsd) || gramUsd <= 0) throw new Error('Gram price feed is unavailable');
+  const gramPerStar = telegramWithdrawRateX1000 / (gramUsd * 100_000);
+  if (!Number.isFinite(gramPerStar) || gramPerStar <= 0) throw new Error('Stars to Gram rate is unavailable');
+  return {
+    telegramWithdrawRateX1000,
+    gramUsd,
+    gramPerStar,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function starsToNano(stars: number, rate: StarsGramRate): number {
+  const result = Math.floor(stars * rate.gramPerStar * 1_000_000_000);
   if (!Number.isSafeInteger(result) || result < 1) throw new Error('Stars amount is too large');
   return result;
 }
 
-function formatTon(nano: number): string {
+function formatGram(nano: number): string {
   const raw = Math.max(0, Math.floor(Number(nano) || 0));
   const whole = Math.floor(raw / 1_000_000_000);
   const frac = String(raw % 1_000_000_000).padStart(9, '0').replace(/0+$/, '');
-  return (frac ? `${whole}.${frac}` : String(whole)) + ' TON';
+  return (frac ? `${whole}.${frac}` : String(whole)) + ' Gram';
 }
 
 function cleanStarsAmount(value: unknown): number {
@@ -189,8 +251,4 @@ async function telegram<T>(token: string, method: string, payload: Record<string
     body: JSON.stringify(payload),
   });
   return await response.json() as T;
-}
-
-function envValue(env: Env, key: string): string {
-  return String((env as unknown as Record<string, unknown>)[key] || '').trim();
 }
