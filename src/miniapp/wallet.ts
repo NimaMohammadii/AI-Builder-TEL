@@ -563,14 +563,13 @@ const DEPOSIT_CORE_SCRIPT = `
 (function(){
   var STARS_TO_NANO=5890080;
   var MIN_STARS_DEPOSIT=2;
-  var TON_USD_CACHE_MS=15000;
   var tonUsd=0;
-  var tonUsdLoadedAt=0;
-  var tonUsdPromise=null;
+  var tonUsdSocket=null;
+  var tonUsdReady=null;
   var tg=window.Telegram&&window.Telegram.WebApp;
   function q(id){return document.getElementById(id)}
   function ensureWallet(){return q('wallet')||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure('wallet'),q('wallet'))}
-  function closeWallet(){setDepositKeyboard(false);setSheet('withdrawSheet',false);setSheet('depositSheet',false);var sheet=q('wallet');document.body.classList.remove('wallet-open');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.hide&&back.hide()}catch(e){}}
+  function closeWallet(){setDepositKeyboard(false);setSheet('withdrawSheet',false);setSheet('depositSheet',false);if(window.VexaTonUsdPrice&&typeof window.VexaTonUsdPrice.stop==='function')window.VexaTonUsdPrice.stop();var sheet=q('wallet');document.body.classList.remove('wallet-open');if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.hide&&back.hide()}catch(e){}}
   function openWallet(){var sheet=ensureWallet();if(!sheet)return;if(sheet.parentElement!==document.body)document.body.appendChild(sheet);document.body.classList.add('wallet-open');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setSheet('depositSheet',true);clearDepositStatus();updateEquivalent();if(window.VexaShowDepositPicker)window.VexaShowDepositPicker();var back=tg&&tg.BackButton;try{back&&back.offClick&&back.offClick(closeWallet)}catch(e){}try{back&&back.onClick&&back.onClick(closeWallet);back&&back.show&&back.show()}catch(e){}}
   function currentUserId(){return localStorage.getItem('ownerId')||String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'')}
   function escapeHtml(value){return String(value||'').replace(/[&<>'\\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\\"':'&quot;'}[c]||c})}
@@ -588,8 +587,9 @@ const DEPOSIT_CORE_SCRIPT = `
   function tonAmount(value){var raw=normalizeNumericText(value);if(!raw||raw==='.')return 0;var n=Number(raw);return Number.isFinite(n)&&n>0?n:0}
   function setUsdEquivalent(out,amount){if(!out)return;if(!tonUsd&&amount)loadTonUsd();out.textContent='≈ $'+((tonUsd&&amount)?(amount*tonUsd).toFixed(2):'0.00')}
   function publishTonUsd(){updateWithdrawEquivalent();var out=q('starsTonEquivalent');var ton=q('tonAmountSheet');if(out&&ton&&ton.style.display!=='none')setUsdEquivalent(out,tonAmount(ton.value))}
-  function loadTonUsd(){var now=Date.now();if(tonUsd&&now-tonUsdLoadedAt<TON_USD_CACHE_MS)return Promise.resolve(tonUsd);if(tonUsdPromise)return tonUsdPromise;tonUsdPromise=new Promise(function(resolve){var socket=null;var done=false;var timer=setTimeout(function(){finish(0)},5000);function finish(value){if(done)return;done=true;clearTimeout(timer);if(socket){try{socket.onmessage=null;socket.onerror=null;socket.onclose=null;socket.close()}catch(e){}}tonUsdPromise=null;resolve(value||tonUsd||0)}try{if(!('WebSocket' in window)){finish(0);return}socket=new WebSocket('wss://stream.binance.com:9443/ws/tonusdt@miniTicker');socket.onmessage=function(event){try{var data=JSON.parse(event.data);var value=Number(data&&data.c);if(Number.isFinite(value)&&value>0){tonUsd=value;tonUsdLoadedAt=Date.now();publishTonUsd();finish(value)}}catch(e){}};socket.onerror=function(){finish(0)};socket.onclose=function(){finish(0)}}catch(e){finish(0)}});return tonUsdPromise}
-  window.VexaTonUsdPrice={read:function(){return Number.isFinite(tonUsd)&&tonUsd>0?tonUsd:0},load:loadTonUsd};
+  function stopTonUsd(){var socket=tonUsdSocket;tonUsdSocket=null;tonUsdReady=null;if(socket){try{socket.onmessage=null;socket.onerror=null;socket.onclose=null;socket.close()}catch(e){}}}
+  function loadTonUsd(){if(tonUsdSocket&&(tonUsdSocket.readyState===0||tonUsdSocket.readyState===1))return tonUsdReady||Promise.resolve(tonUsd);var socket;tonUsdReady=new Promise(function(resolve){var settled=false;var timer=setTimeout(function(){if(settled)return;settled=true;resolve(tonUsd||0)},5000);function settle(value){if(settled)return;settled=true;clearTimeout(timer);resolve(value||tonUsd||0)}try{if(!('WebSocket' in window)){settle(0);return}socket=new WebSocket('wss://stream.binance.com:9443/ws/tonusdt@miniTicker');tonUsdSocket=socket;socket.onmessage=function(event){try{var data=JSON.parse(event.data);var value=Number(data&&data.c);if(Number.isFinite(value)&&value>0){tonUsd=value;publishTonUsd();settle(value)}}catch(e){}};socket.onerror=function(){settle(0)};socket.onclose=function(){if(tonUsdSocket===socket)tonUsdSocket=null;tonUsdReady=null;settle(0)}}catch(e){if(tonUsdSocket===socket)tonUsdSocket=null;tonUsdReady=null;settle(0)}});return tonUsdReady}
+  window.VexaTonUsdPrice={read:function(){return Number.isFinite(tonUsd)&&tonUsd>0?tonUsd:0},load:loadTonUsd,stop:stopTonUsd};
   function unitText(nano,unit){
     var raw=Math.max(0,Math.floor(Number(nano)||0));
     var whole=Math.floor(raw/1000000000);
