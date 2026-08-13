@@ -507,10 +507,10 @@ const TON_WALLET_DEPOSIT_SCRIPT = `
   function parseTon(value){var raw=normalizeNumber(value);if(!raw||raw==='.')return 0;var n=Number(raw);return Number.isFinite(n)&&n>0?n:0}
   function twoDecimalText(value){var raw=normalizeNumber(value);var parts=raw.split('.');var text=parts.length>1?parts[0]+'.'+parts[1].slice(0,2):raw;var n=Number(text);return Number.isFinite(n)&&n>0?n.toFixed(2):'0.00'}
   function tonToNanoString(value){var s=twoDecimalText(value);var parts=s.split('.');return (BigInt(parts[0]||'0')*1000000000n+BigInt(((parts[1]||'')+'000000000').slice(0,9))).toString()}
-  function formatGramNano(nano){var raw=Math.max(0,Math.floor(Number(nano)||0));var whole=Math.floor(raw/1000000000);var frac=String(raw%1000000000).padStart(9,'0').replace(/0+$/,'');return (frac?whole+'.'+frac:String(whole))+' Gram'}
-  function starsEquivalent(stars){stars=Math.max(0,Math.floor(Number(stars)||0));if(!stars)return '≈ 0 Gram';if(!starsGramPerStar){loadStarsGramRate();return '≈ … Gram'}return '≈ '+formatGramNano(Math.floor(stars*starsGramPerStar*1000000000))}
+  function formatGramNano(nano){var raw=Math.max(0,Math.floor(Number(nano)||0));return (raw/1000000000).toFixed(2)+' Gram'}
+  function starsEquivalent(stars){stars=Math.max(0,Math.floor(Number(stars)||0));if(!stars)return '≈ 0.00 Gram';if(!starsGramPerStar){loadStarsGramRate();return '≈ … Gram'}return '≈ '+formatGramNano(Math.floor(stars*starsGramPerStar*1000000000))}
   function loadStarsGramRate(force){var now=Date.now();if(!force&&starsGramPerStar&&now-starsGramRateLoadedAt<60000)return Promise.resolve(starsGramPerStar);if(starsGramRatePromise)return starsGramRatePromise;starsGramRatePromise=fetch('/app/api/stars/deposits',{headers:{accept:'application/json'},cache:'no-store'}).then(function(r){return r.json().then(function(data){if(!r.ok)throw new Error(data&&data.error||'Stars rate request failed');return data})}).then(function(data){var rate=data&&data.rate;var value=Number(rate&&rate.gramPerStar);if(!Number.isFinite(value)||value<=0)throw new Error('Invalid Stars rate');starsGramPerStar=value;starsGramRateLoadedAt=Date.now();syncModeUi();return value}).catch(function(){var out=q('starsTonEquivalent');if(out&&!starsGramPerStar&&depositMode==='stars')out.textContent='Rate unavailable';return starsGramPerStar||0}).finally(function(){starsGramRatePromise=null});return starsGramRatePromise}
-  window.VexaStarsGramRate={format:starsEquivalent,load:loadStarsGramRate};
+  window.VexaStarsGramRate={format:starsEquivalent,formatNano:formatGramNano,load:loadStarsGramRate};
   function bytesBase64(bytes){var s='';for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s)}
   function textBytes(text){return Array.prototype.slice.call(new TextEncoder().encode(String(text||'')))}
   function tonCommentPayload(comment){var body=[0,0,0,0].concat(textBytes(comment));var cell=[0,body.length*2].concat(body);var total=cell.length;var boc=[0xb5,0xee,0x9c,0x72,0x01,0x01,0x01,0x01,0x00,total,0].concat(cell);return bytesBase64(boc)}
@@ -618,7 +618,7 @@ const DEPOSIT_CORE_SCRIPT = `
   function setDepositKeyboard(open){document.body.classList.toggle('deposit-keyboard-open',!!open)}
   function clearFinanceInlineStyles(sheet){if(!sheet)return;sheet.removeAttribute('style');var panel=sheet.querySelector('.deposit-panel');if(panel)panel.removeAttribute('style')}
   function setSheet(id,open){installSheetFixStyles();makeSheetsGlobal();polishDepositFooter();if(open)lockFinanceSheetHeight();var sheet=q(id);if(!sheet)return;clearFinanceInlineStyles(sheet);if(open){sheet.classList.remove('closing');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTimeout(function(){clearFinanceInlineStyles(sheet)},30)}else{sheet.classList.add('closing');sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');setTimeout(function(){sheet.classList.remove('closing');clearFinanceInlineStyles(sheet)},420)}syncOpenState()}
-  function updateEquivalent(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!out)return;var ton=q('tonAmountSheet');if(ton&&ton.style.display!=='none')return;var stars=starsAmount(input&&input.value);var source=window.VexaStarsGramRate;out.textContent=source&&typeof source.format==='function'?source.format(stars):(stars?'≈ … Gram':'≈ 0 Gram')}
+  function updateEquivalent(){var input=q('starsAmountSheet');var out=q('starsTonEquivalent');if(!out)return;var ton=q('tonAmountSheet');if(ton&&ton.style.display!=='none')return;var stars=starsAmount(input&&input.value);var source=window.VexaStarsGramRate;out.textContent=source&&typeof source.format==='function'?source.format(stars):(stars?'≈ … Gram':'≈ 0.00 Gram')}
   function updateWithdrawEquivalent(){setUsdEquivalent(q('withdrawUsdEquivalent'),tonAmount(q('withdrawAmountTon')&&q('withdrawAmountTon').value))}
   async function submitStarsSheet(){
     var userId=currentUserId();
@@ -630,7 +630,7 @@ const DEPOSIT_CORE_SCRIPT = `
     setDepositStatus('Creating secure Telegram invoice','pending');
     try{
       var d=await api('/app/api/stars/deposits',{userId:userId,stars:stars});
-      var equivalent=q('starsTonEquivalent');if(equivalent&&d&&d.amountNano)equivalent.textContent='≈ '+gramText(d.amountNano);
+      var equivalent=q('starsTonEquivalent');var rateSource=window.VexaStarsGramRate;if(equivalent&&d&&d.amountNano&&rateSource&&typeof rateSource.formatNano==='function')equivalent.textContent='≈ '+rateSource.formatNano(d.amountNano);
       setDepositStatus('Opening Telegram Stars payment','pending');
       if(d.invoiceLink){
         if(tg&&typeof tg.openInvoice==='function'){
