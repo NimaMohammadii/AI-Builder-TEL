@@ -570,9 +570,9 @@ const DEPOSIT_CORE_SCRIPT = `
     var text=String(value==null?'':value).trim();
     var fa='۰۱۲۳۴۵۶۷۸۹';var ar='٠١٢٣٤٥٦٧٨٩';
     text=text.replace(/[۰-۹]/g,function(d){return String(fa.indexOf(d))}).replace(/[٠-٩]/g,function(d){return String(ar.indexOf(d))});
-    text=text.replace(/[٫٬،，,]/g,'.').replace(/[\\\\u200e\\\\u200f\\\\u202a-\\\\u202e\\\\s]/g,'').replace(/[^0-9.]/g,'');
+    text=text.replace(/[٫٬،，,]/g,'.').replace(/[\\u200e\\u200f\\u202a-\\u202e\\s]/g,'').replace(/[^0-9.]/g,'');
     var first=text.indexOf('.');
-    if(first!==-1)text=text.slice(0,first+1)+text.slice(first+1).replace(/\\\\./g,'');
+    if(first!==-1)text=text.slice(0,first+1)+text.slice(first+1).replace(/\\./g,'');
     return text;
   }
   function starsAmount(value){return Math.max(0,Math.floor(Number(normalizeNumericText(value))||0))}
