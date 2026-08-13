@@ -1,7 +1,7 @@
 export const CRASH_SCRIPT = `
 (function(){
   var UNIT=1000000000, MIN_BET_NANO=10000000, HOUSE_EDGE=.04, WAIT_BETWEEN_MS=10000, CRASH_HOLD_MS=2200, MAX_RUN_MS=68000, DAY_MS=86400000;
-  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketSpin=-1, rocketDriftReady=false, lastRenderState='', lastSpaceRender=0;
+  var activeBet=null, settledRoundId=null, currentRoundId=-1, current=1, lastHistoryId=null, scheduleCache=null, crashFrame=0, crashIdleTimer=0, roundEndSignalId=null, lastActiveRender=0, lastRocketSpin=-1, rocketDriftReady=false, lastRenderState='', lastSpaceRender=0, lastRocketTurnAt=0, rocketTurnRad=0;
   function q(id){return document.getElementById(id)}
   function setText(node,text){if(node&&node.textContent!==text)node.textContent=text}
   function setVar(node,name,value){if(!node)return;var cache=node.__vexaCrashVars||(node.__vexaCrashVars={});if(cache[name]===value)return;cache[name]=value;node.style.setProperty(name,value)}
@@ -64,6 +64,16 @@ export const CRASH_SCRIPT = `
     try{window.__vexaCrashRocketAngleDeg=angle}catch(e){}
     if(flight.getAttribute('data-state')!==state)flight.setAttribute('data-state',state);
   }
+  function turnRocket(ms,state){
+    var rocket=q('crashRocket');
+    if(!state.running||!rocket||typeof rocket.resetTurntableRotation!=='function'){lastRocketTurnAt=0;return}
+    ms=Number(ms)||performance.now();
+    if(!lastRocketTurnAt){var existing=Number(rocket.turntableRotation);if(Number.isFinite(existing))rocketTurnRad=existing;lastRocketTurnAt=ms;return}
+    var dt=Math.max(0,ms-lastRocketTurnAt);lastRocketTurnAt=ms;
+    var spin=parseFloat(rocket.getAttribute('rotation-per-second')||'18');if(!Number.isFinite(spin))spin=18;
+    rocketTurnRad=(rocketTurnRad+(spin*Math.PI/180)*(dt/1000))%(Math.PI*2);
+    rocket.resetTurntableRotation(rocketTurnRad)
+  }
   function setRocketIdle(state){current=1;mult(1);setRocket(1,'waiting',Math.max(0,(state&&state.waitElapsed||0)-CRASH_HOLD_MS))}
   function showRocketCrashed(state){current=state.stop;mult(state.stop);setRocket(state.stop,'crashed',0)}
   function renderHistory(state){var n=q('crashHistory');if(!n)return;n.innerHTML=previousRoundIds(state,12).map(function(id){return '<span>'+fmt(roundStop(id))+'</span>'}).join('')}
@@ -89,6 +99,7 @@ export const CRASH_SCRIPT = `
   function renderFrame(ms,state){
     var mode=state.inCrashHold?'crashed':state.waiting?'waiting':'running',changed=mode!==lastRenderState;
     if(changed){lastRenderState=mode;try{if(typeof window.__vexaCrashSetRunning==='function')window.__vexaCrashSetRunning(mode==='running')}catch(e){}}
+    try{turnRocket(ms,state)}catch(e){}
     var spaceDelay=mode==='running'&&current>=1.8?32:50;
     if(changed||!lastSpaceRender||ms-lastSpaceRender>=spaceDelay){lastSpaceRender=ms;try{if(typeof window.__vexaCrashSpaceFrame==='function')window.__vexaCrashSpaceFrame(ms,current)}catch(e){}}
     try{if(typeof window.__vexaCrashBlurFrame==='function')window.__vexaCrashBlurFrame(current)}catch(e){}
@@ -96,7 +107,7 @@ export const CRASH_SCRIPT = `
   function update(ms){
     crashFrame=0;var active=isCrashActive();
     if(active&&lastActiveRender&&ms-lastActiveRender<32){crashFrame=requestAnimationFrame(update);return}
-    if(active)lastActiveRender=ms;else{lastActiveRender=0;lastRenderState='';lastSpaceRender=0}
+    if(active)lastActiveRender=ms;else{lastActiveRender=0;lastRenderState='';lastSpaceRender=0;lastRocketTurnAt=0}
     var now=Date.now(),state=locateRound(now);
     if(currentRoundId!==state.id){currentRoundId=state.id;current=1;lastHistoryId=null;roundEndSignalId=null;if(activeBet&&activeBet.roundId<state.id)lockBetControls(false)}
     if(active){setTotal(state.local/1000);if(state.inCrashHold){nextLabel('Crashed');setCountdown('Crashed',false);status('Crashed');if(roundEndSignalId!==state.id){roundEndSignalId=state.id;window.dispatchEvent(new CustomEvent('vexa-round-ended',{detail:{roundId:state.id,multiplier:state.stop}}))}showRocketCrashed(state)}else if(state.waiting){var waitLeft=(state.nextIn/1000).toFixed(1);nextLabel('Round starts '+waitLeft+'s');setCountdown(waitLeft+'s',false);status('Waiting');setRocketIdle(state)}else{nextLabel('');setCountdown('',true);status('Running');current=Math.min(state.stop,multAt(state.runElapsed/1000));mult(current);setRocket(current,'running',0);maybeAutoCashout(state)}renderFrame(ms,state);if(state.waiting&&lastHistoryId!==state.id){lastHistoryId=state.id;renderHistory(state)}}else if(activeBet&&activeBet.roundId===state.id&&!activeBet.settled&&!activeBet.cashed&&state.running){current=Math.min(state.stop,multAt(state.runElapsed/1000));maybeAutoCashout(state)}
@@ -106,7 +117,7 @@ export const CRASH_SCRIPT = `
   function half(){var state=locateRound(Date.now());if(betLocked(state))return;var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(MIN_BET_NANO,Math.floor(value/2)))}
   function doubleAmount(){var state=locateRound(Date.now());if(betLocked(state))return;var input=q('crashAmount');var value=normalizeAmount();if(input)input.value=toTon(Math.max(MIN_BET_NANO,Math.min(balance(),value*2)))}
   function cleanDecimalInput(input){if(!input)return;var raw=String(input.value||'').replace(/,/g,'.'),out='',dot=false;for(var i=0;i<raw.length;i++){var ch=raw.charAt(i);if(ch>='0'&&ch<='9'){out+=ch;continue}if(ch==='.'&&!dot){out+=ch;dot=true}}if(out!==raw)input.value=out}
-  function bind(){mult(1);status('Waiting');renderHistory(locateRound(Date.now()));var a=q('crashAction'),input=q('crashAmount'),auto=q('crashAutoCashout');if(a)a.onclick=action;if(input){input.setAttribute('step','0.01');input.setAttribute('inputmode','decimal');input.addEventListener('input',function(){cleanDecimalInput(input)});input.addEventListener('change',normalizeAmount);input.addEventListener('blur',normalizeAmount)}if(auto){auto.addEventListener('input',function(){cleanDecimalInput(auto)});auto.addEventListener('change',normalizeAutoCashout);auto.addEventListener('blur',normalizeAutoCashout)}document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var act=b.getAttribute('data-action');if(act==='crash-half'){ev.preventDefault();half()}if(act==='crash-double'){ev.preventDefault();doubleAmount()}if(b.getAttribute('data-game-view')==='crash'||b.getAttribute('data-view')==='crash')setTimeout(function(){normalizeAmount();lastActiveRender=0;lastSpaceRender=0;scheduleUpdate(0)},120)});window.addEventListener('vexa-crash-visible',function(){lastActiveRender=0;lastRenderState='';lastSpaceRender=0;scheduleUpdate(0)});window.addEventListener('vexa-crash-bet-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance)change(activeBet.amount);activeBet=null;lockBetControls(false);show(d.error||'Bet failed');scheduleUpdate(0)});window.addEventListener('vexa-crash-cashout-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance&&activeBet.payoutNano)change(-activeBet.payoutNano);activeBet.cashed=false;activeBet.settled=false;activeBet.payoutNano=0;show(d.error||'Cashout failed');scheduleUpdate(0)});document.addEventListener('visibilitychange',function(){if(!document.hidden){lastActiveRender=0;lastRenderState='';lastSpaceRender=0;scheduleUpdate(0)}});window.addEventListener('resize',function(){var state=locateRound(Date.now());setRocket(state.running?current:state.stop,state.inCrashHold?'crashed':state.running?'running':'waiting',state.waiting?Math.max(0,state.waitElapsed-CRASH_HOLD_MS):0)});scheduleUpdate(0)}
+  function bind(){mult(1);status('Waiting');renderHistory(locateRound(Date.now()));var a=q('crashAction'),input=q('crashAmount'),auto=q('crashAutoCashout');if(a)a.onclick=action;if(input){input.setAttribute('step','0.01');input.setAttribute('inputmode','decimal');input.addEventListener('input',function(){cleanDecimalInput(input)});input.addEventListener('change',normalizeAmount);input.addEventListener('blur',normalizeAmount)}if(auto){auto.addEventListener('input',function(){cleanDecimalInput(auto)});auto.addEventListener('change',normalizeAutoCashout);auto.addEventListener('blur',normalizeAutoCashout)}document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b)return;var act=b.getAttribute('data-action');if(act==='crash-half'){ev.preventDefault();half()}if(act==='crash-double'){ev.preventDefault();doubleAmount()}if(b.getAttribute('data-game-view')==='crash'||b.getAttribute('data-view')==='crash')setTimeout(function(){normalizeAmount();lastActiveRender=0;lastSpaceRender=0;lastRocketTurnAt=0;scheduleUpdate(0)},120)});window.addEventListener('vexa-crash-visible',function(){lastActiveRender=0;lastRenderState='';lastSpaceRender=0;lastRocketTurnAt=0;scheduleUpdate(0)});window.addEventListener('vexa-crash-bet-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance)change(activeBet.amount);activeBet=null;lockBetControls(false);show(d.error||'Bet failed');scheduleUpdate(0)});window.addEventListener('vexa-crash-cashout-failed',function(ev){var d=ev&&ev.detail||{};if(!activeBet||Number(d.roundId)!==Number(activeBet.roundId))return;if(!d.authoritativeBalance&&activeBet.payoutNano)change(-activeBet.payoutNano);activeBet.cashed=false;activeBet.settled=false;activeBet.payoutNano=0;show(d.error||'Cashout failed');scheduleUpdate(0)});document.addEventListener('visibilitychange',function(){if(!document.hidden){lastActiveRender=0;lastRenderState='';lastSpaceRender=0;lastRocketTurnAt=0;scheduleUpdate(0)}});window.addEventListener('resize',function(){var state=locateRound(Date.now());setRocket(state.running?current:state.stop,state.inCrashHold?'crashed':state.running?'running':'waiting',state.waiting?Math.max(0,state.waitElapsed-CRASH_HOLD_MS):0)});scheduleUpdate(0)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 `;
