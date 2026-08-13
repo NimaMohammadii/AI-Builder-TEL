@@ -14,7 +14,7 @@ export const PREDICT_CANDLE_SCRIPT = `
     function mkt(){var b=q('.predict-zone-category-menu [data-vexa-predict-market].active,.predict-zone-category-menu [data-predict-market].active');return b?(b.getAttribute('data-vexa-predict-market')||b.getAttribute('data-predict-market')||'bitcoin'):'bitcoin'}
     function uid(){var tg=window.Telegram&&window.Telegram.WebApp,u=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};return String(u.id||localStorage.getItem('ownerId')||'').trim()}
     function label(m){return m==='bitcoin'?'Bitcoin':m==='ethereum'?'Ethereum':m==='solana'?'Solana':m==='gold'?'Gold':m==='ton'?'TON':m.charAt(0).toUpperCase()+m.slice(1)}
-    function sym(m){return m==='bitcoin'?'btcusdt':m==='ethereum'?'ethusdt':m==='solana'?'solusdt':m==='gold'?'paxgusdt':m==='ton'?'tonusdt':''}
+    function sym(m){return m==='bitcoin'?'btcusdt':m==='ethereum'?'ethusdt':m==='solana'?'solusdt':m==='gold'?'paxgusdt':m==='ton'?'gramusdt':''}
     function dec(){return mkt()==='bitcoin'?0:mkt()==='ton'?4:2}
     function price(v){v=Number(v);return !isFinite(v)||v<=0?'Loading':'$'+v.toLocaleString('en-US',{minimumFractionDigits:dec(),maximumFractionDigits:dec()})}
     function ton(v){return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:4})}
