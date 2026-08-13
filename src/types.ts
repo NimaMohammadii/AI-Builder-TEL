@@ -14,7 +14,6 @@ export type Env = {
   TON_WITHDRAW_MNEMONIC?: string;
   TON_WITHDRAW_PAYOUT_TOKEN?: string;
   TON_WITHDRAW_WALLET_ADDRESS?: string;
-  STARS_TO_NANOTON?: string;
   BOT_ADMIN?: string;
 };
 
@@ -28,7 +27,7 @@ export type TelegramChat = {
 export type TelegramUser = {
   id: number;
   is_bot?: boolean;
-  first_name?: string;
+  first_name: string;
   last_name?: string;
   username?: string;
 };
@@ -56,8 +55,8 @@ export type TelegramLocation = {
 export type TelegramPhotoSize = {
   file_id: string;
   file_unique_id?: string;
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
   file_size?: number;
 };
 
