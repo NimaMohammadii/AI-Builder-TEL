@@ -12,6 +12,7 @@ const GRAM_USD_TICKER_URLS = [
   'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT',
 ] as const;
 const RATE_CACHE_MS = 60_000;
+const RATE_STALE_MS = 5 * 60_000;
 
 type StarDepositRow = {
   id: string;
@@ -183,7 +184,10 @@ async function getStarsGramRate(): Promise<StarsGramRate> {
     starsGramRateCache = { value, expiresAt: Date.now() + RATE_CACHE_MS };
     return value;
   }).catch((error) => {
-    if (starsGramRateCache) return starsGramRateCache.value;
+    const cachedAt = starsGramRateCache ? Date.parse(starsGramRateCache.value.updatedAt) : NaN;
+    if (starsGramRateCache && Number.isFinite(cachedAt) && Date.now() - cachedAt <= RATE_STALE_MS) {
+      return starsGramRateCache.value;
+    }
     throw error;
   }).finally(() => {
     starsGramRatePromise = null;
