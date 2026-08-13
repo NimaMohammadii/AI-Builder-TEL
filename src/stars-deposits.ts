@@ -7,7 +7,7 @@ import { gameBotToken } from './utils';
 const MIN_STARS_DEPOSIT = 2;
 const TELEGRAM_STAR_REWARD_USD = 0.013;
 const TELEGRAM_WITHDRAW_RATE_X1000 = 1300;
-const GRAM_USD_TICKER_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT';
+const GRAM_USD_TICKER_URL = 'https://data-api.binance.vision/api/v3/ticker/price?symbol=GRAMUSDT';
 const RATE_CACHE_MS = 60_000;
 
 type StarDepositRow = {
@@ -74,14 +74,17 @@ export async function createStarsDeposit(env: Env, userId: string, starsInput: u
 }
 
 export async function listUserStarsDeposits(env: Env, userId: string): Promise<{ deposits: StarDeposit[]; rate: StarsGramRate }> {
-  await ensureStarsDepositsTable(env);
-  const [rows, rate] = await Promise.all([
-    env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
-      .bind(cleanUserId(userId))
-      .all<StarDepositRow>(),
-    getStarsGramRate(),
-  ]);
-  return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)), rate };
+  const rate = await getStarsGramRate();
+  try {
+    const user = cleanUserId(userId);
+    await ensureStarsDepositsTable(env);
+    const rows = await env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
+      .bind(user)
+      .all<StarDepositRow>();
+    return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)), rate };
+  } catch {
+    return { deposits: [], rate };
+  }
 }
 
 export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckoutQuery): Promise<void> {
