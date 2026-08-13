@@ -11,6 +11,7 @@ const GRAM_USD_TICKER_URLS = [
   'https://data-api.binance.vision/api/v3/ticker/price?symbol=GRAMUSDT',
   'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT',
 ] as const;
+const GRAM_USD_COINPAPRIKA_URL = 'https://api.coinpaprika.com/v1/tickers/toncoin-the-open-network';
 const RATE_CACHE_MS = 60_000;
 const RATE_STALE_MS = 5 * 60_000;
 
@@ -34,6 +35,16 @@ type TelegramInvoiceLinkResponse = {
 
 type BinanceTickerResponse = {
   price?: string;
+};
+
+type CoinPaprikaTickerResponse = {
+  id?: string;
+  symbol?: string;
+  quotes?: {
+    USD?: {
+      price?: number;
+    };
+  };
 };
 
 export type StarsGramRate = {
@@ -212,6 +223,24 @@ async function fetchStarsGramRate(): Promise<StarsGramRate> {
       }
     } catch {
       // Try the next official Binance market-data endpoint.
+    }
+  }
+  if (!gramUsd) {
+    try {
+      const response = await fetch(GRAM_USD_COINPAPRIKA_URL, {
+        headers: { accept: 'application/json' },
+        cf: { cacheTtl: 60, cacheEverything: true },
+      } as RequestInit);
+      if (response.ok) {
+        const ticker = await response.json() as CoinPaprikaTickerResponse;
+        const value = Number(ticker?.quotes?.USD?.price);
+        const symbol = String(ticker?.symbol || '').toUpperCase();
+        if (ticker?.id === 'toncoin-the-open-network' && (symbol === 'GRAM' || symbol === 'TON') && Number.isFinite(value) && value > 0) {
+          gramUsd = value;
+        }
+      }
+    } catch {
+      // The normal unavailable error below is returned only when every source failed.
     }
   }
   if (!gramUsd) throw new Error('Gram price feed is unavailable');
