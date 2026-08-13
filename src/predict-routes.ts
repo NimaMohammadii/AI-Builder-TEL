@@ -266,7 +266,7 @@ async function fetchPrice(market: TradeMarket): Promise<number> {
 type PriceProvider = { name: string; fetch: () => Promise<unknown> };
 
 function priceProviders(market: TradeMarket): PriceProvider[] {
-  const binanceSymbol = market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : 'BTCUSDT';
+  const binanceSymbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : 'BTCUSDT';
   const coinbaseProduct = market === 'ethereum' ? 'ETH-USD' : market === 'solana' ? 'SOL-USD' : market === 'bitcoin' ? 'BTC-USD' : '';
   const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : 'bitcoin';
   const providers: PriceProvider[] = [
