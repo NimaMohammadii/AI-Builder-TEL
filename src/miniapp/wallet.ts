@@ -587,7 +587,7 @@ const DEPOSIT_CORE_SCRIPT = `
   function setUsdEquivalent(out,amount){if(!out)return;if(!tonUsd&&amount)loadTonUsd();out.textContent=(tonUsd&&amount)?'≈ $'+(amount*tonUsd).toFixed(2):(amount?'≈ …':'≈ $0.00')}
   function publishTonUsd(){updateWithdrawEquivalent();var out=q('starsTonEquivalent');var ton=q('tonAmountSheet');if(out&&ton&&ton.style.display!=='none')setUsdEquivalent(out,tonAmount(ton.value))}
   function stopTonUsd(){}
-  function loadTonUsd(){if(tonUsdPromise)return tonUsdPromise;tonUsdPromise=fetch('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('Binance price request failed');return r.json()}).then(function(data){var value=Number(data&&data.price);if(!Number.isFinite(value)||value<=0)throw new Error('Invalid Binance TON price');tonUsd=value;publishTonUsd();return value}).catch(function(){return tonUsd||0}).finally(function(){tonUsdPromise=null});return tonUsdPromise}
+  function loadTonUsd(){if(tonUsdPromise)return tonUsdPromise;tonUsdPromise=fetch('https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('Binance price request failed');return r.json()}).then(function(data){var value=Number(data&&data.price);if(!Number.isFinite(value)||value<=0)throw new Error('Invalid Binance TON price');tonUsd=value;publishTonUsd();return value}).catch(function(){return tonUsd||0}).finally(function(){tonUsdPromise=null});return tonUsdPromise}
   window.VexaTonUsdPrice={read:function(){return Number.isFinite(tonUsd)&&tonUsd>0?tonUsd:0},load:loadTonUsd,stop:stopTonUsd};
   function unitText(nano,unit){
     var raw=Math.max(0,Math.floor(Number(nano)||0));
