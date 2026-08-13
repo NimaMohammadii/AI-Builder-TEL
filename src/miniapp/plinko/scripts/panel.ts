@@ -11,7 +11,7 @@ export const PLINKO_PANEL_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function ensureFirstLoadStyle(){if(document.getElementById('plinkoFirstLoadNoOverlayStyle'))return;var style=document.createElement('style');style.id='plinkoFirstLoadNoOverlayStyle';style.textContent='body.plinko-control-loading #plinko.view .plinko-stage{opacity:1!important;pointer-events:auto!important}body.plinko-control-loading #plinko.view .plinko-controls{opacity:1!important;pointer-events:auto!important}body.plinko-control-loading #plinko.view:after{display:none!important;content:none!important;opacity:0!important;pointer-events:none!important}';document.head.appendChild(style)}
   function tonToNano(value){return Math.max(0,Math.floor((Number(String(value||'').replace(',','.'))||0)*NANO))}
-  function readBalanceNano(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function')return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));return 0}
+  function readBalanceNano(){if(window.VexaTonBalance&&typeof window.VexaTonBalance.read==='function')return Math.max(0,Math.floor(Number(window.VexaTonBalance.read())||0));var source=q('plinkoTonBalance')||q('topTonBalance')||q('plinkoCredit');return tonToNano(source&&source.textContent)}
   function isPlinkoActive(){var active=document.querySelector('.view.active');return !!(active&&active.id==='plinko')}
   function roundCurrency(value){var next=Math.round((Math.max(0,Number(value)||0)+Number.EPSILON)*100)/100;return next}
   function money(value){var next=roundCurrency(value);return next.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1')}
