@@ -186,12 +186,12 @@ async function fetchHourlyCandle(market: CandleMarket, startMs: number): Promise
   return { open: cleanPrice(row[1]), close: cleanPrice(row[4]) };
 }
 async function fetchSpotPrice(market: 'ton'): Promise<number> {
-  const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT', { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT', { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!response.ok) throw new Error('Price feed is unavailable');
   const data = await response.json() as { price?: string };
   return cleanPrice(data.price);
 }
-function candleSymbol(market: CandleMarket): string { if (market === 'bitcoin') return 'BTCUSDT'; if (market === 'ethereum') return 'ETHUSDT'; if (market === 'solana') return 'SOLUSDT'; if (market === 'gold') return 'PAXGUSDT'; return 'TONUSDT'; }
+function candleSymbol(market: CandleMarket): string { if (market === 'bitcoin') return 'BTCUSDT'; if (market === 'ethereum') return 'ETHUSDT'; if (market === 'solana') return 'SOLUSDT'; if (market === 'gold') return 'PAXGUSDT'; return 'GRAMUSDT'; }
 function storedMarketName(market: CandleMarket): string { return `candle_${market}`; }
 function normalizeCandleMarket(value: string): CandleMarket { const market = value.trim().toLowerCase(); if (market === 'bitcoin' || market === 'btc') return 'bitcoin'; if (market === 'ethereum' || market === 'eth') return 'ethereum'; if (market === 'solana' || market === 'sol') return 'solana'; if (market === 'gold' || market === 'paxg') return 'gold'; if (market === 'ton') return 'ton'; throw new Error('Invalid candle market'); }
 function normalizeSide(value: unknown): CandleSide { const side = String(value || '').toLowerCase(); if (side === 'green' || side === 'up') return 'up'; if (side === 'red' || side === 'down') return 'down'; throw new Error('Choose Green or Red'); }
