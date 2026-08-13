@@ -5,7 +5,8 @@ import { awardDepositXp } from './xp-rewards';
 import { gameBotToken } from './utils';
 
 const MIN_STARS_DEPOSIT = 2;
-const TELEGRAM_APP_CONFIG_URL = 'https://core.telegram.org/api/config';
+const TELEGRAM_STAR_REWARD_USD = 0.013;
+const TELEGRAM_WITHDRAW_RATE_X1000 = 1300;
 const GRAM_USD_TICKER_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT';
 const RATE_CACHE_MS = 60_000;
 
@@ -182,30 +183,17 @@ async function getStarsGramRate(): Promise<StarsGramRate> {
 }
 
 async function fetchStarsGramRate(): Promise<StarsGramRate> {
-  const [telegramResponse, gramResponse] = await Promise.all([
-    fetch(TELEGRAM_APP_CONFIG_URL, {
-      headers: { accept: 'text/html' },
-      cf: { cacheTtl: 60, cacheEverything: true },
-    } as RequestInit),
-    fetch(GRAM_USD_TICKER_URL, {
-      cf: { cacheTtl: 1, cacheEverything: false },
-    } as RequestInit),
-  ]);
-  if (!telegramResponse.ok) throw new Error('Telegram Stars rate is unavailable');
+  const gramResponse = await fetch(GRAM_USD_TICKER_URL, {
+    cf: { cacheTtl: 1, cacheEverything: false },
+  } as RequestInit);
   if (!gramResponse.ok) throw new Error('Gram price feed is unavailable');
-  const [telegramConfig, gramTicker] = await Promise.all([
-    telegramResponse.text(),
-    gramResponse.json() as Promise<BinanceTickerResponse>,
-  ]);
-  const rateMatch = telegramConfig.match(/stars_usd_withdraw_rate_x1000(?:<\/?[^>]+>|&quot;|&#34;|"|\s)*:\s*(?:<[^>]+>\s*)*([0-9]+(?:\.[0-9]+)?)/i);
-  const telegramWithdrawRateX1000 = Number(rateMatch && rateMatch[1]);
+  const gramTicker = await gramResponse.json() as BinanceTickerResponse;
   const gramUsd = Number(gramTicker && gramTicker.price);
-  if (!Number.isFinite(telegramWithdrawRateX1000) || telegramWithdrawRateX1000 <= 0) throw new Error('Telegram Stars rate is unavailable');
   if (!Number.isFinite(gramUsd) || gramUsd <= 0) throw new Error('Gram price feed is unavailable');
-  const gramPerStar = telegramWithdrawRateX1000 / (gramUsd * 100_000);
+  const gramPerStar = TELEGRAM_STAR_REWARD_USD / gramUsd;
   if (!Number.isFinite(gramPerStar) || gramPerStar <= 0) throw new Error('Stars to Gram rate is unavailable');
   return {
-    telegramWithdrawRateX1000,
+    telegramWithdrawRateX1000: TELEGRAM_WITHDRAW_RATE_X1000,
     gramUsd,
     gramPerStar,
     updatedAt: new Date().toISOString(),
