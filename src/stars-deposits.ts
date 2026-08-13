@@ -12,6 +12,7 @@ const GRAM_USD_TICKER_URLS = [
   'https://api.binance.com/api/v3/ticker/price?symbol=GRAMUSDT',
 ] as const;
 const GRAM_USD_COINPAPRIKA_URL = 'https://api.coinpaprika.com/v1/tickers/toncoin-the-open-network';
+const GRAM_USD_GATE_URL = 'https://api.gateio.ws/api/v4/spot/tickers?currency_pair=GRAM_USDT';
 const RATE_CACHE_MS = 60_000;
 const RATE_STALE_MS = 5 * 60_000;
 const GRAM_PRICE_REQUEST_TIMEOUT_MS = 4_000;
@@ -47,6 +48,11 @@ type CoinPaprikaTickerResponse = {
     };
   };
 };
+
+type GateTickerResponse = Array<{
+  currency_pair?: string;
+  last?: string;
+}>;
 
 export type StarsGramRate = {
   telegramWithdrawRateX1000: number;
@@ -263,8 +269,27 @@ async function fetchCoinPaprikaGramUsd(): Promise<GramPriceAttempt> {
   }
 }
 
+async function fetchGateGramUsd(): Promise<GramPriceAttempt> {
+  const source = 'gate';
+  try {
+    const response = await fetchWithTimeout(GRAM_USD_GATE_URL, {
+      headers: { accept: 'application/json', 'user-agent': 'VexaGames/1.0' },
+      cf: { cacheTtl: 5, cacheEverything: true },
+    } as RequestInit);
+    if (!response.ok) return { source, price: 0, error: `HTTP ${response.status}` };
+    const tickers = await response.json() as GateTickerResponse;
+    const ticker = Array.isArray(tickers) ? tickers[0] : null;
+    if (ticker?.currency_pair !== 'GRAM_USDT') return { source, price: 0, error: 'wrong asset' };
+    const price = validGramUsd(ticker.last);
+    return { source, price, error: price ? '' : 'invalid price' };
+  } catch (error) {
+    return { source, price: 0, error: error instanceof Error ? error.message : 'request failed' };
+  }
+}
+
 async function fetchStarsGramRate(): Promise<StarsGramRate> {
   const attempts = await Promise.all([
+    fetchGateGramUsd(),
     fetchCoinPaprikaGramUsd(),
     ...GRAM_USD_TICKER_URLS.map((url, index) => fetchBinanceGramUsd(url, index === 0 ? 'binance-data' : 'binance-api')),
   ]);
