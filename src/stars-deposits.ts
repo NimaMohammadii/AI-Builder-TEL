@@ -197,7 +197,7 @@ async function fetchStarsGramRate(): Promise<StarsGramRate> {
     telegramResponse.text(),
     gramResponse.json() as Promise<BinanceTickerResponse>,
   ]);
-  const rateMatch = telegramConfig.match(/stars_usd_withdraw_rate_x1000(?:&quot;|&#34;|")?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i);
+  const rateMatch = telegramConfig.match(/stars_usd_withdraw_rate_x1000(?:<\/?[^>]+>|&quot;|&#34;|"|\s)*:\s*(?:<[^>]+>\s*)*([0-9]+(?:\.[0-9]+)?)/i);
   const telegramWithdrawRateX1000 = Number(rateMatch && rateMatch[1]);
   const gramUsd = Number(gramTicker && gramTicker.price);
   if (!Number.isFinite(telegramWithdrawRateX1000) || telegramWithdrawRateX1000 <= 0) throw new Error('Telegram Stars rate is unavailable');
