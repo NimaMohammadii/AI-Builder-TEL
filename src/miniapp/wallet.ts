@@ -71,6 +71,7 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
   <script>
     (function(){
       var isTransitioning=false;
+      var paymentMethodImagesLoaded=false;
       function q(id){return document.getElementById(id)}
       function sheet(){return q('depositSheet')}
       function addStyle(){
@@ -94,8 +95,9 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
         });
       }
       function refreshPaymentMethodImages(){
-        var s=sheet();if(!s)return;bindPaymentMethodImages();var stamp=Date.now();
-        Array.prototype.forEach.call(s.querySelectorAll('img[data-payment-method]'),function(img){var method=img.getAttribute('data-payment-method');if(method)img.setAttribute('src','/app/api/uploaded-image/payment-method/'+method+'.png?r='+stamp)});
+        if(paymentMethodImagesLoaded)return;
+        var s=sheet();if(!s)return;bindPaymentMethodImages();paymentMethodImagesLoaded=true;
+        Array.prototype.forEach.call(s.querySelectorAll('img[data-payment-method]'),function(img){var method=img.getAttribute('data-payment-method');if(method)img.setAttribute('src','/app/api/uploaded-image/payment-method/'+method+'.png')});
       }
       function ensurePicker(){
         addStyle();
