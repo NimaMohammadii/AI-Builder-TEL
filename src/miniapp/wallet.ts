@@ -71,7 +71,6 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
   <script>
     (function(){
       var isTransitioning=false;
-      var paymentMethodImagesLoaded=false;
       function q(id){return document.getElementById(id)}
       function sheet(){return q('depositSheet')}
       function addStyle(){
@@ -82,22 +81,8 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
         document.head.appendChild(style);
       }
       function methodImg(type){
-        var method=type==='ton'?'gram':(type==='nft'?'nft':'stars');
-        var fallback=type==='ton'?'/app/api/credit-icon.png':('/app/api/deposit-method-icon/'+(type==='nft'?'nft':'stars')+'.png');
-        return '<img src="'+fallback+'" data-payment-method="'+method+'" data-fallback-src="'+fallback+'" alt="" decoding="async" loading="eager">';
-      }
-      function bindPaymentMethodImages(){
-        var s=sheet();if(!s)return;
-        Array.prototype.forEach.call(s.querySelectorAll('img[data-payment-method]'),function(img){
-          if(img.getAttribute('data-payment-image-bound')==='1')return;
-          img.setAttribute('data-payment-image-bound','1');
-          img.addEventListener('error',function(){var fallback=img.getAttribute('data-fallback-src');if(fallback&&img.getAttribute('src')!==fallback)img.setAttribute('src',fallback)});
-        });
-      }
-      function refreshPaymentMethodImages(){
-        if(paymentMethodImagesLoaded)return;
-        var s=sheet();if(!s)return;bindPaymentMethodImages();paymentMethodImagesLoaded=true;
-        Array.prototype.forEach.call(s.querySelectorAll('img[data-payment-method]'),function(img){var method=img.getAttribute('data-payment-method');if(method)img.setAttribute('src','/app/api/uploaded-image/payment-method/'+method+'.png')});
+        var src=type==='ton'?'/app/api/credit-icon.png':('/app/api/deposit-method-icon/'+(type==='nft'?'nft':'stars')+'.png');
+        return '<img src="'+src+'" alt="" decoding="async" loading="eager">';
       }
       function ensurePicker(){
         addStyle();
@@ -120,9 +105,7 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
             '<button class="deposit-method-option" type="button" data-action="choose-deposit-method" data-method="nft"><span class="deposit-method-image">'+methodImg('nft')+'</span><span class="deposit-method-copybox"><strong>NFT</strong><span>NFT deposit option</span></span><span class="deposit-method-arrow">›</span></button>'+
             '<p id="depositNftSoon" class="deposit-nft-soon"></p>';
           title.insertAdjacentElement('afterend',box);
-          bindPaymentMethodImages();
-          refreshPaymentMethodImages();
-        }else bindPaymentMethodImages();
+        }
         var pay=q('depositMainPayButton')||s.querySelector('[data-action="deposit-custom-stars-sheet"],[data-action="confirm-ton-payment"]');
         if(pay)pay.id='depositMainPayButton';
       }
@@ -133,7 +116,6 @@ export const WALLET_SECTION = `<div id="wallet" class="wallet-sheet" aria-hidden
       }
       function showPicker(){
         ensurePicker();
-        refreshPaymentMethodImages();
         var s=sheet();if(!s)return;
         resetRootNav();
         s.classList.remove('deposit-paying-reveal','deposit-ton-connect-required');

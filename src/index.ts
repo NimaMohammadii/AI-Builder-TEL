@@ -61,10 +61,24 @@ app.get('/tonconnect-manifest.json', (c) => c.json(
   },
 ));
 app.get('/app', async (c) => {
-  const slot = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
+  const [slot, starsImage, gramImage, nftImage] = await Promise.all([
+    c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null),
+    c.env.ASSETS.head('payment-method/stars').catch(() => null),
+    c.env.ASSETS.head('payment-method/gram').catch(() => null),
+    c.env.ASSETS.head('payment-method/nft').catch(() => null),
+  ]);
   const version = String(slot?.customMetadata?.version || slot?.uploaded?.getTime?.() || '1');
   const slotUrl = slot ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : undefined;
-  return html(miniAppHtml(slotUrl));
+  const paymentUrl = (method: 'stars' | 'gram' | 'nft', image: typeof starsImage) => {
+    if (!image) return undefined;
+    const imageVersion = String(image.customMetadata?.version || image.uploaded?.getTime?.() || '1');
+    return `/app/api/uploaded-image/payment-method/${method}.png?v=${encodeURIComponent(imageVersion)}`;
+  };
+  return html(miniAppHtml(slotUrl, {
+    stars: paymentUrl('stars', starsImage),
+    gram: paymentUrl('gram', gramImage),
+    nft: paymentUrl('nft', nftImage),
+  }));
 });
 app.get('/assets/Crash.PNG', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Crash.PNG'));
 app.get('/assets/Rocket3D.glb', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Rocket3D.glb'));
