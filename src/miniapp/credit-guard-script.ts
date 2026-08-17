@@ -6,17 +6,17 @@ export const CREDIT_GUARD_SCRIPT = `
   var watcherList=[];
   var CANDIDATES='#toast,.toast,[role="alert"],[aria-live],[id*="Status"],[id*="status"],[class*="status"],[id*="Message"],[id*="message"],[class*="message"],[id*="Notice"],[id*="notice"],[class*="notice"],[id*="Result"],[id*="result"],[class*="result"]';
 
-  function normalizedText(value){return String(value||'').replace(/\s+/g,' ').trim().toLowerCase()}
+  function normalizedText(value){return String(value||'').replace(/\\s+/g,' ').trim().toLowerCase()}
   function isInsufficientText(value){
     var text=normalizedText(value);
     if(!text||text.length>220)return false;
-    if(/\b(friend|opponent|other player) needs?\b/.test(text))return false;
-    return /\bnot enough\b/.test(text)||
-      /\binsufficient (?:balance|funds|credit|credits|points|ton|gram)\b/.test(text)||
-      /\bbalance (?:is )?too low\b/.test(text)||
-      /\byou need more (?:points|credit|credits|ton|gram)\b/.test(text)||
-      /\bneed more (?:credit|credits)\b/.test(text)||
-      /\bno (?:credit|credits|funds)\b/.test(text);
+    if(/\\b(friend|opponent|other player) needs?\\b/.test(text))return false;
+    return /\\bnot enough\\b/.test(text)||
+      /\\binsufficient (?:balance|funds|credit|credits|points|ton|gram)\\b/.test(text)||
+      /\\bbalance (?:is )?too low\\b/.test(text)||
+      /\\byou need more (?:points|credit|credits|ton|gram)\\b/.test(text)||
+      /\\bneed more (?:credit|credits)\\b/.test(text)||
+      /\\bno (?:credit|credits|funds)\\b/.test(text);
   }
   function installStyle(){
     if(document.getElementById('vexa-credit-guard-style'))return;
