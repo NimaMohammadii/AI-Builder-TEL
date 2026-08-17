@@ -30,46 +30,52 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
-  border:1px solid rgba(255,255,255,.92)!important;
-  background:linear-gradient(180deg,#ffffff 0%,#f8f8f8 16%,#d9dadd 46%,#ffffff 71%,#c8c9cc 100%)!important;
-  color:#111!important;
-  text-shadow:0 1px 0 rgba(255,255,255,.82)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(70,72,76,.34),0 8px 18px rgba(0,0,0,.24)!important;
+  border:1px solid rgba(255,255,255,.17)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.035) 20%,rgba(0,0,0,.10) 52%,rgba(255,255,255,.055) 76%,rgba(0,0,0,.16) 100%),linear-gradient(135deg,#25262a 0%,#121316 42%,#2b2d31 72%,#0b0c0e 100%)!important;
+  background-size:160% 100%!important;
+  color:rgba(255,255,255,.96)!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.62)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.82),0 8px 18px rgba(0,0,0,.28)!important;
   transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,filter .16s ease!important;
+  animation:homeDarkMetalShift 4.8s ease-in-out infinite!important;
 }
 #home .home-ticket-card .home-ticket-step{
-  border-radius:13px!important;
-  font-size:20px!important;
-  font-weight:650!important;
-  line-height:1!important;
-  letter-spacing:0!important;
+  border-radius:15px!important;
+  font-size:0!important;
+  line-height:0!important;
+  color:transparent!important;
+}
+#home .home-ticket-card .home-ticket-step:before,
+#home .home-ticket-card .home-ticket-step:after{
+  content:''!important;
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:16px!important;
+  height:2.6px!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#aeb1b7 0%,#f4f5f6 48%,#a3a7ad 100%)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.18),0 1px 4px rgba(0,0,0,.48)!important;
+  transform:translate(-50%,-50%)!important;
+  pointer-events:none!important;
+}
+#home .home-ticket-card .home-ticket-step[data-ticket-minus]:after{display:none!important}
+#home .home-ticket-card .home-ticket-step[data-ticket-plus]:after{
+  display:block!important;
+  width:2.6px!important;
+  height:16px!important;
 }
 #home .home-ticket-card .home-ticket-button{
   border-radius:17px!important;
   font-weight:900!important;
 }
-#home .home-ticket-card .home-ticket-step:before,
-#home .home-ticket-card .home-ticket-button:before{
-  content:''!important;
-  position:absolute!important;
-  top:-55%!important;
-  bottom:-55%!important;
-  left:-66%!important;
-  width:38%!important;
-  transform:skewX(-18deg)!important;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),rgba(255,255,255,.98),rgba(255,255,255,.28),transparent)!important;
-  pointer-events:none!important;
-  animation:homeWhiteMetalSweep 4.4s cubic-bezier(.2,.72,.2,1) infinite!important;
-}
-#home .home-ticket-card .home-ticket-step:nth-child(2):before{animation-delay:-2.2s!important}
-#home .home-ticket-card .home-ticket-button:before{animation-delay:-1.1s!important}
 #home .home-ticket-card .home-ticket-step:active,
 #home .home-ticket-card .home-ticket-button:active{
   transform:translateY(1px) scale(.975)!important;
-  filter:brightness(.94)!important;
-  box-shadow:inset 0 2px 5px rgba(50,52,56,.28),inset 0 1px 0 rgba(255,255,255,.72),0 3px 8px rgba(0,0,0,.18)!important;
+  filter:brightness(.92)!important;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12),0 3px 8px rgba(0,0,0,.22)!important;
 }
-@keyframes homeWhiteMetalSweep{0%,60%{left:-66%;opacity:0}66%{opacity:.72}82%{left:132%;opacity:.48}88%,100%{left:132%;opacity:0}}
+@keyframes homeDarkMetalShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @media(max-width:380px){#home .home-floating-glass-button{width:62px!important;height:62px!important;min-width:62px!important;min-height:62px!important;left:calc(100vw - 88px)}}
-@media(prefers-reduced-motion:reduce){#home .home-ticket-card .home-ticket-step:before,#home .home-ticket-card .home-ticket-button:before{animation:none!important;opacity:.18!important;left:30%!important}}
+@media(prefers-reduced-motion:reduce){#home .home-ticket-card .home-ticket-step,#home .home-ticket-card .home-ticket-button{animation:none!important}}
 `;
