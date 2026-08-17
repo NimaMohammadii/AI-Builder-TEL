@@ -96,7 +96,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   border-radius: 24px !important;
   background: none !important;
   box-shadow: none !important;
-  box-sizing:border-box !important;
+  box-sizing: border-box !important;
 }
 #home .home-intro-image-frame img.home-intro-image,
 #rewards .home-intro-image-frame img.home-intro-image {
