@@ -30,12 +30,12 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
-  border:1px solid rgba(118,35,54,.22)!important;
-  background:linear-gradient(180deg,rgba(197,74,99,.07) 0%,rgba(96,16,36,.035) 20%,rgba(9,1,4,.30) 52%,rgba(70,10,28,.04) 76%,rgba(3,0,1,.34) 100%),linear-gradient(135deg,#20040b 0%,#0d0104 42%,#270610 72%,#060001 100%)!important;
+  border:1px solid rgba(148,55,75,.25)!important;
+  background:linear-gradient(180deg,rgba(232,95,122,.10) 0%,rgba(120,24,47,.055) 20%,rgba(16,2,7,.23) 52%,rgba(92,15,35,.06) 76%,rgba(7,0,3,.27) 100%),linear-gradient(135deg,#390916 0%,#1b0309 42%,#460d1d 72%,#110105 100%)!important;
   background-size:160% 100%!important;
-  color:rgba(255,236,242,.94)!important;
-  text-shadow:0 1px 1px rgba(0,0,0,.74)!important;
-  box-shadow:inset 0 1px 0 rgba(255,136,162,.10),inset 0 -1px 0 rgba(0,0,0,.92),0 8px 18px rgba(0,0,0,.34)!important;
+  color:rgba(255,238,243,.95)!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.71)!important;
+  box-shadow:inset 0 1px 0 rgba(255,151,174,.14),inset 0 -1px 0 rgba(0,0,0,.89),0 8px 18px rgba(0,0,0,.32)!important;
   transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,filter .16s ease!important;
   animation:homeDarkMetalShift 4.8s ease-in-out infinite!important;
 }
@@ -54,8 +54,8 @@ export const HOME_OVERRIDES = `
   width:16px!important;
   height:2.6px!important;
   border-radius:999px!important;
-  background:linear-gradient(90deg,#8a4354 0%,#dca8b5 48%,#733244 100%)!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.08),0 1px 4px rgba(0,0,0,.58)!important;
+  background:linear-gradient(90deg,#a85a6a 0%,#efd0d8 48%,#8e4657 100%)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.10),0 1px 4px rgba(0,0,0,.55)!important;
   transform:translate(-50%,-50%)!important;
   pointer-events:none!important;
 }
@@ -72,8 +72,8 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-step:active,
 #home .home-ticket-card .home-ticket-button:active{
   transform:translateY(1px) scale(.975)!important;
-  filter:brightness(.88)!important;
-  box-shadow:inset 0 2px 5px rgba(5,0,2,.72),inset 0 1px 0 rgba(180,55,82,.07),0 3px 8px rgba(0,0,0,.28)!important;
+  filter:brightness(.90)!important;
+  box-shadow:inset 0 2px 5px rgba(9,0,3,.66),inset 0 1px 0 rgba(210,82,108,.085),0 3px 8px rgba(0,0,0,.26)!important;
 }
 @keyframes homeDarkMetalShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @media(max-width:380px){#home .home-floating-glass-button{width:62px!important;height:62px!important;min-width:62px!important;min-height:62px!important;left:calc(100vw - 88px)}}
