@@ -32,7 +32,7 @@ export const HOME_OVERRIDES = `
   overflow:hidden!important;
   border:0!important;
   outline:0!important;
-  background:linear-gradient(180deg,rgba(232,95,122,.10) 0%,rgba(120,24,47,.055) 20%,rgba(16,2,7,.23) 52%,rgba(92,15,35,.06) 76%,rgba(7,0,3,.27) 100%),linear-gradient(135deg,#390916 0%,#1b0309 42%,#460d1d 72%,#110105 100%)!important;
+  background:linear-gradient(180deg,rgba(120,24,47,.055) 0%,rgba(52,8,20,.04) 20%,rgba(3,3,4,.34) 52%,rgba(68,10,27,.045) 76%,rgba(0,0,1,.42) 100%),linear-gradient(135deg,#090a0c 0%,#020203 42%,#1a050c 72%,#000001 100%)!important;
   background-size:160% 100%!important;
   color:rgba(255,238,243,.95)!important;
   text-shadow:0 1px 1px rgba(0,0,0,.71)!important;
