@@ -57,6 +57,7 @@ import { FOOTBALL_PREDICT_SCRIPT } from './football-predict-script';
 import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
 import { SECTION_ACCESS_SCRIPT } from './section-access-script';
 import { SECTION_ACCESS_STYLES } from './section-access-styles';
+import { CREDIT_GUARD_SCRIPT } from './credit-guard-script';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
@@ -95,7 +96,7 @@ const HOME_INTRO_CARD_IMAGE_STYLES = `
   border-radius: 24px !important;
   background: none !important;
   box-shadow: none !important;
-  box-sizing: border-box !important;
+  box-sizing:border-box !important;
 }
 #home .home-intro-image-frame img.home-intro-image,
 #rewards .home-intro-image-frame img.home-intro-image {
@@ -229,6 +230,7 @@ const SCRIPTS = [
   ACTIVITY_SCRIPT,
   TON_BALANCE_SCRIPT,
   DEPOSIT_ENHANCEMENTS_SCRIPT,
+  CREDIT_GUARD_SCRIPT,
   HOME_IMAGE_VERSION_SCRIPT,
   HOME_BLANK_CARDS_SCRIPT,
   HOME_SLOT_TUNING_SCRIPT,
