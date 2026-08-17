@@ -35,6 +35,11 @@ export const CREDIT_GUARD_SCRIPT = `
     setTimeout(function(){card.classList.remove('vexa-credit-needed-card')},900);
     return true;
   }
+  function animateWhenReady(attempt){
+    var n=Math.max(0,Math.floor(Number(attempt)||0));
+    if(animateWalletCard()||n>=4)return;
+    setTimeout(function(){animateWhenReady(n+1)},45+(n*35));
+  }
   function haptic(){
     try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred)tg.HapticFeedback.notificationOccurred('warning')}catch(e){}
   }
@@ -49,8 +54,7 @@ export const CREDIT_GUARD_SCRIPT = `
     }
     var trigger=document.querySelector('.top-balance-plus[data-view="wallet"],[data-view="wallet"]');
     if(trigger&&typeof trigger.click==='function')trigger.click();
-    setTimeout(animateWalletCard,40);
-    setTimeout(animateWalletCard,180);
+    setTimeout(function(){animateWhenReady(0)},28);
     try{window.dispatchEvent(new CustomEvent('vexa:credit-wallet-opened',{detail:detail||{}}))}catch(e){}
     return !!trigger;
   }
