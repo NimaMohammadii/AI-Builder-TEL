@@ -2,7 +2,7 @@ export const MINES_SCRIPT = `
 (function(){
   var size=25;
   var NANO=1000000000;
-  var HOUSE_RTP=.99;
+  var HOUSE_RTP=.92;
   var audioCtx=null;
   var toastTimer=null;
   var statusTimer=null;
@@ -54,6 +54,7 @@ export const MINES_SCRIPT = `
   function hasFriendRoundPoints(room){return Boolean(room&&room.id&&localStorage.getItem(friendPointKey('joined',room.id)))||readTonBalance()>=getFriendAmount(room)}
   function friendRoundResult(data){var room=data&&data.room||{};var board=data&&data.board||{};var revealed=board.revealed||[];var result={winnerRole:room.winnerRole||null,isDraw:Boolean(room.isDraw)};if(result.winnerRole||result.isDraw)return result;var last=revealed[revealed.length-1];if(last&&last.result==='hidden'&&last.byRole){result.winnerRole=last.byRole==='host'?'guest':'host';return result}var hostSafe=0,guestSafe=0;revealed.forEach(function(item){if(item.result==='safe'&&item.byRole==='host')hostSafe++;if(item.result==='safe'&&item.byRole==='guest')guestSafe++});if(hostSafe===guestSafe)result.isDraw=true;else result.winnerRole=hostSafe>guestSafe?'host':'guest';return result}
   function applyFriendPointFlow(data){var room=data&&data.room;var player=data&&data.player||{};if(!room||!room.id||!room.hasGuest)return;var amount=getFriendAmount(room);var joinedKey=friendPointKey('joined',room.id);if((room.status==='active'||room.status==='finished')&&!localStorage.getItem(joinedKey)){if(readTonBalance()<amount){friendCreditBlocked=true;setFriendStatus('You need more points for this friend round');return}friendCreditBlocked=false;addTonDelta(-amount);localStorage.setItem(joinedKey,'1');setFriendStatus('Round points reserved')}if(room.status!=='finished')return;var settledKey=friendPointKey('settled',room.id);if(localStorage.getItem(settledKey))return;var result=friendRoundResult(data);if(result.isDraw){addTonDelta(amount);localStorage.setItem(settledKey,'draw');setFriendStatus('Draw — points returned');return}if(result.winnerRole&&result.winnerRole===player.role){addTonDelta(amount*2);localStorage.setItem(settledKey,'win');setFriendStatus('You finished first — points are yours');return}localStorage.setItem(settledKey,'done');setFriendStatus('Friend finished first — points are theirs')}
+  function minSafePicksForCollect(){return state.mines<=5?2:1}
   function calcMultiplier(){var picks=clamp(Math.floor(Number(state.revealed)||0),0,size-state.mines);if(picks<=0){state.multiplier=1;return state.multiplier}var probability=1;for(var i=0;i<picks;i++){probability*=((size-state.mines-i)/(size-i))}state.multiplier=probability>0?Math.max(1,HOUSE_RTP/probability):state.multiplier;return state.multiplier}
   function hideOldNotice(){var old=q('minesFriendNotice')||q('minesToast');if(old){old.style.setProperty('display','none','important');old.style.setProperty('opacity','0','important')}}
   function currentMultiplierText(){return state.multiplier.toFixed(2)+'x'}
@@ -62,7 +63,7 @@ export const MINES_SCRIPT = `
   function setFriendStatus(text){text=text||'';var el=q('minesFriendStatus');if(el)el.textContent=text;if(text&&text!==lastFriendMessage)setStatus(text);lastFriendMessage=text}
   function setMultiplierText(){var mx=q('minesMultiplier');if(!mx)return;var showStatus=statusMessage&&Date.now()<statusUntil;var next=showStatus?statusMessage:currentMultiplierText();if(!showStatus)lastMultiplierText=next;applyDisplayText(next,showStatus);var view=q('mines');if(view){view.classList.toggle('playing',state.active||friendMode);view.classList.toggle('is-friend-mode',friendMode)}}
   function setBetNano(nano){var amount=q('minesBet');state.amountNano=clamp(Math.floor(Number(nano)||0),1,999999999999999);if(amount)amount.value=fromNano(state.amountNano);setMultiplierText()}
-  function refresh(){var amount=q('minesBet');var count=q('minesCount');if(!friendMode){state.amountNano=clamp(toNano(amount&&amount.value),1,999999999999999);state.mines=clamp(Math.floor(Number(count&&count.value)||3),1,20)}if(amount){amount.setAttribute('step','0.01');amount.value=fromNano(state.amountNano);amount.disabled=friendMode}if(count)count.disabled=friendMode;setMultiplierText();var start=q('minesStart');if(start){start.textContent=friendMode?'Friend Round':state.active?'Playing':'Start Round';start.disabled=friendMode}var cash=q('minesCashout');if(cash)cash.disabled=friendMode||!state.active||state.revealed<1;var invite=q('minesInviteFriend');if(invite)invite.disabled=friendBusy;var exit=q('minesFriendExit');if(exit)exit.style.display=friendMode?'block':'none'}
+  function refresh(){var amount=q('minesBet');var count=q('minesCount');if(!friendMode){state.amountNano=clamp(toNano(amount&&amount.value),1,999999999999999);state.mines=clamp(Math.floor(Number(count&&count.value)||3),1,20)}if(amount){amount.setAttribute('step','0.01');amount.value=fromNano(state.amountNano);amount.disabled=friendMode}if(count)count.disabled=friendMode;setMultiplierText();var start=q('minesStart');if(start){start.textContent=friendMode?'Friend Round':state.active?'Playing':'Start Round';start.disabled=friendMode}var cash=q('minesCashout');if(cash)cash.disabled=friendMode||!state.active||state.revealed<minSafePicksForCollect();var invite=q('minesInviteFriend');if(invite)invite.disabled=friendBusy;var exit=q('minesFriendExit');if(exit)exit.style.display=friendMode?'block':'none'}
   function tileKind(i){return state.active||state.ended?state.bombs[i]?'bomb':'safe':'safe'}
   function boardTiles(){var board=q('minesBoard');return board?Array.prototype.slice.call(board.querySelectorAll('[data-mine-cell]')):[]}
   function setTileBack(tile,kind){var back=tile&&tile.querySelector&&tile.querySelector('.mine-tile-back');if(!back)return;var src=kind==='bomb'?tileImages.bomb:tileImages.safe;var img=back.querySelector('img');if(back.getAttribute('data-kind')===kind&&img&&img.getAttribute('src')===src)return;back.setAttribute('data-kind',kind);if(!img){back.textContent='';img=imageEl(kind);back.appendChild(img);return}img.alt=kind==='bomb'?'Mine':'Safe';if(img.getAttribute('src')!==src)img.src=src}
@@ -103,7 +104,7 @@ export const MINES_SCRIPT = `
     refresh();
   }
   function cashout(){
-    if(friendMode||!state.active||state.revealed<1)return;
+    if(friendMode||!state.active||state.revealed<minSafePicksForCollect())return;
     var resultNano=Math.max(0,Math.floor(state.amountNano*state.multiplier));
     sound('cash');
     state.active=false;
@@ -144,6 +145,7 @@ export const MINES_SCRIPT = `
     addGameXp(1,'game-action',{action:'safe-tile',revealed:state.revealed});
     calcMultiplier();
     if(state.revealed>=size-state.mines){cashout();return}
+    if(state.revealed<minSafePicksForCollect())setStatus('One more safe tile to Collect');
     refresh();
   }
   function tg(){return window.Telegram&&window.Telegram.WebApp}
