@@ -32,11 +32,11 @@ export const HOME_OVERRIDES = `
   overflow:hidden!important;
   border:0!important;
   outline:0!important;
-  background:linear-gradient(180deg,rgba(120,24,47,.055) 0%,rgba(52,8,20,.04) 20%,rgba(3,3,4,.34) 52%,rgba(68,10,27,.045) 76%,rgba(0,0,1,.42) 100%),linear-gradient(135deg,#090a0c 0%,#020203 42%,#1a050c 72%,#000001 100%)!important;
+  background:linear-gradient(180deg,rgba(120,24,47,.11) 0%,rgba(52,8,20,.085) 20%,rgba(3,3,4,.34) 52%,rgba(68,10,27,.10) 76%,rgba(0,0,1,.42) 100%),linear-gradient(135deg,#090a0c 0%,#020203 42%,#260711 72%,#000001 100%)!important;
   background-size:160% 100%!important;
   color:rgba(255,238,243,.95)!important;
   text-shadow:0 1px 1px rgba(0,0,0,.71)!important;
-  box-shadow:inset 0 1px 0 rgba(255,151,174,.14),inset 0 -1px 0 rgba(0,0,0,.89),0 8px 18px rgba(0,0,0,.32)!important;
+  box-shadow:inset 0 1px 0 rgba(255,151,174,.20),inset 0 -1px 0 rgba(0,0,0,.89),0 8px 18px rgba(0,0,0,.32)!important;
   transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,filter .16s ease!important;
   animation:homeDarkMetalShift 4.8s ease-in-out infinite!important;
 }
