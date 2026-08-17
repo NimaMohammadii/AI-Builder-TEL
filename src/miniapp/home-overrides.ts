@@ -30,12 +30,12 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
-  border:1px solid rgba(255,255,255,.17)!important;
-  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.035) 20%,rgba(0,0,0,.10) 52%,rgba(255,255,255,.055) 76%,rgba(0,0,0,.16) 100%),linear-gradient(135deg,#25262a 0%,#121316 42%,#2b2d31 72%,#0b0c0e 100%)!important;
+  border:1px solid rgba(170,70,92,.28)!important;
+  background:linear-gradient(180deg,rgba(255,126,154,.13) 0%,rgba(145,32,58,.07) 20%,rgba(24,3,9,.18) 52%,rgba(115,20,43,.08) 76%,rgba(10,1,4,.22) 100%),linear-gradient(135deg,#4a0d1d 0%,#25050d 42%,#5a1126 72%,#180208 100%)!important;
   background-size:160% 100%!important;
-  color:rgba(255,255,255,.96)!important;
-  text-shadow:0 1px 1px rgba(0,0,0,.62)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.82),0 8px 18px rgba(0,0,0,.28)!important;
+  color:rgba(255,239,244,.96)!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.68)!important;
+  box-shadow:inset 0 1px 0 rgba(255,167,187,.18),inset 0 -1px 0 rgba(0,0,0,.86),0 8px 18px rgba(0,0,0,.30)!important;
   transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,filter .16s ease!important;
   animation:homeDarkMetalShift 4.8s ease-in-out infinite!important;
 }
@@ -54,8 +54,8 @@ export const HOME_OVERRIDES = `
   width:16px!important;
   height:2.6px!important;
   border-radius:999px!important;
-  background:linear-gradient(90deg,#aeb1b7 0%,#f4f5f6 48%,#a3a7ad 100%)!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.18),0 1px 4px rgba(0,0,0,.48)!important;
+  background:linear-gradient(90deg,#ba6a7c 0%,#ffe0e7 48%,#9f5265 100%)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.12),0 1px 4px rgba(0,0,0,.52)!important;
   transform:translate(-50%,-50%)!important;
   pointer-events:none!important;
 }
@@ -72,8 +72,8 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-step:active,
 #home .home-ticket-card .home-ticket-button:active{
   transform:translateY(1px) scale(.975)!important;
-  filter:brightness(.92)!important;
-  box-shadow:inset 0 2px 5px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12),0 3px 8px rgba(0,0,0,.22)!important;
+  filter:brightness(.91)!important;
+  box-shadow:inset 0 2px 5px rgba(12,0,4,.62),inset 0 1px 0 rgba(255,121,150,.10),0 3px 8px rgba(0,0,0,.24)!important;
 }
 @keyframes homeDarkMetalShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @media(max-width:380px){#home .home-floating-glass-button{width:62px!important;height:62px!important;min-width:62px!important;min-height:62px!important;left:calc(100vw - 88px)}}
