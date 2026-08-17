@@ -2,6 +2,7 @@ export const MINES_SCRIPT = `
 (function(){
   var size=25;
   var NANO=1000000000;
+  var HOUSE_RTP=.99;
   var audioCtx=null;
   var toastTimer=null;
   var statusTimer=null;
@@ -53,7 +54,7 @@ export const MINES_SCRIPT = `
   function hasFriendRoundPoints(room){return Boolean(room&&room.id&&localStorage.getItem(friendPointKey('joined',room.id)))||readTonBalance()>=getFriendAmount(room)}
   function friendRoundResult(data){var room=data&&data.room||{};var board=data&&data.board||{};var revealed=board.revealed||[];var result={winnerRole:room.winnerRole||null,isDraw:Boolean(room.isDraw)};if(result.winnerRole||result.isDraw)return result;var last=revealed[revealed.length-1];if(last&&last.result==='hidden'&&last.byRole){result.winnerRole=last.byRole==='host'?'guest':'host';return result}var hostSafe=0,guestSafe=0;revealed.forEach(function(item){if(item.result==='safe'&&item.byRole==='host')hostSafe++;if(item.result==='safe'&&item.byRole==='guest')guestSafe++});if(hostSafe===guestSafe)result.isDraw=true;else result.winnerRole=hostSafe>guestSafe?'host':'guest';return result}
   function applyFriendPointFlow(data){var room=data&&data.room;var player=data&&data.player||{};if(!room||!room.id||!room.hasGuest)return;var amount=getFriendAmount(room);var joinedKey=friendPointKey('joined',room.id);if((room.status==='active'||room.status==='finished')&&!localStorage.getItem(joinedKey)){if(readTonBalance()<amount){friendCreditBlocked=true;setFriendStatus('You need more points for this friend round');return}friendCreditBlocked=false;addTonDelta(-amount);localStorage.setItem(joinedKey,'1');setFriendStatus('Round points reserved')}if(room.status!=='finished')return;var settledKey=friendPointKey('settled',room.id);if(localStorage.getItem(settledKey))return;var result=friendRoundResult(data);if(result.isDraw){addTonDelta(amount);localStorage.setItem(settledKey,'draw');setFriendStatus('Draw — points returned');return}if(result.winnerRole&&result.winnerRole===player.role){addTonDelta(amount*2);localStorage.setItem(settledKey,'win');setFriendStatus('You finished first — points are yours');return}localStorage.setItem(settledKey,'done');setFriendStatus('Friend finished first — points are theirs')}
-  function calcMultiplier(){var safeLeft=size-state.mines-state.revealed;var totalLeft=size-state.revealed;if(totalLeft<=0||safeLeft<=0)return state.multiplier;var edge=.96;var chance=safeLeft/totalLeft;state.multiplier=Math.max(1,state.multiplier*(1/chance)*edge);return state.multiplier}
+  function calcMultiplier(){var picks=clamp(Math.floor(Number(state.revealed)||0),0,size-state.mines);if(picks<=0){state.multiplier=1;return state.multiplier}var probability=1;for(var i=0;i<picks;i++){probability*=((size-state.mines-i)/(size-i))}state.multiplier=probability>0?Math.max(1,HOUSE_RTP/probability):state.multiplier;return state.multiplier}
   function hideOldNotice(){var old=q('minesFriendNotice')||q('minesToast');if(old){old.style.setProperty('display','none','important');old.style.setProperty('opacity','0','important')}}
   function currentMultiplierText(){return state.multiplier.toFixed(2)+'x'}
   function applyDisplayText(text,isStatus){var mx=q('minesMultiplier');if(!mx)return;hideOldNotice();text=String(text||currentMultiplierText());mx.classList.toggle('mines-status-label',!!isStatus);if(mx.textContent!==text){var generation=++displayGeneration;clearTimeout(displayTimer);mx.classList.remove('mines-status-fade');var begin=function(){if(generation!==displayGeneration)return;mx.classList.add('mines-status-fade');displayTimer=setTimeout(function(){if(generation!==displayGeneration)return;mx.textContent=text;mx.classList.remove('mines-status-fade')},140)};if(window.requestAnimationFrame)requestAnimationFrame(begin);else setTimeout(begin,16)}}
@@ -122,7 +123,6 @@ export const MINES_SCRIPT = `
     if(!state.active||state.ended)return;
     var i=Number(cell.getAttribute('data-mine-cell'));
     if(!Number.isFinite(i)||state.safe[i]||cell.classList.contains('revealed'))return;
-    if(window.VexaGameChance&&typeof window.VexaGameChance.decideWin==='function'){var wantSafe=window.VexaGameChance.decideWin();if(wantSafe===null||wantSafe===undefined)wantSafe=state.bombs[i]?false:true;if(wantSafe&&state.bombs[i]){delete state.bombs[i];var repl=0;while(repl<size&&(state.safe[repl]||repl===i||state.bombs[repl]))repl++;if(repl<size)state.bombs[repl]=true}else if(!wantSafe&&!state.bombs[i]){state.bombs[i]=true}}
     if(state.bombs[i]){
       sound('mine');
       state.active=false;
