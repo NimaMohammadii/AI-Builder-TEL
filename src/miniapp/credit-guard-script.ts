@@ -4,7 +4,7 @@ export const CREDIT_GUARD_SCRIPT = `
   var lastSignal='';
   var watched=typeof WeakSet==='function'?new WeakSet():null;
   var watcherList=[];
-  var CANDIDATES='#toast,.toast,[role="alert"],[aria-live],[id*="Status"],[id*="status"],[class*="status"],[id*="Message"],[id*="message"],[class*="message"],[id*="Notice"],[id*="notice"],[class*="notice"],[id*="Result"],[id*="result"],[class*="result"]';
+  var CANDIDATES='#toast,.toast,#minesMultiplier,[role="alert"],[aria-live],[id*="Status"],[id*="status"],[class*="status"],[id*="Message"],[id*="message"],[class*="message"],[id*="Notice"],[id*="notice"],[class*="notice"],[id*="Result"],[id*="result"],[class*="result"]';
 
   function normalizedText(value){return String(value||'').replace(/\\s+/g,' ').trim().toLowerCase()}
   function isInsufficientText(value){
