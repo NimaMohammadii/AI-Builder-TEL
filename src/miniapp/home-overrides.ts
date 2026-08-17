@@ -30,7 +30,8 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
-  border:1px solid rgba(148,55,75,.25)!important;
+  border:0!important;
+  outline:0!important;
   background:linear-gradient(180deg,rgba(232,95,122,.10) 0%,rgba(120,24,47,.055) 20%,rgba(16,2,7,.23) 52%,rgba(92,15,35,.06) 76%,rgba(7,0,3,.27) 100%),linear-gradient(135deg,#390916 0%,#1b0309 42%,#460d1d 72%,#110105 100%)!important;
   background-size:160% 100%!important;
   color:rgba(255,238,243,.95)!important;
