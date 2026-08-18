@@ -52,6 +52,7 @@ export const BOOT_LOADER_SCRIPT = `
   }
 
   var GAME_IMAGE_RETRY_MS=900;
+  var GAME_IMAGE_ATTEMPT_TIMEOUT_MS=15000;
   var GAME_IMAGE_STATIC_URLS=[
     '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
@@ -78,9 +79,19 @@ export const BOOT_LOADER_SCRIPT = `
   var gameImageKeep=window.__vexaGamePreloadedImages=window.__vexaGamePreloadedImages||[];
   var gameImageJobs=window.__vexaGameImagePreloadJobs=window.__vexaGameImagePreloadJobs||{};
   function gameImageDelay(ms){return new Promise(function(resolve){setTimeout(resolve,ms)})}
+  function fetchJsonAttempt(url){
+    return new Promise(function(resolve,reject){
+      var done=false,controller=typeof AbortController==='function'?new AbortController():null;
+      var options={cache:'no-store',credentials:'same-origin',headers:{accept:'application/json'}};
+      if(controller)options.signal=controller.signal;
+      var timer=setTimeout(function(){if(done)return;done=true;try{if(controller)controller.abort()}catch(e){}reject(new Error('image manifest timeout'))},GAME_IMAGE_ATTEMPT_TIMEOUT_MS);
+      fetch(url,options)
+        .then(function(r){if(!r.ok)throw new Error('image manifest failed');return r.json()})
+        .then(function(value){if(done)return;done=true;clearTimeout(timer);resolve(value)},function(error){if(done)return;done=true;clearTimeout(timer);reject(error)})
+    })
+  }
   function fetchJsonStrict(url){
-    return fetch(url,{cache:'no-store',credentials:'same-origin',headers:{accept:'application/json'}})
-      .then(function(r){if(!r.ok)throw new Error('image manifest failed');return r.json()})
+    return fetchJsonAttempt(url)
       .catch(function(){return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return fetchJsonStrict(url)})})
   }
   function preloadGameImageStrict(url){
@@ -90,7 +101,8 @@ export const BOOT_LOADER_SCRIPT = `
     function attempt(){
       return new Promise(function(resolve,reject){
         var img=new Image(),done=false;
-        function cleanup(){try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
+        var timer=setTimeout(function(){finish(false)},GAME_IMAGE_ATTEMPT_TIMEOUT_MS);
+        function cleanup(){clearTimeout(timer);try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
         function finish(ok){if(done)return;done=true;cleanup();if(ok){gameImageKeep.push(img);resolve(true)}else reject(new Error('game image failed'))}
         function decoded(){
           if(img.naturalWidth<=0){finish(false);return}
@@ -133,7 +145,7 @@ export const BOOT_LOADER_SCRIPT = `
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
     window.__vexaAllGameImagesReady=collectGameImageUrls()
       .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))})
-      .then(function(){return true});
+      .then(function(){gameImageKeep.length=0;return true});
     return window.__vexaAllGameImagesReady
   }
 
