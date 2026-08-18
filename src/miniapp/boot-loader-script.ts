@@ -42,7 +42,7 @@ export const BOOT_LOADER_SCRIPT = `
       var start=value.indexOf('url(');if(start<0)return '';
       var end=value.indexOf(')',start+4);if(end<0)return '';
       var raw=value.slice(start+4,end).trim();
-      if(raw.length>1&&((raw.charAt(0)==='"'&&raw.charAt(raw.length-1)==='"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
+      if(raw.length>1&&((raw.charAt(0)==='\"'&&raw.charAt(raw.length-1)==='\"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
       return raw
     }catch(e){return ''}
   }
@@ -53,12 +53,16 @@ export const BOOT_LOADER_SCRIPT = `
 
   var GAME_IMAGE_RETRY_MS=900;
   var GAME_IMAGE_STATIC_URLS=[
+    '/assets/Home.PNG?v=1',
+    '/assets/Playhub.PNG?v=1',
+    '/assets/Rewards.PNG?v=1',
     '/assets/Mines.PNG?v=1',
     '/assets/Plinko.PNG?v=1',
     '/assets/Crash.PNG?v=1',
     '/assets/Slotbackground.PNG?v=1',
     '/assets/Wheel.PNG?v=1',
     '/assets/Dice.PNG?v=1',
+    '/app/api/uploaded-image/ton-icon.png',
     '/assets/plinko-glass/ball.webp',
     '/assets/plinko-glass/peg.webp',
     '/assets/plinko-glass/houses.webp',
@@ -130,7 +134,7 @@ export const BOOT_LOADER_SCRIPT = `
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
     window.__vexaAllGameImagesReady=collectGameImageUrls()
       .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))})
-      .then(function(){gameImageKeep.length=0;return true});
+      .then(function(){return true});
     return window.__vexaAllGameImagesReady
   }
 
