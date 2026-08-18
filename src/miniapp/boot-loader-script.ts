@@ -52,8 +52,10 @@ export const BOOT_LOADER_SCRIPT = `
   }
 
   var GAME_IMAGE_RETRY_MS=900;
+  var GAME_MANIFEST_ATTEMPT_TIMEOUT_MS=6000;
   var GAME_IMAGE_ATTEMPT_TIMEOUT_MS=15000;
   var GAME_IMAGE_MAX_ATTEMPTS=2;
+  var GAME_IMAGE_MANIFEST_CACHE_KEY='vexa:game-image-manifests:v1';
   var GAME_IMAGE_STATIC_URLS=[
     '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
@@ -79,13 +81,16 @@ export const BOOT_LOADER_SCRIPT = `
   ];
   var gameImageKeep=window.__vexaGamePreloadedImages=window.__vexaGamePreloadedImages||[];
   var gameImageJobs=window.__vexaGameImagePreloadJobs=window.__vexaGameImagePreloadJobs||{};
+  var gameImageFailures={};
   function gameImageDelay(ms){return new Promise(function(resolve){setTimeout(resolve,ms)})}
+  function readManifestCache(){try{var value=JSON.parse(localStorage.getItem(GAME_IMAGE_MANIFEST_CACHE_KEY)||'{}');return value&&typeof value==='object'?value:{}}catch(e){return {}}}
+  function writeManifestCache(cache){try{localStorage.setItem(GAME_IMAGE_MANIFEST_CACHE_KEY,JSON.stringify(cache||{}))}catch(e){}}
   function fetchJsonAttempt(url){
     return new Promise(function(resolve,reject){
       var done=false,controller=typeof AbortController==='function'?new AbortController():null;
       var options={cache:'no-store',credentials:'same-origin',headers:{accept:'application/json'}};
       if(controller)options.signal=controller.signal;
-      var timer=setTimeout(function(){if(done)return;done=true;try{if(controller)controller.abort()}catch(e){}reject(new Error('image manifest timeout'))},GAME_IMAGE_ATTEMPT_TIMEOUT_MS);
+      var timer=setTimeout(function(){if(done)return;done=true;try{if(controller)controller.abort()}catch(e){}reject(new Error('image manifest timeout'))},GAME_MANIFEST_ATTEMPT_TIMEOUT_MS);
       fetch(url,options)
         .then(function(r){if(!r.ok)throw new Error('image manifest failed');return r.json()})
         .then(function(value){if(done)return;done=true;clearTimeout(timer);resolve(value)},function(error){if(done)return;done=true;clearTimeout(timer);reject(error)})
@@ -125,34 +130,76 @@ export const BOOT_LOADER_SCRIPT = `
         return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return attempt(attemptNo+1)})
       })
     }
-    gameImageJobs[url]=attempt(0);
+    gameImageJobs[url]=attempt(0).then(function(ok){if(ok)delete gameImageFailures[url];else gameImageFailures[url]=true;return ok});
     return gameImageJobs[url]
   }
-  function addGameImageUrl(urls,seen,value){
+  function cleanGameImageUrl(value){
     var url=String(value||'').trim();
-    if(!url||url==='none'||url.indexOf('data:image/')===0||seen[url])return;
-    seen[url]=true;urls.push(url)
+    return !url||url==='none'||url.indexOf('data:image/')===0?'':url
   }
-  function collectGameImageUrls(){
-    var urls=[],seen={};
-    GAME_IMAGE_STATIC_URLS.forEach(function(url){addGameImageUrl(urls,seen,url)});
-    var jobs=[
-      fetchJsonStrict('/app/api/game-card-images',0).then(function(j){var map=j&&j.images&&typeof j.images==='object'?j.images:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
-      fetchJsonStrict('/app/api/uploaded-images',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/section-backgrounds',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/crash-stage-images',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/ghost-run-assets',0).then(function(j){var map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
-      fetchJsonStrict('/app/api/slot-frame',0).then(function(j){addGameImageUrl(urls,seen,j&&j.slotFrameUrl)}),
-      fetchJsonStrict('/app/api/slot-symbols',0).then(function(j){(j&&Array.isArray(j.symbols)?j.symbols:[]).forEach(function(item){addGameImageUrl(urls,seen,item&&item.imageUrl)})}),
-      fetchJsonStrict('/app/api/slot-controls',0).then(function(j){(j&&Array.isArray(j.controls)?j.controls:[]).forEach(function(item){if(item&&item.id==='spin')addGameImageUrl(urls,seen,item.imageUrl)})})
-    ];
-    return Promise.all(jobs).then(function(){return urls})
+  function preloadUrlList(values){
+    var seen={},jobs=[];
+    (Array.isArray(values)?values:[]).forEach(function(value){
+      var url=cleanGameImageUrl(value);
+      if(!url||seen[url])return;
+      seen[url]=true;
+      jobs.push(preloadGameImageStrict(url))
+    });
+    return Promise.all(jobs)
+  }
+  function gameCardUrls(j){
+    var out=[],map=j&&j.images&&typeof j.images==='object'?j.images:{};
+    Object.keys(map).forEach(function(key){out.push(map[key])});
+    return out
+  }
+  function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
+  function ghostRunUrls(j){
+    var out=[],map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};
+    Object.keys(map).forEach(function(key){out.push(map[key])});
+    return out
+  }
+  function slotFrameUrls(j){return [j&&j.slotFrameUrl]}
+  function slotSymbolUrls(j){return (j&&Array.isArray(j.symbols)?j.symbols:[]).map(function(item){return item&&item.imageUrl})}
+  function slotControlUrls(j){
+    return (j&&Array.isArray(j.controls)?j.controls:[]).filter(function(item){return item&&item.id==='spin'}).map(function(item){return item.imageUrl})
+  }
+  var GAME_IMAGE_MANIFESTS=[
+    {url:'/app/api/game-card-images',urls:gameCardUrls},
+    {url:'/app/api/uploaded-images',urls:preloadArrayUrls},
+    {url:'/app/api/section-backgrounds',urls:preloadArrayUrls},
+    {url:'/app/api/crash-stage-images',urls:preloadArrayUrls},
+    {url:'/app/api/ghost-run-assets',urls:ghostRunUrls},
+    {url:'/app/api/slot-frame',urls:slotFrameUrls},
+    {url:'/app/api/slot-symbols',urls:slotSymbolUrls},
+    {url:'/app/api/slot-controls',urls:slotControlUrls}
+  ];
+  function preloadManifest(spec,cache){
+    var cached=cache&&cache[spec.url];
+    var cachedJob=preloadUrlList(spec.urls(cached));
+    var freshJob=fetchJsonStrict(spec.url,0).then(function(j){
+      if(!j)return true;
+      cache[spec.url]=j;
+      writeManifestCache(cache);
+      return preloadUrlList(spec.urls(j))
+    });
+    return Promise.all([cachedJob,freshJob]).then(function(){return true})
   }
   function gameImagesReady(){
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
-    window.__vexaAllGameImagesReady=collectGameImageUrls()
-      .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict)).then(function(results){var failed=[];for(var i=0;i<results.length;i++)if(!results[i])failed.push(urls[i]);window.__vexaGameImagePreloadFailures=failed;gameImageKeep.length=0;return true})})
-      .catch(function(){gameImageKeep.length=0;return true});
+    var manifestCache=readManifestCache();
+    var jobs=[preloadUrlList(GAME_IMAGE_STATIC_URLS)];
+    GAME_IMAGE_MANIFESTS.forEach(function(spec){jobs.push(preloadManifest(spec,manifestCache))});
+    window.__vexaAllGameImagesReady=Promise.all(jobs)
+      .then(function(){
+        window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
+        gameImageKeep.length=0;
+        return true
+      })
+      .catch(function(){
+        window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
+        gameImageKeep.length=0;
+        return true
+      });
     return window.__vexaAllGameImagesReady
   }
 
@@ -224,82 +271,5 @@ export const BOOT_LOADER_SCRIPT = `
     window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesReady()]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})})
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
-
-  var BG='/assets/Crash.PNG?v=1';
-  var TON='/app/api/uploaded-image/ton-icon.png';
-  var STAGE_META_KEY='vexa:crash-stage-manifest:v1';
-  var kept=window.__vexaCrashPreloadedImages=window.__vexaCrashPreloadedImages||[];
-  var imageJobs=window.__vexaCrashPreloadImageJobs=window.__vexaCrashPreloadImageJobs||{};
-  var rocketReady=Promise.resolve(true);
-  function image(url){
-    if(!url)return Promise.resolve(false);
-    if(imageJobs[url])return imageJobs[url];
-    imageJobs[url]=new Promise(function(resolve){
-      var img=new Image(),done=false;
-      kept.push(img);
-      function finish(ok){if(done)return;done=true;resolve(ok)}
-      img.onload=function(){if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(true)});else finish(true)};
-      img.onerror=function(){finish(false)};
-      img.decoding='async';
-      img.src=url;
-    });
-    return imageJobs[url]
-  }
-  function stageUrls(manifest){
-    if(!manifest||!manifest.images)return [];
-    var list=Array.isArray(manifest.preload)?manifest.preload:Object.keys(manifest.images).map(function(k){return manifest.images[k]});
-    return list.filter(function(url){return typeof url==='string'&&url.length>0})
-  }
-  function useStageManifest(manifest){
-    if(!manifest||!manifest.images)return manifest;
-    window.__vexaCrashStageManifest=manifest;
-    window.__vexaCrashStageImagesReady=Promise.allSettled(stageUrls(manifest).map(function(url){return image(url)})).then(function(){return true});
-    return manifest
-  }
-  function startAssets(){
-    if(window.__vexaCrashAssetsPreloadStarted)return window.__vexaCrashAssetsReady||Promise.resolve(true);
-    window.__vexaCrashAssetsPreloadStarted=true;
-    try{
-      var cached=JSON.parse(localStorage.getItem(STAGE_META_KEY)||'null');
-      if(cached&&cached.images)useStageManifest(cached)
-    }catch(e){}
-    var stagePromise=fetch('/app/api/crash-stage-images',{cache:'no-store',credentials:'same-origin',headers:{accept:'application/json'}})
-      .then(function(r){if(!r.ok)throw new Error('stage manifest failed');return r.json()})
-      .then(function(manifest){
-        useStageManifest(manifest);
-        try{localStorage.setItem(STAGE_META_KEY,JSON.stringify(manifest))}catch(e){}
-        return manifest
-      })
-      .catch(function(){return window.__vexaCrashStageManifest||null});
-    window.__vexaCrashStageManifestPromise=stagePromise;
-    var stagesReady=stagePromise.then(function(){return window.__vexaCrashStageImagesReady||true});
-    window.__vexaCrashAssetsReady=Promise.allSettled([image(BG),image(TON),stagesReady,rocketReady]).then(function(){return true});
-    return window.__vexaCrashAssetsReady
-  }
-  function warmCrash(){
-    if(window.__vexaCrashWarmupStarted)return;
-    window.__vexaCrashWarmupStarted=true;
-    var lazy=window.VexaLazySections;
-    if(!lazy||typeof lazy.ensure!=='function'){startAssets();return}
-    lazy.ensure('crash');
-    var rocket=document.getElementById('crashRocket');
-    var rocketSrc=rocket?String(rocket.getAttribute('src')||''):'';
-    if(rocket&&rocketSrc)rocket.removeAttribute('src');
-    if(rocket){
-      rocketReady=new Promise(function(resolve){
-        var done=false;
-        function finish(ok){if(done)return;done=true;resolve(ok)}
-        rocket.addEventListener('load',function(){finish(true)},{once:true});
-        rocket.addEventListener('error',function(){finish(false)},{once:true});
-      });
-      window.__vexaCrashRocketReady=rocketReady;
-    }
-    var live=window.VexaCrashLiveD1;
-    var liveRequest=live&&typeof live.load==='function'?Promise.resolve(live.load()).catch(function(){return false}):Promise.resolve(false);
-    window.__vexaCrashLiveWarmupPromise=liveRequest;
-    var liveGate=Promise.race([liveRequest,new Promise(function(resolve){setTimeout(resolve,1200)})]);
-    function releaseHeavy(){if(rocket&&rocketSrc&&!rocket.getAttribute('src'))rocket.setAttribute('src',rocketSrc);return startAssets()}
-    liveGate.then(releaseHeavy,releaseHeavy)
-  }
 })();
 `;
