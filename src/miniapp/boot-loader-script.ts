@@ -90,9 +90,8 @@ export const BOOT_LOADER_SCRIPT = `
     function attempt(){
       return new Promise(function(resolve,reject){
         var img=new Image(),done=false;
-        gameImageKeep.push(img);
         function cleanup(){try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
-        function finish(ok){if(done)return;done=true;cleanup();if(ok)resolve(true);else reject(new Error('game image failed'))}
+        function finish(ok){if(done)return;done=true;cleanup();if(ok){gameImageKeep.push(img);resolve(true)}else reject(new Error('game image failed'))}
         function decoded(){
           if(img.naturalWidth<=0){finish(false);return}
           if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(img.naturalWidth>0)});else finish(true)
