@@ -53,6 +53,7 @@ export const BOOT_LOADER_SCRIPT = `
 
   var GAME_IMAGE_RETRY_MS=900;
   var GAME_IMAGE_ATTEMPT_TIMEOUT_MS=15000;
+  var GAME_IMAGE_MAX_ATTEMPTS=2;
   var GAME_IMAGE_STATIC_URLS=[
     '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
@@ -90,15 +91,18 @@ export const BOOT_LOADER_SCRIPT = `
         .then(function(value){if(done)return;done=true;clearTimeout(timer);resolve(value)},function(error){if(done)return;done=true;clearTimeout(timer);reject(error)})
     })
   }
-  function fetchJsonStrict(url){
-    return fetchJsonAttempt(url)
-      .catch(function(){return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return fetchJsonStrict(url)})})
+  function fetchJsonStrict(url,attempt){
+    attempt=Math.max(0,Math.floor(Number(attempt)||0));
+    return fetchJsonAttempt(url).catch(function(){
+      if(attempt+1>=GAME_IMAGE_MAX_ATTEMPTS)return null;
+      return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return fetchJsonStrict(url,attempt+1)})
+    })
   }
   function preloadGameImageStrict(url){
     url=String(url||'').trim();
     if(!url||url==='none'||url.indexOf('data:image/')===0)return Promise.resolve(true);
     if(gameImageJobs[url])return gameImageJobs[url];
-    function attempt(){
+    function attempt(attemptNo){
       return new Promise(function(resolve,reject){
         var img=new Image(),done=false;
         var timer=setTimeout(function(){finish(false)},GAME_IMAGE_ATTEMPT_TIMEOUT_MS);
@@ -116,9 +120,12 @@ export const BOOT_LOADER_SCRIPT = `
         img.loading='eager';
         img.src=url;
         if(img.complete&&img.naturalWidth>0)decoded()
-      }).catch(function(){return gameImageDelay(GAME_IMAGE_RETRY_MS).then(attempt)})
+      }).catch(function(){
+        if(attemptNo+1>=GAME_IMAGE_MAX_ATTEMPTS)return false;
+        return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return attempt(attemptNo+1)})
+      })
     }
-    gameImageJobs[url]=attempt();
+    gameImageJobs[url]=attempt(0);
     return gameImageJobs[url]
   }
   function addGameImageUrl(urls,seen,value){
@@ -130,22 +137,22 @@ export const BOOT_LOADER_SCRIPT = `
     var urls=[],seen={};
     GAME_IMAGE_STATIC_URLS.forEach(function(url){addGameImageUrl(urls,seen,url)});
     var jobs=[
-      fetchJsonStrict('/app/api/game-card-images').then(function(j){var map=j&&j.images&&typeof j.images==='object'?j.images:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
-      fetchJsonStrict('/app/api/uploaded-images').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/section-backgrounds').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/crash-stage-images').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
-      fetchJsonStrict('/app/api/ghost-run-assets').then(function(j){var map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
-      fetchJsonStrict('/app/api/slot-frame').then(function(j){addGameImageUrl(urls,seen,j&&j.slotFrameUrl)}),
-      fetchJsonStrict('/app/api/slot-symbols').then(function(j){(j&&Array.isArray(j.symbols)?j.symbols:[]).forEach(function(item){addGameImageUrl(urls,seen,item&&item.imageUrl)})}),
-      fetchJsonStrict('/app/api/slot-controls').then(function(j){(j&&Array.isArray(j.controls)?j.controls:[]).forEach(function(item){if(item&&item.id==='spin')addGameImageUrl(urls,seen,item.imageUrl)})})
+      fetchJsonStrict('/app/api/game-card-images',0).then(function(j){var map=j&&j.images&&typeof j.images==='object'?j.images:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
+      fetchJsonStrict('/app/api/uploaded-images',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
+      fetchJsonStrict('/app/api/section-backgrounds',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
+      fetchJsonStrict('/app/api/crash-stage-images',0).then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
+      fetchJsonStrict('/app/api/ghost-run-assets',0).then(function(j){var map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
+      fetchJsonStrict('/app/api/slot-frame',0).then(function(j){addGameImageUrl(urls,seen,j&&j.slotFrameUrl)}),
+      fetchJsonStrict('/app/api/slot-symbols',0).then(function(j){(j&&Array.isArray(j.symbols)?j.symbols:[]).forEach(function(item){addGameImageUrl(urls,seen,item&&item.imageUrl)})}),
+      fetchJsonStrict('/app/api/slot-controls',0).then(function(j){(j&&Array.isArray(j.controls)?j.controls:[]).forEach(function(item){if(item&&item.id==='spin')addGameImageUrl(urls,seen,item.imageUrl)})})
     ];
     return Promise.all(jobs).then(function(){return urls})
   }
   function gameImagesReady(){
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
     window.__vexaAllGameImagesReady=collectGameImageUrls()
-      .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))})
-      .then(function(){gameImageKeep.length=0;return true});
+      .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict)).then(function(results){var failed=[];for(var i=0;i<results.length;i++)if(!results[i])failed.push(urls[i]);window.__vexaGameImagePreloadFailures=failed;gameImageKeep.length=0;return true})})
+      .catch(function(){gameImageKeep.length=0;return true});
     return window.__vexaAllGameImagesReady
   }
 
@@ -294,6 +301,5 @@ export const BOOT_LOADER_SCRIPT = `
     function releaseHeavy(){if(rocket&&rocketSrc&&!rocket.getAttribute('src'))rocket.setAttribute('src',rocketSrc);return startAssets()}
     liveGate.then(releaseHeavy,releaseHeavy)
   }
-  setTimeout(warmCrash,0);
 })();
 `;
