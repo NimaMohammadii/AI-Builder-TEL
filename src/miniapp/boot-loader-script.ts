@@ -42,7 +42,7 @@ export const BOOT_LOADER_SCRIPT = `
       var start=value.indexOf('url(');if(start<0)return '';
       var end=value.indexOf(')',start+4);if(end<0)return '';
       var raw=value.slice(start+4,end).trim();
-      if(raw.length>1&&((raw.charAt(0)==='\"'&&raw.charAt(raw.length-1)==='\"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
+      if(raw.length>1&&((raw.charAt(0)==='"'&&raw.charAt(raw.length-1)==='"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
       return raw
     }catch(e){return ''}
   }
