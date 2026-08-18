@@ -115,6 +115,7 @@ export const BOOT_LOADER_SCRIPT = `
     var urls=[],seen={};
     GAME_IMAGE_STATIC_URLS.forEach(function(url){addGameImageUrl(urls,seen,url)});
     var jobs=[
+      fetchJsonStrict('/app/api/game-card-images').then(function(j){var map=j&&j.images&&typeof j.images==='object'?j.images:{};Object.keys(map).forEach(function(key){addGameImageUrl(urls,seen,map[key])})}),
       fetchJsonStrict('/app/api/uploaded-images').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
       fetchJsonStrict('/app/api/section-backgrounds').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
       fetchJsonStrict('/app/api/crash-stage-images').then(function(j){(j&&Array.isArray(j.preload)?j.preload:[]).forEach(function(url){addGameImageUrl(urls,seen,url)})}),
@@ -125,31 +126,11 @@ export const BOOT_LOADER_SCRIPT = `
     ];
     return Promise.all(jobs).then(function(){return urls})
   }
-  function waitForPlayHubImageUrls(){
-    return new Promise(function(resolve){
-      var observer=null,done=false;
-      function finish(urls){if(done)return;done=true;if(observer)observer.disconnect();resolve(urls)}
-      function test(){
-        if(done)return;
-        var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
-        if(imgs.length!==9)return;
-        var urls=[];
-        for(var i=0;i<imgs.length;i++){
-          var src=String(imgs[i].currentSrc||imgs[i].getAttribute('src')||imgs[i].src||'');
-          if(!src||src.indexOf('data:image/gif')===0)return;
-          urls.push(src)
-        }
-        finish(urls)
-      }
-      if(window.MutationObserver){observer=new MutationObserver(test);observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']})}
-      test()
-    })
-  }
   function gameImagesReady(){
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
-    var cardImages=waitForPlayHubImageUrls().then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))});
-    var internalImages=collectGameImageUrls().then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))});
-    window.__vexaAllGameImagesReady=Promise.all([cardImages,internalImages]).then(function(){gameImageKeep.length=0;return true});
+    window.__vexaAllGameImagesReady=collectGameImageUrls()
+      .then(function(urls){return Promise.all(urls.map(preloadGameImageStrict))})
+      .then(function(){gameImageKeep.length=0;return true});
     return window.__vexaAllGameImagesReady
   }
 
