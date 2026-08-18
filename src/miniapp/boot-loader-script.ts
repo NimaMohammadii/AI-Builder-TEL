@@ -176,13 +176,12 @@ export const BOOT_LOADER_SCRIPT = `
   function preloadManifest(spec,cache){
     var cached=cache&&cache[spec.url];
     var cachedJob=preloadUrlList(spec.urls(cached));
-    var freshJob=fetchJsonStrict(spec.url,0).then(function(j){
-      if(!j)return true;
+    return fetchJsonStrict(spec.url,0).then(function(j){
+      if(!j)return cachedJob.then(function(){return true});
       cache[spec.url]=j;
       writeManifestCache(cache);
-      return preloadUrlList(spec.urls(j))
-    });
-    return Promise.all([cachedJob,freshJob]).then(function(){return true})
+      return preloadUrlList(spec.urls(j)).then(function(){return true})
+    })
   }
   function gameImagesReady(){
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
