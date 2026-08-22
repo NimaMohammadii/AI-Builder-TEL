@@ -167,7 +167,6 @@ export const BOOT_LOADER_SCRIPT = `
     {url:'/app/api/game-card-images',urls:gameCardUrls},
     {url:'/app/api/uploaded-images',urls:preloadArrayUrls},
     {url:'/app/api/section-backgrounds',urls:preloadArrayUrls},
-    {url:'/app/api/crash-stage-images',urls:preloadArrayUrls},
     {url:'/app/api/ghost-run-assets',urls:ghostRunUrls},
     {url:'/app/api/slot-frame',urls:slotFrameUrls},
     {url:'/app/api/slot-symbols',urls:slotSymbolUrls},
