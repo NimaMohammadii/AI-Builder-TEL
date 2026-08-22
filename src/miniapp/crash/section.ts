@@ -61,10 +61,16 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 (function(){
   if(window.__vexaCrashSpaceEnvironment)return;
   window.__vexaCrashSpaceEnvironment=true;
-  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash');
+  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),app=document.querySelector('main.app');
   if(!canvas||!root)return;
-  var booted=false;
+  var booted=false,backgroundStart=0;
   function active(){return root.classList.contains('active')&&!document.hidden}
+  function backgroundFrame(ms){
+    if(!app||!app.isConnected)app=document.querySelector('main.app');if(!app)return;
+    ms=Number(ms)||performance.now();if(!backgroundStart)backgroundStart=ms;
+    var elapsed=Math.max(0,ms-backgroundStart)%18000,y=-(elapsed/18000)*180;
+    app.style.setProperty('--crash-bg-y',y.toFixed(2)+'px')
+  }
   function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v>=2.2)return 3;if(v<1.4){var t=(v-1)/.4;return 1+t*t*(3-2*t)}var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
   function streakIntensity(value){
     var v=Number.isFinite(value)?Math.max(1,value):1,t=Math.max(0,Math.min(1,(v-1.7)/2.3));
@@ -80,7 +86,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     for(var i=0;i<42;i++)particles.push({x:random(),y:random(),rank:random(),width:.45+random()*.65,length:.55+random()*.9});
     resize(null);
     function frame(ms,value){
-      if(!active())return;
+      if(!active())return;backgroundFrame(ms);
       var v=Number.isFinite(value)?Math.max(1,value):1,intensity=streakIntensity(v),boost=speedBoost(v),angle=rocketAngleRad(),dx=-Math.sin(angle),dy=Math.cos(angle),w=canvas.width,h=canvas.height,dpr=canvasDpr(),speed=(45+intensity*300)*boost*dpr;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
       for(var i=0;i<particles.length;i++){
@@ -93,7 +99,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       }
       ctx.globalAlpha=1
     }
-    function resume(){resize(null)}
+    function resume(){backgroundStart=0;resize(null)}
     window.__vexaCrashSpaceFrame=frame;
     window.addEventListener('resize',function(){resize(null)},{passive:true});
     window.addEventListener('vexa-crash-visible',resume,{passive:true})
@@ -135,10 +141,10 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
     gl.useProgram(program);var buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);var position=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
     var time=gl.getUniformLocation(program,'u_time'),intensity=gl.getUniformLocation(program,'u_intensity'),speedBoostUniform=gl.getUniformLocation(program,'u_speed_boost'),rocketAngle=gl.getUniformLocation(program,'u_rocket_angle');
     function frame(ms,value){
-      if(!active())return;
+      if(!active())return;backgroundFrame(ms);
       var v=Number.isFinite(value)?Math.max(1,value):1;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity(v));gl.uniform1f(speedBoostUniform,speedBoost(v));gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6)
     }
-    function resume(){resize(gl)}
+    function resume(){backgroundStart=0;resize(gl)}
     window.__vexaCrashSpaceFrame=frame;
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();window.__vexaCrashSpaceFrame=null;booted=false});
     canvas.addEventListener('webglcontextrestored',function(){booted=false;boot()});
