@@ -33,7 +33,7 @@ type LevelXpBody = LevelXpEventInput & {
 
 type StaticAssetsEnv = Env & { STATIC_ASSETS: { fetch(request: Request): Promise<Response> } };
 
-async function serveCrashStaticAsset(request: Request, env: Env, assetPath: string, cacheControl?: string): Promise<Response> {
+async function serveCrashStaticAsset(request: Request, env: Env, assetPath: string): Promise<Response> {
   const staticAssets = (env as StaticAssetsEnv).STATIC_ASSETS;
   if (!staticAssets) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
   const assetUrl = new URL(request.url);
@@ -41,7 +41,7 @@ async function serveCrashStaticAsset(request: Request, env: Env, assetPath: stri
   assetUrl.search = '';
   const upstream = await staticAssets.fetch(new Request(assetUrl.toString(), request));
   const headers = new Headers(upstream.headers);
-  headers.set('cache-control', cacheControl || (new URL(request.url).searchParams.has('v') ? VERSIONED_IMAGE_CACHE_CONTROL : 'public, max-age=300, must-revalidate'));
+  headers.set('cache-control', new URL(request.url).searchParams.has('v') ? VERSIONED_IMAGE_CACHE_CONTROL : 'public, max-age=300, must-revalidate');
   headers.set('x-content-type-options', 'nosniff');
   return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
 }
@@ -80,7 +80,7 @@ app.get('/app', async (c) => {
     nft: paymentUrl('nft', nftImage),
   }));
 });
-app.get('/assets/Crash.PNG', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Crash.PNG', 'no-cache, must-revalidate'));
+app.get('/assets/Crash.PNG', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Crash.PNG'));
 app.get('/assets/Rocket3D.glb', (c) => serveCrashStaticAsset(c.req.raw, c.env, '/assets/Rocket3D.glb'));
 app.get('/app/health', (c) => c.json({ ok: true, page: 'game-miniapp', appUrl: `${PUBLIC_BASE_URL}/app` }));
 app.get('/health', (c) => c.json({ ok: true, service: 'vexa-game', timestamp: new Date().toISOString() }));
