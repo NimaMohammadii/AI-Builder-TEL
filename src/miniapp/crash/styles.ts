@@ -112,7 +112,7 @@ const CRASH_SECTION_STYLES = `
 html body:has(#crash.active){isolation:isolate!important;background:#000!important}
 html body:has(#crash.active)::before,html body:has(#crash.active)::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
 html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
-html body:has(#crash.active) .app,html body:has(#crash.active) main.app{background-color:#000!important;background-image:url('/assets/Crash.PNG?v=60f79b66')!important;background-size:100% auto!important;background-position:center 0!important;background-repeat:repeat-y!important;box-shadow:none!important;animation:crashMainBackgroundScroll 18s linear infinite!important}
+html body:has(#crash.active) .app,html body:has(#crash.active) main.app{background-color:#000!important;background-image:url('/assets/Crash.PNG?v=60f79b66')!important;background-size:100% auto!important;background-position:center var(--crash-bg-y,0px)!important;background-repeat:repeat-y!important;box-shadow:none!important;animation:none!important}
 html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;overflow:visible!important}
 html body:has(#crash.active):has(#crashLive.open) .app{overflow-y:auto!important;overscroll-behavior-y:none!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;scroll-behavior:smooth!important;scrollbar-width:none!important}
 html body:has(#crash.active):has(#crashLive.open) #crash.crash-view{overflow-y:visible!important}
@@ -126,7 +126,6 @@ html body:has(#crash.active) #crash .crash-controls{position:relative!important;
 html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
 html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
 html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:12px!important}
-@keyframes crashMainBackgroundScroll{from{background-position:center 0}to{background-position:center -180px}}
 `;
 
 export const CRASH_STYLES = CRASH_BASE_STYLES + CRASH_CONTROLS_MODERN_STYLES + CRASH_SECTION_STYLES;
