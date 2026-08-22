@@ -151,7 +151,6 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 `;
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <div class="crash-page">
-    <div class="crash-stage-background" aria-hidden="true"><img class="crash-stage-background-image" src="/assets/Crash.PNG?v=1" alt="" decoding="async" draggable="false"/></div>
     <canvas id="crashSpaceCanvas" class="crash-space-canvas" aria-hidden="true"></canvas>
     <div class="crash-stage">
       <div class="crash-history" id="crashHistory"></div>
