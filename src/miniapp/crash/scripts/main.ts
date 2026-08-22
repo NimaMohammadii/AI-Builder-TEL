@@ -76,7 +76,7 @@ export const CRASH_SCRIPT = `
   }
   function setRocketIdle(state){current=1;mult(1);setRocket(1,'waiting',Math.max(0,(state&&state.waitElapsed||0)-CRASH_HOLD_MS))}
   function showRocketCrashed(state){current=state.stop;mult(state.stop);setRocket(state.stop,'crashed',0)}
-  function renderHistory(state){var n=q('crashHistory');if(!n)return;n.innerHTML=previousRoundIds(state,12).map(function(id){return '<span>'+fmt(roundStop(id))+'</span>').join('')}
+  function renderHistory(state){var n=q('crashHistory');if(!n)return;n.innerHTML=previousRoundIds(state,12).map(function(id){return '<span>'+fmt(roundStop(id))+'</span>'}).join('')}
   function activePayout(){return activeBet?Math.max(0,Math.floor(activeBet.amount*current)):0}
   function lockBetControls(locked){var input=q('crashAmount'),bet=q('crash'),next=!!locked;if(input&&input.disabled!==next)input.disabled=next;if(bet&&bet.classList.contains('bet-locked')!==next)bet.classList.toggle('bet-locked',next)}
   function betLocked(state){if(!activeBet)return false;if(state.waiting&&activeBet.roundId===state.id&&activeBet.settled)return false;if(activeBet.cashed&&state.waiting)return false;return activeBet.roundId===targetBetRoundId(state)||activeBet.roundId===state.id}
