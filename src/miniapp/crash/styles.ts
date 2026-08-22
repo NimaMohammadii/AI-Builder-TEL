@@ -123,17 +123,14 @@ html body:has(#crash.active):has(#crashLive.open) .top::before{content:""!import
 html body:has(#crash.active):has(#crashLive.open) .top::after{display:none!important;content:none!important}
 html body:has(#crash.active) #crash .crash-page{position:relative!important;isolation:isolate!important}
 html body:has(#crash.active) #crash .crash-stage-background{position:absolute!important;left:50%!important;top:0!important;width:calc(100vw + 24px)!important;aspect-ratio:1/1!important;transform:translateX(-50%)!important;overflow:hidden!important;z-index:0!important;background:#000!important;box-shadow:0 -11px 10px -4px #000,0 11px 10px -4px #000!important;pointer-events:none!important}
-html body:has(#crash.active) #crash .crash-stage-background-track{display:flex!important;width:600%!important;height:100%!important;transform:translate3d(0,0,0);will-change:transform;opacity:0;animation:crashStageBackgroundPan 75s linear infinite!important;animation-play-state:paused!important;transition:opacity .22s ease}
-html body:has(#crash.active) #crash .crash-stage-background-track.ready{opacity:1;animation-play-state:running!important}
-html body:has(#crash.active) #crash .crash-stage-background-slide{flex:0 0 calc(100% / 6)!important;width:calc(100% / 6)!important;height:100%!important;background:#000!important;overflow:hidden!important}
-html body:has(#crash.active) #crash .crash-stage-background-slide img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;user-select:none!important;-webkit-user-drag:none!important}
+html body:has(#crash.active) #crash .crash-stage-background-image{position:absolute!important;left:-4%!important;top:-4%!important;width:108%!important;height:108%!important;display:block!important;object-fit:cover!important;object-position:center top!important;user-select:none!important;-webkit-user-drag:none!important;transform:translate3d(-1.5%,-1%,0) scale(1.04);transform-origin:50% 50%;will-change:transform;animation:crashStageBackgroundDrift 18s ease-in-out infinite alternate!important}
 html body:has(#crash.active) #crash #crashSpaceCanvas{position:absolute!important;left:50%!important;top:0!important;width:calc(100vw + 24px)!important;height:auto!important;aspect-ratio:1/1!important;transform:translateX(-50%)!important;z-index:1!important;border-radius:0!important;background:transparent!important;pointer-events:none!important}
 html body:has(#crash.active) #crash .crash-controls{position:relative!important;z-index:3!important}
 html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
 html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
 html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:12px!important}
-@keyframes crashStageBackgroundPan{from{transform:translate3d(0,0,0)}to{transform:translate3d(-83.333333%,0,0)}}
-@media(prefers-reduced-motion:reduce){html body:has(#crash.active) #crash .crash-stage-background-track{animation-duration:150s!important}}
+@keyframes crashStageBackgroundDrift{from{transform:translate3d(-1.5%,-1%,0) scale(1.04)}to{transform:translate3d(1.5%,1%,0) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){html body:has(#crash.active) #crash .crash-stage-background-image{animation:none!important;transform:translate3d(0,0,0) scale(1.04)!important}}
 `;
 
 export const CRASH_STYLES = CRASH_BASE_STYLES + CRASH_CONTROLS_MODERN_STYLES + CRASH_SECTION_STYLES;
