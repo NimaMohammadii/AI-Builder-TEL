@@ -61,9 +61,9 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 (function(){
   if(window.__vexaCrashSpaceEnvironment)return;
   window.__vexaCrashSpaceEnvironment=true;
-  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash'),stageTrack=document.getElementById('crashStageBackgroundTrack');
+  var canvas=document.getElementById('crashSpaceCanvas'),root=document.getElementById('crash');
   if(!canvas||!root)return;
-  var stageSignature='',stageLoadState=0,booted=false;
+  var booted=false;
   function active(){return root.classList.contains('active')&&!document.hidden}
   function speedBoost(value){var v=Math.max(1,Number(value)||1);if(v>=2.2)return 3;if(v<1.4){var t=(v-1)/.4;return 1+t*t*(3-2*t)}var t=(v-1.4)/.8;return 2+t*t*(3-2*t)}
   function streakIntensity(value){
@@ -73,29 +73,6 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
   function rocketAngleRad(){var deg=Number(window.__vexaCrashRocketAngleDeg);if(!Number.isFinite(deg))deg=80;deg=Math.max(60,Math.min(80,deg));return deg*Math.PI/180}
   function canvasDpr(){return Math.min(1.05,Math.max(1,window.devicePixelRatio||1))}
   function resize(gl){var rect=canvas.getBoundingClientRect(),dpr=canvasDpr(),w=Math.max(2,Math.round(rect.width*dpr)),h=Math.max(2,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}if(gl)gl.viewport(0,0,w,h)}
-  function loadStageImages(){
-    if(!stageTrack||stageLoadState)return;
-    stageLoadState=1;
-    var manifestPromise=window.__vexaCrashStageManifestPromise;
-    if(!manifestPromise){var cached=window.__vexaCrashStageManifest;manifestPromise=cached?Promise.resolve(cached):fetch('/app/api/crash-stage-images',{cache:'no-store',credentials:'same-origin',headers:{accept:'application/json'}}).then(function(r){return r.ok?r.json():null})}
-    manifestPromise.then(function(j){
-      if(!j){stageLoadState=0;return}
-      var images=j.images||{},urls=[];
-      for(var i=1;i<=5;i++)urls.push(typeof images[String(i)]==='string'?images[String(i)]:'');
-      var signature=urls.join('|');if(signature===stageSignature){stageLoadState=2;return}stageSignature=signature;stageTrack.classList.remove('ready');
-      var sequence=urls.concat([urls[0]||'']),fragment=document.createDocumentFragment();
-      sequence.forEach(function(url,index){
-        var slide=document.createElement('div');slide.className='crash-stage-background-slide';
-        if(url){var img=document.createElement('img');img.src=url;img.alt='';img.decoding='async';img.loading=index<2?'eager':'lazy';img.draggable=false;slide.appendChild(img)}
-        fragment.appendChild(slide)
-      });
-      stageTrack.replaceChildren(fragment);
-      var first=stageTrack.querySelector('img');
-      function ready(){if(signature===stageSignature){stageLoadState=2;stageTrack.classList.add('ready')}}
-      if(!first){stageLoadState=2;return}
-      if(first.complete)ready();else{first.addEventListener('load',ready,{once:true});first.addEventListener('error',ready,{once:true})}
-    }).catch(function(){stageLoadState=0})
-  }
   function fallback2d(){
     var ctx=canvas.getContext('2d');if(!ctx){var replacement=document.createElement('canvas');replacement.id=canvas.id;replacement.className=canvas.className;replacement.setAttribute('aria-hidden','true');canvas.replaceWith(replacement);canvas=replacement;ctx=canvas.getContext('2d')}if(!ctx)return;
     var particles=[],seed=90210;
@@ -116,14 +93,13 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       }
       ctx.globalAlpha=1
     }
-    function resume(){resize(null);loadStageImages()}
+    function resume(){resize(null)}
     window.__vexaCrashSpaceFrame=frame;
     window.addEventListener('resize',function(){resize(null)},{passive:true});
-    window.addEventListener('vexa-crash-visible',resume,{passive:true});
-    if(active())loadStageImages()
+    window.addEventListener('vexa-crash-visible',resume,{passive:true})
   }
   function boot(){
-    if(booted||!active())return;booted=true;loadStageImages();
+    if(booted||!active())return;booted=true;
     var gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power'});
     if(!gl){fallback2d();return}
     resize(gl);
@@ -162,7 +138,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
       if(!active())return;
       var v=Number.isFinite(value)?Math.max(1,value):1;gl.useProgram(program);gl.uniform1f(time,ms*.001);gl.uniform1f(intensity,streakIntensity(v));gl.uniform1f(speedBoostUniform,speedBoost(v));gl.uniform1f(rocketAngle,rocketAngleRad());gl.drawArrays(gl.TRIANGLES,0,6)
     }
-    function resume(){resize(gl);loadStageImages()}
+    function resume(){resize(gl)}
     window.__vexaCrashSpaceFrame=frame;
     canvas.addEventListener('webglcontextlost',function(ev){ev.preventDefault();window.__vexaCrashSpaceFrame=null;booted=false});
     canvas.addEventListener('webglcontextrestored',function(){booted=false;boot()});
@@ -175,7 +151,7 @@ const CRASH_SPACE_ENVIRONMENT_SCRIPT = `
 `;
 export const CRASH_SECTION = `<section id="crash" class="view crash-view">
   <div class="crash-page">
-    <div class="crash-stage-background" aria-hidden="true"><div id="crashStageBackgroundTrack" class="crash-stage-background-track"></div></div>
+    <div class="crash-stage-background" aria-hidden="true"><img class="crash-stage-background-image" src="/assets/Crash.PNG?v=1" alt="" decoding="async" draggable="false"/></div>
     <canvas id="crashSpaceCanvas" class="crash-space-canvas" aria-hidden="true"></canvas>
     <div class="crash-stage">
       <div class="crash-history" id="crashHistory"></div>
