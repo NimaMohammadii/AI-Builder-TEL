@@ -110,7 +110,7 @@ body #crash .crash-bet-main input{width:auto!important;max-width:88px!important;
 
 const CRASH_SECTION_STYLES = `
 html body:has(#crash.active){isolation:isolate!important;background:#000!important}
-html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;left:-5vw!important;top:-5dvh!important;width:110vw!important;height:110dvh!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Crash.PNG')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:translate3d(-2%,-1.25%,0) scale(1.03)!important;transform-origin:50% 50%!important;will-change:transform!important;animation:crashMainBackgroundDrift 26s ease-in-out infinite alternate!important;filter:none!important;opacity:1!important}
+html body:has(#crash.active)::before{content:""!important;display:block!important;position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:calc(100dvh + 140px)!important;z-index:-1!important;pointer-events:none!important;background-color:#000!important;background-image:url('/assets/Crash.PNG?v=60f79b66')!important;background-size:cover!important;background-position:center top!important;background-repeat:no-repeat!important;transform:translate3d(0,0,0)!important;transform-origin:50% 0!important;will-change:transform!important;animation:crashMainBackgroundScroll 18s linear infinite!important;filter:none!important;opacity:1!important}
 html body:has(#crash.active)::after,html body:has(#crash.active) .app::before,html body:has(#crash.active) .app::after{display:none!important;content:none!important;background:none!important;background-image:none!important}
 html body:has(#crash.active) .app,html body:has(#crash.active) main.app{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important}
 html body:has(#crash.active) .content,html body:has(#crash.active) .view.active,html body:has(#crash.active) #crash,html body:has(#crash.active) .crash-view,html body:has(#crash.active) .crash-page,html body:has(#crash.active) .top,html body:has(#crash.active) header.top{background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;overflow:visible!important}
@@ -126,7 +126,7 @@ html body:has(#crash.active) #crash .crash-controls{position:relative!important;
 html body:has(#crash.active) #crash .crash-multiplier-wrap{left:18px!important;right:18px!important;top:50px!important;transform:none!important;text-align:center!important}
 html body:has(#crash.active) #crash .crash-multiplier{font-size:clamp(27px,calc(10vw - 5px),39px)!important}
 html body:has(#crash.active) #crash #crashLive{width:100%!important;margin:0!important;padding:12px!important}
-@keyframes crashMainBackgroundDrift{from{transform:translate3d(-2%,-1.25%,0) scale(1.03)}to{transform:translate3d(2%,1.25%,0) scale(1.07)}}
+@keyframes crashMainBackgroundScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-120px,0)}}
 `;
 
 export const CRASH_STYLES = CRASH_BASE_STYLES + CRASH_CONTROLS_MODERN_STYLES + CRASH_SECTION_STYLES;
