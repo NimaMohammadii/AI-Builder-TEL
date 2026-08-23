@@ -30,10 +30,10 @@ export const HOME_OVERRIDES = `
   position:relative!important;
   overflow:hidden!important;
   background-color:rgba(14,14,18,.16)!important;
-  background-image:linear-gradient(180deg,rgba(118,20,50,.12) 0%,rgba(72,8,29,.035) 44%,rgba(89,10,35,.055) 100%),radial-gradient(125% 180% at 18% -42%,rgba(90,10,34,.22) 0%,rgba(70,7,27,.08) 34%,rgba(48,4,18,0) 62%)!important;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.105) 0%,rgba(255,255,255,.024) 44%,rgba(255,255,255,.052) 100%),radial-gradient(125% 180% at 18% -42%,rgba(90,10,34,.22) 0%,rgba(70,7,27,.08) 34%,rgba(48,4,18,0) 62%)!important;
   border:0!important;
   outline:0!important;
-  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(117,24,52,.12),inset -3px -3px .5px -3.5px rgba(146,35,65,.38),inset 1px 1px 1px -.5px rgba(128,26,56,.28),inset -1px -1px 1px -.5px rgba(110,18,47,.26),inset 0 0 6px 6px rgba(94,10,37,.12),inset 0 0 2px 2px rgba(126,22,52,.09),0 0 18px rgba(82,8,30,.30)!important;
+  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(255,255,255,.09),inset -3px -3px .5px -3.5px rgba(255,255,255,.85),inset 1px 1px 1px -.5px rgba(255,255,255,.60),inset -1px -1px 1px -.5px rgba(255,255,255,.60),inset 0 0 6px 6px rgba(255,255,255,.12),inset 0 0 2px 2px rgba(255,255,255,.06),0 0 18px rgba(82,8,30,.30)!important;
   backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
   -webkit-backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
   isolation:isolate!important;
@@ -47,8 +47,8 @@ export const HOME_OVERRIDES = `
   border-radius:inherit!important;
   display:block!important;
   pointer-events:none!important;
-  background:linear-gradient(135deg,rgba(132,27,59,.16) 0%,rgba(96,12,39,.045) 27%,rgba(62,5,24,0) 50%),linear-gradient(315deg,rgba(86,10,32,.14) 0%,rgba(86,10,32,0) 34%)!important;
-  box-shadow:inset 0 0 0 .5px rgba(122,23,52,.16)!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.035) 27%,rgba(255,255,255,0) 50%),linear-gradient(315deg,rgba(86,10,32,.14) 0%,rgba(86,10,32,0) 34%)!important;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.10)!important;
   opacity:.92!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
