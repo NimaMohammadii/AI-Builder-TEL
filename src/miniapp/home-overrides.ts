@@ -29,13 +29,15 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  background:linear-gradient(180deg,rgba(66,10,27,.20) 0%,rgba(17,3,8,.48) 48%,rgba(37,5,15,.30) 100%),radial-gradient(130% 125% at 14% -18%,rgba(108,18,43,.22) 0%,rgba(73,8,27,.09) 38%,rgba(21,2,8,0) 66%)!important;
+  background-color:rgba(14,14,18,.16)!important;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.105) 0%,rgba(255,255,255,.024) 44%,rgba(255,255,255,.052) 100%),radial-gradient(125% 180% at 18% -42%,rgba(90,10,34,.22) 0%,rgba(70,7,27,.08) 34%,rgba(48,4,18,0) 62%)!important;
   border:0!important;
   outline:0!important;
-  box-shadow:0 12px 30px rgba(0,0,0,.26),0 0 34px rgba(76,8,28,.22),inset 0 1px 0 rgba(116,26,52,.22),inset 0 -1px 0 rgba(45,4,16,.38),inset 0 0 20px rgba(91,10,34,.13)!important;
-  backdrop-filter:blur(18px) saturate(1.30) brightness(.98)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(1.30) brightness(.98)!important;
+  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(255,255,255,.09),inset -3px -3px .5px -3.5px rgba(255,255,255,.85),inset 1px 1px 1px -.5px rgba(255,255,255,.60),inset -1px -1px 1px -.5px rgba(255,255,255,.60),inset 0 0 6px 6px rgba(255,255,255,.12),inset 0 0 2px 2px rgba(255,255,255,.06),0 0 18px rgba(82,8,30,.30)!important;
+  backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
   isolation:isolate!important;
+  transform:translateZ(0)!important;
 }
 #home .home-ticket-card:before{
   content:''!important;
@@ -43,9 +45,11 @@ export const HOME_OVERRIDES = `
   inset:0!important;
   z-index:0!important;
   border-radius:inherit!important;
+  display:block!important;
   pointer-events:none!important;
-  background:linear-gradient(135deg,rgba(127,28,57,.12) 0%,rgba(94,13,38,.035) 30%,rgba(44,4,17,0) 54%),radial-gradient(110% 90% at 82% 108%,rgba(84,8,31,.16) 0%,rgba(34,3,13,0) 62%)!important;
-  box-shadow:inset 0 0 0 .5px rgba(115,24,50,.22)!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.035) 27%,rgba(255,255,255,0) 50%),linear-gradient(315deg,rgba(86,10,32,.14) 0%,rgba(86,10,32,0) 34%)!important;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.10)!important;
+  opacity:.92!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
