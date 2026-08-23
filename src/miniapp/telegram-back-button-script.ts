@@ -17,7 +17,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       var title=document.getElementById('brandTitle');if(title)title.textContent=id==='home'?'Home':'Vexa';
     }
     function shouldShow(){
-      var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip','hilo'];
+      var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip'];
       for(var i=0;i<games.length;i++)if(isActive(games[i]))return true;
       var p=document.getElementById('predictzone');
       return !!(p&&p.classList.contains('active')&&(p.classList.contains('predict-market-detail-mode')||p.classList.contains('football-match-detail-open')));
@@ -33,7 +33,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
         if(window.VexaFootballPredictBack){try{if(window.VexaFootballPredictBack()){setTimeout(sync,60);return}}catch(e){}}
         sync();return;
       }
-      var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip','hilo'];
+      var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip'];
       for(var i=0;i<games.length;i++){if(isActive(games[i])){setView('playzone');sync();return;}}
       sync();
     }

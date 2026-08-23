@@ -14,7 +14,6 @@ import { SLOT_SCRIPT, SLOT_SECTION, SLOT_STYLES } from './slot';
 import { DICE_FINAL_TWEAK, DICE_SECTION } from './dice';
 import { WHEEL_SECTION } from './wheel';
 import { PUMP_SECTION } from './pump';
-import { CHICKEN_CROSS_SCRIPT, CHICKEN_CROSS_SECTION, CHICKEN_CROSS_STYLES } from './chicken-cross';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { PLAY_ZONE_STYLES } from './play-zone-styles';
 import { PREDICT_ZONE_STYLES } from './predict-zone-styles';
@@ -142,7 +141,6 @@ const STYLES = [
   SECTION_BACKGROUND_STYLES,
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
-  CHICKEN_CROSS_STYLES,
   SECTION_ACCESS_STYLES,
 ].join('');
 
@@ -163,7 +161,6 @@ const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wheel', html: WHEEL_SECTION, scripts: [] },
   { id: 'dice', html: DICE_SECTION + DICE_FINAL_TWEAK },
   { id: 'coinflip', html: PUMP_SECTION },
-  { id: 'hilo', html: CHICKEN_CROSS_SECTION, scripts: [CHICKEN_CROSS_SCRIPT] },
   { id: 'ghostrun', html: GHOST_RUN_SECTION },
 ];
 
