@@ -29,11 +29,11 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  background-color:rgba(14,14,18,.16)!important;
-  background-image:linear-gradient(180deg,rgba(255,126,158,.105) 0%,rgba(188,42,78,.024) 44%,rgba(222,70,105,.052) 100%),radial-gradient(125% 180% at 18% -42%,rgba(90,10,34,.22) 0%,rgba(70,7,27,.08) 34%,rgba(48,4,18,0) 62%)!important;
+  background-color:rgba(12,12,16,.18)!important;
+  background-image:linear-gradient(180deg,rgba(142,36,66,.095) 0%,rgba(82,10,31,.024) 44%,rgba(108,17,42,.048) 100%),radial-gradient(125% 180% at 18% -42%,rgba(72,7,28,.24) 0%,rgba(54,5,21,.09) 34%,rgba(38,3,15,0) 62%)!important;
   border:0!important;
   outline:0!important;
-  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(255,112,146,.09),inset -3px -3px .5px -3.5px rgba(255,162,185,.85),inset 1px 1px 1px -.5px rgba(236,95,128,.60),inset -1px -1px 1px -.5px rgba(222,78,112,.60),inset 0 0 6px 6px rgba(180,37,72,.12),inset 0 0 2px 2px rgba(230,84,117,.06),0 0 18px rgba(82,8,30,.30)!important;
+  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(132,28,57,.09),inset -3px -3px .5px -3.5px rgba(176,58,88,.85),inset 1px 1px 1px -.5px rgba(150,39,68,.60),inset -1px -1px 1px -.5px rgba(136,31,60,.60),inset 0 0 6px 6px rgba(104,13,39,.12),inset 0 0 2px 2px rgba(152,42,70,.06),0 0 18px rgba(66,5,24,.30)!important;
   backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
   -webkit-backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
   isolation:isolate!important;
@@ -47,9 +47,24 @@ export const HOME_OVERRIDES = `
   border-radius:inherit!important;
   display:block!important;
   pointer-events:none!important;
-  background:linear-gradient(135deg,rgba(255,112,146,.14) 0%,rgba(192,44,79,.035) 27%,rgba(86,10,32,0) 50%),linear-gradient(315deg,rgba(86,10,32,.14) 0%,rgba(86,10,32,0) 34%)!important;
-  box-shadow:inset 0 0 0 .5px rgba(236,84,118,.10)!important;
+  background:linear-gradient(135deg,rgba(154,43,72,.13) 0%,rgba(102,16,42,.032) 27%,rgba(68,7,27,0) 50%),linear-gradient(315deg,rgba(68,7,27,.14) 0%,rgba(68,7,27,0) 34%)!important;
+  box-shadow:inset 0 0 0 .35px rgba(126,28,56,.10)!important;
   opacity:.92!important;
+}
+#home .home-ticket-card:after{
+  content:''!important;
+  position:absolute!important;
+  inset:.5px!important;
+  z-index:2!important;
+  border-radius:inherit!important;
+  padding:.8px!important;
+  pointer-events:none!important;
+  background:conic-gradient(from 214deg,rgba(76,7,27,.08) 0deg,rgba(122,24,52,.28) 54deg,rgba(184,61,91,.68) 92deg,rgba(104,16,43,.22) 132deg,rgba(52,4,19,.04) 182deg,rgba(73,7,27,.12) 238deg,rgba(154,40,70,.48) 292deg,rgba(76,7,27,.08) 360deg)!important;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  mask-composite:exclude!important;
+  opacity:.88!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
