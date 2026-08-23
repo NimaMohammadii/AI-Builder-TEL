@@ -3,7 +3,6 @@ import { miniAppHtml } from './miniapp-game';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS } from './online-user-counts';
 import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
-import { registerChickenCrossRoutes } from './chicken-cross-routes';
 import { registerSlotAssetRoutes } from './slot-assets';
 import { handleGameBotWebhook } from './telegram-game-bot';
 import { specialWheelStatusResponse } from './special-wheel-mode';
@@ -176,7 +175,6 @@ app.get('/app/api/home-intro-image-meta', async (c) => {
 
 registerFriendGameRoutes(app);
 registerWheelRoutes(app);
-registerChickenCrossRoutes(app);
 registerSlotAssetRoutes(app);
 
 app.post('/telegram/webhook', async (c) => {
