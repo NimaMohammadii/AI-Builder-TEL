@@ -29,21 +29,22 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  border:1px solid transparent!important;
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  border:0!important;
   outline:0!important;
-  background:
-    linear-gradient(180deg,rgba(34,15,20,.82) 0%,rgba(9,5,7,.88) 30%,rgba(3,3,4,.94) 100%) padding-box,
-    radial-gradient(125% 88% at 14% -14%,rgba(118,22,47,.16) 0%,rgba(70,8,28,.04) 40%,rgba(35,3,14,0) 68%) padding-box,
-    linear-gradient(138deg,rgba(250,170,191,.74) 0%,rgba(191,65,94,.56) 14%,rgba(111,20,47,.34) 34%,rgba(55,6,22,.16) 58%,rgba(136,27,58,.34) 78%,rgba(70,8,28,.18) 100%) border-box!important;
   box-shadow:
-    inset 0 1px 0 rgba(255,157,180,.12),
-    inset 0 2px 10px rgba(112,18,43,.08),
-    inset 0 -1px 0 rgba(55,5,21,.32),
-    inset 0 0 15px rgba(48,4,18,.08),
-    0 4px 12px rgba(0,0,0,.20),
-    0 0 5px rgba(77,6,29,.11)!important;
-  backdrop-filter:blur(16px) saturate(1.20) brightness(1.01)!important;
-  -webkit-backdrop-filter:blur(16px) saturate(1.20) brightness(1.01)!important;
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(255,255,255,.48),
+    inset 1px 1px 1px -.5px rgba(255,255,255,.30),
+    inset -1px -1px 1px -.5px rgba(255,255,255,.24),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
+  backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
@@ -56,10 +57,10 @@ export const HOME_OVERRIDES = `
   display:block!important;
   pointer-events:none!important;
   background:
-    radial-gradient(92% 52% at 12% -5%,rgba(255,170,190,.10) 0%,rgba(255,135,163,.025) 34%,rgba(255,135,163,0) 68%),
-    linear-gradient(180deg,rgba(255,255,255,.025) 0%,rgba(255,255,255,.006) 30%,rgba(255,255,255,0) 56%),
-    radial-gradient(84% 58% at 100% 104%,rgba(91,12,36,.06) 0%,rgba(50,4,19,0) 64%)!important;
-  box-shadow:none!important;
+    radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
+    radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),
+    radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.075),inset 0 -1px 0 rgba(84,7,31,.13)!important;
   opacity:1!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
