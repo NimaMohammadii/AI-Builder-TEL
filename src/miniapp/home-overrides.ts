@@ -38,9 +38,9 @@ export const HOME_OVERRIDES = `
     0 12px 30px rgba(31,1,10,.32),
     0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
-    inset -3px -3px .5px -3.5px rgba(255,255,255,.48),
-    inset 1px 1px 1px -.5px rgba(255,255,255,.30),
-    inset -1px -1px 1px -.5px rgba(255,255,255,.24),
+    inset -3px -3px .5px -3.5px rgba(126,24,53,.48),
+    inset 1px 1px 1px -.5px rgba(112,17,45,.30),
+    inset -1px -1px 1px -.5px rgba(96,11,38,.24),
     inset 0 0 6px 6px rgba(255,255,255,.055),
     inset 0 0 2px 2px rgba(255,255,255,.035)!important;
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
