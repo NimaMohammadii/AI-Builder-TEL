@@ -6,9 +6,9 @@ export const PLINKO_SCRIPT = `
   var pendingRounds = 0;
   var NANO = 1000000000;
   var credit = readPoints();
-  var iconUrl = '/assets/plinko-glass/ball.webp';
-  var pegVisualUrl = '/assets/plinko-glass/peg.webp';
-  var houseStripUrl = '/assets/plinko-glass/houses.webp';
+  var iconUrl = '/assets/plinko-glass/ball.webp?v=1';
+  var pegVisualUrl = '/assets/plinko-glass/peg.webp?v=1';
+  var houseStripUrl = '/assets/plinko-glass/houses.webp?v=1';
   var control = null;
   var lastStamp = '';
   var lastLoadAt = 0;
