@@ -29,13 +29,13 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  background-color:rgba(12,12,16,.18)!important;
-  background-image:linear-gradient(180deg,rgba(142,36,66,.095) 0%,rgba(82,10,31,.024) 44%,rgba(108,17,42,.048) 100%),radial-gradient(125% 180% at 18% -42%,rgba(72,7,28,.24) 0%,rgba(54,5,21,.09) 34%,rgba(38,3,15,0) 62%)!important;
+  background-color:rgba(14,14,18,.10)!important;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.105) 0%,rgba(255,255,255,.022) 44%,rgba(255,255,255,.048) 100%),radial-gradient(135% 185% at 18% -45%,rgba(255,255,255,.15) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 62%),radial-gradient(120% 110% at 86% 118%,rgba(73,7,28,.18) 0%,rgba(45,4,18,.07) 38%,rgba(28,2,11,0) 66%)!important;
   border:0!important;
   outline:0!important;
-  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(132,28,57,.09),inset -3px -3px .5px -3.5px rgba(176,58,88,.85),inset 1px 1px 1px -.5px rgba(150,39,68,.60),inset -1px -1px 1px -.5px rgba(136,31,60,.60),inset 0 0 6px 6px rgba(104,13,39,.12),inset 0 0 2px 2px rgba(152,42,70,.06),0 0 18px rgba(66,5,24,.30)!important;
-  backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(1.42) brightness(1.06)!important;
+  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(255,255,255,.09),inset -3px -3px .5px -3.5px rgba(255,255,255,.85),inset 1px 1px 1px -.5px rgba(255,255,255,.60),inset -1px -1px 1px -.5px rgba(255,255,255,.60),inset 0 0 6px 6px rgba(255,255,255,.12),inset 0 0 2px 2px rgba(255,255,255,.06),0 14px 34px rgba(43,3,15,.34),0 0 20px rgba(72,6,28,.24)!important;
+  backdrop-filter:blur(20px) saturate(1.38) brightness(1.05)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(1.38) brightness(1.05)!important;
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
@@ -47,24 +47,9 @@ export const HOME_OVERRIDES = `
   border-radius:inherit!important;
   display:block!important;
   pointer-events:none!important;
-  background:linear-gradient(135deg,rgba(154,43,72,.13) 0%,rgba(102,16,42,.032) 27%,rgba(68,7,27,0) 50%),linear-gradient(315deg,rgba(68,7,27,.14) 0%,rgba(68,7,27,0) 34%)!important;
-  box-shadow:inset 0 0 0 .35px rgba(126,28,56,.10)!important;
-  opacity:.92!important;
-}
-#home .home-ticket-card:after{
-  content:''!important;
-  position:absolute!important;
-  inset:.5px!important;
-  z-index:2!important;
-  border-radius:inherit!important;
-  padding:.8px!important;
-  pointer-events:none!important;
-  background:conic-gradient(from 214deg,rgba(76,7,27,.08) 0deg,rgba(122,24,52,.28) 54deg,rgba(184,61,91,.68) 92deg,rgba(104,16,43,.22) 132deg,rgba(52,4,19,.04) 182deg,rgba(73,7,27,.12) 238deg,rgba(154,40,70,.48) 292deg,rgba(76,7,27,.08) 360deg)!important;
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
-  -webkit-mask-composite:xor!important;
-  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
-  mask-composite:exclude!important;
-  opacity:.88!important;
+  background:radial-gradient(115% 72% at 2% -8%,rgba(255,255,255,.18) 0%,rgba(255,255,255,.045) 29%,rgba(255,255,255,0) 58%),radial-gradient(92% 68% at 102% 106%,rgba(255,255,255,.095) 0%,rgba(255,255,255,.018) 31%,rgba(255,255,255,0) 62%),linear-gradient(135deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.012) 34%,rgba(255,255,255,0) 54%),radial-gradient(90% 76% at 88% 112%,rgba(82,7,31,.12) 0%,rgba(52,4,19,0) 60%)!important;
+  box-shadow:inset 0 0 0 .35px rgba(255,255,255,.075)!important;
+  opacity:.94!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
