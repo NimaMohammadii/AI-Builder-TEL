@@ -26,7 +26,7 @@ export const HOME_OVERRIDES = `
 #home .home-floating-glass-button:active,#home .home-floating-glass-button.is-dragging{cursor:grabbing;transform:scale(1.05);box-shadow:0 28px 76px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.50),inset 0 -14px 28px rgba(255,255,255,.045)!important}
 #home .home-floating-glass-button span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.22);pointer-events:none}
 #home .home-floating-glass-button svg{width:23px;height:23px;display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.28))}
-#home .home-intro-card,
+#home .home-ticket-finance-visual,
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
@@ -40,9 +40,9 @@ export const HOME_OVERRIDES = `
     0 12px 30px rgba(31,1,10,.32),
     0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
-    inset -3px -3px .5px -3.5px rgba(126,24,53,.48),
-    inset 1px 1px 1px -.5px rgba(112,17,45,.30),
-    inset -1px -1px 1px -.5px rgba(96,11,38,.24),
+    inset -3px -3px .5px -3.5px rgba(144,31,62,.48),
+    inset 1px 1px 1px -.5px rgba(128,23,53,.30),
+    inset -1px -1px 1px -.5px rgba(112,16,46,.24),
     inset 0 0 6px 6px rgba(255,255,255,.055),
     inset 0 0 2px 2px rgba(255,255,255,.035)!important;
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
@@ -50,7 +50,7 @@ export const HOME_OVERRIDES = `
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
-#home .home-intro-card:before,
+#home .home-ticket-finance-visual:before,
 #home .home-ticket-card:before{
   content:''!important;
   position:absolute!important;
@@ -60,15 +60,15 @@ export const HOME_OVERRIDES = `
   display:block!important;
   pointer-events:none!important;
   background:
-    radial-gradient(34px 34px at 0 0,rgba(160,38,72,.16) 0%,rgba(121,21,51,.07) 42%,rgba(82,9,33,0) 76%),
-    radial-gradient(36px 36px at 100% 100%,rgba(146,31,64,.15) 0%,rgba(108,16,45,.065) 43%,rgba(72,7,28,0) 78%),
+    radial-gradient(34px 34px at 0 0,rgba(174,45,79,.16) 0%,rgba(134,27,58,.07) 42%,rgba(92,12,38,0) 76%),
+    radial-gradient(36px 36px at 100% 100%,rgba(160,38,71,.15) 0%,rgba(121,22,52,.065) 43%,rgba(82,10,33,0) 78%),
     radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
     radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),
     radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
-  box-shadow:inset 0 1px 0 rgba(84,7,34,.065),inset 0 -1px 0 rgba(62,4,24,.15)!important;
+  box-shadow:inset 0 1px 0 rgba(100,12,42,.065),inset 0 -1px 0 rgba(76,7,30,.15)!important;
   opacity:1!important;
 }
-#home .home-intro-card>*,
+#home .home-ticket-finance-visual>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
 #home .home-ticket-card .home-ticket-button{
