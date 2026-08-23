@@ -91,6 +91,46 @@ body:has(#slot.active) header.top{
   transition:none!important;
   animation:none!important;
 }
+#slot .slot-win-multiplier{
+  position:absolute!important;
+  z-index:18!important;
+  left:50%!important;
+  top:-11px!important;
+  width:max-content!important;
+  max-width:90%!important;
+  margin:0!important;
+  padding:0!important;
+  transform:translateX(-50%)!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:none!important;
+  background-color:transparent!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  color:#7f1834!important;
+  background:linear-gradient(180deg,#d38a9d 0%,#922945 37%,#5b1028 72%,#9f3855 100%)!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;
+  font-size:clamp(27px,8vw,38px)!important;
+  font-weight:950!important;
+  font-variant-numeric:tabular-nums!important;
+  letter-spacing:-.055em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  text-shadow:0 1px 0 rgba(255,214,225,.18),0 7px 18px rgba(0,0,0,.86),0 0 18px rgba(111,16,43,.38)!important;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.48))!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:none!important;
+  transition:none!important;
+  pointer-events:none!important;
+}
+#slot .slot-win-multiplier[hidden]{display:none!important}
 #slot .slot-machine{
   position:relative!important;
   inset:auto!important;
