@@ -29,17 +29,21 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  background-color:rgba(8,6,9,.56)!important;
-  background-image:linear-gradient(180deg,rgba(92,13,36,.13) 0%,rgba(20,5,10,.05) 34%,rgba(4,3,5,.18) 100%),radial-gradient(120% 90% at 12% -18%,rgba(139,27,56,.12) 0%,rgba(70,8,28,.035) 38%,rgba(35,3,14,0) 68%)!important;
-  border:1px solid rgba(126,27,53,.38)!important;
-  border-top-color:rgba(214,66,99,.68)!important;
-  border-left-color:rgba(160,39,69,.50)!important;
-  border-right-color:rgba(105,18,43,.34)!important;
-  border-bottom-color:rgba(77,10,31,.24)!important;
+  border:1px solid transparent!important;
   outline:0!important;
-  box-shadow:inset 0 1px 0 rgba(255,118,145,.18),inset 1px 0 0 rgba(164,43,72,.10),inset -1px 0 0 rgba(91,13,36,.08),inset 0 -1px 0 rgba(70,8,28,.14),inset 0 0 18px rgba(66,6,25,.12),0 6px 15px rgba(0,0,0,.18),0 0 7px rgba(74,6,28,.10)!important;
-  backdrop-filter:blur(18px) saturate(1.26) brightness(1.01)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(1.26) brightness(1.01)!important;
+  background:
+    linear-gradient(180deg,rgba(34,15,20,.82) 0%,rgba(9,5,7,.88) 30%,rgba(3,3,4,.94) 100%) padding-box,
+    radial-gradient(125% 88% at 14% -14%,rgba(118,22,47,.16) 0%,rgba(70,8,28,.04) 40%,rgba(35,3,14,0) 68%) padding-box,
+    linear-gradient(138deg,rgba(250,170,191,.74) 0%,rgba(191,65,94,.56) 14%,rgba(111,20,47,.34) 34%,rgba(55,6,22,.16) 58%,rgba(136,27,58,.34) 78%,rgba(70,8,28,.18) 100%) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,157,180,.12),
+    inset 0 2px 10px rgba(112,18,43,.08),
+    inset 0 -1px 0 rgba(55,5,21,.32),
+    inset 0 0 15px rgba(48,4,18,.08),
+    0 4px 12px rgba(0,0,0,.20),
+    0 0 5px rgba(77,6,29,.11)!important;
+  backdrop-filter:blur(16px) saturate(1.20) brightness(1.01)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.20) brightness(1.01)!important;
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
@@ -51,7 +55,10 @@ export const HOME_OVERRIDES = `
   border-radius:inherit!important;
   display:block!important;
   pointer-events:none!important;
-  background:radial-gradient(96% 58% at 8% -6%,rgba(255,138,161,.075) 0%,rgba(255,138,161,.018) 34%,rgba(255,138,161,0) 66%),radial-gradient(78% 64% at 100% 104%,rgba(107,17,42,.075) 0%,rgba(55,5,22,0) 64%),linear-gradient(180deg,rgba(255,255,255,.022) 0%,rgba(255,255,255,.004) 36%,rgba(255,255,255,0) 60%)!important;
+  background:
+    radial-gradient(92% 52% at 12% -5%,rgba(255,170,190,.10) 0%,rgba(255,135,163,.025) 34%,rgba(255,135,163,0) 68%),
+    linear-gradient(180deg,rgba(255,255,255,.025) 0%,rgba(255,255,255,.006) 30%,rgba(255,255,255,0) 56%),
+    radial-gradient(84% 58% at 100% 104%,rgba(91,12,36,.06) 0%,rgba(50,4,19,0) 64%)!important;
   box-shadow:none!important;
   opacity:1!important;
 }
