@@ -29,13 +29,17 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
-  background-color:rgba(14,14,18,.10)!important;
-  background-image:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.014) 44%,rgba(255,255,255,.032) 100%),radial-gradient(135% 185% at 18% -45%,rgba(255,255,255,.10) 0%,rgba(255,255,255,.026) 34%,rgba(255,255,255,0) 62%),radial-gradient(120% 110% at 86% 118%,rgba(60,5,23,.20) 0%,rgba(36,3,14,.08) 38%,rgba(24,2,9,0) 66%)!important;
-  border:0!important;
+  background-color:rgba(8,6,9,.56)!important;
+  background-image:linear-gradient(180deg,rgba(92,13,36,.13) 0%,rgba(20,5,10,.05) 34%,rgba(4,3,5,.18) 100%),radial-gradient(120% 90% at 12% -18%,rgba(139,27,56,.12) 0%,rgba(70,8,28,.035) 38%,rgba(35,3,14,0) 68%)!important;
+  border:1px solid rgba(126,27,53,.38)!important;
+  border-top-color:rgba(214,66,99,.68)!important;
+  border-left-color:rgba(160,39,69,.50)!important;
+  border-right-color:rgba(105,18,43,.34)!important;
+  border-bottom-color:rgba(77,10,31,.24)!important;
   outline:0!important;
-  box-shadow:0 0 8px rgba(0,0,0,.03),0 2px 6px rgba(0,0,0,.08),inset 3px 3px .5px -3.5px rgba(88,8,32,.055),inset -3px -3px .5px -3.5px rgba(124,20,50,.58),inset 1px 1px 1px -.5px rgba(105,12,40,.40),inset -1px -1px 1px -.5px rgba(92,8,34,.38),inset 0 0 6px 6px rgba(70,5,26,.08),inset 0 0 2px 2px rgba(118,18,46,.04),0 14px 34px rgba(32,2,11,.40),0 0 22px rgba(56,4,22,.28)!important;
-  backdrop-filter:blur(20px) saturate(1.38) brightness(1.05)!important;
-  -webkit-backdrop-filter:blur(20px) saturate(1.38) brightness(1.05)!important;
+  box-shadow:inset 0 1px 0 rgba(255,118,145,.18),inset 1px 0 0 rgba(164,43,72,.10),inset -1px 0 0 rgba(91,13,36,.08),inset 0 -1px 0 rgba(70,8,28,.14),inset 0 0 18px rgba(66,6,25,.12),0 6px 15px rgba(0,0,0,.18),0 0 7px rgba(74,6,28,.10)!important;
+  backdrop-filter:blur(18px) saturate(1.26) brightness(1.01)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.26) brightness(1.01)!important;
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
@@ -47,9 +51,9 @@ export const HOME_OVERRIDES = `
   border-radius:inherit!important;
   display:block!important;
   pointer-events:none!important;
-  background:radial-gradient(115% 72% at 2% -8%,rgba(255,255,255,.10) 0%,rgba(255,255,255,.028) 29%,rgba(255,255,255,0) 58%),radial-gradient(92% 68% at 102% 106%,rgba(255,255,255,.055) 0%,rgba(255,255,255,.010) 31%,rgba(255,255,255,0) 62%),linear-gradient(135deg,rgba(255,255,255,.032) 0%,rgba(255,255,255,.008) 34%,rgba(255,255,255,0) 54%),radial-gradient(90% 76% at 88% 112%,rgba(58,4,22,.14) 0%,rgba(36,3,14,0) 60%)!important;
-  box-shadow:inset 0 0 0 .35px rgba(96,10,38,.07)!important;
-  opacity:.94!important;
+  background:radial-gradient(96% 58% at 8% -6%,rgba(255,138,161,.075) 0%,rgba(255,138,161,.018) 34%,rgba(255,138,161,0) 66%),radial-gradient(78% 64% at 100% 104%,rgba(107,17,42,.075) 0%,rgba(55,5,22,0) 64%),linear-gradient(180deg,rgba(255,255,255,.022) 0%,rgba(255,255,255,.004) 36%,rgba(255,255,255,0) 60%)!important;
+  box-shadow:none!important;
+  opacity:1!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
