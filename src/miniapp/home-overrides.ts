@@ -26,7 +26,7 @@ export const HOME_OVERRIDES = `
 #home .home-floating-glass-button:active,#home .home-floating-glass-button.is-dragging{cursor:grabbing;transform:scale(1.05);box-shadow:0 28px 76px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.50),inset 0 -14px 28px rgba(255,255,255,.045)!important}
 #home .home-floating-glass-button span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.22);pointer-events:none}
 #home .home-floating-glass-button svg{width:23px;height:23px;display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.28))}
-#home .home-ticket-finance-visual,
+#home #homeDrawInfoCard.home-draw-info-card,
 #home .home-ticket-card{
   position:relative!important;
   overflow:hidden!important;
@@ -50,7 +50,7 @@ export const HOME_OVERRIDES = `
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
-#home .home-ticket-finance-visual:before,
+#home #homeDrawInfoCard.home-draw-info-card:before,
 #home .home-ticket-card:before{
   content:''!important;
   position:absolute!important;
@@ -68,7 +68,7 @@ export const HOME_OVERRIDES = `
   box-shadow:inset 0 1px 0 rgba(100,12,42,.065),inset 0 -1px 0 rgba(76,7,30,.15)!important;
   opacity:1!important;
 }
-#home .home-ticket-finance-visual>*,
+#home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-step,
 #home .home-ticket-card .home-ticket-button{
