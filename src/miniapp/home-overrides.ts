@@ -60,7 +60,7 @@ export const HOME_OVERRIDES = `
     radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
     radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),
     radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
-  box-shadow:inset 0 1px 0 rgba(72,6,28,.065),inset 0 -1px 0 rgba(52,3,19,.15)!important;
+  box-shadow:inset 0 1px 0 rgba(84,7,34,.065),inset 0 -1px 0 rgba(62,4,24,.15)!important;
   opacity:1!important;
 }
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
