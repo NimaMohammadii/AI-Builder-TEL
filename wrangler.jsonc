@@ -7,7 +7,7 @@
   "assets": {
     "directory": "./public",
     "binding": "STATIC_ASSETS",
-    "run_worker_first": ["/assets/Crash.PNG", "/assets/Rocket3D.glb"]
+    "run_worker_first": ["/assets/Crash.PNG", "/assets/Rocket3D.glb", "/assets/Plinko.PNG", "/assets/plinko-glass/*"]
   },
   "observability": {
     "enabled": true
