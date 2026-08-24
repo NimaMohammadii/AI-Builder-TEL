@@ -89,7 +89,9 @@ export const HOME_STYLES = `
     inset 1px 1px 1px -.5px rgba(140,29,61,.30),
     inset -1px -1px 1px -.5px rgba(124,22,53,.24),
     inset 0 0 6px 6px rgba(255,255,255,.055),
-    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
+    inset 0 0 2px 2px rgba(255,255,255,.035),
+    inset 0 1px 0 rgba(112,18,49,.065),
+    inset 0 -1px 0 rgba(88,12,37,.15)!important;
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   -webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   isolation:isolate!important;
@@ -218,7 +220,7 @@ const HOME_SLOT_SCRIPT = `
     document.head.appendChild(st);
   }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
-  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>--:--:--</strong></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>--:--:--</strong></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8-2.2-4.6-4.9-4.1-3.4.6-5.7 4.5-7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
   function ensureBonusPanel(){
     if(q('#homeBonusPanel'))return;
     var wrap=document.createElement('div');
