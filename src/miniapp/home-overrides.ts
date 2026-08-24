@@ -73,59 +73,22 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-count{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.08)!important;
 }
-#home #homeDrawInfoCard .home-draw-actions .home-ticket-image-button,
 #home .home-ticket-card .home-ticket-step,
 #home .home-ticket-card .home-ticket-button{
-  position:relative!important;
-  overflow:hidden!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  box-sizing:border-box!important;
   height:38px!important;
-  min-height:38px!important;
-  max-height:38px!important;
-  margin:0!important;
   padding:0 12px!important;
   border:0!important;
   border-radius:18px!important;
-  outline:0!important;
   background:rgba(0,0,0,.22)!important;
-  background-color:rgba(0,0,0,.22)!important;
-  background-image:none!important;
   color:#fff!important;
-  font-family:inherit!important;
   font-size:12px!important;
   font-weight:950!important;
-  line-height:1!important;
-  letter-spacing:normal!important;
-  text-shadow:none!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
-  filter:none!important;
-  opacity:1!important;
-  transform:none!important;
-  transition:none!important;
-  animation:none!important;
-  -webkit-appearance:none!important;
-  appearance:none!important;
-  -webkit-tap-highlight-color:transparent!important;
 }
-#home #homeDrawInfoCard .home-draw-actions .home-ticket-image-button{min-width:88px!important}
-#home .home-ticket-card .home-ticket-step{min-width:0!important;font-size:0!important;line-height:0!important;color:transparent!important;-webkit-text-fill-color:transparent!important}
-#home .home-ticket-card .home-ticket-button{width:100%!important;min-width:0!important;-webkit-text-fill-color:#fff!important}
-#home .home-ticket-card .home-ticket-step:disabled,
-#home .home-ticket-card .home-ticket-button:disabled{
-  opacity:1!important;
-  background:rgba(0,0,0,.22)!important;
-  background-color:rgba(0,0,0,.22)!important;
-  color:#fff!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
-  filter:none!important;
-  -webkit-appearance:none!important;
-  appearance:none!important;
-}
+#home .home-ticket-card .home-ticket-step{font-size:0!important;line-height:0!important;color:transparent!important}
+#home .home-ticket-card .home-ticket-button{width:100%!important}
 #home .home-ticket-card .home-ticket-step:before,
 #home .home-ticket-card .home-ticket-step:after{
   content:''!important;
@@ -137,7 +100,6 @@ export const HOME_OVERRIDES = `
   border-radius:999px!important;
   background:#fff!important;
   box-shadow:none!important;
-  opacity:1!important;
   transform:translate(-50%,-50%)!important;
   pointer-events:none!important;
 }
