@@ -77,7 +77,11 @@ export const HOME_OVERRIDES = `
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
+  width:88px!important;
+  min-width:88px!important;
+  max-width:88px!important;
   height:38px!important;
+  justify-self:center!important;
   padding:0 12px!important;
   border:0!important;
   border-radius:18px!important;
@@ -90,7 +94,6 @@ export const HOME_OVERRIDES = `
   -webkit-backdrop-filter:none!important;
 }
 #home .home-ticket-card .home-ticket-step{font-size:0!important;line-height:0!important;color:transparent!important}
-#home .home-ticket-card .home-ticket-button{width:100%!important}
 #home .home-ticket-card .home-ticket-step:before,
 #home .home-ticket-card .home-ticket-step:after{
   content:''!important;
