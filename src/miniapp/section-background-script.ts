@@ -5,8 +5,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
     home:['#home'],
-    'home-deposit-card':['#home [data-section-background-target="home-deposit-card"]','#home [data-action="open-deposit"]','#home .home-deposit-card'],
-    'home-withdraw-card':['#home [data-section-background-target="home-withdraw-card"]','#home [data-action="open-withdraw"]','#home .home-withdraw-card'],
     connect:['#connect'],
     playzone:['#playzone','#playzone .play-zone-stage'],
     predict:['#predictzone','#predict'],
@@ -146,8 +144,6 @@ export const SECTION_BACKGROUND_STYLES = `
 }
 .game-card-shell.has-admin-background,
 .game-card.has-admin-background,
-.home-finance-card.has-admin-background,
-.home-intro-card.has-admin-background,
 .predict-zone-card.has-admin-background,
 .play-zone-predict-card.has-admin-background,
 .play-zone-predict-image-slot.has-admin-background,

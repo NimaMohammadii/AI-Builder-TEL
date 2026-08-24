@@ -31,31 +31,6 @@ export const MINIAPP_SCRIPT = `
     try{tg.BackButton.hide()}catch(e){}
   }
 
-  function removeLegacyLeagueAndRewards(){
-    ['leaderboardEntry','leaderboardPage','rewardsPage'].forEach(function(id){var n=q(id);if(n&&n.parentNode)n.parentNode.removeChild(n)});
-    document.querySelectorAll('.home-leaderboard-entry,.home-rewards-entry,[data-action="open-leaderboard"],[data-action="open-rewards"]').forEach(function(n){try{n.remove()}catch(e){}});
-    document.body.classList.remove('leaderboard-open','rewards-open');
-  }
-
-  function setHeaderGlassMode(id){document.body.classList.toggle('header-glass-mode',id==='playzone')}
-
-  function initHomeGlassButton(){
-    var btn=q('homeGlassButton');if(!btn)return;
-    var storageKey='homeGlassButtonPosition';
-    var size=68;var startX=0;var startY=0;var baseX=0;var baseY=0;var didDrag=false;var pointerId=null;
-    function bounds(){var w=Math.max(document.documentElement.clientWidth||0,window.innerWidth||0);var h=Math.max(document.documentElement.clientHeight||0,window.innerHeight||0);var r=btn.getBoundingClientRect();size=Math.max(r.width||68,r.height||68);return{minX:10,maxX:Math.max(10,w-size-10),minY:Math.max(10,(tg&&tg.safeAreaInset&&tg.safeAreaInset.top||0)+10),maxY:Math.max(10,h-size-104)}}
-    function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-    function apply(x,y,save){var b=bounds();var nx=clamp(x,b.minX,b.maxX);var ny=clamp(y,b.minY,b.maxY);btn.style.left=nx+'px';btn.style.top=ny+'px';btn.style.right='auto';btn.style.bottom='auto';if(save)try{localStorage.setItem(storageKey,JSON.stringify({x:nx,y:ny}))}catch(e){}}
-    function load(){var b=bounds();var pos=null;try{pos=JSON.parse(localStorage.getItem(storageKey)||'null')}catch(e){};if(pos&&isFinite(pos.x)&&isFinite(pos.y)){apply(Number(pos.x),Number(pos.y),false)}else{apply(b.maxX-4,b.minY+110,false)}}
-    btn.addEventListener('pointerdown',function(ev){if(ev.button!==undefined&&ev.button!==0)return;var r=btn.getBoundingClientRect();pointerId=ev.pointerId;startX=ev.clientX;startY=ev.clientY;baseX=r.left;baseY=r.top;didDrag=false;btn.classList.add('is-dragging');try{btn.setPointerCapture(pointerId)}catch(e){}}, {passive:true});
-    btn.addEventListener('pointermove',function(ev){if(pointerId!==ev.pointerId)return;var dx=ev.clientX-startX;var dy=ev.clientY-startY;if(Math.abs(dx)+Math.abs(dy)>7)didDrag=true;apply(baseX+dx,baseY+dy,false)});
-    function finish(ev){if(pointerId!==ev.pointerId)return;pointerId=null;btn.classList.remove('is-dragging');var r=btn.getBoundingClientRect();apply(r.left,r.top,true);setTimeout(function(){didDrag=false},80)}
-    btn.addEventListener('pointerup',finish);btn.addEventListener('pointercancel',finish);
-    btn.addEventListener('click',function(ev){if(didDrag){ev.preventDefault();ev.stopPropagation();}},true);
-    window.addEventListener('resize',function(){var r=btn.getBoundingClientRect();apply(r.left,r.top,true)});
-    load();
-  }
-
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
 
   function show(id){
@@ -69,7 +44,6 @@ export const MINIAPP_SCRIPT = `
     try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
     if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
-    removeLegacyLeagueAndRewards();
   }
 
   function openInitialTarget(){
@@ -123,17 +97,12 @@ export const MINIAPP_SCRIPT = `
     if(b.hasAttribute('data-game-view'))return;
     var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(ensureSection(v))show(v);else toast('Coming soon');return}
     var a=b.getAttribute('data-action');
-    if(a==='open-rewards'||a==='close-rewards'||a==='open-leaderboard'||a==='close-leaderboard'){removeLegacyLeagueAndRewards();return}
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='save-user')saveUser();
   });
 
   if(ownerId)storageSet('ownerId',ownerId);
   if(q('ownerId'))q('ownerId').value=ownerId;
-  removeLegacyLeagueAndRewards();
-  setTimeout(removeLegacyLeagueAndRewards,50);
-  setTimeout(removeLegacyLeagueAndRewards,400);
-  initHomeGlassButton();
   initPlayZoneGameNavigation();
   setText('brandTitle',sectionTitles.home);
   setHeaderGlassMode('home');
