@@ -25,6 +25,15 @@ export const HOME_STYLES = `
   isolation:isolate!important;
   transform:translateZ(0)!important;
 }
+#home .home-ticket-card{
+  box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
+}
 #home #homeDrawInfoCard.home-draw-info-card:before,
 #home .home-ticket-card:before{
   content:''!important;
@@ -43,6 +52,13 @@ export const HOME_STYLES = `
   box-shadow:inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;
   opacity:1!important;
 }
+#home .home-ticket-card:before{
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
+    radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%)!important;
+  box-shadow:inset 0 1px 0 rgba(112,18,49,.065)!important;
+}
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-count{
@@ -55,14 +71,29 @@ export const HOME_STYLES = `
   height:38px!important;
   padding:0 12px!important;
   border:0!important;
-  border-radius:18px!important;
-  background:rgba(0,0,0,.22)!important;
+  border-radius:28px!important;
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),
+    radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
+    radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),
+    radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
   color:#fff!important;
   font-size:12px!important;
   font-weight:950!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
+  box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.48),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset -1px -1px 1px -.5px rgba(124,22,53,.24),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
+  backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
+  isolation:isolate!important;
+  transform:translateZ(0)!important;
 }
 #home .home-ticket-card .home-ticket-step{font-size:0!important;line-height:0!important;color:transparent!important}
 #home .home-ticket-card .home-ticket-button{width:100%!important}
@@ -187,7 +218,7 @@ const HOME_SLOT_SCRIPT = `
     document.head.appendChild(st);
   }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
-  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>--:--:--</strong></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8-2.2-4.6-4.9-4.1-3.4.6-5.7 4.5-7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>--:--:--</strong></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
   function ensureBonusPanel(){
     if(q('#homeBonusPanel'))return;
     var wrap=document.createElement('div');
