@@ -20,11 +20,7 @@ export function miniAppHtml(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE, paymentMet
   const nftUrl = paymentMethodImageUrls.nft || DEFAULT_PAYMENT_METHOD_IMAGES.nft;
   const walletSource = "var src=type==='ton'?'/app/api/credit-icon.png':('/app/api/deposit-method-icon/'+(type==='nft'?'nft':'stars')+'.png');";
   const walletResolvedSource = `var src=type==='ton'?'${safeSingleQuotedJs(gramUrl)}':(type==='nft'?'${safeSingleQuotedJs(nftUrl)}':'${safeSingleQuotedJs(starsUrl)}');`;
-  let shell = miniAppShellHtml()
-    .replace(
-      'src="/app/api/home-lottery-slot.png?v=home-lottery"',
-      `src="${homeSlotImageUrl}"`,
-    )
+  let shell = miniAppShellHtml(homeSlotImageUrl)
     .replace(walletSource, walletResolvedSource);
 
   const headExtras: string[] = [];
