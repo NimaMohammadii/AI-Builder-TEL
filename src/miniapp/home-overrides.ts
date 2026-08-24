@@ -40,9 +40,9 @@ export const HOME_OVERRIDES = `
     0 12px 30px rgba(31,1,10,.32),
     0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
-    inset -3px -3px .5px -3.5px rgba(144,31,62,.48),
-    inset 1px 1px 1px -.5px rgba(128,23,53,.30),
-    inset -1px -1px 1px -.5px rgba(112,16,46,.24),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.48),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset -1px -1px 1px -.5px rgba(124,22,53,.24),
     inset 0 0 6px 6px rgba(255,255,255,.055),
     inset 0 0 2px 2px rgba(255,255,255,.035)!important;
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
@@ -60,12 +60,12 @@ export const HOME_OVERRIDES = `
   display:block!important;
   pointer-events:none!important;
   background:
-    radial-gradient(34px 34px at 0 0,rgba(174,45,79,.16) 0%,rgba(134,27,58,.07) 42%,rgba(92,12,38,0) 76%),
-    radial-gradient(36px 36px at 100% 100%,rgba(160,38,71,.15) 0%,rgba(121,22,52,.065) 43%,rgba(82,10,33,0) 78%),
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),
     radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
     radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),
     radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
-  box-shadow:inset 0 1px 0 rgba(100,12,42,.065),inset 0 -1px 0 rgba(76,7,30,.15)!important;
+  box-shadow:inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;
   opacity:1!important;
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
