@@ -70,22 +70,28 @@ export const HOME_OVERRIDES = `
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
+#home .home-ticket-card .home-ticket-count{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.08)!important;
+}
 #home .home-ticket-card .home-ticket-step,
 #home .home-ticket-card .home-ticket-button{
   position:relative!important;
   overflow:hidden!important;
+  height:38px!important;
   border:0!important;
+  border-radius:18px!important;
   outline:0!important;
-  background:linear-gradient(180deg,rgba(120,24,47,.11) 0%,rgba(52,8,20,.085) 20%,rgba(3,3,4,.34) 52%,rgba(68,10,27,.10) 76%,rgba(0,0,1,.42) 100%),linear-gradient(135deg,#090a0c 0%,#020203 42%,#260711 72%,#000001 100%)!important;
-  background-size:160% 100%!important;
-  color:rgba(255,238,243,.95)!important;
-  text-shadow:0 1px 1px rgba(0,0,0,.71)!important;
-  box-shadow:inset 0 1px 0 rgba(255,151,174,.20),inset 0 -1px 0 rgba(0,0,0,.89),0 8px 18px rgba(0,0,0,.32)!important;
-  transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,filter .16s ease!important;
-  animation:homeDarkMetalShift 4.8s ease-in-out infinite!important;
+  background:rgba(0,0,0,.22)!important;
+  background-image:none!important;
+  color:#fff!important;
+  text-shadow:none!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  transition:transform .16s cubic-bezier(.2,.8,.2,1)!important;
+  animation:none!important;
 }
 #home .home-ticket-card .home-ticket-step{
-  border-radius:15px!important;
   font-size:0!important;
   line-height:0!important;
   color:transparent!important;
@@ -111,16 +117,12 @@ export const HOME_OVERRIDES = `
   height:16px!important;
 }
 #home .home-ticket-card .home-ticket-button{
-  border-radius:17px!important;
-  font-weight:900!important;
+  font-size:12px!important;
+  font-weight:950!important;
 }
 #home .home-ticket-card .home-ticket-step:active,
 #home .home-ticket-card .home-ticket-button:active{
-  transform:translateY(1px) scale(.975)!important;
-  filter:brightness(.90)!important;
-  box-shadow:inset 0 2px 5px rgba(9,0,3,.66),inset 0 1px 0 rgba(210,82,108,.085),0 3px 8px rgba(0,0,0,.26)!important;
+  transform:scale(.96)!important;
 }
-@keyframes homeDarkMetalShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @media(max-width:380px){#home .home-floating-glass-button{width:62px!important;height:62px!important;min-width:62px!important;min-height:62px!important;left:calc(100vw - 88px)}}
-@media(prefers-reduced-motion:reduce){#home .home-ticket-card .home-ticket-step,#home .home-ticket-card .home-ticket-button{animation:none!important}}
 `;
