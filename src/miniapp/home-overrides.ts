@@ -75,8 +75,6 @@ export const HOME_OVERRIDES = `
 }
 #home .home-ticket-card .home-ticket-step,
 #home .home-ticket-card .home-ticket-button{
-  position:relative!important;
-  overflow:hidden!important;
   height:38px!important;
   padding:0 12px!important;
   border:0!important;
