@@ -23,6 +23,10 @@
         "class_name": "SectionLockEvents"
       },
       {
+        "name": "LIVE_ACTIVITY",
+        "class_name": "LiveActivityRoom"
+      },
+      {
         "name": "GHOST_RUN_LIVE",
         "class_name": "GhostRunLiveRoom"
       }
@@ -61,6 +65,10 @@
           "to": "GhostRunLiveRoom"
         }
       ]
+    },
+    {
+      "tag": "v8",
+      "new_sqlite_classes": ["LiveActivityRoom"]
     }
   ],
   "d1_databases": [
