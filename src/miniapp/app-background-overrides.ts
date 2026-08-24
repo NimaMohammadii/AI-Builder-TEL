@@ -31,14 +31,17 @@ body:has(#vexaBoot:not(.hide)) .tabs{opacity:0!important;transform:translateY(86
 
 /* Native mobile connected backgrounds */
 body:has(#rewards.active){--connected-pan-x:0%}
+body:has(#home.active){--connected-pan-x:50%}
 body:has(#playzone.active){--connected-pan-x:100%}
 
+body:has(#home.active),
 body:has(#playzone.active),
 body:has(#rewards.active){
   isolation:isolate;
   background:#020202!important;
 }
 
+body:has(#home.active)::before,
 body:has(#playzone.active)::before,
 body:has(#rewards.active)::before{
   content:""!important;
@@ -60,27 +63,33 @@ body:has(#rewards.active)::before{
   pointer-events:none!important;
 }
 
+body:has(#home.active)::after,
 body:has(#playzone.active)::after,
 body:has(#rewards.active)::after,
+body:has(#home.active) .app::before,
 body:has(#playzone.active) .app::before,
 body:has(#rewards.active) .app::before,
+body:has(#home.active) .app::after,
 body:has(#playzone.active) .app::after,
 body:has(#rewards.active) .app::after{
   content:none!important;
   display:none!important;
 }
 
+body:has(#home.active) .app,
 body:has(#playzone.active) .app,
 body:has(#rewards.active) .app,
+body:has(#home.active) .top,
 body:has(#playzone.active) .top,
 body:has(#rewards.active) .top,
-#playzone.active,#rewards.active,
+#home.active,#playzone.active,#rewards.active,
 [data-lazy-section-host="playzone"],
 [data-lazy-section-host="rewards"]{
   background:transparent!important;
   background-image:none!important;
 }
 
+#home.active::before,#home.active::after,
 #playzone.active::before,#playzone.active::after,
 #rewards.active::before,#rewards.active::after{
   content:none!important;
@@ -88,6 +97,7 @@ body:has(#rewards.active) .top,
 }
 
 @media (prefers-reduced-motion:reduce){
+  body:has(#home.active)::before,
   body:has(#playzone.active)::before,
   body:has(#rewards.active)::before{transition:none!important;transform:none}
 }

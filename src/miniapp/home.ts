@@ -82,59 +82,10 @@ export const HOME_STYLES = `
 }
 #home .home-ticket-card .home-ticket-step[data-ticket-minus]:after{display:none!important}
 #home .home-ticket-card .home-ticket-step[data-ticket-plus]:after{display:block!important;width:2.6px!important;height:16px!important}
-html body:has(#home.active){
-  isolation:isolate!important;
-  background:#000!important;
-}
-html body:has(#home.active)::before{
-  content:""!important;
-  display:block!important;
-  position:fixed!important;
-  inset:0!important;
-  width:100vw!important;
-  height:100dvh!important;
-  z-index:-1!important;
-  pointer-events:none!important;
-  background-color:#000!important;
-  background-image:url('/assets/Home.PNG?v=1')!important;
-  background-size:cover!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
-  transform:none!important;
-  animation:none!important;
-  filter:none!important;
-  opacity:1!important;
-}
-html body:has(#home.active)::after,
-html body:has(#home.active) .app::before,
-html body:has(#home.active) .app::after{
-  display:none!important;
-  content:none!important;
-  background:none!important;
-  background-image:none!important;
-}
-html body:has(#home.active) .app,
-html body:has(#home.active) main.app,
-html body:has(#home.active) .content,
-html body:has(#home.active) #home.view,
-html body:has(#home.active) .top,
-html body:has(#home.active) header.top{
-  background:transparent!important;
-  background-color:transparent!important;
-  background-image:none!important;
-}
 `
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
-const EMPTY_HOME_SLOT_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
-
-function htmlAttribute(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-export function homeSection(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE): string {
-  return `<section id="home" class="view active" data-home-slot-image="${htmlAttribute(encodeURIComponent(homeSlotImageUrl))}"></section>`;
-}
+export const HOME_SECTION = `<section id="home" class="view active"></section>`;
 
 const HOME_MARKUP_SCRIPT = `
 (function(){
@@ -182,7 +133,7 @@ const HOME_MARKUP_SCRIPT = `
     if(!sec){
       sec=document.createElement('section');
       sec.id='homeLuckyCodeSection';
-      sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head" aria-hidden="true"></div><section class="home-lottery-slot-card" aria-label="Lottery slot image"><img class="home-lottery-slot-image" src="'+decodeURIComponent(home.getAttribute('data-home-slot-image')||'')+'" alt="" decoding="async" loading="eager"/>'+slotsHtml()+'</section><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-card-head"><strong>Get Ticket</strong></div><div class="home-ticket-count" data-ticket-count>1 ticket</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"></div></div></div>';
+      sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head" aria-hidden="true"></div><section class="home-lottery-slot-card" aria-label="Lottery slot image"><img class="home-lottery-slot-image" src="/app/api/home-lottery-slot.png?v=home-lottery" alt="" decoding="async" loading="eager"/>'+slotsHtml()+'</section><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-card-head"><strong>Get Ticket</strong></div><div class="home-ticket-count" data-ticket-count>1 ticket</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"></div></div></div>';
     }
     placeSection(home,sec);
     ensureDrawerPortal(sec);
