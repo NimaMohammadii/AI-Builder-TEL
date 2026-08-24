@@ -1,6 +1,6 @@
 import app from './index-game-services';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
-import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home-lottery-client';
+import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';

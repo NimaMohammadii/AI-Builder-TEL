@@ -27,14 +27,13 @@ import { PLAY_ZONE_SHOWCASE_OVERRIDES } from './play-zone-showcase-overrides';
 import { PLAY_ZONE_TOP_BLUR } from './play-zone-top-blur';
 import { PLAY_ZONE_ROW_IMAGE_FIX } from './play-zone-row-image-fix';
 import { PLAY_ZONE_EDGE_FIX } from './play-zone-edge-fix';
-import { HOME_OVERRIDES } from './home-overrides';
 import { BALANCE_OVERRIDES } from './balance-overrides';
 import { NAV_GLASS_OVERRIDES } from './nav-glass-overrides';
 import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
 import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
-import { HOME_SECTION, HOME_BLANK_CARDS_SCRIPT, HOME_SLOT_TUNING_SCRIPT } from './home';
+import { HOME_SCRIPT, HOME_SECTION, HOME_STYLES } from './home';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
@@ -42,7 +41,6 @@ import { PREDICT_ZONE_SECTION } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
-import { HOME_IMAGE_VERSION_SCRIPT } from './home-image-version-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
@@ -60,57 +58,6 @@ import { CREDIT_GUARD_SCRIPT } from './credit-guard-script';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
-
-const HOME_INTRO_CARD_IMAGE_STYLES = `
-#home .home-intro-card,
-#rewards .home-intro-card {
-  height: 104px !important;
-  min-height: 104px !important;
-  max-height: 104px !important;
-  display: grid !important;
-  place-items: stretch !important;
-  padding: 6px !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
-  background-color: rgba(255,255,255,.035) !important;
-  background-image: url('/app/api/home-intro-image.png') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-#home .home-intro-card h2,
-#home .home-intro-card p,
-#rewards .home-intro-card h2,
-#rewards .home-intro-card p {
-  display: none !important;
-}
-#home .home-intro-image-frame,
-#rewards .home-intro-image-frame {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 92px !important;
-  display: block !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(255,255,255,.18) !important;
-  border-radius: 24px !important;
-  background: none !important;
-  box-shadow: none !important;
-  box-sizing: border-box !important;
-}
-#home .home-intro-image-frame img.home-intro-image,
-#rewards .home-intro-image-frame img.home-intro-image {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 92px !important;
-  object-fit: cover !important;
-  object-position: center !important;
-  border-radius: 23px !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-`;
 
 const STYLES = [
   MINIAPP_STYLES,
@@ -131,8 +78,7 @@ const STYLES = [
   PLAY_ZONE_TOP_BLUR,
   PLAY_ZONE_ROW_IMAGE_FIX,
   PLAY_ZONE_EDGE_FIX,
-  HOME_OVERRIDES,
-  HOME_INTRO_CARD_IMAGE_STYLES,
+  HOME_STYLES,
   WALLET_GLOBAL_STYLES,
   BALANCE_OVERRIDES,
   NAV_GLASS_OVERRIDES,
@@ -228,9 +174,7 @@ const SCRIPTS = [
   TON_BALANCE_SCRIPT,
   DEPOSIT_ENHANCEMENTS_SCRIPT,
   CREDIT_GUARD_SCRIPT,
-  HOME_IMAGE_VERSION_SCRIPT,
-  HOME_BLANK_CARDS_SCRIPT,
-  HOME_SLOT_TUNING_SCRIPT,
+  HOME_SCRIPT,
   PLAY_ZONE_STACK_SCROLL_SCRIPT,
   PLAY_ZONE_VISIBILITY_SCRIPT,
   GAME_LIVE_COUNT_SCRIPT,

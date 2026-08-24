@@ -230,8 +230,6 @@ export const BOOT_LOADER_SCRIPT = `
       }).then(function(finalImg){
         if(!finalImg)return false;
         var assets=[imageReady(finalImg,5000)];
-        var intro=document.querySelector('#home .home-intro-card');
-        var introUrl=backgroundUrl(intro);if(introUrl)assets.push(urlReady(introUrl,5000));
         var home=document.getElementById('home');
         var homeBg=backgroundUrl(home);if(homeBg)assets.push(urlReady(homeBg,5000));
         var ton=document.querySelector('.top-balance-pill .ton-mini-icon img');
