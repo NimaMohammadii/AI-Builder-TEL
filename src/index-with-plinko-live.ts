@@ -1,7 +1,7 @@
 import app from './index-game-services';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home';
-import { LIVE_ACTIVITY_CLIENT_SCRIPT } from './live-activity';
+import { LIVE_ACTIVITY_CLIENT_SCRIPT, publishLiveActivity } from './live-activity';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';
@@ -377,7 +377,16 @@ export default {
     if (isNewGramWithdrawal && response.ok) {
       const withdrawal = await response.clone().json().catch(() => null) as TonWithdrawal | null;
       if (withdrawal?.id) {
-        await notifyAdminGramWithdrawal(runtimeEnv, withdrawal).catch((error) => console.warn('Gram withdrawal notification failed', error));
+        await Promise.all([
+          notifyAdminGramWithdrawal(runtimeEnv, withdrawal).catch((error) => console.warn('Gram withdrawal notification failed', error)),
+          publishLiveActivity(runtimeEnv, {
+            kind: 'withdraw',
+            userId: withdrawal.userId,
+            amountNano: withdrawal.amountNano,
+            key: withdrawal.id,
+            createdAt: withdrawal.createdAt,
+          }).catch((error) => console.warn('Gram withdrawal live activity failed', error)),
+        ]);
       }
     }
 
