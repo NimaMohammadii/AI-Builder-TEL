@@ -7,15 +7,44 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   var officialSpinActive=false,suppressedWindowFocus=false,claimedObserver=null,claimedObservedNode=null;
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
+  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function installRemovedControlStyle(){
     if(q('#vexaLotteryRemovedControls'))return;
     var style=document.createElement('style');style.id='vexaLotteryRemovedControls';
     style.textContent='#homeSlotSpinButton,#homeSlotManualButton,#homeConfettiButton{display:none!important}';
     document.head.appendChild(style);
   }
+  function installTopTicketControlsStyle(){
+    if(q('#vexaLotteryTopTicketControls'))return;
+    var style=document.createElement('style');style.id='vexaLotteryTopTicketControls';
+    style.textContent=[
+      '#homeDrawActions .home-ticket-top-controls.home-ticket-card{position:relative!important;width:auto!important;height:38px!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;background-image:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;isolation:auto!important;transform:none!important;overflow:visible!important;display:grid!important;grid-template-columns:34px minmax(72px,86px) 34px!important;align-items:center!important;align-content:center!important;gap:5px!important}',
+      '#homeDrawActions .home-ticket-top-controls.home-ticket-card:before,#homeDrawActions .home-ticket-top-controls.home-ticket-card:after{display:none!important;content:none!important}',
+      '#homeDrawActions .home-ticket-top-controls .home-ticket-step,#homeDrawActions .home-ticket-top-controls .home-ticket-button{height:38px!important;min-width:0!important;margin:0!important;padding:0 8px!important}',
+      '#homeDrawActions .home-ticket-top-controls .home-ticket-button{width:100%!important;overflow:hidden!important;white-space:nowrap!important}',
+      '#homeDrawActions .home-ticket-top-controls .home-ticket-button img{width:24px!important;height:24px!important}',
+      '@media(max-width:390px){#homeDrawActions{gap:5px!important}#homeDrawActions .home-ticket-top-controls.home-ticket-card{grid-template-columns:32px 68px 32px!important;gap:4px!important}.home-draw-copy .home-draw-label{display:none!important}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
   function stripDrawControlButtons(){
     ['homeSlotSpinButton','homeSlotManualButton','homeConfettiButton'].forEach(function(id){var el=q('#'+id);if(el&&el.parentNode)el.parentNode.removeChild(el)});
     if(document.body)document.body.classList.remove('home-slot-manual-on');
+  }
+  function ensureTopTicketControls(){
+    var actions=q('#homeDrawActions'),sourceBuy=q('#homeTicketButton'),sourceMinus=q('#home .home-ticket-card [data-ticket-minus]'),sourcePlus=q('#home .home-ticket-card [data-ticket-plus]');
+    if(!actions||!sourceBuy||!sourceMinus||!sourcePlus)return;
+    var top=q('#homeTopTicketControls');
+    if(!top){
+      top=document.createElement('div');
+      top.id='homeTopTicketControls';
+      top.className='home-ticket-card home-ticket-top-controls';
+      top.setAttribute('data-ticket-control-copy','top');
+      top.innerHTML='<button class="home-ticket-step" type="button" data-ticket-minus aria-label="Decrease tickets">-</button><button class="home-ticket-button" type="button" data-ticket-buy>Get Ticket</button><button class="home-ticket-step" type="button" data-ticket-plus aria-label="Increase tickets">+</button>';
+    }
+    if(top.parentNode!==actions)actions.insertBefore(top,actions.firstChild);
+    var my=q('#homeTicketImageButton'),originalActions=q('#home .home-ticket-finance-visual .home-ticket-actions');
+    if(my&&originalActions&&my.parentNode!==originalActions)originalActions.appendChild(my);
   }
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
@@ -114,17 +143,17 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function renderPrizePanel(){var list=q('#homeBonusPanel .home-bonus-list');if(list&&state&&Array.isArray(state.prizes))list.innerHTML=prizeRowsHtml(state.prizes);renderClaimedTickets()}
   function render(){
-    var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');
+    ensureTopTicketControls();
+    var cardCount=q('#home .home-ticket-card:not(.home-ticket-top-controls) [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList');
     var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);
     var max=maxSelectable();if(quantity>max)quantity=max;if(quantity<1)quantity=1;
     if(cardCount)cardCount.textContent=quantity+' ticket'+(quantity===1?'':'s');
     if(drawerCount)drawerCount.textContent=count+' ticket'+(count===1?'':'s');
     if(list)list.innerHTML=listHtml(state&&state.tickets||[]);
-    var minus=q('#home [data-ticket-minus]'),plus=q('#home [data-ticket-plus]');
-    if(minus)minus.disabled=busy||quantity<=1||limitReached;
-    if(plus)plus.disabled=busy||quantity>=max||!state||!state.canBuy||limitReached;
-    if(button){
-      var cost=purchaseCostNano();
+    qa('#home [data-ticket-minus]').forEach(function(minus){minus.disabled=busy||quantity<=1||limitReached});
+    qa('#home [data-ticket-plus]').forEach(function(plus){plus.disabled=busy||quantity>=max||!state||!state.canBuy||limitReached});
+    var buttons=qa('#homeTicketButton,#home [data-ticket-buy]'),cost=purchaseCostNano();
+    buttons.forEach(function(button){
       if(busy){button.textContent='Getting Ticket…';button.removeAttribute('aria-label')}
       else if(limitReached){button.textContent='Ticket limit reached';button.removeAttribute('aria-label')}
       else if(state&&state.canBuy&&cost<=0){button.textContent='Get Free Ticket';button.setAttribute('aria-label','Get Free Ticket')}
@@ -133,7 +162,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       else if(!initData()){button.textContent='Open in Telegram';button.removeAttribute('aria-label')}
       button.disabled=busy||!state||!state.canBuy||!initData()||limitReached;
       button.classList.remove('is-ready');
-    }
+    });
     renderPrizePanel();
     updateCountdown();
   }
@@ -235,13 +264,13 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(window.VexaTonBalance&&typeof window.VexaTonBalance.write==='function'&&payload.gramBalanceNano!==undefined)window.VexaTonBalance.write(Number(payload.gramBalanceNano)||0,0);
       quantity=1;haptic('success');await load(true);
     }catch(error){
-      haptic('error');var button=q('#homeTicketButton');if(button){button.textContent=String(error&&error.message||'Could not get ticket');setTimeout(render,1200)}
+      haptic('error');var message=String(error&&error.message||'Could not get ticket');qa('#homeTicketButton,#home [data-ticket-buy]').forEach(function(button){button.textContent=message});setTimeout(render,1200)
     }finally{busy=false;setTimeout(render,0)}
   }
   function handleTicketControls(event){
-    var target=event.target&&event.target.closest?event.target.closest('#homeTicketButton,#home [data-ticket-plus],#home [data-ticket-minus]'):null;if(!target)return;
+    var target=event.target&&event.target.closest?event.target.closest('#homeTicketButton,#home [data-ticket-buy],#home [data-ticket-plus],#home [data-ticket-minus]'):null;if(!target)return;
     event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-    if(target.id==='homeTicketButton'){buy();return}
+    if(target.id==='homeTicketButton'||target.hasAttribute('data-ticket-buy')){buy();return}
     if(busy||!state||!state.canBuy||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
     if(target.hasAttribute('data-ticket-plus'))quantity=Math.min(maxSelectable(),quantity+1);
     if(target.hasAttribute('data-ticket-minus'))quantity=Math.max(1,quantity-1);
@@ -254,9 +283,10 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     else if(bonus)setTimeout(function(){if(q('#home.active')&&!busy)load(false)},0);
   }
   function startClock(){if(clockStarted)return;clockStarted=true;setInterval(updateCountdown,250)}
-  function refreshWhenVisible(){if(!document.hidden&&q('#home.active')&&!busy)load(false)}
-  function init(){stripDrawControlButtons();renderClaimedTickets();document.addEventListener('click',handleTicketControls,true);document.addEventListener('click',handleSmartRefresh,true);load(true);startClock();window.VexaLotteryRefresh=function(){return load(true)}}
+  function refreshWhenVisible(){ensureTopTicketControls();if(!document.hidden&&q('#home.active')&&!busy)load(false)}
+  function init(){stripDrawControlButtons();ensureTopTicketControls();renderClaimedTickets();document.addEventListener('click',handleTicketControls,true);document.addEventListener('click',handleSmartRefresh,true);load(true);startClock();window.VexaLotteryRefresh=function(){return load(true)}}
   installRemovedControlStyle();
+  installTopTicketControlsStyle();
   window.addEventListener('focus',guardOfficialSpinFocus,true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',refreshWhenVisible);
