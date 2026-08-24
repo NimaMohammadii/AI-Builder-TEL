@@ -1,6 +1,7 @@
 import app from './index-game-services';
 import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
 import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home';
+import { LIVE_ACTIVITY_CLIENT_SCRIPT } from './live-activity';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
 import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './telegram-gram-withdrawals-admin';
@@ -18,6 +19,7 @@ import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import type { Env } from './types';
 import type { TonWithdrawal } from './ton-withdrawals';
 export { SectionLockEvents } from './section-lock-events';
+export { LiveActivityRoom } from './live-activity';
 
 export { PlinkoLiveRoom } from './plinko-live';
 
@@ -296,6 +298,21 @@ export default {
         return new Response('Unauthorized', { status: 401 });
       }
     }
+    if (request.method === 'GET' && url.pathname === '/app/api/live-activity/ws') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return Response.json({ error: 'Expected websocket.' }, { status: 426, headers: { 'cache-control': 'no-store' } });
+      }
+      try {
+        await validateTelegramInitData(url.searchParams.get('initData') || '', gameBotToken(runtimeEnv));
+        const id = runtimeEnv.LIVE_ACTIVITY.idFromName('global');
+        return runtimeEnv.LIVE_ACTIVITY.get(id).fetch(new Request('https://live-activity/connect', {
+          method: 'GET',
+          headers: request.headers,
+        }));
+      } catch {
+        return new Response('Unauthorized', { status: 401 });
+      }
+    }
     if (request.method === 'POST' && url.pathname === '/app/api/play-zone-card-visibility') {
       try {
         const body = await request.json().catch(() => ({})) as { initData?: unknown };
@@ -370,7 +387,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.delete('content-length');
     headers.set('cache-control', 'no-store');
-    return new Response(html.replace('</body>', `${HOME_LOTTERY_CLIENT_SCRIPT}${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
+    return new Response(html.replace('</body>', `${HOME_LOTTERY_CLIENT_SCRIPT}${LIVE_ACTIVITY_CLIENT_SCRIPT}${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
       status: response.status,
       statusText: response.statusText,
       headers,
