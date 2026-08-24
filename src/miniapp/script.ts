@@ -39,7 +39,6 @@ export const MINIAPP_SCRIPT = `
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa');
-    setHeaderGlassMode(id);
     syncTelegramBackButton(id);
     try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
@@ -105,7 +104,6 @@ export const MINIAPP_SCRIPT = `
   if(q('ownerId'))q('ownerId').value=ownerId;
   initPlayZoneGameNavigation();
   setText('brandTitle',sectionTitles.home);
-  setHeaderGlassMode('home');
   syncTelegramBackButton('home');
   setTimeout(openInitialTarget,250);
   setTimeout(openInitialTarget,900);
