@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
 import { LOTTERY_NEXT_ROUND_DELAY_MS, buyLotteryTickets, getLotteryUserState, listLotteryTickets } from './lottery';
 import { getLotteryPrizes, getLotteryWinners, userWonLotteryRound } from './lottery-prizes';
+import { publishLiveActivity } from './live-activity';
 
 export async function handleLotteryRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
@@ -74,6 +75,15 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const body = await request.json().catch(() => ({})) as { initData?: unknown; quantity?: unknown; purchaseId?: unknown };
       const userId = await validateTelegramInitData(body.initData, gameBotToken(env));
       const result = await buyLotteryTickets(env, userId, body.quantity, body.purchaseId);
+      await publishLiveActivity(env, {
+        kind: 'ticket',
+        userId,
+        amountNano: result.paidNano,
+        quantity: result.tickets.length,
+        section: 'home',
+        key: String(body.purchaseId || result.tickets[0]?.id || ''),
+        createdAt: result.tickets[0]?.createdAt,
+      }).catch((error) => console.warn('ticket live activity failed', error));
       return json({ ok: true, serverNowMs: Date.now(), ...result });
     }
 
