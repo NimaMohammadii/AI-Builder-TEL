@@ -140,22 +140,6 @@ async function publishTransactionActivity(env: Env, transactions: TonTransaction
     }
   }
 
-  const ticket = transactions.find((item) => item.kind === 'adjustment'
-    && item.amountNano < 0
-    && String(item.metadata?.feature || '') === 'lottery'
-    && !/refund/i.test(item.title));
-  if (ticket) {
-    await publishLiveActivity(env, {
-      kind: 'ticket',
-      userId: ticket.userId,
-      amountNano: Math.abs(ticket.amountNano),
-      quantity: Math.max(1, Math.floor(Number(ticket.metadata?.quantity) || 1)),
-      section: 'home',
-      key: String(ticket.metadata?.purchaseId || ticket.referenceId || ticket.id),
-      createdAt: ticket.createdAt,
-    });
-  }
-
   const games = transactions.filter((item) => item.kind === 'game');
   if (!games.length) return;
   const hasSettlementPhase = games.some((item) => ['bet', 'payout'].includes(String(item.metadata?.phase || '')));
