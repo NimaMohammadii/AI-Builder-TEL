@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { ensureLevelTables } from './levels';
 import { ensureTonBalanceColumn } from './user-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
+import { publishLiveActivity } from './live-activity';
 
 export const LOTTERY_WINNER_COUNT = 15;
 const MAX_PRIZE_NANO = 1_000_000_000_000;
@@ -196,6 +197,9 @@ async function payPendingLotteryWinners(env: Env, roundId: string): Promise<void
     if (amount <= 0) {
       await env.DB.prepare(`UPDATE lottery_winners SET payout_status='paid',paid_at=CURRENT_TIMESTAMP
         WHERE id=? AND payout_status='pending'`).bind(row.id).run();
+      await publishLiveActivity(env, {
+        kind: 'winner', userId: row.user_id, amountNano: 0, rank: row.rank, section: 'home', key: row.id,
+      }).catch((error) => console.warn('lottery winner live activity failed', error));
       continue;
     }
 
@@ -227,6 +231,9 @@ async function payPendingLotteryWinners(env: Env, roundId: string): Promise<void
       env.DB.prepare(`UPDATE lottery_winners SET payout_status='paid',paid_at=CURRENT_TIMESTAMP
         WHERE id=? AND payout_status='pending'`).bind(row.id),
     ]);
+    await publishLiveActivity(env, {
+      kind: 'winner', userId: row.user_id, amountNano: amount, rank: row.rank, section: 'home', key: row.id,
+    }).catch((error) => console.warn('lottery winner live activity failed', error));
   }
 }
 
