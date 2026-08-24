@@ -1,5 +1,5 @@
 export const GLASS_COMPONENTS_OVERRIDES = `
-button:not(.tab):not(.section-keyboard-dismiss):not(:where(.home-ticket-step,.home-ticket-button,.home-ticket-image-button,.home-bonus-button,.home-ticket-drawer-close,.home-bonus-close)),.primary,.secondary,.ghost,.danger,.home-action,.bot-row,.voice-btn,.voice-menu,.voice-menu button,.game-open,.plinko-drop,.plinko-quick button,.risk-segment,.risk-segment button,.rows-select,.bet-quick button,.autoplay-toggle,.crash-primary,.crash-secondary,.crash-quick button,.mine-tile,#minesStart,#minesCashout,[data-mines-bet],.top-balance-pill,.credit-pill,.pill{
+button:not(.tab):not(.section-keyboard-dismiss):not(:where(.home-ticket-step,.home-ticket-button,.home-ticket-drawer-close,.home-bonus-close)),.primary,.secondary,.ghost,.danger,.home-action,.bot-row,.voice-btn,.voice-menu,.voice-menu button,.game-open,.plinko-drop,.plinko-quick button,.risk-segment,.risk-segment button,.rows-select,.bet-quick button,.autoplay-toggle,.crash-primary,.crash-secondary,.crash-quick button,.mine-tile,#minesStart,#minesCashout,[data-mines-bet],.top-balance-pill,.credit-pill,.pill{
   border:0!important;
   outline:0!important;
   background:rgba(255,255,255,.035)!important;
