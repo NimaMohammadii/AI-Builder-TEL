@@ -33,7 +33,7 @@ import { GLASS_COMPONENTS_OVERRIDES } from './glass-components-overrides';
 import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
-import { HOME_SCRIPT, HOME_STYLES, homeSection } from './home';
+import { HOME_SCRIPT, HOME_SECTION, HOME_STYLES } from './home';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
@@ -90,13 +90,11 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
-function initialSections(homeSlotImageUrl?: string): string {
-  return [
-    homeSection(homeSlotImageUrl),
-    PLAY_ZONE_SECTION,
-    REWARDS_SECTION,
-  ].join('');
-}
+const INITIAL_SECTIONS = [
+  HOME_SECTION,
+  PLAY_ZONE_SECTION,
+  REWARDS_SECTION,
+].join('');
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
@@ -187,7 +185,7 @@ const SCRIPTS = [
   XP_BAR_EFFECTS_SCRIPT,
 ].map((script) => `<script>${script}</script>`).join('');
 
-export function miniAppShellHtml(homeSlotImageUrl?: string): string {
+export function miniAppShellHtml(): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -228,7 +226,7 @@ export function miniAppShellHtml(homeSlotImageUrl?: string): string {
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
       </div>
     </header>
-    ${initialSections(homeSlotImageUrl)}
+    ${INITIAL_SECTIONS}
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
