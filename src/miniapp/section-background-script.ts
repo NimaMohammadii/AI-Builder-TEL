@@ -4,7 +4,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
-    home:['#home'],
     connect:['#connect'],
     playzone:['#playzone','#playzone .play-zone-stage'],
     predict:['#predictzone','#predict'],
@@ -92,7 +91,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var cache=null;
   var inFlight=null;
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
-  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='ghostrun')return false;if(section.id.indexOf('home-')===0)return sectionVisible('home');if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
+  function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='ghostrun')return false;if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
   function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     if(!force&&cache){apply(cache.sections);return Promise.resolve(cache)}
