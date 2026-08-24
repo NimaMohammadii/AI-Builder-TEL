@@ -4,7 +4,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockStarted=false,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
-  var officialSpinActive=false,suppressedWindowFocus=false,claimedObserver=null,claimedObservedNode=null;
+  var officialSpinActive=false,suppressedWindowFocus=false,claimedObserver=null,claimedObservedNode=null,topActionsObserver=null,topActionsObservedNode=null;
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
@@ -45,6 +45,15 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(top.parentNode!==actions)actions.insertBefore(top,actions.firstChild);
     var my=q('#homeTicketImageButton'),originalActions=q('#home .home-ticket-finance-visual .home-ticket-actions');
     if(my&&originalActions&&my.parentNode!==originalActions)originalActions.appendChild(my);
+    watchTopTicketActions();
+  }
+  function watchTopTicketActions(){
+    var actions=q('#homeDrawActions');
+    if(!actions||topActionsObservedNode===actions)return;
+    if(topActionsObserver)topActionsObserver.disconnect();
+    topActionsObservedNode=actions;
+    topActionsObserver=new MutationObserver(function(){ensureTopTicketControls()});
+    topActionsObserver.observe(actions,{childList:true});
   }
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
