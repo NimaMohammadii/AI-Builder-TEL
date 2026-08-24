@@ -188,7 +188,7 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
   var reconnectAttempt=0;
   var clockTimer=0;
   function q(s,r){return (r||document).querySelector(s)}
-  function esc(v){return String(v||'').replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]||c})}
+  function esc(v){return String(v||'').replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
   function initials(name){var parts=String(name||'').trim().split(/\\s+/).filter(Boolean);return ((parts[0]&&parts[0][0])||'V')+((parts[1]&&parts[1][0])||'')}
   function relTime(value){var t=Date.parse(String(value||''));if(!Number.isFinite(t))return 'now';var s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<45)return 'now';if(s<3600)return Math.max(1,Math.floor(s/60))+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
   function style(){
@@ -208,12 +208,11 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
     style();var host=q('#home .home-ticket-finance-visual');if(!host)return false;
     host.removeAttribute('aria-hidden');
     if(!q('.home-live-activity',host))host.innerHTML='<section class="home-live-activity" aria-label="Live Activity"><div class="home-live-activity-head"><div class="home-live-activity-title">Live Activity</div><div class="home-live-activity-live"><i class="home-live-activity-dot"></i><span>Live</span></div></div><div class="home-live-activity-list"></div></section>';
-    render(false);return true
+    return true
   }
-  function avatar(event){var name=esc(event.displayName),fallback='<span>'+esc(initials(event.displayName))+'</span>';if(!event.avatarUrl)return '<div class="home-live-activity-avatar">'+fallback+'</div>';return '<div class="home-live-activity-avatar">'+fallback+'<img src="'+esc(event.avatarUrl)+'" alt="" loading="lazy" onerror="this.remove()"></div>'}
+  function avatar(event){var fallback='<span>'+esc(initials(event.displayName))+'</span>';if(!event.avatarUrl)return '<div class="home-live-activity-avatar">'+fallback+'</div>';return '<div class="home-live-activity-avatar">'+fallback+'<img src="'+esc(event.avatarUrl)+'" alt="" loading="lazy" onerror="this.remove()"></div>'}
   function row(event,isNew){return '<article class="home-live-activity-row'+(isNew?' is-new':'')+'" data-live-activity-id="'+esc(event.id)+'">'+avatar(event)+'<div class="home-live-activity-copy"><div class="home-live-activity-name">'+esc(event.displayName)+'</div><div class="home-live-activity-action">'+esc(event.action)+'</div></div><time class="home-live-activity-time" datetime="'+esc(event.createdAt)+'">'+relTime(event.createdAt)+'</time></article>'}
-  function render(animateFirst){if(!mounting&& !mount())return;var list=q('#home .home-live-activity-list');if(!list)return;if(!events.length){list.innerHTML='<div class="home-live-activity-empty">Real activity will appear here live</div>';return}list.innerHTML=events.slice(0,3).map(function(event,index){return row(event,animateFirst&&index===0)}).join('')}
-  var mounting=false;
+  function render(animateFirst){if(!mount())return;var list=q('#home .home-live-activity-list');if(!list)return;if(!events.length){list.innerHTML='<div class="home-live-activity-empty">Real activity will appear here live</div>';return}list.innerHTML=events.slice(0,3).map(function(event,index){return row(event,animateFirst&&index===0)}).join('')}
   function setConnected(value){var root=q('#home .home-live-activity');if(root)root.classList.toggle('is-connected',!!value)}
   function applyInit(list){events=(Array.isArray(list)?list:[]).filter(function(x){return x&&x.id}).slice(0,12);render(false)}
   function applyEvent(event){if(!event||!event.id)return;events=[event].concat(events.filter(function(item){return item.id!==event.id})).slice(0,12);render(true)}
@@ -225,7 +224,7 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
     try{socket=new WebSocket(proto+'//'+location.host+'/app/api/live-activity/ws?initData='+encodeURIComponent(initData));socket.onopen=function(){reconnectAttempt=0;setConnected(true)};socket.onmessage=function(message){try{var data=JSON.parse(message.data);if(data&&data.type==='live-activity:init')applyInit(data.events);else if(data&&data.type==='live-activity:event')applyEvent(data.event)}catch(e){}};socket.onclose=function(){socket=null;setConnected(false);clearTimeout(reconnectTimer);if(!document.hidden)reconnectTimer=setTimeout(connect,delay())};socket.onerror=function(){try{socket&&socket.close()}catch(e){}}}catch(e){socket=null;setConnected(false);clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,delay())}
   }
   function refreshTimes(){document.querySelectorAll('#home .home-live-activity-time').forEach(function(el){el.textContent=relTime(el.getAttribute('datetime'))});clearTimeout(clockTimer);clockTimer=setTimeout(refreshTimes,30000)}
-  function init(){mounting=true;mount();mounting=false;connect();refreshTimes()}
+  function init(){mount();render(false);connect();refreshTimes()}
   document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(reconnectTimer)}else{if(!socket)connect();refreshTimes()}});
   window.addEventListener('online',function(){if(!socket)connect()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
