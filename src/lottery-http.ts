@@ -13,17 +13,19 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const serverStartedAtMs = Date.now();
       const userId = await authenticatedUser(request, env);
       const state = await getLotteryUserState(env, userId);
-      const roundTicketCountQuery = state.round
-        ? env.DB.prepare('SELECT COUNT(*) AS count FROM lottery_tickets WHERE round_id=?').bind(state.round.id).first<{ count: number }>()
+      const roundStatsQuery = state.round
+        ? env.DB.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(price_nano),0) AS prize_pool_nano
+            FROM lottery_tickets WHERE round_id=?`).bind(state.round.id).first<{ count: number; prize_pool_nano: number }>()
         : Promise.resolve(null);
-      const [lastDrawWon, prizes, roundTicketRow] = await Promise.all([
+      const [lastDrawWon, prizes, roundStatsRow] = await Promise.all([
         userWonLotteryRound(env, userId, state.lastDraw?.roundId),
         getLotteryPrizes(env),
-        roundTicketCountQuery,
+        roundStatsQuery,
       ]);
-      const roundTicketCount = Math.max(0, Math.floor(Number(roundTicketRow?.count || 0)));
+      const roundTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.count || 0)));
+      const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
       const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, roundTicketCount, prizes, lastDrawWon });
+      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, roundTicketCount, prizePoolNano, prizes, lastDrawWon });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
@@ -75,16 +77,21 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const body = await request.json().catch(() => ({})) as { initData?: unknown; quantity?: unknown; purchaseId?: unknown };
       const userId = await validateTelegramInitData(body.initData, gameBotToken(env));
       const result = await buyLotteryTickets(env, userId, body.quantity, body.purchaseId);
+      const poolRow = await env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano
+        FROM lottery_tickets WHERE round_id=?`).bind(result.round.id).first<{ prize_pool_nano: number }>();
+      const prizePoolNano = Math.max(0, Math.floor(Number(poolRow?.prize_pool_nano || 0)));
       await publishLiveActivity(env, {
         kind: 'ticket',
         userId,
         amountNano: result.paidNano,
         quantity: result.tickets.length,
         section: 'home',
+        roundId: result.round.id,
+        prizePoolNano,
         key: String(body.purchaseId || result.tickets[0]?.id || ''),
         createdAt: result.tickets[0]?.createdAt,
       }).catch((error) => console.warn('ticket live activity failed', error));
-      return json({ ok: true, serverNowMs: Date.now(), ...result });
+      return json({ ok: true, serverNowMs: Date.now(), prizePoolNano, ...result });
     }
 
     return json({ error: 'Lottery endpoint not found' }, 404);
