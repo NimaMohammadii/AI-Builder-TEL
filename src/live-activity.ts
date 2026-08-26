@@ -9,6 +9,8 @@ export type LiveActivityInput = {
   section?: string | null;
   quantity?: number;
   rank?: number;
+  roundId?: string | null;
+  prizePoolNano?: number | null;
   key?: string;
   action?: string;
   createdAt?: string;
@@ -21,6 +23,8 @@ export type LiveActivityEvent = {
   avatarUrl: string | null;
   action: string;
   section: string | null;
+  roundId?: string | null;
+  prizePoolNano?: number | null;
   createdAt: string;
 };
 
@@ -96,6 +100,8 @@ async function buildEvent(env: Env, userId: string, input: LiveActivityInput): P
     avatarUrl,
     action: cleanAction(input.action) || actionFor(input),
     section: cleanSection(input.section),
+    roundId: cleanRoundId(input.roundId),
+    prizePoolNano: cleanOptionalNano(input.prizePoolNano),
     createdAt,
   };
 }
@@ -173,6 +179,17 @@ function cleanSection(value: unknown): string | null {
   return section || null;
 }
 
+function cleanRoundId(value: unknown): string | null {
+  const roundId = String(value || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 96);
+  return roundId || null;
+}
+
+function cleanOptionalNano(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const amount = Math.floor(Number(value));
+  return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
+}
+
 function randomHex(length: number): string {
   const bytes = new Uint8Array(Math.ceil(length / 2));
   crypto.getRandomValues(bytes);
@@ -224,7 +241,8 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
   function render(animateFirst){if(!mount())return;var list=q('#home .home-live-activity-list');if(!list)return;var oldTop=Math.max(0,Number(list.scrollTop)||0);var first=list.querySelector('.home-live-activity-row');var shift=first?first.getBoundingClientRect().height+6:0;var preserve=animateFirst&&oldTop>8;if(!events.length){list.innerHTML='<div class="home-live-activity-empty">Real activity will appear here live</div>';updateFade();return}list.innerHTML=events.map(function(event,index){return row(event,animateFirst&&index===0,animateFirst&&index>0)}).join('');if(preserve)list.scrollTop=oldTop+shift;else if(animateFirst)list.scrollTop=0;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(updateFade)}
   function setConnected(value){var root=q('#home .home-live-activity');if(root)root.classList.toggle('is-connected',!!value)}
   function applyInit(list){events=(Array.isArray(list)?list:[]).filter(function(x){return x&&x.id}).slice(0,30);render(false)}
-  function applyEvent(event){if(!event||!event.id)return;events=[event].concat(events.filter(function(item){return item.id!==event.id})).slice(0,30);render(true)}
+  function broadcast(event){try{window.dispatchEvent(new CustomEvent('vexa:live-activity',{detail:event}))}catch(e){}}
+  function applyEvent(event){if(!event||!event.id)return;events=[event].concat(events.filter(function(item){return item.id!==event.id})).slice(0,30);render(true);broadcast(event)}
   function delay(){return Math.min(30000,900*Math.pow(2,Math.min(reconnectAttempt++,5)))}
   function connect(){
     if(socket||!window.WebSocket)return;
