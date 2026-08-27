@@ -95,10 +95,34 @@ export const HOME_STYLES = `
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   -webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   isolation:isolate!important;
-  transform:translateZ(0)!important;
+  transform:translate3d(0,0,0)!important;
+  transform-origin:center!important;
+  will-change:transform,filter!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+  transition:transform .38s cubic-bezier(.18,.88,.24,1),filter .32s ease,opacity .32s ease!important;
+}
+#home .home-ticket-card .home-ticket-step:active,
+#home .home-ticket-card .home-ticket-button:active{
+  transform:translate3d(0,1px,0) scale(.94)!important;
+  filter:brightness(1.14) saturate(1.08)!important;
+  transition-duration:.11s!important;
 }
 #home .home-ticket-card .home-ticket-step{font-size:0!important;line-height:0!important;color:transparent!important}
 #home .home-ticket-card .home-ticket-button{width:100%!important}
+#home .home-ticket-card .home-ticket-button:before{
+  content:''!important;
+  position:absolute!important;
+  inset:-70% -35%!important;
+  pointer-events:none!important;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.16) 50%,transparent 60%)!important;
+  transform:translate3d(-120%,0,0) rotate(8deg)!important;
+  animation:homeTicketButtonSheen 4.8s ease-in-out infinite!important;
+}
+@keyframes homeTicketButtonSheen{
+  0%,62%{transform:translate3d(-120%,0,0) rotate(8deg)}
+  84%,100%{transform:translate3d(120%,0,0) rotate(8deg)}
+}
 #home .home-ticket-card .home-ticket-step:before,
 #home .home-ticket-card .home-ticket-step:after{
   content:''!important;
@@ -143,15 +167,6 @@ export const HOME_STYLES = `
   background-clip:text!important;
   -webkit-text-stroke:0!important;
   text-shadow:0 1px 0 rgba(218,104,137,.18),0 2px 2px rgba(0,0,0,.54)!important;
-}
-#home #homeDrawInfoCard .home-prize-value.is-updating{
-  animation:homePrizePoolRise .68s cubic-bezier(.18,.88,.24,1)!important;
-  transform-origin:left center!important;
-}
-@keyframes homePrizePoolRise{
-  0%{transform:translateY(0) scale(1);filter:brightness(1)}
-  42%{transform:translateY(-2px) scale(1.06);filter:brightness(1.2)}
-  100%{transform:translateY(0) scale(1);filter:brightness(1)}
 }
 `
 
@@ -432,7 +447,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
   var officialSpinActive=false,suppressedWindowFocus=false;
-  var prizePoolRaf=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
+  var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
@@ -506,19 +521,26 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function prizePoolNano(){return Math.max(0,Math.floor(Number(state&&state.prizePoolNano)||0))}
   function setPrizePoolText(nano){var value=q('#homeDrawInfoCard [data-prize-pool]');if(value)value.textContent=(Math.max(0,Number(nano)||0)/1000000000).toFixed(2)}
   function animatePrizePool(target){
-    var value=q('#homeDrawInfoCard [data-prize-pool]'),wrap=q('#homeDrawInfoCard .home-prize-value');if(!value){displayedPrizePoolNano=target;return}
-    if(prizePoolRaf&&window.cancelAnimationFrame)window.cancelAnimationFrame(prizePoolRaf);
-    var start=Math.max(0,Number(displayedPrizePoolNano)||0),delta=target-start;
-    if(!delta){displayedPrizePoolNano=target;setPrizePoolText(target);return}
-    if(wrap){wrap.classList.remove('is-updating');void wrap.offsetWidth;wrap.classList.add('is-updating')}
-    var started=window.performance&&typeof window.performance.now==='function'?window.performance.now():Date.now();
+    var value=q('#homeDrawInfoCard [data-prize-pool]');target=Math.max(0,Number(target)||0);
+    if(!value){displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;return}
+    prizePoolAnimationTargetNano=Math.max(prizePoolAnimationTargetNano,target);
+    if(prizePoolRaf)return;
     var raf=window.requestAnimationFrame||function(cb){return setTimeout(function(){cb(Date.now())},16)};
-    var step=function(now){var elapsed=Math.max(0,Number(now)-started),progress=Math.min(1,elapsed/680),ease=1-Math.pow(1-progress,3);displayedPrizePoolNano=start+(delta*ease);setPrizePoolText(displayedPrizePoolNano);if(progress<1){prizePoolRaf=raf(step);return}prizePoolRaf=0;displayedPrizePoolNano=target;setPrizePoolText(target);setTimeout(function(){try{wrap&&wrap.classList.remove('is-updating')}catch(e){}},40)};
+    prizePoolAnimationLastMs=window.performance&&typeof window.performance.now==='function'?window.performance.now():Date.now();
+    var step=function(now){
+      var stamp=Number(now)||Date.now(),dt=Math.max(1,Math.min(64,stamp-prizePoolAnimationLastMs));prizePoolAnimationLastMs=stamp;
+      var remaining=prizePoolAnimationTargetNano-displayedPrizePoolNano;
+      if(remaining<=500000){displayedPrizePoolNano=prizePoolAnimationTargetNano;setPrizePoolText(displayedPrizePoolNano);prizePoolRaf=0;return}
+      var blend=1-Math.exp(-dt/1600);
+      displayedPrizePoolNano+=remaining*blend;
+      setPrizePoolText(displayedPrizePoolNano);
+      prizePoolRaf=raf(step);
+    };
     prizePoolRaf=raf(step);
   }
   function renderPrizePool(){
     var icon=q('#homeDrawInfoCard [data-prize-pool-icon]'),target=prizePoolNano(),roundId=String(state&&state.round&&state.round.id||'');
-    if(!displayedPrizePoolReady||displayedPrizePoolRoundId!==roundId){displayedPrizePoolReady=true;displayedPrizePoolRoundId=roundId;displayedPrizePoolNano=target;setPrizePoolText(target)}
+    if(!displayedPrizePoolReady||displayedPrizePoolRoundId!==roundId){if(prizePoolRaf&&window.cancelAnimationFrame)window.cancelAnimationFrame(prizePoolRaf);prizePoolRaf=0;prizePoolAnimationTargetNano=target;prizePoolAnimationLastMs=0;displayedPrizePoolReady=true;displayedPrizePoolRoundId=roundId;displayedPrizePoolNano=target;setPrizePoolText(target)}
     else if(Math.abs(target-displayedPrizePoolNano)>.5)animatePrizePool(target);
     if(icon){var src=balanceIconSrc();if(src){if(icon.getAttribute('src')!==src)icon.setAttribute('src',src);icon.style.display='block'}else icon.style.display='none'}
   }
