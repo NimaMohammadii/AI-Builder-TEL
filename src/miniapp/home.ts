@@ -127,7 +127,7 @@ export const HOME_STYLES = `
 #home #homeDrawInfoCard .home-prize-label{
   align-self:start!important;
   margin:0!important;
-  transform:translateY(-2px)!important;
+  transform:translateY(0)!important;
 }
 #home #homeDrawInfoCard .home-prize-value [data-prize-pool]{
   color:transparent!important;
