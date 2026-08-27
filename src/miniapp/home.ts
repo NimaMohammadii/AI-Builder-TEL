@@ -123,7 +123,8 @@ export const HOME_STYLES = `
   row-gap:2px!important;
 }
 #home #homeDrawInfoCard .home-draw-copy{padding-left:5px!important}
-#home #homeDrawInfoCard .home-draw-label{
+#home #homeDrawInfoCard .home-draw-label,
+#home #homeDrawInfoCard .home-prize-label{
   align-self:start!important;
   margin:0!important;
   transform:translateY(0)!important;
@@ -503,7 +504,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function balanceIconSrc(){var img=q('.top-balance-pill .ton-mini-icon img');return String(img&&(img.getAttribute('src')||img.src)||'')}
   function paidButtonHtml(cost){var src=balanceIconSrc(),icon=src?'<img src="'+src+'" alt="" aria-hidden="true" style="width:28px;height:28px;display:block;object-fit:contain;transform:translateY(1px)">':'';return '<span style="display:flex;width:100%;align-items:center;justify-content:center;gap:1px"><span style="font-size:calc(1em + 2px);line-height:1">'+gramPrice(cost)+'</span>'+icon+'</span>'}
   function prizePoolNano(){return Math.max(0,Math.floor(Number(state&&state.prizePoolNano)||0))}
-  function setPrizePoolText(nano){var value=q('#homeDrawInfoCard [data-prize-pool]');if(value)value.textContent=Number(nano)>0?gram(nano):'0.00'}
+  function setPrizePoolText(nano){var value=q('#homeDrawInfoCard [data-prize-pool]');if(value)value.textContent=(Math.max(0,Number(nano)||0)/1000000000).toFixed(2)}
   function animatePrizePool(target){
     var value=q('#homeDrawInfoCard [data-prize-pool]'),wrap=q('#homeDrawInfoCard .home-prize-value');if(!value){displayedPrizePoolNano=target;return}
     if(prizePoolRaf&&window.cancelAnimationFrame)window.cancelAnimationFrame(prizePoolRaf);
