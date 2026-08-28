@@ -308,7 +308,7 @@ body:has(#slot.active) header.top{
   position:relative!important;
   z-index:14!important;
   width:min(90vw,370px)!important;
-  margin:-30px auto 0!important;
+  margin:-92px auto 0!important;
   display:grid!important;
   justify-items:center!important;
   gap:7px!important;
@@ -589,7 +589,7 @@ body:has(#slot.active) header.top{
 @media(max-width:380px){
   #slot .slot-cabinet{width:min(94vw,356px)!important;margin:10px auto 0!important}
   #slot .slot-symbol{height:calc((min(94vw,356px) * .460 * 900 / 845) / 3)!important}
-  #slot .slot-simple-controls{width:min(92vw,348px)!important;margin-top:-27px!important}
+  #slot .slot-simple-controls{width:min(92vw,348px)!important;margin-top:-84px!important}
   #slot .slot-simple-bet-row{grid-template-columns:58px minmax(0,1fr) 58px!important;gap:6px!important}
   #slot .slot-asset-step{width:58px!important;height:58px!important}
   #slot .slot-asset-input{height:58px!important}
