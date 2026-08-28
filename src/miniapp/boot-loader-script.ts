@@ -255,13 +255,18 @@ export const BOOT_LOADER_SCRIPT = `
       return settle(Promise.all(imgs.map(function(img){return imageReady(img,5500)})),6500,false).then(function(){return true})
     })
   }
+  function lazySectionsReady(){
+    var lazy=window.VexaLazySections;
+    return lazy&&typeof lazy.preload==='function'?settle(lazy.preload(),10000,false):Promise.resolve(false)
+  }
   function revealWhenReady(){
     if(window.__vexaInitialUiReadyStarted)return;
     window.__vexaInitialUiReadyStarted=true;
     var ready=Promise.all([
       settle(windowReady(),8000,true),
       settle(homeReady(),10000,false),
-      settle(playHubReady(),10000,false)
+      settle(playHubReady(),10000,false),
+      lazySectionsReady()
     ]);
     var timedUiReady=settle(ready,READY_TIMEOUT_MS,false);
     window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesReady()]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})})
