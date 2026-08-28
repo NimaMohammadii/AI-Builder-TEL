@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run guard:runtime && wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "guard:runtime": "node scripts/check-miniapp-runtime-architecture.mjs",
+    "verify": "npm run typecheck && npm run guard:runtime",
     "db:migrate:prod": "wrangler d1 migrations apply vexa-games --remote",
     "db:migrate:local": "wrangler d1 migrations apply vexa-games --local"
   },

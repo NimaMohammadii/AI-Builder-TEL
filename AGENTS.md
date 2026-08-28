@@ -108,6 +108,49 @@ Do not create parallel API routes for the same operation.
 
 Reuse existing services/routes and extend the authoritative implementation. Preserve validation, authentication, accounting, idempotency, and transaction behavior unless the task explicitly requires changing them.
 
+## Protected Mini App runtime architecture
+
+The current Mini App runtime lifecycle is intentional and protected. Do not change, weaken, bypass, or duplicate it as part of unrelated UI, styling, copy, game-balance, admin, or feature work.
+
+Protected invariants:
+
+- A Hidden game must not mount, execute embedded/runtime scripts, open WebSockets, start RAF/WebGL loops, or preload heavy game-specific assets.
+- Play Zone visibility is the single source of truth for whether a game may mount or preload.
+- Hidden means hidden for every user, including admins. Do not add an admin bypass to `canOpen`, `shouldPreload`, card-image loading, direct links, or background loading.
+- Visibility uncertainty/failure must be fail-closed. Do not make unknown visibility behave as Visible.
+- A failed visibility request must remain retryable; do not permanently lock a session onto a failure fallback.
+- Lazy `preload()` must never call `mount()` or execute a game's runtime. `ensure()`/mount is the on-demand execution path.
+- A Visible but unopened game may warm approved resources, but it must not start the game runtime.
+- Heavy runtime must stop/suspend when the game is inactive or the document is hidden.
+- Ghost Run must not keep its RAF/WebSocket/reconnect loop alive after leaving Ghost Run.
+- Slot must not keep reel RAF, live timers, sound, win effects, or a body-wide MutationObserver alive after leaving Slot.
+- Pump WebGL rendering must stop when Pump is inactive or the document is hidden.
+- Telegram Back Button has one shared controller. Do not restore a Crash-specific controller or another independent Back Button path.
+- Do not restore body-wide MutationObservers for runtime/navigation lifecycle when a section-scoped observer or `vexa:view-changed` already owns the state transition.
+- Do not restore eager lazy-section mounting during boot.
+
+Protected implementation areas include:
+
+- `src/miniapp/shell.ts`
+- `src/miniapp/play-zone.ts`
+- `src/miniapp/boot-loader-script.ts`
+- `src/miniapp/section-background-script.ts`
+- `src/miniapp/telegram-back-button-script.ts`
+- `src/miniapp/crash/scripts/back-button.ts`
+- `src/miniapp/ghost-run/index.ts`
+- `src/miniapp/slot/script.ts`
+- `src/miniapp/pump/section.ts`
+
+Rules for agents working near these files:
+
+1. Do not alter the protected lifecycle merely because another implementation seems simpler.
+2. If a task only changes appearance/content/controls, preserve the runtime lifecycle exactly.
+3. If a requested change appears to conflict with a protected invariant, identify the conflict before editing. Only redesign the invariant when the user explicitly asks to change that runtime behavior.
+4. Never delete, bypass, weaken, or rewrite `scripts/check-miniapp-runtime-architecture.mjs` just to make a change pass.
+5. Never remove the runtime architecture GitHub Action or the deploy guard merely to make CI/deploy pass.
+6. After touching any protected implementation area, run `npm run guard:runtime` and `npm run typecheck` before finishing.
+7. If the guard fails, fix the implementation. Do not change the guard unless the user explicitly requested a new runtime architecture and the guard must be updated to represent that new architecture.
+
 ## Before finishing any change
 
 Perform a repository search for the feature you changed and verify:
@@ -118,6 +161,7 @@ Perform a repository search for the feature you changed and verify:
 4. Imports/exports still point to the authoritative implementation.
 5. Feature-specific UI is not leaking into unrelated shared files.
 6. The requested behavior still uses the existing backend/API path unless explicitly changed.
+7. If a protected Mini App runtime file was touched, `npm run guard:runtime` still passes.
 
 If duplicate/legacy code already exists but removing it would be outside the requested scope, do not silently rewrite it. Report it clearly.
 
