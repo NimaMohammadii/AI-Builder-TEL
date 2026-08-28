@@ -162,7 +162,22 @@ function lazySectionLoaderScript(): string {
     try{window.dispatchEvent(new CustomEvent('vexa:section-mounted',{detail:{id:id}}))}catch(e){}
     return !!document.getElementById(id);
   }
-  window.VexaLazySections={ensure:mount};
+  var preloadJob=null;
+  function preload(){
+    if(preloadJob)return preloadJob;
+    var ids=registry.map(function(item){return item.id});
+    preloadJob=new Promise(function(resolve){
+      function next(){
+        var id=ids.shift();
+        if(!id){resolve(true);return}
+        mount(id);
+        setTimeout(next,0);
+      }
+      next();
+    });
+    return preloadJob;
+  }
+  window.VexaLazySections={ensure:mount,preload:preload};
 })();`;
 }
 
