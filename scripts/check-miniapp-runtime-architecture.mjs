@@ -71,7 +71,7 @@ expect('Pump render loop must stop while inactive.', has(files.pump, 'if(!active
 expect('Pump RAF lifecycle must react to view changes.', has(files.pump, "window.addEventListener('vexa:view-changed',syncLoop);"));
 expect('Pump RAF lifecycle must react to document visibility.', has(files.pump, "document.addEventListener('visibilitychange',syncLoop);"));
 
-expect('Telegram Back Button must use the existing Play Hub navigation path.', has(files.back, 'button[data-view=\\"playzone\\"]'));
+expect('Telegram Back Button must use the existing Play Hub navigation path.', has(files.back, 'button[data-view="playzone"]'));
 expect('Telegram Back Button must observe views, not the whole body.', !/observe\(document\.body/.test(files.back));
 expect('Telegram Back Button must have only the primary BackButton click path.', !/backButtonClicked/.test(files.back));
 expect('Crash must not restore a second Back Button controller.', /^export const CRASH_BACK_BUTTON_SCRIPT = ''\s*;?\s*$/.test(files.crashBack.trim()));
