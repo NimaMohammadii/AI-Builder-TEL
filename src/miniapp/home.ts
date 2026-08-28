@@ -256,11 +256,11 @@ const HOME_MARKUP_SCRIPT = `
 
 const HOME_SLOT_SCRIPT = `
 (function(){
-  var busy=false,row=34,restLoop=12,spinLoops=14,totalSpinMs=2600,reelStopGapMs=420;
+  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
-  function digits(){var h='';for(var c=0;c<36;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
+  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
   function tune(){
     if(q('#homeSlotTuningStyle'))return;
