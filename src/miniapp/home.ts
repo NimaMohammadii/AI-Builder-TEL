@@ -132,7 +132,6 @@ export const HOME_STYLES = `
   isolation:isolate!important;
   transform:translate3d(0,0,0)!important;
   transform-origin:center!important;
-  will-change:transform,filter!important;
   touch-action:manipulation!important;
   -webkit-tap-highlight-color:transparent!important;
   transition:transform .38s cubic-bezier(.18,.88,.24,1),filter .32s ease,opacity .32s ease!important;
@@ -145,19 +144,6 @@ export const HOME_STYLES = `
 }
 #home .home-ticket-card .home-ticket-step{font-size:0!important;line-height:0!important;color:transparent!important}
 #home .home-ticket-card .home-ticket-button{width:100%!important}
-#home .home-ticket-card .home-ticket-button:before{
-  content:''!important;
-  position:absolute!important;
-  inset:-70% -35%!important;
-  pointer-events:none!important;
-  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.16) 50%,transparent 60%)!important;
-  transform:translate3d(-120%,0,0) rotate(8deg)!important;
-  animation:homeTicketButtonSheen 4.8s ease-in-out infinite!important;
-}
-@keyframes homeTicketButtonSheen{
-  0%,62%{transform:translate3d(-120%,0,0) rotate(8deg)}
-  84%,100%{transform:translate3d(120%,0,0) rotate(8deg)}
-}
 #home .home-ticket-card .home-ticket-step:before,
 #home .home-ticket-card .home-ticket-step:after{
   content:''!important;
@@ -270,11 +256,11 @@ const HOME_MARKUP_SCRIPT = `
 
 const HOME_SLOT_SCRIPT = `
 (function(){
-  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000;
+  var busy=false,row=34,restLoop=12,spinLoops=14,totalSpinMs=2600,reelStopGapMs=420;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
-  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
+  function digits(){var h='';for(var c=0;c<36;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
   function tune(){
     if(q('#homeSlotTuningStyle'))return;
@@ -329,14 +315,14 @@ const HOME_SLOT_SCRIPT = `
     var old=q('.vexa-confetti-layer');if(old)old.remove();
     var layer=document.createElement('div');layer.className='vexa-confetti-layer';document.body.appendChild(layer);
     var colors=['#ffd36a','#f5b33d','#ffe9a8','#c7892f','#fff4cf','#e0a43a'];
-    for(var i=0;i<170;i++){
+    for(var i=0;i<72;i++){
       var p=document.createElement('i');p.className='vexa-confetti-piece';
       var x=Math.random()*100,wind=(Math.random()*64)-32,w=3+Math.random()*9,h=5+Math.random()*14;
       p.style.setProperty('--y',(-8-Math.random()*150)+'vh');p.style.setProperty('--x',x+'vw');p.style.setProperty('--w',w+'px');p.style.setProperty('--h',h+'px');p.style.setProperty('--r',(Math.random()>.72?'999px':'2px'));p.style.setProperty('--c',colors[Math.floor(Math.random()*colors.length)]);p.style.setProperty('--ex',wind+'vw');p.style.setProperty('--r3',(960+Math.random()*960)+'deg');
       layer.appendChild(p);
     }
-    setTimeout(function(){layer.classList.add('is-ending')},5700);
-    setTimeout(function(){layer.remove()},6200);
+    setTimeout(function(){layer.classList.add('is-ending')},3500);
+    setTimeout(function(){layer.remove()},4000);
   }
   function cleanSpinCode(code){var value=String(code||'').replace(/[^0-9]/g,'');return value.length===5?value:''}
   function setCode(code){
@@ -370,7 +356,6 @@ const HOME_SLOT_SCRIPT = `
     if(t&&t.id==='homeBonusClose'){e.preventDefault();setBonusPanel(false);return}
     if(t&&t.id==='homeBonusBackdrop'){e.preventDefault();setBonusPanel(false)}
   },true);
-  document.addEventListener('scroll',function(){var h=q('#home');if(h&&h.classList.contains('active'))h.scrollLeft=0},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',prepare,{once:true});else prepare();
   window.addEventListener('focus',prepare);
 })();
@@ -475,7 +460,7 @@ export const HOME_SCRIPT = HOME_ASSET_SCRIPT + HOME_MARKUP_SCRIPT + HOME_SLOT_SC
 export const HOME_LOTTERY_CLIENT_SCRIPT = `
 <script>
 (function(){
-  var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockStarted=false,drawRefreshPending=false;
+  var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockTimer=0,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
   var officialSpinActive=false,suppressedWindowFocus=false;
@@ -727,11 +712,21 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function handleSmartRefresh(event){
     var target=event.target&&event.target.closest?event.target:null;if(!target)return;
     var homeLink=target.closest('[data-view="home"]'),bonus=target.closest('#homeBonusButton');
-    if(homeLink)setTimeout(function(){if(q('#home.active')&&!busy)load(false)},60);
+    if(homeLink)setTimeout(function(){if(q('#home.active')&&!busy){startClock();load(false)}},60);
     else if(bonus)setTimeout(function(){if(q('#home.active')&&!busy)load(false)},0);
   }
-  function startClock(){if(clockStarted)return;clockStarted=true;setInterval(updateCountdown,250)}
-  function refreshWhenVisible(){if(!document.hidden&&q('#home.active')&&!busy)load(false)}
+  function stopClock(){if(clockTimer){clearTimeout(clockTimer);clockTimer=0}}
+  function startClock(){
+    if(clockTimer||document.hidden||!q('#home.active'))return;
+    var tick=function(){
+      clockTimer=0;updateCountdown();
+      if(document.hidden||!q('#home.active'))return;
+      var next=1000-(Math.floor(liveServerNow())%1000)+16;
+      clockTimer=setTimeout(tick,Math.max(120,next));
+    };
+    tick();
+  }
+  function refreshWhenVisible(){if(!document.hidden&&q('#home.active')&&!busy){startClock();load(false)}else stopClock()}
   function init(){renderClaimedTickets();document.addEventListener('click',handleTicketControls,true);document.addEventListener('click',handleSmartRefresh,true);window.addEventListener('vexa:live-activity',handleLivePrizePool);load(true);startClock();window.VexaLotteryRefresh=function(){return load(true)}}
   window.addEventListener('focus',guardOfficialSpinFocus,true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
