@@ -34,7 +34,7 @@ export const MINIAPP_SCRIPT = `
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
 
   function show(id){
-    ensureSection(id);
+    if(!ensureSection(id))return false;
     document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
     var v=q(id);if(v)v.classList.add('active');
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
@@ -43,13 +43,18 @@ export const MINIAPP_SCRIPT = `
     try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}
     if(window.VexaSectionLocks&&window.VexaSectionLocks.reload)setTimeout(function(){window.VexaSectionLocks.reload()},30);
     if(window.VexaApplySectionBackgrounds)setTimeout(function(){window.VexaApplySectionBackgrounds()},30);
+    return true;
   }
 
   function openInitialTarget(){
     try{
       var params=new URLSearchParams(location.search);
       var section=(params.get('section')||location.hash.replace(/^#/, '')||'').replace(/[^0-9A-Za-z_-]/g,'').slice(0,40);
-      if(section&&ensureSection(section))show(section);
+      if(!section)return;
+      var open=function(){if(ensureSection(section))show(section)};
+      var lazy=window.VexaLazySections;
+      if(lazy&&typeof lazy.isGame==='function'&&lazy.isGame(section)&&window.__vexaPlayZoneVisibilityReady){Promise.resolve(window.__vexaPlayZoneVisibilityReady).then(open);return}
+      open();
     }catch(e){}
   }
 
@@ -94,7 +99,7 @@ export const MINIAPP_SCRIPT = `
     var b=target&&target.closest?target.closest('button'):null;
     if(!b){var w=q('voiceWrap');if(w)w.classList.remove('open');return}
     if(b.hasAttribute('data-game-view'))return;
-    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(ensureSection(v))show(v);else toast('Coming soon');return}
+    var v=b.getAttribute('data-view');if(v){ev.preventDefault();if(show(v))return;toast('Coming soon');return}
     var a=b.getAttribute('data-action');
     if(a==='dismiss-keyboard'){dismissKeyboard();return}
     if(a==='save-user')saveUser();

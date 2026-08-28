@@ -132,7 +132,15 @@ function lazySectionLoaderScript(): string {
   var registry=${payload};
   var mounted={};
   var main=null;
+  var gameIds={mines:true,plinko:true,crash:true,slot:true,wheel:true,dice:true,coinflip:true,ghostrun:true,hilo:true};
   function findMain(){return main||(main=document.querySelector('main.app')||document.body)}
+  function isGame(id){return !!gameIds[String(id||'')]}
+  function canMount(id){
+    if(!isGame(id))return true;
+    var state=window.VexaPlayZoneVisibility;
+    if(!state||!state.ready)return false;
+    return typeof state.canOpen==='function'?state.canOpen(id):true;
+  }
   function runScript(code){
     if(!code)return;
     var script=document.createElement('script');
@@ -149,6 +157,7 @@ function lazySectionLoaderScript(): string {
   }
   function mount(id){
     if(!id||document.getElementById(id))return true;
+    if(!canMount(id))return false;
     if(mounted[id])return !!document.getElementById(id);
     var item=registry.filter(function(entry){return entry.id===id})[0];
     if(!item)return false;
@@ -165,19 +174,11 @@ function lazySectionLoaderScript(): string {
   var preloadJob=null;
   function preload(){
     if(preloadJob)return preloadJob;
-    var ids=registry.map(function(item){return item.id});
-    preloadJob=new Promise(function(resolve){
-      function next(){
-        var id=ids.shift();
-        if(!id){resolve(true);return}
-        mount(id);
-        setTimeout(next,0);
-      }
-      next();
-    });
+    var ready=window.__vexaPlayZoneVisibilityReady;
+    preloadJob=Promise.resolve(ready||true).then(function(){return true},function(){return true});
     return preloadJob;
   }
-  window.VexaLazySections={ensure:mount,preload:preload};
+  window.VexaLazySections={ensure:mount,preload:preload,isGame:isGame};
 })();`;
 }
 

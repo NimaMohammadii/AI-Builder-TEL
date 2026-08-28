@@ -39,7 +39,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
 const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
 (function(){
   var KEY='vexa:game-card-images:v1';
-  var hasCached=false;
+  var hasCached=false,started=false,readyResolve=null;
   function timedFetch(url,opt,ms){
     if(typeof AbortController==='undefined')return fetch(url,opt);
     var controller=new AbortController();
@@ -47,11 +47,14 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
     var options=Object.assign({},opt||{},{signal:controller.signal});
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
+  function visibility(){return window.VexaPlayZoneVisibility||null}
+  function shouldLoad(id){var state=visibility();return !!(state&&state.ready&&(!state.isHidden(id)||state.admin))}
   function apply(images){
     if(!images||typeof images!=='object')return false;
     var applied=false;
     document.querySelectorAll('#playzone [data-play-zone-card-id]').forEach(function(card){
       var id=String(card.getAttribute('data-play-zone-card-id')||'');
+      if(!shouldLoad(id))return;
       var url=String(images[id]||'');
       var img=card.querySelector('.game-image img');
       if(!img||!url)return;
@@ -62,16 +65,22 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
     return applied;
   }
   function fallback(){
-    document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img').forEach(function(img){
-      var url=img.getAttribute('data-fallback-src')||'';
-      if(url&&img.getAttribute('src')!==url)img.src=url;
+    document.querySelectorAll('#playzone [data-play-zone-card-id]').forEach(function(card){
+      var id=String(card.getAttribute('data-play-zone-card-id')||'');
+      if(!shouldLoad(id))return;
+      var img=card.querySelector('.game-image img');
+      var url=img&&img.getAttribute('data-fallback-src')||'';
+      if(img&&url&&img.getAttribute('src')!==url)img.src=url;
     });
   }
-  try{
-    var cached=JSON.parse(localStorage.getItem(KEY)||'null');
-    hasCached=!!(cached&&cached.images&&apply(cached.images));
-  }catch(e){}
+  function applyCached(){
+    try{
+      var cached=JSON.parse(localStorage.getItem(KEY)||'null');
+      hasCached=!!(cached&&cached.images&&apply(cached.images));
+    }catch(e){}
+  }
   function refresh(){
+    if(!started)return Promise.resolve(false);
     return timedFetch('/app/api/game-card-images',{cache:'no-store',credentials:'same-origin'},5500)
       .then(function(r){if(!r.ok)throw new Error('game card manifest failed');return r.json()})
       .then(function(j){
@@ -82,8 +91,16 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
       })
       .catch(function(){if(!hasCached)fallback();return false});
   }
+  function start(){
+    if(started)return;
+    started=true;
+    applyCached();
+    refresh().then(function(value){if(readyResolve){readyResolve(value);readyResolve=null}});
+  }
   window.VexaRefreshPlayZoneImages=refresh;
-  window.__vexaPlayZoneImagesReady=refresh();
+  window.__vexaPlayZoneImagesReady=new Promise(function(resolve){readyResolve=resolve});
+  window.addEventListener('vexa:play-zone-visibility-ready',start,{once:true});
+  if(window.VexaPlayZoneVisibility&&window.VexaPlayZoneVisibility.ready)start();
 })();
 `;
 
@@ -103,6 +120,16 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   var root=document.documentElement;
   var loaded=false;
   var inFlight=null;
+  var gameIds={mines:true,plinko:true,wheel:true,slot:true,ghostrun:true,crash:true,dice:true,hilo:true,coinflip:true};
+  var state=window.VexaPlayZoneVisibility={
+    ready:false,
+    admin:false,
+    hidden:{},
+    isGame:function(id){return !!gameIds[String(id||'')]},
+    isHidden:function(id){return !!state.hidden[String(id||'')]},
+    canOpen:function(id){id=String(id||'');return !state.isGame(id)||state.admin||!state.isHidden(id)},
+    shouldPreload:function(id){id=String(id||'');return !state.isGame(id)||!state.isHidden(id)}
+  };
   function timedFetch(url,opt,ms){
     if(typeof AbortController==='undefined')return fetch(url,opt);
     var controller=new AbortController();
@@ -111,12 +138,14 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
   function finish(hidden,admin){
-    var blocked={};(hidden||[]).forEach(function(id){blocked[String(id)]=true});
+    var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
+    state.hidden=blocked;state.admin=!!admin;state.ready=true;
     document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){
-      var hide=!admin&&blocked[card.getAttribute('data-play-zone-card-id')];
+      var hide=!state.admin&&state.isHidden(card.getAttribute('data-play-zone-card-id'));
       card.hidden=!!hide;card.setAttribute('aria-hidden',hide?'true':'false');
     });
     root.classList.add('play-zone-visibility-ready');
+    try{window.dispatchEvent(new CustomEvent('vexa:play-zone-visibility-ready',{detail:{hiddenIds:Object.keys(blocked),admin:state.admin}}))}catch(e){}
   }
   function load(){
     if(loaded)return Promise.resolve(true);

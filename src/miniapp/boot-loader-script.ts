@@ -56,32 +56,43 @@ export const BOOT_LOADER_SCRIPT = `
   var GAME_IMAGE_ATTEMPT_TIMEOUT_MS=15000;
   var GAME_IMAGE_MAX_ATTEMPTS=2;
   var GAME_IMAGE_MANIFEST_CACHE_KEY='vexa:game-image-manifests:v1';
-  var GAME_IMAGE_STATIC_URLS=[
+  var GAME_IMAGE_COMMON_URLS=[
     '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
     '/assets/Rewards.PNG?v=1',
-    '/assets/Mines.PNG?v=1',
-    '/assets/Plinko.PNG?v=1',
-    '/assets/Crash.PNG?v=60f79b66',
-    '/assets/Slotbackground.PNG?v=1',
-    '/assets/Wheel.PNG?v=1',
-    '/assets/Dice.PNG?v=1',
-    '/app/api/uploaded-image/ton-icon.png',
-    '/assets/plinko-glass/ball.webp',
-    '/assets/plinko-glass/peg.webp',
-    '/assets/plinko-glass/houses.webp',
-    '/assets/plinko-glass/control-panel-new.webp',
-    '/assets/plinko-glass/point-amount-card.webp?v=2',
-    '/assets/plinko-glass/half-button.webp',
-    '/assets/plinko-glass/double-button.webp',
-    '/assets/plinko-glass/risk-easy.webp',
-    '/assets/plinko-glass/risk-medium.webp',
-    '/assets/plinko-glass/risk-hard.webp',
-    '/assets/plinko-glass/control-primary.webp'
+    '/app/api/uploaded-image/ton-icon.png'
   ];
+  var GAME_IMAGE_STATIC_BY_GAME={
+    mines:['/assets/Mines.PNG?v=1'],
+    plinko:[
+      '/assets/Plinko.PNG?v=1',
+      '/assets/plinko-glass/ball.webp',
+      '/assets/plinko-glass/peg.webp',
+      '/assets/plinko-glass/houses.webp',
+      '/assets/plinko-glass/control-panel-new.webp',
+      '/assets/plinko-glass/point-amount-card.webp?v=2',
+      '/assets/plinko-glass/half-button.webp',
+      '/assets/plinko-glass/double-button.webp',
+      '/assets/plinko-glass/risk-easy.webp',
+      '/assets/plinko-glass/risk-medium.webp',
+      '/assets/plinko-glass/risk-hard.webp',
+      '/assets/plinko-glass/control-primary.webp'
+    ],
+    crash:['/assets/Crash.PNG?v=60f79b66'],
+    slot:['/assets/Slotbackground.PNG?v=1'],
+    wheel:['/assets/Wheel.PNG?v=1'],
+    dice:['/assets/Dice.PNG?v=1']
+  };
   var gameImageKeep=window.__vexaGamePreloadedImages=window.__vexaGamePreloadedImages||[];
   var gameImageJobs=window.__vexaGameImagePreloadJobs=window.__vexaGameImagePreloadJobs||{};
   var gameImageFailures={};
+  function visibility(){return window.VexaPlayZoneVisibility||null}
+  function shouldPreloadGame(id){var state=visibility();return !state||typeof state.shouldPreload!=='function'||state.shouldPreload(id)}
+  function staticUrlsForVisibleGames(){
+    var out=GAME_IMAGE_COMMON_URLS.slice();
+    Object.keys(GAME_IMAGE_STATIC_BY_GAME).forEach(function(id){if(shouldPreloadGame(id))out=out.concat(GAME_IMAGE_STATIC_BY_GAME[id])});
+    return out
+  }
   function gameImageDelay(ms){return new Promise(function(resolve){setTimeout(resolve,ms)})}
   function readManifestCache(){try{var value=JSON.parse(localStorage.getItem(GAME_IMAGE_MANIFEST_CACHE_KEY)||'{}');return value&&typeof value==='object'?value:{}}catch(e){return {}}}
   function writeManifestCache(cache){try{localStorage.setItem(GAME_IMAGE_MANIFEST_CACHE_KEY,JSON.stringify(cache||{}))}catch(e){}}
@@ -147,12 +158,12 @@ export const BOOT_LOADER_SCRIPT = `
     });
     return Promise.all(jobs)
   }
-  function gameCardUrls(j){
-    var out=[],map=j&&j.images&&typeof j.images==='object'?j.images:{};
-    Object.keys(map).forEach(function(key){out.push(map[key])});
+  function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
+  function sectionBackgroundUrls(j){
+    var out=[],sections=j&&Array.isArray(j.sections)?j.sections:[];
+    sections.forEach(function(section){var id=String(section&&section.id||''),url=section&&section.backgroundUrl;if(url&&shouldPreloadGame(id))out.push(url)});
     return out
   }
-  function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
   function ghostRunUrls(j){
     var out=[],map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};
     Object.keys(map).forEach(function(key){out.push(map[key])});
@@ -164,15 +175,17 @@ export const BOOT_LOADER_SCRIPT = `
     return (j&&Array.isArray(j.controls)?j.controls:[]).filter(function(item){return item&&item.id==='spin'}).map(function(item){return item.imageUrl})
   }
   var GAME_IMAGE_MANIFESTS=[
-    {url:'/app/api/game-card-images',urls:gameCardUrls},
-    {url:'/app/api/uploaded-images',urls:preloadArrayUrls},
-    {url:'/app/api/section-backgrounds',urls:preloadArrayUrls},
-    {url:'/app/api/ghost-run-assets',urls:ghostRunUrls},
-    {url:'/app/api/slot-frame',urls:slotFrameUrls},
-    {url:'/app/api/slot-symbols',urls:slotSymbolUrls},
-    {url:'/app/api/slot-controls',urls:slotControlUrls}
+    {url:'/app/api/uploaded-images?context=startup',urls:preloadArrayUrls},
+    {url:'/app/api/uploaded-images?context=mines',game:'mines',urls:preloadArrayUrls},
+    {url:'/app/api/uploaded-images?context=plinko',game:'plinko',urls:preloadArrayUrls},
+    {url:'/app/api/section-backgrounds',urls:sectionBackgroundUrls},
+    {url:'/app/api/ghost-run-assets',game:'ghostrun',urls:ghostRunUrls},
+    {url:'/app/api/slot-frame',game:'slot',urls:slotFrameUrls},
+    {url:'/app/api/slot-symbols',game:'slot',urls:slotSymbolUrls},
+    {url:'/app/api/slot-controls',game:'slot',urls:slotControlUrls}
   ];
   function preloadManifest(spec,cache){
+    if(spec.game&&!shouldPreloadGame(spec.game))return Promise.resolve(true);
     var cached=cache&&cache[spec.url];
     var cachedJob=preloadUrlList(spec.urls(cached));
     return fetchJsonStrict(spec.url,0).then(function(j){
@@ -184,20 +197,20 @@ export const BOOT_LOADER_SCRIPT = `
   }
   function gameImagesReady(){
     if(window.__vexaAllGameImagesReady)return window.__vexaAllGameImagesReady;
-    var manifestCache=readManifestCache();
-    var jobs=[preloadUrlList(GAME_IMAGE_STATIC_URLS)];
-    GAME_IMAGE_MANIFESTS.forEach(function(spec){jobs.push(preloadManifest(spec,manifestCache))});
-    window.__vexaAllGameImagesReady=Promise.all(jobs)
-      .then(function(){
-        window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
-        gameImageKeep.length=0;
-        return true
-      })
-      .catch(function(){
-        window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
-        gameImageKeep.length=0;
-        return true
-      });
+    window.__vexaAllGameImagesReady=Promise.resolve(window.__vexaPlayZoneVisibilityReady||false).then(function(){
+      var manifestCache=readManifestCache();
+      var jobs=[preloadUrlList(staticUrlsForVisibleGames())];
+      GAME_IMAGE_MANIFESTS.forEach(function(spec){jobs.push(preloadManifest(spec,manifestCache))});
+      return Promise.all(jobs)
+    }).then(function(){
+      window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
+      gameImageKeep.length=0;
+      return true
+    }).catch(function(){
+      window.__vexaGameImagePreloadFailures=Object.keys(gameImageFailures);
+      gameImageKeep.length=0;
+      return true
+    });
     return window.__vexaAllGameImagesReady
   }
 
@@ -240,18 +253,20 @@ export const BOOT_LOADER_SCRIPT = `
   }
   function playHubReady(){
     var manifest=window.__vexaPlayZoneImagesReady||Promise.resolve(false);
-    var visibility=window.__vexaPlayZoneVisibilityReady||Promise.resolve(false);
-    return Promise.all([settle(manifest,6500,false),settle(visibility,6500,false)]).then(function(){
+    var visibilityReady=window.__vexaPlayZoneVisibilityReady||Promise.resolve(false);
+    return Promise.all([settle(manifest,6500,false),settle(visibilityReady,6500,false)]).then(function(){
       return observeUntil(function(){
         if(!document.documentElement.classList.contains('play-zone-visibility-ready'))return false;
-        var cards=document.querySelectorAll('#playzone [data-play-zone-card-id]');
-        var imgs=document.querySelectorAll('#playzone [data-play-zone-card-id] .game-image img');
-        if(cards.length!==9||imgs.length!==9)return false;
+        var cards=Array.prototype.slice.call(document.querySelectorAll('#playzone [data-play-zone-card-id]')).filter(function(card){return !card.hidden});
+        var imgs=cards.map(function(card){return card.querySelector('.game-image img')}).filter(Boolean);
+        if(!cards.length)return [];
+        if(imgs.length!==cards.length)return false;
         for(var i=0;i<imgs.length;i++){var src=String(imgs[i].getAttribute('src')||'');if(!src||src.indexOf('data:image/gif')===0)return false}
-        return Array.prototype.slice.call(imgs)
+        return imgs
       },7000)
     }).then(function(imgs){
-      if(!imgs||!imgs.length)return false;
+      if(!Array.isArray(imgs))return false;
+      if(!imgs.length)return true;
       return settle(Promise.all(imgs.map(function(img){return imageReady(img,5500)})),6500,false).then(function(){return true})
     })
   }
