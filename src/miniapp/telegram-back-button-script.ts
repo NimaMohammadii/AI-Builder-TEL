@@ -13,14 +13,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     function isActive(id){var n=document.getElementById(id);return !!(n&&n.classList.contains('active'))}
     function show(){try{if(originalShow)originalShow();else back.show()}catch(e){}}
     function hide(){try{if(originalHide)originalHide();else back.hide()}catch(e){}}
-    function emitView(id){try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}}
-    function setView(id){
-      document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
-      var v=document.getElementById(id);if(v)v.classList.add('active');
-      document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
-      var title=document.getElementById('brandTitle');if(title)title.textContent=id==='home'?'Home':'Vexa';
-      emitView(id);
-    }
+    function goPlayZone(){var tab=document.querySelector('button[data-view="playzone"],.tab[data-view="playzone"]');if(tab&&typeof tab.click==='function'){tab.click();return true}return false}
     function shouldShow(){
       var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip'];
       for(var i=0;i<games.length;i++)if(isActive(games[i]))return true;
@@ -39,7 +32,7 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
         sync();return;
       }
       var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip'];
-      for(var i=0;i<games.length;i++){if(isActive(games[i])){setView('playzone');sync();return;}}
+      for(var i=0;i<games.length;i++){if(isActive(games[i])){if(goPlayZone()){setTimeout(sync,0);return}sync();return}}
       sync();
     }
     function sync(){shouldShow()?show():hide()}
@@ -49,7 +42,6 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       viewObserver.observe(node,{attributes:true,attributeFilter:['class']});
     }
     try{back.onClick(goBack)}catch(e){}
-    try{tg.onEvent&&tg.onEvent('backButtonClicked',goBack)}catch(e){}
     document.querySelectorAll('.view').forEach(observeView);
     window.addEventListener('vexa:section-mounted',function(ev){var id=ev&&ev.detail&&ev.detail.id;observeView(id&&document.getElementById(id));sync()});
     window.addEventListener('vexa:view-changed',sync);

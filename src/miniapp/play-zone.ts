@@ -92,14 +92,14 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
       .catch(function(){if(!hasCached)fallback();return false});
   }
   function start(){
-    if(started)return;
+    if(started){refresh();return}
     started=true;
     applyCached();
     refresh().then(function(value){if(readyResolve){readyResolve(value);readyResolve=null}});
   }
   window.VexaRefreshPlayZoneImages=refresh;
   window.__vexaPlayZoneImagesReady=new Promise(function(resolve){readyResolve=resolve});
-  window.addEventListener('vexa:play-zone-visibility-ready',start,{once:true});
+  window.addEventListener('vexa:play-zone-visibility-ready',start);
   if(window.VexaPlayZoneVisibility&&window.VexaPlayZoneVisibility.ready)start();
 })();
 `;
@@ -120,7 +120,6 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   var root=document.documentElement;
   var loaded=false;
   var inFlight=null;
-  var CACHE_KEY='vexa:play-zone-visibility:v1';
   var gameIds={mines:true,plinko:true,wheel:true,slot:true,ghostrun:true,crash:true,dice:true,hilo:true,coinflip:true};
   var state=window.VexaPlayZoneVisibility={
     ready:false,
@@ -138,11 +137,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     var options=Object.assign({},opt||{},{signal:controller.signal});
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
-  function cachedHidden(){
-    try{var raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;var saved=JSON.parse(raw);return saved&&Array.isArray(saved.hiddenIds)?saved.hiddenIds:null}catch(e){return null}
-  }
-  function fallbackHidden(){var cached=cachedHidden();return cached===null?Object.keys(gameIds):cached}
-  function rememberHidden(hidden){try{localStorage.setItem(CACHE_KEY,JSON.stringify({hiddenIds:Array.isArray(hidden)?hidden:[],updatedAt:Date.now()}))}catch(e){}}
+  function fallbackHidden(){return Object.keys(gameIds)}
   function finish(hidden,admin){
     var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
     state.hidden=blocked;state.admin=!!admin;state.ready=true;
@@ -158,11 +153,11 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     if(inFlight)return inFlight;
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
-    if(!initData){loaded=true;finish(fallbackHidden(),false);return Promise.resolve(false)}
+    if(!initData){finish(fallbackHidden(),false);return Promise.resolve(false)}
     inFlight=timedFetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})},5500)
       .then(function(r){if(!r.ok)throw new Error('unauthorized');return r.json()})
-      .then(function(data){loaded=true;rememberHidden(data.hiddenIds);finish(data.hiddenIds,data.admin);return true})
-      .catch(function(){loaded=true;finish(fallbackHidden(),false);return false})
+      .then(function(data){loaded=true;finish(data.hiddenIds,data.admin);return true})
+      .catch(function(){finish(fallbackHidden(),false);return false})
       .finally(function(){inFlight=null});
     return inFlight;
   }
@@ -170,6 +165,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   function loadIfActive(){if(active())load()}
   function loadInitial(){window.__vexaPlayZoneVisibilityReady=load()}
   window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='playzone')load()});
+  window.addEventListener('online',loadIfActive);
   if(window.MutationObserver){var play=document.getElementById('playzone');if(play)new MutationObserver(loadIfActive).observe(play,{attributes:true,attributeFilter:['class']})}
   loadInitial();
 })();`;
