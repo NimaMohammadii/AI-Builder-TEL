@@ -7,14 +7,19 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
     var back=tg.BackButton;
     var originalShow=back.show&&back.show.bind(back);
     var originalHide=back.hide&&back.hide.bind(back);
+    var viewObserver=window.MutationObserver?new MutationObserver(sync):null;
+    var observed=typeof WeakSet==='function'?new WeakSet():null;
+    var observedList=[];
     function isActive(id){var n=document.getElementById(id);return !!(n&&n.classList.contains('active'))}
     function show(){try{if(originalShow)originalShow();else back.show()}catch(e){}}
     function hide(){try{if(originalHide)originalHide();else back.hide()}catch(e){}}
+    function emitView(id){try{window.dispatchEvent(new CustomEvent('vexa:view-changed',{detail:{id:id}}))}catch(e){}}
     function setView(id){
       document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
       var v=document.getElementById(id);if(v)v.classList.add('active');
       document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
       var title=document.getElementById('brandTitle');if(title)title.textContent=id==='home'?'Home':'Vexa';
+      emitView(id);
     }
     function shouldShow(){
       var games=['crash','plinko','mines','slot','wheel','dice','ghostrun','coinflip'];
@@ -38,12 +43,18 @@ export const TELEGRAM_BACK_BUTTON_SCRIPT = `
       sync();
     }
     function sync(){shouldShow()?show():hide()}
+    function observeView(node){
+      if(!viewObserver||!node||!node.classList||!node.classList.contains('view'))return;
+      if(observed){if(observed.has(node))return;observed.add(node)}else{if(observedList.indexOf(node)>=0)return;observedList.push(node)}
+      viewObserver.observe(node,{attributes:true,attributeFilter:['class']});
+    }
     try{back.onClick(goBack)}catch(e){}
     try{tg.onEvent&&tg.onEvent('backButtonClicked',goBack)}catch(e){}
-    document.addEventListener('click',function(){setTimeout(sync,40);setTimeout(sync,180);setTimeout(sync,360)},true);
+    document.querySelectorAll('.view').forEach(observeView);
+    window.addEventListener('vexa:section-mounted',function(ev){var id=ev&&ev.detail&&ev.detail.id;observeView(id&&document.getElementById(id));sync()});
+    window.addEventListener('vexa:view-changed',sync);
     window.addEventListener('focus',sync);
     document.addEventListener('visibilitychange',sync);
-    if(window.MutationObserver)new MutationObserver(sync).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
     sync();setTimeout(sync,200);setTimeout(sync,500);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();

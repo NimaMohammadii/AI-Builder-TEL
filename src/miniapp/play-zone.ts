@@ -48,7 +48,7 @@ const PLAY_ZONE_IMAGE_VERSION_SCRIPT = `
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
   function visibility(){return window.VexaPlayZoneVisibility||null}
-  function shouldLoad(id){var state=visibility();return !!(state&&state.ready&&(!state.isHidden(id)||state.admin))}
+  function shouldLoad(id){var state=visibility();return !!(state&&state.ready&&!state.isHidden(id))}
   function apply(images){
     if(!images||typeof images!=='object')return false;
     var applied=false;
@@ -120,6 +120,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   var root=document.documentElement;
   var loaded=false;
   var inFlight=null;
+  var CACHE_KEY='vexa:play-zone-visibility:v1';
   var gameIds={mines:true,plinko:true,wheel:true,slot:true,ghostrun:true,crash:true,dice:true,hilo:true,coinflip:true};
   var state=window.VexaPlayZoneVisibility={
     ready:false,
@@ -127,7 +128,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     hidden:{},
     isGame:function(id){return !!gameIds[String(id||'')]},
     isHidden:function(id){return !!state.hidden[String(id||'')]},
-    canOpen:function(id){id=String(id||'');return !state.isGame(id)||state.admin||!state.isHidden(id)},
+    canOpen:function(id){id=String(id||'');return !state.isGame(id)||!state.isHidden(id)},
     shouldPreload:function(id){id=String(id||'');return !state.isGame(id)||!state.isHidden(id)}
   };
   function timedFetch(url,opt,ms){
@@ -137,11 +138,16 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     var options=Object.assign({},opt||{},{signal:controller.signal});
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
+  function cachedHidden(){
+    try{var raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;var saved=JSON.parse(raw);return saved&&Array.isArray(saved.hiddenIds)?saved.hiddenIds:null}catch(e){return null}
+  }
+  function fallbackHidden(){var cached=cachedHidden();return cached===null?Object.keys(gameIds):cached}
+  function rememberHidden(hidden){try{localStorage.setItem(CACHE_KEY,JSON.stringify({hiddenIds:Array.isArray(hidden)?hidden:[],updatedAt:Date.now()}))}catch(e){}}
   function finish(hidden,admin){
     var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
     state.hidden=blocked;state.admin=!!admin;state.ready=true;
     document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){
-      var hide=!state.admin&&state.isHidden(card.getAttribute('data-play-zone-card-id'));
+      var hide=state.isHidden(card.getAttribute('data-play-zone-card-id'));
       card.hidden=!!hide;card.setAttribute('aria-hidden',hide?'true':'false');
     });
     root.classList.add('play-zone-visibility-ready');
@@ -152,11 +158,11 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     if(inFlight)return inFlight;
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
-    if(!initData){loaded=true;finish([],false);return Promise.resolve(false)}
+    if(!initData){loaded=true;finish(fallbackHidden(),false);return Promise.resolve(false)}
     inFlight=timedFetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})},5500)
       .then(function(r){if(!r.ok)throw new Error('unauthorized');return r.json()})
-      .then(function(data){loaded=true;finish(data.hiddenIds,data.admin);return true})
-      .catch(function(){loaded=true;finish([],false);return false})
+      .then(function(data){loaded=true;rememberHidden(data.hiddenIds);finish(data.hiddenIds,data.admin);return true})
+      .catch(function(){loaded=true;finish(fallbackHidden(),false);return false})
       .finally(function(){inFlight=null});
     return inFlight;
   }

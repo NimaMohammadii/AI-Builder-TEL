@@ -34,7 +34,7 @@ async function sendMenu(env: Env, token: string, chatId: number, messageId?: num
     callback_data: `botadmin:playcard:${card.id}:${card.visible ? 'hide' : 'show'}`,
   }]);
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
-  await upsert(token, chatId, messageId, '🎮 نمایش کارت‌های Play Hub\n\nبا لمس هر بازی، کارت آن برای همه کاربران مخفی یا دوباره نمایش داده می‌شود. ادمین همیشه همه کارت‌ها را می‌بیند.', rows);
+  await upsert(token, chatId, messageId, '🎮 نمایش کارت‌های Play Hub\n\nبا لمس هر بازی، کارت آن برای همه کاربران از جمله ادمین مخفی یا دوباره نمایش داده می‌شود.', rows);
 }
 
 async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Button[][]): Promise<void> {
