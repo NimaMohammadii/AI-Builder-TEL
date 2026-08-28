@@ -1,7 +1,7 @@
 export const REWARDS_LIVE_WINNERS_EFFECTS = `
 <style id="vexa-rewards-live-winners-effects">
 #rewards .rewards-live-winners{
-  margin-top:clamp(175px,31dvh,340px)!important;
+  margin-top:clamp(162px,29dvh,327px)!important;
   padding:0 10px 30px!important;
   position:relative!important;
 }
@@ -49,7 +49,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
 #rewards .rewards-winner-avatar-fallback{display:grid!important;place-items:center!important;background:rgba(255,255,255,.075)!important;color:#fff!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}
 #rewards .home-live-winner-card.is-waiting{opacity:.7}
 @media(max-width:380px){
-  #rewards .rewards-live-winners{margin-top:clamp(160px,29dvh,300px)!important}
+  #rewards .rewards-live-winners{margin-top:clamp(147px,27dvh,287px)!important}
   #rewards .home-live-winner-card{grid-template-columns:42px minmax(0,1fr) auto 31px!important;gap:8px!important}
   #rewards .home-live-winner-card:after{width:28px!important;height:28px!important;border-radius:10px!important;font-size:9px!important}
 }
@@ -118,8 +118,9 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     ticking=false;
     var rewards=document.getElementById('rewards');if(!rewards)return;
     var cards=rewards.querySelectorAll('.home-live-winner-card');prepare(cards);
-    if(!rewards.classList.contains('active')){reset(cards);return}
+    if(!rewards.classList.contains('active')){rewards.classList.remove('rewards-winners-scrolled');reset(cards);return}
     var y=Math.max(0,rewards.scrollTop||0),cardPitch=74,fadeDistance=44;
+    rewards.classList.toggle('rewards-winners-scrolled',y>12);
     for(var i=0;i<cards.length;i++){
       var start=i*cardPitch,p=clamp((y-start)/fadeDistance,0,1);
       cards[i].style.setProperty('--rewards-card-progress',String(p));cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
