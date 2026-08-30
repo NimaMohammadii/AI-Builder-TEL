@@ -113,7 +113,7 @@ function roundAmount(value: unknown): number {
 function roundMultiplier(value: unknown): number {
   const multiplier = Number(value);
   if (!Number.isFinite(multiplier) || multiplier < 1.01) return 0;
-  return Math.min(60, Math.round((multiplier + Number.EPSILON) * 100) / 100);
+  return Math.min(50, Math.round((multiplier + Number.EPSILON) * 100) / 100);
 }
 
 function cloneDefault(): CrashVirtualUsersConfig {
