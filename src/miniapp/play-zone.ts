@@ -25,7 +25,7 @@ function gameCard([id, label, _description, action]: typeof playZoneGames[number
   const countAttr = shouldShowLivePlayersOnCard(id) ? 'data-player-count-visible="true"' : 'data-player-count-visible="false"';
 
   return `
-    <span class="game-card-shell ${extraClass}" data-play-zone-card-id="${id}" ${viewAttr} ${countAttr}>
+    <span class="game-card-shell ${extraClass}" data-play-zone-card-id="${id}" ${viewAttr} ${countAttr} hidden aria-hidden="true">
       <button class="game-card game-card-live" type="button" ${viewAttr} aria-label="${label}">
         <span class="game-image">
           <img src="${EMPTY_CARD_IMAGE}" data-section-image-src="${fallback}" data-fallback-src="${fallback}" alt="${label}" decoding="async" loading="eager" onerror="this.onerror=null;this.src=this.dataset.fallbackSrc||this.src"/>
@@ -148,8 +148,8 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     root.classList.add('play-zone-visibility-ready');
     try{window.dispatchEvent(new CustomEvent('vexa:play-zone-visibility-ready',{detail:{hiddenIds:Object.keys(blocked),admin:state.admin}}))}catch(e){}
   }
-  function load(){
-    if(loaded)return Promise.resolve(true);
+  function load(force){
+    if(loaded&&!force)return Promise.resolve(true);
     if(inFlight)return inFlight;
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
@@ -162,9 +162,9 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     return inFlight;
   }
   function active(){var el=document.getElementById('playzone');return !!(el&&el.classList.contains('active'))}
-  function loadIfActive(){if(active())load()}
-  function loadInitial(){window.__vexaPlayZoneVisibilityReady=load()}
-  window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='playzone')load()});
+  function loadIfActive(){if(active())load(true)}
+  function loadInitial(){window.__vexaPlayZoneVisibilityReady=load(false)}
+  window.addEventListener('vexa:view-changed',function(ev){if(ev&&ev.detail&&ev.detail.id==='playzone')load(true)});
   window.addEventListener('online',loadIfActive);
   if(window.MutationObserver){var play=document.getElementById('playzone');if(play)new MutationObserver(loadIfActive).observe(play,{attributes:true,attributeFilter:['class']})}
   loadInitial();
