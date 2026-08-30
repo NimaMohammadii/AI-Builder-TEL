@@ -151,6 +151,38 @@ Rules for agents working near these files:
 6. After touching any protected implementation area, run `npm run guard:runtime` and `npm run typecheck` before finishing.
 7. If the guard fails, fix the implementation. Do not change the guard unless the user explicitly requested a new runtime architecture and the guard must be updated to represent that new architecture.
 
+## Protected TON/Gram wallet connection flow
+
+The current TON/Gram wallet connection behavior in `src/miniapp/wallet.ts` is known-good and protected. Do not change, refactor, simplify, bypass, relocate, duplicate, or remove this connection logic unless the user explicitly asks to change the TON wallet connection behavior itself. A general Wallet UI, payment, copy, styling, cleanup, dependency, or refactor task is not authorization to touch it.
+
+Protected invariants:
+
+- `connectionRestored`, `ui.connected`, `ui.wallet`, and a cached account alone must never make an HTTP/Bridge wallet eligible for TON payment.
+- An HTTP/Bridge wallet restored from TonConnect storage is unverified until Vexa receives a fresh wallet connection status event initiated by the current user connection flow.
+- An unverified restored HTTP/Bridge session must show the existing Connect Wallet gate, not the TON payment form.
+- When the user connects from that gate, the old HTTP/Bridge session must be cleared before the wallet modal opens and a fresh connection is accepted.
+- Injected wallet restoration may remain usable without the HTTP/Bridge refresh requirement.
+- A disconnect event or stale-session cleanup must reset Bridge verification.
+- `confirmTonPayment()` must reject every unverified wallet before creating a deposit or calling `sendTransaction()`.
+- `UNKNOWN_APP_ERROR` handling must keep clearing the stale local session and returning to the existing Connect Wallet gate.
+- Do not add polling timers, synthetic transactions, signing prompts, duplicate listeners, alternate wallet clients, or parallel connection paths to infer wallet authorization. A one-shot connection timeout is not polling and may remain.
+
+Protected implementation symbols include:
+
+- `tonBridgeSessionVerified`
+- `isHttpWalletConnection()`
+- `verifiedWalletConnection()`
+- `clearStaleWalletSession()`
+- `waitForTonConnectionRestore()`
+- `waitForWalletConnection()`
+- `syncTonConnectionUi()`
+- `bindTonStatus()`
+- `prepareTonEntry()`
+- `connectTonWallet()`
+- the connection guard at the start of `confirmTonPayment()`
+
+If the user explicitly requests a future change to this protected flow, first re-check the exact pinned TonConnect UI/SDK behavior and preserve a single event-driven connection path. Verify at minimum these cases before finishing: cached HTTP restore is denied, fresh HTTP connection is accepted, injected restore remains accepted, disconnect resets verification, and no deposit is created before verification.
+
 ## Before finishing any change
 
 Perform a repository search for the feature you changed and verify:

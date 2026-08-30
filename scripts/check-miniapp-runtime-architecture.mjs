@@ -6,6 +6,7 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 
 const files = {
   agents: read('AGENTS.md'),
+  wallet: read('src/miniapp/wallet.ts'),
   shell: read('src/miniapp/shell.ts'),
   playZone: read('src/miniapp/play-zone.ts'),
   boot: read('src/miniapp/boot-loader-script.ts'),
@@ -32,6 +33,19 @@ function between(text, start, end) {
 }
 
 expect('AGENTS.md must keep the protected runtime architecture section.', has(files.agents, '## Protected Mini App runtime architecture'));
+expect('AGENTS.md must keep the protected TON/Gram wallet connection section.', has(files.agents, '## Protected TON/Gram wallet connection flow'));
+
+const tonWalletConnectionBody = between(files.wallet, '  var tonFlowActive=false;', '  function installStyles(){');
+expect('TON wallet connection flow must remain in its authoritative wallet implementation.', Boolean(tonWalletConnectionBody));
+expect('TON HTTP/Bridge restore must keep a separate live-verification state.', has(tonWalletConnectionBody, 'var tonBridgeSessionVerified=false;'));
+expect('TON HTTP/Bridge restore must not be treated as a verified wallet connection.', has(tonWalletConnectionBody, "function verifiedWalletConnection(ui){return !!(usableWalletConnection(ui)&&(!isHttpWalletConnection(ui)||tonBridgeSessionVerified))}"));
+expect('TON Bridge verification must only be granted by a live wallet status event.', has(tonWalletConnectionBody, 'if(wallet&&usableWalletConnection(ui)){tonBridgeSessionVerified=true;finish(true)}'));
+expect('TON connection UI must require the verified wallet connection guard.', has(tonWalletConnectionBody, "function syncTonConnectionUi(ui){if(!tonFlowActive)return false;if(!verifiedWalletConnection(ui)){showTonConnectGate(false,'');return false}"));
+const connectTonWalletBody = between(tonWalletConnectionBody, 'async function connectTonWallet(){', '  function syncModeUi(){');
+expect('TON connect flow must clear an unverified restored HTTP/Bridge session.', has(connectTonWalletBody, "if(isHttpWalletConnection(ui)){setTonConnectButton(true,'Refreshing Session…');await clearStaleWalletSession(ui);"));
+expect('TON connect flow must clear the restored Bridge session before opening the wallet modal.', connectTonWalletBody.indexOf('await clearStaleWalletSession(ui)') < connectTonWalletBody.indexOf('await ui.openModal()'));
+const confirmTonPaymentBody = between(files.wallet, 'async function confirmTonPayment(){', '  function installStyles(){');
+expect('TON payment must reject an unverified wallet before creating a deposit.', has(confirmTonPaymentBody, "if(!restored||!verifiedWalletConnection(ui)){tonFlowActive=true;showTonConnectGate(false,'Connect your wallet to continue')") && confirmTonPaymentBody.indexOf('verifiedWalletConnection(ui)') < confirmTonPaymentBody.indexOf('createDeposit(raw,account)'));
 expect('Lazy game mount must fail closed until Play Zone visibility is ready.', has(files.shell, "if(!state||!state.ready)return false;"));
 expect('Lazy mount must use the existing Play Zone canOpen gate.', has(files.shell, "return typeof state.canOpen==='function'?state.canOpen(id):true;"));
 const preloadBody = between(files.shell, 'function preload(){', 'window.VexaLazySections=');
