@@ -5,6 +5,7 @@ import { getCrashVirtualUsers, resetCrashVirtualUsers, saveCrashVirtualUsers } f
 import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from './slot-virtual-users';
 import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
+import { listUserTonTransactions, listUserTonWalletTransactions } from './ton-transactions';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
 import { setTelegramWebhook } from './telegram-game-bot';
 import { registerRankCharacterRoutes } from './rank-character-routes';
@@ -143,37 +144,60 @@ app.get('/app/api/ton/withdrawals', async (c) => {
   }
 });
 
+app.get('/app/api/ton/history', async (c) => {
+  try {
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    const limit = Number(c.req.query('limit') || 50);
+    const walletOnly = String(c.req.query('wallet') || '') === '1';
+    const result = walletOnly
+      ? await listUserTonWalletTransactions(c.env, userId, limit)
+      : await listUserTonTransactions(c.env, userId, limit);
+    return c.json(result, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load history' }, 400, { 'cache-control': 'no-store' });
+  }
+});
+
 app.post('/app/api/ton/deposits', async (c) => {
   try {
-    const body = await c.req.json() as { userId?: string; amountTon?: unknown };
-    return c.json(await createTonDeposit(c.env, String(body.userId || ''), body.amountTon));
+    const body = await c.req.json().catch(() => ({})) as { initData?: unknown; amountTon?: unknown; walletAddress?: unknown };
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    return c.json(await createTonDeposit(c.env, userId, body.amountTon, body.walletAddress), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not create TON deposit' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create TON deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
 app.get('/app/api/ton/deposits', async (c) => {
   try {
-    return c.json(await listUserTonDeposits(c.env, String(c.req.query('userId') || '')));
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    return c.json(await listUserTonDeposits(c.env, userId), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposits' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposits' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
 app.get('/app/api/ton/deposits/:id', async (c) => {
   try {
-    const deposit = await getTonDeposit(c.env, c.req.param('id'));
-    return deposit ? c.json(deposit) : c.json({ error: 'Deposit not found' }, 404);
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    const deposit = await getTonDeposit(c.env, userId, c.req.param('id'));
+    return deposit ? c.json(deposit, 200, { 'cache-control': 'no-store' }) : c.json({ error: 'Deposit not found' }, 404, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposit' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
 app.post('/app/api/ton/deposits/:id/verify', async (c) => {
   try {
-    return c.json(await verifyTonDeposit(c.env, c.req.param('id')));
+    const body = await c.req.json().catch(() => ({})) as { initData?: unknown };
+    const initData = body.initData || c.req.header('x-telegram-init-data') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    return c.json(await verifyTonDeposit(c.env, userId, c.req.param('id')), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not verify TON deposit' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not verify TON deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
