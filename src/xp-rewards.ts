@@ -9,7 +9,8 @@ type GroupOwnerRow = { added_by_user_id: string | null };
 type GroupXpRow = { reply_count: number; rewarded_count: number };
 
 export async function awardDepositXp(env: Env, userId: string, referenceType: string, referenceId: string): Promise<void> {
-  await addUserXp(env, userId, DEPOSIT_XP, 'deposit', { referenceType, referenceId }).catch((error) => console.warn('deposit XP reward skipped', error));
+  const eventId = `deposit_${referenceType}_${referenceId}`;
+  await addUserXp(env, userId, DEPOSIT_XP, 'deposit', { referenceType, referenceId }, eventId).catch((error) => console.warn('deposit XP reward skipped', error));
 }
 
 export async function awardGroupReplyXp(env: Env, chat: TelegramChat): Promise<void> {
