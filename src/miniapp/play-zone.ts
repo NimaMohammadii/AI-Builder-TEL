@@ -138,6 +138,11 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
   function fallbackHidden(){return Object.keys(gameIds)}
+  function hideCardsUntilReady(){
+    state.ready=false;
+    root.classList.remove('play-zone-visibility-ready');
+    document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){card.hidden=true;card.setAttribute('aria-hidden','true')});
+  }
   function finish(hidden,admin){
     var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
     state.hidden=blocked;state.admin=!!admin;state.ready=true;
@@ -151,6 +156,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   function load(force){
     if(loaded&&!force)return Promise.resolve(true);
     if(inFlight)return inFlight;
+    if(force)hideCardsUntilReady();
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
     if(!initData){finish(fallbackHidden(),false);return Promise.resolve(false)}
