@@ -204,9 +204,9 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
   var heightObserver=null;
   var observedTicket=null;
   function q(s,r){return (r||document).querySelector(s)}
-  function esc(v){return String(v||'').replace(/[&<>\\\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
+  function esc(v){return String(v||'').replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
   function allowed(event){return !!event&&!!event.id&&(event.kind==='deposit'||event.kind==='withdraw'||event.kind==='ticket')}
-  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\\\.$/,'')}
+  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')}
   function relTime(value){var t=Date.parse(String(value||''));if(!Number.isFinite(t))return 'now';var s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<45)return 'now';if(s<3600)return Math.max(1,Math.floor(s/60))+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
   function amountText(event){var raw=event&&event.amountNano;if(raw!==null&&raw!==undefined&&Number.isFinite(Number(raw))){var amount=Math.max(0,Number(raw)||0);if(amount===0&&event.kind==='ticket')return 'FREE';return gram(amount)}return '0'}
   function shortAction(event){
@@ -216,7 +216,7 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
     if(event.kind==='ticket'){
       if(amount==='FREE')return 'Claimed free ticket';
       var action=String(event&&event.action||'');
-      var match=action.match(/bought\\\\s+(\\\\d+)\\\\s+tickets?/i);
+      var match=action.match(/bought\\s+(\\d+)\\s+tickets?/i);
       var quantity=Math.max(1,Number(match&&match[1])||1);
       return 'Bought '+quantity+' ticket'+(quantity===1?'':'s');
     }
@@ -240,13 +240,13 @@ export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
   function mount(){
     style();var host=q('#home .home-ticket-finance-visual');if(!host)return false;
     host.removeAttribute('aria-hidden');host.classList.add('home-ticket-card');
-    if(!q('.home-live-activity',host))host.innerHTML='<section class=\"home-live-activity\" aria-label=\"Recent activity\"><div class=\"home-live-activity-list\"></div></section>';
+    if(!q('.home-live-activity',host))host.innerHTML='<section class="home-live-activity" aria-label="Recent activity"><div class="home-live-activity-list"></div></section>';
     var list=q('.home-live-activity-list',host);if(list&&list.dataset.scrollBound!=='1'){list.dataset.scrollBound='1';list.addEventListener('scroll',updateFade,{passive:true})}
     watchHeight();
     return true
   }
-  function row(event,isNew,isShifting){return '<article class=\"home-live-activity-row'+(isNew?' is-new':'')+(isShifting?' is-shifting':'')+'\" data-live-activity-id=\"'+esc(event.id)+'\"><div class=\"home-live-activity-copy\"><div class=\"home-live-activity-name\">'+esc(event.displayName)+'</div><div class=\"home-live-activity-action\">'+esc(shortAction(event))+'</div></div><time class=\"home-live-activity-time\" datetime=\"'+esc(event.createdAt)+'\">'+relTime(event.createdAt)+'</time></article>'}
-  function render(animateFirst){if(!mount())return;var list=q('#home .home-live-activity-list');if(!list)return;var oldTop=Math.max(0,Number(list.scrollTop)||0);var first=list.querySelector('.home-live-activity-row');var shift=first?first.getBoundingClientRect().height+6:0;var preserve=animateFirst&&oldTop>8;if(!events.length){list.innerHTML='<div class=\"home-live-activity-empty\">Recent activity will appear here</div>';updateFade();return}list.innerHTML=events.map(function(event,index){return row(event,animateFirst&&index===0,animateFirst&&index>0)}).join('');if(preserve)list.scrollTop=oldTop+shift;else if(animateFirst)list.scrollTop=0;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(updateFade)}
+  function row(event,isNew,isShifting){return '<article class="home-live-activity-row'+(isNew?' is-new':'')+(isShifting?' is-shifting':'')+'" data-live-activity-id="'+esc(event.id)+'"><div class="home-live-activity-copy"><div class="home-live-activity-name">'+esc(event.displayName)+'</div><div class="home-live-activity-action">'+esc(shortAction(event))+'</div></div><time class="home-live-activity-time" datetime="'+esc(event.createdAt)+'">'+relTime(event.createdAt)+'</time></article>'}
+  function render(animateFirst){if(!mount())return;var list=q('#home .home-live-activity-list');if(!list)return;var oldTop=Math.max(0,Number(list.scrollTop)||0);var first=list.querySelector('.home-live-activity-row');var shift=first?first.getBoundingClientRect().height+6:0;var preserve=animateFirst&&oldTop>8;if(!events.length){list.innerHTML='<div class="home-live-activity-empty">Recent activity will appear here</div>';updateFade();return}list.innerHTML=events.map(function(event,index){return row(event,animateFirst&&index===0,animateFirst&&index>0)}).join('');if(preserve)list.scrollTop=oldTop+shift;else if(animateFirst)list.scrollTop=0;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(updateFade)}
   function refreshTimes(){document.querySelectorAll('#home .home-live-activity-time').forEach(function(el){el.textContent=relTime(el.getAttribute('datetime'))});clearTimeout(clockTimer);clockTimer=setTimeout(refreshTimes,30000)}
   function applyInit(list){events=(Array.isArray(list)?list:[]).filter(allowed).slice(0,30);render(false)}
   function broadcast(event){try{window.dispatchEvent(new CustomEvent('vexa:live-activity',{detail:event}))}catch(e){}}
