@@ -4,10 +4,17 @@ export const CRASH_BREAK_FX_SCRIPT = `
   function q(id){return document.getElementById(id)}
   function active(){var c=q('crash');return !!(c&&c.classList.contains('active'))}
   function getAudio(){var C=window.AudioContext||window.webkitAudioContext;if(!C)return null;if(!audioCtx){audioCtx=new C();master=audioCtx.createGain();master.gain.value=.95;master.connect(audioCtx.destination)}return audioCtx}
-  function unlock(){if(!active())return null;var ctx=getAudio();if(!ctx)return null;if(ctx.state==='suspended')ctx.resume().catch(function(){});return ctx}
+  function unlock(){if(!active())return null;var ctx=getAudio();if(!ctx)return null;if(ctx.state==='suspended'||ctx.state==='interrupted')ctx.resume().catch(function(){});return ctx}
   function canPlay(){return !!(audioCtx&&audioCtx.state==='running')}
   function bell(freq,when,len,vol,type){var ctx=audioCtx;if(!ctx||!canPlay())return;var o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type=type||'triangle';o.frequency.setValueAtTime(freq,when);o.frequency.exponentialRampToValueAtTime(freq*.985,when+len);f.type='bandpass';f.frequency.setValueAtTime(freq*2.15,when);f.Q.value=1.65;g.gain.setValueAtTime(.001,when);g.gain.linearRampToValueAtTime(vol,when+.01);g.gain.exponentialRampToValueAtTime(.001,when+len);o.connect(f);f.connect(g);g.connect(master);o.start(when);o.stop(when+len+.035)}
   function startSound(){var ctx=unlock();if(!ctx||!canPlay())return;var t=ctx.currentTime;bell(587.33,t,.16,.18,'sine');bell(466.16,t+.06,.18,.15,'triangle');bell(293.66,t+.13,.20,.12,'sine')}
+  function controlButton(ev){var target=ev&&ev.target;return target&&target.closest?target.closest('#crash .crash-control-grid button'):null}
+  function controlTone(){
+    var ctx=unlock();if(!ctx)return;
+    function play(){if(ctx.state!=='running')return;var t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type='sine';o.frequency.setValueAtTime(520,t);o.frequency.exponentialRampToValueAtTime(680,t+.045);f.type='lowpass';f.frequency.setValueAtTime(1700,t);f.Q.value=.45;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.028,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+.085);o.connect(f);f.connect(g);g.connect(master);o.start(t);o.stop(t+.09)}
+    if(ctx.state==='running'){play();return}if(ctx.resume)ctx.resume().then(play).catch(function(){})
+  }
+  function controlToneFromEvent(ev){var btn=controlButton(ev);if(!btn||btn.disabled)return;controlTone()}
   function burst(ctx,delay,dur,gainVal){if(!canPlay())return;var b=ctx.createBuffer(1,Math.floor(ctx.sampleRate*dur),ctx.sampleRate),d=b.getChannelData(0);for(var i=0;i<d.length;i++){var t=i/d.length;d[i]=(Math.random()*2-1)*Math.pow(1-t,3)}var s=ctx.createBufferSource();s.buffer=b;var f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=850+Math.random()*1000;var g=ctx.createGain();g.gain.setValueAtTime(gainVal,ctx.currentTime+delay);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+delay+dur);s.connect(f);f.connect(g);g.connect(master);s.start(ctx.currentTime+delay)}
   function crackSound(){var ctx=unlock();if(!ctx||!canPlay())return;burst(ctx,0,.08,.18);burst(ctx,.04,.06,.11);bell(146.83,ctx.currentTime,.20,.075,'triangle')}
   function explosionSound(){var ctx=unlock();if(!ctx||!canPlay())return;var t=ctx.currentTime;burst(ctx,0,.18,.24);burst(ctx,.035,.27,.16);bell(82.41,t,.34,.105,'sine');bell(123.47,t+.015,.18,.08,'triangle')}
@@ -34,8 +41,10 @@ export const CRASH_BREAK_FX_SCRIPT = `
   function roundKey(){var n=q('crashMultiplier');return String((n&&n.textContent)||'')+'|'+String(Date.now()).slice(0,-3)}
   function sync(){var s=state(),n=q('crashMultiplier');if(s==='inactive'){lastState='inactive';crashedLock=false;resetRocketExplosion();return}unlock();if(s==='running'){crashedLock=false;if(n)n.classList.remove('crash-broken');if(lastState!=='running'){var k=roundKey();if(k!==lastStartKey&&canPlay()){lastStartKey=k;startSound()}}}if(s==='crashed'&&!crashedLock){crashedLock=true;triggerBreak()}if(s==='waiting'&&lastState==='crashed'){crashedLock=true;resetRocketExplosion()}if(s==='waiting'&&n)n.classList.remove('crash-broken');lastState=s}
   function unlockAndSync(){if(!active())return;unlock();sync()}
+  function pointerInteraction(ev){if(!active())return;unlockAndSync();controlToneFromEvent(ev)}
+  function keyInteraction(ev){if(!active()||(ev.key!=='Enter'&&ev.key!==' '))return;controlToneFromEvent(ev)}
   function scheduleSync(delay){setTimeout(function(){if(!document.hidden)sync()},delay||0)}
-  document.addEventListener('pointerdown',unlockAndSync,true);document.addEventListener('touchstart',unlockAndSync,true);document.addEventListener('click',unlockAndSync,true);
+  document.addEventListener('pointerdown',pointerInteraction,true);document.addEventListener('touchstart',unlockAndSync,true);document.addEventListener('click',unlockAndSync,true);document.addEventListener('keydown',keyInteraction,true);
   window.addEventListener('vexa-round-ended',function(){scheduleSync(0)});
   window.addEventListener('vexa-crash-visible',function(){scheduleSync(0)});
   document.addEventListener('visibilitychange',function(){if(!document.hidden)scheduleSync(0)});
