@@ -39,7 +39,13 @@ const tonWalletConnectionBody = between(files.wallet, '  var tonFlowActive=false
 expect('TON wallet connection flow must remain in its authoritative wallet implementation.', Boolean(tonWalletConnectionBody));
 expect('TON HTTP/Bridge restore must keep a separate live-verification state.', has(tonWalletConnectionBody, 'var tonBridgeSessionVerified=false;'));
 expect('TON HTTP/Bridge restore must not be treated as a verified wallet connection.', has(tonWalletConnectionBody, "function verifiedWalletConnection(ui){return !!(usableWalletConnection(ui)&&(!isHttpWalletConnection(ui)||tonBridgeSessionVerified))}"));
-expect('TON Bridge verification must only be granted by a live wallet status event.', has(tonWalletConnectionBody, 'if(wallet&&usableWalletConnection(ui)){tonBridgeSessionVerified=true;finish(true)}'));
+expect('TON Bridge trusted restore must use its dedicated persisted proof.', has(tonWalletConnectionBody, "var TON_VERIFIED_SESSION_KEY='vexa:verified-ton-wallet-session';"));
+expect('TON Bridge trusted proof must bind session, address, and Telegram user.', has(tonWalletConnectionBody, 'JSON.stringify({sessionId:sessionId,address:String(account.address),userId:userId})'));
+expect('TON Bridge restore must require an exact trusted-session match.', has(tonWalletConnectionBody, 'String(saved.sessionId)===sessionId&&String(saved.address)===String(account.address)&&String(saved.userId)===userId'));
+expect('TON Bridge verification must be persisted only from a live wallet status event.', has(tonWalletConnectionBody, 'if(wallet&&usableWalletConnection(ui)){rememberVerifiedWalletSession(ui).then(function(){finish(true)})}'));
+expect('TON Bridge restore must verify the restored session before returning it.', has(tonWalletConnectionBody, 'return restoreVerifiedWalletSession(ui)'));
+expect('TON Bridge stale cleanup must delete its trusted proof.', has(tonWalletConnectionBody, 'async function clearStaleWalletSession(ui){forgetVerifiedWalletSession();'));
+expect('TON Bridge disconnect events must delete their trusted proof.', has(tonWalletConnectionBody, 'ui.onStatusChange(function(wallet){if(!wallet)forgetVerifiedWalletSession();'));
 expect('TON connection UI must require the verified wallet connection guard.', has(tonWalletConnectionBody, "function syncTonConnectionUi(ui){if(!tonFlowActive)return false;if(!verifiedWalletConnection(ui)){showTonConnectGate(false,'');return false}"));
 const connectTonWalletBody = between(tonWalletConnectionBody, 'async function connectTonWallet(){', '  function syncModeUi(){');
 expect('TON connect flow must clear an unverified restored HTTP/Bridge session.', has(connectTonWalletBody, "if(isHttpWalletConnection(ui)){setTonConnectButton(true,'Refreshing Session…');await clearStaleWalletSession(ui);"));
