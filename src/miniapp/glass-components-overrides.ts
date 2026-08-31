@@ -37,12 +37,6 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
-  box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
-    inset 0 0 0 1px rgba(156,38,70,.48),
-    inset 0 0 7px rgba(104,18,44,.22),
-    inset 0 -3px 8px rgba(0,0,0,.72)!important;
 }
 #home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual):before{
   content:none!important;
@@ -56,12 +50,6 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
-  box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
-    inset 0 0 0 1px rgba(156,38,70,.48),
-    inset 0 0 7px rgba(104,18,44,.22),
-    inset 0 -3px 8px rgba(0,0,0,.72)!important;
 }
 #home .home-ticket-layout>.home-ticket-finance-visual.home-ticket-card:before{
   content:none!important;
