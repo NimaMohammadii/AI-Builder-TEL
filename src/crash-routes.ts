@@ -1,586 +1,198 @@
 import app from './index';
-import type { Env } from './types';
-import { getCrashVirtualUsers, type CrashVirtualUser } from './crash-virtual-users-config';
+import { getGhostRunVirtualUsers } from './ghost-run-virtual-users-config';
+import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs } from './crash-virtual-users';
 import { applyGameTonBalanceDelta, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
-import { gameBotToken, validateTelegramInitData } from './utils';
 
 const CACHE_NONE = 'no-store';
-const NANO = 1_000_000_000;
-const MIN_BET_NANO = 10_000_000;
-const BETTING_MS = 8_000;
-const CRASH_HOLD_MS = 2_200;
-const MAX_MULTIPLIER = 50;
-const MULTIPLIER_RATE = 0.112;
-const STALE_ROUND_MS = 60_000;
+const NANO = 1000000000;
+const MIN_BET_NANO = 10000000;
+const WAIT_WINDOW_MS = 9000;
+const WAIT_BETWEEN_MS = 10000;
+const REVEAL_END_BEFORE_START_MS = 180;
 let crashSchemaReady = false;
 
-type CrashPhase = 'betting' | 'running' | 'ended';
-type CrashRound = {
-  round_id: number;
-  betting_started_ms: number;
-  running_started_ms: number;
-  crash_at_ms: number;
-  next_round_at_ms: number;
-  crash_point: number;
-  settled: number;
-};
-type CrashPublicState = {
-  id: number;
-  phase: CrashPhase;
-  serverNow: number;
-  bettingStartedAt: number;
-  runningStartedAt: number;
-  bettingMs: number;
-  crashHoldMs: number;
-  current: number;
-  crashMultiplier: number | null;
-  running: boolean;
-  waiting: boolean;
-  inCrashHold: boolean;
-  history: number[];
-};
-type Row = {
-  round_id: number;
-  user_id: string;
-  username: string;
-  amount_nano: number;
-  status: string;
-  cashout_multiplier: number | null;
-  payout_nano: number;
-  is_virtual?: number;
-  target_cashout_multiplier?: number | null;
-  virtual_reveal_at_ms?: number;
-  virtual_order?: number;
-  created_at: string;
-  updated_at: string;
-};
-
-type VirtualJson = ReturnType<typeof virtualBetJson>;
-
-app.get('/app/api/crash-live/events', async (c) => {
-  try {
-    await validateTelegramInitData(c.req.query('initData') || '', gameBotToken(c.env));
-    return crashEventStream(c.req.raw, c.env);
-  } catch (error) {
-    return crashError(error);
-  }
+app.get('/app/api/ghost-run-virtual-users', async (c) => {
+  const [virtualConfig, realUsers] = await Promise.all([
+    getGhostRunVirtualUsers(c.env),
+    getGhostRunRealUsers(c.env.DB).catch((error) => { console.warn('load ghost run real users failed', error); return []; }),
+  ]);
+  const seen = new Set<string>();
+  const users = [...realUsers, ...virtualConfig.users].filter((user) => {
+    const key = String(user.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return c.json({ ...virtualConfig, users }, 200, {'cache-control': CACHE_NONE});
 });
 
+async function getGhostRunRealUsers(db:D1Database){
+  const rows = await db.prepare(`SELECT first_name, username
+    FROM app_users
+    WHERE current_section = 'ghostrun'
+      AND datetime(COALESCE(last_seen_at, updated_at, created_at)) >= datetime('now', '-10 minutes')
+    ORDER BY datetime(COALESCE(last_seen_at, updated_at, created_at)) DESC
+    LIMIT 12`).all<{first_name:string|null;username:string|null}>();
+  return (rows.results || []).map((row, index) => {
+    const username = String(row.username || '').replace(/^@+/, '').trim();
+    const firstName = String(row.first_name || '').trim();
+    return {
+      name: firstName || (username ? '@' + username : 'Live Player'),
+      bets: [{ amount: Number((0.12 + ((index * 7) % 28) / 10).toFixed(2)), cashoutMultiplier: Number((1.22 + ((index * 11) % 95) / 100).toFixed(2)) }],
+      real: true,
+    };
+  });
+}
+
+type Row = { round_id:number; user_id:string; username:string; amount_nano:number; status:string; cashout_multiplier:number|null; payout_nano:number; is_virtual?:number; target_cashout_multiplier?:number|null; virtual_reveal_at_ms?:number; virtual_order?:number; created_at:string; updated_at:string };
+
 app.get('/app/api/crash-live', async (c) => {
-  try {
-    await validateTelegramInitData(c.req.query('initData') || '', gameBotToken(c.env));
-    return liveBetsResponse(new URL(c.req.url), c.env);
-  } catch (error) {
-    return crashError(error);
-  }
+  const state = getCrashRoundState(Date.now());
+  const now = Date.now();
+  const requestedRoundId = Number(c.req.query('roundId'));
+  const roundId = Number.isFinite(requestedRoundId) && requestedRoundId > 0 ? Math.floor(requestedRoundId) : getCrashLiveRoundId(state);
+  const revealWindow = virtualRevealWindow(roundId,state);
+  await settleRealBetsForRound(c.env.DB, roundId, state);
+  const [realRows, virtualRows] = await Promise.all([
+    readRealLiveRows(c.env.DB, roundId),
+    buildCrashVirtualLiveBets(c.env, roundId, revealWindow.start, revealWindow.end, now, state),
+  ]);
+  const visibleVirtualRows = virtualRows.filter((row) => Number(row.virtual_reveal_at_ms||0) <= now);
+  const bets = [...realRows, ...visibleVirtualRows].map(json).sort((a,b)=>Number(b.amountNano||0)-Number(a.amountNano||0) || Number(a.virtualOrder||0)-Number(b.virtualOrder||0)).slice(0,120);
+  const totalNano = bets.reduce((s,b)=>s+Number(b.amountNano||0),0);
+  const nextReveal = nextVirtualRevealMs(virtualRows, now);
+  const nextSyncMs = nextLiveSyncMs(state, bets, nextReveal, now);
+  return c.json({ok:true,roundId,totalNano,totalTon:ton(totalNano),state,nextRevealAtMs:nextReveal||0,nextSyncMs,bets},200,{'cache-control':CACHE_NONE});
 });
 
 app.post('/app/api/crash-live/bet', async (c) => {
-  try {
-    return await placeBet(c.req.raw, c.env);
-  } catch (error) {
-    return crashError(error);
+  await ensure(c.env);
+  const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
+  const state = getCrashRoundState(Date.now());
+  const roundId = rid(b.roundId ?? betRoundId(state));
+  const userId = uid(b.userId);
+  const username = name(b.username,userId);
+  const amountNano = amt(b.amountNano);
+
+  const existing = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0').bind(roundId,userId).first<Row>();
+  if(existing){
+    const [controls, level] = await Promise.all([getUserControls(c.env,userId), getUserLevel(c.env,userId)]);
+    return c.json({ok:true,roundId,duplicate:true,tonBalanceNano:controls.tonBalanceNano,level},200,{'cache-control':CACHE_NONE});
+  }
+
+  const inserted = await c.env.DB.prepare("INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)").bind(roundId,userId,username,amountNano).run();
+  if((inserted.meta?.changes || 0) <= 0){
+    const [controls, level] = await Promise.all([getUserControls(c.env,userId), getUserLevel(c.env,userId)]);
+    return c.json({ok:true,roundId,duplicate:true,tonBalanceNano:controls.tonBalanceNano,level},200,{'cache-control':CACHE_NONE});
+  }
+
+  try{
+    const controls = await debitUserTonBalanceIfEnough(c.env,userId,amountNano,{kind:'game',title:'Crash bet',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}`,metadata:{section:'crash'}});
+    const xp = await addUserXp(c.env,userId,2,'game-start',{section:'crash',event:'place-bet',roundId},`crash_bet_${roundId}_${userId}`);
+    return c.json({ok:true,roundId,tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
+  }catch(error){
+    await c.env.DB.prepare('DELETE FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0 AND status=\'bet\'').bind(roundId,userId).run().catch(()=>undefined);
+    const controls = await getUserControls(c.env,userId).catch(()=>null);
+    return c.json({ok:false,error:error instanceof Error?error.message:'Bet failed',tonBalanceNano:controls?.tonBalanceNano},400,{'cache-control':CACHE_NONE});
   }
 });
 
 app.post('/app/api/crash-live/cashout', async (c) => {
-  try {
-    return await cashOut(c.req.raw, c.env);
-  } catch (error) {
-    return crashError(error);
+  await ensure(c.env);
+  const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
+  const roundId = rid(b.roundId), userId = uid(b.userId), m = mult(b.multiplier);
+  const row = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0').bind(roundId,userId).first<Row>();
+  if(!row)return c.json({ok:false,error:'Bet not found'},404,{'cache-control':CACHE_NONE});
+
+  if(row.status==='cashout'){
+    const [controls, level] = await Promise.all([getUserControls(c.env,userId), getUserLevel(c.env,userId)]);
+    const payout = Math.max(0,Math.floor(Number(row.payout_nano)||0));
+    return c.json({ok:true,roundId,duplicate:true,payoutNano:payout,payoutTon:ton(payout),tonBalanceNano:controls.tonBalanceNano,level},200,{'cache-control':CACHE_NONE});
+  }
+  if(row.status!=='bet')return c.json({ok:false,error:'Bet is already settled'},409,{'cache-control':CACHE_NONE});
+
+  const payout = Math.max(0, Math.floor(Number(row.amount_nano||0)*m));
+  const updated = await c.env.DB.prepare("UPDATE crash_live_bets SET status='cashout', cashout_multiplier=?, payout_nano=?, updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='bet'").bind(m,payout,roundId,userId).run();
+  if((updated.meta?.changes || 0) <= 0){
+    const fresh = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0').bind(roundId,userId).first<Row>();
+    const [controls, level] = await Promise.all([getUserControls(c.env,userId), getUserLevel(c.env,userId)]);
+    const savedPayout = Math.max(0,Math.floor(Number(fresh?.payout_nano)||0));
+    return c.json({ok:fresh?.status==='cashout',roundId,duplicate:true,payoutNano:savedPayout,payoutTon:ton(savedPayout),tonBalanceNano:controls.tonBalanceNano,level},fresh?.status==='cashout'?200:409,{'cache-control':CACHE_NONE});
+  }
+
+  try{
+    const controls = await applyGameTonBalanceDelta(c.env,userId,payout,{kind:'game',title:'Crash cashout',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}:cashout`,metadata:{section:'crash',multiplier:m}});
+    const xpAmount = m>=5?70:(m>=2?30:15);
+    const xp = await addUserXp(c.env,userId,xpAmount,'game-win',{section:'crash',event:'cashout',roundId,multiplier:m,payoutNano:payout},`crash_cashout_${roundId}_${userId}`);
+    return c.json({ok:true,roundId,payoutNano:payout,payoutTon:ton(payout),tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
+  }catch(error){
+    await c.env.DB.prepare("UPDATE crash_live_bets SET status='bet', cashout_multiplier=NULL, payout_nano=0, updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='cashout'").bind(roundId,userId).run().catch(()=>undefined);
+    const controls = await getUserControls(c.env,userId).catch(()=>null);
+    return c.json({ok:false,error:error instanceof Error?error.message:'Cashout failed',tonBalanceNano:controls?.tonBalanceNano},500,{'cache-control':CACHE_NONE});
   }
 });
 
-function crashError(error: unknown): Response {
-  return Response.json(
-    { ok: false, error: error instanceof Error ? error.message : 'Crash request failed' },
-    { status: 400, headers: { 'cache-control': CACHE_NONE } },
-  );
-}
+app.post('/app/api/crash-live/crash', async (c) => {
+  await ensure(c.env);
+  const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
+  const roundId = rid(b.roundId), userId = uid(b.userId);
+  const updated = await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND status='bet' AND is_virtual=0").bind(roundId,userId).run();
+  const xp = await addUserXp(c.env,userId,5,'game-lose',{section:'crash',event:'crash',roundId},`crash_loss_${roundId}_${userId}`);
+  return c.json({ok:true,roundId,duplicate:(updated.meta?.changes||0)<=0,level:xp.profile},200,{'cache-control':CACHE_NONE});
+});
 
-function crashEventStream(request: Request, env: Env): Response {
-  const encoder = new TextEncoder();
-  let cancelled = false;
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      const send = (state: CrashPublicState) => {
-        if (cancelled) return;
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(state)}\n\n`));
-      };
-      const pump = async () => {
-        try {
-          while (!cancelled) {
-            const now = Date.now();
-            const round = await ensureCurrentRound(env, now);
-            const state = await publicState(env, round, now);
-            send(state);
-            const delay = Math.max(40, (await nextServerEventAt(env, round, now)) - Date.now() + 12);
-            await sleep(delay);
-          }
-        } catch (error) {
-          console.warn('crash event stream failed', error);
-        } finally {
-          if (!cancelled) {
-            try { controller.close(); } catch {}
-          }
-        }
-      };
-      void pump();
-    },
-    cancel() {
-      cancelled = true;
-    },
-  });
-
-  request.signal.addEventListener('abort', () => { cancelled = true; }, { once: true });
-  return new Response(stream, {
-    headers: {
-      'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-store, no-transform',
-      'x-accel-buffering': 'no',
-      'connection': 'keep-alive',
-    },
-  });
-}
-
-async function liveBetsResponse(url: URL, env: Env): Promise<Response> {
-  const now = Date.now();
-  const currentRound = await ensureCurrentRound(env, now);
-  const requested = Number(url.searchParams.get('roundId'));
-  const round = Number.isSafeInteger(requested) && requested > 0
-    ? await readRound(env.DB, requested) || currentRound
-    : currentRound;
-  const state = await publicState(env, round, now);
-  const [realRows, virtualUsers] = await Promise.all([
-    readRealLiveRows(env.DB, round.round_id),
-    getCrashVirtualUsers(env).then((config) => config.users).catch(() => [] as CrashVirtualUser[]),
-  ]);
-  const virtualRows = virtualUsers.map((user, index) => buildVirtualBet(user, index, round, state));
-  const bets = [...realRows.map(realBetJson), ...virtualRows]
-    .sort((a, b) => Number(b.amountNano || 0) - Number(a.amountNano || 0) || Number(a.virtualOrder || 0) - Number(b.virtualOrder || 0))
-    .slice(0, 120);
-  return Response.json({ ok: true, roundId: round.round_id, state, bets }, { headers: { 'cache-control': CACHE_NONE } });
-}
-
-async function placeBet(request: Request, env: Env): Promise<Response> {
-  const receivedAt = Date.now();
-  await ensureCrashSchema(env.DB);
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const userId = String(await validateTelegramInitData(body.initData, gameBotToken(env)));
-  const roundId = cleanRoundId(body.roundId);
-  const existing = await env.DB.prepare(
-    'SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0',
-  ).bind(roundId, userId).first<Row>();
-  if (existing) {
-    const [controls, level] = await Promise.all([getUserControls(env, userId), getUserLevel(env, userId)]);
-    return Response.json({ ok: true, roundId, duplicate: true, tonBalanceNano: controls.tonBalanceNano, level }, { headers: { 'cache-control': CACHE_NONE } });
-  }
-
-  const round = await ensureCurrentRound(env, receivedAt);
-  if (phaseOf(round, receivedAt) !== 'betting' || roundId !== round.round_id) throw new Error('Betting is closed for this round');
-  const username = cleanName(body.username, userId);
-  const amountNano = cleanAmount(body.amountNano);
-  const inserted = await env.DB.prepare(
-    "INSERT OR IGNORE INTO crash_live_bets(round_id,user_id,username,amount_nano,status,cashout_multiplier,payout_nano,is_virtual,created_at,updated_at) VALUES(?,?,?,?, 'bet', NULL, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-  ).bind(roundId, userId, username, amountNano).run();
-  if ((inserted.meta?.changes || 0) <= 0) {
-    const [controls, level] = await Promise.all([getUserControls(env, userId), getUserLevel(env, userId)]);
-    return Response.json({ ok: true, roundId, duplicate: true, tonBalanceNano: controls.tonBalanceNano, level }, { headers: { 'cache-control': CACHE_NONE } });
-  }
-
-  try {
-    const controls = await debitUserTonBalanceIfEnough(env, userId, amountNano, {
-      kind: 'game',
-      title: 'Crash bet',
-      roundId: String(roundId),
-      referenceType: 'crash',
-      referenceId: `crash:${roundId}:${userId}`,
-      metadata: { section: 'crash' },
-    });
-    const xp = await addUserXp(env, userId, 2, 'game-start', { section: 'crash', event: 'place-bet', roundId }, `crash_bet_${roundId}_${userId}`);
-    return Response.json({ ok: true, roundId, tonBalanceNano: controls.tonBalanceNano, level: xp.profile }, { headers: { 'cache-control': CACHE_NONE } });
-  } catch (error) {
-    await env.DB.prepare(
-      "DELETE FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='bet'",
-    ).bind(roundId, userId).run().catch(() => undefined);
-    const controls = await getUserControls(env, userId).catch(() => null);
-    return Response.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Bet failed', tonBalanceNano: controls?.tonBalanceNano },
-      { status: 400, headers: { 'cache-control': CACHE_NONE } },
-    );
-  }
-}
-
-async function cashOut(request: Request, env: Env): Promise<Response> {
-  const receivedAt = Date.now();
-  await ensureCrashSchema(env.DB);
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const userId = String(await validateTelegramInitData(body.initData, gameBotToken(env)));
-  const roundId = cleanRoundId(body.roundId);
-  await ensureCurrentRound(env, receivedAt);
-
-  const row = await env.DB.prepare(
-    'SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0',
-  ).bind(roundId, userId).first<Row>();
-  if (!row) return Response.json({ ok: false, error: 'Bet not found' }, { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  if (row.status === 'cashout') {
-    const [controls, level] = await Promise.all([getUserControls(env, userId), getUserLevel(env, userId)]);
-    const payout = Math.max(0, Math.floor(Number(row.payout_nano) || 0));
-    return Response.json({
-      ok: true,
-      roundId,
-      duplicate: true,
-      multiplier: Number(row.cashout_multiplier || 1),
-      payoutNano: payout,
-      payoutTon: ton(payout),
-      tonBalanceNano: controls.tonBalanceNano,
-      level,
-    }, { headers: { 'cache-control': CACHE_NONE } });
-  }
-  if (row.status !== 'bet') return Response.json({ ok: false, error: 'Bet is already settled' }, { status: 409, headers: { 'cache-control': CACHE_NONE } });
-
-  const round = await readRound(env.DB, roundId);
-  if (!round || phaseOf(round, receivedAt) !== 'running' || receivedAt >= round.crash_at_ms) {
-    return Response.json({ ok: false, error: 'Round already crashed' }, { status: 409, headers: { 'cache-control': CACHE_NONE } });
-  }
-
-  const multiplier = multiplierAt(round, receivedAt);
-  const payout = Math.max(0, Math.floor(Number(row.amount_nano || 0) * multiplier));
-  const updated = await env.DB.prepare(
-    "UPDATE crash_live_bets SET status='cashout', cashout_multiplier=?, payout_nano=?, updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='bet'",
-  ).bind(multiplier, payout, roundId, userId).run();
-  if ((updated.meta?.changes || 0) <= 0) {
-    const fresh = await env.DB.prepare(
-      'SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0',
-    ).bind(roundId, userId).first<Row>();
-    if (fresh?.status === 'cashout') {
-      const [controls, level] = await Promise.all([getUserControls(env, userId), getUserLevel(env, userId)]);
-      const savedPayout = Math.max(0, Math.floor(Number(fresh.payout_nano) || 0));
-      return Response.json({
-        ok: true,
-        roundId,
-        duplicate: true,
-        multiplier: Number(fresh.cashout_multiplier || 1),
-        payoutNano: savedPayout,
-        payoutTon: ton(savedPayout),
-        tonBalanceNano: controls.tonBalanceNano,
-        level,
-      }, { headers: { 'cache-control': CACHE_NONE } });
-    }
-    return Response.json({ ok: false, error: 'Cashout was too late' }, { status: 409, headers: { 'cache-control': CACHE_NONE } });
-  }
-
-  try {
-    const controls = await applyGameTonBalanceDelta(env, userId, payout, {
-      kind: 'game',
-      title: 'Crash cashout',
-      roundId: String(roundId),
-      referenceType: 'crash',
-      referenceId: `crash:${roundId}:${userId}:cashout`,
-      metadata: { section: 'crash', multiplier },
-    });
-    const xpAmount = multiplier >= 5 ? 70 : multiplier >= 2 ? 30 : 15;
-    const xp = await addUserXp(
-      env,
-      userId,
-      xpAmount,
-      'game-win',
-      { section: 'crash', event: 'cashout', roundId, multiplier, payoutNano: payout },
-      `crash_cashout_${roundId}_${userId}`,
-    );
-    return Response.json({
-      ok: true,
-      roundId,
-      multiplier,
-      payoutNano: payout,
-      payoutTon: ton(payout),
-      tonBalanceNano: controls.tonBalanceNano,
-      level: xp.profile,
-    }, { headers: { 'cache-control': CACHE_NONE } });
-  } catch (error) {
-    await env.DB.prepare(
-      "UPDATE crash_live_bets SET status='bet', cashout_multiplier=NULL, payout_nano=0, updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='cashout'",
-    ).bind(roundId, userId).run().catch(() => undefined);
-    const controls = await getUserControls(env, userId).catch(() => null);
-    return Response.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Cashout failed', tonBalanceNano: controls?.tonBalanceNano },
-      { status: 500, headers: { 'cache-control': CACHE_NONE } },
-    );
-  }
-}
-
-async function ensureCurrentRound(env: Env, now: number): Promise<CrashRound> {
-  await ensureCrashSchema(env.DB);
-  let round = await latestRound(env.DB);
-  if (!round) round = await createRound(env.DB, 1, now);
-
-  for (let step = 0; step < 6; step += 1) {
-    if (now >= round.crash_at_ms) await settleCrashedRound(env, round);
-    if (now < round.next_round_at_ms) return round;
-    const stale = now - round.next_round_at_ms > STALE_ROUND_MS;
-    const startAt = stale ? now : round.next_round_at_ms;
-    round = await createRound(env.DB, round.round_id + 1, startAt);
-  }
-
-  const fresh = await latestRound(env.DB);
-  if (!fresh) throw new Error('Crash round is not ready');
-  return fresh;
-}
-
-async function createRound(db: D1Database, roundId: number, bettingStartedAt: number): Promise<CrashRound> {
-  const crashPoint = secureCrashPoint();
-  const runningStartedAt = Math.floor(bettingStartedAt + BETTING_MS);
-  const crashAt = runningStartedAt + crashTimeMs(crashPoint);
-  const nextRoundAt = crashAt + CRASH_HOLD_MS;
-  await db.prepare(
-    'INSERT OR IGNORE INTO crash_rounds(round_id,betting_started_ms,running_started_ms,crash_at_ms,next_round_at_ms,crash_point,settled) VALUES(?,?,?,?,?,?,0)',
-  ).bind(roundId, bettingStartedAt, runningStartedAt, crashAt, nextRoundAt, crashPoint).run();
-  const saved = await readRound(db, roundId);
-  if (!saved) throw new Error('Could not create Crash round');
-  return saved;
-}
-
-async function settleCrashedRound(env: Env, round: CrashRound): Promise<void> {
-  if (round.settled) return;
-  const pending = await env.DB.prepare(
-    "SELECT user_id FROM crash_live_bets WHERE round_id=? AND status='bet' AND is_virtual=0",
-  ).bind(round.round_id).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }));
-  await env.DB.prepare(
-    "UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet' AND is_virtual=0",
-  ).bind(round.round_id).run().catch(() => undefined);
-  await Promise.all((pending.results || []).map((item) => addUserXp(
-    env,
-    String(item.user_id),
-    5,
-    'game-lose',
-    { section: 'crash', event: 'crash', roundId: round.round_id },
-    `crash_loss_${round.round_id}_${item.user_id}`,
-  ).catch(() => undefined)));
-  await env.DB.prepare('UPDATE crash_rounds SET settled=1 WHERE round_id=? AND settled=0').bind(round.round_id).run().catch(() => undefined);
-  round.settled = 1;
-}
-
-async function publicState(env: Env, round: CrashRound, now: number): Promise<CrashPublicState> {
-  const phase = phaseOf(round, now);
-  const crashMultiplier = phase === 'ended' ? floor2(round.crash_point) : null;
-  const historyRows = await env.DB.prepare(
-    'SELECT crash_point FROM crash_rounds WHERE crash_at_ms<=? ORDER BY round_id DESC LIMIT 12',
-  ).bind(now).all<{ crash_point: number }>().catch(() => ({ results: [] as { crash_point: number }[] }));
-  return {
-    id: round.round_id,
-    phase,
-    serverNow: now,
-    bettingStartedAt: round.betting_started_ms,
-    runningStartedAt: round.running_started_ms,
-    bettingMs: BETTING_MS,
-    crashHoldMs: CRASH_HOLD_MS,
-    current: phase === 'running' ? multiplierAt(round, now) : phase === 'ended' ? floor2(round.crash_point) : 1,
-    crashMultiplier,
-    running: phase === 'running',
-    waiting: phase !== 'running',
-    inCrashHold: phase === 'ended',
-    history: (historyRows.results || []).map((item) => floor2(item.crash_point)),
-  };
-}
-
-function phaseOf(round: CrashRound, now: number): CrashPhase {
-  if (now < round.running_started_ms) return 'betting';
-  if (now < round.crash_at_ms) return 'running';
-  return 'ended';
-}
-
-async function nextServerEventAt(env: Env, round: CrashRound, now: number): Promise<number> {
-  const boundary = nextBoundaryAt(round, now);
-  if (phaseOf(round, now) !== 'running') return boundary;
-  const current = multiplierAt(round, now);
-  const config = await getCrashVirtualUsers(env).catch(() => ({ users: [] as CrashVirtualUser[] }));
-  let next = boundary;
-  for (let index = 0; index < config.users.length; index += 1) {
-    const target = virtualTargetForUser(config.users[index], index, round.round_id);
-    if (target <= current || target >= round.crash_point) continue;
-    const targetAt = round.running_started_ms + crashTimeMs(target);
-    if (targetAt > now && targetAt < next) next = targetAt;
-  }
-  return next;
-}
-
-function nextBoundaryAt(round: CrashRound, now: number): number {
-  const phase = phaseOf(round, now);
-  return phase === 'betting' ? round.running_started_ms : phase === 'running' ? round.crash_at_ms : round.next_round_at_ms;
-}
-
-function multiplierAt(round: CrashRound, now: number): number {
-  if (now <= round.running_started_ms) return 1;
-  if (now >= round.crash_at_ms) return floor2(round.crash_point);
-  const seconds = Math.max(0, (now - round.running_started_ms) / 1000);
-  return floor2(Math.min(round.crash_point, Math.exp(MULTIPLIER_RATE * seconds)));
-}
-
-function crashTimeMs(crashPoint: number): number {
-  if (crashPoint <= 1) return 0;
-  return Math.max(1, Math.ceil((Math.log(crashPoint) / MULTIPLIER_RATE) * 1000));
-}
-
-function secureCrashPoint(): number {
-  const band = secureRandomUnit();
-  const position = secureRandomUnit();
-  if (band < 0.0005) return 50;
-  if (band < 0.01) return sampleBand(20, 49.99, position);
-  if (band < 0.04) return sampleBand(10, 19.99, position);
-  if (band < 0.11) return sampleBand(5, 9.99, position);
-  if (band < 0.22) return sampleBand(3, 4.99, position);
-  if (band < 0.40) return sampleBand(2, 2.99, position);
-  if (band < 0.62) return sampleBand(1.5, 1.99, position);
-  return sampleBand(1, 1.49, position);
-}
-
-function sampleBand(min: number, max: number, unit: number): number {
-  const shaped = Math.pow(Math.max(0, Math.min(1, unit)), 1.35);
-  return floor2(min + (max - min) * shaped);
-}
-
-function secureRandomUnit(): number {
-  const values = new Uint32Array(2);
-  crypto.getRandomValues(values);
-  return (values[0] * 2_097_152 + (values[1] >>> 11)) / 9_007_199_254_740_992;
-}
-
-function virtualTargetForUser(user: CrashVirtualUser, index: number, roundId: number): number {
-  const options = Array.isArray(user.bets) ? user.bets : [];
-  const option = options.length ? options[displayChoice(roundId, index, options.length)] : { amount: 1, cashoutMultiplier: 1.5 };
-  return Math.max(1.01, Math.min(MAX_MULTIPLIER, floor2(Number(option.cashoutMultiplier || 1.5))));
-}
-
-function buildVirtualBet(user: CrashVirtualUser, index: number, round: CrashRound, state: CrashPublicState): VirtualJson {
-  const options = Array.isArray(user.bets) ? user.bets : [];
-  const option = options.length ? options[displayChoice(round.round_id, index, options.length)] : { amount: 1, cashoutMultiplier: 1.5 };
-  const amountNano = Math.max(1, Math.floor(Number(option.amount || 1) * NANO));
-  const target = virtualTargetForUser(user, index, round.round_id);
-  const revealAt = Math.min(round.running_started_ms, round.betting_started_ms + Math.max(0, Math.min(8, Number(user.betSecond) || 0)) * 1000);
-  let status = 'bet';
-  let cashoutMultiplier: number | null = null;
-  if (state.phase === 'running' && target <= state.current) {
-    status = 'cashout';
-    cashoutMultiplier = target;
-  } else if (state.phase === 'ended') {
-    if (target < Number(state.crashMultiplier || 1)) {
-      status = 'cashout';
-      cashoutMultiplier = target;
-    } else {
-      status = 'crashed';
-    }
-  }
-  return virtualBetJson(round.round_id, index, user.name, amountNano, target, revealAt, status, cashoutMultiplier);
-}
-
-function virtualBetJson(roundId: number, index: number, username: string, amountNano: number, target: number, revealAt: number, status: string, cashoutMultiplier: number | null) {
-  const payoutNano = cashoutMultiplier ? Math.max(0, Math.floor(amountNano * cashoutMultiplier)) : 0;
-  return {
-    roundId,
-    userId: `virtual_${roundId}_${index}`,
-    user: cleanName(username, `Player ${index + 1}`),
-    amountNano,
-    amountTon: ton(amountNano),
-    status,
-    cashoutMultiplier,
-    targetCashoutMultiplier: target,
-    payoutNano,
-    payoutTon: ton(payoutNano),
-    isVirtual: true,
-    virtualRevealAtMs: Math.floor(revealAt),
-    virtualOrder: index + 1,
-    createdAt: new Date(revealAt).toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function realBetJson(row: Row) {
-  return {
-    roundId: Number(row.round_id),
-    userId: row.user_id,
-    user: row.username,
-    amountNano: Number(row.amount_nano || 0),
-    amountTon: ton(row.amount_nano),
-    status: row.status,
-    cashoutMultiplier: row.cashout_multiplier == null ? null : Number(row.cashout_multiplier),
-    targetCashoutMultiplier: null,
-    payoutNano: Number(row.payout_nano || 0),
-    payoutTon: ton(row.payout_nano),
-    isVirtual: false,
-    virtualRevealAtMs: 0,
-    virtualOrder: 0,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-async function readRealLiveRows(db: D1Database, roundId: number): Promise<Row[]> {
-  const rows = await db.prepare(
-    'SELECT * FROM crash_live_bets WHERE round_id=? AND is_virtual=0 ORDER BY amount_nano DESC, datetime(created_at) ASC LIMIT 120',
-  ).bind(roundId).all<Row>().catch(() => ({ results: [] as Row[] }));
+async function readRealLiveRows(db:D1Database, roundId:number): Promise<Row[]>{
+  const rows = await db.prepare("SELECT * FROM crash_live_bets WHERE round_id=? AND is_virtual=0 ORDER BY amount_nano DESC, datetime(created_at) ASC LIMIT 120").bind(roundId).all<Row>().catch(() => ({ results: [] as Row[] }));
   return rows.results || [];
 }
-
-async function latestRound(db: D1Database): Promise<CrashRound | null> {
-  return db.prepare('SELECT * FROM crash_rounds ORDER BY round_id DESC LIMIT 1').first<CrashRound>().catch(() => null);
+async function settleRealBetsForRound(db:D1Database, roundId:number, state:ReturnType<typeof getCrashRoundState>){
+  if(roundId===state.id && state.waiting){
+    await db.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
+  }
+  await db.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id < ? AND status='bet' AND is_virtual=0").bind(roundId).run().catch(() => undefined);
 }
 
-async function readRound(db: D1Database, roundId: number): Promise<CrashRound | null> {
-  return db.prepare('SELECT * FROM crash_rounds WHERE round_id=?').bind(roundId).first<CrashRound>().catch(() => null);
-}
-
-async function ensureCrashSchema(db: D1Database): Promise<void> {
-  if (crashSchemaReady) return;
-  await db.prepare("CREATE TABLE IF NOT EXISTS crash_live_bets(round_id INTEGER NOT NULL,user_id TEXT NOT NULL,username TEXT NOT NULL,amount_nano INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'bet',cashout_multiplier REAL,payout_nano INTEGER NOT NULL DEFAULT 0,is_virtual INTEGER NOT NULL DEFAULT 0,target_cashout_multiplier REAL,virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0,virtual_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(round_id,user_id))").run();
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN target_cashout_multiplier REAL').run().catch(() => undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_order INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
-  await db.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
-  await db.prepare('CREATE TABLE IF NOT EXISTS crash_rounds(round_id INTEGER PRIMARY KEY,betting_started_ms INTEGER NOT NULL,running_started_ms INTEGER NOT NULL,crash_at_ms INTEGER NOT NULL,next_round_at_ms INTEGER NOT NULL,crash_point REAL NOT NULL,settled INTEGER NOT NULL DEFAULT 0)').run();
-  await db.prepare('CREATE INDEX IF NOT EXISTS idx_crash_rounds_crash_at ON crash_rounds(crash_at_ms)').run();
+async function ensure(env:{DB:D1Database}){
+  if(crashSchemaReady)return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS crash_live_bets(round_id INTEGER NOT NULL,user_id TEXT NOT NULL,username TEXT NOT NULL,amount_nano INTEGER NOT NULL,status TEXT NOT NULL DEFAULT \'bet\',cashout_multiplier REAL,payout_nano INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(round_id,user_id))').run();
+  await ensureCrashVirtualColumns(env.DB);
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
   crashSchemaReady = true;
 }
-
-function displayChoice(roundId: number, index: number, length: number): number {
-  if (length <= 1) return 0;
-  let x = (Math.floor(roundId % 2_147_483_647) ^ Math.imul(index + 1, 1_103_515_245)) | 0;
-  x ^= x << 13;
-  x ^= x >>> 17;
-  x ^= x << 5;
-  return Math.abs(x) % length;
+function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.username,amountNano:Number(r.amount_nano||0),amountTon:ton(r.amount_nano),status:r.status,cashoutMultiplier:r.cashout_multiplier==null?null:Number(r.cashout_multiplier),targetCashoutMultiplier:r.target_cashout_multiplier==null?null:Number(r.target_cashout_multiplier),payoutNano:Number(r.payout_nano||0),payoutTon:ton(r.payout_nano),isVirtual:Number(r.is_virtual||0)===1,virtualRevealAtMs:Number(r.virtual_reveal_at_ms||0),virtualOrder:Number(r.virtual_order||0),createdAt:r.created_at,updatedAt:r.updated_at}}
+function virtualRevealWindow(roundId:number,state:ReturnType<typeof getCrashRoundState>){
+  const roundStart = roundId===state.id ? state.start : state.start + state.runMs + WAIT_BETWEEN_MS;
+  const end = Math.max(0,roundStart - REVEAL_END_BEFORE_START_MS);
+  return {start:Math.max(0,end-WAIT_WINDOW_MS),end};
 }
-
-function cleanRoundId(value: unknown): number {
-  const n = Math.floor(Number(value));
-  if (!Number.isSafeInteger(n) || n < 1) throw new Error('Round is not ready');
-  return n;
+function nextVirtualRevealMs(rows:Row[], now:number){
+  return rows.reduce((next,row) => {
+    const reveal = Number(row.virtual_reveal_at_ms||0);
+    return reveal > now && (!next || reveal < next) ? reveal : next;
+  }, 0);
 }
-
-function cleanAmount(value: unknown): number {
-  const n = Math.floor(Number(value));
-  if (!Number.isFinite(n) || n < MIN_BET_NANO) throw new Error('Minimum bet is 0.01 TON');
-  return n;
+function nextLiveSyncMs(state:ReturnType<typeof getCrashRoundState>, bets:ReturnType<typeof json>[], nextReveal = 0, now = Date.now()){
+  if(!state.running){
+    if(nextReveal > now)return Math.max(140, nextReveal - now + 40);
+    return Math.max(300, state.nextInMs + 80);
+  }
+  let target = 0;
+  let overdue = false;
+  for(const bet of bets){
+    if(!bet.isVirtual || bet.status !== 'bet')continue;
+    const next = Number(bet.targetCashoutMultiplier)||0;
+    if(next <= state.current && next < state.stop)overdue = true;
+    if(next > state.current && next < state.stop && (!target || next < target))target = next;
+  }
+  if(overdue)return 90;
+  if(target)return getCrashTargetDelayMs(state,target);
+  return Math.max(180, state.runMs - state.local + 80);
 }
-
-function cleanName(value: unknown, fallback: string): string {
-  let name = String(value || fallback || 'User').replace(/[<>]/g, '').trim();
-  if (name.startsWith('@')) name = name.slice(1);
-  if (name.includes(' ')) name = name.split(' ')[0];
-  return name.slice(0, 80) || 'User';
-}
-
-function floor2(value: number): number {
-  return Math.max(1, Math.min(MAX_MULTIPLIER, Math.floor((Number(value) || 1) * 100) / 100));
-}
-
-function ton(value: unknown): string {
-  return (Math.max(0, Math.floor(Number(value) || 0)) / NANO).toFixed(4).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
-}
-
-export default app;
+function betRoundId(state:ReturnType<typeof getCrashRoundState>){return state.waiting ? state.id + 1 : state.id}
+function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
+function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
+function name(v:unknown,f:string){let s=String(v||f||'User').replace(/[<>]/g,'').trim();if(s.startsWith('@'))s=s.slice(1);if(s.includes(' '))s=s.split(' ')[0];return s.slice(0,80)||'User'}
+function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<MIN_BET_NANO)throw new Error('Minimum bet is 0.01 TON');return n}
+function mult(v:unknown){const n=Number(v);if(!Number.isFinite(n)||n<1)throw new Error('Invalid multiplier');return Math.floor(n*100)/100}
+function ton(v:unknown){return (Math.max(0,Math.floor(Number(v)||0))/NANO).toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
