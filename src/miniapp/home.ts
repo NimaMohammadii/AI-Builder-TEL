@@ -464,6 +464,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
   var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
   var officialSpinActive=false,suppressedWindowFocus=false;
+  var ticketAudioCtx=null;
   var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   function q(s,r){return (r||document).querySelector(s)}
@@ -476,6 +477,29 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     return 'lp_'+Date.now().toString(36)
   }
   function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
+  function ticketAudio(){
+    try{
+      var AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;
+      if(!ticketAudioCtx)ticketAudioCtx=new AudioCtor({latencyHint:'interactive'});
+      if(ticketAudioCtx.state==='suspended')ticketAudioCtx.resume().catch(function(){});
+      return ticketAudioCtx;
+    }catch(e){return null}
+  }
+  function ticketTone(fromHz,toHz,delayMs,durationMs,peak){
+    var ctx=ticketAudio();if(!ctx)return;
+    try{
+      var start=ctx.currentTime+(Math.max(0,Number(delayMs)||0)/1000),duration=Math.max(.03,(Number(durationMs)||60)/1000),end=start+duration;
+      var osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type='sine';osc.frequency.setValueAtTime(Math.max(40,Number(fromHz)||800),start);osc.frequency.exponentialRampToValueAtTime(Math.max(40,Number(toHz)||800),end);
+      gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.006,Number(peak)||.02),start+Math.min(.009,duration*.22));gain.gain.exponentialRampToValueAtTime(.0001,end);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(end+.012);
+    }catch(e){}
+  }
+  function ticketSound(kind){
+    if(kind==='plus'){ticketTone(860,1080,0,64,.024);return}
+    if(kind==='minus'){ticketTone(760,620,0,66,.022);return}
+    ticketTone(760,940,0,68,.023);ticketTone(930,1120,52,82,.019);
+  }
   function syncServerClock(payload,requestStartedAt,receivedAt){
     var serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(serverNow)||serverNow<=0)return;
     var started=Number(requestStartedAt)||receivedAt,total=Math.max(0,receivedAt-started),serverStarted=Number(payload&&payload.serverStartedAtMs);
@@ -703,10 +727,10 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function handleTicketControls(event){
     var target=event.target&&event.target.closest?event.target.closest('#homeTicketButton,#home [data-ticket-plus],#home [data-ticket-minus]'):null;if(!target)return;
     event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-    if(target.id==='homeTicketButton'){buy();return}
+    if(target.id==='homeTicketButton'){ticketSound('buy');buy();return}
     if(busy||!state||!state.canBuy||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
-    if(target.hasAttribute('data-ticket-plus'))quantity=Math.min(maxSelectable(),quantity+1);
-    if(target.hasAttribute('data-ticket-minus'))quantity=Math.max(1,quantity-1);
+    if(target.hasAttribute('data-ticket-plus')){quantity=Math.min(maxSelectable(),quantity+1);ticketSound('plus')}
+    if(target.hasAttribute('data-ticket-minus')){quantity=Math.max(1,quantity-1);ticketSound('minus')}
     haptic('light');render();
   }
   function handleSmartRefresh(event){
