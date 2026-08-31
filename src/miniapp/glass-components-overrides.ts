@@ -32,17 +32,17 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
 #home .home-ticket-layout>.home-ticket-card{
-  border:1px solid rgba(156,38,70,.48)!important;
   background:#000!important;
   background-color:#000!important;
   background-image:none!important;
+  box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 0 0 10px 1px rgba(92,10,35,.68),inset 0 0 26px 4px rgba(69,5,26,.38)!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
 }
 #home .home-ticket-layout>.home-ticket-card:before{
-  content:''!important;
-  display:block!important;
+  content:none!important;
+  display:none!important;
   background:none!important;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),inset 0 0 7px rgba(156,38,70,.16),inset 0 0 18px rgba(80,8,28,.20)!important;
+  box-shadow:none!important;
 }
 `;
