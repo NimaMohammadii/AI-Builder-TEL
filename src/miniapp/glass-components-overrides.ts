@@ -50,6 +50,10 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
     inset 1px 1px 1px -.5px rgba(140,29,61,.22),
     inset -1px -1px 1px -.5px rgba(92,10,35,.30),
+    inset 0 0 8px rgba(255,255,255,.035),
     inset 0 0 10px rgba(69,5,26,.12)!important;
+}
+#home .home-ticket-card .home-ticket-count{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.055),inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
 }
 `;
