@@ -31,4 +31,17 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   backdrop-filter:blur(10px) saturate(1.18)!important;
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
+#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual){
+  background:#000!important;
+  background-color:#000!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual):before{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  box-shadow:none!important;
+}
 `;
