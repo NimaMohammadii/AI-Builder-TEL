@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { adjustUserTonBalance, assertUserNotBanned, ensureTonBalanceColumn, getUserControls } from './user-controls';
 import { getFinanceLimits } from './admin-finance-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
+import { publishLiveActivity } from './live-activity';
 
 const TON_NANO = 1_000_000_000;
 const MIN_WITHDRAW_NANO = 10 * TON_NANO;
@@ -129,6 +130,13 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
 
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   if (!row) throw new Error('Withdrawal reservation failed');
+  await publishLiveActivity(env, {
+    kind: 'withdraw',
+    userId,
+    amountNano,
+    key: id,
+    createdAt: row.created_at,
+  }).catch((error) => console.warn('withdrawal live activity failed', error));
   return rowToWithdrawal(row);
 }
 
