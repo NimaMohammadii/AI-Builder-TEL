@@ -33,13 +33,6 @@ export const HOME_STYLES = `
   gap:10px!important;
   align-content:space-between!important;
   box-sizing:border-box!important;
-  box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
-    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
-    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
-    inset 0 0 6px 6px rgba(255,255,255,.055),
-    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
 }
 #home #homeDrawInfoCard.home-draw-info-card:before,
 #home .home-ticket-card:before{
@@ -58,13 +51,6 @@ export const HOME_STYLES = `
     radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;
   box-shadow:inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;
   opacity:1!important;
-}
-#home .home-ticket-card:before{
-  background:
-    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
-    radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
-    radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%)!important;
-  box-shadow:inset 0 1px 0 rgba(112,18,49,.065)!important;
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
