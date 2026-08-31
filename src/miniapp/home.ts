@@ -488,17 +488,17 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function ticketTone(fromHz,toHz,delayMs,durationMs,peak){
     var ctx=ticketAudio();if(!ctx)return;
     try{
-      var start=ctx.currentTime+(Math.max(0,Number(delayMs)||0)/1000),duration=Math.max(.03,(Number(durationMs)||60)/1000),end=start+duration;
+      var start=ctx.currentTime+(Math.max(0,Number(delayMs)||0)/1000),duration=Math.max(.045,(Number(durationMs)||82)/1000),end=start+duration,attack=Math.min(.014,duration*.28);
       var osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type='sine';osc.frequency.setValueAtTime(Math.max(40,Number(fromHz)||800),start);osc.frequency.exponentialRampToValueAtTime(Math.max(40,Number(toHz)||800),end);
-      gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.006,Number(peak)||.02),start+Math.min(.009,duration*.22));gain.gain.exponentialRampToValueAtTime(.0001,end);
-      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(end+.012);
+      osc.type='sine';osc.frequency.setValueAtTime(Math.max(40,Number(fromHz)||680),start);osc.frequency.exponentialRampToValueAtTime(Math.max(40,Number(toHz)||760),end);
+      gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.008,Number(peak)||.034),start+attack);gain.gain.exponentialRampToValueAtTime(.0001,end);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(end+.014);
     }catch(e){}
   }
   function ticketSound(kind){
-    if(kind==='plus'){ticketTone(860,1080,0,64,.024);return}
-    if(kind==='minus'){ticketTone(760,620,0,66,.022);return}
-    ticketTone(760,940,0,68,.023);ticketTone(930,1120,52,82,.019);
+    if(kind==='plus'){ticketTone(680,820,0,82,.038);return}
+    if(kind==='minus'){ticketTone(640,540,0,84,.036);return}
+    ticketTone(650,780,0,86,.034);ticketTone(780,920,64,96,.030);
   }
   function openTicketWallet(){var trigger=document.querySelector('[data-view="wallet"]');if(trigger&&typeof trigger.click==='function'){trigger.click();return true}return false}
   function syncServerClock(payload,requestStartedAt,receivedAt){
