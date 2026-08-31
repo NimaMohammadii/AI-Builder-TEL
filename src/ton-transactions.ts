@@ -127,37 +127,16 @@ export async function recordTonTransactions(env: Env, userId: string, writes: To
 
 async function publishTransactionActivity(env: Env, transactions: TonTransaction[]): Promise<void> {
   if (!transactions.length) return;
-
   for (const item of transactions) {
-    if (item.kind === 'deposit' && item.amountNano > 0 && item.status === 'completed') {
-      await publishLiveActivity(env, {
-        kind: 'deposit',
-        userId: item.userId,
-        amountNano: item.amountNano,
-        key: item.referenceId || item.id,
-        createdAt: item.createdAt,
-      });
-    }
+    if (item.kind !== 'deposit' || item.amountNano <= 0 || item.status !== 'completed') continue;
+    await publishLiveActivity(env, {
+      kind: 'deposit',
+      userId: item.userId,
+      amountNano: item.amountNano,
+      key: item.referenceId || item.id,
+      createdAt: item.createdAt,
+    });
   }
-
-  const games = transactions.filter((item) => item.kind === 'game');
-  if (!games.length) return;
-  const hasSettlementPhase = games.some((item) => ['bet', 'payout'].includes(String(item.metadata?.phase || '')));
-  const standaloneBet = !hasSettlementPhase && games.every((item) => item.amountNano < 0 && /bet/i.test(item.title));
-  if (standaloneBet) return;
-  const net = games.reduce((sum, item) => sum + Number(item.amountNano || 0), 0);
-  if (!net) return;
-  const first = games[0];
-  const section = String(games.map((item) => item.metadata?.section).find(Boolean) || '').trim() || null;
-  const roundKey = String(games.map((item) => item.metadata?.roundId || item.referenceId).find(Boolean) || first.id);
-  await publishLiveActivity(env, {
-    kind: net > 0 ? 'win' : 'loss',
-    userId: first.userId,
-    amountNano: Math.abs(net),
-    section,
-    key: `${section || 'game'}:${roundKey}`,
-    createdAt: first.createdAt,
-  });
 }
 
 async function insertTonTransactionRows(env: Env, rows: TonTransactionRow[]): Promise<void> {
