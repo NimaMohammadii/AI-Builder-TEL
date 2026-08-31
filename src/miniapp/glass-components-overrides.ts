@@ -50,7 +50,6 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
-  box-shadow:0 12px 30px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.055),inset 0 2px 8px rgba(255,255,255,.025)!important;
 }
 #home .home-ticket-layout>.home-ticket-finance-visual.home-ticket-card:before{
   content:none!important;
