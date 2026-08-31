@@ -37,6 +37,16 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
+  box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 0 0 0 1px rgba(156,38,70,.48),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset -1px -1px 1px -.5px rgba(124,22,53,.24),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035),
+    inset 0 1px 0 rgba(112,18,49,.065),
+    inset 0 -1px 0 rgba(88,12,37,.15)!important;
 }
 #home .home-ticket-layout>.home-ticket-card:before{
   content:none!important;
