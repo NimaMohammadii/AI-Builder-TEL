@@ -185,14 +185,14 @@ export const CRASH_SECTION = `<section id="crash" class="view crash-view">
           <small>Auto Cash Out</small>
           <b><span class="crash-auto"><input id="crashAutoCashout" inputmode="decimal" pattern="[0-9.]*" value="5.00"/><span>x</span></span></b>
         </div>
-      </div>
-      <div class="crash-bet">
-        <button type="button" data-action="crash-half">1/2</button>
-        <span class="crash-bet-main active"><input id="crashAmount" inputmode="decimal" pattern="[0-9.]*" value="1.00" aria-label="Amount TON"/></span>
-        <button type="button" data-action="crash-double">2x</button>
-      </div>
-      <div class="crash-actions">
-        <button id="crashAction" class="crash-primary" type="button">Place Bet</button>
+        <div class="crash-bet">
+          <button type="button" data-action="crash-half">1/2</button>
+          <span class="crash-bet-main active"><input id="crashAmount" inputmode="decimal" pattern="[0-9.]*" value="1.00" aria-label="Amount TON"/></span>
+          <button type="button" data-action="crash-double">2x</button>
+        </div>
+        <div class="crash-actions">
+          <button id="crashAction" class="crash-primary" type="button">Place Bet</button>
+        </div>
       </div>
       <div class="crash-live open" id="crashLive">
         <div class="crash-live-head">
