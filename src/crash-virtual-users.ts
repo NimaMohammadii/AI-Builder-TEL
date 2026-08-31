@@ -1,7 +1,9 @@
 import { getCrashVirtualUsers, type CrashVirtualUser } from './crash-virtual-users-config';
 
 const NANO = 1000000000;
-const HOUSE_EDGE = .04;
+const MAX_MULTIPLIER = 50;
+const LOW_TAIL_EXP = 1.537243573680482;
+const HIGH_TAIL_EXP = 3.26941239209809;
 const WAIT_BETWEEN_MS = 10000;
 const CRASH_HOLD_MS = 2200;
 const MAX_RUN_MS = 68000;
@@ -212,8 +214,8 @@ function targetCashout(roundId:number,i:number,risk:number,stop:number){
   return t;
 }
 function seeded(seed:number){const x=Math.sin(seed*9301.777+49297.31)*233280;return x-Math.floor(x)}
-function rawRoundStop(roundId:number){const u=Math.max(.000001,seeded(roundId));let raw=(1-HOUSE_EDGE)/u;if(seeded(roundId+17)<HOUSE_EDGE)raw=1;return Math.max(1,Math.min(60,Math.floor(raw*100)/100))}
-function multAt(seconds:number){return 1+seconds*.06+seconds*seconds*.00105}
+function rawRoundStop(roundId:number){const r=Math.max(.000001,seeded(roundId));let raw:number;if(r<.0005)raw=MAX_MULTIPLIER;else if(r<.01)raw=20*Math.pow(.01/r,1/HIGH_TAIL_EXP);else raw=Math.pow(1/r,1/LOW_TAIL_EXP);return Math.max(1,Math.min(MAX_MULTIPLIER,Math.floor(raw*100)/100))}
+function multAt(seconds:number){return Math.exp(Math.max(0,seconds)*.06)}
 function maxReachableStop(){return Math.floor(multAt(MAX_RUN_MS/1000)*100)/100}
 function roundStop(roundId:number){return Math.min(rawRoundStop(roundId),maxReachableStop())}
 function stopTime(stop:number){let lo=0,hi=MAX_RUN_MS;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(multAt(mid/1000)>=stop)hi=mid;else lo=mid}return hi}
