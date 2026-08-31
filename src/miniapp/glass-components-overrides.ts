@@ -31,20 +31,27 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   backdrop-filter:blur(10px) saturate(1.18)!important;
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
-#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual),
+#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual){
+  background:#000!important;
+  background-color:#000!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual):before{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  box-shadow:none!important;
+}
 #home .home-ticket-layout>.home-ticket-finance-visual.home-ticket-card{
   background:#000!important;
   background-color:#000!important;
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
-  box-shadow:
-    0 12px 30px rgba(0,0,0,.32),
-    inset 0 0 0 1px rgba(255,255,255,.07),
-    inset 0 1px 5px rgba(255,255,255,.03),
-    inset 0 -2px 6px rgba(0,0,0,.85)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.055),inset 0 2px 8px rgba(255,255,255,.025)!important;
 }
-#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual):before,
 #home .home-ticket-layout>.home-ticket-finance-visual.home-ticket-card:before{
   content:none!important;
   display:none!important;
