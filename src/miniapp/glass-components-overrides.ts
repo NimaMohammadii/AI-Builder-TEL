@@ -32,7 +32,7 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   -webkit-backdrop-filter:blur(10px) saturate(1.18)!important;
 }
 #home .home-ticket-layout>.home-ticket-card{
-  border:1px solid rgba(156,38,70,.48)!important;
+  border:1px solid rgba(124,22,53,.24)!important;
   background:#000!important;
   background-color:#000!important;
   background-image:none!important;
@@ -42,7 +42,14 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
 #home .home-ticket-layout>.home-ticket-card:before{
   content:''!important;
   display:block!important;
-  background:none!important;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),inset 0 0 7px rgba(156,38,70,.16),inset 0 0 18px rgba(80,8,28,.20)!important;
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%)!important;
+  box-shadow:
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.22),
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30),
+    inset 0 0 10px rgba(69,5,26,.12)!important;
 }
 `;
