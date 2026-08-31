@@ -373,7 +373,7 @@ const HOME_ASSET_SCRIPT = `
   var homeSlotCheckedAt=0;
   var META_CACHE_MS=300000;
   var TON_META_KEY='vexaTonLogoMeta:v1';
-  var INTRO_META_KEY='vexaHomeIntroMeta:v1';
+  var INTRO_META_KEY='vexaHomeIntroImageMeta:v1';
   var HOME_SLOT_META_KEY='vexaHomeLotterySlotMeta:v1';
   function cacheIntro(url){try{if(!url||!('caches'in window))return;var req=new Request(url,{cache:'force-cache'});caches.open('vexa-home-intro-images-v1').then(function(cache){cache.match(req).then(function(hit){if(hit)return;fetch(req,{cache:'force-cache'}).then(function(res){if(res&&res.ok)cache.put(req,res.clone())}).catch(function(){})}).catch(function(){})}).catch(function(){})}catch(e){}}
   function setRewardsIntroAspect(url){try{var img=new Image();img.onload=function(){if(!img.naturalWidth||!img.naturalHeight)return;var ratio=img.naturalWidth+'/'+img.naturalHeight;document.querySelectorAll('#rewards .rewards-home-intro-card,#rewards .rewards-home-intro-image-frame').forEach(function(n){n.style.setProperty('--rewards-intro-aspect',ratio);n.style.setProperty('aspect-ratio',ratio,'important');n.style.setProperty('height','auto','important');n.style.setProperty('min-height','0','important')})};img.src=url}catch(e){}}
