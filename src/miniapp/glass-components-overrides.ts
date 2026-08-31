@@ -40,9 +40,9 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   -webkit-backdrop-filter:none!important;
 }
 #home .home-ticket-layout>.home-ticket-card:before{
-  content:none!important;
-  display:none!important;
+  content:''!important;
+  display:block!important;
   background:none!important;
-  box-shadow:none!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),inset 0 0 7px rgba(156,38,70,.16),inset 0 0 18px rgba(80,8,28,.20)!important;
 }
 `;
