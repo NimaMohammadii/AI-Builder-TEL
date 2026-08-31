@@ -33,8 +33,8 @@ input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
 }
 #home .home-ticket-layout>.home-ticket-card{
   border:1px solid rgba(124,22,53,.24)!important;
-  background:#000!important;
-  background-color:#000!important;
+  background:#070707!important;
+  background-color:#070707!important;
   background-image:none!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
