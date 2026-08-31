@@ -373,7 +373,7 @@ const HOME_ASSET_SCRIPT = `
   var homeSlotCheckedAt=0;
   var META_CACHE_MS=300000;
   var TON_META_KEY='vexaTonLogoMeta:v1';
-  var INTRO_META_KEY='vexaHomeIntroImageMeta:v1';
+  var INTRO_META_KEY='vexaHomeIntroMeta:v1';
   var HOME_SLOT_META_KEY='vexaHomeLotterySlotMeta:v1';
   function cacheIntro(url){try{if(!url||!('caches'in window))return;var req=new Request(url,{cache:'force-cache'});caches.open('vexa-home-intro-images-v1').then(function(cache){cache.match(req).then(function(hit){if(hit)return;fetch(req,{cache:'force-cache'}).then(function(res){if(res&&res.ok)cache.put(req,res.clone())}).catch(function(){})}).catch(function(){})}).catch(function(){})}catch(e){}}
   function setRewardsIntroAspect(url){try{var img=new Image();img.onload=function(){if(!img.naturalWidth||!img.naturalHeight)return;var ratio=img.naturalWidth+'/'+img.naturalHeight;document.querySelectorAll('#rewards .rewards-home-intro-card,#rewards .rewards-home-intro-image-frame').forEach(function(n){n.style.setProperty('--rewards-intro-aspect',ratio);n.style.setProperty('aspect-ratio',ratio,'important');n.style.setProperty('height','auto','important');n.style.setProperty('min-height','0','important')})};img.src=url}catch(e){}}
@@ -500,6 +500,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(kind==='minus'){ticketTone(760,620,0,66,.022);return}
     ticketTone(760,940,0,68,.023);ticketTone(930,1120,52,82,.019);
   }
+  function openTicketWallet(){var trigger=document.querySelector('[data-view="wallet"]');if(trigger&&typeof trigger.click==='function'){trigger.click();return true}return false}
   function syncServerClock(payload,requestStartedAt,receivedAt){
     var serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(serverNow)||serverNow<=0)return;
     var started=Number(requestStartedAt)||receivedAt,total=Math.max(0,receivedAt-started),serverStarted=Number(payload&&payload.serverStartedAtMs);
@@ -712,6 +713,8 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   async function buy(){
     if(busy||!state||!state.canBuy||!initData()||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
+    var cost=purchaseCostNano(),balance=Math.max(0,Number(state.gramBalanceNano)||0);
+    if(cost>balance){haptic('error');openTicketWallet();return}
     busy=true;render();
     try{
       var response=await fetch('/app/api/lottery/tickets',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({initData:initData(),quantity:quantity,purchaseId:purchaseId()})});
@@ -721,7 +724,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(state&&payload.prizePoolNano!==undefined&&(!payload.round||!state.round||String(payload.round.id||'')===String(state.round.id||''))){state.prizePoolNano=Math.max(Number(state.prizePoolNano)||0,Number(payload.prizePoolNano)||0);renderPrizePool()}
       quantity=1;haptic('success');await load(true);
     }catch(error){
-      haptic('error');var button=q('#homeTicketButton');if(button){button.textContent=String(error&&error.message||'Could not get ticket');setTimeout(render,1200)}
+      var message=String(error&&error.message||'Could not get ticket');haptic('error');if(/insufficient balance/i.test(message)){openTicketWallet();return}var button=q('#homeTicketButton');if(button){button.textContent=message;setTimeout(render,1200)}
     }finally{busy=false;setTimeout(render,0)}
   }
   function handleTicketControls(event){
