@@ -67,10 +67,10 @@ html body:has(#crash.active) #crash.crash-view #crashLive,#crash .crash-live{bor
 `;
 
 const CRASH_BASE_STYLES = `
-#crash.crash-view{height:100%;overflow-y:auto!important;overflow-x:visible!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:22px}
+#crash.crash-view{height:100%;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-x:none!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:22px}
 #crash.crash-view::-webkit-scrollbar{display:none}
 body:has(#crash.active) .tabs{display:none!important}
-body:has(#crash.active) .content{padding-bottom:0!important;overflow:visible!important}
+body:has(#crash.active) .content{padding-bottom:0!important;overflow:hidden!important}
 #crash .crash-page{min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:4px 0 max(34px,env(safe-area-inset-bottom))}
 html body:has(#crash.active) #crash.crash-view .crash-stage{position:relative;width:100%!important;margin-left:0!important;transform:none!important;aspect-ratio:1/1;height:auto!important;min-height:0!important;max-height:none!important;flex:0 0 auto;z-index:2!important;border-radius:0!important;overflow:visible!important;background-color:transparent!important;background-image:none!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;border:0!important;outline:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;isolation:isolate}
 #crash .crash-stage:before,#crash .crash-stage:after{content:"";position:absolute;inset:0;background:none!important;pointer-events:none;z-index:1}
