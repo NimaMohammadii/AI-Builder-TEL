@@ -26,6 +26,10 @@ export function miniAppHtml(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE, paymentMet
       'src="/app/api/home-lottery-slot.png?v=home-lottery"',
       `src="${homeSlotImageUrl}"`,
     )
+    .replace(
+      /<span class="ton-mini-icon"><img src="[^"]+" alt="" decoding="async"\/><\/span>/,
+      `<span class="ton-mini-icon"><img src="${gramUrl}" alt="" decoding="async"/></span>`,
+    )
     .replace(walletSource, walletResolvedSource);
 
   const headExtras: string[] = [];
