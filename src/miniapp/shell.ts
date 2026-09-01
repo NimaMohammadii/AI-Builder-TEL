@@ -252,7 +252,7 @@ export function miniAppShellHtml(homeVariant: HomeVariant = 'one'): string {
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
-      <button class="tab" data-view="rewards">Rewards</button>
+      <button class="tab" data-view="predictzone">Predict</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>
