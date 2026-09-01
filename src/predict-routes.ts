@@ -10,8 +10,9 @@ const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
 const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
-const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton'] as const;
+const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
 const ROUND_MS = 5 * 60 * 1000;
+const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
@@ -177,9 +178,10 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket): Promise<R
   const now = Date.now();
   const existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
   if (existing) return existing;
-  const startMs = Math.floor(now / ROUND_MS) * ROUND_MS;
+  const roundMs = roundMsForMarket(market);
+  const startMs = Math.floor(now / roundMs) * roundMs;
   const startsAt = new Date(startMs).toISOString();
-  const endsAt = new Date(startMs + ROUND_MS).toISOString();
+  const endsAt = new Date(startMs + roundMs).toISOString();
   const id = `pr_${market}_${startMs}`;
   const startPrice = await fetchPrice(market);
   await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
@@ -266,14 +268,15 @@ async function fetchPrice(market: TradeMarket): Promise<number> {
 type PriceProvider = { name: string; fetch: () => Promise<unknown> };
 
 function priceProviders(market: TradeMarket): PriceProvider[] {
-  const binanceSymbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : 'BTCUSDT';
+  const binanceSymbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
   const coinbaseProduct = market === 'ethereum' ? 'ETH-USD' : market === 'solana' ? 'SOL-USD' : market === 'bitcoin' ? 'BTC-USD' : '';
-  const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : 'bitcoin';
+  const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : market === 'gold' ? 'pax-gold' : market === 'bitcoin' ? 'bitcoin' : '';
   const providers: PriceProvider[] = [
     {
       name: 'binance',
       fetch: async () => {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+        const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
+        const res = await fetch(`${baseUrl}?symbol=${binanceSymbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as { price?: string };
         return data.price;
@@ -291,15 +294,17 @@ function priceProviders(market: TradeMarket): PriceProvider[] {
       },
     });
   }
-  providers.push({
-    name: 'coingecko',
-    fetch: async () => {
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinGeckoId}&vs_currencies=usd`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json() as Record<string, { usd?: number }>;
-      return data[coinGeckoId]?.usd;
-    },
-  });
+  if (coinGeckoId) {
+    providers.push({
+      name: 'coingecko',
+      fetch: async () => {
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinGeckoId}&vs_currencies=usd`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as Record<string, { usd?: number }>;
+        return data[coinGeckoId]?.usd;
+      },
+    });
+  }
   return providers;
 }
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
@@ -332,8 +337,11 @@ function normalizeTradeMarket(value: string): TradeMarket {
   if (market === 'ethereum' || market === 'eth') return 'ethereum';
   if (market === 'solana' || market === 'sol') return 'solana';
   if (market === 'ton') return 'ton';
+  if (market === 'gold' || market === 'paxg') return 'gold';
+  if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
   throw new Error('Invalid predict market');
 }
+function roundMsForMarket(market: TradeMarket): number { return market === 'oil' ? OIL_ROUND_MS : ROUND_MS; }
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
