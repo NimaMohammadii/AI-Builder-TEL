@@ -138,11 +138,6 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
     return fetch(url,options).finally(function(){clearTimeout(timer)})
   }
   function fallbackHidden(){return Object.keys(gameIds)}
-  function hideCardsUntilReady(){
-    state.ready=false;
-    root.classList.remove('play-zone-visibility-ready');
-    document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){card.hidden=true;card.setAttribute('aria-hidden','true')});
-  }
   function finish(hidden,admin){
     var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
     state.hidden=blocked;state.admin=!!admin;state.ready=true;
@@ -156,14 +151,13 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   function load(force){
     if(loaded&&!force)return Promise.resolve(true);
     if(inFlight)return inFlight;
-    if(force)hideCardsUntilReady();
     var tg=window.Telegram&&window.Telegram.WebApp;
     var initData=String(tg&&tg.initData||'');
-    if(!initData){finish(fallbackHidden(),false);return Promise.resolve(false)}
+    if(!initData){if(!loaded)finish(fallbackHidden(),false);return Promise.resolve(false)}
     inFlight=timedFetch('/app/api/play-zone-card-visibility',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})},5500)
       .then(function(r){if(!r.ok)throw new Error('unauthorized');return r.json()})
       .then(function(data){loaded=true;finish(data.hiddenIds,data.admin);return true})
-      .catch(function(){finish(fallbackHidden(),false);return false})
+      .catch(function(){if(!loaded)finish(fallbackHidden(),false);return false})
       .finally(function(){inFlight=null});
     return inFlight;
   }
