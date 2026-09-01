@@ -4,6 +4,45 @@ import { PREDICT_HISTORY_GUARD_SCRIPT as PREDICT_HISTORY_SCRIPT } from './predic
 
 const PREDICT_SETTINGS_SCRIPT = `
 (function(){
+  if(!window.__vexaPredictLazyFetchGuard){
+    window.__vexaPredictLazyFetchGuard=1;
+    (function(){
+      var nativeFetch=window.fetch&&window.fetch.bind(window);
+      var waiting={};
+      var inFlight={};
+      var recent={};
+      if(!nativeFetch)return;
+      function urlOf(input){return String((input&&input.url)||input||'')}
+      function methodOf(input,init){return String((init&&init.method)||(input&&input.method)||'GET').toUpperCase()}
+      function isPredictApi(input){var url=urlOf(input);return url.indexOf('/app/api/predict-settings')>=0||url.indexOf('/app/api/predict-markets')>=0||url.indexOf('/app/api/predict-crypto-card-images')>=0||url.indexOf('/app/api/predict-button-images')>=0||url.indexOf('/app/api/predict-round')>=0}
+      function recentTtl(key){return key.indexOf('/app/api/predict-round')>=0?2500:0}
+      function isPredictActive(){var root=document.getElementById('predictzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
+      function sharedFetch(input,init){
+        if(methodOf(input,init)!=='GET')return nativeFetch(input,init);
+        var key=urlOf(input),now=Date.now(),ttl=recentTtl(key),cached=recent[key];
+        if(ttl&&cached&&now-cached.t<ttl)return Promise.resolve(cached.response.clone());
+        var hit=inFlight[key];if(hit)return hit.then(function(r){return r.clone()});
+        var base=nativeFetch(input,init).then(function(response){if(ttl)recent[key]={t:Date.now(),response:response.clone()};return response});
+        inFlight[key]=base.then(function(r){return r.clone()}).finally(function(){delete inFlight[key]});
+        return base;
+      }
+      function flush(){
+        if(!isPredictActive())return;
+        var jobs=waiting;waiting={};
+        Object.keys(jobs).forEach(function(key){var job=jobs[key];sharedFetch(job.input,job.init).then(function(response){job.clients.forEach(function(client){client.resolve(response.clone())})},function(error){job.clients.forEach(function(client){client.reject(error)})})});
+      }
+      window.fetch=function(input,init){
+        if(!isPredictApi(input))return nativeFetch(input,init);
+        if(isPredictActive())return sharedFetch(input,init);
+        if(methodOf(input,init)!=='GET')return nativeFetch(input,init);
+        var key=urlOf(input);
+        return new Promise(function(resolve,reject){var job=waiting[key];if(!job){job=waiting[key]={input:input,init:init,clients:[]}}job.clients.push({resolve:resolve,reject:reject})});
+      };
+      document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest?ev.target.closest('[data-view="predictzone"],[data-view="predict"]'):null;if(target)queueMicrotask(flush)},true);
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)queueMicrotask(flush)});
+      if(window.MutationObserver){var root=document.getElementById('predictzone');if(root)new MutationObserver(flush).observe(root,{attributes:true,attributeFilter:['class']})}
+    })();
+  }
   var CACHE_MS=60000;
   var lastLoadAt=0;
   var inFlight=null;
