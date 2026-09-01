@@ -1,5 +1,5 @@
 export const HOME_TWO_SECTION = `<section id="home" class="view active" data-home-variant="two">
-  <div class="home-draw-info-card home-two-reel-card" id="homeDrawInfoCard" aria-label="Prize reel">
+  <div class="home-draw-info-card home-ticket-card home-two-reel-card" id="homeDrawInfoCard" aria-label="Prize reel">
     <div class="home-two-reel-window" id="homeTwoReelWindow">
       <div class="home-two-reel-marker" id="homeTwoReelMarker" aria-hidden="true"></div>
       <div class="home-two-reel-track" id="homeTwoPrizeTrack" aria-live="polite"></div>
