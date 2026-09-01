@@ -9,7 +9,7 @@ export const PREDICT_CRYPTO_SELECTOR_STYLES = `
 #predictzone .predict-crypto-card-upload{position:absolute!important;inset:var(--predict-card-gap)!important;z-index:0!important;display:block;border-radius:27px!important;background-color:transparent!important;background-position:center!important;background-repeat:no-repeat!important;background-size:100% 100%!important;pointer-events:none;overflow:hidden;border:0!important;outline:0!important;box-shadow:none!important}
 #predictzone .predict-crypto-image{width:78px;height:78px;border-radius:0;background-color:transparent!important;background-position:center;background-repeat:no-repeat;background-size:contain;box-shadow:none!important;display:block;filter:drop-shadow(0 16px 22px rgba(0,0,0,.34))}
 #predictzone .predict-crypto-image:before{content:"";display:none!important}
-#predictzone .predict-crypto-card-empty .predict-crypto-copy,#predictzone .predict-crypto-card-empty .predict-crypto-image:not(.has-image){visibility:hidden!important;pointer-events:none!important}
+#predictzone .predict-crypto-card-empty .predict-crypto-image,#predictzone .predict-crypto-card-empty .predict-crypto-copy{visibility:hidden!important;pointer-events:none!important}
 #predictzone .predict-crypto-card-empty .predict-crypto-card-upload.has-image{filter:none!important}
 #predictzone .predict-crypto-copy{display:grid;gap:6px;min-width:0}
 #predictzone .predict-crypto-copy b{font-size:18px;font-weight:850;letter-spacing:-.055em;line-height:1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
