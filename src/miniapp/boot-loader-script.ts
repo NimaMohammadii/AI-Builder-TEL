@@ -225,6 +225,8 @@ export const BOOT_LOADER_SCRIPT = `
     return Promise.all(jobs)
   }
   function homeReady(){
+    var selectedHome=document.getElementById('home');
+    if(selectedHome&&selectedHome.getAttribute('data-home-variant')==='two')return Promise.resolve(true);
     return observeUntil(function(){
       var section=document.getElementById('homeLuckyCodeSection');
       var draw=document.getElementById('homeDrawInfoCard');

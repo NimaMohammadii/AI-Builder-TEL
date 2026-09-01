@@ -34,6 +34,8 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SCRIPT, HOME_SECTION, HOME_STYLES } from './home';
+import { HOME_TWO_SECTION } from './home-two';
+import type { HomeVariant } from '../home-variants';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
@@ -90,11 +92,13 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
-const INITIAL_SECTIONS = [
-  HOME_SECTION,
-  PLAY_ZONE_SECTION,
-  REWARDS_SECTION,
-].join('');
+function initialSections(homeVariant: HomeVariant): string {
+  return [
+    homeVariant === 'two' ? HOME_TWO_SECTION : HOME_SECTION,
+    PLAY_ZONE_SECTION,
+    REWARDS_SECTION,
+  ].join('');
+}
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
@@ -182,26 +186,28 @@ function lazySectionLoaderScript(): string {
 })();`;
 }
 
-const SCRIPTS = [
-  BOOT_LOADER_SCRIPT,
-  lazySectionLoaderScript(),
-  MINIAPP_SCRIPT,
-  ACTIVITY_SCRIPT,
-  TON_BALANCE_SCRIPT,
-  DEPOSIT_ENHANCEMENTS_SCRIPT,
-  CREDIT_GUARD_SCRIPT,
-  HOME_SCRIPT,
-  PLAY_ZONE_STACK_SCROLL_SCRIPT,
-  PLAY_ZONE_VISIBILITY_SCRIPT,
-  GAME_LIVE_COUNT_SCRIPT,
-  TELEGRAM_BACK_BUTTON_SCRIPT,
-  SECTION_ACCESS_SCRIPT,
-  SECTION_BACKGROUND_SCRIPT,
-  MINIAPP_AUDIO_SCRIPT,
-  XP_BAR_EFFECTS_SCRIPT,
-].map((script) => `<script>${script}</script>`).join('');
+function scripts(homeVariant: HomeVariant): string {
+  return [
+    BOOT_LOADER_SCRIPT,
+    lazySectionLoaderScript(),
+    MINIAPP_SCRIPT,
+    ACTIVITY_SCRIPT,
+    TON_BALANCE_SCRIPT,
+    DEPOSIT_ENHANCEMENTS_SCRIPT,
+    CREDIT_GUARD_SCRIPT,
+    ...(homeVariant === 'one' ? [HOME_SCRIPT] : []),
+    PLAY_ZONE_STACK_SCROLL_SCRIPT,
+    PLAY_ZONE_VISIBILITY_SCRIPT,
+    GAME_LIVE_COUNT_SCRIPT,
+    TELEGRAM_BACK_BUTTON_SCRIPT,
+    SECTION_ACCESS_SCRIPT,
+    SECTION_BACKGROUND_SCRIPT,
+    MINIAPP_AUDIO_SCRIPT,
+    XP_BAR_EFFECTS_SCRIPT,
+  ].map((script) => `<script>${script}</script>`).join('');
+}
 
-export function miniAppShellHtml(): string {
+export function miniAppShellHtml(homeVariant: HomeVariant = 'one'): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -242,7 +248,7 @@ export function miniAppShellHtml(): string {
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
       </div>
     </header>
-    ${INITIAL_SECTIONS}
+    ${initialSections(homeVariant)}
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
@@ -250,7 +256,7 @@ export function miniAppShellHtml(): string {
     </nav>
   </main>
   <div id="toast" class="toast"></div>
-  ${SCRIPTS}
+  ${scripts(homeVariant)}
 </body>
 </html>`;
 }

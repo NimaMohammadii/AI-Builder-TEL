@@ -192,7 +192,7 @@ export const HOME_STYLES = `
 `
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
-export const HOME_SECTION = `<section id="home" class="view active"></section>`;
+export const HOME_SECTION = `<section id="home" class="view active" data-home-variant="one"></section>`;
 
 const HOME_MARKUP_SCRIPT = `
 (function(){

@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
 import { isSpecialWheelEnabled, setSpecialWheelEnabled } from './special-wheel-mode';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getActiveHomeVariant, setActiveHomeVariant, type HomeVariant } from './home-variants';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
@@ -31,6 +32,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     || data === 'botadmin:access:refresh'
     || data.startsWith('botadmin:access:select:')
     || data.startsWith('botadmin:access:unlock:')
+    || data.startsWith('botadmin:homevariant:')
     || data.startsWith('botadmin:specialwheel:');
   if (!ours) return null;
   if (!isAdmin(env, callback.from.id)) return ok();
@@ -48,6 +50,13 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (data.startsWith('botadmin:specialwheel:')) {
     await clearAdminInputStates(env, callback.from.id);
     await setSpecialWheelEnabled(env, data.endsWith(':on'));
+    await sendAdminHome(env, token, chatId, messageId);
+    return ok();
+  }
+
+  if (data.startsWith('botadmin:homevariant:')) {
+    const variant: HomeVariant = data.endsWith(':two') ? 'two' : 'one';
+    await setActiveHomeVariant(env, variant);
     await sendAdminHome(env, token, chatId, messageId);
     return ok();
   }
@@ -127,10 +136,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 }
 
 export async function sendAdminHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const wheelEnabled = await isSpecialWheelEnabled(env);
+  const [wheelEnabled, homeVariant] = await Promise.all([isSpecialWheelEnabled(env), getActiveHomeVariant(env)]);
   const trackedMessageId = messageId ?? await getTrackedMenuMessageId(env, chatId);
   const activeMessageId = await upsert(token, chatId, trackedMessageId,
-    `🛡 پنل مدیریت ربات گیم\n\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`,
+    `🛡 پنل مدیریت ربات گیم\n\n🏠 هوم اصلی: ${homeVariant === 'one' ? 'هوم یک' : 'هوم دو'}\n🎡 صفحه موقت گردونه: ${wheelEnabled ? 'فعال ✅' : 'غیرفعال ❌'}\n\nبخش موردنظر را انتخاب کنید.`,
     [
       [
         { text: '👥 لیست کاربران', callback_data: 'botadmin:users:0' },
@@ -166,6 +175,10 @@ export async function sendAdminHome(env: Env, token: string, chatId: number, mes
       [
         { text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' },
         { text: wheelEnabled ? '❌ گردونه موقت' : '✅ گردونه موقت', callback_data: `botadmin:specialwheel:${wheelEnabled ? 'off' : 'on'}` },
+      ],
+      [
+        { text: `${homeVariant === 'one' ? '✅' : '▫️'} هوم یک`, callback_data: 'botadmin:homevariant:one' },
+        { text: `${homeVariant === 'two' ? '✅' : '▫️'} هوم دو`, callback_data: 'botadmin:homevariant:two' },
       ],
     ],
   );
