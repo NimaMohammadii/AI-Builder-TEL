@@ -1,5 +1,5 @@
 export const GLASS_COMPONENTS_OVERRIDES = `
-button:not(.tab):not(.section-keyboard-dismiss):not(:where(.home-ticket-step,.home-ticket-button,.home-ticket-drawer-close,.home-bonus-close)),.primary,.secondary,.ghost,.danger,.home-action,.bot-row,.voice-btn,.voice-menu,.voice-menu button,.game-open,.plinko-drop,.plinko-quick button,.risk-segment,.risk-segment button,.rows-select,.bet-quick button,.autoplay-toggle,.crash-primary,.crash-secondary,.crash-quick button,.mine-tile,#minesStart,#minesCashout,[data-mines-bet],.top-balance-pill,.credit-pill,.pill{
+button:not(.tab):not(.section-keyboard-dismiss):not(:where(.home-ticket-step,.home-ticket-button,.home-ticket-drawer-close,.home-bonus-close,.predict-zone-category-card,.predict-zone-choice,.predict-zone-bet-close,.predict-zone-bet-submit,[data-predict-bet-preset])),.primary,.secondary,.ghost,.danger,.home-action,.bot-row,.voice-btn,.voice-menu,.voice-menu button,.game-open,.plinko-drop,.plinko-quick button,.risk-segment,.risk-segment button,.rows-select,.bet-quick button,.autoplay-toggle,.crash-primary,.crash-secondary,.crash-quick button,.mine-tile,#minesStart,#minesCashout,[data-mines-bet],.top-balance-pill,.credit-pill,.pill{
   border:0!important;
   outline:0!important;
   background:rgba(255,255,255,.035)!important;
@@ -24,7 +24,7 @@ button:not(.tab):not(.section-keyboard-dismiss):not(:where(.home-ticket-step,.ho
 }
 .voice-menu button{box-shadow:none!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .voice-menu button.active{background:rgba(255,255,255,.92)!important}
-input,select,textarea,.section-code-input,.bet-amount,.crash-amount input{
+input:not(.predict-zone-bet-input),select,textarea,.section-code-input,.bet-amount,.crash-amount input{
   border:0!important;
   background:rgba(255,255,255,.035)!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;
