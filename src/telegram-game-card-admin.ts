@@ -17,7 +17,7 @@ type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' 
 type AudioGame = 'slot' | 'dice';
 type PaymentMethod = 'stars' | 'gram' | 'nft';
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'home-two-top' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'audio'; game: AudioGame };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'audio'; game: AudioGame };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -40,8 +40,6 @@ const PAYMENT_METHOD_STATE_PREFIX = 'payment-method:';
 const AUDIO_STATE_PREFIX = 'audio:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
-const HOME_TWO_TOP_STATE = 'home-two-top';
-const HOME_TWO_TOP_KEY = 'home-two/top-image';
 const SLOT_AUDIO_KEY = 'slot-spin-audio';
 const DICE_AUDIO_KEY = 'miniapp/audio';
 const DICE_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
@@ -70,7 +68,6 @@ const LIVE_GAME_CARD_CACHE_CONTROL = 'no-store, max-age=0';
 
 export async function handleGameCardAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
-  if (request.method === 'GET' && url.pathname === '/app/api/home-two-top-image') return serveHomeTwoTopImage(request, env);
   if (request.method === 'GET' && url.pathname === '/app/api/game-card-images') return serveGameCardManifest(env);
   const image = url.pathname.match(/^\/app\/api\/game-card-image\/([^/]+)$/);
   if (request.method === 'GET' && image) return serveImage(request, env, image[1]);
@@ -83,18 +80,6 @@ export async function handleGameCardAdminRequest(request: Request, env: Env): Pr
   const update = await request.clone().json().catch(() => null) as Update | null;
   if (!update) return null;
   return handleUpdate(env, update);
-}
-
-async function serveHomeTwoTopImage(request: Request, env: Env): Promise<Response> {
-  const object = await env.ASSETS.get(HOME_TWO_TOP_KEY).catch(() => null);
-  if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
-  return new Response(object.body, {
-    headers: {
-      'content-type': object.httpMetadata?.contentType || 'image/jpeg',
-      'cache-control': new URL(request.url).searchParams.get('v') ? GAME_CARD_CACHE_CONTROL : LIVE_GAME_CARD_CACHE_CONTROL,
-      'x-content-type-options': 'nosniff',
-    },
-  });
 }
 
 async function serveImage(request: Request, env: Env, raw: string): Promise<Response> {
@@ -204,7 +189,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:crashstage'
       || data === 'botadmin:tonlogo'
       || data === 'botadmin:homeslot'
-      || data === 'botadmin:hometwotop'
       || data === 'botadmin:ranks'
       || data === 'botadmin:ghostassets'
       || data === 'botadmin:slotsymbols'
@@ -257,9 +241,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:homeslot') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), HOME_SLOT_STATE, { expirationTtl: 900 });
       await promptImage(token, chatId, messageId, '🎰 تصویر اسلات صفحه Home', 'تصویری که داخل کادر شیشه‌ای اسلات در Home نمایش داده می‌شود را بفرستید.', 'botadmin:imagesmenu');
-    } else if (data === 'botadmin:hometwotop') {
-      await env.BOT_CACHE.put(stateKey(callback.from.id), HOME_TWO_TOP_STATE, { expirationTtl: 900 });
-      await promptImage(token, chatId, messageId, '🏠 تصویر بالای هوم دو', 'تصویری را بفرستید که در بالای صفحه هوم دو نمایش داده شود.', 'botadmin:imagesmenu');
     } else if (data === 'botadmin:ranks') {
       await clearState(env, callback.from.id);
       await sendRankMenu(env, token, chatId, messageId);
@@ -439,8 +420,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'home-slot') {
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/home-lottery-slot.png?v=${Date.now()}`, '✅ تصویر اسلات صفحه Home ذخیره شد.', '🎰 تغییر دوباره', 'botadmin:homeslot');
-    } else if (target.kind === 'home-two-top') {
-      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/home-two-top-image?v=${Date.now()}`, '✅ تصویر بالای هوم دو ذخیره شد.', '🏠 تغییر دوباره', 'botadmin:hometwotop');
     } else if (target.kind === 'rank') {
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/rank-character/${target.rank}.png?v=${Date.now()}`, `✅ تصویر رنک ${target.rank} ذخیره شد.`, '🏆 تصاویر رنک‌ها', 'botadmin:ranks');
     } else if (target.kind === 'ghost-asset') {
@@ -486,7 +465,6 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🎰 اسلات Home', callback_data: 'botadmin:homeslot' },
       { text: '🏆 تصاویر رنک‌ها', callback_data: 'botadmin:ranks' },
     ],
-    [{ text: '🏠 تصویر بالای هوم دو', callback_data: 'botadmin:hometwotop' }],
     [{ text: '👻 تصاویر داخل Ghost Run', callback_data: 'botadmin:ghostassets' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
   ]);
@@ -637,7 +615,6 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
   const version = String(Date.now());
   const assetKey = target.kind === 'ton' ? 'ton-icon'
     : target.kind === 'home-slot' ? 'home-lottery-slot'
-      : target.kind === 'home-two-top' ? HOME_TWO_TOP_KEY
       : target.kind === 'rank' ? `rank-character/${target.rank}`
         : target.kind === 'ghost-asset' ? `ghost-run-assets/${target.asset}`
           : target.kind === 'slot-symbol' ? `slot-symbol/${target.symbol}`
@@ -652,8 +629,6 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
         ? { version, assetId: `crash-stage-${target.slot}`, slot: String(target.slot), contentType, uploadedVia: `telegram-admin-${source.via}` }
         : target.kind === 'home-slot'
           ? { version, assetId: 'home-lottery-slot', contentType, uploadedVia: `telegram-admin-${source.via}` }
-          : target.kind === 'home-two-top'
-            ? { version, assetId: HOME_TWO_TOP_KEY, contentType, uploadedVia: `telegram-admin-${source.via}` }
           : target.kind === 'rank'
             ? { version, rank: target.rank, contentType, uploadedVia: `telegram-admin-${source.via}` }
             : target.kind === 'ghost-asset'
@@ -742,7 +717,6 @@ function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
-  if (raw === HOME_TWO_TOP_STATE) return { kind: 'home-two-top' };
   if (raw.startsWith(PAYMENT_METHOD_STATE_PREFIX)) {
     const method = normalizePaymentMethod(raw.slice(PAYMENT_METHOD_STATE_PREFIX.length));
     return method ? { kind: 'payment-method', method } : null;

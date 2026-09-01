@@ -6,9 +6,8 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
     </div>
     <button class="home-two-spin" id="homeTwoSpinButton" type="button">SPIN</button>
   </div>
-  <img class="home-two-top-image" src="/app/api/home-two-top-image" alt="" decoding="async" onerror="this.hidden=true">
   <style>
-    #home[data-home-variant="two"]{padding-top:0;overflow-x:hidden}
+    #home[data-home-variant="two"]{overflow-x:hidden}
     #home[data-home-variant="two"] #homeDrawInfoCard.home-draw-info-card.home-two-reel-card{height:184px!important;min-height:184px!important;margin:0 0 12px!important;border-radius:28px!important;padding:10px!important;display:grid!important;grid-template-rows:minmax(0,1fr) 40px!important;align-items:stretch!important;gap:9px!important;box-sizing:border-box!important;overflow:hidden!important}
     #home[data-home-variant="two"] .home-two-reel-window{position:relative!important;min-width:0!important;height:115px!important;border-radius:22px!important;overflow:hidden!important;background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(7,7,7,.92))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.075),inset 0 -1px 0 rgba(255,255,255,.035),inset 0 0 22px rgba(55,4,20,.30)!important;isolation:isolate!important}
     #home[data-home-variant="two"] .home-two-reel-window:before,#home[data-home-variant="two"] .home-two-reel-window:after{content:''!important;position:absolute!important;top:0!important;bottom:0!important;width:42px!important;z-index:4!important;pointer-events:none!important}
@@ -35,7 +34,6 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
     #home[data-home-variant="two"] .home-two-spin{position:relative!important;overflow:hidden!important;width:100%!important;height:40px!important;padding:0 14px!important;border:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;color:#fff!important;font-size:12px!important;font-weight:950!important;letter-spacing:.08em!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;transform:translate3d(0,0,0)!important;transform-origin:center!important;touch-action:manipulation!important;transition:transform .28s cubic-bezier(.18,.88,.24,1),filter .28s ease,opacity .28s ease!important}
     #home[data-home-variant="two"] .home-two-spin:active{transform:translate3d(0,1px,0) scale(.965)!important;filter:brightness(1.12) saturate(1.08)!important}
     #home[data-home-variant="two"] .home-two-spin:disabled{opacity:.68!important;transform:none!important}
-    #home[data-home-variant="two"] .home-two-top-image{display:block;width:calc(100% + 24px);max-width:none;height:auto;margin-left:-12px;object-fit:contain}
   </style>
   <script>
   (function(){
