@@ -28,6 +28,7 @@ const GAMES = [
 ] as const;
 const GAME_IDS = new Set(GAMES.map(([id]) => id));
 const BACKGROUND_GAMES = [
+  ['predict', 'Predict'],
   ['ghostrun', 'Ghost Run'],
   ['coinflip', 'Pump'],
 ] as const;
