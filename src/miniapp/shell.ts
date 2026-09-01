@@ -100,10 +100,10 @@ function initialSections(homeVariant: HomeVariant): string {
   ].join('');
 }
 
-const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[]; executeEmbeddedScripts?: boolean }> = [
+const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
   { id: 'results', html: RESULTS_SECTION },
-  { id: 'predictzone', html: PREDICT_ZONE_SECTION, executeEmbeddedScripts: false, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
+  { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
@@ -130,7 +130,6 @@ function lazySectionLoaderScript(): string {
     id: section.id,
     html: section.html,
     scripts: section.scripts || [],
-    executeEmbeddedScripts: section.executeEmbeddedScripts !== false,
   })));
   return `
 (function(){
@@ -171,7 +170,7 @@ function lazySectionLoaderScript(): string {
     wrap.setAttribute('data-lazy-section-host',id);
     wrap.innerHTML=item.html;
     findMain().insertBefore(wrap, document.querySelector('nav.tabs'));
-    if(item.executeEmbeddedScripts!==false)executeEmbeddedScripts(wrap);
+    executeEmbeddedScripts(wrap);
     (item.scripts||[]).forEach(runScript);
     try{window.dispatchEvent(new CustomEvent('vexa:section-mounted',{detail:{id:id}}))}catch(e){}
     return !!document.getElementById(id);
