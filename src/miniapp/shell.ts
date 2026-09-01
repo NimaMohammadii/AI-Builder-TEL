@@ -16,13 +16,6 @@ import { WHEEL_SECTION } from './wheel';
 import { PUMP_SECTION } from './pump';
 import { GHOST_RUN_SECTION, GHOST_RUN_STYLES } from './ghost-run';
 import { PLAY_ZONE_STYLES } from './play-zone-styles';
-import { PREDICT_ZONE_STYLES } from './predict-zone-styles';
-import { PREDICT_CRYPTO_SELECTOR_STYLES } from './predict-crypto-selector-styles';
-import { PREDICT_CARD_ACTIONS_STYLES } from './predict-card-actions-styles';
-import { FOOTBALL_PREDICT_STYLES } from './football-predict-styles';
-import { PREDICT_ZONE_LOADER_POLISH_STYLES } from './predict-zone-loader-polish-styles';
-import { PREDICT_ZONE_NAV_HIDE_STYLES } from './predict-zone-nav-hide-styles';
-import { PREDICT_ZONE_HISTORY_POLISH_STYLES } from './predict-zone-history-polish-styles';
 import { PLAY_ZONE_SHOWCASE_OVERRIDES } from './play-zone-showcase-overrides';
 import { PLAY_ZONE_TOP_BLUR } from './play-zone-top-blur';
 import { PLAY_ZONE_ROW_IMAGE_FIX } from './play-zone-row-image-fix';
@@ -39,7 +32,7 @@ import type { HomeVariant } from '../home-variants';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
-import { PREDICT_ZONE_SECTION } from './predict-zone';
+import { PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
@@ -48,11 +41,6 @@ import { BOOT_LOADER_SCRIPT } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
 import { MINIAPP_AUDIO_SCRIPT } from './audio-script';
 import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
-import { PREDICT_ZONE_SETTINGS_SCRIPT } from './predict-zone-settings-script';
-import { PREDICT_EXTRA_MARKETS_SCRIPT } from './predict-extra-markets-script';
-import { PREDICT_ENTRY_LOADER_SCRIPT } from './predict-entry-loader-script';
-import { PREDICT_CARD_ACTIONS_SCRIPT } from './predict-card-actions-script';
-import { FOOTBALL_PREDICT_SCRIPT } from './football-predict-script';
 import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
 import { SECTION_ACCESS_SCRIPT } from './section-access-script';
 import { SECTION_ACCESS_STYLES } from './section-access-styles';
@@ -70,12 +58,6 @@ const STYLES = [
   PLINKO_CONTROLS_MODERN_STYLES,
   PLAY_ZONE_STYLES,
   PREDICT_ZONE_STYLES,
-  PREDICT_CRYPTO_SELECTOR_STYLES,
-  PREDICT_CARD_ACTIONS_STYLES,
-  FOOTBALL_PREDICT_STYLES,
-  PREDICT_ZONE_LOADER_POLISH_STYLES,
-  PREDICT_ZONE_NAV_HIDE_STYLES,
-  PREDICT_ZONE_HISTORY_POLISH_STYLES,
   PLAY_ZONE_SHOWCASE_OVERRIDES,
   PLAY_ZONE_TOP_BLUR,
   PLAY_ZONE_ROW_IMAGE_FIX,
@@ -103,7 +85,7 @@ function initialSections(homeVariant: HomeVariant): string {
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
   { id: 'results', html: RESULTS_SECTION },
-  { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SETTINGS_SCRIPT, FOOTBALL_PREDICT_SCRIPT, PREDICT_EXTRA_MARKETS_SCRIPT, PREDICT_ENTRY_LOADER_SCRIPT, PREDICT_CARD_ACTIONS_SCRIPT] },
+  { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SCRIPT] },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
