@@ -60,6 +60,7 @@ export const BOOT_LOADER_SCRIPT = `
     '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
     '/assets/Rewards.PNG?v=1',
+    '/assets/Predict.PNG?v=1',
     '/app/api/uploaded-image/ton-icon.png'
   ];
   var GAME_IMAGE_STATIC_BY_GAME={
