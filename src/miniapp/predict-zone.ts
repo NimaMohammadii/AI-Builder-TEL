@@ -146,7 +146,7 @@ export const PREDICT_ZONE_SCRIPT = `
         hint++;
       }
       if(ticks.length>desired){
-        var target=Number(raw||current||((scale.min+scale.max)/2)),best=ticks.slice(0,desired),bestScore=Infinity,i;
+        var target=(scale.min+scale.max)/2,best=ticks.slice(0,desired),bestScore=Infinity,i;
         for(i=0;i<=ticks.length-desired;i++){
           var windowTicks=ticks.slice(i,i+desired),mid=(windowTicks[0]+windowTicks[windowTicks.length-1])/2,score=Math.abs(mid-target);
           if(score<bestScore){bestScore=score;best=windowTicks}
@@ -157,10 +157,13 @@ export const PREDICT_ZONE_SCRIPT = `
     }
     function renderPriceTicks(scale){
       if(!axisLayer||!gridLayer)return;
-      var ticks=priceTicks(scale),key=market+'|'+ticks.join('|');
-      if(key===axisKey)return;
-      axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
-      ticks.forEach(function(pv){var top=y(pv,scale)/H*100+'%',label=document.createElement('span'),lineEl=document.createElement('span');label.style.top=top;label.textContent=formatPrice(pv);lineEl.style.top=top;axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+      var ticks=priceTicks(scale),key=market+'|'+ticks.join('|'),labels,i,top;
+      if(key!==axisKey){
+        axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
+        ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+      }
+      labels=axisLayer.children;
+      for(i=0;i<ticks.length;i++){top=y(ticks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
     }
     function setTrend(next){
       var n=next==='up'?'up':next==='down'?'down':'flat';
