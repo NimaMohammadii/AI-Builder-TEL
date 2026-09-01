@@ -29,7 +29,7 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
     #home[data-home-variant="two"] .home-two-ticket-icon i{position:absolute!important;left:50%!important;top:5px!important;bottom:5px!important;border-left:1px dashed rgba(255,255,255,.35)!important}
     #home[data-home-variant="two"] .home-two-prize strong{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;color:#fff!important;font-size:15px!important;line-height:17px!important;font-weight:950!important;letter-spacing:-.035em!important;font-variant-numeric:tabular-nums!important;text-shadow:0 1px 0 rgba(255,255,255,.10),0 3px 8px rgba(0,0,0,.52)!important}
     #home[data-home-variant="two"] .home-two-prize small{color:rgba(255,255,255,.48)!important;font-size:8.5px!important;line-height:10px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important}
-    #home[data-home-variant="two"] .home-two-reel-card.is-spinning .home-two-prize{filter:blur(.72px) brightness(.88)!important;opacity:.92!important;transform:translateZ(0) scale(.965)!important}
+    #home[data-home-variant="two"] .home-two-reel-card.is-spinning .home-two-prize{opacity:.96!important;transform:translateZ(0) scale(.985)!important}
     #home[data-home-variant="two"] .home-two-prize.is-winner{z-index:3!important;transform:translateZ(0) scale(1.09)!important;border-color:rgba(197,72,107,.52)!important;filter:brightness(1.13) saturate(1.10)!important;box-shadow:inset 3px 3px .5px -3.5px rgba(255,255,255,.16),inset -3px -3px .5px -3.5px rgba(197,72,107,.60),0 0 0 1px rgba(159,42,75,.24),0 0 20px rgba(123,20,50,.38),0 10px 22px rgba(0,0,0,.38)!important;animation:homeTwoWinner 1.15s cubic-bezier(.18,.88,.24,1) both!important}
     @keyframes homeTwoWinner{0%{transform:scale(1)}38%{transform:scale(1.13)}68%{transform:scale(1.065)}100%{transform:scale(1.09)}}
     #home[data-home-variant="two"] .home-two-spin{position:relative!important;overflow:hidden!important;width:100%!important;height:40px!important;padding:0 14px!important;border:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;color:#fff!important;font-size:12px!important;font-weight:950!important;letter-spacing:.08em!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;transform:translate3d(0,0,0)!important;transform-origin:center!important;touch-action:manipulation!important;transition:transform .28s cubic-bezier(.18,.88,.24,1),filter .28s ease,opacity .28s ease!important}
@@ -48,7 +48,7 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
       {kind:'ticket',amount:'50',label:'TICKETS'},
       {kind:'ticket',amount:'100',label:'TICKETS'}
     ];
-    var card,win,track,button,marker,busy=false,target=null,currentX=0,rafId=0,lastTick=-1,lastReward=null;
+    var card,win,track,button,marker,busy=false,target=null,currentX=0,rafId=0,currentIndex=6,lastTick=-1;
     function q(s){return document.querySelector(s)}
     function randomInt(max){
       if(window.crypto&&window.crypto.getRandomValues){var a=new Uint32Array(1);window.crypto.getRandomValues(a);return a[0]%max}
@@ -80,71 +80,86 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
       }catch(e){}
     }
     function markerHit(){
-      if(!marker)return;
-      marker.classList.remove('is-hit');void marker.offsetWidth;marker.classList.add('is-hit')
+      if(!marker||marker.classList.contains('is-hit'))return;
+      marker.classList.add('is-hit');
+      window.setTimeout(function(){if(marker)marker.classList.remove('is-hit')},220)
     }
-    function rewardFromElement(el){
-      return el?{kind:el.getAttribute('data-reward-kind')||'ticket',amount:el.getAttribute('data-reward-amount')||'10',label:el.getAttribute('data-reward-label')||'TICKETS'}:null
+    function appendRewards(count){
+      var html='';
+      for(var i=0;i<count;i++)html+=prizeHtml(rewards[randomInt(rewards.length)]);
+      track.insertAdjacentHTML('beforeend',html);
+      syncGramIcons()
     }
-    function build(startReward){
+    function clearWinner(){
+      Array.prototype.forEach.call(track.querySelectorAll('.is-winner'),function(el){el.classList.remove('is-winner')})
+    }
+    function buildInitial(){
       if(rafId){cancelAnimationFrame(rafId);rafId=0}
-      var items=[],startIndex=6;
-      for(var i=0;i<96;i++)items.push(rewards[randomInt(rewards.length)]);
-      if(startReward)items[startIndex]=startReward;
-      track.innerHTML=items.map(prizeHtml).join('');
-      syncGramIcons();
-      Array.prototype.forEach.call(track.children,function(el){el.classList.remove('is-winner')});
-      var start=track.children[startIndex];
-      setX(centerX(start));
-      target=null;
+      track.innerHTML='';
+      appendRewards(48);
+      currentIndex=6;
+      target=track.children[currentIndex];
+      setX(centerX(target));
       lastTick=-1
     }
-    function progressAt(t){
-      var accel=.16,cruiseEnd=.56,total=.70,area;
-      if(t<accel)area=.5*t*t/accel;
-      else if(t<cruiseEnd)area=.5*accel+(t-accel);
-      else{var d=t-cruiseEnd,tail=1-cruiseEnd;area=.5*accel+(cruiseEnd-accel)+d-(d*d/(2*tail))}
-      return Math.max(0,Math.min(1,area/total))
+    function ensureAhead(count){
+      while(track.children.length<=currentIndex+count)appendRewards(24)
     }
-    function finish(){
+    function pruneBehind(){
+      var remove=Math.max(0,currentIndex-5);
+      if(!remove)return;
+      for(var i=0;i<remove;i++)track.removeChild(track.firstElementChild);
+      currentIndex-=remove;
+      if(target)setX(centerX(target))
+    }
+    function finish(targetIndex){
       if(!busy)return;
       busy=false;
       rafId=0;
+      currentIndex=targetIndex;
       card.classList.remove('is-spinning');
       button.disabled=false;
       button.textContent='SPIN';
       if(target){
         setX(centerX(target));
-        target.classList.add('is-winner');
-        lastReward=rewardFromElement(target)
+        target.classList.add('is-winner')
       }
+      pruneBehind();
       markerHit();
       haptic('win')
     }
     function spin(){
       if(busy)return;
+      clearWinner();
+      ensureAhead(58);
+      var advance=42+randomInt(10),targetIndex=currentIndex+advance;
+      target=track.children[targetIndex];
+      if(!target)return;
+      var startX=currentX,endX=centerX(target),direction=endX<startX?-1:1;
+      var velocity=90,maxSpeed=1220,acceleration=2200,deceleration=520,lastTime=0;
       busy=true;
-      build(lastReward);
-      var cards=track.children;
-      var targetIndex=78+randomInt(9);
-      target=cards[targetIndex];
-      var startX=currentX,endX=centerX(target),distance=endX-startX,duration=5900,startTime=0;
+      lastTick=0;
       card.classList.add('is-spinning');
       button.disabled=true;
       button.textContent='SPINNING';
       haptic('start');
       function frame(now){
-        if(!startTime)startTime=now;
-        var t=Math.min(1,(now-startTime)/duration),p=progressAt(t),x=startX+(distance*p);
-        setX(x);
-        var tick=Math.floor(Math.abs(x-startX)/84);
-        if(tick!==lastTick){
-          lastTick=tick;
-          markerHit();
-          if(t>.72)haptic('tick')
+        if(!busy)return;
+        if(!lastTime){lastTime=now;rafId=requestAnimationFrame(frame);return}
+        var dt=Math.max(.001,Math.min(.032,(now-lastTime)/1000));
+        lastTime=now;
+        var remaining=Math.abs(endX-currentX);
+        if(remaining<=.45){setX(endX);finish(targetIndex);return}
+        var brakingSpeed=Math.sqrt(Math.max(0,2*deceleration*remaining));
+        velocity=Math.min(maxSpeed,velocity+(acceleration*dt),brakingSpeed);
+        var step=Math.min(remaining,velocity*dt);
+        setX(currentX+(direction*step));
+        var passed=Math.floor(Math.abs(currentX-startX)/84);
+        if(passed!==lastTick){
+          lastTick=passed;
+          if(velocity<720){markerHit();haptic('tick')}
         }
-        if(t<1){rafId=requestAnimationFrame(frame);return}
-        finish()
+        rafId=requestAnimationFrame(frame)
       }
       rafId=requestAnimationFrame(frame)
     }
@@ -155,10 +170,9 @@ export const HOME_TWO_SECTION = `<section id="home" class="view active" data-hom
       button=q('#homeTwoSpinButton');
       marker=q('#homeTwoReelMarker');
       if(!card||!win||!track||!button)return;
-      build(null);
+      buildInitial();
       button.addEventListener('click',spin);
-      window.addEventListener('resize',function(){if(!busy&&target)setX(centerX(target))},{passive:true});
-      if(marker)marker.addEventListener('animationend',function(){marker.classList.remove('is-hit')})
+      window.addEventListener('resize',function(){if(!busy&&target)setX(centerX(target))},{passive:true})
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()
   })();
