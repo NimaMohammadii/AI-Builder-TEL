@@ -28,8 +28,8 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
       </div>
 
       <div class="predict-zone-chart-preview" data-predict-chart aria-label="Live chart preview">
-        <div class="predict-zone-chart-grid"><span data-chart-grid-line="0"></span><span data-chart-grid-line="1"></span><span data-chart-grid-line="2"></span><span data-chart-grid-line="3"></span><span data-chart-grid-line="4"></span></div>
-        <div class="predict-zone-price-axis" aria-hidden="true"><span data-price-axis="0"></span><span data-price-axis="1"></span><span data-price-axis="2"></span><span data-price-axis="3"></span><span data-price-axis="4"></span></div>
+        <div class="predict-zone-chart-grid" data-predict-grid></div>
+        <div class="predict-zone-price-axis" data-predict-price-axis aria-hidden="true"></div>
         <svg viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="predictMainLine" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="rgba(255,255,255,.22)"/><stop offset="48%" stop-color="rgba(255,255,255,.95)"/><stop offset="100%" stop-color="rgba(255,255,255,.42)"/></linearGradient>
@@ -119,9 +119,9 @@ export const PREDICT_ZONE_SCRIPT = `
       oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'',rest:'',decimals:2,step:.05,range:.7,duration:259200000,symbol:'Oil'},
       gold:{label:'Gold',question:'Gold up or down?',stream:'paxgusdt@miniTicker',rest:'https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT',decimals:2,step:.5,range:5,duration:300000,symbol:'Au'}
     };
-    var market='bitcoin',ws=null,raf=0,seq=0,values=[],current=0,last=0,raw=0,center=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,lastDrawAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',lastVisualPrice=0,choiceTimer=0,priceTickTimer=0;
+    var market='bitcoin',ws=null,raf=0,seq=0,values=[],current=0,last=0,raw=0,center=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,lastDrawAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',lastVisualPrice=0,choiceTimer=0,priceTickTimer=0,axisKey='';
     var W=360,H=220,L=14,R=78,P=24;
-    var menu=root.querySelector('.predict-zone-category-menu'),card=root.querySelector('[data-predict-card]'),chart=root.querySelector('[data-predict-chart]'),line=chart&&chart.querySelector('.predict-zone-chart-line'),fill=chart&&chart.querySelector('.predict-zone-chart-fill'),dot=chart&&chart.querySelector('.predict-zone-chart-dot'),guide=chart&&chart.querySelector('.predict-zone-price-guide'),axis=chart?chart.querySelectorAll('[data-price-axis]'):[],grid=chart?chart.querySelectorAll('[data-chart-grid-line]'):[],startGuide=chart&&chart.querySelector('[data-predict-start-guide]');
+    var menu=root.querySelector('.predict-zone-category-menu'),card=root.querySelector('[data-predict-card]'),chart=root.querySelector('[data-predict-chart]'),line=chart&&chart.querySelector('.predict-zone-chart-line'),fill=chart&&chart.querySelector('.predict-zone-chart-fill'),dot=chart&&chart.querySelector('.predict-zone-chart-dot'),guide=chart&&chart.querySelector('.predict-zone-price-guide'),axisLayer=chart&&chart.querySelector('[data-predict-price-axis]'),gridLayer=chart&&chart.querySelector('[data-predict-grid]'),startGuide=chart&&chart.querySelector('[data-predict-start-guide]');
     var question=root.querySelector('[data-predict-question]'),questionImage=root.querySelector('[data-predict-question-image]'),symbolFallback=root.querySelector('[data-predict-symbol-fallback]'),countdown=root.querySelector('[data-predict-countdown]'),live=root.querySelector('.predict-zone-live-price'),start=root.querySelector('.predict-zone-start-price'),trendLabel=root.querySelector('[data-predict-trend-label]'),result=root.querySelector('[data-predict-result]');
     var sheet=root.querySelector('[data-predict-bet-sheet]'),betTitle=root.querySelector('[data-predict-bet-title]'),betQuestion=root.querySelector('[data-predict-bet-question]'),betInput=root.querySelector('[data-predict-bet-input]'),betUsd=root.querySelector('[data-predict-bet-usd]'),betEstimate=root.querySelector('[data-predict-bet-estimate]'),betStatus=root.querySelector('[data-predict-bet-status]'),betSubmit=root.querySelector('[data-predict-bet-submit]');
 
@@ -134,6 +134,34 @@ export const PREDICT_ZONE_SCRIPT = `
     function slotFor(now){var d=cfg().duration;return Math.floor(now/d)*d}
     function y(v,scale){return Math.max(P,Math.min(H-P,P+((scale.max-v)/(scale.max-scale.min||1))*(H-P*2)))}
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
+    function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count-1),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
+    function priceTicks(scale){
+      var span=scale.max-scale.min,chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),desired=Math.max(2,Math.min(4,Math.floor(usableHeight/42)+1)),ticks=[],step=0,hint=desired,attempt=0;
+      for(attempt=0;attempt<4;attempt++){
+        step=niceTickStep(span,hint);
+        var epsilon=step*1e-9,first=Math.ceil((scale.min-epsilon)/step)*step,lastTick=Math.floor((scale.max+epsilon)/step)*step,v;
+        ticks=[];
+        for(v=first;v<=lastTick+epsilon&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(Math.max(0,cfg().decimals+4))));
+        if(ticks.length>=2)break;
+        hint++;
+      }
+      if(ticks.length>desired){
+        var target=Number(raw||current||((scale.min+scale.max)/2)),best=ticks.slice(0,desired),bestScore=Infinity,i;
+        for(i=0;i<=ticks.length-desired;i++){
+          var windowTicks=ticks.slice(i,i+desired),mid=(windowTicks[0]+windowTicks[windowTicks.length-1])/2,score=Math.abs(mid-target);
+          if(score<bestScore){bestScore=score;best=windowTicks}
+        }
+        ticks=best;
+      }
+      return ticks.slice(0,desired);
+    }
+    function renderPriceTicks(scale){
+      if(!axisLayer||!gridLayer)return;
+      var ticks=priceTicks(scale),key=market+'|'+ticks.join('|');
+      if(key===axisKey)return;
+      axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
+      ticks.forEach(function(pv){var top=y(pv,scale)/H*100+'%',label=document.createElement('span'),lineEl=document.createElement('span');label.style.top=top;label.textContent=formatPrice(pv);lineEl.style.top=top;axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+    }
     function setTrend(next){
       var n=next==='up'?'up':next==='down'?'down':'flat';
       if(trend===n&&card&&card.classList.contains('trend-'+n))return;
@@ -155,9 +183,9 @@ export const PREDICT_ZONE_SCRIPT = `
       if(priceTickTimer)clearTimeout(priceTickTimer);
       priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460);
     }
-    function showLoading(){readyPrice=false;lastVisualPrice=0;setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';axis.forEach(function(el,i){el.style.top=(18+i*16)+'%';el.textContent='Loading';if(grid[i])grid[i].style.top=(18+i*16)+'%'})}
+    function showLoading(){readyPrice=false;lastVisualPrice=0;axisKey='';setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
     function seed(price){values=[];var c=cfg(),st=price>1000?1.8:price>100?.18:.006,w=price>1000?5:price>100?.5:.018;for(var i=0;i<22;i++)values.push(price-st*12+i*st+Math.sin(i/2.8)*w);current=price;last=price;raw=price;center=Math.round(price/c.step)*c.step;lastPointAt=0}
-    function draw(progress){if(!readyPrice||!values.length||!line||!fill)return;var c=cfg(),target=Math.round(current/c.step)*c.step;center+=(target-center)*.08;var scale={min:center-c.range/2,max:center+c.range/2},right=W-R,step=(W-L-R)/(Math.max(22,values.length+1)-1),pts=values.map(function(v,i){return{x:right-((values.length-i)+progress)*step,y:y(v,scale),v:v}});pts.push({x:right,y:y(current,scale),v:current});var visible=pts.filter(function(p){return p.x>=0&&p.x<=right});if(visible.length<2)visible=pts.slice(-2);var d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');if(dot){dot.style.left=xp+'%';dot.style.top=yp+'%'}if(guide)guide.style.top=yp+'%';axis.forEach(function(el,i){var ratio=axis.length>1?i/(axis.length-1):0,pv=scale.max-ratio*(scale.max-scale.min),top=y(pv,scale)/H*100+'%';el.style.top=top;el.textContent=formatPrice(pv);if(grid[i])grid[i].style.top=top});if(startGuide){startGuide.classList.remove('show');if(entry&&entry<=scale.max&&entry>=scale.min){startGuide.style.top=y(entry,scale)/H*100+'%';startGuide.classList.add('show')}}if(start&&entry)start.textContent=formatPrice(entry);if(live)live.textContent=formatPrice(raw||lastPoint.v);syncTrend()}
+    function draw(progress){if(!readyPrice||!values.length||!line||!fill)return;var c=cfg(),target=Math.round(current/c.step)*c.step;center+=(target-center)*.08;var scale={min:center-c.range/2,max:center+c.range/2},right=W-R,step=(W-L-R)/(Math.max(22,values.length+1)-1),pts=values.map(function(v,i){return{x:right-((values.length-i)+progress)*step,y:y(v,scale),v:v}});pts.push({x:right,y:y(current,scale),v:current});var visible=pts.filter(function(p){return p.x>=0&&p.x<=right});if(visible.length<2)visible=pts.slice(-2);var d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');if(dot){dot.style.left=xp+'%';dot.style.top=yp+'%'}if(guide)guide.style.top=yp+'%';renderPriceTicks(scale);if(startGuide){startGuide.classList.remove('show');if(entry&&entry<=scale.max&&entry>=scale.min){startGuide.style.top=y(entry,scale)/H*100+'%';startGuide.classList.add('show')}}if(start&&entry)start.textContent=formatPrice(entry);if(live)live.textContent=formatPrice(raw||lastPoint.v);syncTrend()}
     function applyPrice(value,my,id){if(my!==seq||id!==market)return;var p=Number(value);if(!isFinite(p)||p<=0)return;var prev=Number(raw||lastVisualPrice||0);raw=p;last=p;if(!readyPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready');draw(0)}if(live)live.textContent=formatPrice(p);animateLivePrice(p,prev);lastVisualPrice=p;syncTrend()}
     function closeFeed(){seq++;if(ws){try{ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function connectFeed(){closeFeed();var my=seq,id=market,c=cfg();if(!isActive())return;if(!c.stream||!c.rest){if(currentRound&&Number(currentRound.startPrice)>0){applyPrice(Number(currentRound.startPrice),my,id)}return}fetch(c.rest,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(function(j){applyPrice(j&&j.price,my,id)}).catch(function(){});try{ws=new WebSocket('wss://stream.binance.com:9443/ws/'+c.stream);ws.onmessage=function(e){if(my!==seq||id!==market)return;try{var j=JSON.parse(e.data);applyPrice(j.c||j.p,my,id)}catch(_){}};ws.onclose=function(){if(my!==seq)return;ws=null;if(isActive())setTimeout(connectFeed,6000)};ws.onerror=function(){try{ws&&ws.close()}catch(e){}}}catch(e){}}
