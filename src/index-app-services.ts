@@ -10,6 +10,7 @@ import type { Env } from './types';
 import { getOnlineUserCountConfig, ONLINE_COUNT_SECTIONS, resetOnlineUserCountConfig, saveOnlineUserCountConfig } from './online-user-counts';
 import { clearSectionLock, getSectionAccess, isMiniAppAdmin, setSectionLock } from './section-access';
 import './predict-routes';
+import './crash-routes';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
