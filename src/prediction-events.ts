@@ -248,13 +248,15 @@ export async function refundPredictionEvent(env: Env, eventId: string): Promise<
 function discoveredPredictionFromGamma(raw: GammaMarket): DiscoveredPrediction | null {
   const id = cleanSourceMarketIdOptional(raw.id || raw.marketId);
   const question = cleanQuestionOptional(raw.question || raw.title);
-  const slug = cleanSlug(raw.slug || raw.marketSlug || raw.eventSlug);
+  const eventSlug = cleanSlug(raw.eventSlug || raw.event_slug);
+  const marketSlug = cleanSlug(raw.slug || raw.marketSlug || raw.market_slug);
   const outcomes = parseOutcomes(raw.outcomes);
   const closesAt = normalizeGammaDate(raw.endDate || raw.end_date || raw.closeTime || raw.endDateIso);
   if (!id || !question || outcomes.length !== 2 || !outcomes.some((value) => /^yes$/i.test(value)) || !outcomes.some((value) => /^no$/i.test(value)) || !closesAt) return null;
   const description = cleanDescription(raw.description || raw.eventDescription || '');
   const category = categoryForText(question + ' ' + description + ' ' + tagsText(raw.tags) + ' ' + String(raw.category || ''));
-  return { sourceMarketId: id, sourceUrl: slug ? 'https://polymarket.com/event/' + encodeURIComponent(slug) : 'https://polymarket.com/market/' + encodeURIComponent(id), category, question, description, closesAt };
+  const sourceUrl = eventSlug ? 'https://polymarket.com/event/' + encodeURIComponent(eventSlug) : marketSlug ? 'https://polymarket.com/market/' + encodeURIComponent(marketSlug) : 'https://polymarket.com/market/' + encodeURIComponent(id);
+  return { sourceMarketId: id, sourceUrl, category, question, description, closesAt };
 }
 
 async function fetchGammaMarket(id: string): Promise<GammaMarket> {
@@ -293,7 +295,7 @@ function tagsText(value: unknown): string {
 }
 
 function cleanSourceMarketId(value: unknown): string { const id = cleanSourceMarketIdOptional(value); if (!id) throw new Error('Invalid Polymarket market id'); return id; }
-function cleanSourceMarketIdOptional(value: unknown): string { const id = String(value || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80); return id || ''; }
+function cleanSourceMarketIdOptional(value: unknown): string { const id = String(value || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 36); return id || ''; }
 function cleanSlug(value: unknown): string { return String(value || '').trim().replace(/[^A-Za-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 160); }
 function normalizeGammaDate(value: unknown): string | null { const date = new Date(String(value || '').trim()); return Number.isFinite(date.getTime()) && date.getTime() > Date.now() ? date.toISOString() : null; }
 function normalizeCategory(value: unknown): PredictionEventCategory { const category = String(value || '').trim().toLowerCase(); if (category === 'world' || category === 'tech' || category === 'culture') return category; throw new Error('Invalid discovery category'); }
