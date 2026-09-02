@@ -106,6 +106,27 @@ html body:has(#predictzone.active) .app,html body:has(#predictzone.active) main.
 @media(prefers-reduced-motion:reduce){.predict-zone-question-image,.predict-zone-live-price,.predict-zone-choice-symbol{animation:none!important}.predict-zone-category-card,.predict-zone-choice,.predict-zone-bet-panel,.predict-zone-bet-presets button,.predict-zone-bet-submit{transition:none!important}}
 `;
 
+export const PREDICT_IMAGE_PRELOAD_SCRIPT = `
+(function(){
+  var manifests=['/app/api/predict-markets','/app/api/predict-crypto-card-images','/app/api/predict-button-images'];
+  var urls={'/app/api/section-background/predict.png':true};
+  function collect(value){
+    if(!value||typeof value!=='object')return;
+    if(typeof value.imageUrl==='string'&&value.imageUrl)urls[value.imageUrl]=true;
+    Object.keys(value).forEach(function(key){collect(value[key])});
+  }
+  function cacheImage(url){
+    return fetch(url,{cache:'force-cache'}).then(function(response){
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      return response.blob();
+    }).catch(function(){});
+  }
+  Promise.all(manifests.map(function(url){
+    return fetch(url,{cache:'force-cache'}).then(function(response){return response.ok?response.json():null}).then(collect).catch(function(){});
+  })).then(function(){return Promise.all(Object.keys(urls).map(cacheImage))}).catch(function(){});
+})();
+`;
+
 export const PREDICT_ZONE_SCRIPT = `
 (function(){
   function ready(fn){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',fn):fn()}

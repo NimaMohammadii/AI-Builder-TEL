@@ -2,7 +2,6 @@ import type { Env } from './types';
 import { saveShareInviteImageFileId } from './share-invite-config';
 import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
-import { setSpecialWheelEnabled } from './special-wheel-mode';
 import { sectionBackgroundR2Key } from './section-backgrounds';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
@@ -211,8 +210,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data.startsWith('botadmin:rank:')
       || data.startsWith('botadmin:ghostasset:')
       || data.startsWith('botadmin:slotsymbol:')
-      || data.startsWith('botadmin:predictimage:')
-      || data.startsWith('botadmin:specialwheel:');
+      || data.startsWith('botadmin:predictimage:');
     if (!ours) return null;
     if (!isAdmin(env, callback.from.id)) return ok();
     await tg(token, 'answerCallbackQuery', { callback_query_id: callback.id }).catch(() => undefined);
@@ -221,11 +219,6 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
 
     if (data === 'botadmin:home') {
       await clearState(env, callback.from.id);
-      await sendHome(env, token, chatId, messageId);
-    } else if (data.startsWith('botadmin:specialwheel:')) {
-      const enabled = data.endsWith(':on');
-      await clearState(env, callback.from.id);
-      await setSpecialWheelEnabled(env, enabled);
       await sendHome(env, token, chatId, messageId);
     } else if (data === 'botadmin:imagesmenu') {
       await clearState(env, callback.from.id);
@@ -511,10 +504,6 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     [
       { text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' },
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
-    ],
-    [
-      { text: '🚀 تصاویر Crash', callback_data: 'botadmin:crashstage' },
-      { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
     [{ text: '🎵 صداهای بازی', callback_data: 'botadmin:audiomenu' }],
     [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],

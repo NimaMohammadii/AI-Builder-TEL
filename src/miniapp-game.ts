@@ -1,5 +1,4 @@
 import { miniAppShellHtml } from './miniapp/shell';
-import type { HomeVariant } from './home-variants';
 
 const EMPTY_HOME_SLOT_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 const HOME_SLOT_META_KEY = 'vexaHomeLotterySlotMeta:v1';
@@ -15,13 +14,13 @@ function safeSingleQuotedJs(value: string): string {
   return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-export function miniAppHtml(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE, paymentMethodImageUrls: PaymentMethodImageUrls = {}, homeVariant: HomeVariant = 'one'): string {
+export function miniAppHtml(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE, paymentMethodImageUrls: PaymentMethodImageUrls = {}): string {
   const starsUrl = paymentMethodImageUrls.stars || DEFAULT_PAYMENT_METHOD_IMAGES.stars;
   const gramUrl = paymentMethodImageUrls.gram || DEFAULT_PAYMENT_METHOD_IMAGES.gram;
   const nftUrl = paymentMethodImageUrls.nft || DEFAULT_PAYMENT_METHOD_IMAGES.nft;
   const walletSource = "var src=type==='ton'?'/app/api/credit-icon.png':('/app/api/deposit-method-icon/'+(type==='nft'?'nft':'stars')+'.png');";
   const walletResolvedSource = `var src=type==='ton'?'${safeSingleQuotedJs(gramUrl)}':(type==='nft'?'${safeSingleQuotedJs(nftUrl)}':'${safeSingleQuotedJs(starsUrl)}');`;
-  let shell = miniAppShellHtml(homeVariant)
+  let shell = miniAppShellHtml()
     .replace(
       'src="/app/api/home-lottery-slot.png?v=home-lottery"',
       `src="${homeSlotImageUrl}"`,

@@ -27,12 +27,10 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SCRIPT, HOME_SECTION, HOME_STYLES } from './home';
-import { HOME_TWO_SECTION } from './home-two';
-import type { HomeVariant } from '../home-variants';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
-import { PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from './predict-zone';
+import { PREDICT_IMAGE_PRELOAD_SCRIPT, PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from './predict-zone';
 import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
@@ -74,9 +72,9 @@ const STYLES = [
   SECTION_ACCESS_STYLES,
 ].join('');
 
-function initialSections(homeVariant: HomeVariant): string {
+function initialSections(): string {
   return [
-    homeVariant === 'two' ? HOME_TWO_SECTION : HOME_SECTION,
+    HOME_SECTION,
     PLAY_ZONE_SECTION,
     REWARDS_SECTION,
   ].join('');
@@ -168,7 +166,7 @@ function lazySectionLoaderScript(): string {
 })();`;
 }
 
-function scripts(homeVariant: HomeVariant): string {
+function scripts(): string {
   return [
     BOOT_LOADER_SCRIPT,
     lazySectionLoaderScript(),
@@ -177,7 +175,8 @@ function scripts(homeVariant: HomeVariant): string {
     TON_BALANCE_SCRIPT,
     DEPOSIT_ENHANCEMENTS_SCRIPT,
     CREDIT_GUARD_SCRIPT,
-    ...(homeVariant === 'one' ? [HOME_SCRIPT] : []),
+    HOME_SCRIPT,
+    PREDICT_IMAGE_PRELOAD_SCRIPT,
     PLAY_ZONE_STACK_SCROLL_SCRIPT,
     PLAY_ZONE_VISIBILITY_SCRIPT,
     GAME_LIVE_COUNT_SCRIPT,
@@ -189,7 +188,7 @@ function scripts(homeVariant: HomeVariant): string {
   ].map((script) => `<script>${script}</script>`).join('');
 }
 
-export function miniAppShellHtml(homeVariant: HomeVariant = 'one'): string {
+export function miniAppShellHtml(): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -230,7 +229,7 @@ export function miniAppShellHtml(homeVariant: HomeVariant = 'one'): string {
         <button class="top-balance-plus" type="button" data-view="wallet" aria-label="Open wallet">+</button>
       </div>
     </header>
-    ${initialSections(homeVariant)}
+    ${initialSections()}
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
@@ -238,7 +237,7 @@ export function miniAppShellHtml(homeVariant: HomeVariant = 'one'): string {
     </nav>
   </main>
   <div id="toast" class="toast"></div>
-  ${scripts(homeVariant)}
+  ${scripts()}
 </body>
 </html>`;
 }
