@@ -3,7 +3,7 @@ import { ensureLevelTables } from './levels';
 import { ensureTonBalanceColumn } from './user-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
 
-export const LOTTERY_WINNER_COUNT = 15;
+export const LOTTERY_WINNER_COUNT = 10;
 const MAX_PRIZE_NANO = 1_000_000_000_000;
 
 type PrizeRow = { rank: number; prize_nano: number; updated_at: string };
