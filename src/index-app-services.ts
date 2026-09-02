@@ -38,7 +38,8 @@ const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
-const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initData: z.string().min(1).max(8192), deltaNano: z.number().int().optional(), section: z.string().max(40).optional(), deltas: z.array(z.object({ deltaNano: z.number().int(), section: z.string().max(40).optional() })).max(100).optional() });
+const gameBalanceEventSchema = z.object({ eventId: z.string().min(12).max(80).regex(/^[0-9A-Za-z_-]+$/), deltaNano: z.number().int(), section: z.string().max(40).optional() });
+const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initData: z.string().min(1).max(8192), deltas: z.array(gameBalanceEventSchema).min(1).max(20) });
 const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBalanceNano: z.number().int().nonnegative() });
 const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userWinChanceSchema = z.object({ userId: z.string().min(1).max(80), winChancePercent: z.number().int().min(0).max(100) });
@@ -62,11 +63,11 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
   try {
     const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
     if (userId !== body.userId) throw new Error('Telegram user mismatch');
-    const deltas = body.deltas?.length ? body.deltas : [{ deltaNano: body.deltaNano ?? 0, section: body.section }];
+    const deltas = body.deltas;
     if (deltas.some((item) => String(item.section || '').trim().toLowerCase() === 'plinko')) throw new Error('Plinko balance is settled by the secure round endpoint.');
     return c.json(await applyGameTonBalanceDeltas(c.env, userId, deltas));
   }
-  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update TON balance' }, 400); }
+  catch (error) { return c.json({ error: error instanceof Error ? error.message : 'Could not update GRAM balance' }, 400); }
 });
 
 app.get('/app/api/section-backgrounds', async (c) => {
