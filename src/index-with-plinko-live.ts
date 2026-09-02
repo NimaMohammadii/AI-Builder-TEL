@@ -8,7 +8,7 @@ import { handleGramWithdrawalAdminRequest, notifyAdminGramWithdrawal } from './t
 import { handleLotteryAdminRequest } from './telegram-lottery-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
-import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-visibility';
+import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin';
 import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
 import { handleLotteryRequest } from './lottery-http';
 import { gameBotToken, validateTelegramInitData } from './utils';
