@@ -137,8 +137,8 @@ export const PREDICT_ZONE_SCRIPT = `
 
     var MARKETS={
       bitcoin:{label:'Bitcoin',question:'Bitcoin up or down?',stream:'btcusdt@miniTicker',rest:'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',history:'https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=23',decimals:0,step:5,duration:300000,symbol:'₿'},
-      oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'clusdt@miniTicker',rest:'https://fapi.binance.com/fapi/v1/ticker/price?symbol=CLUSDT',history:'https://fapi.binance.com/fapi/v1/aggTrades?symbol=CLUSDT&limit=23',wsBase:'wss://fstream.binance.com/public/ws/',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
-      gold:{label:'Gold',question:'Gold up or down?',stream:'paxgusdt@miniTicker',rest:'https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT',history:'https://api.binance.com/api/v3/aggTrades?symbol=PAXGUSDT&limit=23',decimals:2,step:.5,duration:300000,symbol:'Au'}
+      oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'clusdt@miniTicker',rest:'https://fapi.binance.com/fapi/v1/ticker/price?symbol=CLUSDT',history:'https://fapi.binance.com/fapi/v1/aggTrades?symbol=CLUSDT&limit=23',wsBase:'wss://fstream.binance.com/ws/',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
+      gold:{label:'Gold',question:'Gold up or down?',stream:'paxgusdt@miniTicker',rest:'https://fapi.binance.com/fapi/v1/ticker/price?symbol=PAXGUSDT',history:'https://fapi.binance.com/fapi/v1/aggTrades?symbol=PAXGUSDT&limit=23',wsBase:'wss://fstream.binance.com/ws/',decimals:2,step:.5,duration:300000,symbol:'Au'}
     };
     var market='bitcoin',ws=null,raf=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,lastDrawAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',lastVisualPrice=0,priceTickTimer=0;
     var W=360,H=220,L=0,R=58,P=24,HISTORY=23;
