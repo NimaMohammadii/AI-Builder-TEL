@@ -1,8 +1,10 @@
 import app from './index';
+import type { Env } from './types';
 import { getGhostRunVirtualUsers } from './ghost-run-virtual-users-config';
 import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, getCrashLiveRoundId, getCrashRoundState, getCrashTargetDelayMs } from './crash-virtual-users';
 import { applyGameTonBalanceDelta, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 import { addUserXp, getUserLevel } from './levels';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 const CACHE_NONE = 'no-store';
 const NANO = 1000000000;
@@ -69,9 +71,10 @@ app.get('/app/api/crash-live', async (c) => {
 app.post('/app/api/crash-live/bet', async (c) => {
   await ensure(c.env);
   const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
+  let userId = '';
+  try{userId=await authenticatedUserId(c.env,b)}catch(error){return c.json({ok:false,error:error instanceof Error?error.message:'Telegram authentication failed'},401,{'cache-control':CACHE_NONE})}
   const state = getCrashRoundState(Date.now());
   const roundId = rid(b.roundId ?? betRoundId(state));
-  const userId = uid(b.userId);
   const username = name(b.username,userId);
   const amountNano = amt(b.amountNano);
 
@@ -104,7 +107,9 @@ app.post('/app/api/crash-live/bet', async (c) => {
 app.post('/app/api/crash-live/cashout', async (c) => {
   await ensure(c.env);
   const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
-  const roundId = rid(b.roundId), userId = uid(b.userId), m = mult(b.multiplier);
+  let userId = '';
+  try{userId=await authenticatedUserId(c.env,b)}catch(error){return c.json({ok:false,error:error instanceof Error?error.message:'Telegram authentication failed'},401,{'cache-control':CACHE_NONE})}
+  const roundId = rid(b.roundId), m = mult(b.multiplier);
   const row = await c.env.DB.prepare('SELECT * FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0').bind(roundId,userId).first<Row>();
   if(!row)return c.json({ok:false,error:'Bet not found'},404,{'cache-control':CACHE_NONE});
 
@@ -142,7 +147,9 @@ app.post('/app/api/crash-live/cashout', async (c) => {
 app.post('/app/api/crash-live/crash', async (c) => {
   await ensure(c.env);
   const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
-  const roundId = rid(b.roundId), userId = uid(b.userId);
+  let userId = '';
+  try{userId=await authenticatedUserId(c.env,b)}catch(error){return c.json({ok:false,error:error instanceof Error?error.message:'Telegram authentication failed'},401,{'cache-control':CACHE_NONE})}
+  const roundId = rid(b.roundId);
   const updated = await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND status='bet' AND is_virtual=0").bind(roundId,userId).run();
   const xp = await addUserXp(c.env,userId,5,'game-lose',{section:'crash',event:'crash',roundId},`crash_loss_${roundId}_${userId}`)
     .catch(async (error) => { console.warn('Crash loss XP award failed', error); return { profile: await getUserLevel(c.env,userId) }; });
@@ -167,6 +174,7 @@ async function ensure(env:{DB:D1Database}){
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
   crashSchemaReady = true;
 }
+async function authenticatedUserId(env:Env, body:Record<string,unknown>):Promise<string>{const claimed=uid(body.userId);const verified=await validateTelegramInitData(body.initData,gameBotToken(env));if(verified!==claimed)throw new Error('Telegram user mismatch');return verified}
 function json(r:Row){return{roundId:Number(r.round_id),userId:r.user_id,user:r.username,amountNano:Number(r.amount_nano||0),amountTon:ton(r.amount_nano),status:r.status,cashoutMultiplier:r.cashout_multiplier==null?null:Number(r.cashout_multiplier),targetCashoutMultiplier:r.target_cashout_multiplier==null?null:Number(r.target_cashout_multiplier),payoutNano:Number(r.payout_nano||0),payoutTon:ton(r.payout_nano),isVirtual:Number(r.is_virtual||0)===1,virtualRevealAtMs:Number(r.virtual_reveal_at_ms||0),virtualOrder:Number(r.virtual_order||0),createdAt:r.created_at,updatedAt:r.updated_at}}
 function virtualRevealWindow(roundId:number,state:ReturnType<typeof getCrashRoundState>){
   const roundStart = roundId===state.id ? state.start : state.start + state.runMs + WAIT_BETWEEN_MS;
