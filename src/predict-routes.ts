@@ -279,61 +279,12 @@ async function getBet(env: Env, id: string) {
   return b ? betJson(b) : null;
 }
 async function fetchPrice(market: TradeMarket): Promise<number> {
-  const providers = priceProviders(market);
-  const failures: string[] = [];
-  for (const provider of providers) {
-    try {
-      const price = await provider.fetch();
-      return cleanPrice(price);
-    } catch (error) {
-      failures.push(`${provider.name}: ${error instanceof Error ? error.message : 'unknown error'}`);
-    }
-  }
-  console.warn('predict price feed failed', { market, failures });
-  throw new Error('Price feed is unavailable');
-}
-
-type PriceProvider = { name: string; fetch: () => Promise<unknown> };
-
-function priceProviders(market: TradeMarket): PriceProvider[] {
-  const binanceSymbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
-  const coinbaseProduct = market === 'ethereum' ? 'ETH-USD' : market === 'solana' ? 'SOL-USD' : market === 'bitcoin' ? 'BTC-USD' : '';
-  const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : market === 'bitcoin' ? 'bitcoin' : '';
-  const providers: PriceProvider[] = [
-    {
-      name: 'binance',
-      fetch: async () => {
-        const baseUrl = market === 'oil' || market === 'gold' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
-        const res = await fetch(`${baseUrl}?symbol=${binanceSymbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as { price?: string };
-        return data.price;
-      },
-    },
-  ];
-  if (coinbaseProduct) {
-    providers.push({
-      name: 'coinbase',
-      fetch: async () => {
-        const res = await fetch(`https://api.coinbase.com/v2/prices/${coinbaseProduct}/spot`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as { data?: { amount?: string } };
-        return data.data?.amount;
-      },
-    });
-  }
-  if (coinGeckoId) {
-    providers.push({
-      name: 'coingecko',
-      fetch: async () => {
-        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinGeckoId}&vs_currencies=usd`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as Record<string, { usd?: number }>;
-        return data[coinGeckoId]?.usd;
-      },
-    });
-  }
-  return providers;
+  const symbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
+  const baseUrl = market === 'oil' || market === 'gold' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
+  const res = await fetch(`${baseUrl}?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Binance price request failed: HTTP ${res.status}`);
+  const data = await res.json() as { price?: string };
+  return cleanPrice(data.price);
 }
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
