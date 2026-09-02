@@ -1,7 +1,7 @@
 import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
 import { LOTTERY_NEXT_ROUND_DELAY_MS, buyLotteryTickets, getLotteryUserState, listLotteryTickets } from './lottery';
-import { getLotteryPrizes, getLotteryWinners, userWonLotteryRound } from './lottery-prizes';
+import { LOTTERY_WINNER_COUNT, getLotteryPrizes, getLotteryWinners, userWonLotteryRound } from './lottery-prizes';
 import { publishLiveActivity } from './live-activity';
 
 export async function handleLotteryRequest(request: Request, env: Env): Promise<Response | null> {
@@ -25,7 +25,7 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const roundTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.count || 0)));
       const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
       const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, ...state, roundTicketCount, prizePoolNano, prizes, lastDrawWon });
+      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, roundTicketCount, prizePoolNano, prizes, lastDrawWon });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
@@ -57,6 +57,7 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       return json({
         ok: true,
         serverNowMs,
+        winnerCount: LOTTERY_WINNER_COUNT,
         roundId,
         waitingForWinner,
         winnerView: waitingForWinner ? 'waiting' : 'previous',
