@@ -289,12 +289,12 @@ type PriceProvider = { name: string; fetch: () => Promise<unknown> };
 function priceProviders(market: TradeMarket): PriceProvider[] {
   const binanceSymbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
   const coinbaseProduct = market === 'ethereum' ? 'ETH-USD' : market === 'solana' ? 'SOL-USD' : market === 'bitcoin' ? 'BTC-USD' : '';
-  const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : market === 'gold' ? 'pax-gold' : market === 'bitcoin' ? 'bitcoin' : '';
+  const coinGeckoId = market === 'ton' ? 'the-open-network' : market === 'ethereum' ? 'ethereum' : market === 'solana' ? 'solana' : market === 'bitcoin' ? 'bitcoin' : '';
   const providers: PriceProvider[] = [
     {
       name: 'binance',
       fetch: async () => {
-        const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
+        const baseUrl = market === 'oil' || market === 'gold' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
         const res = await fetch(`${baseUrl}?symbol=${binanceSymbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as { price?: string };
