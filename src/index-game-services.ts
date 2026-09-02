@@ -65,6 +65,7 @@ app.post('/app/api/share-invite', async (c) => {
           id: 'vexa-game-invite',
           photo_file_id: photoFileId,
           caption: vexaTextForCountry(SHARE_INVITE_TEXT, countryCode),
+          parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[{
               text: vexaTextForCountry(SHARE_INVITE_BUTTON_TEXT, countryCode),
