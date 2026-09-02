@@ -43,15 +43,19 @@ export const MINIAPP_SCRIPT = `
       .catch(function(){return fallback});
     return detectedCountryPromise;
   }
+  function showInviteAlert(message){
+    try{if(tg&&typeof tg.showAlert==='function'){tg.showAlert(message);return}}catch(e){}
+    toast(message);
+  }
   function shareInvite(countryCode){
-    if(!tg||typeof tg.shareMessage!=='function'){showTelegramAlert('Please update Telegram to share this invite.');return}
+    if(!tg||typeof tg.shareMessage!=='function'){showInviteAlert('Please update Telegram to share this invite.');return}
     fetch('/app/api/share-invite',{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({initData:String(tg.initData||''),countryCode:countryCode||''})
     }).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j&&j.error||'Could not prepare invite');return j})})
       .then(function(result){if(!result||!result.id)throw new Error('Could not prepare invite');tg.shareMessage(result.id)})
-      .catch(function(error){showTelegramAlert(error&&error.message||'Could not share the invite.');});
+      .catch(function(error){showInviteAlert(error&&error.message||'Could not share the invite.');});
   }
   function openMiniAppSettings(){
     if(!tg||!tg.showPopup)return;
