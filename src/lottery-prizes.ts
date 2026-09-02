@@ -188,8 +188,8 @@ async function payPendingLotteryWinners(env: Env, roundId: string): Promise<void
   await ensureTonBalanceColumn(env);
   await ensureTonTransactionsTable(env);
   const rows = await env.DB.prepare(`SELECT * FROM lottery_winners
-    WHERE round_id=? AND payout_status='pending' ORDER BY rank ASC LIMIT ?`)
-    .bind(roundId, LOTTERY_WINNER_COUNT).all<WinnerRow>();
+    WHERE round_id=? AND payout_status='pending' ORDER BY rank ASC`)
+    .bind(roundId).all<WinnerRow>();
 
   for (const row of rows.results || []) {
     const amount = Math.max(0, Math.floor(Number(row.prize_nano) || 0));
