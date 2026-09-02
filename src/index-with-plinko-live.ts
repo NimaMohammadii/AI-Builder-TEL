@@ -396,7 +396,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.delete('content-length');
     headers.set('cache-control', 'no-store');
-    const homeScripts = html.includes('data-home-variant="one"') ? `${HOME_LOTTERY_CLIENT_SCRIPT}${LIVE_ACTIVITY_CLIENT_SCRIPT}` : '';
+    const homeScripts = `${HOME_LOTTERY_CLIENT_SCRIPT}${LIVE_ACTIVITY_CLIENT_SCRIPT}`;
     return new Response(html.replace('</body>', `${homeScripts}${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
       status: response.status,
       statusText: response.statusText,

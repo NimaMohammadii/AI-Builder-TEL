@@ -10,23 +10,17 @@ import {
   type PlinkoRow,
 } from './plinko-control';
 
-type Photo = { file_id: string; file_size?: number };
-type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
-type Message = { chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document };
+type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
-type UploadSource = { fileId: string; size?: number; type: string };
 type PlinkoAdminState =
   | { mode: 'edit-all'; row: PlinkoRow; risk: PlinkoRisk }
-  | { mode: 'edit-house'; row: PlinkoRow; risk: PlinkoRisk; house: number }
-  | { mode: 'image' };
+  | { mode: 'edit-house'; row: PlinkoRow; risk: PlinkoRisk; house: number };
 type PresetKind = 'balanced' | 'center' | 'edges' | 'wide';
 
 const STATE_PREFIX = 'admin:plinko-control-input:';
-const MAX_IMAGE_BYTES = 2_000_000;
-const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 
 export async function handlePlinkoControlAdminRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
@@ -182,17 +176,6 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     return ok();
   }
 
-  if (action === 'image' && parts[3] === 'house') {
-    await setState(env, callback.from.id, { mode: 'image' });
-    await upsert(
-      token,
-      chatId,
-      messageId,
-      '🏁 تصویر خانه‌های نتیجه Plinko\n\nتصویر را بفرستید. PNG، JPG، WebP یا SVG تا حداکثر 2MB مجاز است.\nبرای حفظ فرمت اصلی می‌توانید تصویر را به‌صورت File/Document بفرستید.',
-      [[{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]],
-    );
-    return ok();
-  }
 
   return ok();
 }
@@ -213,8 +196,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, adminId);
-    if (state.mode === 'edit-all' || state.mode === 'edit-house') await sendModeMenu(env, token, message.chat.id, state.row, state.risk);
-    else await sendImagesReturn(token, message.chat.id, 'آپلود لغو شد.');
+    await sendModeMenu(env, token, message.chat.id, state.row, state.risk);
     return ok();
   }
 
@@ -269,18 +251,6 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     return ok();
   }
 
-  const source = imageFromMessage(message);
-  if (!source) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: '❌ یک تصویر PNG، JPG، WebP یا SVG بفرستید یا /cancel را بزنید.' }).catch(() => undefined);
-    return ok();
-  }
-  try {
-    await savePlinkoHouseImage(env, token, source);
-    await clearState(env, adminId);
-    await sendImagesReturn(token, message.chat.id, '✅ تصویر خانه‌های نتیجه Plinko ذخیره شد.');
-  } catch (error) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'آپلود انجام نشد.'}` }).catch(() => undefined);
-  }
   return ok();
 }
 
@@ -485,36 +455,6 @@ function cloneRiskConfig(value: { multipliers: number[]; weights: number[] }): {
   return { multipliers: value.multipliers.slice(), weights: value.weights.slice() };
 }
 
-function imageFromMessage(message: Message): UploadSource | null {
-  const photo = message.photo?.at(-1);
-  if (photo?.file_id) return { fileId: photo.file_id, size: photo.file_size, type: 'image/jpeg' };
-  const doc = message.document;
-  if (!doc?.file_id) return null;
-  const mime = String(doc.mime_type || '').split(';')[0].trim().toLowerCase();
-  const ext = String(doc.file_name || '').split('.').pop()?.toLowerCase();
-  const type = ext === 'png' ? 'image/png'
-    : ext === 'webp' ? 'image/webp'
-      : ext === 'svg' ? 'image/svg+xml'
-        : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-          : IMAGE_TYPES.has(mime) ? mime : '';
-  return type ? { fileId: doc.file_id, size: doc.file_size, type } : null;
-}
-
-async function savePlinkoHouseImage(env: Env, token: string, source: UploadSource): Promise<void> {
-  if (!IMAGE_TYPES.has(source.type)) throw new Error('فرمت تصویر پشتیبانی نمی‌شود.');
-  if (source.size && source.size > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید حداکثر 2MB باشد.');
-  const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
-  if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
-  const response = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
-  if (!response.ok) throw new Error('دانلود تصویر از تلگرام ناموفق بود.');
-  const bytes = await response.arrayBuffer();
-  if (!bytes.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('حجم تصویر باید حداکثر 2MB باشد.');
-  await env.ASSETS.put('plinko-control/house', bytes, {
-    httpMetadata: { contentType: source.type },
-    customMetadata: { version: String(Date.now()) },
-  });
-}
-
 function normalizeRow(value: unknown): PlinkoRow | null {
   const row = String(value || '') as PlinkoRow;
   return PLINKO_ROWS.includes(row) ? row : null;
@@ -571,7 +511,7 @@ async function clearOtherAdminStates(env: Env, adminId: number): Promise<void> {
 
 async function getState(env: Env, adminId: number): Promise<PlinkoAdminState | null> {
   const state = await env.BOT_CACHE.get(stateKey(adminId), 'json').catch(() => null) as PlinkoAdminState | null;
-  if (!state || (state.mode !== 'edit-all' && state.mode !== 'edit-house' && state.mode !== 'image')) return null;
+  if (!state || (state.mode !== 'edit-all' && state.mode !== 'edit-house')) return null;
   return state;
 }
 

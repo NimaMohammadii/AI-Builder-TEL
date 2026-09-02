@@ -5,12 +5,9 @@ import { registerFriendGameRoutes } from './game-friend-routes';
 import { registerWheelRoutes } from './wheel-routes';
 import { registerSlotAssetRoutes } from './slot-assets';
 import { handleGameBotWebhook } from './telegram-game-bot';
-import { specialWheelStatusResponse } from './special-wheel-mode';
-import { createSpecialWheelInvoiceResponse, specialWheelSpinResponse } from './special-wheel-engine';
 import { addUserXpBatch, getUserLevel } from './levels';
 import type { Env, TelegramUpdate } from './types';
 import { gameBotToken, PUBLIC_BASE_URL, validateTelegramInitData } from './utils';
-import { getActiveHomeVariant } from './home-variants';
 
 const app = new Hono<{ Bindings: Env }>();
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
@@ -61,12 +58,11 @@ app.get('/tonconnect-manifest.json', (c) => c.json(
   },
 ));
 app.get('/app', async (c) => {
-  const [slot, starsImage, gramImage, nftImage, homeVariant] = await Promise.all([
+  const [slot, starsImage, gramImage, nftImage] = await Promise.all([
     c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null),
     c.env.ASSETS.head('payment-method/stars').catch(() => null),
     c.env.ASSETS.head('payment-method/gram').catch(() => null),
     c.env.ASSETS.head('payment-method/nft').catch(() => null),
-    getActiveHomeVariant(c.env),
   ]);
   const version = String(slot?.customMetadata?.version || slot?.uploaded?.getTime?.() || '1');
   const slotUrl = slot ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : undefined;
@@ -79,7 +75,7 @@ app.get('/app', async (c) => {
     stars: paymentUrl('stars', starsImage),
     gram: paymentUrl('gram', gramImage),
     nft: paymentUrl('nft', nftImage),
-  }, homeVariant));
+  }));
 });
 app.get('/assets/Crash.PNG', (c) => serveVersionedStaticAsset(c.req.raw, c.env, '/assets/Crash.PNG'));
 app.get('/assets/Rocket3D.glb', (c) => serveVersionedStaticAsset(c.req.raw, c.env, '/assets/Rocket3D.glb'));
@@ -90,10 +86,6 @@ app.get('/health', (c) => c.json({ ok: true, service: 'vexa-game', timestamp: ne
 app.get('/app/api/online-user-counts', async (c) =>
   c.json({ ok: true, sections: ONLINE_COUNT_SECTIONS, ...(await getOnlineUserCountConfig(c.env)) }, 200, { 'cache-control': 'no-store' }),
 );
-app.get('/app/api/special-wheel-mode', (c) => specialWheelStatusResponse(c.req.raw, c.env));
-app.post('/app/api/special-wheel/invoice', (c) => createSpecialWheelInvoiceResponse(c.req.raw, c.env));
-app.post('/app/api/special-wheel/spin', (c) => specialWheelSpinResponse(c.req.raw, c.env));
-
 app.get('/app/api/level', async (c) => {
   try {
     const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
