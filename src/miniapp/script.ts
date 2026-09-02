@@ -13,7 +13,22 @@ export const MINIAPP_SCRIPT = `
   setTimeout(expandMiniApp,500);
   setTimeout(expandMiniApp,1200);
 
-  function openMiniAppSettings(){show('settings')}
+  function openTelegramLink(url){try{if(tg&&tg.openTelegramLink){tg.openTelegramLink(url);return}}catch(e){}window.location.href=url}
+  function openMiniAppSettings(){
+    if(!tg||!tg.showPopup)return;
+    tg.showPopup({
+      title:'Vexa',
+      message:'Choose an action',
+      buttons:[
+        {id:'open-chat',type:'default',text:'Open Chat'},
+        {id:'invite-friends',type:'default',text:'Invite Friends'},
+        {id:'close',type:'cancel',text:'Close'}
+      ]
+    },function(id){
+      if(id==='open-chat'){openTelegramLink('https://t.me/VexaAppBOT');return}
+      if(id==='invite-friends')openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent('Play Vexa with me'))
+    });
+  }
   function initTelegramSettings(){
     if(!tg||!tg.SettingsButton)return;
     try{tg.SettingsButton.offClick(openMiniAppSettings)}catch(e){}
