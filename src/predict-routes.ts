@@ -1,5 +1,6 @@
 import app from './index';
 import './predict-settings-routes';
+import './prediction-events';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 import { gameBotToken, validateTelegramInitData } from './utils';
