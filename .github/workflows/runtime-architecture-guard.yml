@@ -26,7 +26,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install --no-package-lock
+        run: npm install --no-package-lock --legacy-peer-deps
 
       - name: Verify TypeScript and protected Mini App runtime architecture
         run: npm run verify
