@@ -1,6 +1,7 @@
 import app from './index';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -84,7 +85,8 @@ app.get('/app/api/football-matches', async (c) => {
     await ensureFootballPredictTables(c.env);
     await lockStartedMatches(c.env);
     await expireFootballLiveQuestions(c.env);
-    const userId = cleanUserIdOptional(c.req.query('userId'));
+    const claimedUserId = cleanUserIdOptional(c.req.query('userId'));
+    const userId = claimedUserId ? await authenticateUser(c.env, claimedUserId, c.req.header('x-telegram-init-data')) : '';
     const rows = await c.env.DB.prepare(`SELECT * FROM football_matches WHERE status != 'cancelled' ORDER BY featured DESC, datetime(starts_at) ASC, datetime(created_at) DESC LIMIT 50`).all<FootballMatchRow>();
     return c.json({ ok: true, matches: await Promise.all((rows.results || []).map((row) => footballMatchJson(c.env, row, userId))), userControls: userId ? await getUserControls(c.env, userId) : null }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
@@ -99,25 +101,45 @@ app.post('/app/api/football-bet', async (c) => {
     await lockStartedMatches(c.env);
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const matchId = cleanDbText(body.matchId, 'Missing match id');
-    const userId = cleanUserId(body.userId);
+    const userId = await authenticateUser(c.env, body.userId, body.initData);
     const pick = normalizePick(body.pick);
     const stakeNano = tonToNano(body.stakeTon);
-    if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
+    if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
     const match = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(matchId).first<FootballMatchRow>();
     if (!match) throw new Error('Match not found');
     if (Date.now() >= matchStartMinuteMs(match.starts_at) || match.status !== 'open') throw new Error('This match is locked.');
-    betId = 'fbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
-    const inserted = await c.env.DB.prepare(`INSERT INTO football_bets (id, match_id, user_id, pick, stake_nano, status, payout_nano, created_at)
-      SELECT ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
-      WHERE NOT EXISTS (SELECT 1 FROM football_bets WHERE match_id = ? AND user_id = ? AND status != 'failed')`)
-      .bind(betId, matchId, userId, pick, stakeNano, matchId, userId)
-      .run();
-    if ((inserted.meta?.changes || 0) <= 0) throw new Error('You already placed a prediction for this match.');
+
+    let existing = await c.env.DB.prepare("SELECT * FROM football_bets WHERE match_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+      .bind(matchId, userId)
+      .first<FootballBetRow>();
+    if (existing) {
+      if (existing.status !== 'pending') throw new Error('You already placed a prediction for this match.');
+      if (existing.pick !== pick || Number(existing.stake_nano || 0) !== stakeNano) throw new Error('A previous prediction is still processing. Retry the same prediction.');
+      betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+    } else {
+      betId = 'fbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+      const inserted = await c.env.DB.prepare(`INSERT INTO football_bets (id, match_id, user_id, pick, stake_nano, status, payout_nano, created_at)
+        SELECT ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM football_bets WHERE match_id = ? AND user_id = ? AND status != 'failed')`)
+        .bind(betId, matchId, userId, pick, stakeNano, matchId, userId)
+        .run();
+      if ((inserted.meta?.changes || 0) <= 0) {
+        existing = await c.env.DB.prepare("SELECT * FROM football_bets WHERE match_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+          .bind(matchId, userId)
+          .first<FootballBetRow>();
+        if (!existing || existing.status !== 'pending' || existing.pick !== pick || Number(existing.stake_nano || 0) !== stakeNano) throw new Error('You already placed a prediction for this match.');
+        betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+      }
+    }
+
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Football prediction stake', referenceId: betId, referenceType: 'football_bet', metadata: { matchId, pick } });
     const active = await c.env.DB.prepare("UPDATE football_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
     if ((active.meta?.changes || 0) <= 0) {
-      await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Football prediction stake rollback', referenceId: betId, referenceType: 'football_bet', metadata: { matchId, pick, status: 'rollback' } });
-      throw new Error('Could not activate prediction');
+      const freshBet = await c.env.DB.prepare('SELECT * FROM football_bets WHERE id = ?').bind(betId).first<FootballBetRow>();
+      if (!freshBet || freshBet.status !== 'active') {
+        await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Football prediction stake rollback', referenceId: betId, referenceType: 'football_bet', metadata: { matchId, pick, status: 'rollback' } });
+        throw new Error('Could not activate prediction');
+      }
     }
     const fresh = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(matchId).first<FootballMatchRow>();
     return c.json({ ok: true, bet: await getFootballBet(c.env, betId), match: fresh ? await footballMatchJson(c.env, fresh, userId) : null, userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
@@ -134,26 +156,46 @@ app.post('/app/api/football-live-question-bet', async (c) => {
     await expireFootballLiveQuestions(c.env);
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const questionId = cleanDbText(body.questionId, 'Missing live question id');
-    const userId = cleanUserId(body.userId);
+    const userId = await authenticateUser(c.env, body.userId, body.initData);
     const pick = normalizeLivePick(body.pick);
     const stakeNano = tonToNano(body.stakeTon);
-    if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
+    if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
     const question = await c.env.DB.prepare("SELECT * FROM football_live_questions WHERE id = ? AND status = 'open' AND datetime(expires_at) > datetime('now')").bind(questionId).first<FootballLiveQuestionRow>();
     if (!question) throw new Error('This live question is closed.');
     const match = await c.env.DB.prepare("SELECT * FROM football_matches WHERE id = ? AND status != 'cancelled'").bind(question.match_id).first<FootballMatchRow>();
     if (!match) throw new Error('Match not found');
-    betId = 'flqbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 21);
-    const inserted = await c.env.DB.prepare(`INSERT INTO football_live_question_bets (id, question_id, match_id, user_id, pick, stake_nano, status, payout_nano, created_at)
-      SELECT ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
-      WHERE NOT EXISTS (SELECT 1 FROM football_live_question_bets WHERE question_id = ? AND user_id = ? AND status != 'failed')`)
-      .bind(betId, questionId, question.match_id, userId, pick, stakeNano, questionId, userId)
-      .run();
-    if ((inserted.meta?.changes || 0) <= 0) throw new Error('You already answered this live question.');
+
+    let existing = await c.env.DB.prepare("SELECT * FROM football_live_question_bets WHERE question_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+      .bind(questionId, userId)
+      .first<FootballLiveQuestionBetRow>();
+    if (existing) {
+      if (existing.status !== 'pending') throw new Error('You already answered this live question.');
+      if (existing.pick !== pick || Number(existing.stake_nano || 0) !== stakeNano) throw new Error('A previous answer is still processing. Retry the same answer.');
+      betId = cleanDbText(existing.id, 'Live question bet is not ready');
+    } else {
+      betId = 'flqbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 21);
+      const inserted = await c.env.DB.prepare(`INSERT INTO football_live_question_bets (id, question_id, match_id, user_id, pick, stake_nano, status, payout_nano, created_at)
+        SELECT ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM football_live_question_bets WHERE question_id = ? AND user_id = ? AND status != 'failed')`)
+        .bind(betId, questionId, question.match_id, userId, pick, stakeNano, questionId, userId)
+        .run();
+      if ((inserted.meta?.changes || 0) <= 0) {
+        existing = await c.env.DB.prepare("SELECT * FROM football_live_question_bets WHERE question_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+          .bind(questionId, userId)
+          .first<FootballLiveQuestionBetRow>();
+        if (!existing || existing.status !== 'pending' || existing.pick !== pick || Number(existing.stake_nano || 0) !== stakeNano) throw new Error('You already answered this live question.');
+        betId = cleanDbText(existing.id, 'Live question bet is not ready');
+      }
+    }
+
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Football live question stake', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: question.match_id, questionId, pick } });
     const active = await c.env.DB.prepare("UPDATE football_live_question_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
     if ((active.meta?.changes || 0) <= 0) {
-      await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Football live question rollback', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: question.match_id, questionId, pick, status: 'rollback' } });
-      throw new Error('Could not activate answer');
+      const freshBet = await c.env.DB.prepare('SELECT * FROM football_live_question_bets WHERE id = ?').bind(betId).first<FootballLiveQuestionBetRow>();
+      if (!freshBet || freshBet.status !== 'active') {
+        await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Football live question rollback', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: question.match_id, questionId, pick, status: 'rollback' } });
+        throw new Error('Could not activate answer');
+      }
     }
     const fresh = await c.env.DB.prepare('SELECT * FROM football_matches WHERE id = ?').bind(question.match_id).first<FootballMatchRow>();
     return c.json({ ok: true, bet: await getFootballLiveQuestionBet(c.env, betId), match: fresh ? await footballMatchJson(c.env, fresh, userId) : null, userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
@@ -199,8 +241,6 @@ async function ensureFootballPredictTables(env: Env): Promise<void> {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_football_live_question_bets_question ON football_live_question_bets(question_id)').run();
 }
 
-
-
 async function addFootballColumnIfMissing(env: Env, name: string, definition: string): Promise<void> {
   const columns = (await env.DB.prepare('PRAGMA table_info(football_matches)').all<{ name: string }>()).results || [];
   if (!columns.some((column) => column.name === name)) await env.DB.prepare(`ALTER TABLE football_matches ADD COLUMN ${name} ${definition}`).run();
@@ -219,7 +259,6 @@ async function deleteFootballTeamEverywhere(env: Env, teamId: FootballTeamId): P
   }
   await env.ASSETS.delete(teamLogoKey(id)).catch(() => undefined);
 }
-
 
 async function deleteFootballMatchEverywhere(env: Env, matchId: string): Promise<void> {
   const id = cleanDbText(matchId, 'Match is not ready');
@@ -255,40 +294,48 @@ async function settleFootballMatch(env: Env, matchId: string, result: FootballPi
   const lock = await env.DB.prepare("UPDATE football_matches SET status = 'settling', result = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status NOT IN ('settled', 'refunded')").bind(result, matchId).run();
   if ((lock.meta?.changes || 0) <= 0) return;
   const all = (await env.DB.prepare('SELECT * FROM football_bets WHERE match_id = ?').bind(matchId).all<FootballBetRow>()).results || [];
-  const active = all.filter((bet) => bet.status === 'active');
-  const winnerPool = active.filter((bet) => bet.pick === result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
+  const eligible = all.filter((bet) => bet.status !== 'failed' && bet.status !== 'pending');
+  const processing = eligible.filter((bet) => bet.status === 'active' || bet.status === 'settling_payment');
+  const winnerPool = eligible.filter((bet) => bet.pick === result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
   if (winnerPool <= 0) {
-    for (const bet of active) await payFootballBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
-    await env.DB.prepare("UPDATE football_matches SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(matchId).run();
+    for (const bet of processing) await payFootballBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
+    const remaining = await countFootballMatchPayments(castEnv(env), matchId);
+    if (remaining <= 0) await env.DB.prepare("UPDATE football_matches SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(matchId).run();
     return;
   }
-  const loserPool = active.filter((bet) => bet.pick !== result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
+  const loserPool = eligible.filter((bet) => bet.pick !== result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
   const fee = Math.floor(loserPool * PLATFORM_FEE_BPS / 10000);
   const distributable = Math.max(0, loserPool - fee);
-  for (const bet of active) {
+  for (const bet of processing) {
     const stake = Number(bet.stake_nano || 0);
     if (bet.pick === result) await payFootballBet(env, bet, stake + Math.floor(stake / winnerPool * distributable), 'won');
     else await env.DB.prepare("UPDATE football_bets SET status = 'lost', payout_nano = 0, settled_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'").bind(cleanDbText(bet.id, 'Prediction bet is not ready')).run();
   }
-  await env.DB.prepare("UPDATE football_matches SET status = 'settled', result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(result, matchId).run();
+  if (await countFootballMatchPayments(env, matchId) <= 0) await env.DB.prepare("UPDATE football_matches SET status = 'settled', result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(result, matchId).run();
 }
 
 async function refundFootballMatch(env: Env, matchId: string): Promise<void> {
   const lock = await env.DB.prepare("UPDATE football_matches SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status NOT IN ('settled', 'refunded')").bind(matchId).run();
   if ((lock.meta?.changes || 0) <= 0) return;
-  const bets = (await env.DB.prepare("SELECT * FROM football_bets WHERE match_id = ? AND status = 'active'").bind(matchId).all<FootballBetRow>()).results || [];
+  const bets = (await env.DB.prepare("SELECT * FROM football_bets WHERE match_id = ? AND status IN ('active', 'settling_payment')").bind(matchId).all<FootballBetRow>()).results || [];
   for (const bet of bets) await payFootballBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
-  await env.DB.prepare("UPDATE football_matches SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(matchId).run();
+  if (await countFootballMatchPayments(env, matchId) <= 0) await env.DB.prepare("UPDATE football_matches SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(matchId).run();
 }
 
 async function payFootballBet(env: Env, bet: FootballBetRow, payoutNano: number, status: 'won' | 'refunded'): Promise<void> {
   const betId = cleanDbText(bet.id, 'Prediction bet is not ready');
-  const locked = await env.DB.prepare('UPDATE football_bets SET status = ?, payout_nano = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ? AND status = \'active\'').bind(status, payoutNano, betId).run();
-  if ((locked.meta?.changes || 0) <= 0) return;
-  const alreadyPaid = await env.DB.prepare("SELECT id FROM ton_transactions WHERE reference_type = 'football_bet' AND reference_id = ? LIMIT 1").bind(betId).first<{ id: string }>().catch(() => null);
-  if (!alreadyPaid && payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Football prediction payout' : 'Football prediction refund', referenceId: betId, referenceType: 'football_bet', metadata: { matchId: bet.match_id, pick: bet.pick, status } });
+  if (bet.status !== 'settling_payment') {
+    const locked = await env.DB.prepare("UPDATE football_bets SET status = 'settling_payment', payout_nano = ? WHERE id = ? AND status = 'active'").bind(payoutNano, betId).run();
+    if ((locked.meta?.changes || 0) <= 0) return;
+  }
+  if (payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Football prediction payout' : 'Football prediction refund', referenceId: betId, referenceType: 'football_bet', metadata: { matchId: bet.match_id, pick: bet.pick, status } });
+  await env.DB.prepare("UPDATE football_bets SET status = ?, payout_nano = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP) WHERE id = ? AND status = 'settling_payment'").bind(status, payoutNano, betId).run();
 }
 
+async function countFootballMatchPayments(env: Env, matchId: string): Promise<number> {
+  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM football_bets WHERE match_id = ? AND status IN ('active', 'settling_payment')").bind(matchId).first<{ count: number }>();
+  return Number(row?.count || 0);
+}
 
 async function expireFootballLiveQuestions(env: Env): Promise<void> {
   await ensureFootballPredictTables(env);
@@ -298,45 +345,56 @@ async function expireFootballLiveQuestions(env: Env): Promise<void> {
 
 async function settleFootballLiveQuestion(env: Env, questionId: string, result: FootballLivePick): Promise<void> {
   await ensureFootballPredictTables(env);
-  const lock = await env.DB.prepare("UPDATE football_live_questions SET status = 'settling', result = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('open', 'expired')").bind(result, questionId).run();
+  const lock = await env.DB.prepare("UPDATE football_live_questions SET status = 'settling', result = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status NOT IN ('settled', 'refunded', 'deleted')").bind(result, questionId).run();
   if ((lock.meta?.changes || 0) <= 0) return;
-  const active = (await env.DB.prepare("SELECT * FROM football_live_question_bets WHERE question_id = ? AND status = 'active'").bind(questionId).all<FootballLiveQuestionBetRow>()).results || [];
-  const winnerPool = active.filter((bet) => bet.pick === result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
+  const all = (await env.DB.prepare('SELECT * FROM football_live_question_bets WHERE question_id = ?').bind(questionId).all<FootballLiveQuestionBetRow>()).results || [];
+  const eligible = all.filter((bet) => bet.status !== 'failed' && bet.status !== 'pending');
+  const processing = eligible.filter((bet) => bet.status === 'active' || bet.status === 'settling_payment');
+  const winnerPool = eligible.filter((bet) => bet.pick === result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
   if (winnerPool <= 0) {
-    for (const bet of active) await payFootballLiveQuestionBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
-    await env.DB.prepare("UPDATE football_live_questions SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(questionId).run();
+    for (const bet of processing) await payFootballLiveQuestionBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
+    if (await countFootballLiveQuestionPayments(env, questionId) <= 0) await env.DB.prepare("UPDATE football_live_questions SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(questionId).run();
     return;
   }
-  const loserPool = active.filter((bet) => bet.pick !== result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
+  const loserPool = eligible.filter((bet) => bet.pick !== result).reduce((sum, bet) => sum + Number(bet.stake_nano || 0), 0);
   const fee = Math.floor(loserPool * PLATFORM_FEE_BPS / 10000);
   const distributable = Math.max(0, loserPool - fee);
-  for (const bet of active) {
+  for (const bet of processing) {
     const stake = Number(bet.stake_nano || 0);
     if (bet.pick === result) await payFootballLiveQuestionBet(env, bet, stake + Math.floor(stake / winnerPool * distributable), 'won');
     else await env.DB.prepare("UPDATE football_live_question_bets SET status = 'lost', payout_nano = 0, settled_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'").bind(cleanDbText(bet.id, 'Live question bet is not ready')).run();
   }
-  await env.DB.prepare("UPDATE football_live_questions SET status = 'settled', result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(result, questionId).run();
+  if (await countFootballLiveQuestionPayments(env, questionId) <= 0) await env.DB.prepare("UPDATE football_live_questions SET status = 'settled', result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(result, questionId).run();
 }
 
 async function refundFootballLiveQuestion(env: Env, questionId: string): Promise<void> {
   const lock = await env.DB.prepare("UPDATE football_live_questions SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status NOT IN ('settled', 'refunded', 'deleted')").bind(questionId).run();
   if ((lock.meta?.changes || 0) <= 0) return;
-  const bets = (await env.DB.prepare("SELECT * FROM football_live_question_bets WHERE question_id = ? AND status = 'active'").bind(questionId).all<FootballLiveQuestionBetRow>()).results || [];
+  const bets = (await env.DB.prepare("SELECT * FROM football_live_question_bets WHERE question_id = ? AND status IN ('active', 'settling_payment')").bind(questionId).all<FootballLiveQuestionBetRow>()).results || [];
   for (const bet of bets) await payFootballLiveQuestionBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
-  await env.DB.prepare("UPDATE football_live_questions SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(questionId).run();
+  if (await countFootballLiveQuestionPayments(env, questionId) <= 0) await env.DB.prepare("UPDATE football_live_questions SET status = 'refunded', result = NULL, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(questionId).run();
 }
 
 async function deleteFootballLiveQuestion(env: Env, questionId: string): Promise<void> {
   await refundFootballLiveQuestion(env, questionId);
+  const remaining = await countFootballLiveQuestionPayments(env, questionId);
+  if (remaining > 0) throw new Error('Live question refunds are still processing');
   await env.DB.prepare("UPDATE football_live_questions SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(questionId).run();
 }
 
 async function payFootballLiveQuestionBet(env: Env, bet: FootballLiveQuestionBetRow, payoutNano: number, status: 'won' | 'refunded'): Promise<void> {
   const betId = cleanDbText(bet.id, 'Live question bet is not ready');
-  const locked = await env.DB.prepare("UPDATE football_live_question_bets SET status = ?, payout_nano = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'").bind(status, payoutNano, betId).run();
-  if ((locked.meta?.changes || 0) <= 0) return;
-  const alreadyPaid = await env.DB.prepare("SELECT id FROM ton_transactions WHERE reference_type = 'football_live_question_bet' AND reference_id = ? LIMIT 1").bind(betId).first<{ id: string }>().catch(() => null);
-  if (!alreadyPaid && payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Football live question payout' : 'Football live question refund', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: bet.match_id, questionId: bet.question_id, pick: bet.pick, status } });
+  if (bet.status !== 'settling_payment') {
+    const locked = await env.DB.prepare("UPDATE football_live_question_bets SET status = 'settling_payment', payout_nano = ? WHERE id = ? AND status = 'active'").bind(payoutNano, betId).run();
+    if ((locked.meta?.changes || 0) <= 0) return;
+  }
+  if (payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Football live question payout' : 'Football live question refund', referenceId: betId, referenceType: 'football_live_question_bet', metadata: { matchId: bet.match_id, questionId: bet.question_id, pick: bet.pick, status } });
+  await env.DB.prepare("UPDATE football_live_question_bets SET status = ?, payout_nano = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP) WHERE id = ? AND status = 'settling_payment'").bind(status, payoutNano, betId).run();
+}
+
+async function countFootballLiveQuestionPayments(env: Env, questionId: string): Promise<number> {
+  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM football_live_question_bets WHERE question_id = ? AND status IN ('active', 'settling_payment')").bind(questionId).first<{ count: number }>();
+  return Number(row?.count || 0);
 }
 
 async function footballLiveQuestionsJson(env: Env, matchId: string, userId: string, includeClosed = false) {
@@ -405,4 +463,6 @@ function cleanQuestionText(value: unknown): string { const text = String(value ?
 function normalizeTimerMinutes(value: unknown): number { const n = Math.floor(Number(value)); if (!Number.isFinite(n) || n <= 0) throw new Error('Timer must be at least 1 minute'); return Math.min(180, n); }
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
-function truthy(value: unknown): Promise<boolean> { return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on'; }
+async function authenticateUser(env: Env, claimedInput: unknown, initDataInput: unknown): Promise<string> { const claimed = cleanUserId(claimedInput); const verified = await validateTelegramInitData(initDataInput, gameBotToken(env)); if (verified !== claimed) throw new Error('Telegram user mismatch'); return verified; }
+function truthy(value: unknown): boolean { return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on'; }
+function castEnv(env: Env): Env { return env; }
