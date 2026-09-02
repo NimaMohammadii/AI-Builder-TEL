@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { SHARE_INVITE_IMAGE_FILE_KEY } from './miniapp/i18n';
 import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
 import { setSpecialWheelEnabled } from './special-wheel-mode';
@@ -19,7 +20,7 @@ type PaymentMethod = 'stars' | 'gram' | 'nft';
 type PredictAsset = 'card' | 'logo';
 type PredictMarket = 'bitcoin' | 'solana' | 'ethereum' | 'gold' | 'oil';
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'predict'; asset: PredictAsset; market: PredictMarket } | { kind: 'audio'; game: AudioGame };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'predict'; asset: PredictAsset; market: PredictMarket } | { kind: 'audio'; game: AudioGame } | { kind: 'share-invite' };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -44,6 +45,7 @@ const AUDIO_STATE_PREFIX = 'audio:';
 const PREDICT_STATE_PREFIX = 'predict:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
+const SHARE_INVITE_STATE = 'share-invite-image';
 const SLOT_AUDIO_KEY = 'slot-spin-audio';
 const DICE_AUDIO_KEY = 'miniapp/audio';
 const DICE_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
@@ -197,6 +199,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:tonlogo'
       || data === 'botadmin:homeslot'
       || data === 'botadmin:predictimages'
+      || data === 'botadmin:shareinviteimage'
       || data === 'botadmin:ranks'
       || data === 'botadmin:ghostassets'
       || data === 'botadmin:slotsymbols'
@@ -250,6 +253,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:homeslot') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), HOME_SLOT_STATE, { expirationTtl: 900 });
       await promptImage(token, chatId, messageId, '🎰 تصویر اسلات صفحه Home', 'تصویری که داخل کادر شیشه‌ای اسلات در Home نمایش داده می‌شود را بفرستید.', 'botadmin:imagesmenu');
+    } else if (data === 'botadmin:shareinviteimage') {
+      await env.BOT_CACHE.put(stateKey(callback.from.id), SHARE_INVITE_STATE, { expirationTtl: 900 });
+      await promptImage(token, chatId, messageId, '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', 'یک تصویر را به‌صورت عکس معمولی بفرستید. همین تصویر همراه متن دعوت و دکمهٔ ورود به اپ ارسال می‌شود.', 'botadmin:imagesmenu');
     } else if (data === 'botadmin:predictimages') {
       await clearState(env, callback.from.id);
       await sendPredictImageMenu(env, token, chatId, messageId);
@@ -393,6 +399,30 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     return ok();
   }
 
+  if (target.kind === 'share-invite') {
+    const source = imageFromMessage(message);
+    if (!source || source.via !== 'photo') {
+      await replaceUploadPrompt(env, token, message, '❌ تصویر دعوت را به‌صورت عکس معمولی بفرستید، نه File/Document.');
+      return ok();
+    }
+    try {
+      await env.BOT_CACHE.put(SHARE_INVITE_IMAGE_FILE_KEY, source.fileId);
+      await clearState(env, message.from.id);
+      await deleteMessage(token, message.chat.id, message.message_id);
+      await deleteTrackedMenu(env, token, message.chat.id);
+      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+        chat_id: message.chat.id,
+        photo: source.fileId,
+        caption: '✅ تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.',
+        reply_markup: { inline_keyboard: [[{ text: '🎪 تغییر تصویر دعوت', callback_data: 'botadmin:shareinviteimage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
+      }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: '✅ تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.' }));
+      await trackMenuMessage(env, message.chat.id, sent?.message_id);
+    } catch (error) {
+      await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'ذخیرهٔ تصویر دعوت انجام نشد.'}`);
+    }
+    return ok();
+  }
+
   const source = imageFromMessage(message);
   if (!source) {
     await replaceUploadPrompt(env, token, message, '❌ یک فایل PNG، JPG یا WebP بفرستید یا /cancel را بزنید.');
@@ -487,6 +517,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🏁 خانه‌های Plinko', callback_data: 'botadmin:plinko:image:house' },
     ],
     [{ text: '🎵 صداهای بازی', callback_data: 'botadmin:audiomenu' }],
+    [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: '📈 کارت‌ها و لوگوهای Predict', callback_data: 'botadmin:predictimages' }],
     [{ text: '🎰 شکل‌های بازی Slot', callback_data: 'botadmin:slotsymbols' }],
@@ -760,6 +791,7 @@ function normalizeCrashStageSlot(value: unknown): number | null {
 }
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
+  if (raw === SHARE_INVITE_STATE) return { kind: 'share-invite' };
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
   if (raw.startsWith(PAYMENT_METHOD_STATE_PREFIX)) {
