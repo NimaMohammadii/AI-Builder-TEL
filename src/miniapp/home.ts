@@ -227,7 +227,7 @@ const HOME_MARKUP_SCRIPT = `
   }
   function reelY(index){return 'translate3d(0,-'+((index*40)+20)+'px,0)'}
   function reelDigitsHtml(){var html='';for(var cycle=0;cycle<4;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
-  function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=(i+1)%10;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
+  function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=0;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
   function placeSection(home,sec){if(home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
   function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})}
   function setDrawer(open,sec){ensureDrawerPortal(sec);var drawer=q('#homeTicketDrawer'),backdrop=q('#homeTicketDrawerBackdrop');if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
@@ -462,7 +462,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockTimer=0,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
-  var drawInitialized=false,lastDrawId='',winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
+  var winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
   var officialSpinActive=false,suppressedWindowFocus=false;
   var ticketAudioCtx=null;
   var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
@@ -588,7 +588,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function prizeRowsHtml(prizes){
     var rows=Array.isArray(prizes)?prizes:[],html='';
-    for(var i=0;i<15;i++){
+    for(var i=0;i<10;i++){
       var prize=rows[i]||{rank:i+1,prizeNano:0},rank=i+1,premium=rank<=3?'<div class="vexa-bonus-premium" aria-hidden="true"></div>':'';
       html+='<article class="home-bonus-row home-bonus-top-card home-live-winner-card">'+premium+'<div class="home-live-winner-avatar home-bonus-rank-avatar">#'+rank+'</div><div class="home-live-winner-user" aria-hidden="true"></div><div class="home-live-winner-amount">'+gram(prize.prizeNano)+' GRAM</div></article>';
     }
@@ -642,6 +642,8 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     var engine=slotEngine();if(!engine||typeof engine.setCode!=='function')return;
     try{engine.setCode(code)}catch(e){}
   }
+  function cancelScheduledDraw(){if(drawSpinTimer){clearTimeout(drawSpinTimer);drawSpinTimer=0}scheduledDrawId=''}
+  function setIdleCode(){if(!officialSpinActive)setStaticCode('00000')}
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
   function playWinnerEffect(){try{if(typeof window.VexaLotteryWinnerEffect==='function')window.VexaLotteryWinnerEffect()}catch(e){}}
@@ -653,6 +655,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
     scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
     var run=function(){
+      drawSpinTimer=0;
       var engine=slotEngine();
       if(!engine||typeof engine.spinTo!=='function'){scheduledDrawId='';return}
       setOfficialSpinActive(true);
@@ -663,22 +666,28 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
   }
   function applyDrawResult(){
-    var draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon);
-    if(!drawId||!/^\\d{5}$/.test(code))return;
-    var round=state&&state.round,sameClosedRound=!!(round&&round.status==='closed'&&String(round.id||'')===drawId),now=liveServerNow();
-    var startAt=sameClosedRound?roundTime('drawStartsAt',DRAW_DELAY_MS):0;
+    var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon),now=liveServerNow();
+    if(!round||round.status==='open'){
+      cancelScheduledDraw();setIdleCode();return;
+    }
+    if(!drawId||!/^\\d{5}$/.test(code)){
+      cancelScheduledDraw();setIdleCode();return;
+    }
+    var sameClosedRound=round.status==='closed'&&String(round.id||'')===drawId;
+    if(!sameClosedRound){
+      cancelScheduledDraw();setIdleCode();return;
+    }
+    var startAt=roundTime('drawStartsAt',DRAW_DELAY_MS);
     var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;
     var animationEndsAt=startAt?startAt+duration:0;
-    if(!drawInitialized){
-      drawInitialized=true;lastDrawId=drawId;
-      if(sameClosedRound&&animationEndsAt&&now<animationEndsAt)scheduleLiveDraw(drawId,code,won,Math.max(now,startAt));
-      else{setStaticCode(code);if(won&&sameClosedRound)triggerWinnerEffect(drawId)}
+    if(startAt&&now<startAt){
+      setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return;
+    }
+    if(animationEndsAt&&now<animationEndsAt){
+      if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,won,now);
       return;
     }
-    if(drawId===lastDrawId)return;
-    lastDrawId=drawId;
-    if(sameClosedRound)scheduleLiveDraw(drawId,code,won,Math.max(now,startAt||now));
-    else setStaticCode(code);
+    cancelScheduledDraw();setStaticCode(code);if(won)triggerWinnerEffect(drawId);
   }
   function handleLivePrizePool(event){
     var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;
@@ -691,7 +700,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(loading)return false;
     var now=Date.now();if(!force&&now-lastLoadAt<500)return false;
     var data=initData();
-    if(!data){state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();return false}
+    if(!data){state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();setIdleCode();return false}
     loading=true;lastLoadAt=now;
     var started=Date.now();
     try{
@@ -705,7 +714,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       armLifecycle();
       return true;
     }catch(error){
-      state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();
+      state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();setIdleCode();
       lifecycleRetryMs=Math.min(15000,Math.max(1200,Math.round(lifecycleRetryMs*1.8)));
       if(q('#home.active')&&!document.hidden)scheduleLifecycleRefresh(lifecycleRetryMs);
       return false;
