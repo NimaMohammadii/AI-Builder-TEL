@@ -7,6 +7,14 @@ export type VexaLocale = typeof VEXA_LOCALES[number];
 
 export const DEFAULT_VEXA_LOCALE: VexaLocale = 'en';
 
+export const VEXA_LOCALE_LABELS: Readonly<Record<VexaLocale, string>> = {
+  en: 'English', fa: 'فارسی', ru: 'Русский', tr: 'Türkçe', ar: 'العربية',
+  es: 'Español', 'pt-BR': 'Português (Brasil)', id: 'Bahasa Indonesia', hi: 'हिन्दी',
+  de: 'Deutsch', fr: 'Français', it: 'Italiano', uk: 'Українська', pl: 'Polski',
+  vi: 'Tiếng Việt', th: 'ไทย', ko: '한국어', ja: '日本語', ur: 'اردو',
+  fil: 'Filipino', ms: 'Bahasa Melayu', 'zh-Hant': '繁體中文',
+};
+
 /**
  * Country is detected from the Mini App's time-zone/IP decision.
  * Countries that are not mapped here intentionally use English.
