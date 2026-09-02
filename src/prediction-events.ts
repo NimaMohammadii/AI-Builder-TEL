@@ -8,7 +8,6 @@ const NANO = 1_000_000_000;
 const PLATFORM_FEE_BPS = 500;
 const DISCOVERY_LIMIT = 80;
 const DISCOVERY_SOURCE = 'https://gamma-api.polymarket.com';
-const EVENT_STATUSES = new Set(['draft', 'open', 'locked', 'settling', 'settled', 'refunding', 'refunded']);
 const PICKS = new Set(['yes', 'no']);
 const SPORT_PATTERN = /\b(sports?|soccer|football|nba|nfl|mlb|nhl|ufc|mma|tennis|golf|hockey|cricket|baseball|basketball|volleyball|formula\s*1|f1|esports?)\b/i;
 const CATEGORY_PATTERNS: Record<PredictionEventCategory, RegExp> = {
@@ -174,6 +173,7 @@ export async function updatePredictionEvent(env: Env, eventId: string, patch: { 
   if (!current) throw new Error('Prediction not found');
   if (current.status !== 'draft') throw new Error('Only drafts can be edited');
   const question = patch.question === undefined ? current.question : cleanQuestion(patch.question);
+  if (SPORT_PATTERN.test(question)) throw new Error('Sports predictions are not allowed');
   const closesAt = patch.closesAt === undefined ? current.closes_at : normalizeFutureDate(patch.closesAt);
   const resolutionSource = patch.resolutionSource === undefined ? current.resolution_source : cleanResolutionSource(patch.resolutionSource);
   await env.DB.prepare('UPDATE prediction_events SET question = ?, closes_at = ?, resolution_source = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(question, closesAt, resolutionSource, current.id).run();
@@ -187,6 +187,7 @@ export async function publishPredictionEvent(env: Env, eventId: string): Promise
   const current = await getPredictionEvent(env, eventId);
   if (!current) throw new Error('Prediction not found');
   if (current.status !== 'draft') throw new Error('Only drafts can be published');
+  if (SPORT_PATTERN.test(current.question + ' ' + String(current.description || ''))) throw new Error('Sports predictions are not allowed');
   if (Date.parse(current.closes_at) <= Date.now()) throw new Error('Close time must be in the future');
   if (!current.resolution_source) throw new Error('Set the resolution source before publishing');
   await env.DB.prepare("UPDATE prediction_events SET status = 'open', published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'draft'").bind(current.id).run();
@@ -284,7 +285,11 @@ function parseOutcomes(value: unknown): string[] {
 
 function tagsText(value: unknown): string {
   if (!Array.isArray(value)) return '';
-  return value.map((tag) => typeof tag === 'string' ? tag : [tag?.label, tag?.slug, tag?.name].filter(Boolean).join(' ')).join(' ');
+  return value.map((tag) => {
+    if (typeof tag === 'string') return tag;
+    const item = tag && typeof tag === 'object' ? tag as Record<string, unknown> : {};
+    return [item.label, item.slug, item.name].filter(Boolean).join(' ');
+  }).join(' ');
 }
 
 function cleanSourceMarketId(value: unknown): string { const id = cleanSourceMarketIdOptional(value); if (!id) throw new Error('Invalid Polymarket market id'); return id; }
