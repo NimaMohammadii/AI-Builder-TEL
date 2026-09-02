@@ -1,7 +1,7 @@
 import app from './index';
 import type { Env } from './types';
 import { getGhostRunVirtualUsers } from './ghost-run-virtual-users-config';
-import { buildCrashVirtualLiveBets, ensureCrashVirtualColumns, type CrashRoundSnapshot } from './crash-virtual-users';
+import { buildCrashVirtualLiveBets, type CrashRoundSnapshot } from './crash-virtual-users';
 import {
   cleanCrashAutoCashout,
   ensureCrashFinanceSchema,
@@ -17,7 +17,6 @@ const MIN_BET_NANO = 10000000;
 const MAX_BET_NANO = Math.floor(Number.MAX_SAFE_INTEGER / 50);
 const REVEAL_END_BEFORE_START_MS = 180;
 const CRASH_ROOM_NAME = 'global';
-let crashSchemaReady = false;
 
 app.get('/app/api/ghost-run-virtual-users', async (c) => {
   const [virtualConfig, realUsers] = await Promise.all([
@@ -287,10 +286,7 @@ async function readRealLiveRows(db:D1Database, roundId:number): Promise<Row[]>{
 }
 
 async function ensure(env:Env){
-  if(crashSchemaReady)return;
   await ensureCrashFinanceSchema(env);
-  await ensureCrashVirtualColumns(env.DB);
-  crashSchemaReady = true;
 }
 
 async function readCrashState(env:Env):Promise<CrashRoundSnapshot>{
