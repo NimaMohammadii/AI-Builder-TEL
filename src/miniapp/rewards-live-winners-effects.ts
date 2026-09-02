@@ -161,7 +161,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   transition:opacity .48s cubic-bezier(.16,1,.3,1),background .48s cubic-bezier(.16,1,.3,1),backdrop-filter .48s ease!important;
 }
 .home-winners-backdrop.is-open{opacity:1!important;pointer-events:auto!important;background:rgba(0,0,0,.58)!important;backdrop-filter:blur(12px) saturate(.82)!important;-webkit-backdrop-filter:blur(12px) saturate(.82)!important}
-.home-winners-placeholder{min-height:154px!important;height:var(--home-live-activity-height,154px)!important;width:100%!important;visibility:hidden!important;pointer-events:none!important}
+.home-winners-placeholder{min-height:154px!important;width:100%!important;visibility:hidden!important;pointer-events:none!important}
 .home-winners-host.is-winners-expanding{
   position:fixed!important;
   left:var(--winners-left)!important;
@@ -463,7 +463,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     var section=ensureLocation();if(!section||section.parentNode!==host)return;
     var rect=host.getBoundingClientRect(),vw=Math.max(1,window.innerWidth||document.documentElement.clientWidth||rect.width),vh=Math.max(1,window.innerHeight||document.documentElement.clientHeight||rect.height);
     var left=10,top=10,width=Math.max(280,vw-20),height=Math.max(320,vh-20);
-    placeholder=document.createElement('div');placeholder.className='home-winners-placeholder';placeholder.style.height=Math.max(154,rect.height)+'px';
+    placeholder=document.createElement('div');placeholder.className='home-winners-placeholder';placeholder.style.setProperty('height',Math.max(154,rect.height)+'px','important');
     if(host.parentNode)host.parentNode.insertBefore(placeholder,host);
     ensureChrome(host);ensureBackdrop();expandedHost=host;
     bodyOverflow=document.body.style.overflow||'';document.body.style.overflow='hidden';document.documentElement.classList.add('vexa-winners-open');
@@ -479,6 +479,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     if(!host)return;
     host.classList.remove('is-winners-open','is-winners-expanding');host.removeAttribute('aria-modal');host.setAttribute('role','button');host.setAttribute('tabindex','0');host.setAttribute('aria-label','Open lottery winners');
     ['--winners-left','--winners-top','--winners-width','--winners-height','--winners-from-x','--winners-from-y','--winners-scale-x','--winners-scale-y'].forEach(function(name){host.style.removeProperty(name)});
+    var head=q('.home-winners-expanded-head',host);if(head)head.remove();
     if(placeholder&&placeholder.parentNode)placeholder.parentNode.replaceChild(host,placeholder);placeholder=null;expandedHost=null;closing=false;
     document.body.style.overflow=bodyOverflow;document.documentElement.classList.remove('vexa-winners-open');bindHost(host);queue();
   }
