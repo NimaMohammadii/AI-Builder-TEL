@@ -134,16 +134,16 @@ export const PREDICT_ZONE_SCRIPT = `
     function slotFor(now){var d=cfg().duration;return Math.floor(now/d)*d}
     function y(v,scale){return Math.max(P,Math.min(H-P,P+((scale.max-v)/(scale.max-scale.min||1))*(H-P*2)))}
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
+    function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
     function axisCapacity(){var chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H);return Math.max(2,Math.min(4,Math.floor(usableHeight/42)+1))}
     function resolvePriceAxis(scale){
-      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,rawStep,units,step,mid,first,ticks,edge,fitted,gap,i;
+      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,mid,first,ticks,edge,fitted,gap,i;
       for(count=maxCount;count>=2;count--){
-        rawStep=span/Math.max(1,count-1);
-        units=Math.max(1,Math.round(rawStep/quantum));
-        step=units*quantum;
+        step=Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));
+        step=Math.ceil((step-1e-12)/quantum)*quantum;
         mid=(scale.min+scale.max)/2;
-        first=Math.floor((mid-step*(count-1)/2)/quantum)*quantum;
-        if(first<=0)first=Math.max(quantum,Math.ceil(scale.min/quantum)*quantum);
+        first=Math.round((mid-step*(count-1)/2)/step)*step;
+        if(first<=0)first=Math.max(step,Math.ceil(scale.min/step)*step);
         ticks=[];
         for(i=0;i<count;i++)ticks.push(Number((first+i*step).toFixed(precision)));
         edge=Math.max(span*.02,quantum*.1);
@@ -173,34 +173,13 @@ export const PREDICT_ZONE_SCRIPT = `
     function renderPriceTicks(scale,ticks){
       if(!axisLayer||!gridLayer)return;
       var key=market+'|'+ticks.join('|'),labels,i,top;
-      if(key!==axisKey){
-        axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
-        ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
-      }
+      if(key!==axisKey){axisKey=key;axisLayer.textContent='';gridLayer.textContent='';ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)})}
       labels=axisLayer.children;
       for(i=0;i<ticks.length;i++){top=y(ticks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
     }
-    function setTrend(next){
-      var n=next==='up'?'up':next==='down'?'down':'flat';
-      if(trend===n&&card&&card.classList.contains('trend-'+n))return;
-      trend=n;
-      if(card){card.classList.remove('trend-up','trend-down','trend-flat');card.classList.add('trend-'+n)}
-      if(trendLabel)trendLabel.textContent=n==='up'?'Above start':n==='down'?'Below start':'At start';
-    }
-    function syncTrend(){
-      var p=Number(raw||current||last||0),base=Number(entry||0);
-      if(!p||!base){setTrend('flat');if(trendLabel)trendLabel.textContent='Waiting for price';return}
-      var delta=p-base,epsilon=Math.max(base*.0000005,Math.pow(10,-Math.max(0,cfg().decimals))*0.25);
-      setTrend(delta>epsilon?'up':delta<-epsilon?'down':'flat');
-    }
-    function animateLivePrice(next,prev){
-      if(!live||!prev||!next||next===prev)return;
-      live.classList.remove('tick-up','tick-down');
-      void live.offsetWidth;
-      live.classList.add(next>prev?'tick-up':'tick-down');
-      if(priceTickTimer)clearTimeout(priceTickTimer);
-      priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460);
-    }
+    function setTrend(next){var n=next==='up'?'up':next==='down'?'down':'flat';if(trend===n&&card&&card.classList.contains('trend-'+n))return;trend=n;if(card){card.classList.remove('trend-up','trend-down','trend-flat');card.classList.add('trend-'+n)}if(trendLabel)trendLabel.textContent=n==='up'?'Above start':n==='down'?'Below start':'At start'}
+    function syncTrend(){var p=Number(raw||current||last||0),base=Number(entry||0);if(!p||!base){setTrend('flat');if(trendLabel)trendLabel.textContent='Waiting for price';return}var delta=p-base,epsilon=Math.max(base*.0000005,Math.pow(10,-Math.max(0,cfg().decimals))*0.25);setTrend(delta>epsilon?'up':delta<-epsilon?'down':'flat')}
+    function animateLivePrice(next,prev){if(!live||!prev||!next||next===prev)return;live.classList.remove('tick-up','tick-down');void live.offsetWidth;live.classList.add(next>prev?'tick-up':'tick-down');if(priceTickTimer)clearTimeout(priceTickTimer);priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460)}
     function showLoading(){readyPrice=false;lastVisualPrice=0;scaleMin=0;scaleMax=0;axisKey='';setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
     function seed(price){values=[price,price];current=price;last=price;raw=price;scaleMin=0;scaleMax=0;lastPointAt=0}
     function draw(progress){
