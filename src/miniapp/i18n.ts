@@ -82,7 +82,6 @@ export const SHARE_INVITE_BUTTON_TEXT: VexaText = {
   fil: '🎪 Buksan ang 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', ms: '🎪 Buka 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', 'zh-Hant': '🎪 開啟 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲',
 };
 
-export const SHARE_INVITE_IMAGE_FILE_KEY = 'share-invite:telegram-photo-file-id';
 export const VEXA_APP_DEEP_LINK = 'https://t.me/VexaAppBOT?startapp';
 
 export function vexaLocaleForCountry(countryCode: string | null | undefined): VexaLocale {
