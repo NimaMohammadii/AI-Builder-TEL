@@ -269,12 +269,12 @@ function sourceKeyFor(referenceType: string | null | undefined, referenceId: str
 
 function tonDepositToTransaction(row: TonDepositSourceRow): TonTransaction {
   const amountNano = Number(row.ton_balance_nano || 0);
-  return sourceTransaction(row.id, row.user_id, 'deposit', 'TON wallet deposit', `${row.amount_ton} TON wallet payment`, amountNano, row.status, 'ton_deposit', row.id, row.created_at, { txHash: row.tx_hash });
+  return sourceTransaction(row.id, row.user_id, 'deposit', 'GRAM wallet deposit', `${row.amount_ton} GRAM wallet payment`, amountNano, row.status, 'ton_deposit', row.id, row.created_at, { txHash: row.tx_hash });
 }
 
 function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
   const amountNano = Number(row.amount_nano || 0);
-  return sourceTransaction(row.id, row.user_id, 'deposit', 'Stars purchase', `${Number(row.stars_amount || 0)} Stars converted to TON balance`, amountNano, row.status, 'stars_deposit', row.id, row.created_at, { starsAmount: row.stars_amount });
+  return sourceTransaction(row.id, row.user_id, 'deposit', 'Stars purchase', `${Number(row.stars_amount || 0)} Stars converted to GRAM balance`, amountNano, row.status, 'stars_deposit', row.id, row.created_at, { starsAmount: row.stars_amount });
 }
 
 function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
@@ -283,7 +283,7 @@ function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
 }
 
 function withdrawalTitle(status: string): string {
-  return withdrawalHistoryStatus(status) === 'approved' ? 'TON withdrawal approved' : 'TON withdrawal';
+  return withdrawalHistoryStatus(status) === 'approved' ? 'GRAM withdrawal approved' : 'GRAM withdrawal';
 }
 
 function withdrawalHistoryStatus(status: string): string {
@@ -339,8 +339,8 @@ function emptyTransaction(userId: string, balanceAfterNano: number, meta: TonTra
 }
 
 function titleForKind(kind: string, amountNano: number): string {
-  if (kind === 'deposit') return 'TON deposit';
-  if (kind === 'withdraw') return 'TON withdrawal';
+  if (kind === 'deposit') return 'GRAM deposit';
+  if (kind === 'withdraw') return 'GRAM withdrawal';
   if (kind === 'game') return amountNano >= 0 ? 'Game reward' : 'Game bet';
   if (kind === 'group_usage') return 'Group usage';
   if (kind === 'admin') return 'Admin balance update';
