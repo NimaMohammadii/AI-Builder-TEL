@@ -30,37 +30,6 @@ export const MINIAPP_SCRIPT = `
     try{tg.BackButton.offClick(handleBackButton)}catch(e){}
     try{tg.BackButton.hide()}catch(e){}
   }
-  function openGameChat(){
-    if(!tg||typeof tg.openTelegramLink!=='function')return;
-    tg.openTelegramLink('https://t.me/VexaAppBOT');
-  }
-  function inviteFriends(){
-    if(!tg||typeof tg.openTelegramLink!=='function')return;
-    var inviteUrl='https://t.me/VexaAppBOT?startapp=invite';
-    tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(inviteUrl)+'&text='+encodeURIComponent('Join me on Vexa.'));
-  }
-  function openTelegramMenu(){
-    if(!tg||typeof tg.showPopup!=='function')return;
-    tg.showPopup({
-      title:'Vexa',
-      message:'What would you like to do?',
-      buttons:[
-        {id:'open-chat',type:'default',text:'Open Chat'},
-        {id:'invite-friends',type:'default',text:'Invite Friends'},
-        {type:'close'}
-      ]
-    },function(buttonId){
-      if(buttonId==='open-chat')openGameChat();
-      if(buttonId==='invite-friends')inviteFriends();
-    });
-  }
-  function initTelegramMenu(){
-    if(!tg||!tg.SettingsButton)return;
-    try{tg.SettingsButton.offClick(openTelegramMenu)}catch(e){}
-    try{tg.SettingsButton.onClick(openTelegramMenu)}catch(e){}
-    try{tg.SettingsButton.show()}catch(e){}
-  }
-
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
 
   function show(id){
@@ -138,7 +107,6 @@ export const MINIAPP_SCRIPT = `
   if(ownerId)storageSet('ownerId',ownerId);
   if(q('ownerId'))q('ownerId').value=ownerId;
   initPlayZoneGameNavigation();
-  initTelegramMenu();
   setText('brandTitle',sectionTitles.home);
   syncTelegramBackButton('home');
   setTimeout(openInitialTarget,250);
