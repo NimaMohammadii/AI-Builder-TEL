@@ -13,6 +13,7 @@ export const CRASH_LIVE_D1_SCRIPT = `
   function markDueVirtualCashouts(roundId,currentValue,stop){if(!cache||!cache.bets)return;var now=Date.now(),changed=false,bets=cache.bets.map(function(b){var target=Number(b&&b.targetCashoutMultiplier)||0;if(Number(b&&b.roundId)===Number(roundId)&&b.isVirtual&&b.status==='bet'&&target>0&&target<=currentValue&&target<stop){changed=true;var payout=Math.max(0,Math.floor((Number(b.amountNano)||0)*target));return Object.assign({},b,{status:'cashout',cashoutMultiplier:target,payoutNano:payout,updatedAt:new Date(now).toISOString(),localOrder:now+localSeq++})}return b});if(changed){cache=Object.assign({},cache,{bets:bets,state:Object.assign({},cache.state||{},{current:currentValue,running:true,inCrashHold:false})});render(cache)}}
   function amountFor(roundId,userId,payout,m){var bets=(cache&&cache.bets)||[],k=keyOf(roundId,userId);for(var i=0;i<bets.length;i++)if(keyOf(bets[i].roundId,bets[i].userId)===k)return Number(bets[i].amountNano)||0;return payout&&m>0?Math.floor(payout/m):0}
   function tgUser(){var tg=window.Telegram&&window.Telegram.WebApp;var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;var id=String((u&&u.id)||localStorage.getItem('ownerId')||'local').trim();var name=u?String(u.first_name||u.last_name||'User'):'You';return{id:id||'local',name:name||'User'}}
+  function telegramInitData(){var tg=window.Telegram&&window.Telegram.WebApp;return tg?String(tg.initData||''):''}
   function cleanText(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function isCrashActive(){var active=document.querySelector('.view.active');return !!(active&&active.id==='crash'&&!document.hidden)}
   function multAt(seconds){return 1+seconds*.06+seconds*seconds*.00105}
@@ -41,7 +42,7 @@ export const CRASH_LIVE_D1_SCRIPT = `
     if(now>=nextStart){requestSync(true);return}
     setEventTimer(Math.max(80,nextStart-now+80),function(){if(isCrashActive()&&currentScheduledRound===roundId)requestSync(true)})
   }
-  async function post(path,body){try{var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),keepalive:true});return await r.json().catch(function(){return null})}catch(e){return null}}
+  async function post(path,body){try{var payload=Object.assign({},body||{},{initData:telegramInitData()});var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),keepalive:true});return await r.json().catch(function(){return null})}catch(e){return null}}
   function applyServerState(r){if(!r)return false;var authoritative=false;var balance=Number(r.tonBalanceNano);if(Number.isFinite(balance)&&window.VexaTonBalance&&typeof window.VexaTonBalance.write==='function'){window.VexaTonBalance.write(balance,0,false);authoritative=true}if(r.level){try{window.dispatchEvent(new CustomEvent('vexa-initial-user-state',{detail:{level:r.level}}))}catch(e){}}return authoritative}
   function failEvent(name,detail){try{window.dispatchEvent(new CustomEvent(name,{detail:detail||{}}))}catch(e){}}
   async function pull(){try{var j=await fetch('/app/api/crash-live',{cache:'no-store'}).then(function(r){return r.json().catch(function(){return null})});if(j&&j.ok){cache=j;render(j);scheduleSmart(j)}}catch(e){}}
