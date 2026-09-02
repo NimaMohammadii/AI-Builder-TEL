@@ -76,7 +76,7 @@ app.get('/app/api/crash-live', async (c) => {
     const revealEnd = Math.max(revealStart, (Number(state.runningStartedAt)||revealStart) - REVEAL_END_BEFORE_START_MS);
     const [realRows, virtualRows] = await Promise.all([
       readRealLiveRows(c.env.DB, roundId),
-      buildCrashVirtualLiveBets(c.env, roundId, revealStart, revealEnd, now, state),
+      buildCrashVirtualLiveBets(c.env, roundId, state, revealStart, revealEnd, now),
     ]);
     const visibleVirtualRows = virtualRows.filter((row) => Number(row.virtual_reveal_at_ms||0) <= now);
     const bets = [...realRows, ...visibleVirtualRows]
