@@ -87,15 +87,18 @@ app.post('/app/api/crash-live/bet', async (c) => {
     return c.json({ok:true,roundId,duplicate:true,tonBalanceNano:controls.tonBalanceNano,level},200,{'cache-control':CACHE_NONE});
   }
 
+  let controls;
   try{
-    const controls = await debitUserTonBalanceIfEnough(c.env,userId,amountNano,{kind:'game',title:'Crash bet',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}`,metadata:{section:'crash'}});
-    const xp = await addUserXp(c.env,userId,2,'game-start',{section:'crash',event:'place-bet',roundId},`crash_bet_${roundId}_${userId}`);
-    return c.json({ok:true,roundId,tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
+    controls = await debitUserTonBalanceIfEnough(c.env,userId,amountNano,{kind:'game',title:'Crash bet',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}`,metadata:{section:'crash'}});
   }catch(error){
     await c.env.DB.prepare('DELETE FROM crash_live_bets WHERE round_id=? AND user_id=? AND is_virtual=0 AND status=\'bet\'').bind(roundId,userId).run().catch(()=>undefined);
-    const controls = await getUserControls(c.env,userId).catch(()=>null);
-    return c.json({ok:false,error:error instanceof Error?error.message:'Bet failed',tonBalanceNano:controls?.tonBalanceNano},400,{'cache-control':CACHE_NONE});
+    const current = await getUserControls(c.env,userId).catch(()=>null);
+    return c.json({ok:false,error:error instanceof Error?error.message:'Bet failed',tonBalanceNano:current?.tonBalanceNano},400,{'cache-control':CACHE_NONE});
   }
+
+  const xp = await addUserXp(c.env,userId,2,'game-start',{section:'crash',event:'place-bet',roundId},`crash_bet_${roundId}_${userId}`)
+    .catch(async (error) => { console.warn('Crash bet XP award failed', error); return { profile: await getUserLevel(c.env,userId) }; });
+  return c.json({ok:true,roundId,tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
 });
 
 app.post('/app/api/crash-live/cashout', async (c) => {
@@ -121,16 +124,19 @@ app.post('/app/api/crash-live/cashout', async (c) => {
     return c.json({ok:fresh?.status==='cashout',roundId,duplicate:true,payoutNano:savedPayout,payoutTon:ton(savedPayout),tonBalanceNano:controls.tonBalanceNano,level},fresh?.status==='cashout'?200:409,{'cache-control':CACHE_NONE});
   }
 
+  let controls;
   try{
-    const controls = await applyGameTonBalanceDelta(c.env,userId,payout,{kind:'game',title:'Crash cashout',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}:cashout`,metadata:{section:'crash',multiplier:m}});
-    const xpAmount = m>=5?70:(m>=2?30:15);
-    const xp = await addUserXp(c.env,userId,xpAmount,'game-win',{section:'crash',event:'cashout',roundId,multiplier:m,payoutNano:payout},`crash_cashout_${roundId}_${userId}`);
-    return c.json({ok:true,roundId,payoutNano:payout,payoutTon:ton(payout),tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
+    controls = await applyGameTonBalanceDelta(c.env,userId,payout,{kind:'game',title:'Crash cashout',roundId:String(roundId),referenceType:'crash',referenceId:`crash:${roundId}:${userId}:cashout`,metadata:{section:'crash',multiplier:m}});
   }catch(error){
     await c.env.DB.prepare("UPDATE crash_live_bets SET status='bet', cashout_multiplier=NULL, payout_nano=0, updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND is_virtual=0 AND status='cashout'").bind(roundId,userId).run().catch(()=>undefined);
-    const controls = await getUserControls(c.env,userId).catch(()=>null);
-    return c.json({ok:false,error:error instanceof Error?error.message:'Cashout failed',tonBalanceNano:controls?.tonBalanceNano},500,{'cache-control':CACHE_NONE});
+    const current = await getUserControls(c.env,userId).catch(()=>null);
+    return c.json({ok:false,error:error instanceof Error?error.message:'Cashout failed',tonBalanceNano:current?.tonBalanceNano},500,{'cache-control':CACHE_NONE});
   }
+
+  const xpAmount = m>=5?70:(m>=2?30:15);
+  const xp = await addUserXp(c.env,userId,xpAmount,'game-win',{section:'crash',event:'cashout',roundId,multiplier:m,payoutNano:payout},`crash_cashout_${roundId}_${userId}`)
+    .catch(async (error) => { console.warn('Crash cashout XP award failed', error); return { profile: await getUserLevel(c.env,userId) }; });
+  return c.json({ok:true,roundId,payoutNano:payout,payoutTon:ton(payout),tonBalanceNano:controls.tonBalanceNano,level:xp.profile},200,{'cache-control':CACHE_NONE});
 });
 
 app.post('/app/api/crash-live/crash', async (c) => {
@@ -138,7 +144,8 @@ app.post('/app/api/crash-live/crash', async (c) => {
   const b = await c.req.json().catch(()=>({})) as Record<string,unknown>;
   const roundId = rid(b.roundId), userId = uid(b.userId);
   const updated = await c.env.DB.prepare("UPDATE crash_live_bets SET status='crashed', updated_at=CURRENT_TIMESTAMP WHERE round_id=? AND user_id=? AND status='bet' AND is_virtual=0").bind(roundId,userId).run();
-  const xp = await addUserXp(c.env,userId,5,'game-lose',{section:'crash',event:'crash',roundId},`crash_loss_${roundId}_${userId}`);
+  const xp = await addUserXp(c.env,userId,5,'game-lose',{section:'crash',event:'crash',roundId},`crash_loss_${roundId}_${userId}`)
+    .catch(async (error) => { console.warn('Crash loss XP award failed', error); return { profile: await getUserLevel(c.env,userId) }; });
   return c.json({ok:true,roundId,duplicate:(updated.meta?.changes||0)<=0,level:xp.profile},200,{'cache-control':CACHE_NONE});
 });
 
@@ -193,6 +200,6 @@ function betRoundId(state:ReturnType<typeof getCrashRoundState>){return state.wa
 function rid(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<1)throw new Error('Round is not ready');return n}
 function uid(v:unknown){const s=String(v||'').trim().slice(0,80);if(!s)throw new Error('User is not ready');return s}
 function name(v:unknown,f:string){let s=String(v||f||'User').replace(/[<>]/g,'').trim();if(s.startsWith('@'))s=s.slice(1);if(s.includes(' '))s=s.split(' ')[0];return s.slice(0,80)||'User'}
-function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<MIN_BET_NANO)throw new Error('Minimum bet is 0.01 TON');return n}
+function amt(v:unknown){const n=Math.floor(Number(v));if(!Number.isFinite(n)||n<MIN_BET_NANO)throw new Error('Minimum bet is 0.01 GRAM');return n}
 function mult(v:unknown){const n=Number(v);if(!Number.isFinite(n)||n<1)throw new Error('Invalid multiplier');return Math.floor(n*100)/100}
 function ton(v:unknown){return (Math.max(0,Math.floor(Number(v)||0))/NANO).toFixed(4).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')}
