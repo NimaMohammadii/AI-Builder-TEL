@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { recordTonTransaction, recordTonTransactions, type TonTransactionMeta, type TonTransactionWrite } from './ton-transactions';
+import { ensureTonTransactionsTable, recordTonTransaction, recordTonTransactions, type TonTransactionMeta, type TonTransactionWrite } from './ton-transactions';
 
 export type UserSectionBlock = {
   sectionId: string;
@@ -18,11 +18,14 @@ export type UserControls = {
 };
 
 export type GameTonBalanceDelta = {
+  eventId?: string;
   deltaNano: number;
   section?: string;
 };
 
 const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
+const GAME_BALANCE_BATCH_MAX = 20;
+let gameBalanceLedgerReady: Promise<void> | null = null;
 
 type StoredUserControls = {
   userId?: string;
@@ -72,39 +75,48 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
 export async function applyGameTonBalanceDeltas(env: Env, userId: string, input: GameTonBalanceDelta[]): Promise<UserControls> {
   const id = cleanUserId(userId);
   await assertUserNotBanned(env, id);
-  const deltas = (Array.isArray(input) ? input : []).slice(0, 100).map((item) => ({
+  const deltas = (Array.isArray(input) ? input : []).slice(0, GAME_BALANCE_BATCH_MAX).map((item) => ({
+    eventId: cleanGameEventId(item?.eventId),
     deltaNano: Math.floor(Number(item?.deltaNano) || 0),
     section: cleanGameSection(item?.section) || 'unknown',
   })).filter((item) => item.deltaNano !== 0);
   if (!deltas.length) return getUserControls(env, id);
+  if (deltas.some((item) => !item.eventId)) throw new Error('Missing game balance event id');
 
   await ensureAppUserBalanceRow(env, id);
-  const before = await readUserTonBalance(env, id);
-  const expression = deltas.reduce((sql) => `max(0, ${sql} + ?)`, 'ton_balance_nano');
-  const result = await env.DB.prepare(`UPDATE app_users SET ton_balance_nano = ${expression}, updated_at = CURRENT_TIMESTAMP WHERE telegram_user_id = ? RETURNING ton_balance_nano`)
-    .bind(...deltas.map((item) => item.deltaNano), id)
-    .first<{ ton_balance_nano: number }>();
-  const after = normalizeNano(result?.ton_balance_nano ?? before);
+  await ensureGameBalanceLedger(env);
 
-  let running = before;
-  const writes: TonTransactionWrite[] = [];
+  const statements = [];
   for (const item of deltas) {
-    const next = Math.max(0, running + item.deltaNano);
-    const actual = next - running;
-    if (actual) {
-      writes.push({
-        amountNano: actual,
-        balanceAfterNano: next,
-        meta: {
-          kind: 'game',
-          title: item.deltaNano >= 0 ? 'Game reward' : 'Game bet',
-          metadata: { section: item.section, requestedDeltaNano: item.deltaNano },
-        },
-      });
-    }
-    running = next;
+    const eventId = item.eventId;
+    const requestNonce = crypto.randomUUID();
+    const transactionId = gameDeltaTransactionId(id, eventId);
+    const metadataJson = JSON.stringify({ section: item.section, requestedDeltaNano: item.deltaNano, eventId, requestNonce });
+    const title = item.deltaNano >= 0 ? 'Game reward' : 'Game bet';
+    statements.push(
+      env.DB.prepare(`INSERT OR IGNORE INTO ton_transactions (
+        id, user_id, kind, title, description, amount_nano, balance_after_nano, status,
+        reference_id, reference_type, metadata_json, created_at
+      )
+      SELECT ?, ?, 'game', ?, NULL,
+        max(0, ton_balance_nano + ?) - ton_balance_nano,
+        max(0, ton_balance_nano + ?),
+        'completed', ?, 'game_delta', ?, CURRENT_TIMESTAMP
+      FROM app_users
+      WHERE telegram_user_id = ?`)
+        .bind(transactionId, id, title, item.deltaNano, item.deltaNano, eventId, metadataJson, id),
+      env.DB.prepare(`UPDATE app_users
+        SET ton_balance_nano = max(0, ton_balance_nano + ?), updated_at = CURRENT_TIMESTAMP
+        WHERE telegram_user_id = ?
+          AND EXISTS (
+            SELECT 1 FROM ton_transactions
+            WHERE id = ? AND user_id = ? AND reference_type = 'game_delta' AND reference_id = ? AND metadata_json = ?
+          )`)
+        .bind(item.deltaNano, id, transactionId, id, eventId, metadataJson),
+    );
   }
-  if (writes.length) await recordTonTransactions(env, id, writes);
+  await env.DB.batch(statements);
+  const after = await readUserTonBalance(env, id);
   return controlsWithBalance(env, id, after);
 }
 
@@ -150,7 +162,7 @@ export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amou
     WHERE telegram_user_id = ? AND ton_balance_nano >= ?`).bind(amount, id, amount).run();
   if ((result.meta?.changes || 0) <= 0) throw new Error('Insufficient balance');
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, -amount, after, { kind: 'adjustment', title: 'TON debit', ...meta });
+  await recordTonTransaction(env, id, -amount, after, { kind: 'adjustment', title: 'GRAM debit', ...meta });
   return controlsWithBalance(env, id, after);
 }
 
@@ -161,7 +173,7 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
   const current = await getUserControls(env, id);
   const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
   const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
-  if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
+  if (blocked) next.push({ sectionId, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
   await saveControls(env, id, next, current.winChancePercent, current.banned);
   return getUserControls(env, id);
 }
@@ -210,7 +222,7 @@ function shapeUserControls(userId: string, saved: StoredUserControls | null, ton
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
-    const row = await readUserControlRow(env, userId);
+    const row = await readUserControlRow(env, id);
     if (row) return rowToStoredControls(userId, row);
   } catch (error) {
     if (isMissingUserControlsSchema(error)) {
@@ -276,6 +288,16 @@ async function ensureAppUserBalanceRow(env: Env, userId: string): Promise<void> 
     ON CONFLICT(telegram_user_id) DO NOTHING`).bind(userId).run();
 }
 
+async function ensureGameBalanceLedger(env: Env): Promise<void> {
+  if (!gameBalanceLedgerReady) {
+    gameBalanceLedgerReady = ensureTonTransactionsTable(env).catch((error) => {
+      gameBalanceLedgerReady = null;
+      throw error;
+    });
+  }
+  await gameBalanceLedgerReady;
+}
+
 async function readUserTonBalance(env: Env, userId: string): Promise<number> {
   const app = await env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ?').bind(userId).first<{ ton_balance_nano: number }>().catch(() => null);
   return normalizeNano(app?.ton_balance_nano ?? 0);
@@ -335,6 +357,14 @@ function normalizeWinChance(value: unknown): number {
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, n));
+}
+
+function cleanGameEventId(value: unknown): string {
+  return String(value || '').trim().replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80);
+}
+
+function gameDeltaTransactionId(userId: string, eventId: string): string {
+  return `gdelta:${userId}:${eventId}`;
 }
 
 function cleanGameSection(value: unknown): string {
