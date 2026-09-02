@@ -29,6 +29,10 @@
       {
         "name": "GHOST_RUN_LIVE",
         "class_name": "GhostRunLiveRoom"
+      },
+      {
+        "name": "CRASH_LIVE",
+        "class_name": "CrashLiveRoom"
       }
     ]
   },
@@ -69,6 +73,10 @@
     {
       "tag": "v8",
       "new_sqlite_classes": ["LiveActivityRoom"]
+    },
+    {
+      "tag": "v9",
+      "new_sqlite_classes": ["CrashLiveRoom"]
     }
   ],
   "d1_databases": [
