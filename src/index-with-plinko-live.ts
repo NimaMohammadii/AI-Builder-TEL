@@ -9,6 +9,7 @@ import { handleLotteryAdminRequest } from './telegram-lottery-admin';
 import { handleOnlineCountsAdminRequest } from './telegram-online-counts-admin';
 import { handlePlinkoControlAdminRequest } from './telegram-plinko-control-admin';
 import { handlePlayZoneCardAdminRequest } from './telegram-play-zone-card-admin';
+import { handlePredictionEventsAdminRequest } from './telegram-prediction-events-admin';
 import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin } from './play-zone-card-visibility';
 import { handleLotteryRequest } from './lottery-http';
 import { gameBotToken, validateTelegramInitData } from './utils';
@@ -805,6 +806,9 @@ export default {
 
     const lotteryResponse = await handleLotteryRequest(request, runtimeEnv);
     if (lotteryResponse) return lotteryResponse;
+
+    const predictionEventsAdminResponse = await handlePredictionEventsAdminRequest(request, runtimeEnv);
+    if (predictionEventsAdminResponse) return predictionEventsAdminResponse;
 
     const crashGhostLiveBetsAdminResponse = await handleCrashGhostLiveBetsAdminRequest(request, runtimeEnv);
     if (crashGhostLiveBetsAdminResponse) return crashGhostLiveBetsAdminResponse;
