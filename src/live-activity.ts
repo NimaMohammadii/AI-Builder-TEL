@@ -192,74 +192,37 @@ function randomHex(length: number): string {
   return Array.from(bytes).map((value) => value.toString(16).padStart(2, '0')).join('').slice(0, length);
 }
 
+// Compatibility export used by the app shell. This is transport-only: it does
+// not mount, style, render, or refresh any Live Activity UI.
 export const LIVE_ACTIVITY_CLIENT_SCRIPT = `
 <script>
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
-  var events=[];
   var socket=null;
   var reconnectTimer=0;
   var reconnectAttempt=0;
-  var clockTimer=0;
-  var heightObserver=null;
-  var observedTicket=null;
-  function q(s,r){return (r||document).querySelector(s)}
-  function esc(v){return String(v||'').replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
   function allowed(event){return !!event&&!!event.id&&(event.kind==='deposit'||event.kind==='withdraw'||event.kind==='ticket')}
-  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')}
-  function relTime(value){var t=Date.parse(String(value||''));if(!Number.isFinite(t))return 'now';var s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<45)return 'now';if(s<3600)return Math.max(1,Math.floor(s/60))+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
-  function amountText(event){var raw=event&&event.amountNano;if(raw!==null&&raw!==undefined&&Number.isFinite(Number(raw))){var amount=Math.max(0,Number(raw)||0);if(amount===0&&event.kind==='ticket')return 'FREE';return gram(amount)}return '0'}
-  function shortAction(event){
-    var amount=amountText(event);
-    if(event.kind==='deposit')return 'Deposited '+amount+' GRAM';
-    if(event.kind==='withdraw')return 'Withdrew '+amount+' GRAM';
-    if(event.kind==='ticket'){
-      if(amount==='FREE')return 'Claimed free ticket';
-      var action=String(event&&event.action||'');
-      var match=action.match(/bought\\s+(\\d+)\\s+tickets?/i);
-      var quantity=Math.max(1,Number(match&&match[1])||1);
-      return 'Bought '+quantity+' ticket'+(quantity===1?'':'s');
-    }
-    return ''
-  }
-  function style(){
-    if(q('#homeLiveActivityStyle'))return;
-    var st=document.createElement('style');st.id='homeLiveActivityStyle';st.textContent=[
-      '#home .home-ticket-finance-visual.home-ticket-card{min-height:154px!important;height:var(--home-live-activity-height,154px)!important;align-self:start!important;place-items:stretch!important;pointer-events:auto!important;overflow:hidden!important}',
-      '#home .home-ticket-finance-visual.home-ticket-card>.home-live-activity{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr)!important;gap:0!important;align-content:stretch!important;min-width:0!important}',
-      '.home-live-activity-list{position:relative!important;display:grid!important;grid-auto-rows:32px!important;align-content:start!important;gap:6px!important;min-height:0!important;height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 2px!important;box-sizing:border-box!important;background:transparent!important;box-shadow:none!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:pan-y!important;mask-image:none!important;-webkit-mask-image:none!important}.home-live-activity-list::-webkit-scrollbar{display:none!important}.home-live-activity-list.has-overflow:not(.is-scrolled){mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 10px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 10px),transparent 100%)!important}.home-live-activity-list.has-overflow.is-scrolled:not(.is-at-bottom){mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 10px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 10px),transparent 100%)!important}.home-live-activity-list.has-overflow.is-at-bottom{mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 100%)!important}',
-      '.home-live-activity-row{position:relative!important;overflow:hidden!important;height:32px!important;min-height:32px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important}.home-live-activity-row.is-new{animation:homeLiveEnter .62s cubic-bezier(.16,.84,.2,1)!important}.home-live-activity-row.is-shifting{animation:homeLiveShift .54s cubic-bezier(.16,.84,.2,1)!important}@keyframes homeLiveEnter{0%{opacity:0;transform:translate3d(-28px,-10px,0) scale(.9)}52%{opacity:1;transform:translate3d(5px,1px,0) scale(1.035)}76%{transform:translate3d(-2px,0,0) scale(.995)}100%{opacity:1;transform:none}}@keyframes homeLiveShift{0%{transform:translate3d(0,-16px,0)}68%{transform:translate3d(0,2px,0)}100%{transform:none}}',
-      '.home-live-activity-copy{min-width:0!important;display:flex!important;align-items:center!important;gap:5px!important;overflow:hidden!important}.home-live-activity-name{flex:0 1 auto!important;min-width:0!important;max-width:46%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;font-size:9.5px!important;font-weight:900!important;line-height:1.08!important}.home-live-activity-action{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:rgba(255,255,255,.48)!important;font-size:8px!important;font-weight:750!important;line-height:1.08!important}.home-live-activity-time{align-self:center!important;color:rgba(255,255,255,.34)!important;font-size:7.5px!important;font-weight:800!important;white-space:nowrap!important;margin-left:2px!important}',
-      '.home-live-activity-empty{height:100%!important;display:grid!important;place-items:center!important;text-align:center!important;color:rgba(255,255,255,.34)!important;font-size:9px!important;font-weight:760!important;line-height:1.3!important;padding:0 12px!important}',
-      '@media (prefers-reduced-motion:reduce){.home-live-activity-row{animation:none!important}}'
-    ].join('');document.head.appendChild(st)
-  }
-  function syncHeight(){var host=q('#home .home-ticket-finance-visual'),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!host||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)host.style.setProperty('--home-live-activity-height',Math.max(154,h)+'px')}
-  function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
-  function updateFade(){var list=q('#home .home-live-activity-list');if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight);var overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
-  function mount(){
-    style();var host=q('#home .home-ticket-finance-visual');if(!host)return false;
-    host.removeAttribute('aria-hidden');host.classList.add('home-ticket-card');
-    if(!q('.home-live-activity',host))host.innerHTML='<section class="home-live-activity" aria-label="Recent activity"><div class="home-live-activity-list"></div></section>';
-    var list=q('.home-live-activity-list',host);if(list&&list.dataset.scrollBound!=='1'){list.dataset.scrollBound='1';list.addEventListener('scroll',updateFade,{passive:true})}
-    watchHeight();
-    return true
-  }
-  function row(event,isNew,isShifting){return '<article class="home-live-activity-row'+(isNew?' is-new':'')+(isShifting?' is-shifting':'')+'" data-live-activity-id="'+esc(event.id)+'"><div class="home-live-activity-copy"><div class="home-live-activity-name">'+esc(event.displayName)+'</div><div class="home-live-activity-action">'+esc(shortAction(event))+'</div></div><time class="home-live-activity-time" datetime="'+esc(event.createdAt)+'">'+relTime(event.createdAt)+'</time></article>'}
-  function render(animateFirst){if(!mount())return;var list=q('#home .home-live-activity-list');if(!list)return;var oldTop=Math.max(0,Number(list.scrollTop)||0);var first=list.querySelector('.home-live-activity-row');var shift=first?first.getBoundingClientRect().height+6:0;var preserve=animateFirst&&oldTop>8;if(!events.length){list.innerHTML='<div class="home-live-activity-empty">Recent activity will appear here</div>';updateFade();return}list.innerHTML=events.map(function(event,index){return row(event,animateFirst&&index===0,animateFirst&&index>0)}).join('');if(preserve)list.scrollTop=oldTop+shift;else if(animateFirst)list.scrollTop=0;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(updateFade)}
-  function refreshTimes(){document.querySelectorAll('#home .home-live-activity-time').forEach(function(el){el.textContent=relTime(el.getAttribute('datetime'))});clearTimeout(clockTimer);clockTimer=setTimeout(refreshTimes,30000)}
-  function applyInit(list){events=(Array.isArray(list)?list:[]).filter(allowed).slice(0,30);render(false)}
   function broadcast(event){try{window.dispatchEvent(new CustomEvent('vexa:live-activity',{detail:event}))}catch(e){}}
-  function applyEvent(event){if(!allowed(event))return;events=[event].concat(events.filter(function(item){return item.id!==event.id})).slice(0,30);render(true);broadcast(event)}
   function delay(){return Math.min(30000,900*Math.pow(2,Math.min(reconnectAttempt++,5)))}
   function connect(){
     if(socket||!window.WebSocket)return;
-    var initData=String((tg&&tg.initData)||'');if(!initData)return
+    var initData=String((tg&&tg.initData)||'');if(!initData)return;
     var proto=location.protocol==='https:'?'wss:':'ws:';
-    try{socket=new WebSocket(proto+'//'+location.host+'/app/api/live-activity/ws?initData='+encodeURIComponent(initData));socket.onopen=function(){reconnectAttempt=0};socket.onmessage=function(message){try{var data=JSON.parse(message.data);if(data&&data.type==='live-activity:init')applyInit(data.events);else if(data&&data.type==='live-activity:event')applyEvent(data.event)}catch(e){}};socket.onclose=function(){socket=null;clearTimeout(reconnectTimer);if(!document.hidden)reconnectTimer=setTimeout(connect,delay())};socket.onerror=function(){try{socket&&socket.close()}catch(e){}}}catch(e){socket=null;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,delay())}
+    try{
+      socket=new WebSocket(proto+'//'+location.host+'/app/api/live-activity/ws?initData='+encodeURIComponent(initData));
+      socket.onopen=function(){reconnectAttempt=0};
+      socket.onmessage=function(message){
+        try{
+          var data=JSON.parse(message.data);
+          if(data&&data.type==='live-activity:event'&&allowed(data.event))broadcast(data.event);
+        }catch(e){}
+      };
+      socket.onclose=function(){socket=null;clearTimeout(reconnectTimer);if(!document.hidden)reconnectTimer=setTimeout(connect,delay())};
+      socket.onerror=function(){try{socket&&socket.close()}catch(e){}};
+    }catch(e){socket=null;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,delay())}
   }
-  function init(){mount();render(false);connect();refreshTimes()}
-  document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(reconnectTimer);clearTimeout(clockTimer)}else{if(!socket)connect();syncHeight();updateFade();refreshTimes()}});
+  function init(){connect()}
+  document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(reconnectTimer)}else if(!socket)connect()});
   window.addEventListener('online',function(){if(!socket)connect()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
