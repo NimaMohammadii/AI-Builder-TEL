@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { publishLiveActivity } from './live-activity';
 import { ensureTonTransactionsTable, recordTonTransaction, recordTonTransactions, type TonTransactionMeta, type TonTransactionWrite } from './ton-transactions';
 
 export type UserSectionBlock = {
@@ -54,8 +55,11 @@ export async function setUserTonBalance(env: Env, userId: string, tonBalanceNano
 
 export async function adjustUserTonBalance(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
+  const delta = Math.floor(Number(deltaNano) || 0);
+  if (!delta) return getUserControls(env, id);
+  if (hasBalanceReference(meta)) return applyReferencedBalanceMutation(env, id, delta, meta, false);
   const before = await readUserTonBalance(env, id);
-  await addUserTonBalance(env, id, deltaNano);
+  await addUserTonBalance(env, id, delta);
   const after = await readUserTonBalance(env, id);
   await recordTonTransaction(env, id, after - before, after, meta);
   return controlsWithBalance(env, id, after);
@@ -65,10 +69,18 @@ export async function applyGameTonBalanceDelta(env: Env, userId: string, deltaNa
   const id = cleanUserId(userId);
   await assertUserNotBanned(env, id);
   const baseDelta = Math.floor(Number(deltaNano) || 0);
+  if (!baseDelta) return getUserControls(env, id);
+  const effectiveMeta: TonTransactionMeta = {
+    kind: 'game',
+    title: baseDelta >= 0 ? 'Game reward' : 'Game bet',
+    ...meta,
+    metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta },
+  };
+  if (hasBalanceReference(effectiveMeta)) return applyReferencedBalanceMutation(env, id, baseDelta, effectiveMeta, false);
   const before = await readUserTonBalance(env, id);
   await addUserTonBalance(env, id, baseDelta);
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, after - before, after, { kind: 'game', title: baseDelta >= 0 ? 'Game reward' : 'Game bet', ...meta, metadata: { ...(meta.metadata || {}), requestedDeltaNano: baseDelta } });
+  await recordTonTransaction(env, id, after - before, after, effectiveMeta);
   return controlsWithBalance(env, id, after);
 }
 
@@ -156,13 +168,15 @@ export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amou
   await assertUserNotBanned(env, id);
   const amount = normalizeNano(amountNano);
   if (amount <= 0) throw new Error('Invalid purchase amount');
+  const effectiveMeta: TonTransactionMeta = { kind: 'adjustment', title: 'GRAM debit', ...meta };
+  if (hasBalanceReference(effectiveMeta)) return applyReferencedBalanceMutation(env, id, -amount, effectiveMeta, true);
   await ensureAppUserBalanceRow(env, id);
   const result = await env.DB.prepare(`UPDATE app_users
     SET ton_balance_nano = ton_balance_nano - ?, updated_at = CURRENT_TIMESTAMP
     WHERE telegram_user_id = ? AND ton_balance_nano >= ?`).bind(amount, id, amount).run();
   if ((result.meta?.changes || 0) <= 0) throw new Error('Insufficient balance');
   const after = await readUserTonBalance(env, id);
-  await recordTonTransaction(env, id, -amount, after, { kind: 'adjustment', title: 'GRAM debit', ...meta });
+  await recordTonTransaction(env, id, -amount, after, effectiveMeta);
   return controlsWithBalance(env, id, after);
 }
 
@@ -296,6 +310,83 @@ async function ensureGameBalanceLedger(env: Env): Promise<void> {
     });
   }
   await gameBalanceLedgerReady;
+}
+
+async function applyReferencedBalanceMutation(env: Env, userId: string, deltaNano: number, meta: TonTransactionMeta, requireEnough: boolean): Promise<UserControls> {
+  const delta = Math.floor(Number(deltaNano) || 0);
+  if (!delta) return getUserControls(env, userId);
+  const referenceId = cleanMetaText(meta.referenceId, 120);
+  const referenceType = cleanMetaText(meta.referenceType, 60);
+  if (!referenceId || !referenceType) throw new Error('Missing balance operation reference');
+
+  await ensureAppUserBalanceRow(env, userId);
+  await ensureGameBalanceLedger(env);
+
+  const kind = cleanMetaText(meta.kind || 'adjustment', 40) || 'adjustment';
+  const title = cleanMetaText(meta.title || (delta >= 0 ? 'GRAM credit' : 'GRAM debit'), 90) || (delta >= 0 ? 'GRAM credit' : 'GRAM debit');
+  const description = cleanMetaText(meta.description, 180) || null;
+  const status = cleanMetaText(meta.status || 'completed', 40) || 'completed';
+  const transactionId = await referencedBalanceTransactionId(userId, kind, referenceType, referenceId, delta, title);
+  const requestNonce = crypto.randomUUID();
+  const metadataJson = JSON.stringify({ ...(meta.metadata || {}), requestedDeltaNano: delta, idempotencyNonce: requestNonce }).slice(0, 2000);
+  const requiredBalance = requireEnough && delta < 0 ? Math.abs(delta) : 0;
+
+  const results = await env.DB.batch([
+    env.DB.prepare(`INSERT OR IGNORE INTO ton_transactions (
+      id, user_id, kind, title, description, amount_nano, balance_after_nano, status,
+      reference_id, reference_type, metadata_json, created_at
+    )
+    SELECT ?, ?, ?, ?, ?,
+      max(0, ton_balance_nano + ?) - ton_balance_nano,
+      max(0, ton_balance_nano + ?),
+      ?, ?, ?, ?, CURRENT_TIMESTAMP
+    FROM app_users
+    WHERE telegram_user_id = ? AND (? <= 0 OR ton_balance_nano >= ?)`)
+      .bind(transactionId, userId, kind, title, description, delta, delta, status, referenceId, referenceType, metadataJson, userId, requiredBalance, requiredBalance),
+    env.DB.prepare(`UPDATE app_users
+      SET ton_balance_nano = max(0, ton_balance_nano + ?), updated_at = CURRENT_TIMESTAMP
+      WHERE telegram_user_id = ?
+        AND EXISTS (
+          SELECT 1 FROM ton_transactions
+          WHERE id = ? AND user_id = ? AND metadata_json = ?
+        )`)
+      .bind(delta, userId, transactionId, userId, metadataJson),
+  ]);
+
+  const applied = Number(results[0]?.meta?.changes || 0) > 0;
+  if (!applied && requiredBalance > 0) {
+    const existing = await env.DB.prepare('SELECT id FROM ton_transactions WHERE id = ? AND user_id = ? LIMIT 1')
+      .bind(transactionId, userId)
+      .first<{ id: string }>();
+    if (!existing) throw new Error('Insufficient balance');
+  }
+
+  const after = await readUserTonBalance(env, userId);
+  if (applied && kind === 'deposit' && delta > 0) {
+    await publishLiveActivity(env, {
+      kind: 'deposit',
+      userId,
+      amountNano: delta,
+      key: referenceId,
+      createdAt: new Date().toISOString(),
+    }).catch((error) => console.warn('live activity publish failed', error));
+  }
+  return controlsWithBalance(env, userId, after);
+}
+
+async function referencedBalanceTransactionId(userId: string, kind: string, referenceType: string, referenceId: string, deltaNano: number, title: string): Promise<string> {
+  const source = JSON.stringify([userId, kind, referenceType, referenceId, deltaNano, title]);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+  const hex = Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, '0')).join('');
+  return 'refbal_' + hex.slice(0, 48);
+}
+
+function hasBalanceReference(meta: TonTransactionMeta): boolean {
+  return Boolean(cleanMetaText(meta.referenceId, 120) && cleanMetaText(meta.referenceType, 60));
+}
+
+function cleanMetaText(value: unknown, max: number): string {
+  return String(value ?? '').trim().slice(0, max);
 }
 
 async function readUserTonBalance(env: Env, userId: string): Promise<number> {
