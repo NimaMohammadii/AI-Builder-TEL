@@ -34,7 +34,7 @@ const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'pl
   plinko: ['credit', 'ton', 'plinko'],
 };
 
-const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional() });
+const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), section: z.string().max(40).nullable().optional(), countryCode: z.string().max(2).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
 const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
