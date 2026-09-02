@@ -211,7 +211,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
 
   const rows: Keyboard = [
     [{ text: '🚀 Start Now', callback_data: 'botadmin:lottery:startnow' }],
-    [{ text: '🏆 جوایز ۱۵ برنده', callback_data: 'botadmin:lottery:prizes' }],
+    [{ text: `🏆 جوایز ${LOTTERY_WINNER_COUNT} برنده`, callback_data: 'botadmin:lottery:prizes' }],
     [{ text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' }],
     [
       { text: settings.salesOpen ? '⏸ توقف فروش' : '▶️ شروع فروش', callback_data: 'botadmin:lottery:toggle:sales' },
@@ -248,7 +248,7 @@ async function sendPrizeMenu(env: Env, chatId: number, messageId?: number, notic
     notice,
     '🏆 Lottery Prizes',
     '',
-    'هر Round تا ۱۵ پلیر واقعی و متفاوت برنده می‌شوند.',
+    `هر Round تا ${LOTTERY_WINNER_COUNT} پلیر واقعی و متفاوت برنده می‌شوند.`,
     'روی هر رتبه بزن و مبلغ جایزه همان رتبه را تغییر بده.',
     '',
     ...lines,
