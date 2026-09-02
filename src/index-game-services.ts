@@ -27,8 +27,23 @@ const PLINKO_CONTROL_IMAGE_KINDS = new Set(['drop', 'input', 'house']);
 const GHOST_RUN_ASSET_KINDS = new Set(['background', 'background1', 'background2', 'background3', 'background4', 'background5', 'background6']);
 const NANO_PER_TON = 1_000_000_000;
 
+const TIME_ZONE_COUNTRY_OPTIONS: Readonly<Record<string, readonly string[]>> = {"Asia/Dubai":["AE","OM","RE","SC","TF"],"Pacific/Pago_Pago":["AS","UM"],"Europe/Brussels":["BE","LU","NL"],"America/Toronto":["CA","BS"],"Europe/Zurich":["CH","DE","LI"],"Africa/Abidjan":["CI","BF","GH","GM","GN","IS","ML","MR","SH","SL","SN","TG"],"Europe/Prague":["CZ","SK"],"Europe/Berlin":["DE","DK","NO","SE","SJ"],"Europe/Helsinki":["FI","AX"],"Europe/Paris":["FR","MC"],"Europe/London":["GB","GG","IM","JE"],"Pacific/Guam":["GU","MP"],"Europe/Rome":["IT","SM","VA"],"Asia/Tokyo":["JP","AU"],"Africa/Nairobi":["KE","DJ","ER","ET","KM","MG","SO","TZ","UG","YT"],"Pacific/Tarawa":["KI","MH","TV","UM","WF"],"Asia/Yangon":["MM","CC"],"Indian/Maldives":["MV","TF"],"Asia/Kuching":["MY","BN"],"Africa/Maputo":["MZ","BI","BW","CD","MW","RW","ZM","ZW"],"Africa/Lagos":["NG","AO","BJ","CD","CF","CG","CM","GA","GQ","NE"],"Pacific/Auckland":["NZ","AQ"],"America/Panama":["PA","CA","KY"],"Pacific/Port_Moresby":["PG","AQ","FM"],"America/Puerto_Rico":["PR","AG","CA","AI","AW","BL","BQ","CW","DM","GD","GP","KN","LC","MF","MS","SX","TT","VC","VG","VI"],"Asia/Qatar":["QA","BH"],"Europe/Belgrade":["RS","BA","HR","ME","MK","SI"],"Europe/Simferopol":["RU","UA"],"Asia/Riyadh":["SA","AQ","KW","YE"],"Pacific/Guadalcanal":["SB","FM"],"Asia/Singapore":["SG","AQ","MY"],"Asia/Bangkok":["TH","CX","KH","LA","VN"],"America/Phoenix":["US","CA"],"Africa/Johannesburg":["ZA","LS","SZ"]};
+
+function ambiguousTimeZoneIpCountry(request: Request, timeZone: string): string | null {
+  const countries = TIME_ZONE_COUNTRY_OPTIONS[timeZone];
+  if (!countries || countries.length < 2) return null;
+  const country = String((request as Request & { cf?: { country?: unknown } }).cf?.country || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(country) && countries.includes(country) ? country : null;
+}
+
+
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
+
+app.get('/app/api/location-country', (c) => {
+  const timeZone = String(c.req.query('timeZone') || '').trim().slice(0, 64);
+  return c.json({ country: ambiguousTimeZoneIpCountry(c.req.raw, timeZone) }, 200, { 'cache-control': 'no-store' });
+});
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
 app.post('/app/api/plinko/round', async (c) => {
