@@ -45,7 +45,6 @@ import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
 import { SECTION_ACCESS_SCRIPT } from './section-access-script';
 import { SECTION_ACCESS_STYLES } from './section-access-styles';
 import { CREDIT_GUARD_SCRIPT } from './credit-guard-script';
-import { SETTINGS_SCRIPT, SETTINGS_SECTION, SETTINGS_STYLES } from './settings';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
@@ -73,7 +72,6 @@ const STYLES = [
   GAME_LIVE_COUNT_STYLES,
   GHOST_RUN_STYLES,
   SECTION_ACCESS_STYLES,
-  SETTINGS_STYLES,
 ].join('');
 
 function initialSections(homeVariant: HomeVariant): string {
@@ -85,7 +83,6 @@ function initialSections(homeVariant: HomeVariant): string {
 }
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
-  { id: 'settings', html: SETTINGS_SECTION, scripts: [SETTINGS_SCRIPT] },
   { id: 'wallet', html: WALLET_SECTION },
   { id: 'results', html: RESULTS_SECTION },
   { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SCRIPT] },
