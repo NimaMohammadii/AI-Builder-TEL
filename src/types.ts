@@ -4,6 +4,7 @@ export type Env = {
   SECTION_LOCK_EVENTS: DurableObjectNamespace;
   LIVE_ACTIVITY: DurableObjectNamespace;
   GHOST_RUN_LIVE: DurableObjectNamespace;
+  CRASH_LIVE: DurableObjectNamespace;
   RATE_LIMITS: KVNamespace;
   ASSETS: R2Bucket;
   BOT_TOKEN: string;
@@ -56,8 +57,8 @@ export type TelegramLocation = {
 export type TelegramPhotoSize = {
   file_id: string;
   file_unique_id?: string;
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
   file_size?: number;
 };
 
