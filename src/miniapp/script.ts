@@ -40,7 +40,12 @@ export const MINIAPP_SCRIPT = `
     detectedCountryPromise=fetch('/app/api/location-country?timeZone='+encodeURIComponent(zone),{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(result){return result&&result.country||fallback})
-      .catch(function(){return fallback});
+      .catch(function(){return fallback})
+      .then(function(code){
+        code=String(code||'').trim().toUpperCase();
+        try{window.VexaDetectedCountryCode=code;window.dispatchEvent(new CustomEvent('vexa-country-detected',{detail:{countryCode:code}}))}catch(e){}
+        return code;
+      });
     return detectedCountryPromise;
   }
   function showInviteAlert(message){
