@@ -134,16 +134,27 @@ export const PREDICT_ZONE_SCRIPT = `
     function slotFor(now){var d=cfg().duration;return Math.floor(now/d)*d}
     function y(v,scale){return Math.max(P,Math.min(H-P,P+((scale.max-v)/(scale.max-scale.min||1))*(H-P*2)))}
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
-    function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
     function axisCapacity(){var chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H);return Math.max(2,Math.min(4,Math.floor(usableHeight/42)+1))}
-    function priceTicks(scale){
-      var c=cfg(),capacity=axisCapacity(),span=scale.max-scale.min,step=Math.max(c.step,niceTickStep(span,Math.max(1,capacity-1))),mid=(scale.min+scale.max)/2,first=Math.floor((mid-step*(capacity-1)/2)/step)*step,precision=Math.max(0,c.decimals+4),ticks=[],i;
-      if(first<=0)first=Math.max(step,Math.floor(scale.min/step)*step);
-      for(i=0;i<capacity;i++)ticks.push(Number((first+i*step).toFixed(precision)));
-      return ticks;
+    function resolvePriceAxis(scale){
+      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,rawStep,units,step,mid,first,ticks,edge,fitted,gap,i;
+      for(count=maxCount;count>=2;count--){
+        rawStep=span/Math.max(1,count-1);
+        units=Math.max(1,Math.round(rawStep/quantum));
+        step=units*quantum;
+        mid=(scale.min+scale.max)/2;
+        first=Math.floor((mid-step*(count-1)/2)/quantum)*quantum;
+        if(first<=0)first=Math.max(quantum,Math.ceil(scale.min/quantum)*quantum);
+        ticks=[];
+        for(i=0;i<count;i++)ticks.push(Number((first+i*step).toFixed(precision)));
+        edge=Math.max(span*.02,quantum*.1);
+        fitted={min:Math.min(scale.min,ticks[0]-edge),max:Math.max(scale.max,ticks[ticks.length-1]+edge)};
+        gap=step/(fitted.max-fitted.min||1)*usableHeight;
+        if(gap>=minGap||count===2)return{scale:fitted,ticks:ticks};
+      }
+      return{scale:scale,ticks:[]}
     }
     function autoScale(prices){
-      var c=cfg(),capacity=axisCapacity(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*Math.max(1,capacity-1),precision*Math.max(1,capacity-1)),min,max,span,mid,pad,targetMin,targetMax;
+      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*2,precision*4),min,max,span,mid,pad,targetMin,targetMax;
       if(entry>0)valid.push(entry);
       if(raw>0)valid.push(raw);
       if(!valid.length)valid.push(Number(current||last||1));
@@ -158,11 +169,6 @@ export const PREDICT_ZONE_SCRIPT = `
       }
       if(scaleMax-scaleMin<minSpan){mid=(scaleMin+scaleMax)/2;scaleMin=mid-minSpan/2;scaleMax=mid+minSpan/2}
       return{min:scaleMin,max:scaleMax}
-    }
-    function fitScaleToTicks(scale,ticks){
-      if(!ticks.length)return scale;
-      var c=cfg(),span=scale.max-scale.min,edge=Math.max(span*.02,c.step*.1);
-      return{min:Math.min(scale.min,ticks[0]-edge),max:Math.max(scale.max,ticks[ticks.length-1]+edge)}
     }
     function renderPriceTicks(scale,ticks){
       if(!axisLayer||!gridLayer)return;
@@ -203,7 +209,7 @@ export const PREDICT_ZONE_SCRIPT = `
       rawPts.push({x:right,v:current});
       var visibleRaw=rawPts.filter(function(p){return p.x>=0&&p.x<=right});
       if(visibleRaw.length<2)visibleRaw=rawPts.slice(-2);
-      var baseScale=autoScale(visibleRaw.map(function(p){return p.v})),ticks=priceTicks(baseScale),scale=fitScaleToTicks(baseScale,ticks),visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
+      var baseScale=autoScale(visibleRaw.map(function(p){return p.v})),axisLayout=resolvePriceAxis(baseScale),scale=axisLayout.scale,ticks=axisLayout.ticks,visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
       line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');
       if(dot){dot.style.left=xp+'%';dot.style.top=yp+'%'}
       if(guide)guide.style.top=yp+'%';
