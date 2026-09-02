@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 type App = Hono<{ Bindings: Env }>;
 
@@ -13,21 +14,26 @@ export function registerWheelRoutes(app: App): void {
   app.post('/app/api/wheel/spin', async (c) => {
     let userId = '';
     let amountNano = 0;
+    let spinId = '';
     let debited = false;
     let settled = false;
 
     try {
       const body = await c.req.json().catch(() => ({})) as {
         userId?: unknown;
+        initData?: unknown;
         amountNano?: unknown;
         chance?: unknown;
       };
 
-      userId = cleanWheelUserId(body.userId);
+      const claimedUserId = cleanWheelUserId(body.userId);
+      userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+      if (userId !== claimedUserId) throw new Error('Telegram user mismatch');
       amountNano = cleanWheelAmount(body.amountNano);
       const chance = cleanWheelChance(body.chance);
       const multiplier = wheelMultiplier(chance);
       const controls = await getUserControls(c.env, userId);
+      spinId = 'wheel_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 
       if (controls.banned) throw new Error('Your access to all sections is blocked.');
       if (controls.blockedSections.includes('wheel')) throw new Error('Wheel is blocked for this account.');
@@ -35,7 +41,9 @@ export function registerWheelRoutes(app: App): void {
       const afterBet = await debitUserTonBalanceIfEnough(c.env, userId, amountNano, {
         kind: 'game',
         title: 'Wheel bet',
-        metadata: { section: 'wheel', chance, multiplier },
+        referenceType: 'wheel_spin',
+        referenceId: `${spinId}:bet`,
+        metadata: { section: 'wheel', spinId, chance, multiplier },
       });
       debited = true;
 
@@ -49,13 +57,16 @@ export function registerWheelRoutes(app: App): void {
         finalControls = await adjustUserTonBalance(c.env, userId, payoutNano, {
           kind: 'game',
           title: 'Wheel reward',
-          metadata: { section: 'wheel', chance, multiplier, result: 'win' },
+          referenceType: 'wheel_spin',
+          referenceId: `${spinId}:reward`,
+          metadata: { section: 'wheel', spinId, chance, multiplier, result: 'win' },
         });
       }
 
       settled = true;
       return c.json({
         ok: true,
+        spinId,
         win,
         chance,
         targetAngleDeg,
@@ -64,11 +75,13 @@ export function registerWheelRoutes(app: App): void {
         tonBalanceNano: finalControls.tonBalanceNano,
       }, 200, { 'cache-control': 'no-store' });
     } catch (error) {
-      if (debited && !settled && userId && amountNano > 0) {
+      if (debited && !settled && userId && amountNano > 0 && spinId) {
         await adjustUserTonBalance(c.env, userId, amountNano, {
           kind: 'adjustment',
           title: 'Wheel spin refund',
-          metadata: { section: 'wheel', reason: 'spin-failed' },
+          referenceType: 'wheel_spin',
+          referenceId: `${spinId}:refund`,
+          metadata: { section: 'wheel', spinId, reason: 'spin-failed' },
         }).catch(() => undefined);
       }
       return c.json(
