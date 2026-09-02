@@ -1,6 +1,10 @@
+import { COUNTRY_TO_VEXA_LOCALE, DEFAULT_VEXA_LOCALE, SHARE_INVITE_TEXT } from './i18n';
+
 export const MINIAPP_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
+  var inviteLocales=${JSON.stringify(COUNTRY_TO_VEXA_LOCALE)};
+  var inviteTexts=${JSON.stringify(SHARE_INVITE_TEXT)};
   function expandMiniApp(){
     if(!tg)return;
     try{tg.ready&&tg.ready()}catch(e){}
@@ -32,20 +36,24 @@ export const MINIAPP_SCRIPT = `
     if(code)return code;
     return zone==='UTC'||zone==='Etc/UTC'||zone==='GMT'?'GLOBAL':'';
   }
-  function detectedCountry(){
+  function detectedCountryCode(){
     if(detectedCountryPromise)return detectedCountryPromise;
     var zone=currentTimeZone();
     var fallback=timeZoneCountryCode(zone);
-    if(!fallback)return Promise.resolve('Other');
+    if(!fallback)return Promise.resolve('');
     detectedCountryPromise=fetch('/app/api/location-country?timeZone='+encodeURIComponent(zone),{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
-      .then(function(result){return countryName(result&&result.country||fallback)})
-      .catch(function(){return countryName(fallback)});
+      .then(function(result){return result&&result.country||fallback})
+      .catch(function(){return fallback});
     return detectedCountryPromise;
+  }
+  function inviteTextForCountry(code){
+    return inviteTexts[inviteLocales[code]||'${DEFAULT_VEXA_LOCALE}']||inviteTexts['${DEFAULT_VEXA_LOCALE}'];
   }
   function openMiniAppSettings(){
     if(!tg||!tg.showPopup)return;
-    detectedCountry().then(function(country){
+    detectedCountryCode().then(function(countryCode){
+      var country=countryName(countryCode);
       tg.showPopup({
         title:'Vexa',
         message:'Choose an action',
@@ -56,7 +64,7 @@ export const MINIAPP_SCRIPT = `
         ]
       },function(id){
         if(id==='open-chat'){openTelegramLink('https://t.me/VexaAppBOT');return}
-        if(id==='invite-friends')openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent('Play Vexa with me'))
+        if(id==='invite-friends')openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent(inviteTextForCountry(countryCode)))
       });
     });
   }
