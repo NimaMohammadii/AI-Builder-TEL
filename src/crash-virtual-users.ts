@@ -26,10 +26,10 @@ export async function ensureCrashVirtualColumns(db:D1Database){
 export async function buildCrashVirtualLiveBets(
   env:Env,
   roundId:number,
+  state:CrashRoundSnapshot,
   revealStartMs = Date.now(),
   revealEndMs = revealStartMs,
   now = Date.now(),
-  state:CrashRoundSnapshot,
 ){
   const configuredUsers = await getCrashVirtualUsers(env)
     .then((config) => config.users)
