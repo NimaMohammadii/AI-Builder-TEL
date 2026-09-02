@@ -17,6 +17,11 @@ import { getSectionAccess, isMiniAppAdmin } from './section-access';
 import { handleSlotLiveBetsAdminRequest } from './telegram-slot-live-bets-admin';
 import { setGameMenuButton, setTelegramWebhook } from './telegram-game-bot';
 import { addUserXp } from './levels';
+import {
+  nextCrashAutoCashoutMultiplier,
+  settleDueCrashAutoCashouts,
+  type CrashBetRow,
+} from './crash-finance';
 import type { Env } from './types';
 import type { TonWithdrawal } from './ton-withdrawals';
 export { SectionLockEvents } from './section-lock-events';
@@ -48,6 +53,12 @@ type CrashLiveRound = {
   crashAt: number;
   nextRoundAt: number;
   crashPoint: number;
+  finalized?: boolean;
+};
+
+type CrashHistoryState = {
+  lastRoundId: number;
+  values: number[];
 };
 
 type CrashPublicState = {
@@ -70,6 +81,7 @@ type CrashLiveEvent = {
   amountNano: number;
   status: 'bet' | 'cashout' | 'crashed';
   cashoutMultiplier?: number | null;
+  autoCashoutMultiplier?: number | null;
   payoutNano?: number;
   isVirtual?: boolean;
   updatedAt?: string;
@@ -106,16 +118,26 @@ export class CrashLiveRoom {
       return Response.json({ ok: allowed, roundId });
     }
     if (request.method === 'POST' && url.pathname === '/authorize-cashout') {
-      const body = await request.json().catch(() => null) as { roundId?: unknown; receivedAt?: unknown } | null;
+      const body = await request.json().catch(() => null) as { roundId?: unknown; receivedAt?: unknown; autoCashoutMultiplier?: unknown } | null;
       const roundId = Math.floor(Number(body?.roundId));
       const receivedAt = Math.floor(Number(body?.receivedAt));
+      const autoCashoutMultiplier = cleanCrashAutoTarget(body?.autoCashoutMultiplier);
       if (!Number.isFinite(roundId) || !Number.isFinite(receivedAt)) return Response.json({ ok: false }, { status: 400 });
       await this.advance(Date.now());
       const round = await this.roundById(roundId);
-      const allowed = Boolean(round && receivedAt >= round.runningStartedAt && receivedAt < round.crashAt);
-      if (!allowed || !round) return Response.json({ ok: false, roundId });
+      if (!round) return Response.json({ ok: false, roundId });
+
+      if (autoCashoutMultiplier && autoCashoutMultiplier < round.crashPoint) {
+        const autoAt = round.runningStartedAt + crashTimeMs(autoCashoutMultiplier);
+        if (receivedAt >= autoAt) {
+          return Response.json({ ok: true, roundId, multiplier: autoCashoutMultiplier, mode: 'auto' });
+        }
+      }
+
+      const allowed = receivedAt >= round.runningStartedAt && receivedAt < round.crashAt;
+      if (!allowed) return Response.json({ ok: false, roundId });
       const multiplier = floorCrashMultiplier(Math.min(round.crashPoint, crashMultiplierAt((receivedAt - round.runningStartedAt) / 1000)));
-      return Response.json({ ok: true, roundId, multiplier });
+      return Response.json({ ok: true, roundId, multiplier, mode: 'manual' });
     }
     if (request.method === 'POST' && url.pathname === '/publish-live') {
       const event = await request.json().catch(() => null) as CrashLiveEvent | null;
@@ -127,7 +149,12 @@ export class CrashLiveRoom {
   }
 
   async alarm(): Promise<void> {
-    await this.advance(Date.now());
+    try {
+      await this.advance(Date.now());
+    } catch (error) {
+      console.warn('Crash alarm failed', error);
+      await this.state.storage.setAlarm(Date.now() + 2_000).catch(() => undefined);
+    }
   }
 
   private async connect(): Promise<Response> {
@@ -163,29 +190,43 @@ export class CrashLiveRoom {
     let round = await this.state.storage.get<CrashLiveRound>(CRASH_ROUND_KEY).catch(() => null);
     if (!round) round = await this.createRound(now);
 
-    for (let step = 0; step < 4; step += 1) {
+    for (let step = 0; step < 6; step += 1) {
       if (round.phase === 'betting' && now >= round.runningStartedAt) {
-        round = { ...round, phase: 'running' };
+        round = { ...round, phase: 'running', finalized: false };
         await this.state.storage.put(CRASH_ROUND_KEY, round);
         await this.publishState(round, now);
         continue;
       }
 
-      if (round.phase === 'running' && now >= round.crashAt) {
-        round = { ...round, phase: 'ended' };
+      if (round.phase === 'running') {
+        if (now < round.crashAt) {
+          await this.settleAutoCashouts(round, now).catch((error) => console.warn('Crash auto cashout settlement failed', error));
+          break;
+        }
+        round = { ...round, phase: 'ended', finalized: false };
         await this.state.storage.put(CRASH_ROUND_KEY, round);
-        await this.pushHistory(round.crashPoint);
-        await this.markRoundCrashed(round.roundId).catch((error) => console.warn('Crash round loss settlement failed', error));
         await this.publishState(round, now);
         continue;
       }
 
-      if (round.phase === 'ended' && now >= round.nextRoundAt) {
+      if (round.phase === 'ended' && round.finalized !== true) {
+        const finalized = await this.finalizeRound(round).catch((error) => {
+          console.warn('Crash round finalization failed', error);
+          return false;
+        });
+        if (!finalized) break;
+        await this.pushHistory(round.roundId, round.crashPoint);
+        round = { ...round, finalized: true };
+        await this.state.storage.put(CRASH_ROUND_KEY, round);
+        await this.publishState(round, now);
+        this.state.waitUntil(this.awardRoundXp(round.roundId).catch((error) => console.warn('Crash XP settlement failed', error)));
+        continue;
+      }
+
+      if (round.phase === 'ended' && round.finalized === true && now >= round.nextRoundAt) {
         const previousRound = round;
         await this.state.storage.put(CRASH_PREVIOUS_ROUND_KEY, previousRound);
-        const startAt = now - round.nextRoundAt > 60_000 ? now : round.nextRoundAt;
-        round = await this.createRound(startAt);
-        this.state.waitUntil(this.awardLossXp(previousRound.roundId).catch((error) => console.warn('Crash loss XP settlement failed', error)));
+        round = await this.createRound(Math.max(now, round.nextRoundAt));
         await this.publishState(round, now);
         continue;
       }
@@ -211,6 +252,7 @@ export class CrashLiveRoom {
       crashAt,
       nextRoundAt: crashAt + CRASH_HOLD_MS,
       crashPoint,
+      finalized: false,
     };
     await this.state.storage.put(CRASH_ROUND_SEQUENCE_KEY, roundId);
     await this.state.storage.put(CRASH_ROUND_KEY, round);
@@ -226,7 +268,7 @@ export class CrashLiveRoom {
 
   private async publicState(round: CrashLiveRound, now: number): Promise<CrashPublicState> {
     const multiplier = round.phase === 'running'
-      ? floorCrashMultiplier(crashMultiplierAt((now - round.runningStartedAt) / 1000))
+      ? floorCrashMultiplier(Math.min(round.crashPoint, crashMultiplierAt((now - round.runningStartedAt) / 1000)))
       : round.phase === 'ended'
         ? floorCrashMultiplier(round.crashPoint)
         : 1;
@@ -254,21 +296,75 @@ export class CrashLiveRoom {
     }
   }
 
+  private async settleAutoCashouts(round: CrashLiveRound, now: number): Promise<void> {
+    const current = Math.min(round.crashPoint, crashMultiplierAt(Math.max(0, now - round.runningStartedAt) / 1000));
+    const rows = await settleDueCrashAutoCashouts(this.env, round.roundId, current, round.crashPoint);
+    for (const row of rows) this.broadcastCrashRow(row);
+  }
+
+  private async finalizeRound(round: CrashLiveRound): Promise<boolean> {
+    const autoRows = await settleDueCrashAutoCashouts(this.env, round.roundId, round.crashPoint, round.crashPoint);
+    for (const row of autoRows) this.broadcastCrashRow(row);
+    await this.markRoundCrashed(round.roundId);
+    return true;
+  }
+
+  private broadcastCrashRow(row: CrashBetRow): void {
+    this.broadcast({
+      type: 'crash-live-event',
+      event: {
+        roundId: Number(row.round_id),
+        userId: row.user_id,
+        user: row.username,
+        amountNano: Number(row.amount_nano || 0),
+        status: row.status,
+        cashoutMultiplier: row.cashout_multiplier == null ? null : Number(row.cashout_multiplier),
+        autoCashoutMultiplier: row.auto_cashout_multiplier == null ? null : Number(row.auto_cashout_multiplier),
+        payoutNano: Number(row.payout_nano || 0),
+        isVirtual: false,
+        updatedAt: row.updated_at,
+      } satisfies CrashLiveEvent,
+    });
+  }
+
   private async scheduleAlarm(round: CrashLiveRound, now: number): Promise<void> {
-    const next = round.phase === 'betting' ? round.runningStartedAt : round.phase === 'running' ? round.crashAt : round.nextRoundAt;
-    await this.state.storage.setAlarm(Math.max(now + 25, next + 10)).catch(() => undefined);
+    let next: number;
+    if (round.phase === 'betting') {
+      next = round.runningStartedAt;
+    } else if (round.phase === 'running') {
+      next = round.crashAt;
+      try {
+        const target = await nextCrashAutoCashoutMultiplier(this.env, round.roundId, round.crashPoint);
+        if (target) next = Math.min(next, round.runningStartedAt + crashTimeMs(target));
+      } catch (error) {
+        console.warn('Crash auto cashout schedule lookup failed', error);
+        next = Math.min(next, now + 2_000);
+      }
+    } else if (round.finalized !== true) {
+      next = now + 2_000;
+    } else {
+      next = round.nextRoundAt;
+    }
+    await this.state.storage.setAlarm(Math.max(now + 25, next + 10));
   }
 
   private async history(): Promise<number[]> {
-    const saved = await this.state.storage.get<number[]>(CRASH_HISTORY_KEY).catch(() => null);
-    return Array.isArray(saved) && saved.length
-      ? saved.filter((value) => Number.isFinite(value)).slice(0, CRASH_HISTORY_LIMIT)
-      : DEFAULT_CRASH_HISTORY.slice();
+    const saved = await this.state.storage.get<CrashHistoryState | number[]>(CRASH_HISTORY_KEY).catch(() => null);
+    if (Array.isArray(saved)) return saved.filter((value) => Number.isFinite(value)).slice(0, CRASH_HISTORY_LIMIT);
+    if (saved && Array.isArray(saved.values)) return saved.values.filter((value) => Number.isFinite(value)).slice(0, CRASH_HISTORY_LIMIT);
+    return DEFAULT_CRASH_HISTORY.slice();
   }
 
-  private async pushHistory(multiplier: number): Promise<void> {
-    const history = await this.history();
-    await this.state.storage.put(CRASH_HISTORY_KEY, [floorCrashMultiplier(multiplier), ...history].slice(0, CRASH_HISTORY_LIMIT));
+  private async pushHistory(roundId: number, multiplier: number): Promise<void> {
+    const saved = await this.state.storage.get<CrashHistoryState | number[]>(CRASH_HISTORY_KEY).catch(() => null);
+    if (!Array.isArray(saved) && saved?.lastRoundId === roundId) return;
+    const values = Array.isArray(saved)
+      ? saved.filter((value) => Number.isFinite(value))
+      : saved?.values?.filter((value) => Number.isFinite(value)) || DEFAULT_CRASH_HISTORY.slice();
+    await this.state.storage.put(CRASH_HISTORY_KEY, {
+      lastRoundId: roundId,
+      values: [floorCrashMultiplier(multiplier), ...values].slice(0, CRASH_HISTORY_LIMIT),
+    } satisfies CrashHistoryState);
   }
 
   private async markRoundCrashed(roundId: number): Promise<void> {
@@ -284,20 +380,36 @@ export class CrashLiveRoom {
         )`).bind(roundId).run();
   }
 
-  private async awardLossXp(roundId: number): Promise<void> {
-    const rows = await this.env.DB.prepare("SELECT user_id FROM crash_live_bets WHERE round_id=? AND is_virtual=0 AND status='crashed'")
-      .bind(roundId).all<{ user_id: string }>();
-    const users = rows.results || [];
-    for (let offset = 0; offset < users.length; offset += 25) {
-      const chunk = users.slice(offset, offset + 25);
-      await Promise.allSettled(chunk.map((row) => addUserXp(
-        this.env,
-        row.user_id,
-        5,
-        'game-lose',
-        { section: 'crash', event: 'crash', roundId },
-        `crash_loss_${roundId}_${row.user_id}`,
-      )));
+  private async awardRoundXp(roundId: number): Promise<void> {
+    const rows = await this.env.DB.prepare(`SELECT user_id,status,cashout_multiplier,payout_nano
+      FROM crash_live_bets
+      WHERE round_id=? AND is_virtual=0 AND status IN ('cashout','crashed')`)
+      .bind(roundId).all<{ user_id: string; status: string; cashout_multiplier: number | null; payout_nano: number }>();
+    const bets = rows.results || [];
+    for (let offset = 0; offset < bets.length; offset += 25) {
+      const chunk = bets.slice(offset, offset + 25);
+      await Promise.allSettled(chunk.map((row) => {
+        if (row.status === 'cashout') {
+          const multiplier = Math.max(1, Number(row.cashout_multiplier) || 1);
+          const xp = multiplier >= 5 ? 70 : multiplier >= 2 ? 30 : 15;
+          return addUserXp(
+            this.env,
+            row.user_id,
+            xp,
+            'game-win',
+            { section: 'crash', event: 'cashout', roundId, multiplier, payoutNano: Number(row.payout_nano || 0) },
+            `crash_cashout_${roundId}_${row.user_id}`,
+          );
+        }
+        return addUserXp(
+          this.env,
+          row.user_id,
+          5,
+          'game-lose',
+          { section: 'crash', event: 'crash', roundId },
+          `crash_loss_${roundId}_${row.user_id}`,
+        );
+      }));
     }
   }
 }
@@ -334,6 +446,11 @@ function crashTimeMs(crashPoint: number): number {
 
 function floorCrashMultiplier(value: number): number {
   return Math.max(1, Math.min(CRASH_MAX_MULTIPLIER, Math.floor((Number(value) || 1) * 100) / 100));
+}
+
+function cleanCrashAutoTarget(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 1.01 && n <= CRASH_MAX_MULTIPLIER ? Math.floor(n * 100) / 100 : null;
 }
 
 function validCrashLiveEvent(event: CrashLiveEvent | null): event is CrashLiveEvent {
