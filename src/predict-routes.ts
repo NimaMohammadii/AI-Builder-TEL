@@ -2,6 +2,7 @@ import app from './index';
 import './predict-settings-routes';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -52,13 +53,16 @@ app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
 app.get('/app/api/predict-round', async (c) => {
   try {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
+    const claimedUserId = cleanUserIdOptional(c.req.query('userId'));
+    const userId = claimedUserId ? await authenticateUser(c.env, claimedUserId, c.req.header('x-telegram-init-data')) : '';
     const round = await getOrCreateCurrentRound(c.env, market);
     await settleDueRounds(c.env, market);
-    return c.json(await publicRoundJson(c.env, round, String(c.req.query('userId') || '')), 200, { 'cache-control': CACHE_NONE });
+    return c.json(await publicRoundJson(c.env, round, userId), 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load prediction round' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
+
 app.post('/app/api/predict-bet', async (c) => {
   let betId = '';
   let userId = '';
@@ -67,42 +71,57 @@ app.post('/app/api/predict-bet', async (c) => {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const market = normalizeTradeMarket(String(body.market || 'bitcoin'));
     const side = normalizeSide(body.side);
-    userId = cleanUserId(body.userId);
+    userId = await authenticateUser(c.env, body.userId, body.initData);
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
-    if (stakeNano <= 0) throw new Error('Enter a valid TON amount');
+    if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
     if (Date.now() >= Date.parse(round.ends_at) - LOCK_MS) throw new Error('This round is locked. Wait for the next round.');
     await ensurePredictTables(c.env);
-    betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
-    const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
-      WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')`)
-      .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId)
-      .run();
-    if ((inserted.meta?.changes || 0) <= 0) throw new Error('You already placed a prediction in this round. Wait for the next round.');
+
+    let existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+      .bind(roundId, userId)
+      .first<BetRow>();
+
+    if (existing) {
+      if (existing.status !== 'pending') throw new Error('You already placed a prediction in this round. Wait for the next round.');
+      if (existing.market !== market || existing.side !== side || Number(existing.stake_nano || 0) !== stakeNano) {
+        throw new Error('A previous prediction is still processing. Retry the same prediction.');
+      }
+      betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+    } else {
+      betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+      const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')`)
+        .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId)
+        .run();
+      if ((inserted.meta?.changes || 0) <= 0) {
+        existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
+          .bind(roundId, userId)
+          .first<BetRow>();
+        if (!existing || existing.status !== 'pending' || existing.market !== market || existing.side !== side || Number(existing.stake_nano || 0) !== stakeNano) {
+          throw new Error('You already placed a prediction in this round. Wait for the next round.');
+        }
+        betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+      }
+    }
+
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId } });
     const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
     if ((active.meta?.changes || 0) <= 0) {
-      await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake rollback', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId, status: 'rollback' } });
-      throw new Error('Could not activate prediction');
+      const fresh = await c.env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(betId).first<BetRow>();
+      if (!fresh || fresh.status !== 'active') {
+        await adjustUserTonBalance(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake rollback', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId, status: 'rollback' } });
+        throw new Error('Could not activate prediction');
+      }
     }
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     if (betId) await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => undefined);
     return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not place prediction' }, 400, { 'cache-control': CACHE_NONE });
-  }
-});
-app.post('/app/api/predict-settle', async (c) => {
-  try {
-    const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-    const market = normalizeTradeMarket(String(body.market || 'bitcoin'));
-    const settled = await settleDueRounds(c.env, market, true);
-    return c.json({ ok: true, settled }, 200, { 'cache-control': CACHE_NONE });
-  } catch (error) {
-    return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not settle predictions' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
 
@@ -211,9 +230,10 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status != 'settled'`).bind(endPrice, result, freshId).run();
   if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
   const all = (await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(freshId).all<BetRow>()).results || [];
-  const active = all.filter((b) => b.status === 'active' || b.status === 'settling_payment');
-  const upPool = all.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
-  const downPool = all.filter((b) => b.side === 'down').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
+  const eligible = all.filter((b) => b.status !== 'failed' && b.status !== 'pending');
+  const active = eligible.filter((b) => b.status === 'active' || b.status === 'settling_payment');
+  const upPool = eligible.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
+  const downPool = eligible.filter((b) => b.side === 'down').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
   const winnerPool = result === 'up' ? upPool : result === 'down' ? downPool : 0;
   const loserPool = result === 'up' ? downPool : result === 'down' ? upPool : 0;
   const fee = Math.floor(loserPool * PLATFORM_FEE_BPS / 10000);
@@ -233,8 +253,7 @@ async function payBet(env: Env, bet: BetRow, payoutNano: number, status: 'won' |
   const betId = cleanDbText(bet.id, 'Prediction bet is not ready');
   const lock = bet.status === 'settling_payment' ? { meta: { changes: 1 } } : await env.DB.prepare(`UPDATE predict_bets SET status = 'settling_payment', payout_nano = ? WHERE id = ? AND status = 'active'`).bind(payoutNano, betId).run();
   if ((lock.meta?.changes || 0) <= 0) return;
-  const alreadyPaid = await env.DB.prepare(`SELECT id FROM ton_transactions WHERE reference_type = 'predict_bet' AND reference_id = ? AND amount_nano = ? LIMIT 1`).bind(betId, payoutNano).first<{ id: string }>().catch(() => null);
-  if (!alreadyPaid) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: betId, referenceType: 'predict_bet', metadata: { roundId: cleanDbText(bet.round_id, 'Prediction round is not ready'), market: String(bet.market || ''), side: String(bet.side || ''), status } });
+  if (payoutNano > 0) await adjustUserTonBalance(env, cleanUserId(bet.user_id), payoutNano, { kind: 'predict', title: status === 'won' ? 'Prediction payout' : 'Prediction refund', referenceId: betId, referenceType: 'predict_bet', metadata: { roundId: cleanDbText(bet.round_id, 'Prediction round is not ready'), market: String(bet.market || ''), side: String(bet.side || ''), status } });
   await env.DB.prepare(`UPDATE predict_bets SET status = ?, payout_nano = ? WHERE id = ? AND status = 'settling_payment'`).bind(status, payoutNano, betId).run();
 }
 async function poolJson(env: Env, roundId: string) {
@@ -350,3 +369,4 @@ function cleanOptionalPrice(value: unknown): number { const n = Number(value); r
 function cleanDbText(value: unknown, message: string): string { const text = String(value ?? '').trim(); if (!text) throw new Error(message); return text; }
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
+async function authenticateUser(env: Env, claimedInput: unknown, initDataInput: unknown): Promise<string> { const claimed = cleanUserId(claimedInput); const verified = await validateTelegramInitData(initDataInput, gameBotToken(env)); if (verified !== claimed) throw new Error('Telegram user mismatch'); return verified; }
