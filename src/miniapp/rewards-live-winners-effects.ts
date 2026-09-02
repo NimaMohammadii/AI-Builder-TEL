@@ -1,11 +1,12 @@
 export const REWARDS_LIVE_WINNERS_EFFECTS = `
 <style id="vexa-rewards-live-winners-effects">
-#rewards .rewards-live-winners{
-  margin-top:clamp(149px,27dvh,314px)!important;
+:is(#rewards,#home[data-home-variant="one"]) .rewards-live-winners{
   padding:0 10px 30px!important;
   position:relative!important;
 }
-#rewards .home-live-winner-card{
+#rewards .rewards-live-winners{margin-top:clamp(149px,27dvh,314px)!important}
+#home[data-home-variant="one"] .rewards-live-winners{margin-top:14px!important}
+:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card{
   --rewards-card-progress:0;
   grid-template-columns:42px minmax(0,1fr) auto 34px!important;
   opacity:calc(1 - var(--rewards-card-progress))!important;
@@ -16,7 +17,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   transition:opacity .1s linear,transform .1s linear,filter .1s linear!important;
   pointer-events:auto;
 }
-#rewards .home-live-winner-card:after{
+:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card:after{
   content:attr(data-rank)!important;
   grid-column:4!important;
   justify-self:end!important;
@@ -40,26 +41,41 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   text-shadow:0 1px 8px rgba(0,0,0,.48)!important;
   box-sizing:border-box!important;
 }
-#rewards .home-live-winner-card:nth-child(-n+3):after{
+:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card:nth-child(-n+3):after{
   color:#fff!important;
   background:linear-gradient(145deg,rgba(255,255,255,.15),rgba(92,10,35,.18))!important;
   border-color:rgba(255,255,255,.19)!important;
 }
-#rewards .home-live-winner-card[data-rewards-hidden="1"]{pointer-events:none!important}
-#rewards .rewards-winner-avatar-fallback{display:grid!important;place-items:center!important;background:rgba(255,255,255,.075)!important;color:#fff!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}
-#rewards .home-live-winner-card.is-waiting{opacity:.7}
+:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card[data-rewards-hidden="1"]{pointer-events:none!important}
+:is(#rewards,#home[data-home-variant="one"]) .rewards-winner-avatar-fallback{display:grid!important;place-items:center!important;background:rgba(255,255,255,.075)!important;color:#fff!important;font-size:14px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}
+:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card.is-waiting{opacity:.7}
 @media(max-width:380px){
   #rewards .rewards-live-winners{margin-top:clamp(134px,25dvh,274px)!important}
-  #rewards .home-live-winner-card{grid-template-columns:42px minmax(0,1fr) auto 31px!important;gap:8px!important}
-  #rewards .home-live-winner-card:after{width:28px!important;height:28px!important;border-radius:10px!important;font-size:9px!important}
+  #home[data-home-variant="one"] .rewards-live-winners{margin-top:12px!important}
+  :is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card{grid-template-columns:42px minmax(0,1fr) auto 31px!important;gap:8px!important}
+  :is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card:after{width:28px!important;height:28px!important;border-radius:10px!important;font-size:9px!important}
 }
-@media(prefers-reduced-motion:reduce){#rewards .home-live-winner-card{filter:none!important;transform:none!important;transition:none!important}}
+@media(prefers-reduced-motion:reduce){:is(#rewards,#home[data-home-variant="one"]) .home-live-winner-card{filter:none!important;transform:none!important;transition:none!important}}
 </style>
 <script id="vexa-rewards-live-winners-scroll-script">
 (function(){
   var ticking=false,loading=false,lastRequestAt=0,phaseTimer=0,retryTimer=0,retryDelay=1000;
   function q(s,r){return (r||document).querySelector(s)}
   function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+  function homeOne(){var home=document.getElementById('home');return home&&home.getAttribute('data-home-variant')==='one'?home:null}
+  function targetRoot(){return homeOne()||document.getElementById('rewards')}
+  function ensureLocation(){
+    var home=homeOne(),rewards=document.getElementById('rewards'),section=q('.rewards-live-winners',home||rewards||document);if(!section)section=q('.rewards-live-winners');
+    var root=home||rewards;if(!root||!section)return null;
+    if(section.parentNode!==root)root.appendChild(section);
+    if(home&&root.lastElementChild!==section)root.appendChild(section);
+    return section;
+  }
+  function clampScroll(root,section){
+    var y=Math.max(0,root&&root.scrollTop||0);
+    if(root&&root.id==='home'&&section)y=Math.max(0,y-Math.max(0,(section.offsetTop||0)-12));
+    return y;
+  }
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
   function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch==='"'?'&quot;':'&#39;'})}
@@ -102,7 +118,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   }
   function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
   function scheduleRetry(){
-    var rewards=document.getElementById('rewards');if(retryTimer||!rewards||!rewards.classList.contains('active')||document.hidden)return;
+    var root=targetRoot();if(retryTimer||!root||!root.classList.contains('active')||document.hidden)return;
     var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));
     retryTimer=setTimeout(function(){retryTimer=0;loadWinners(true)},delay);
   }
@@ -116,11 +132,11 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   function reset(cards){prepare(cards);for(var i=0;i<cards.length;i++){cards[i].style.setProperty('--rewards-card-progress','0');cards[i].setAttribute('data-rewards-hidden','0')}}
   function apply(){
     ticking=false;
-    var rewards=document.getElementById('rewards');if(!rewards)return;
-    var cards=rewards.querySelectorAll('.home-live-winner-card');prepare(cards);
-    if(!rewards.classList.contains('active')){rewards.classList.remove('rewards-winners-scrolled');reset(cards);return}
-    var y=Math.max(0,rewards.scrollTop||0),cardPitch=74,fadeDistance=44;
-    rewards.classList.toggle('rewards-winners-scrolled',y>12);
+    var root=targetRoot(),section=ensureLocation();if(!root||!section)return;
+    var cards=section.querySelectorAll('.home-live-winner-card');prepare(cards);
+    if(!root.classList.contains('active')){root.classList.remove('rewards-winners-scrolled');reset(cards);return}
+    var y=clampScroll(root,section),cardPitch=74,fadeDistance=44;
+    root.classList.toggle('rewards-winners-scrolled',y>12);
     for(var i=0;i<cards.length;i++){
       var start=i*cardPitch,p=clamp((y-start)/fadeDistance,0,1);
       cards[i].style.setProperty('--rewards-card-progress',String(p));cards[i].setAttribute('data-rewards-hidden',p>.98?'1':'0');
@@ -128,7 +144,7 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
   }
   function queue(){if(ticking)return;ticking=true;requestAnimationFrame(apply)}
   async function loadWinners(force){
-    var rewards=document.getElementById('rewards'),data=initData();if(!rewards||!data||loading)return false;
+    var root=targetRoot(),section=ensureLocation(),data=initData();if(!root||!section||!data||loading)return false;
     var now=Date.now();if(!force&&now-lastRequestAt<500)return false;
     loading=true;lastRequestAt=now;
     try{
@@ -139,17 +155,17 @@ export const REWARDS_LIVE_WINNERS_EFFECTS = `
     }catch(e){scheduleRetry();return false}finally{loading=false}
   }
   function bind(){
-    var rewards=document.getElementById('rewards');if(!rewards)return;
-    if(!q('#lotteryRewardsWinnersList',rewards))return;
-    var cards=rewards.querySelectorAll('.home-live-winner-card');reset(cards);
-    if(rewards.dataset.winnersScrollBound!=='1'){
-      rewards.dataset.winnersScrollBound='1';rewards.addEventListener('scroll',queue,{passive:true});window.addEventListener('resize',queue,{passive:true});
+    var root=targetRoot(),section=ensureLocation();if(!root||!section)return;
+    if(!q('#lotteryRewardsWinnersList',section))return;
+    var cards=section.querySelectorAll('.home-live-winner-card');reset(cards);
+    if(root.dataset.winnersScrollBound!=='1'){
+      root.dataset.winnersScrollBound='1';root.addEventListener('scroll',queue,{passive:true});window.addEventListener('resize',queue,{passive:true});
     }
-    if(rewards.classList.contains('active'))loadWinners(false);queue();
+    if(root.classList.contains('active'))loadWinners(false);queue();
   }
-  function refreshWhenVisible(){var rewards=document.getElementById('rewards');if(!document.hidden&&rewards&&rewards.classList.contains('active'))loadWinners(false)}
+  function refreshWhenVisible(){var root=targetRoot();if(!document.hidden&&root&&root.classList.contains('active'))loadWinners(false)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="rewards"]');if(target)setTimeout(function(){bind();loadWinners(false)},60)},true);
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="home"],[data-view="rewards"]');if(target)setTimeout(function(){bind();refreshWhenVisible()},60)},true);
   window.addEventListener('vexa:section-mounted',bind);
   window.addEventListener('focus',refreshWhenVisible);
   document.addEventListener('visibilitychange',refreshWhenVisible);
