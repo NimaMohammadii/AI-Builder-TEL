@@ -173,7 +173,7 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
   const current = await getUserControls(env, id);
   const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
   const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
-  if (blocked) next.push({ sectionId, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
+  if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
   await saveControls(env, id, next, current.winChancePercent, current.banned);
   return getUserControls(env, id);
 }
@@ -222,7 +222,7 @@ function shapeUserControls(userId: string, saved: StoredUserControls | null, ton
 
 async function readSectionControls(env: Env, userId: string): Promise<StoredUserControls | null> {
   try {
-    const row = await readUserControlRow(env, id);
+    const row = await readUserControlRow(env, userId);
     if (row) return rowToStoredControls(userId, row);
   } catch (error) {
     if (isMissingUserControlsSchema(error)) {
