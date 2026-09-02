@@ -173,13 +173,34 @@ export const PREDICT_ZONE_SCRIPT = `
     function renderPriceTicks(scale,ticks){
       if(!axisLayer||!gridLayer)return;
       var key=market+'|'+ticks.join('|'),labels,i,top;
-      if(key!==axisKey){axisKey=key;axisLayer.textContent='';gridLayer.textContent='';ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)})}
+      if(key!==axisKey){
+        axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
+        ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+      }
       labels=axisLayer.children;
       for(i=0;i<ticks.length;i++){top=y(ticks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
     }
-    function setTrend(next){var n=next==='up'?'up':next==='down'?'down':'flat';if(trend===n&&card&&card.classList.contains('trend-'+n))return;trend=n;if(card){card.classList.remove('trend-up','trend-down','trend-flat');card.classList.add('trend-'+n)}if(trendLabel)trendLabel.textContent=n==='up'?'Above start':n==='down'?'Below start':'At start'}
-    function syncTrend(){var p=Number(raw||current||last||0),base=Number(entry||0);if(!p||!base){setTrend('flat');if(trendLabel)trendLabel.textContent='Waiting for price';return}var delta=p-base,epsilon=Math.max(base*.0000005,Math.pow(10,-Math.max(0,cfg().decimals))*0.25);setTrend(delta>epsilon?'up':delta<-epsilon?'down':'flat')}
-    function animateLivePrice(next,prev){if(!live||!prev||!next||next===prev)return;live.classList.remove('tick-up','tick-down');void live.offsetWidth;live.classList.add(next>prev?'tick-up':'tick-down');if(priceTickTimer)clearTimeout(priceTickTimer);priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460)}
+    function setTrend(next){
+      var n=next==='up'?'up':next==='down'?'down':'flat';
+      if(trend===n&&card&&card.classList.contains('trend-'+n))return;
+      trend=n;
+      if(card){card.classList.remove('trend-up','trend-down','trend-flat');card.classList.add('trend-'+n)}
+      if(trendLabel)trendLabel.textContent=n==='up'?'Above start':n==='down'?'Below start':'At start';
+    }
+    function syncTrend(){
+      var p=Number(raw||current||last||0),base=Number(entry||0);
+      if(!p||!base){setTrend('flat');if(trendLabel)trendLabel.textContent='Waiting for price';return}
+      var delta=p-base,epsilon=Math.max(base*.0000005,Math.pow(10,-Math.max(0,cfg().decimals))*0.25);
+      setTrend(delta>epsilon?'up':delta<-epsilon?'down':'flat');
+    }
+    function animateLivePrice(next,prev){
+      if(!live||!prev||!next||next===prev)return;
+      live.classList.remove('tick-up','tick-down');
+      void live.offsetWidth;
+      live.classList.add(next>prev?'tick-up':'tick-down');
+      if(priceTickTimer)clearTimeout(priceTickTimer);
+      priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460);
+    }
     function showLoading(){readyPrice=false;lastVisualPrice=0;scaleMin=0;scaleMax=0;axisKey='';setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
     function seed(price){values=[price,price];current=price;last=price;raw=price;scaleMin=0;scaleMax=0;lastPointAt=0}
     function draw(progress){
