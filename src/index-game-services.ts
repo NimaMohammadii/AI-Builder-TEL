@@ -13,7 +13,8 @@ import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import { settleGameTonBalanceRound } from './user-controls';
 import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
-import { SHARE_INVITE_BUTTON_TEXT, SHARE_INVITE_IMAGE_FILE_KEY, VEXA_APP_DEEP_LINK, vexaTextForCountry, SHARE_INVITE_TEXT } from './miniapp/i18n';
+import { SHARE_INVITE_BUTTON_TEXT, VEXA_APP_DEEP_LINK, vexaTextForCountry, SHARE_INVITE_TEXT } from './miniapp/i18n';
+import { getShareInviteImageFileId } from './share-invite-config';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -50,7 +51,7 @@ app.post('/app/api/share-invite', async (c) => {
   try {
     const body = await c.req.json().catch(() => ({})) as { initData?: unknown; countryCode?: unknown };
     const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
-    const photoFileId = await c.env.BOT_CACHE.get(SHARE_INVITE_IMAGE_FILE_KEY);
+    const photoFileId = await getShareInviteImageFileId(c.env);
     if (!photoFileId) return c.json({ error: 'The invite image has not been uploaded yet.' }, 409, { 'cache-control': 'no-store' });
 
     const countryCode = String(body.countryCode || '').trim().toUpperCase().slice(0, 2);
