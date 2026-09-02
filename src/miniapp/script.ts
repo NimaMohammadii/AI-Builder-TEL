@@ -13,22 +13,37 @@ export const MINIAPP_SCRIPT = `
   setTimeout(expandMiniApp,500);
   setTimeout(expandMiniApp,1200);
 
+  var settingsSheet=null;
+  var settingsCountries=[['IR','🇮🇷','Iran'],['TR','🇹🇷','Turkey'],['DE','🇩🇪','Germany'],['AE','🇦🇪','UAE'],['SA','🇸🇦','Saudi Arabia'],['RU','🇷🇺','Russia'],['IN','🇮🇳','India'],['BR','🇧🇷','Brazil'],['US','🇺🇸','United States'],['OTHER','🌐','Other']];
   function openTelegramLink(url){try{if(tg&&tg.openTelegramLink){tg.openTelegramLink(url);return}}catch(e){}window.location.href=url}
-  function openMiniAppSettings(){
-    if(!tg||!tg.showPopup)return;
-    tg.showPopup({
-      title:'Vexa',
-      message:'Choose an action',
-      buttons:[
-        {id:'open-chat',type:'default',text:'Open Chat'},
-        {id:'invite-friends',type:'default',text:'Invite Friends'},
-        {id:'close',type:'cancel',text:'Close'}
-      ]
-    },function(id){
-      if(id==='open-chat'){openTelegramLink('https://t.me/VexaAppBOT');return}
-      if(id==='invite-friends')openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent('Play Vexa with me'))
-    });
+  function countryKey(){var user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return 'vexa:country:'+String((user&&user.id)||storageGet('ownerId')||'guest')}
+  function selectedCountry(){return storageGet(countryKey())}
+  function setSelectedCountry(code){storageSet(countryKey(),code)}
+  function ensureSettingsSheet(){
+    if(settingsSheet)return settingsSheet;
+    var style=document.createElement('style');
+    style.textContent='#vexaSettingsSheet{position:fixed;inset:0;z-index:50000;display:flex;align-items:flex-end;padding:16px;opacity:0;pointer-events:none;background:rgba(5,2,3,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:opacity .24s ease;font-family:ui-rounded,"SF Pro Rounded","Nunito",system-ui,sans-serif}#vexaSettingsSheet.open{opacity:1;pointer-events:auto}#vexaSettingsSheet .vexa-settings-panel{width:100%;max-width:520px;margin:auto;background:linear-gradient(155deg,rgba(39,18,25,.96),rgba(13,7,10,.985));border:1px solid rgba(255,255,255,.13);border-radius:27px;padding:17px;box-sizing:border-box;box-shadow:0 28px 80px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.12);transform:translateY(24px) scale(.975);transition:transform .3s cubic-bezier(.2,.85,.2,1)}#vexaSettingsSheet.open .vexa-settings-panel{transform:none}.vexa-settings-top{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 15px}.vexa-settings-title{color:#fff;font-size:22px;font-weight:900;letter-spacing:-.055em}.vexa-settings-close{width:32px;height:32px;border:0;border-radius:50%;color:rgba(255,255,255,.68);background:rgba(255,255,255,.08);font:800 18px/1 system-ui}.vexa-settings-sub{margin:0 2px 13px;color:rgba(255,255,255,.48);font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.vexa-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.vexa-settings-item{min-height:80px;padding:13px;border:1px solid rgba(255,255,255,.1);border-radius:18px;color:#fff;background:rgba(255,255,255,.055);text-align:left;font:inherit;transition:transform .18s ease,background .18s ease}.vexa-settings-item:active,.vexa-country-choice:active{transform:scale(.965);background:rgba(145,29,61,.34)}.vexa-settings-item b{display:block;margin-top:8px;font-size:13px;font-weight:900;letter-spacing:-.025em}.vexa-settings-item span{display:block;color:rgba(255,255,255,.48);font-size:11px;font-weight:700}.vexa-settings-item.country{grid-column:1/-1;min-height:57px;display:flex;align-items:center;justify-content:space-between}.vexa-settings-item.country b{margin:0}.vexa-settings-next{color:rgba(255,255,255,.62);font-size:17px}.vexa-settings-back{border:0;padding:0;color:rgba(255,255,255,.64);background:transparent;font:800 12px ui-rounded,"SF Pro Rounded",system-ui}.vexa-country-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:53vh;overflow:auto;padding:1px}.vexa-country-choice{display:flex;align-items:center;gap:8px;min-height:46px;padding:0 10px;border:1px solid rgba(255,255,255,.09);border-radius:15px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.045);font:800 12px ui-rounded,"SF Pro Rounded",system-ui;text-align:left;transition:transform .18s ease,background .18s ease,border-color .18s ease}.vexa-country-choice i{margin-left:auto;font-style:normal;opacity:0}.vexa-country-choice.selected{color:#fff;border-color:rgba(214,76,111,.7);background:linear-gradient(135deg,rgba(130,25,55,.72),rgba(216,73,108,.35))}.vexa-country-choice.selected i{opacity:1}';
+    document.head.appendChild(style);
+    settingsSheet=document.createElement('div');
+    settingsSheet.id='vexaSettingsSheet';
+    settingsSheet.innerHTML='<div class="vexa-settings-panel" role="dialog" aria-modal="true"></div>';
+    settingsSheet.addEventListener('click',function(event){if(event.target===settingsSheet)closeMiniAppSettings()});
+    document.body.appendChild(settingsSheet);
+    return settingsSheet;
   }
+  function selectedCountryLabel(){var item=settingsCountries.filter(function(country){return country[0]===selectedCountry()})[0];return item?item[1]+' '+item[2]:'Not selected'}
+  function renderSettingsHome(){
+    var panel=ensureSettingsSheet().querySelector('.vexa-settings-panel');
+    panel.innerHTML='<div class="vexa-settings-top"><div class="vexa-settings-title">Settings</div><button class="vexa-settings-close" type="button" data-settings-close>×</button></div><p class="vexa-settings-sub">Vexa preferences</p><div class="vexa-settings-grid"><button class="vexa-settings-item" type="button" data-settings-open-chat>◌<b>Open Chat</b><span>Talk to Vexa</span></button><button class="vexa-settings-item" type="button" data-settings-invite>↗<b>Invite Friends</b><span>Share Vexa</span></button><button class="vexa-settings-item country" type="button" data-settings-country><span><b>Country</b><span>'+selectedCountryLabel()+'</span></span><b class="vexa-settings-next">›</b></button></div>';
+    panel.onclick=function(event){var button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-settings-close'))return closeMiniAppSettings();if(button.hasAttribute('data-settings-open-chat'))return openTelegramLink('https://t.me/VexaAppBOT');if(button.hasAttribute('data-settings-invite'))return openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent('Play Vexa with me'));if(button.hasAttribute('data-settings-country'))renderCountrySettings()};
+  }
+  function renderCountrySettings(){
+    var panel=ensureSettingsSheet().querySelector('.vexa-settings-panel');
+    panel.innerHTML='<div class="vexa-settings-top"><button class="vexa-settings-back" type="button" data-settings-back>‹ Back</button><button class="vexa-settings-close" type="button" data-settings-close>×</button></div><div class="vexa-settings-title" style="margin:0 2px 8px">Country</div><p class="vexa-settings-sub">Choose your country</p><div class="vexa-country-list">'+settingsCountries.map(function(country){var active=country[0]===selectedCountry();return '<button class="vexa-country-choice'+(active?' selected':'')+'" type="button" data-country="'+country[0]+'"><span>'+country[1]+'</span><span>'+country[2]+'</span><i>✓</i></button>'}).join('')+'</div>';
+    panel.onclick=function(event){var button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-settings-close'))return closeMiniAppSettings();if(button.hasAttribute('data-settings-back'))return renderSettingsHome();var code=button.getAttribute('data-country');if(!code)return;setSelectedCountry(code);try{window.dispatchEvent(new CustomEvent('vexa:country-changed',{detail:{country:code}}))}catch(e){}renderSettingsHome()};
+  }
+  function closeMiniAppSettings(){if(!settingsSheet)return;settingsSheet.classList.remove('open')}
+  function openMiniAppSettings(){ensureSettingsSheet();renderSettingsHome();settingsSheet.classList.add('open')}
   function initTelegramSettings(){
     if(!tg||!tg.SettingsButton)return;
     try{tg.SettingsButton.offClick(openMiniAppSettings)}catch(e){}
