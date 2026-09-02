@@ -39,7 +39,6 @@ export const PREDICT_ZONE_SECTION = `<section id="predictzone" class="view predi
         </svg>
         <div class="predict-zone-chart-loader" aria-hidden="true"><span></span></div>
         <span class="predict-zone-chart-dot"></span><span class="predict-zone-price-guide"></span>
-        <span class="predict-zone-live-axis-price" data-predict-live-axis-price></span>
         <span class="predict-zone-start-guide" data-predict-start-guide><span>Start</span></span>
         <span class="predict-zone-start-target" data-predict-start-target></span>
       </div>
@@ -94,7 +93,7 @@ html body:has(#predictzone.active) .app,html body:has(#predictzone.active) main.
 .predict-zone-live-meta{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:7px!important;margin:11px 0 10px!important}.predict-zone-live-meta>div{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.055),inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;padding:7px 10px!important;display:grid!important;align-content:center!important;gap:2px!important;box-sizing:border-box!important}.predict-zone-live-meta span{color:rgba(255,255,255,.35)!important;font-size:8px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.10em!important}.predict-zone-live-meta strong{color:#fff!important;font-size:13px!important;font-weight:900!important;letter-spacing:-.035em!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important}
 .predict-zone-live-price.tick-up{animation:predictPriceUp .42s cubic-bezier(.18,.88,.24,1)}.predict-zone-live-price.tick-down{animation:predictPriceDown .42s cubic-bezier(.18,.88,.24,1)}@keyframes predictPriceUp{0%{transform:translateY(0);opacity:.72}42%{transform:translateY(-2px);opacity:1}100%{transform:translateY(0);opacity:1}}@keyframes predictPriceDown{0%{transform:translateY(0);opacity:.72}42%{transform:translateY(2px);opacity:1}100%{transform:translateY(0);opacity:1}}
 
-.predict-zone-chart-preview{position:relative!important;width:100%!important;height:170px!important;border-radius:21px!important;background:rgba(0,0,0,.15)!important;overflow:hidden!important;margin:0 0 10px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)!important}.predict-zone-chart-grid{position:absolute;inset:0 66px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 100%;opacity:.44}.predict-zone-chart-grid span{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.035);transform:translateY(-50%)}.predict-zone-price-axis{position:absolute;right:7px;top:0;bottom:0;width:58px;z-index:4;pointer-events:none}.predict-zone-price-axis span{position:absolute;right:0;transform:translateY(-50%);color:rgba(255,255,255,.36);font-size:10px;font-weight:760;letter-spacing:-.03em;text-align:right;white-space:nowrap}.predict-zone-chart-preview svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 7px 12px rgba(255,255,255,.055))}.predict-zone-chart-fill{fill:url(#predictMainFill)}.predict-zone-chart-line{fill:none;stroke:url(#predictMainLine);stroke-width:3.6;stroke-linecap:round;stroke-linejoin:round}.predict-zone-chart-dot{position:absolute;left:0;top:0;width:8px;height:8px;border-radius:999px;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.07),0 0 14px rgba(255,255,255,.22);transform:translate(-50%,-50%)}.predict-zone-price-guide{position:absolute;left:0;right:66px;top:0;height:0;border-top:1px dashed rgba(255,255,255,.28);transform:translateY(-50%);pointer-events:none;opacity:.56}.predict-zone-live-axis-price{position:absolute;right:6px;top:50%;z-index:7;transform:translateY(-50%);padding:3px 5px;border-radius:8px;background:rgba(245,245,245,.94);color:#090909;font-size:10px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.22);opacity:0;pointer-events:none}.predict-zone-start-guide{position:absolute;left:0;right:70px;height:0;border-top:1px dashed rgba(255,255,255,.30);z-index:4;opacity:0;pointer-events:none}.predict-zone-start-guide.show{opacity:1}.predict-zone-start-guide span{position:absolute;left:9px;top:-16px;font-size:8px;font-weight:850;letter-spacing:.10em;color:rgba(255,255,255,.38);text-transform:uppercase}.predict-zone-start-target{display:none!important}
+.predict-zone-chart-preview{position:relative!important;width:100%!important;height:170px!important;border-radius:21px!important;background:rgba(0,0,0,.15)!important;overflow:hidden!important;margin:0 0 10px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)!important}.predict-zone-chart-grid{position:absolute;inset:0 66px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 100%;opacity:.44}.predict-zone-chart-grid span{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.035);transform:translateY(-50%);transition:top .26s cubic-bezier(.18,.88,.24,1),opacity .18s ease;will-change:top,opacity}.predict-zone-price-axis{position:absolute;right:7px;top:0;bottom:0;width:58px;z-index:4;pointer-events:none}.predict-zone-price-axis span{position:absolute;right:0;transform:translateY(-50%);color:rgba(255,255,255,.36);font-size:10px;font-weight:760;letter-spacing:-.03em;text-align:right;white-space:nowrap;transition:top .26s cubic-bezier(.18,.88,.24,1),opacity .18s ease;will-change:top,opacity}.predict-zone-chart-preview svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 7px 12px rgba(255,255,255,.055))}.predict-zone-chart-fill{fill:url(#predictMainFill)}.predict-zone-chart-line{fill:none;stroke:url(#predictMainLine);stroke-width:3.6;stroke-linecap:round;stroke-linejoin:round}.predict-zone-chart-dot{position:absolute;left:0;top:0;width:8px;height:8px;border-radius:999px;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.07),0 0 14px rgba(255,255,255,.22);transform:translate(-50%,-50%)}.predict-zone-price-guide{position:absolute;left:0;right:66px;top:0;height:0;border-top:1px dashed rgba(255,255,255,.28);transform:translateY(-50%);pointer-events:none;opacity:.56}.predict-zone-start-guide{position:absolute;left:0;right:70px;height:0;border-top:1px dashed rgba(255,255,255,.30);z-index:4;opacity:0;pointer-events:none}.predict-zone-start-guide.show{opacity:1}.predict-zone-start-guide span{position:absolute;left:9px;top:-16px;font-size:8px;font-weight:850;letter-spacing:.10em;color:rgba(255,255,255,.38);text-transform:uppercase}.predict-zone-start-target{display:none!important}
 .predict-zone-chart-loader{position:absolute;inset:0;z-index:8;display:grid;place-items:center;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.12));opacity:1;transition:opacity .24s ease}.predict-zone-chart-loader span{width:42px;height:42px;border-radius:50%;border:2px solid rgba(255,255,255,.08);border-top-color:rgba(255,255,255,.75);border-right-color:rgba(255,255,255,.28);animation:predictLoaderOrbit .82s linear infinite}.predict-zone-chart-preview.ready .predict-zone-chart-loader{opacity:0;visibility:hidden}@keyframes predictLoaderOrbit{to{transform:rotate(360deg)}}
 
 .predict-zone-decision-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 3px 7px;color:rgba(255,255,255,.40);font-size:10px;font-weight:800}.predict-zone-decision-head strong{color:rgba(255,255,255,.68);font-size:10px;font-weight:900;white-space:nowrap}.predict-zone-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}.predict-zone-choice{position:relative!important;overflow:hidden!important;height:38px!important;padding:0 12px!important;border:0!important;border-radius:28px!important;color:#fff!important;font-size:12px!important;font-weight:950!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%)!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translate3d(0,0,0)!important;transform-origin:center!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;transition:transform .38s cubic-bezier(.18,.88,.24,1),filter .32s ease,opacity .32s ease!important}.predict-zone-choice-symbol{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;font-size:16px;font-weight:950;line-height:1;transform:translate3d(0,0,0)}.predict-zone-choice-up .predict-zone-choice-symbol{color:#d7e9dd}.predict-zone-choice-down .predict-zone-choice-symbol{color:#e7c9d2}.predict-zone-choice:active,.predict-zone-choice.press{transform:translate3d(0,1px,0) scale(.94)!important;filter:brightness(1.14) saturate(1.08)!important;transition-duration:.11s!important}.predict-zone-choice-up:active .predict-zone-choice-symbol,.predict-zone-choice-up.press .predict-zone-choice-symbol{animation:predictChoiceUp .46s cubic-bezier(.18,.88,.24,1)}.predict-zone-choice-down:active .predict-zone-choice-symbol,.predict-zone-choice-down.press .predict-zone-choice-symbol{animation:predictChoiceDown .46s cubic-bezier(.18,.88,.24,1)}@keyframes predictChoiceUp{0%{transform:translateY(0)}45%{transform:translateY(-5px) scale(1.12)}100%{transform:translateY(0)}}@keyframes predictChoiceDown{0%{transform:translateY(0)}45%{transform:translateY(5px) scale(1.12)}100%{transform:translateY(0)}}
@@ -120,9 +119,9 @@ export const PREDICT_ZONE_SCRIPT = `
       oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'',rest:'',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
       gold:{label:'Gold',question:'Gold up or down?',stream:'paxgusdt@miniTicker',rest:'https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT',decimals:2,step:.5,duration:300000,symbol:'Au'}
     };
-    var market='bitcoin',ws=null,raf=0,seq=0,values=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,lastDrawAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',lastVisualPrice=0,choiceTimer=0,priceTickTimer=0,axisKey='';
-    var W=360,H=220,L=14,R=78,P=24;
-    var menu=root.querySelector('.predict-zone-category-menu'),card=root.querySelector('[data-predict-card]'),chart=root.querySelector('[data-predict-chart]'),line=chart&&chart.querySelector('.predict-zone-chart-line'),fill=chart&&chart.querySelector('.predict-zone-chart-fill'),dot=chart&&chart.querySelector('.predict-zone-chart-dot'),guide=chart&&chart.querySelector('.predict-zone-price-guide'),liveAxisPrice=chart&&chart.querySelector('[data-predict-live-axis-price]'),axisLayer=chart&&chart.querySelector('[data-predict-price-axis]'),gridLayer=chart&&chart.querySelector('[data-predict-grid]'),startGuide=chart&&chart.querySelector('[data-predict-start-guide]');
+    var market='bitcoin',ws=null,raf=0,seq=0,values=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,lastDrawAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',lastVisualPrice=0,choiceTimer=0,priceTickTimer=0;
+    var W=360,H=220,L=14,R=78,P=24,HISTORY=23;
+    var menu=root.querySelector('.predict-zone-category-menu'),card=root.querySelector('[data-predict-card]'),chart=root.querySelector('[data-predict-chart]'),line=chart&&chart.querySelector('.predict-zone-chart-line'),fill=chart&&chart.querySelector('.predict-zone-chart-fill'),dot=chart&&chart.querySelector('.predict-zone-chart-dot'),guide=chart&&chart.querySelector('.predict-zone-price-guide'),axisLayer=chart&&chart.querySelector('[data-predict-price-axis]'),gridLayer=chart&&chart.querySelector('[data-predict-grid]'),startGuide=chart&&chart.querySelector('[data-predict-start-guide]');
     var question=root.querySelector('[data-predict-question]'),questionImage=root.querySelector('[data-predict-question-image]'),symbolFallback=root.querySelector('[data-predict-symbol-fallback]'),countdown=root.querySelector('[data-predict-countdown]'),live=root.querySelector('.predict-zone-live-price'),start=root.querySelector('.predict-zone-start-price'),trendLabel=root.querySelector('[data-predict-trend-label]'),result=root.querySelector('[data-predict-result]');
     var sheet=root.querySelector('[data-predict-bet-sheet]'),betTitle=root.querySelector('[data-predict-bet-title]'),betQuestion=root.querySelector('[data-predict-bet-question]'),betInput=root.querySelector('[data-predict-bet-input]'),betUsd=root.querySelector('[data-predict-bet-usd]'),betEstimate=root.querySelector('[data-predict-bet-estimate]'),betStatus=root.querySelector('[data-predict-bet-status]'),betSubmit=root.querySelector('[data-predict-bet-submit]');
 
@@ -137,27 +136,24 @@ export const PREDICT_ZONE_SCRIPT = `
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
     function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
     function axisCapacity(){var chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H);return Math.max(2,Math.min(4,Math.floor(usableHeight/42)+1))}
-    function resolvePriceAxis(scale){
-      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=Math.max(1,axisCapacity()-1),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,mid,first,ticks,edge,fitted,gap,i;
-      for(count=maxCount;count>=1;count--){
-        step=Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));
-        step=Math.ceil((step-1e-12)/quantum)*quantum;
-        mid=(scale.min+scale.max)/2;
-        first=Math.round((mid-step*(count-1)/2)/step)*step;
-        if(first<=0)first=Math.max(step,Math.ceil(scale.min/step)*step);
-        ticks=[];
-        for(i=0;i<count;i++)ticks.push(Number((first+i*step).toFixed(precision)));
-        edge=Math.max(span*.02,quantum*.1);
-        fitted={min:Math.min(scale.min,ticks[0]-edge),max:Math.max(scale.max,ticks[ticks.length-1]+edge)};
-        gap=step/(fitted.max-fitted.min||1)*usableHeight;
-        if(gap>=minGap||count===1)return{scale:fitted,ticks:ticks};
+    function priceTicks(scale,liveValue){
+      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,maxCount=axisCapacity(),minGapSvg=32/chartHeight*H,span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),step=Math.max(quantum,niceTickStep(span,Math.max(1,maxCount+1))),liveValueNumber=Number(liveValue),selected=[],candidates=[],first,v,i,j,best,bestGap,gap;
+      step=Math.ceil((step-1e-12)/quantum)*quantum;
+      if(!isFinite(liveValueNumber)||liveValueNumber<=0)liveValueNumber=(scale.min+scale.max)/2;
+      selected.push(Number(liveValueNumber.toFixed(precision)));
+      first=Math.ceil(scale.min/step)*step;
+      for(v=first;v<=scale.max+step*1e-9&&candidates.length<48;v+=step){v=Number(v.toFixed(precision));if(Math.abs(y(v,scale)-y(liveValueNumber,scale))>=minGapSvg)candidates.push(v)}
+      while(selected.length<maxCount&&candidates.length){
+        best=-1;bestGap=-1;
+        for(i=0;i<candidates.length;i++){gap=Infinity;for(j=0;j<selected.length;j++)gap=Math.min(gap,Math.abs(y(candidates[i],scale)-y(selected[j],scale)));if(gap>bestGap){bestGap=gap;best=i}}
+        if(best<0||bestGap<minGapSvg)break;
+        selected.push(candidates.splice(best,1)[0]);
       }
-      return{scale:scale,ticks:[]}
+      return selected.sort(function(a,b){return b-a});
     }
     function autoScale(prices){
-      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*2,precision*4),min,max,span,mid,pad,targetMin,targetMax;
+      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*2,precision*4),min,max,span,mid,pad,targetMin,targetMax,lowRate,highRate;
       if(entry>0)valid.push(entry);
-      if(raw>0)valid.push(raw);
       if(!valid.length)valid.push(Number(current||last||1));
       min=Math.min.apply(Math,valid);max=Math.max.apply(Math,valid);span=max-min;
       if(!isFinite(span)||span<minSpan){mid=(min+max)/2;min=mid-minSpan/2;max=mid+minSpan/2;span=minSpan}
@@ -165,21 +161,32 @@ export const PREDICT_ZONE_SCRIPT = `
       targetMin=min-pad;targetMax=max+pad;
       if(!scaleMin||!scaleMax){scaleMin=targetMin;scaleMax=targetMax}
       else{
-        scaleMin=targetMin<scaleMin?targetMin:scaleMin+(targetMin-scaleMin)*.025;
-        scaleMax=targetMax>scaleMax?targetMax:scaleMax+(targetMax-scaleMax)*.025;
+        lowRate=targetMin<scaleMin?.18:.035;
+        highRate=targetMax>scaleMax?.18:.035;
+        scaleMin+=(targetMin-scaleMin)*lowRate;
+        scaleMax+=(targetMax-scaleMax)*highRate;
       }
       if(scaleMax-scaleMin<minSpan){mid=(scaleMin+scaleMax)/2;scaleMin=mid-minSpan/2;scaleMax=mid+minSpan/2}
       return{min:scaleMin,max:scaleMax}
     }
-    function renderPriceTicks(scale,ticks,liveValue){
+    function renderPriceTicks(scale,ticks){
       if(!axisLayer||!gridLayer)return;
-      var chartHeight=chart&&chart.clientHeight||170,liveTop=y(liveValue,scale),minGapSvg=22/chartHeight*H,visibleTicks=ticks.filter(function(pv){return Math.abs(y(pv,scale)-liveTop)>=minGapSvg}),key=market+'|'+visibleTicks.join('|'),labels,i,top;
-      if(key!==axisKey){
-        axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
-        visibleTicks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+      var max=4,label,lineEl,i,top,text;
+      while(axisLayer.children.length<max){label=document.createElement('span');label.style.opacity='0';axisLayer.appendChild(label)}
+      while(gridLayer.children.length<max){lineEl=document.createElement('span');lineEl.style.opacity='0';gridLayer.appendChild(lineEl)}
+      for(i=0;i<max;i++){
+        label=axisLayer.children[i];lineEl=gridLayer.children[i];
+        if(i<ticks.length){top=y(ticks[i],scale)/H*100+'%';text=formatPrice(ticks[i]);if(label.textContent!==text)label.textContent=text;label.style.top=top;lineEl.style.top=top;label.style.opacity='1';lineEl.style.opacity='1'}
+        else{label.style.opacity='0';lineEl.style.opacity='0'}
       }
-      labels=axisLayer.children;
-      for(i=0;i<visibleTicks.length;i++){top=y(visibleTicks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
+    }
+    function clipVisible(points,right){
+      var out=[],first=0,a,b,t,i;
+      while(first<points.length&&points[first].x<L)first++;
+      if(first>0&&first<points.length){a=points[first-1];b=points[first];t=(L-a.x)/((b.x-a.x)||1);out.push({x:L,v:a.v+(b.v-a.v)*t})}
+      else if(first===0&&points.length){out.push({x:L,v:points[0].v})}
+      for(i=first;i<points.length;i++){if(points[i].x<=right)out.push(points[i])}
+      return out.length>=2?out:points.slice(-2);
     }
     function setTrend(next){
       var n=next==='up'?'up':next==='down'?'down':'flat';
@@ -202,26 +209,23 @@ export const PREDICT_ZONE_SCRIPT = `
       if(priceTickTimer)clearTimeout(priceTickTimer);
       priceTickTimer=setTimeout(function(){if(live)live.classList.remove('tick-up','tick-down')},460);
     }
-    function showLoading(){readyPrice=false;lastVisualPrice=0;scaleMin=0;scaleMax=0;axisKey='';setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(liveAxisPrice){liveAxisPrice.textContent='';liveAxisPrice.style.opacity='0'}if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
+    function showLoading(){readyPrice=false;lastVisualPrice=0;scaleMin=0;scaleMax=0;setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
     function seed(price){values=[];var st=price>1000?1.8:price>100?.18:.006,w=price>1000?5:price>100?.5:.018;for(var i=0;i<22;i++)values.push(price-st*12+i*st+Math.sin(i/2.8)*w);current=price;last=price;raw=price;scaleMin=0;scaleMax=0;lastPointAt=0}
     function draw(progress){
       if(!readyPrice||!values.length||!line||!fill)return;
-      var right=W-R,step=(W-L-R)/(Math.max(22,values.length+1)-1),rawPts=values.map(function(v,i){return{x:right-((values.length-i)+progress)*step,v:v}});
-      rawPts.push({x:right,v:Number(raw||current)});
-      var visibleRaw=rawPts.filter(function(p){return p.x>=0&&p.x<=right});
-      if(visibleRaw.length<2)visibleRaw=rawPts.slice(-2);
-      var baseScale=autoScale(visibleRaw.map(function(p){return p.v})),axisLayout=resolvePriceAxis(baseScale),scale=axisLayout.scale,ticks=axisLayout.ticks,visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
+      var right=W-R,step=(W-L-R)/HISTORY,rawPts=values.map(function(v,i){return{x:right-((values.length-i)+progress)*step,v:v}});
+      rawPts.push({x:right,v:current});
+      var visibleRaw=clipVisible(rawPts,right),scale=autoScale(visibleRaw.map(function(p){return p.v})),ticks=priceTicks(scale,current),visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
       line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');
       if(dot){dot.style.left=xp+'%';dot.style.top=yp+'%'}
       if(guide)guide.style.top=yp+'%';
-      if(liveAxisPrice){liveAxisPrice.style.top=yp+'%';liveAxisPrice.textContent=formatPrice(lastPoint.v);liveAxisPrice.style.opacity='1'}
-      renderPriceTicks(scale,ticks,lastPoint.v);
+      renderPriceTicks(scale,ticks);
       if(startGuide){startGuide.classList.remove('show');if(entry&&entry<=scale.max&&entry>=scale.min){startGuide.style.top=y(entry,scale)/H*100+'%';startGuide.classList.add('show')}}
       if(start&&entry)start.textContent=formatPrice(entry);
-      if(live)live.textContent=formatPrice(raw||lastPoint.v);
+      if(live)live.textContent=formatPrice(current);
       syncTrend()
     }
-    function applyPrice(value,my,id){if(my!==seq||id!==market)return;var p=Number(value);if(!isFinite(p)||p<=0)return;var prev=Number(raw||lastVisualPrice||0);raw=p;last=p;if(!readyPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready');draw(0)}if(live)live.textContent=formatPrice(p);animateLivePrice(p,prev);lastVisualPrice=p;syncTrend()}
+    function applyPrice(value,my,id){if(my!==seq||id!==market)return;var p=Number(value);if(!isFinite(p)||p<=0)return;var prev=Number(raw||lastVisualPrice||0);raw=p;last=p;if(!readyPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready');draw(0)}animateLivePrice(p,prev);lastVisualPrice=p;syncTrend()}
     function closeFeed(){seq++;if(ws){try{ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function connectFeed(){closeFeed();var my=seq,id=market,c=cfg();if(!isActive())return;if(!c.stream||!c.rest){if(currentRound&&Number(currentRound.startPrice)>0){applyPrice(Number(currentRound.startPrice),my,id)}return}fetch(c.rest,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(function(j){applyPrice(j&&j.price,my,id)}).catch(function(){});try{ws=new WebSocket('wss://stream.binance.com:9443/ws/'+c.stream);ws.onmessage=function(e){if(my!==seq||id!==market)return;try{var j=JSON.parse(e.data);applyPrice(j.c||j.p,my,id)}catch(_){}};ws.onclose=function(){if(my!==seq)return;ws=null;if(isActive())setTimeout(connectFeed,6000)};ws.onerror=function(){try{ws&&ws.close()}catch(e){}}}catch(e){}}
     function renderImage(){if(!questionImage)return;var url=images[market]||'';questionImage.style.backgroundImage=url?'url("'+url.replace(/"/g,'')+'")':'';questionImage.classList.toggle('has-image',!!url);if(symbolFallback)symbolFallback.textContent=cfg().symbol||''}
@@ -237,7 +241,7 @@ export const PREDICT_ZONE_SCRIPT = `
     function submitBet(){if(busy)return;var amount=Number(betInput&&betInput.value||0),id=uid();if(!id){setStatus('Telegram user was not detected.','bad');return}if(!amount||amount<=0){setStatus('Enter a valid TON amount.','bad');return}busy=true;if(betSubmit){betSubmit.disabled=true;betSubmit.textContent='Placing...'}setStatus('Checking balance...','');fetch('/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId:id,market:market,side:side,stakeTon:amount,tonUsdSnapshot:0})}).then(function(r){return r.json().then(function(j){return{ok:r.ok,json:j}})}).then(function(x){if(!x.ok||!x.json||x.json.ok===false)throw new Error((x.json&&x.json.error)||'Could not place prediction');updateBalance(x.json);setStatus('Prediction placed.','good');if(x.json.round&&x.json.round.round){currentRound=x.json.round.round;renderHistory(currentRound)}setTimeout(closeBet,450)}).catch(function(e){setStatus(e&&e.message?e.message:'Could not place prediction.','bad')}).finally(function(){busy=false;if(betSubmit){betSubmit.disabled=false;betSubmit.textContent='Place prediction'}})}
     function updateMenu(){menu.querySelectorAll('[data-vexa-predict-market]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-vexa-predict-market')===market)})}
     function selectMarket(id){if(!MARKETS[id]||id===market&&raf)return;closeFeed();if(raf){cancelAnimationFrame(raf);raf=0}market=id;values=[];current=0;last=0;raw=0;scaleMin=0;scaleMax=0;entry=0;readyPrice=false;currentRound=null;slot=slotFor(Date.now());lastPointAt=0;lastDrawAt=0;lastVisualPrice=0;showLoading();updateMenu();if(question)question.textContent=cfg().question;renderImage();if(result){result.className='predict-zone-result-strip';result.innerHTML=''}syncRound().finally(function(){connectFeed();if(!raf)raf=requestAnimationFrame(loop)})}
-    function loop(now){if(!isActive()){if(raf){cancelAnimationFrame(raf);raf=0}closeFeed();return}var newSlot=slotFor(Date.now());if(newSlot!==slot){slot=newSlot;entry=Number(raw||current||last||0);syncRound()}if(countdown)countdown.textContent=timeLeft(cfg().duration-((Date.now()-slot)%cfg().duration));if(readyPrice){current+=(last-current)*.16;if(!lastPointAt)lastPointAt=now;var elapsed=now-lastPointAt;if(elapsed>=3000){values.push(current);if(values.length>23)values.shift();lastPointAt=now;elapsed=0}if(now-lastDrawAt>32){lastDrawAt=now;draw(Math.min(1,Math.max(0,elapsed/3000)))}}raf=requestAnimationFrame(loop)}
+    function loop(now){if(!isActive()){if(raf){cancelAnimationFrame(raf);raf=0}closeFeed();return}var newSlot=slotFor(Date.now());if(newSlot!==slot){slot=newSlot;entry=Number(raw||current||last||0);syncRound()}if(countdown)countdown.textContent=timeLeft(cfg().duration-((Date.now()-slot)%cfg().duration));if(readyPrice){current+=(last-current)*.16;if(!lastPointAt)lastPointAt=now;var elapsed=now-lastPointAt;if(elapsed>=3000){values.push(current);if(values.length>HISTORY)values.shift();lastPointAt=now;elapsed=0}if(now-lastDrawAt>32){lastDrawAt=now;draw(Math.min(1,Math.max(0,elapsed/3000)))}}raf=requestAnimationFrame(loop)}
     function resume(){if(!isActive())return;if(!raf){connectFeed();raf=requestAnimationFrame(loop)}}
     function animateChoice(choice){if(!choice)return;if(choiceTimer)clearTimeout(choiceTimer);choice.classList.remove('press');void choice.offsetWidth;choice.classList.add('press');choiceTimer=setTimeout(function(){choice.classList.remove('press')},480)}
 
