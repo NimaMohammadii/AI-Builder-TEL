@@ -138,8 +138,8 @@ export const PREDICT_ZONE_SCRIPT = `
     function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
     function axisCapacity(){var chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H);return Math.max(2,Math.min(4,Math.floor(usableHeight/42)+1))}
     function resolvePriceAxis(scale){
-      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,mid,first,ticks,edge,fitted,gap,i;
-      for(count=maxCount;count>=2;count--){
+      var c=cfg(),chartHeight=chart&&chart.clientHeight||170,usableHeight=chartHeight*((H-P*2)/H),minGap=38,maxCount=Math.max(1,axisCapacity()-1),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,mid,first,ticks,edge,fitted,gap,i;
+      for(count=maxCount;count>=1;count--){
         step=Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));
         step=Math.ceil((step-1e-12)/quantum)*quantum;
         mid=(scale.min+scale.max)/2;
@@ -150,7 +150,7 @@ export const PREDICT_ZONE_SCRIPT = `
         edge=Math.max(span*.02,quantum*.1);
         fitted={min:Math.min(scale.min,ticks[0]-edge),max:Math.max(scale.max,ticks[ticks.length-1]+edge)};
         gap=step/(fitted.max-fitted.min||1)*usableHeight;
-        if(gap>=minGap||count===2)return{scale:fitted,ticks:ticks};
+        if(gap>=minGap||count===1)return{scale:fitted,ticks:ticks};
       }
       return{scale:scale,ticks:[]}
     }
@@ -171,15 +171,15 @@ export const PREDICT_ZONE_SCRIPT = `
       if(scaleMax-scaleMin<minSpan){mid=(scaleMin+scaleMax)/2;scaleMin=mid-minSpan/2;scaleMax=mid+minSpan/2}
       return{min:scaleMin,max:scaleMax}
     }
-    function renderPriceTicks(scale,ticks){
+    function renderPriceTicks(scale,ticks,liveValue){
       if(!axisLayer||!gridLayer)return;
-      var key=market+'|'+ticks.join('|'),labels,i,top;
+      var chartHeight=chart&&chart.clientHeight||170,liveTop=y(liveValue,scale),minGapSvg=22/chartHeight*H,visibleTicks=ticks.filter(function(pv){return Math.abs(y(pv,scale)-liveTop)>=minGapSvg}),key=market+'|'+visibleTicks.join('|'),labels,i,top;
       if(key!==axisKey){
         axisKey=key;axisLayer.textContent='';gridLayer.textContent='';
-        ticks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
+        visibleTicks.forEach(function(pv){var label=document.createElement('span'),lineEl=document.createElement('span');label.textContent=formatPrice(pv);axisLayer.appendChild(label);gridLayer.appendChild(lineEl)});
       }
       labels=axisLayer.children;
-      for(i=0;i<ticks.length;i++){top=y(ticks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
+      for(i=0;i<visibleTicks.length;i++){top=y(visibleTicks[i],scale)/H*100+'%';if(labels[i])labels[i].style.top=top;if(gridLayer.children[i])gridLayer.children[i].style.top=top}
     }
     function setTrend(next){
       var n=next==='up'?'up':next==='down'?'down':'flat';
@@ -215,7 +215,7 @@ export const PREDICT_ZONE_SCRIPT = `
       if(dot){dot.style.left=xp+'%';dot.style.top=yp+'%'}
       if(guide)guide.style.top=yp+'%';
       if(liveAxisPrice){liveAxisPrice.style.top=yp+'%';liveAxisPrice.textContent=formatPrice(lastPoint.v);liveAxisPrice.style.opacity='1'}
-      renderPriceTicks(scale,ticks);
+      renderPriceTicks(scale,ticks,lastPoint.v);
       if(startGuide){startGuide.classList.remove('show');if(entry&&entry<=scale.max&&entry>=scale.min){startGuide.style.top=y(entry,scale)/H*100+'%';startGuide.classList.add('show')}}
       if(start&&entry)start.textContent=formatPrice(entry);
       if(live)live.textContent=formatPrice(raw||lastPoint.v);
