@@ -55,9 +55,11 @@ app.get('/app/api/predict-round', async (c) => {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
     const claimedUserId = cleanUserIdOptional(c.req.query('userId'));
     const userId = claimedUserId ? await authenticateUser(c.env, claimedUserId, c.req.header('x-telegram-init-data')) : '';
-    const round = await getOrCreateCurrentRound(c.env, market);
+    let livePrice = 0;
+    try { livePrice = await fetchPrice(market); } catch {}
+    const round = await getOrCreateCurrentRound(c.env, market, livePrice);
     await settleDueRounds(c.env, market);
-    return c.json(await publicRoundJson(c.env, round, userId), 200, { 'cache-control': CACHE_NONE });
+    return c.json(await publicRoundJson(c.env, round, userId, livePrice), 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load prediction round' }, 400, { 'cache-control': CACHE_NONE });
   }
@@ -173,7 +175,7 @@ function normalizePredictCryptoCardMarket(value: string): PredictCryptoCardMarke
 function predictCryptoCardImageKey(market: PredictCryptoCardMarket): string {
   return `predict/crypto-card/${market}`;
 }
-async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
+async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePrice = 0) {
   await ensurePredictTables(env);
   const cleanedUserId = cleanUserIdOptional(userId);
   const roundId = cleanDbText(round.id, 'Prediction round is not ready');
@@ -183,7 +185,7 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string) {
   const userControls = cleanedUserId ? await getUserControls(env, cleanedUserId) : null;
   const now = Date.now();
   const ends = Date.parse(String(round.ends_at || ''));
-  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
+  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), livePrice: Number(livePrice) > 0 ? Number(livePrice) : null, endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
 }
 async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (id TEXT PRIMARY KEY, market TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, start_price REAL NOT NULL, end_price REAL, status TEXT NOT NULL DEFAULT 'open', result TEXT, settled_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
@@ -192,17 +194,24 @@ async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_bets_round ON predict_bets(round_id)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_bets_user_round ON predict_bets(user_id, round_id)').run();
 }
-async function getOrCreateCurrentRound(env: Env, market: TradeMarket): Promise<RoundRow> {
+async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPrice = 0): Promise<RoundRow> {
   await ensurePredictTables(env);
   const now = Date.now();
   const existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
-  if (existing) return existing;
+  if (existing) {
+    if (Number(existing.start_price) > 0) return existing;
+    const repairedPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+    await env.DB.prepare('UPDATE predict_rounds SET start_price = ? WHERE id = ?').bind(repairedPrice, existing.id).run();
+    const repaired = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(existing.id).first<RoundRow>();
+    if (!repaired) throw new Error('Could not repair prediction round');
+    return repaired;
+  }
   const roundMs = roundMsForMarket(market);
   const startMs = Math.floor(now / roundMs) * roundMs;
   const startsAt = new Date(startMs).toISOString();
   const endsAt = new Date(startMs + roundMs).toISOString();
   const id = `pr_${market}_${startMs}`;
-  const startPrice = await fetchPrice(market);
+  const startPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
   await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
   const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
   if (!row) throw new Error('Could not create prediction round');
