@@ -32,11 +32,19 @@ export async function ensureCrashFinanceSchema(env: Env): Promise<void> {
     cashout_multiplier REAL,
     auto_cashout_multiplier REAL,
     payout_nano INTEGER NOT NULL DEFAULT 0,
+    is_virtual INTEGER NOT NULL DEFAULT 0,
+    target_cashout_multiplier REAL,
+    virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0,
+    virtual_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(round_id,user_id)
   )`).run();
   await addColumnIfMissing(env.DB, 'ALTER TABLE crash_live_bets ADD COLUMN auto_cashout_multiplier REAL');
+  await addColumnIfMissing(env.DB, 'ALTER TABLE crash_live_bets ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(env.DB, 'ALTER TABLE crash_live_bets ADD COLUMN target_cashout_multiplier REAL');
+  await addColumnIfMissing(env.DB, 'ALTER TABLE crash_live_bets ADD COLUMN virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(env.DB, 'ALTER TABLE crash_live_bets ADD COLUMN virtual_order INTEGER NOT NULL DEFAULT 0');
   await ensureTonTransactionsTable(env);
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_crash_live_bets_round ON crash_live_bets(round_id,created_at)').run();
   crashFinanceSchemaReady = true;
