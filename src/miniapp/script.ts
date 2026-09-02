@@ -14,15 +14,20 @@ export const MINIAPP_SCRIPT = `
   setTimeout(expandMiniApp,1200);
 
   function openTelegramLink(url){try{if(tg&&tg.openTelegramLink){tg.openTelegramLink(url);return}}catch(e){}window.location.href=url}
+  function timeZoneCountry(){
+    var zone='';try{zone=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+    var labels={'Asia/Tehran':'Iran','Europe/Istanbul':'Turkey','Europe/Berlin':'Germany','Asia/Dubai':'UAE','Asia/Riyadh':'Saudi Arabia','Europe/Moscow':'Russia','Asia/Kolkata':'India','America/Sao_Paulo':'Brazil','America/New_York':'United States','America/Chicago':'United States','America/Denver':'United States','America/Los_Angeles':'United States'};
+    return labels[zone]||'Other';
+  }
   function openMiniAppSettings(){
     if(!tg||!tg.showPopup)return;
     tg.showPopup({
       title:'Vexa',
       message:'Choose an action',
       buttons:[
+        {id:'country',type:'default',text:'Country · '+timeZoneCountry()},
         {id:'open-chat',type:'default',text:'Open Chat'},
-        {id:'invite-friends',type:'default',text:'Invite Friends'},
-        {id:'close',type:'cancel',text:'Close'}
+        {id:'invite-friends',type:'default',text:'Invite Friends'}
       ]
     },function(id){
       if(id==='open-chat'){openTelegramLink('https://t.me/VexaAppBOT');return}
