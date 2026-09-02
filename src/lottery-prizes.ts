@@ -235,7 +235,7 @@ function publicWinner(row: WinnerRow): LotteryWinner {
   const username = cleanUsername(row.username);
   const firstName = String(row.first_name || '').trim().slice(0, 80);
   const suffix = String(row.user_id || '').slice(-4);
-  const displayName = username ? `@${username}` : (firstName || `Player ${suffix || '—'}`);
+  const displayName = firstName || (username ? `@${username}` : `Player ${suffix || '—'}`);
   const code = String(row.ticket_code || '').replace(/[^0-9]/g, '').slice(-5).padStart(5, '0');
   return {
     id: row.id,
