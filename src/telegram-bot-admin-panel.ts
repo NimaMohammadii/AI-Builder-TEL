@@ -5,10 +5,11 @@ import type { Env, TelegramCallbackQuery, TelegramMessage } from './types';
 import { getUserControls, setUserBanned, setUserSectionBlocked, setUserTonBalance, setUserWinChance } from './user-controls';
 import { formatTonAmount, getFinanceLimits, getFinanceStats, setFinanceLimits, tonToNano } from './admin-finance-controls';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { DEFAULT_VEXA_LOCALE, SHARE_INVITE_BUTTON_TEXT, VEXA_LOCALES, VEXA_LOCALE_LABELS, type VexaLocale, vexaLocaleForCountry } from './miniapp/i18n';
 
 type TgApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
-type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
-type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit' | 'search'; userId?: string; page?: number; list?: string; regions?: string[]; miniAppButton?: boolean; menuMessageId?: number };
+type AdminUser = Record<string, unknown> & { id?: unknown; firstName?: unknown; username?: unknown; tonBalance?: unknown; tonBalanceNano?: unknown; currentSection?: unknown; status?: unknown; level?: unknown; xp?: unknown; rankName?: unknown; regionCode?: unknown; languageCode?: unknown; regionLabel?: unknown; returnCount?: unknown };
+type AdminState = { mode: 'win' | 'credit' | 'message' | 'broadcast' | 'limit' | 'search'; userId?: string; page?: number; list?: string; locales?: string[]; miniAppButton?: boolean; menuMessageId?: number };
 type TelegramSentMessage = { message_id?: number };
 type RegionConfig = { code: string; label: string; language: string; timezone: string };
 type RegionSettings = { startPromptEnabled: boolean; commandEnabled: boolean; defaultRegionCode: string | null };
@@ -91,7 +92,7 @@ export async function handleBotAdminCallback(env: Env, token: string, q: Telegra
   if (action === 'togglestartregion') return updateRegionSettings(env, token, chatId, tg, messageId, { startPromptEnabled: id !== 'off' });
   if (action === 'toggleregioncmd') return updateRegionSettings(env, token, chatId, tg, messageId, { commandEnabled: id !== 'off' });
   if (action === 'setdefaultregion') return updateRegionSettings(env, token, chatId, tg, messageId, { defaultRegionCode: regionByCode(id)?.code ?? null });
-  if (action === 'broadcastregion') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'broadcast', regions: normalizeRegions(id), miniAppButton: arg !== 'nobutton' }, broadcastPrompt(normalizeRegions(id), arg !== 'nobutton'), messageId);
+  if (action === 'broadcastlocale') return promptAdminInput(env, token, chatId, tg, q.from.id, { mode: 'broadcast', locales: normalizeBroadcastLocales(id), miniAppButton: arg !== 'nobutton' }, broadcastPrompt(normalizeBroadcastLocales(id), arg !== 'nobutton'), messageId);
   if (action === 'report') return sendUserReportPdf(env, token, chatId, tg, id);
   if (action === 'block') return toggleSection(env, token, chatId, tg, id, arg, messageId, pageArg);
   if (action === 'reset') return resetUser(env, token, chatId, tg, id, messageId);
@@ -265,12 +266,12 @@ async function handleStateMessage(env: Env, token: string, message: TelegramMess
   if (state.mode === 'broadcast') {
     await clearAdminState(env, message.from?.id);
     const data = await adminUsersJson(env);
-    const regions = normalizeRegions(state.regions || 'ALL');
+    const locales = normalizeBroadcastLocales(state.locales || 'ALL');
     let sent = 0;
-    for (const user of (data.users as AdminUser[]).filter((item) => regionMatches(item, regions))) {
+    for (const user of (data.users as AdminUser[]).filter((item) => localeMatches(item, locales))) {
       const id = cleanId(user.id);
       if (!id) continue;
-      try { await copyAdminMessageToChat(token, tg, message, id, state.miniAppButton !== false, broadcastMiniAppButtonText(user, regions)); sent++; } catch (_) { /* ignore blocked users */ }
+      try { await copyAdminMessageToChat(token, tg, message, id, state.miniAppButton !== false, broadcastMiniAppButtonText(user)); sent++; } catch (_) { /* ignore blocked users */ }
     }
     await cleanupAdminInput(token, tg, message);
     return sendAdminHome(env, token, message.chat.id, tg, state.menuMessageId);
@@ -418,43 +419,43 @@ function formatTon(value: unknown): string { const n = Math.max(0, Math.floor(Nu
 async function sendBroadcastOptions(env: Env, token: string, chatId: number, tg: TgApi, adminId: unknown, messageId?: number): Promise<true> {
   await clearAdminState(env, adminId);
   const rows = [
-    [{ text: '🌍 همه کاربران + دکمه مینی‌اپ', callback_data: 'botadmin:broadcastregion:ALL:button' }],
-    [{ text: '🌍 همه کاربران بدون دکمه', callback_data: 'botadmin:broadcastregion:ALL:nobutton' }],
-    [{ text: 'EN + دکمه', callback_data: 'botadmin:broadcastregion:EN:button' }, { text: 'EN بدون دکمه', callback_data: 'botadmin:broadcastregion:EN:nobutton' }],
-    [{ text: 'IR + دکمه', callback_data: 'botadmin:broadcastregion:IR:button' }, { text: 'IR بدون دکمه', callback_data: 'botadmin:broadcastregion:IR:nobutton' }],
-    [{ text: 'TR + دکمه', callback_data: 'botadmin:broadcastregion:TR:button' }, { text: 'TR بدون دکمه', callback_data: 'botadmin:broadcastregion:TR:nobutton' }],
-    [{ text: 'RU + دکمه', callback_data: 'botadmin:broadcastregion:RU:button' }, { text: 'RU بدون دکمه', callback_data: 'botadmin:broadcastregion:RU:nobutton' }],
+    [{ text: '🌍 همه کاربران + دکمه مینی‌اپ', callback_data: 'botadmin:broadcastlocale:ALL:button' }],
+    [{ text: '🌍 همه کاربران بدون دکمه', callback_data: 'botadmin:broadcastlocale:ALL:nobutton' }],
+    ...chunk(VEXA_LOCALES.map((locale) => ({
+      text: VEXA_LOCALE_LABELS[locale],
+      callback_data: `botadmin:broadcastlocale:${locale}:button`,
+    })), 2),
     [{ text: 'لغو و بازگشت', callback_data: 'botadmin:home' }],
   ];
-  await upsertMessage(env, token, tg, chatId, messageId, '📣 تنظیمات پیام همگانی ربات گیم\n\nانتخاب کنید پیام برای همه ارسال شود یا فقط کاربران یک رجین، و اینکه زیر پیام دکمه ورود به مینی‌اپ باشد یا نه.', rows);
+  await upsertMessage(env, token, tg, chatId, messageId, '📣 پیام همگانی\n\nزبان مخاطب را انتخاب کنید. متن را به همان زبان بفرستید؛ فقط کاربران همان زبان دریافتش می‌کنند. دکمهٔ ورود به مینی‌اپ نیز خودکار به زبان هر کاربر است.', rows);
   return true;
 }
 
-function broadcastPrompt(regions: string[], miniAppButton: boolean): string {
-  return `پیام همگانی را بفرستید: متن، عکس با کپشن، ویدیو، ویس/صوت یا فایل.\n\nهدف: ${regions.join(', ')}\nدکمه ورود به مینی‌اپ: ${miniAppButton ? 'بله' : 'خیر'}`;
+function broadcastPrompt(locales: string[], miniAppButton: boolean): string {
+  const target = locales.includes('ALL') ? 'همهٔ زبان‌ها' : locales.map((locale) => VEXA_LOCALE_LABELS[locale as VexaLocale] || locale).join(', ');
+  return `پیام همگانی را بفرستید: متن، عکس با کپشن، ویدیو، ویس/صوت یا فایل.\n\nزبان مخاطب: ${target}\nدکمه ورود به مینی‌اپ: ${miniAppButton ? 'بله' : 'خیر'}`;
 }
 
-function normalizeRegions(value: unknown): string[] {
+function normalizeBroadcastLocales(value: unknown): string[] {
   const raw = Array.isArray(value) ? value : String(value || 'ALL').split(',');
-  const allowed = new Set(['ALL', 'EN', 'IR', 'TR', 'RU']);
-  const out = raw.map((item) => String(item || '').trim().toUpperCase()).filter((item) => allowed.has(item));
+  const allowed = new Set<string>(['ALL', ...VEXA_LOCALES]);
+  const out = raw.map((item) => String(item || '').trim()).filter((item) => allowed.has(item));
   return out.length ? Array.from(new Set(out)) : ['ALL'];
 }
 
-function regionMatches(user: AdminUser, regions: string[]): boolean {
-  if (regions.includes('ALL')) return true;
-  return regions.includes(regionKey(user.regionCode));
+function userLocale(user: AdminUser): VexaLocale {
+  const stored = String(user.languageCode || '').trim();
+  return (VEXA_LOCALES as readonly string[]).includes(stored)
+    ? stored as VexaLocale
+    : vexaLocaleForCountry(String(user.regionCode || '')) || DEFAULT_VEXA_LOCALE;
 }
 
-function regionKey(value: unknown): string {
-  const code = String(value || '').trim().toUpperCase();
-  return ['IR', 'TR', 'RU'].includes(code) ? code : 'EN';
+function localeMatches(user: AdminUser, locales: string[]): boolean {
+  return locales.includes('ALL') || locales.includes(userLocale(user));
 }
 
-function broadcastMiniAppButtonText(user: AdminUser, regions: string[]): string {
-  if (regions.includes('ALL')) return 'Open Mini App';
-  const labels: Record<string, string> = { EN: 'Open Mini App', IR: 'ورود به مینی‌اپ', TR: 'Mini Uygulamayı Aç', RU: 'Открыть мини-приложение' };
-  return labels[regionKey(user.regionCode)] || labels.EN;
+function broadcastMiniAppButtonText(user: AdminUser): string {
+  return SHARE_INVITE_BUTTON_TEXT[userLocale(user)];
 }
 
 async function sendUserReportPdf(env: Env, token: string, chatId: number, tg: TgApi, userId: string): Promise<true> {
