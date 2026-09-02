@@ -462,7 +462,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockTimer=0,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
-  var winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='';
+  var winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='',resultResetTimer=0;
   var officialSpinActive=false,suppressedWindowFocus=false;
   var ticketAudioCtx=null;
   var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
@@ -586,9 +586,10 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     else if(Math.abs(target-displayedPrizePoolNano)>.5)animatePrizePool(target);
     if(icon){var src=balanceIconSrc();if(src){if(icon.getAttribute('src')!==src)icon.setAttribute('src',src);icon.style.display='block'}else icon.style.display='none'}
   }
+  function winnerCount(){return Math.max(0,Math.min(50,Math.floor(Number(state&&state.winnerCount)||0)))}
   function prizeRowsHtml(prizes){
-    var rows=Array.isArray(prizes)?prizes:[],html='';
-    for(var i=0;i<10;i++){
+    var rows=Array.isArray(prizes)?prizes:[],html='',limit=winnerCount();
+    for(var i=0;i<limit;i++){
       var prize=rows[i]||{rank:i+1,prizeNano:0},rank=i+1,premium=rank<=3?'<div class="vexa-bonus-premium" aria-hidden="true"></div>':'';
       html+='<article class="home-bonus-row home-bonus-top-card home-live-winner-card">'+premium+'<div class="home-live-winner-avatar home-bonus-rank-avatar">#'+rank+'</div><div class="home-live-winner-user" aria-hidden="true"></div><div class="home-live-winner-amount">'+gram(prize.prizeNano)+' GRAM</div></article>';
     }
@@ -643,7 +644,9 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     try{engine.setCode(code)}catch(e){}
   }
   function cancelScheduledDraw(){if(drawSpinTimer){clearTimeout(drawSpinTimer);drawSpinTimer=0}scheduledDrawId=''}
+  function cancelResultReset(){if(resultResetTimer){clearTimeout(resultResetTimer);resultResetTimer=0}}
   function setIdleCode(){if(!officialSpinActive)setStaticCode('00000')}
+  function scheduleIdleCode(){cancelResultReset();resultResetTimer=setTimeout(function(){resultResetTimer=0;setIdleCode()},900)}
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
   function playWinnerEffect(){try{if(typeof window.VexaLotteryWinnerEffect==='function')window.VexaLotteryWinnerEffect()}catch(e){}}
@@ -653,41 +656,41 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function scheduleLiveDraw(drawId,code,won,startAt){
     if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
-    scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
+    cancelResultReset();scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
     var run=function(){
       drawSpinTimer=0;
       var engine=slotEngine();
       if(!engine||typeof engine.spinTo!=='function'){scheduledDrawId='';return}
       setOfficialSpinActive(true);
       var started=false;
-      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);setStaticCode(code);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId=''})}catch(e){started=false}
-      if(!started){setOfficialSpinActive(false);scheduledDrawId=''}
+      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId='';scheduleIdleCode()})}catch(e){started=false}
+      if(!started){setOfficialSpinActive(false);scheduledDrawId='';setIdleCode()}
     };
     drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
   }
   function applyDrawResult(){
     var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon),now=liveServerNow();
     if(!round||round.status==='open'){
-      cancelScheduledDraw();setIdleCode();return;
+      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
     }
     if(!drawId||!/^\\d{5}$/.test(code)){
-      cancelScheduledDraw();setIdleCode();return;
+      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
     }
     var sameClosedRound=round.status==='closed'&&String(round.id||'')===drawId;
     if(!sameClosedRound){
-      cancelScheduledDraw();setIdleCode();return;
+      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
     }
     var startAt=roundTime('drawStartsAt',DRAW_DELAY_MS);
     var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;
     var animationEndsAt=startAt?startAt+duration:0;
     if(startAt&&now<startAt){
-      setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return;
+      cancelResultReset();setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return;
     }
     if(animationEndsAt&&now<animationEndsAt){
       if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,won,now);
       return;
     }
-    cancelScheduledDraw();setStaticCode(code);if(won)triggerWinnerEffect(drawId);
+    cancelScheduledDraw();cancelResultReset();setIdleCode();if(won)triggerWinnerEffect(drawId);
   }
   function handleLivePrizePool(event){
     var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;
@@ -700,7 +703,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(loading)return false;
     var now=Date.now();if(!force&&now-lastLoadAt<500)return false;
     var data=initData();
-    if(!data){state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();setIdleCode();return false}
+    if(!data){state={winnerCount:0,ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();cancelResultReset();setIdleCode();return false}
     loading=true;lastLoadAt=now;
     var started=Date.now();
     try{
@@ -714,7 +717,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       armLifecycle();
       return true;
     }catch(error){
-      state={ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();setIdleCode();
+      state={winnerCount:0,ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();cancelResultReset();setIdleCode();
       lifecycleRetryMs=Math.min(15000,Math.max(1200,Math.round(lifecycleRetryMs*1.8)));
       if(q('#home.active')&&!document.hidden)scheduleLifecycleRefresh(lifecycleRetryMs);
       return false;
