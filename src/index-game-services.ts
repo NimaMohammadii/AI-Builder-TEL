@@ -38,7 +38,6 @@ function ambiguousTimeZoneIpCountry(request: Request, timeZone: string): string 
   return /^[A-Z]{2}$/.test(country) && countries.includes(country) ? country : null;
 }
 
-
 registerRankCharacterRoutes(app);
 registerPlinkoLiveRoutes(app);
 
@@ -167,8 +166,10 @@ app.get('/app/api/main-bot', async (c) => {
 
 app.post('/app/api/stars/deposits', async (c) => {
   try {
-    const body = await c.req.json() as { userId?: string; stars?: unknown };
-    return c.json(await createStarsDeposit(c.env, String(body.userId || ''), body.stars));
+    const body = await c.req.json() as { userId?: unknown; initData?: unknown; stars?: unknown };
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    if (userId !== String(body.userId || '').trim()) throw new Error('Telegram user mismatch');
+    return c.json(await createStarsDeposit(c.env, userId, body.stars));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not create Stars deposit' }, 400);
   }
@@ -176,7 +177,11 @@ app.post('/app/api/stars/deposits', async (c) => {
 
 app.get('/app/api/stars/deposits', async (c) => {
   try {
-    return c.json(await listUserStarsDeposits(c.env, String(c.req.query('userId') || '')));
+    const claimedUserId = String(c.req.query('userId') || '').trim();
+    const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
+    const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
+    if (userId !== claimedUserId) throw new Error('Telegram user mismatch');
+    return c.json(await listUserStarsDeposits(c.env, userId));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
   }
@@ -223,7 +228,7 @@ app.post('/app/api/ton/deposits', async (c) => {
     const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
     return c.json(await createTonDeposit(c.env, userId, body.amountTon, body.walletAddress), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not create TON deposit' }, 400, { 'cache-control': 'no-store' });
+    return c.json({ error: error instanceof Error ? error.message : 'Could not create Gram deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
@@ -233,7 +238,7 @@ app.get('/app/api/ton/deposits', async (c) => {
     const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
     return c.json(await listUserTonDeposits(c.env, userId), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposits' }, 400, { 'cache-control': 'no-store' });
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Gram deposits' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
@@ -244,7 +249,7 @@ app.get('/app/api/ton/deposits/:id', async (c) => {
     const deposit = await getTonDeposit(c.env, userId, c.req.param('id'));
     return deposit ? c.json(deposit, 200, { 'cache-control': 'no-store' }) : c.json({ error: 'Deposit not found' }, 404, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load TON deposit' }, 400, { 'cache-control': 'no-store' });
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Gram deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
@@ -255,7 +260,7 @@ app.post('/app/api/ton/deposits/:id/verify', async (c) => {
     const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
     return c.json(await verifyTonDeposit(c.env, userId, c.req.param('id')), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not verify TON deposit' }, 400, { 'cache-control': 'no-store' });
+    return c.json({ error: error instanceof Error ? error.message : 'Could not verify Gram deposit' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
@@ -293,7 +298,7 @@ app.delete('/app/api/groups/:chatId/leave', async (c) => {
       .bind(chatId)
       .first<{ added_by_user_id: string | null }>();
     if (String(owner?.added_by_user_id || '') !== userId) return c.json({ error: 'Group is not connected to this user.' }, 403);
-    await telegram(c.env.TELEGRAM_BOT_TOKEN, 'leaveChat', { chat_id: chatId }).catch((error) => console.warn('main bot leave group failed', error));
+    await telegram(c.env.TELEGRAM_BOT_TOKEN, 'leaveChat', { chat_id: chatId }).catch((error: unknown) => console.warn('main bot leave group failed', error));
     await c.env.DB.prepare("DELETE FROM bot_groups WHERE bot_id = 'main' AND chat_id = ? AND added_by_user_id = ?").bind(chatId, userId).run().catch(() => undefined);
     return c.json({ ok: true, chatId });
   } catch (error) {
@@ -409,6 +414,15 @@ function defaultPlinkoControlImageSvg(kind: 'drop' | 'input' | 'house'): string 
 
 function cleanTelegramUserId(value: unknown): string {
   return String(value || '').replace(/[^0-9]/g, '').slice(0, 32);
+}
+
+async function telegram<T>(token: string, method: string, payload: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await response.json() as T;
 }
 
 export { PlinkoLiveRoom };
