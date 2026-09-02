@@ -61,8 +61,8 @@ export async function createTonDeposit(env: Env, userId: string, amountTonInput:
   const limits = await getFinanceLimits(env);
   const amountNanoValue = safeNanoNumber(tonToNanoString(amountTon));
   const minNano = limits.minDepositNano || Math.trunc(minDepositTon(env) * 1_000_000_000);
-  if (amountNanoValue < minNano) throw new Error(`Minimum deposit is ${formatTonAmount(minNano)} TON`);
-  if (limits.maxDepositNano && amountNanoValue > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} TON`);
+  if (amountNanoValue < minNano) throw new Error(`Minimum deposit is ${formatTonAmount(minNano)} GRAM`);
+  if (limits.maxDepositNano && amountNanoValue > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} GRAM`);
   const amountNano = tonToNanoString(amountTon);
   const tonBalanceNano = amountNanoValue;
   const depositId = 'dep_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
@@ -117,13 +117,13 @@ export async function verifyTonDeposit(env: Env, userId: string, depositId: stri
   if (settlement.applied) {
     await recordTonTransaction(env, row.user_id, row.ton_balance_nano, settlement.balanceAfterNano, {
       kind: 'deposit',
-      title: 'TON wallet deposit',
-      description: `${row.amount_ton} TON wallet payment`,
+      title: 'GRAM wallet deposit',
+      description: `${row.amount_ton} GRAM wallet payment`,
       referenceId: row.id,
       referenceType: 'ton_deposit',
       status: 'completed',
       metadata: { txHash, senderWallet: row.wallet_address },
-    }).catch((error) => console.warn('TON deposit ledger record failed', error));
+    }).catch((error) => console.warn('GRAM deposit ledger record failed', error));
     await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
   }
 
@@ -182,7 +182,7 @@ async function findMatchingTransaction(env: Env, wallet: string, row: DepositRow
   });
   const res = await fetch(`${TONCENTER_BASE}/messages?${params.toString()}`, { headers: { 'X-API-Key': key } });
   const json = await res.json().catch(() => ({})) as ToncenterMessagesResponse;
-  if (!res.ok || !Array.isArray(json.messages)) throw new Error(json.error || 'Could not read TON transactions');
+  if (!res.ok || !Array.isArray(json.messages)) throw new Error(json.error || 'Could not read GRAM transactions');
   const expected = BigInt(row.amount_nano);
   for (const message of json.messages) {
     if (String(message.value || '') !== expected.toString()) continue;
@@ -239,11 +239,11 @@ async function ensureTonDepositsTable(env: Env): Promise<void> {
 
 function treasuryWallet(env: Env): string {
   const value = envValue(env, 'TON_TREASURY_WALLET');
-  if (!value) throw new Error('TON treasury wallet is not configured');
+  if (!value) throw new Error('GRAM treasury wallet is not configured');
   try {
     return Address.parse(value).toString({ bounceable: false, testOnly: false, urlSafe: true });
   } catch {
-    throw new Error('TON treasury wallet is invalid');
+    throw new Error('GRAM treasury wallet is invalid');
   }
 }
 
@@ -264,7 +264,7 @@ function minDepositTon(env: Env): number {
 
 function normalizeAmountTon(value: unknown): string {
   const n = Number(String(value ?? '').replace(',', '.'));
-  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid TON amount');
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Enter a valid GRAM amount');
   return n.toFixed(9).replace(/0+$/, '').replace(/\.$/, '');
 }
 
