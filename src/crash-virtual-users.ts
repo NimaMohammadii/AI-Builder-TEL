@@ -16,13 +16,6 @@ export type CrashRoundSnapshot = {
   history: number[];
 };
 
-export async function ensureCrashVirtualColumns(db:D1Database){
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN target_cashout_multiplier REAL').run().catch(()=>undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_reveal_at_ms INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
-  await db.prepare('ALTER TABLE crash_live_bets ADD COLUMN virtual_order INTEGER NOT NULL DEFAULT 0').run().catch(()=>undefined);
-}
-
 export async function buildCrashVirtualLiveBets(
   env:Env,
   roundId:number,
