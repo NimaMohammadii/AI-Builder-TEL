@@ -279,8 +279,8 @@ async function getBet(env: Env, id: string) {
   return b ? betJson(b) : null;
 }
 async function fetchPrice(market: TradeMarket): Promise<number> {
-  const symbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'PAXGUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
-  const baseUrl = market === 'oil' || market === 'gold' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
+  const symbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUTUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
+  const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
   const res = await fetch(`${baseUrl}?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
   if (!res.ok) throw new Error(`Binance price request failed: HTTP ${res.status}`);
   const data = await res.json() as { price?: string };
