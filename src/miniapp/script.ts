@@ -87,6 +87,7 @@ export const MINIAPP_SCRIPT = `
     try{tg.SettingsButton.show()}catch(e){}
   }
   initTelegramSettings();
+  detectedCountryCode();
 
   var telegramUserId=String((tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'');
   function storageGet(key){try{return window.localStorage?localStorage.getItem(key):''}catch(e){return ''}}
