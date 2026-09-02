@@ -1,10 +1,6 @@
-import { COUNTRY_TO_VEXA_LOCALE, DEFAULT_VEXA_LOCALE, SHARE_INVITE_TEXT } from './i18n';
-
 export const MINIAPP_SCRIPT = `
 (function(){
   var tg=window.Telegram&&window.Telegram.WebApp;
-  var inviteLocales=${JSON.stringify(COUNTRY_TO_VEXA_LOCALE)};
-  var inviteTexts=${JSON.stringify(SHARE_INVITE_TEXT)};
   function expandMiniApp(){
     if(!tg)return;
     try{tg.ready&&tg.ready()}catch(e){}
@@ -47,8 +43,15 @@ export const MINIAPP_SCRIPT = `
       .catch(function(){return fallback});
     return detectedCountryPromise;
   }
-  function inviteTextForCountry(code){
-    return inviteTexts[inviteLocales[code]||'${DEFAULT_VEXA_LOCALE}']||inviteTexts['${DEFAULT_VEXA_LOCALE}'];
+  function shareInvite(countryCode){
+    if(!tg||typeof tg.shareMessage!=='function'){showTelegramAlert('Please update Telegram to share this invite.');return}
+    fetch('/app/api/share-invite',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({initData:String(tg.initData||''),countryCode:countryCode||''})
+    }).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j&&j.error||'Could not prepare invite');return j})})
+      .then(function(result){if(!result||!result.id)throw new Error('Could not prepare invite');tg.shareMessage(result.id)})
+      .catch(function(error){showTelegramAlert(error&&error.message||'Could not share the invite.');});
   }
   function openMiniAppSettings(){
     if(!tg||!tg.showPopup)return;
@@ -64,7 +67,7 @@ export const MINIAPP_SCRIPT = `
         ]
       },function(id){
         if(id==='open-chat'){openTelegramLink('https://t.me/VexaAppBOT');return}
-        if(id==='invite-friends')openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('https://t.me/VexaAppBOT')+'&text='+encodeURIComponent(inviteTextForCountry(countryCode)))
+        if(id==='invite-friends')shareInvite(countryCode);
       });
     });
   }
