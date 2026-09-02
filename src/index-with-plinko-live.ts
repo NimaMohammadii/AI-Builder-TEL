@@ -88,8 +88,6 @@ type CrashLiveEvent = {
 };
 
 export class CrashLiveRoom {
-  private sockets = new Set<WebSocket>();
-
   constructor(private state: DurableObjectState, private env: Env) {
     this.state.blockConcurrencyWhile(async () => {
       const existing = await this.state.storage.get<CrashLiveRound>(CRASH_ROUND_KEY).catch(() => null);
@@ -157,21 +155,27 @@ export class CrashLiveRoom {
     }
   }
 
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (typeof message !== 'string') return;
+    let parsed: { type?: unknown; clientSentAt?: unknown } | null = null;
+    try { parsed = JSON.parse(message) as { type?: unknown; clientSentAt?: unknown }; } catch { return; }
+    if (parsed?.type !== 'sync') return;
+    await this.sendState(socket, Number(parsed.clientSentAt) || null);
+  }
+
+  webSocketClose(socket: WebSocket, code: number, reason: string): void {
+    try { socket.close(code, reason); } catch { /* runtime may already have closed it */ }
+  }
+
+  webSocketError(_socket: WebSocket, error: unknown): void {
+    console.warn('Crash WebSocket error', error);
+  }
+
   private async connect(): Promise<Response> {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    server.accept();
-    this.sockets.add(server);
-    server.addEventListener('close', () => this.sockets.delete(server));
-    server.addEventListener('error', () => this.sockets.delete(server));
-    server.addEventListener('message', (event) => {
-      if (typeof event.data !== 'string') return;
-      let message: { type?: unknown; clientSentAt?: unknown } | null = null;
-      try { message = JSON.parse(event.data) as { type?: unknown; clientSentAt?: unknown }; } catch { return; }
-      if (message?.type !== 'sync') return;
-      this.sendState(server, Number(message.clientSentAt) || null).catch(() => undefined);
-    });
+    this.state.acceptWebSocket(server);
     await this.sendState(server, null);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -291,9 +295,7 @@ export class CrashLiveRoom {
   }
 
   private broadcast(payload: unknown): void {
-    for (const socket of [...this.sockets]) {
-      if (!safeCrashSend(socket, payload)) this.sockets.delete(socket);
-    }
+    for (const socket of this.state.getWebSockets()) safeCrashSend(socket, payload);
   }
 
   private async settleAutoCashouts(round: CrashLiveRound, now: number): Promise<void> {
@@ -317,7 +319,7 @@ export class CrashLiveRoom {
         userId: row.user_id,
         user: row.username,
         amountNano: Number(row.amount_nano || 0),
-        status: row.status,
+        status: 'cashout',
         cashoutMultiplier: row.cashout_multiplier == null ? null : Number(row.cashout_multiplier),
         autoCashoutMultiplier: row.auto_cashout_multiplier == null ? null : Number(row.auto_cashout_multiplier),
         payoutNano: Number(row.payout_nano || 0),
