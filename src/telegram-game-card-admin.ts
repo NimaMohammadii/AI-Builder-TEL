@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { SHARE_INVITE_IMAGE_FILE_KEY } from './miniapp/i18n';
+import { saveShareInviteImageFileId } from './share-invite-config';
 import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
 import { setSpecialWheelEnabled } from './special-wheel-mode';
@@ -406,7 +406,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       return ok();
     }
     try {
-      await env.BOT_CACHE.put(SHARE_INVITE_IMAGE_FILE_KEY, source.fileId);
+      await saveShareInviteImageFileId(env, source.fileId);
       await clearState(env, message.from.id);
       await deleteMessage(token, message.chat.id, message.message_id);
       await deleteTrackedMenu(env, token, message.chat.id);
