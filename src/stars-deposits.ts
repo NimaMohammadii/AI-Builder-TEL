@@ -124,20 +124,40 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
   if (payment.currency !== 'XTR') return;
   const id = cleanDepositId(payment.invoice_payload);
   const userId = cleanUserId(userIdInput);
+  const telegramChargeId = String(payment.telegram_payment_charge_id || '').trim() || null;
+  const providerChargeId = String(payment.provider_payment_charge_id || '').trim() || null;
   await ensureStarsDepositsTable(env);
-  const row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
+
+  let row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
   if (!row || row.status === 'completed') return;
   if (row.user_id !== userId) return;
   if (Number(payment.total_amount) !== Number(row.stars_amount)) return;
-  if (payment.telegram_payment_charge_id) {
+
+  if (telegramChargeId) {
     const used = await env.DB.prepare('SELECT id FROM stars_deposits WHERE telegram_payment_charge_id = ? LIMIT 1')
-      .bind(payment.telegram_payment_charge_id)
+      .bind(telegramChargeId)
       .first<{ id: string }>();
     if (used && used.id !== row.id) return;
   }
-  await env.DB.prepare(`UPDATE stars_deposits SET status = 'completed', telegram_payment_charge_id = ?, provider_payment_charge_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'completed'`)
-    .bind(payment.telegram_payment_charge_id ?? null, payment.provider_payment_charge_id ?? null, id)
-    .run();
+
+  if (row.status === 'pending') {
+    const claimed = await env.DB.prepare(`UPDATE stars_deposits
+      SET status = 'crediting', telegram_payment_charge_id = ?, provider_payment_charge_id = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ? AND status = 'pending'`)
+      .bind(telegramChargeId, providerChargeId, id, userId)
+      .run();
+    if ((claimed.meta?.changes || 0) > 0) {
+      row = { ...row, status: 'crediting', telegram_payment_charge_id: telegramChargeId, provider_payment_charge_id: providerChargeId };
+    } else {
+      row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
+      if (!row || row.status === 'completed') return;
+    }
+  }
+
+  if (row.status !== 'crediting') return;
+  if (row.telegram_payment_charge_id && telegramChargeId && row.telegram_payment_charge_id !== telegramChargeId) return;
+  if (row.provider_payment_charge_id && providerChargeId && row.provider_payment_charge_id !== providerChargeId) return;
+
   await adjustUserTonBalance(env, row.user_id, row.amount_nano, {
     kind: 'deposit',
     title: 'Stars purchase',
@@ -145,9 +165,17 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
     referenceId: row.id,
     referenceType: 'stars_deposit',
     status: 'completed',
-    metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: payment.telegram_payment_charge_id ?? null },
+    metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: telegramChargeId },
   });
-  await awardDepositXp(env, row.user_id, 'stars_deposit', row.id);
+
+  await env.DB.prepare(`UPDATE stars_deposits
+    SET status = 'completed', telegram_payment_charge_id = COALESCE(telegram_payment_charge_id, ?), provider_payment_charge_id = COALESCE(provider_payment_charge_id, ?), updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND user_id = ? AND status = 'crediting'`)
+    .bind(telegramChargeId, providerChargeId, id, userId)
+    .run();
+
+  await awardDepositXp(env, row.user_id, 'stars_deposit', row.id)
+    .catch((error) => console.warn('Stars deposit XP award failed', error));
 }
 
 async function createInvoiceLink(env: Env, id: string, stars: number, amountNano: number): Promise<string> {
