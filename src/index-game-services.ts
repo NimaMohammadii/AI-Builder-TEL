@@ -13,6 +13,7 @@ import { registerPlinkoLiveRoutes, PlinkoLiveRoom } from './plinko-live';
 import { settleGameTonBalanceRound } from './user-controls';
 import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
+import { SHARE_INVITE_BUTTON_TEXT, SHARE_INVITE_IMAGE_FILE_KEY, VEXA_APP_DEEP_LINK, vexaTextForCountry, SHARE_INVITE_TEXT } from './miniapp/i18n';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -43,6 +44,46 @@ registerPlinkoLiveRoutes(app);
 app.get('/app/api/location-country', (c) => {
   const timeZone = String(c.req.query('timeZone') || '').trim().slice(0, 64);
   return c.json({ country: ambiguousTimeZoneIpCountry(c.req.raw, timeZone) }, 200, { 'cache-control': 'no-store' });
+});
+
+app.post('/app/api/share-invite', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as { initData?: unknown; countryCode?: unknown };
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    const photoFileId = await c.env.BOT_CACHE.get(SHARE_INVITE_IMAGE_FILE_KEY);
+    if (!photoFileId) return c.json({ error: 'The invite image has not been uploaded yet.' }, 409, { 'cache-control': 'no-store' });
+
+    const countryCode = String(body.countryCode || '').trim().toUpperCase().slice(0, 2);
+    const response = await fetch(`https://api.telegram.org/bot${gameBotToken(c.env)}/savePreparedInlineMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        user_id: Number(userId),
+        result: {
+          type: 'photo',
+          id: 'vexa-game-invite',
+          photo_file_id: photoFileId,
+          caption: vexaTextForCountry(SHARE_INVITE_TEXT, countryCode),
+          reply_markup: {
+            inline_keyboard: [[{
+              text: vexaTextForCountry(SHARE_INVITE_BUTTON_TEXT, countryCode),
+              url: VEXA_APP_DEEP_LINK,
+            }]],
+          },
+        },
+        allow_user_chats: true,
+        allow_bot_chats: true,
+        allow_group_chats: true,
+        allow_channel_chats: true,
+      }),
+    });
+    const data = await response.json().catch(() => ({})) as { ok?: boolean; result?: { id?: unknown }; description?: unknown };
+    const id = String(data.result?.id || '');
+    if (!response.ok || !data.ok || !id) throw new Error(String(data.description || 'Could not prepare invite'));
+    return c.json({ id }, 200, { 'cache-control': 'no-store' });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not prepare invite' }, 400, { 'cache-control': 'no-store' });
+  }
 });
 
 app.get('/app/api/plinko-control', async (c) => c.json(await getPlinkoControlPayload(c.env)));
