@@ -57,6 +57,7 @@ export async function ensureLotteryPrizeTables(env: Env): Promise<void> {
       VALUES (?,0,CURRENT_TIMESTAMP)`).bind(index + 1),
   );
   await env.DB.batch(seed);
+  await env.DB.prepare('DELETE FROM lottery_prizes WHERE rank > ?').bind(LOTTERY_WINNER_COUNT).run();
 
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_winners (
     id TEXT PRIMARY KEY,
