@@ -50,8 +50,6 @@ app.post('/app/api/predict-bet', async (c) => {
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
-    const controls = await getUserControls(c.env, userId);
-    if (Number(controls.tonBalanceNano || 0) < stakeNano) throw new Error('Insufficient balance');
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
@@ -69,6 +67,8 @@ app.post('/app/api/predict-bet', async (c) => {
       }
       betId = cleanDbText(existing.id, 'Prediction bet is not ready');
     } else {
+      const controls = await getUserControls(c.env, userId);
+      if (Number(controls.tonBalanceNano || 0) < stakeNano) throw new Error('Insufficient balance');
       betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
       const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
