@@ -447,7 +447,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockTimer=0,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
-  var winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='',resultResetTimer=0;
+  var drawSpinTimer=0,scheduledDrawId='',resultResetTimer=0;
   var officialSpinActive=false,suppressedWindowFocus=false;
   var ticketAudioCtx=null;
   var displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
@@ -614,14 +614,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   function cancelResultReset(){if(resultResetTimer){clearTimeout(resultResetTimer);resultResetTimer=0}}
   function setIdleCode(){if(!officialSpinActive)setStaticCode('00000')}
   function scheduleIdleCode(){cancelResultReset();resultResetTimer=setTimeout(function(){resultResetTimer=0;setIdleCode()},900)}
-  function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
-  function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
-  function playWinnerEffect(){try{if(typeof window.VexaLotteryWinnerEffect==='function')window.VexaLotteryWinnerEffect()}catch(e){}}
-  function triggerWinnerEffect(drawId){
-    if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;
-    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');playWinnerEffect();
-  }
-  function scheduleLiveDraw(drawId,code,won,startAt){
+  function scheduleLiveDraw(drawId,code,startAt){
     if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
     cancelResultReset();scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
     var run=function(){
@@ -630,13 +623,13 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(!engine||typeof engine.spinTo!=='function'){scheduledDrawId='';return}
       setOfficialSpinActive(true);
       var started=false;
-      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId='';scheduleIdleCode()})}catch(e){started=false}
+      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);haptic('success');scheduledDrawId='';scheduleIdleCode()})}catch(e){started=false}
       if(!started){setOfficialSpinActive(false);scheduledDrawId='';setIdleCode()}
     };
     drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
   }
   function applyDrawResult(){
-    var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon),now=liveServerNow();
+    var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),now=liveServerNow();
     if(!round||round.status==='open'){
       cancelScheduledDraw();cancelResultReset();setIdleCode();return;
     }
@@ -651,13 +644,13 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;
     var animationEndsAt=startAt?startAt+duration:0;
     if(startAt&&now<startAt){
-      cancelResultReset();setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return;
+      cancelResultReset();setIdleCode();scheduleLiveDraw(drawId,code,startAt);return;
     }
     if(animationEndsAt&&now<animationEndsAt){
-      if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,won,now);
+      if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,now);
       return;
     }
-    cancelScheduledDraw();cancelResultReset();setIdleCode();if(won)triggerWinnerEffect(drawId);
+    cancelScheduledDraw();cancelResultReset();setIdleCode();
   }
   function handleLivePrizePool(event){
     var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;
