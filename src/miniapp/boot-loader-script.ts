@@ -35,29 +35,12 @@ export const BOOT_LOADER_SCRIPT = `
       if(img.complete){if(img.naturalWidth>0)decode();else failed()}
     })
   }
-  function backgroundUrl(el){
-    if(!el||!window.getComputedStyle)return '';
-    try{
-      var value=String(getComputedStyle(el).backgroundImage||'');
-      var start=value.indexOf('url(');if(start<0)return '';
-      var end=value.indexOf(')',start+4);if(end<0)return '';
-      var raw=value.slice(start+4,end).trim();
-      if(raw.length>1&&((raw.charAt(0)==='"'&&raw.charAt(raw.length-1)==='"')||(raw.charAt(0)==="'"&&raw.charAt(raw.length-1)==="'")))raw=raw.slice(1,-1);
-      return raw
-    }catch(e){return ''}
-  }
-  function urlReady(url,ms){
-    url=String(url||'');if(!url||url==='none')return Promise.resolve(true);
-    var img=new Image();img.decoding='async';img.src=url;return imageReady(img,ms)
-  }
-
   var GAME_IMAGE_RETRY_MS=900;
   var GAME_MANIFEST_ATTEMPT_TIMEOUT_MS=6000;
   var GAME_IMAGE_ATTEMPT_TIMEOUT_MS=15000;
   var GAME_IMAGE_MAX_ATTEMPTS=2;
   var GAME_IMAGE_MANIFEST_CACHE_KEY='vexa:game-image-manifests:v1';
   var GAME_IMAGE_COMMON_URLS=[
-    '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
     '/assets/Rewards.PNG?v=1',
     '/app/api/uploaded-image/ton-icon.png'
@@ -161,7 +144,7 @@ export const BOOT_LOADER_SCRIPT = `
   function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
   function sectionBackgroundUrls(j){
     var out=[],sections=j&&Array.isArray(j.sections)?j.sections:[];
-    sections.forEach(function(section){var id=String(section&&section.id||''),url=section&&section.backgroundUrl;if(url&&shouldPreloadGame(id))out.push(url)});
+    sections.forEach(function(section){var id=String(section&&section.id||''),url=section&&section.backgroundUrl;if(id==='home'||id.indexOf('home-')===0)return;if(url&&shouldPreloadGame(id))out.push(url)});
     return out
   }
   function ghostRunUrls(j){
@@ -225,17 +208,8 @@ export const BOOT_LOADER_SCRIPT = `
     return Promise.all(jobs)
   }
   function homeReady(){
-    var selectedHome=document.getElementById('home');
-    if(selectedHome&&selectedHome.getAttribute('data-home-variant')==='two')return Promise.resolve(true);
-    return observeUntil(function(){
-      var section=document.getElementById('homeLuckyCodeSection');
-      var draw=document.getElementById('homeDrawInfoCard');
-      var baseStyle=document.getElementById('homeLuckyCodeStyle');
-      var tuningStyle=document.getElementById('homeSlotTuningStyle');
-      var img=document.querySelector('#home .home-lottery-slot-image');
-      return section&&draw&&baseStyle&&tuningStyle&&img?img:false
-    },7000).then(function(firstImg){
-      if(!firstImg)return false;
+    var hydrated=window.__vexaHomeHydrated===true?Promise.resolve(true):new Promise(function(resolve){window.addEventListener('vexa:home-hydrated',function(){resolve(true)},{once:true})});
+    return hydrated.then(function(){
       return headerAndHomeAssetsReady().then(function(){
         return observeUntil(function(){
           var img=document.querySelector('#home .home-lottery-slot-image');
@@ -245,8 +219,6 @@ export const BOOT_LOADER_SCRIPT = `
       }).then(function(finalImg){
         if(!finalImg)return false;
         var assets=[imageReady(finalImg,5000)];
-        var home=document.getElementById('home');
-        var homeBg=backgroundUrl(home);if(homeBg)assets.push(urlReady(homeBg,5000));
         var ton=document.querySelector('.top-balance-pill .ton-mini-icon img');
         var tonSrc=ton?String(ton.currentSrc||ton.src||''):'';if(ton&&tonSrc&&tonSrc.indexOf('data:image/')!==0)assets.push(imageReady(ton,4500));
         return settle(Promise.all(assets),6000,false).then(function(){return true})

@@ -189,10 +189,55 @@ export const HOME_STYLES = `
   -webkit-text-stroke:0!important;
   text-shadow:0 1px 0 rgba(218,104,137,.18),0 2px 2px rgba(0,0,0,.54)!important;
 }
+#home .home-ticket-layout>.home-ticket-card{
+  border:1px solid rgba(124,22,53,.24)!important;
+  background:#070707!important;
+  background-color:#070707!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#home .home-ticket-layout>.home-ticket-card:before{
+  content:''!important;
+  display:block!important;
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%)!important;
+  box-shadow:
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.22),
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30),
+    inset 6px 5px 13px -8px rgba(255,255,255,.13),
+    inset -5px -4px 11px -8px rgba(255,255,255,.055),
+    inset 0 0 10px rgba(69,5,26,.12)!important;
+}
+#home .home-ticket-card .home-ticket-count{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.055),inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
+}
+#home .home-live-winner-card{position:relative!important;overflow:hidden!important;min-height:64px!important;border:0!important;outline:0!important;border-radius:28px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;display:grid!important;grid-template-columns:42px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;padding:11px 14px!important;backdrop-filter:blur(3px) saturate(1.04)!important;-webkit-backdrop-filter:blur(3px) saturate(1.04)!important}
+#home .home-live-winner-avatar{width:42px!important;height:42px!important;border-radius:50%!important;object-fit:cover!important;display:block!important;background:transparent!important;box-shadow:none!important}
+#home .home-live-winner-user{min-width:0!important;display:grid!important;gap:3px!important}
+#home .home-live-winner-user strong{display:block!important;color:#fff!important;font-size:13px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#home .home-live-winner-user span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:750!important}
+#home .home-live-winner-amount{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
+#home .home-live-winner-card .vexa-premium-corner,#home .home-live-winner-card .vexa-bonus-premium,#home .home-live-winner-card .vexa-premium-star,#home .home-live-winner-card .vexa-bonus-star{display:none!important;content:none!important}
+#home .home-ticket-finance-visual{min-height:154px!important;height:var(--home-lottery-winners-height,154px)!important;align-self:start!important;place-items:stretch!important;pointer-events:auto!important;overflow:visible!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:0!important;outline:0!important;border-radius:0!important;padding:0!important}
+#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr)!important;gap:0!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
+#home .home-lottery-winners-list{position:relative!important;display:grid!important;grid-auto-rows:32px!important;align-content:start!important;gap:6px!important;min-height:0!important;height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 2px!important;box-sizing:border-box!important;background:transparent!important;border-radius:0!important;box-shadow:none!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:pan-y!important;mask-image:none!important;-webkit-mask-image:none!important}
+#home .home-lottery-winners-list::-webkit-scrollbar{display:none!important}
+#home .home-lottery-winners-list.has-overflow:not(.is-scrolled){mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)!important}
+#home .home-lottery-winners-list.has-overflow.is-scrolled:not(.is-at-bottom){mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%)!important}
+#home .home-lottery-winners-list.has-overflow.is-at-bottom{mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 100%)!important}
+#home .home-lottery-winner-row{position:relative!important;overflow:hidden!important;height:32px!important;min-height:32px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}
+#home .home-lottery-winner-copy{min-width:0!important;display:flex!important;align-items:center!important;overflow:hidden!important}
+#home .home-lottery-winner-name{min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;font-size:9.5px!important;font-weight:900!important;line-height:1.08!important}
+#home .home-lottery-winner-amount{align-self:center!important;color:rgba(255,255,255,.34)!important;font-size:7.5px!important;font-weight:800!important;white-space:nowrap!important;margin-left:2px!important}
+#home .home-lottery-winners-empty{height:100%!important;display:grid!important;place-items:center!important;text-align:center!important;color:rgba(255,255,255,.34)!important;font-size:9px!important;font-weight:760!important;line-height:1.3!important;padding:0 12px!important;box-sizing:border-box!important}
 `
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
-export const HOME_SECTION = `<section id="home" class="view active" data-home-variant="one"></section>`;
+export const HOME_SECTION = `<section id="home" class="view active"></section>`;
 
 const HOME_MARKUP_SCRIPT = `
 (function(){
@@ -292,7 +337,7 @@ const HOME_SLOT_SCRIPT = `
     document.head.appendChild(st);
   }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
-  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>--:--:--</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>--</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8-2.2-4.6-4.9-4.1-3.4.6-5.7 4.5-7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Rewards"><svg class="home-bonus-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M17 27.5h30v23H17v-23Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M13.5 18.5h37v9h-37v-9Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 18.5v32" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M31.6 18.2c-7.4-.5-12-3.1-12-7 0-2.8 2.2-4.6 4.9-4.1 3.4.6 5.7 4.5 7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M32.4 18.2c7.4-.5 12-3.1 12-7 0-2.8-2.2-4.6-4.9-4.1-3.4.6-5.7 4.5-7.1 11.1Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M21 38h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg></button></div></div>'}
   function ensureBonusPanel(){
     if(q('#homeBonusPanel'))return;
     var wrap=document.createElement('div');
@@ -455,10 +500,7 @@ const HOME_ASSET_SCRIPT = `
 })();
 `;
 
-export const HOME_SCRIPT = HOME_ASSET_SCRIPT + HOME_MARKUP_SCRIPT + HOME_SLOT_SCRIPT;
-
-export const HOME_LOTTERY_CLIENT_SCRIPT = `
-<script>
+const HOME_LOTTERY_CLIENT_SCRIPT = `
 (function(){
   var state=null,busy=false,loading=false,quantity=1,MAX_QTY=20,serverOffsetMs=0,clockTimer=0,drawRefreshPending=false;
   var lifecycleTimer=0,lifecycleRetryMs=800,lastLoadAt=0;
@@ -467,8 +509,25 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   var ticketAudioCtx=null;
   var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
+  var initialHydrationPending=true,INITIAL_STATE_TIMEOUT_MS=6000;
   function q(s,r){return (r||document).querySelector(s)}
   function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
+  function markHomeHydrated(status){
+    if(!initialHydrationPending)return;
+    initialHydrationPending=false;
+    window.__vexaHomeHydrated=true;
+    window.__vexaHomeHydrationStatus=String(status||'ready');
+    try{window.dispatchEvent(new CustomEvent('vexa:home-hydrated',{detail:{status:window.__vexaHomeHydrationStatus}}))}catch(e){}
+  }
+  function requestLotteryState(data){
+    var controller=typeof AbortController==='function'?new AbortController():null;
+    var options={cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}};
+    if(controller)options.signal=controller.signal;
+    if(!initialHydrationPending)return fetch('/app/api/lottery/state',options);
+    var timer=0;
+    var deadline=new Promise(function(resolve,reject){timer=setTimeout(function(){try{if(controller)controller.abort()}catch(e){}reject(new Error('Lottery unavailable'))},INITIAL_STATE_TIMEOUT_MS)});
+    return Promise.race([fetch('/app/api/lottery/state',options),deadline]).finally(function(){if(timer)clearTimeout(timer)});
+  }
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
   function gramPrice(nano){var value=Math.max(0,Number(nano)||0)/1000000000,text=value.toFixed(4).replace(/0+$/,'');var dot=text.indexOf('.');if(dot<0)return text+'.00';var decimals=text.length-dot-1;if(decimals===0)return text+'00';if(decimals===1)return text+'0';return text}
   function purchaseId(){
@@ -539,7 +598,7 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   }
   function updateCountdown(){
     var round=state&&state.round,time=q('#homeDrawInfoCard [data-draw-time]'),now=liveServerNow();
-    if(!round){if(time)time.textContent='--:--:--';return}
+    if(!round){if(time)time.textContent='00:00:00';return}
     var drawAt=roundTime('drawAt',0);
     if(round.status==='open'){
       if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}
@@ -703,11 +762,12 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
     if(loading)return false;
     var now=Date.now();if(!force&&now-lastLoadAt<500)return false;
     var data=initData();
-    if(!data){state={winnerCount:0,ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();cancelResultReset();setIdleCode();return false}
+    if(!data){state={winnerCount:0,ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();cancelResultReset();setIdleCode();markHomeHydrated('fallback');return false}
     loading=true;lastLoadAt=now;
     var started=Date.now();
+    var hydrationStatus='error';
     try{
-      var response=await fetch('/app/api/lottery/state',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});
+      var response=await requestLotteryState(data);
       var payload=await response.json().catch(function(){return null}),received=Date.now();
       if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
       syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
@@ -715,13 +775,14 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
       if(due&&due<=liveServerNow())lifecycleRetryMs=Math.min(5000,Math.max(800,Math.round(lifecycleRetryMs*1.7)));
       else lifecycleRetryMs=800;
       armLifecycle();
+      hydrationStatus='ready';
       return true;
     }catch(error){
       state={winnerCount:0,ticketCount:0,roundTicketCount:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();cancelResultReset();setIdleCode();
       lifecycleRetryMs=Math.min(15000,Math.max(1200,Math.round(lifecycleRetryMs*1.8)));
       if(q('#home.active')&&!document.hidden)scheduleLifecycleRefresh(lifecycleRetryMs);
       return false;
-    }finally{loading=false}
+    }finally{loading=false;markHomeHydrated(hydrationStatus)}
   }
   async function buy(){
     if(busy||!state||!state.canBuy||!initData()||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
@@ -772,5 +833,40 @@ export const HOME_LOTTERY_CLIENT_SCRIPT = `
   window.addEventListener('focus',refreshWhenVisible);
   document.addEventListener('visibilitychange',refreshWhenVisible);
 })();
-</script>
 `;
+
+const HOME_WINNERS_CLIENT_SCRIPT = `
+(function(){
+  var loading=false,lastRequestAt=0,phaseTimer=0,retryTimer=0,retryDelay=1000;
+  var heightObserver=null,observedTicket=null;
+  function q(s,r){return (r||document).querySelector(s)}
+  function homeRoot(){return document.getElementById('home')}
+  function host(){var home=homeRoot();return home?q('.home-ticket-finance-visual',home):null}
+  function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
+  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')}
+  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
+  function cleanCount(value){var count=Math.floor(Number(value)||0);return Math.max(0,Math.min(50,count))}
+  function winnerMap(winners,count){var map={},limit=cleanCount(count);(Array.isArray(winners)?winners:[]).forEach(function(item){var rank=Math.floor(Number(item&&item.rank)||0);if(rank>=1&&rank<=limit)map[rank]=item});return map}
+  function displayName(item){var name=String(item&&item.displayName||'').trim();return esc(name||'Player')}
+  function row(rank,item,waiting){var name,amount;if(waiting){name='Waiting for draw';amount='—'}else if(!item){name='No result this round';amount='—'}else{name=displayName(item);amount='+'+gram(item.prizeNano)+' GRAM'}return '<article class="home-lottery-winner-row"><div class="home-lottery-winner-copy"><div class="home-lottery-winner-name">'+name+'</div></div><div class="home-lottery-winner-amount">'+esc(amount)+'</div></article>'}
+  function syncHeight(){var card=host(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
+  function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
+  function updateFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
+  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-list"></div></section>';surface=q(':scope>.home-lottery-winners',card)}var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();return list}
+  function render(winners,waiting,count){var list=ensureSurface();if(!list)return;var limit=cleanCount(count),map=winnerMap(winners,limit),html='';for(var rank=1;rank<=limit;rank++)html+=row(rank,map[rank],!!waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateFade(list)})}
+  function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
+  function scheduleRetry(){var home=homeRoot();if(retryTimer||!home||!home.classList.contains('active')||document.hidden)return;var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));retryTimer=setTimeout(function(){retryTimer=0;load(true)},delay)}
+  function schedulePhaseRefresh(payload){if(phaseTimer){clearTimeout(phaseTimer);phaseTimer=0}var next=Number(payload&&payload.nextDisplayChangeAtMs),serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(next)||!Number.isFinite(serverNow)||next<=serverNow)return;phaseTimer=setTimeout(function(){phaseTimer=0;load(true)},Math.max(80,next-serverNow+80))}
+  async function load(force){var home=homeRoot(),list=ensureSurface(),data=initData();if(!home||!home.classList.contains('active')||!list||!data||loading)return false;var now=Date.now();if(!force&&now-lastRequestAt<500)return false;loading=true;lastRequestAt=now;try{var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});var payload=await response.json().catch(function(){return null});if(!response.ok||!payload)throw new Error('Could not load lottery results');clearRetry();retryDelay=1000;render(payload.winners||[],!!payload.waitingForWinner,payload.winnerCount);schedulePhaseRefresh(payload);return true}catch(e){scheduleRetry();return false}finally{loading=false}}
+  function bind(){var home=homeRoot(),list=ensureSurface();if(!home||!list)return;updateFade(list);if(home.classList.contains('active'))load(false)}
+  function refreshWhenVisible(){var home=homeRoot();if(!document.hidden&&home&&home.classList.contains('active'))load(false)}
+  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="home"]');if(target)setTimeout(bind,60)},true);
+  window.addEventListener('vexa:section-mounted',bind);
+  window.addEventListener('resize',function(){syncHeight();updateFade(ensureSurface())},{passive:true});
+  window.addEventListener('focus',refreshWhenVisible);
+  document.addEventListener('visibilitychange',refreshWhenVisible);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
+})();
+`;
+
+export const HOME_SCRIPT = HOME_ASSET_SCRIPT + HOME_MARKUP_SCRIPT + HOME_SLOT_SCRIPT + HOME_LOTTERY_CLIENT_SCRIPT + HOME_WINNERS_CLIENT_SCRIPT;

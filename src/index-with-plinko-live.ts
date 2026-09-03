@@ -1,6 +1,4 @@
 import app from './index-game-services';
-import { REWARDS_LIVE_WINNERS_EFFECTS } from './miniapp/rewards-live-winners-effects';
-import { HOME_LOTTERY_CLIENT_SCRIPT } from './miniapp/home';
 import { LIVE_ACTIVITY_CLIENT_SCRIPT, publishLiveActivity } from './live-activity';
 import { handleCrashGhostLiveBetsAdminRequest } from './telegram-crash-ghost-live-bets-admin';
 import { handleGameCardAdminRequest } from './telegram-game-card-admin';
@@ -861,8 +859,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.delete('content-length');
     headers.set('cache-control', 'no-store');
-    const homeScripts = `${HOME_LOTTERY_CLIENT_SCRIPT}${LIVE_ACTIVITY_CLIENT_SCRIPT}`;
-    return new Response(html.replace('</body>', `${homeScripts}${REWARDS_LIVE_WINNERS_EFFECTS}</body>`), {
+    return new Response(html.replace('</body>', `${LIVE_ACTIVITY_CLIENT_SCRIPT}</body>`), {
       status: response.status,
       statusText: response.statusText,
       headers,
