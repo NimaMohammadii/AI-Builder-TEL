@@ -222,7 +222,7 @@ function rowToDeposit(row: StarDepositRow, invoiceLink: string | null): StarDepo
   };
 }
 
-async function getStarsGramRate(): Promise<StarsGramRate> {
+export async function getStarsGramRate(): Promise<StarsGramRate> {
   const now = Date.now();
   if (starsGramRateCache && starsGramRateCache.expiresAt > now) return starsGramRateCache.value;
   if (starsGramRatePromise) return starsGramRatePromise;

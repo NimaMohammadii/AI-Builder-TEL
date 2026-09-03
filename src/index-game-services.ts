@@ -3,7 +3,7 @@ import { getPlinkoControl, resetPlinkoControl, savePlinkoControl } from './plink
 import { getPlinkoVirtualUsers, resetPlinkoVirtualUsers, savePlinkoVirtualUsers } from './plinko-virtual-users';
 import { getCrashVirtualUsers, resetCrashVirtualUsers, saveCrashVirtualUsers } from './crash-virtual-users-config';
 import { getSlotVirtualUsers, resetSlotVirtualUsers, saveSlotVirtualUsers } from './slot-virtual-users';
-import { createStarsDeposit, listUserStarsDeposits } from './stars-deposits';
+import { createStarsDeposit, getStarsGramRate, listUserStarsDeposits } from './stars-deposits';
 import { createTonDeposit, getTonDeposit, listUserTonDeposits, verifyTonDeposit } from './ton-deposits';
 import { listUserTonTransactions, listUserTonWalletTransactions } from './ton-transactions';
 import { createTonWithdrawal, listUserTonWithdrawals } from './ton-withdrawals';
@@ -178,12 +178,15 @@ app.post('/app/api/stars/deposits', async (c) => {
 app.get('/app/api/stars/deposits', async (c) => {
   try {
     const claimedUserId = String(c.req.query('userId') || '').trim();
+    if (!claimedUserId) {
+      return c.json({ deposits: [], rate: await getStarsGramRate() }, 200, { 'cache-control': 'no-store' });
+    }
     const initData = c.req.header('x-telegram-init-data') || c.req.query('initData') || '';
     const userId = await validateTelegramInitData(initData, gameBotToken(c.env));
     if (userId !== claimedUserId) throw new Error('Telegram user mismatch');
-    return c.json(await listUserStarsDeposits(c.env, userId));
+    return c.json(await listUserStarsDeposits(c.env, userId), 200, { 'cache-control': 'no-store' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400);
+    return c.json({ error: error instanceof Error ? error.message : 'Could not load Stars deposits' }, 400, { 'cache-control': 'no-store' });
   }
 });
 
