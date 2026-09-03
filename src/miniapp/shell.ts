@@ -31,7 +31,6 @@ import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } fro
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
 import { PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from './predict-zone';
-import { REWARDS_SECTION } from './rewards';
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
@@ -77,14 +76,13 @@ function initialSections(): string {
   return [
     HOME_SECTION,
     PLAY_ZONE_SECTION,
-    REWARDS_SECTION,
+    PREDICT_ZONE_SECTION,
   ].join('');
 }
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
   { id: 'wallet', html: WALLET_SECTION },
   { id: 'results', html: RESULTS_SECTION },
-  { id: 'predictzone', html: PREDICT_ZONE_SECTION, scripts: [PREDICT_ZONE_SCRIPT] },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
   { id: 'crash', html: CRASH_SECTION, scripts: [CRASH_SCRIPT] },
@@ -117,12 +115,10 @@ function lazySectionLoaderScript(): string {
   var registry=${payload};
   var mounted={};
   var main=null;
-  var predictAllowed=false;
   var gameIds={mines:true,plinko:true,crash:true,slot:true,wheel:true,dice:true,coinflip:true,ghostrun:true,hilo:true};
   function findMain(){return main||(main=document.querySelector('main.app')||document.body)}
   function isGame(id){return !!gameIds[String(id||'')]}
   function canMount(id){
-    if(id==='predictzone')return predictAllowed;
     if(!isGame(id))return true;
     var state=window.VexaPlayZoneVisibility;
     if(!state||!state.ready)return false;
@@ -165,29 +161,7 @@ function lazySectionLoaderScript(): string {
     preloadJob=Promise.resolve(ready||true).then(function(){return true},function(){return true});
     return preloadJob;
   }
-  function enablePredict(){
-    if(predictAllowed)return;
-    predictAllowed=true;
-    var tabs=document.querySelector('nav.tabs');
-    if(!tabs||tabs.querySelector('[data-view="predictzone"]'))return;
-    var tab=document.createElement('button');
-    tab.type='button';
-    tab.className='tab';
-    tab.setAttribute('data-view','predictzone');
-    tab.textContent='Predict';
-    tabs.appendChild(tab);
-  }
-  function verifyPredictAdmin(){
-    var tg=window.Telegram&&window.Telegram.WebApp;
-    var initData=String((tg&&tg.initData)||'');
-    if(!initData)return;
-    fetch('/app/api/predict-access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({initData:initData})})
-      .then(function(response){return response.ok?response.json():null})
-      .then(function(payload){if(payload&&payload.admin===true)enablePredict()})
-      .catch(function(){});
-  }
   window.VexaLazySections={ensure:mount,preload:preload,isGame:isGame};
-  verifyPredictAdmin();
 })();`;
 }
 
@@ -202,6 +176,7 @@ function scripts(): string {
     DEPOSIT_ENHANCEMENTS_SCRIPT,
     CREDIT_GUARD_SCRIPT,
     HOME_SCRIPT,
+    PREDICT_ZONE_SCRIPT,
     PLAY_ZONE_STACK_SCROLL_SCRIPT,
     PLAY_ZONE_VISIBILITY_SCRIPT,
     GAME_LIVE_COUNT_SCRIPT,
@@ -258,7 +233,7 @@ export function miniAppShellHtml(): string {
     <nav class="tabs">
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
-      <button class="tab" data-view="rewards">Rewards</button>
+      <button class="tab" data-view="predictzone">Predict</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>

@@ -120,7 +120,7 @@ export const PREDICT_ZONE_SCRIPT = `
       oil:{label:'Oil',question:'Oil in 72h up or down?',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
       gold:{label:'Gold',question:'Gold up or down?',decimals:2,step:.5,duration:300000,symbol:'Au'}
     };
-    var EVENT_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',runtimeSuspended=false;
+    var EVENT_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',runtimeSuspended=true,runtimeStarted=false;
     var W=360,H=220,L=0,R=58,P=24,HISTORY=23;
     var requestFrame=window.requestAnimationFrame?window.requestAnimationFrame.bind(window):function(cb){return setTimeout(function(){cb(Date.now())},16)};
     var cancelFrame=window.cancelAnimationFrame?window.cancelAnimationFrame.bind(window):function(id){clearTimeout(id)};
@@ -298,6 +298,7 @@ export const PREDICT_ZONE_SCRIPT = `
     function resume(){
       if(!isActive())return;
       var wasSuspended=runtimeSuspended;runtimeSuspended=false;
+      if(!runtimeStarted){runtimeStarted=true;loadImages();selectMarket('world');return}
       if(eventMode){if(wasSuspended&&(!currentEvent||eventDeadline<=Date.now())){selectEventCategory(market);return}if(currentEvent&&!clockTimer)startClock();return}
       if(wasSuspended){var resumedSlot=slotFor(Date.now());if(resumedSlot!==slot){slot=resumedSlot;entry=Number(raw||current||last||0)}var my=seq,id=market;if(!ws&&!reconnectTimer)connectFeed(my,id);syncRound(my,id);queueDraw()}
       if(!clockTimer)startClock();if(!wasSuspended&&!ws&&!reconnectTimer)connectFeed(seq,market);
@@ -316,7 +317,7 @@ export const PREDICT_ZONE_SCRIPT = `
     window.VexaPredictBack=function(){if(betOpen){closeBet();return true}return false};
     if(window.VexaUploadedImages&&window.VexaUploadedImages.load){try{window.VexaUploadedImages.load()}catch(e){}}
     if(window.VexaTonBalance&&window.VexaTonBalance.render){try{window.VexaTonBalance.render()}catch(e){}}
-    loadImages();selectMarket('world');
+    syncActiveState();
   });
 })();
 `;

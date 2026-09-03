@@ -7,7 +7,6 @@ export const ACCESS_SECTIONS = [
   ['app', 'Entire mini app'],
   ['home', 'Lucky Zone'],
   ['playzone', 'Play Hub'],
-  ['rewards', 'Rewards'],
   ['wallet', 'Wallet'],
   ['predictzone', 'Predict'],
   ['mines', 'Mines'],

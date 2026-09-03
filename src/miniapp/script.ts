@@ -93,7 +93,7 @@ export const MINIAPP_SCRIPT = `
   function storageGet(key){try{return window.localStorage?localStorage.getItem(key):''}catch(e){return ''}}
   function storageSet(key,value){try{if(window.localStorage)localStorage.setItem(key,value)}catch(e){}}
   var ownerId=telegramUserId||storageGet('ownerId')||'';
-  var sectionTitles={home:'Lucky Zone',predictzone:'Predict',rewards:'Rewards',results:'Bot Control',playzone:'Play Hub',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',ghostrun:'Ghost Run'};
+  var sectionTitles={home:'Lucky Zone',predictzone:'Predict',results:'Bot Control',playzone:'Play Hub',mines:'Mines',plinko:'Plinko',crash:'Crash',wheel:'Wheel',dice:'Dice',tower:'Dragon Tower',slot:'Slot',coinflip:'Pump',ghostrun:'Ghost Run'};
 
   function q(id){return document.getElementById(id)}
   function setText(id,v){var n=q(id);if(n)n.textContent=v}
@@ -107,7 +107,7 @@ export const MINIAPP_SCRIPT = `
     try{tg.BackButton.hide()}catch(e){}
   }
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
-  var primaryTabs={home:true,playzone:true,rewards:true};
+  var primaryTabs={home:true,playzone:true,predictzone:true};
   var sectionTransitionTimer=0;
   function animatePrimarySection(node){
     if(sectionTransitionTimer){clearTimeout(sectionTransitionTimer);sectionTransitionTimer=0}
