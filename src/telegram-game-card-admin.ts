@@ -671,7 +671,7 @@ async function saveAudio(env: Env, token: string, game: AudioGame, source: Uploa
   if (game === 'dice') await env.BOT_CACHE.put(DICE_AUDIO_ENABLED_KEY, '1');
 }
 
-async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'audio' }>, source: UploadSource): Promise<void> {
+async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'audio' } | { kind: 'share-invite' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
   if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
@@ -691,7 +691,7 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
               : target.kind === 'predict' ? predictAssetKey(target.asset, target.market)
               : target.kind === 'background' ? sectionBackgroundR2Key(target.game)
                 : target.kind === 'crash-stage' ? crashStageKey(target.slot) : gameKey(target.game);
-  const metadata = target.kind === 'ton'
+  const metadata: Record<string, string> = target.kind === 'ton'
     ? { version, assetId: 'ton-icon', contentType, uploadedVia: `telegram-admin-${source.via}` }
     : target.kind === 'background'
       ? { version, sectionId: target.game, contentType, uploadedVia: `telegram-admin-${source.via}` }
