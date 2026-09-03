@@ -89,7 +89,16 @@ app.get('/app/api/section-backgrounds', async (c) => {
 app.get('/app/api/section-background/:section', async (c) => {
   try {
     const section = cleanSectionId(c.req.param('section').replace(/\.png$/i, ''));
-    return getAssetResponse(c.env, sectionBackgroundR2Key(section), null, { cacheControl: c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : 'no-store' });
+    const key = sectionBackgroundR2Key(section);
+    if (section === 'predict' && !c.req.query('v')) {
+      const head = await c.env.ASSETS.head(key).catch(() => null);
+      if (!head) return c.text('Not found', 404, { 'cache-control': 'no-store' });
+      const target = new URL(c.req.url);
+      target.search = '';
+      target.searchParams.set('v', assetVersion(head));
+      return new Response(null, { status: 302, headers: { location: target.toString(), 'cache-control': 'no-store' } });
+    }
+    return getAssetResponse(c.env, key, null, { cacheControl: c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : 'no-store' });
   } catch {
     return c.text('Not found', 404, { 'cache-control': 'no-store' });
   }
