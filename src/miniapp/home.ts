@@ -121,11 +121,17 @@ html body:has(#home.active) header.top{
 #home .home-ticket-card .home-ticket-win-chance{
   position:relative!important;
   width:100%!important;
-  height:24px!important;
+  height:18px!important;
   overflow:hidden!important;
   border-radius:999px!important;
-  background:rgba(255,255,255,.045)!important;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.055),inset 0 1px 0 rgba(255,255,255,.055),inset 0 -1px 0 rgba(0,0,0,.24)!important;
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
+    #070707!important;
+  box-shadow:
+    inset 0 0 0 1px rgba(124,22,53,.24),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.22),
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30)!important;
   isolation:isolate!important;
 }
 #home .home-ticket-card .home-ticket-win-chance-fill{
@@ -135,8 +141,8 @@ html body:has(#home.active) header.top{
   bottom:0!important;
   width:0%;
   border-radius:inherit!important;
-  background:linear-gradient(90deg,rgba(91,14,39,.92) 0%,rgba(136,31,61,.94) 58%,rgba(184,59,94,.96) 100%)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 0 14px rgba(124,22,53,.18)!important;
+  background:linear-gradient(90deg,rgba(104,18,44,.76) 0%,rgba(146,35,66,.82) 58%,rgba(156,38,70,.88) 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 10px rgba(69,5,26,.16)!important;
   transition:width .9s cubic-bezier(.2,.9,.25,1)!important;
   will-change:width!important;
 }
@@ -147,8 +153,8 @@ html body:has(#home.active) header.top{
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  color:rgba(255,255,255,.66)!important;
-  font-size:9.5px!important;
+  color:rgba(255,255,255,.62)!important;
+  font-size:8.75px!important;
   font-weight:850!important;
   line-height:1!important;
   letter-spacing:-.01em!important;
@@ -330,7 +336,7 @@ const HOME_MARKUP_SCRIPT = `
   function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function lotteryText(key){
     var all=window.__vexaLotteryTexts||{},tg=window.Telegram&&window.Telegram.WebApp,user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user||{},code=String(user.language_code||navigator.language||'en').replace('_','-');
-    var aliases={pt:'pt-BR','pt-PT':'pt-BR',zh:'zh-Hant','zh-TW':'zh-Hant','zh-HK':'zh-Hant','zh-MO':'zh-Hant'};
+    var aliases={pt:'pt-BR','pt-PT':'pt-BR',zh:'zh-Hant','zh-TW':'zh-Hant','zh-HK':'zh-Hant','zh-HO':'zh-Hant'};
     var country=String(window.VexaDetectedCountryCode||'').trim().toUpperCase(),countryLocale=String((window.__vexaCountryLocales||{})[country]||'');
     var locale=all[countryLocale]?countryLocale:(all[code]?code:(aliases[code]||aliases[code.split('-')[0]]||code.split('-')[0]));
     return String((all[locale]&&all[locale][key])||(all.en&&all.en[key])||'');
@@ -855,8 +861,8 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
     var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;
     if(String(item.roundId||'')!==String(state.round.id||''))return;
     var target=Math.max(0,Math.floor(Number(item.prizePoolNano)||0)),current=Math.max(0,Math.floor(Number(state.prizePoolNano)||0));
-    if(target<current)return;
-    state.prizePoolNano=target;renderPrizePool();
+    if(target>=current){state.prizePoolNano=target;renderPrizePool()}
+    if(q('#home.active')&&!busy&&!loading)load(true);
   }
   async function load(force){
     if(loading)return false;
