@@ -527,7 +527,7 @@ const TON_WALLET_DEPOSIT_SCRIPT = `
   function twoDecimalText(value){var raw=normalizeNumber(value);var parts=raw.split('.');var text=parts.length>1?parts[0]+'.'+parts[1].slice(0,2):raw;var n=Number(text);return Number.isFinite(n)&&n>0?n.toFixed(2):'0.00'}
   function formatGramNano(nano){var raw=Math.max(0,Math.floor(Number(nano)||0));return (raw/1000000000).toFixed(2)+' Gram'}
   function starsEquivalent(stars){stars=Math.max(0,Math.floor(Number(stars)||0));if(!stars)return '≈ 0.00 Gram';if(!starsGramPerStar){loadStarsGramRate();return '≈ … Gram'}return '≈ '+formatGramNano(Math.floor(stars*starsGramPerStar*1000000000))}
-  function loadStarsGramRate(force){var now=Date.now();if(!force&&starsGramPerStar&&now-starsGramRateLoadedAt<60000)return Promise.resolve(starsGramPerStar);if(starsGramRatePromise)return starsGramRatePromise;starsGramRatePromise=fetch('/app/api/stars/deposits',{headers:{accept:'application/json'},cache:'no-store'}).then(function(r){return r.json().then(function(data){if(!r.ok)throw new Error(data&&data.error||'Stars rate request failed');return data})}).then(function(data){var rate=data&&data.rate;var value=Number(rate&&rate.gramPerStar);if(!Number.isFinite(value)||value<=0)throw new Error('Invalid Stars rate');starsGramPerStar=value;starsGramRateLoadedAt=Date.now();syncModeUi();return value}).catch(function(){var out=q('starsTonEquivalent');if(out&&!starsGramPerStar&&depositMode==='stars')out.textContent='Rate unavailable';return starsGramPerStar||0}).finally(function(){starsGramRatePromise=null});return starsGramRatePromise}
+  function loadStarsGramRate(force){var now=Date.now();if(!force&&starsGramPerStar&&now-starsGramRateLoadedAt<60000)return Promise.resolve(starsGramPerStar);if(starsGramRatePromise)return starsGramRatePromise;var userId=ownerId();var initData=telegramInitData();if(!userId||!initData)return Promise.resolve(starsGramPerStar||0);starsGramRatePromise=fetch('/app/api/stars/deposits?userId='+encodeURIComponent(userId),{headers:{accept:'application/json','x-telegram-init-data':initData},cache:'no-store'}).then(function(r){return r.json().then(function(data){if(!r.ok)throw new Error(data&&data.error||'Stars rate request failed');return data})}).then(function(data){var rate=data&&data.rate;var value=Number(rate&&rate.gramPerStar);if(!Number.isFinite(value)||value<=0)throw new Error('Invalid Stars rate');starsGramPerStar=value;starsGramRateLoadedAt=Date.now();syncModeUi();return value}).catch(function(){var out=q('starsTonEquivalent');if(out&&!starsGramPerStar&&depositMode==='stars')out.textContent='Rate unavailable';return starsGramPerStar||0}).finally(function(){starsGramRatePromise=null});return starsGramRatePromise}
   window.VexaStarsGramRate={format:starsEquivalent,formatNano:formatGramNano,load:loadStarsGramRate};
   async function api(path,payload){var r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload||{})});var j=await r.json().catch(function(){return{error:'Invalid response'}});if(!r.ok)throw new Error(j.error||'Request failed');return j}
   function savePending(deposit){try{localStorage.setItem('vexa:pending-ton-wallet-deposit',JSON.stringify({id:deposit.id,userId:ownerId(),amountTon:deposit.amountTon,amountNano:deposit.amountNano,wallet:deposit.wallet,status:deposit.status,createdAt:Date.now()}))}catch(e){}}
@@ -640,14 +640,16 @@ const DEPOSIT_CORE_SCRIPT = `
   function updateWithdrawEquivalent(){setUsdEquivalent(q('withdrawUsdEquivalent'),tonAmount(q('withdrawAmountTon')&&q('withdrawAmountTon').value))}
   async function submitStarsSheet(){
     var userId=currentUserId();
+    var initData=String(tg&&tg.initData||'').trim();
     var input=q('starsAmountSheet');
     var stars=starsAmount(input&&input.value);
     var status=ensureDepositStatus();
     if(!userId){setDepositStatus('Telegram user not found','error');return}
+    if(!initData){setDepositStatus('Open the Mini App inside Telegram','error');return}
     if(stars<MIN_STARS_DEPOSIT){setDepositStatus('Minimum deposit is '+MIN_STARS_DEPOSIT+' Stars','error');return}
     setDepositStatus('Creating secure Telegram invoice','pending');
     try{
-      var d=await api('/app/api/stars/deposits',{userId:userId,stars:stars});
+      var d=await api('/app/api/stars/deposits',{userId:userId,initData:initData,stars:stars});
       var equivalent=q('starsTonEquivalent');var rateSource=window.VexaStarsGramRate;if(equivalent&&d&&d.amountNano&&rateSource&&typeof rateSource.formatNano==='function')equivalent.textContent='≈ '+rateSource.formatNano(d.amountNano);
       setDepositStatus('Opening Telegram Stars payment','pending');
       if(d.invoiceLink){
