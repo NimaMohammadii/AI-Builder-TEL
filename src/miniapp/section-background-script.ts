@@ -3,6 +3,8 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var aliases={predict:'predictzone'};
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   var PREDICT_BACKGROUND_URL_KEY='vexaPredictBackgroundUrl:v1';
+  var retainedBackgroundImages={};
+  var backgroundImageJobs={};
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
     connect:['#connect'],
@@ -38,8 +40,43 @@ export const SECTION_BACKGROUND_SCRIPT = `
   function applyBackgroundToElement(el,url){if(!el||el.tagName==='IMG')return;el.classList.add('has-admin-background');el.style.setProperty('--admin-section-background-image',cssUrl(url))}
   function clearBackgroundFromElement(el){if(!el||el.tagName==='IMG')return;el.classList.remove('has-admin-background');el.style.removeProperty('--admin-section-background-image')}
   function readPredictBackground(){try{return String(localStorage.getItem(PREDICT_BACKGROUND_URL_KEY)||'').trim()}catch(e){return ''}}
-  function applyPredictBackground(url,persist){var root=document.documentElement,clean=String(url||'').trim();if(!root)return;if(clean)root.style.setProperty('--admin-predict-background-image',cssUrl(clean));else root.style.removeProperty('--admin-predict-background-image');if(persist===false)return;try{if(clean)localStorage.setItem(PREDICT_BACKGROUND_URL_KEY,clean);else localStorage.removeItem(PREDICT_BACKGROUND_URL_KEY)}catch(e){}}
-  var storedPredictBackground=readPredictBackground();if(storedPredictBackground)applyPredictBackground(storedPredictBackground,false);
+  function retainBackgroundImage(url){
+    var clean=String(url||'').trim();
+    if(!clean)return Promise.resolve(false);
+    var retained=retainedBackgroundImages[clean];
+    if(retained&&retained.complete&&retained.naturalWidth>0)return Promise.resolve(true);
+    if(backgroundImageJobs[clean])return backgroundImageJobs[clean];
+    backgroundImageJobs[clean]=new Promise(function(resolve){
+      var img=new Image(),done=false;
+      function finish(ok){if(done)return;done=true;try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){};if(ok)retainedBackgroundImages[clean]=img;delete backgroundImageJobs[clean];resolve(!!ok)}
+      function decoded(){if(img.naturalWidth<=0){finish(false);return}if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(img.naturalWidth>0)});else finish(true)}
+      function loaded(){decoded()}
+      function failed(){finish(false)}
+      img.addEventListener('load',loaded);
+      img.addEventListener('error',failed);
+      img.decoding='async';
+      img.loading='eager';
+      img.src=clean;
+      if(img.complete&&img.naturalWidth>0)decoded();
+    });
+    return backgroundImageJobs[clean];
+  }
+  function setPredictBackground(url,persist){
+    var root=document.documentElement,clean=String(url||'').trim();
+    if(!root)return;
+    if(clean)root.style.setProperty('--admin-predict-background-image',cssUrl(clean));else root.style.removeProperty('--admin-predict-background-image');
+    if(persist===false)return;
+    try{if(clean)localStorage.setItem(PREDICT_BACKGROUND_URL_KEY,clean);else localStorage.removeItem(PREDICT_BACKGROUND_URL_KEY)}catch(e){}
+  }
+  function applyPredictBackground(url,persist){
+    var clean=String(url||'').trim();
+    if(!clean){setPredictBackground('',persist);return Promise.resolve(false)}
+    var stored=readPredictBackground();
+    if(clean===stored){setPredictBackground(clean,persist);return retainBackgroundImage(clean)}
+    return retainBackgroundImage(clean).then(function(ok){if(ok)setPredictBackground(clean,persist);return ok})
+  }
+  var storedPredictBackground=readPredictBackground();
+  if(storedPredictBackground){setPredictBackground(storedPredictBackground,false);retainBackgroundImage(storedPredictBackground)}
   function remember(img,name,value){if(!img.dataset[name])img.dataset[name]=value||''}
   function overrideImage(img,url){
     if(!img||img.tagName!=='IMG'||!url)return;
