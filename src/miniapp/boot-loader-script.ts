@@ -143,11 +143,6 @@ export const BOOT_LOADER_SCRIPT = `
     return Promise.all(jobs)
   }
   function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
-  function sectionBackgroundUrls(j){
-    var out=[],sections=j&&Array.isArray(j.sections)?j.sections:[];
-    sections.forEach(function(section){var id=String(section&&section.id||''),url=section&&section.backgroundUrl;if(id==='home'||id.indexOf('home-')===0)return;if(url&&shouldPreloadGame(id))out.push(url)});
-    return out
-  }
   function ghostRunUrls(j){
     var out=[],map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};
     Object.keys(map).forEach(function(key){out.push(map[key])});
@@ -162,7 +157,6 @@ export const BOOT_LOADER_SCRIPT = `
     {url:'/app/api/uploaded-images?context=startup',urls:preloadArrayUrls},
     {url:'/app/api/uploaded-images?context=mines',game:'mines',urls:preloadArrayUrls},
     {url:'/app/api/uploaded-images?context=plinko',game:'plinko',urls:preloadArrayUrls},
-    {url:'/app/api/section-backgrounds',urls:sectionBackgroundUrls},
     {url:'/app/api/ghost-run-assets',game:'ghostrun',urls:ghostRunUrls},
     {url:'/app/api/slot-frame',game:'slot',urls:slotFrameUrls},
     {url:'/app/api/slot-symbols',game:'slot',urls:slotSymbolUrls},
