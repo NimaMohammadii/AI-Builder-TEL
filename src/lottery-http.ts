@@ -136,32 +136,7 @@ async function lotteryWinChancePercent(env: Env, roundIdInput: unknown, userIdIn
   const total = weights.reduce((sum, row) => sum + row.weight, 0);
   if (total <= 0) return 0;
 
-  const winnerSlots = Math.min(LOTTERY_WINNER_COUNT, weights.length);
-  let probability = target.weight / total;
-  if (winnerSlots >= 2) {
-    for (const first of weights) {
-      if (first.userId === userId) continue;
-      const afterFirst = total - first.weight;
-      if (afterFirst <= 0) continue;
-      probability += (first.weight / total) * (target.weight / afterFirst);
-    }
-  }
-  if (winnerSlots >= 3) {
-    for (const first of weights) {
-      if (first.userId === userId) continue;
-      const afterFirst = total - first.weight;
-      if (afterFirst <= 0) continue;
-      const firstProbability = first.weight / total;
-      for (const second of weights) {
-        if (second.userId === userId || second.userId === first.userId) continue;
-        const afterSecond = afterFirst - second.weight;
-        if (afterSecond <= 0) continue;
-        probability += firstProbability * (second.weight / afterFirst) * (target.weight / afterSecond);
-      }
-    }
-  }
-
-  return Number((Math.max(0, Math.min(1, probability)) * 100).toFixed(6));
+  return Number(((target.weight / total) * 100).toFixed(6));
 }
 
 async function authenticatedUser(request: Request, env: Env): Promise<string> {
