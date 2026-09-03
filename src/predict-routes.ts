@@ -15,6 +15,8 @@ const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'footba
 const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
+const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
+const ASTER_FUTURES_WS_BASE = 'wss://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -356,28 +358,25 @@ async function getBet(env: Env, id: string) {
   return b ? betJson(b) : null;
 }
 function marketSymbol(market: TradeMarket): string {
-  return market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUTUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
+  return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
-  const stream = `${marketSymbol(market).toLowerCase()}@miniTicker`;
-  return market === 'oil' ? `wss://fstream.binance.com/ws/${stream}` : `wss://data-stream.binance.vision/ws/${stream}`;
+  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@miniTicker`;
 }
 async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
   const symbol = marketSymbol(market);
-  const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/klines' : 'https://data-api.binance.vision/api/v3/klines';
-  const res = await fetch(`${baseUrl}?symbol=${symbol}&interval=1m&limit=23`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Binance market snapshot failed: HTTP ${res.status}`);
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=23`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster market snapshot failed: HTTP ${res.status}`);
   const rows = await res.json() as unknown;
-  if (!Array.isArray(rows)) throw new Error('Invalid Binance market snapshot');
+  if (!Array.isArray(rows)) throw new Error('Invalid Aster market snapshot');
   const history = rows.map((row) => Array.isArray(row) ? Number(row[4]) : 0).filter((price) => Number.isFinite(price) && price > 0).slice(-23);
-  if (!history.length) throw new Error('Binance market snapshot is empty');
+  if (!history.length) throw new Error('Aster market snapshot is empty');
   return { price: history[history.length - 1], history };
 }
 async function fetchPrice(market: TradeMarket): Promise<number> {
   const symbol = marketSymbol(market);
-  const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://data-api.binance.vision/api/v3/ticker/price';
-  const res = await fetch(`${baseUrl}?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Binance price request failed: HTTP ${res.status}`);
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster price request failed: HTTP ${res.status}`);
   const data = await res.json() as { price?: string };
   return cleanPrice(data.price);
 }
