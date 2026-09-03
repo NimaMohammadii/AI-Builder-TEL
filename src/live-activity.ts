@@ -10,6 +10,7 @@ export type LiveActivityInput = {
   quantity?: number;
   roundId?: string | null;
   prizePoolNano?: number | null;
+  roundTicketCount?: number | null;
   key?: string;
   action?: string;
   createdAt?: string;
@@ -24,6 +25,7 @@ export type LiveActivityEvent = {
   section: string | null;
   roundId?: string | null;
   prizePoolNano?: number | null;
+  roundTicketCount?: number | null;
   createdAt: string;
 };
 
@@ -107,6 +109,7 @@ async function buildEvent(env: Env, userId: string, input: LiveActivityInput): P
     section: cleanSection(input.section),
     roundId: cleanRoundId(input.roundId),
     prizePoolNano: cleanOptionalNano(input.prizePoolNano),
+    roundTicketCount: cleanOptionalCount(input.roundTicketCount),
     createdAt,
   };
 }
@@ -184,6 +187,12 @@ function cleanOptionalNano(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const amount = Math.floor(Number(value));
   return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
+}
+
+function cleanOptionalCount(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const count = Math.floor(Number(value));
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
 }
 
 function randomHex(length: number): string {
