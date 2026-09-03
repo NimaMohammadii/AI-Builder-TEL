@@ -7,6 +7,7 @@ export type AppUserActivityPayload = {
   userId?: string;
   username?: string | null;
   firstName?: string | null;
+  avatarUrl?: string | null;
   section?: string | null;
   countryCode?: string | null;
 };
@@ -47,17 +48,19 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
+    await env.DB.prepare('ALTER TABLE app_users ADD COLUMN avatar_url TEXT').run().catch(() => undefined);
     const [controls, resetState, level] = await Promise.all([
       getUserControls(env, userId),
       getClientResetState(env, userId),
       getUserLevel(env, userId),
     ]);
     const tonBalanceNano = Math.max(0, Math.floor(Number(controls.tonBalanceNano ?? 0) || 0));
-    await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, current_section, ton_balance_nano, region_code, language_code, last_seen_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, first_name, username, avatar_url, current_section, ton_balance_nano, region_code, language_code, last_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(telegram_user_id) DO UPDATE SET
         first_name = excluded.first_name,
         username = excluded.username,
+        avatar_url = COALESCE(excluded.avatar_url, app_users.avatar_url),
         current_section = excluded.current_section,
         region_code = COALESCE(excluded.region_code, app_users.region_code),
         language_code = COALESCE(excluded.language_code, app_users.language_code),
@@ -67,12 +70,23 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         END,
         last_seen_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP`)
-      .bind(userId, firstName, username, section, tonBalanceNano, regionCode, languageCode)
+      .bind(userId, firstName, username, cleanAvatarUrl(payload.avatarUrl), section, tonBalanceNano, regionCode, languageCode)
       .run();
     return { ok: true, banned: controls.banned, tonBalanceNano, winChancePercent: controls.winChancePercent, ...resetState, level };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };
+  }
+}
+
+function cleanAvatarUrl(value: unknown): string | null {
+  const candidate = String(value || '').trim();
+  if (!candidate || candidate.length > 1_500) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
   }
 }
 

@@ -21,6 +21,7 @@ type WinnerRow = {
   created_at: string;
   username?: string | null;
   first_name?: string | null;
+  avatar_url?: string | null;
   level?: number | null;
 };
 type CandidateRow = { id: string; user_id: string; code: string };
@@ -116,6 +117,7 @@ export async function setLotteryPrizePercentages(env: Env, percentBpsInput: unkn
 export async function getLotteryWinners(env: Env, roundIdInput?: unknown): Promise<LotteryWinner[]> {
   await ensureLotteryPrizeTables(env);
   await ensureLevelTables(env);
+  await ensureLotteryWinnerProfileColumn(env);
   let roundId = String(roundIdInput || '').trim();
   if (!roundId) {
     const latest = await env.DB.prepare(`SELECT round_id FROM lottery_winners
@@ -124,7 +126,7 @@ export async function getLotteryWinners(env: Env, roundIdInput?: unknown): Promi
   }
   if (!roundId) return [];
 
-  const rows = await env.DB.prepare(`SELECT w.*,u.username,u.first_name,l.level
+  const rows = await env.DB.prepare(`SELECT w.*,u.username,u.first_name,u.avatar_url,l.level
     FROM lottery_winners w
     LEFT JOIN app_users u ON u.telegram_user_id=w.user_id
     LEFT JOIN user_levels l ON l.user_id=w.user_id
@@ -261,13 +263,28 @@ function publicWinner(row: WinnerRow): LotteryWinner {
     rank: Math.max(1, Math.min(LOTTERY_WINNER_COUNT, Math.floor(Number(row.rank) || 1))),
     displayName,
     username: username || null,
-    avatarUrl: username ? `https://t.me/i/userpic/320/${encodeURIComponent(username)}.jpg` : null,
+    avatarUrl: cleanAvatarUrl(row.avatar_url) || (username ? `https://t.me/i/userpic/320/${encodeURIComponent(username)}.jpg` : null),
     level: Math.max(1, Math.floor(Number(row.level) || 1)),
     ticketCode: code,
     prizeNano: Math.max(0, Math.floor(Number(row.prize_nano) || 0)),
     paid: String(row.payout_status || '') === 'paid',
     createdAt: String(row.created_at || ''),
   };
+}
+
+async function ensureLotteryWinnerProfileColumn(env: Env): Promise<void> {
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN avatar_url TEXT').run().catch(() => undefined);
+}
+
+function cleanAvatarUrl(value: unknown): string | null {
+  const candidate = String(value || '').trim();
+  if (!candidate || candidate.length > 1_500) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function cleanPrizeBps(value: unknown): number {

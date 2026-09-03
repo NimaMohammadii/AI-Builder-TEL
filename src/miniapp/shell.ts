@@ -43,6 +43,7 @@ import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
 import { SECTION_ACCESS_SCRIPT } from './section-access-script';
 import { SECTION_ACCESS_STYLES } from './section-access-styles';
 import { CREDIT_GUARD_SCRIPT } from './credit-guard-script';
+import { COUNTRY_TO_VEXA_LOCALE, LOTTERY_HOME_TEXT } from './i18n';
 
 const TON_LOGO_PNG = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2732%27%20fill=%27%230096ff%27/%3E%3Cpath%20d=%27M16%2018h32L32%2048%2016%2018z%27%20fill=%27white%27/%3E%3Cpath%20d=%27M22%2022h20L32%2042%2022%2022z%27%20fill=%27%230096ff%27%20opacity=%27.18%27/%3E%3C/svg%3E';
 const GAME_BOT_PROFILE_IMAGE = 'https://t.me/i/userpic/320/' + 'VexaAppBOT' + '.jpg';
@@ -192,6 +193,7 @@ function lazySectionLoaderScript(): string {
 
 function scripts(): string {
   return [
+    `window.__vexaLotteryTexts=${inlineScriptJson(LOTTERY_HOME_TEXT)};window.__vexaCountryLocales=${inlineScriptJson(COUNTRY_TO_VEXA_LOCALE)};`,
     BOOT_LOADER_SCRIPT,
     lazySectionLoaderScript(),
     MINIAPP_SCRIPT,
