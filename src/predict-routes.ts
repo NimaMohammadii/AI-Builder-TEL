@@ -1,4 +1,3 @@
-import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import app from './index';
 import './predict-settings-routes';
 import './prediction-events';
@@ -15,8 +14,6 @@ const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'footba
 const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
-const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
-const ASTER_FUTURES_WS_BASE = 'wss://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -30,7 +27,6 @@ type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
 type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
-type MarketSnapshot = { price: number; history: number[] };
 
 app.post('/app/api/predict-access', async (c) => {
   try {
@@ -70,82 +66,15 @@ app.get('/app/api/predict-round', async (c) => {
   try {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
     const userId = await authenticatePredictAdmin(c.env, c.req.query('userId'), c.req.header('x-telegram-init-data'));
-    const snapshot = await fetchMarketSnapshot(market);
-    const round = await getOrCreateCurrentRound(c.env, market, snapshot.price);
+    let livePrice = 0;
+    try { livePrice = await fetchPrice(market); } catch {}
+    const round = await getOrCreateCurrentRound(c.env, market, livePrice);
     await settleDueRounds(c.env, market);
-    return c.json({ ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history }, 200, { 'cache-control': CACHE_NONE });
+    return c.json(await publicRoundJson(c.env, round, userId, livePrice), 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load prediction round' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
-
-app.get('/app/api/predict-stream', upgradeWebSocket((c) => {
-  let upstream: WebSocket | null = null;
-  let authenticated = false;
-  let authenticating = false;
-  const authTimer = setTimeout(() => {
-    if (authenticated) return;
-    try { upstream?.close(1000, 'Authentication timeout'); } catch {}
-  }, 10_000);
-
-  const closeUpstream = () => {
-    if (!upstream) return;
-    const socket = upstream;
-    upstream = null;
-    try { socket.close(1000, 'Client closed'); } catch {}
-  };
-
-  return {
-    onMessage: async (event, ws) => {
-      if (authenticated || authenticating) return;
-      authenticating = true;
-      try {
-        const payload = JSON.parse(typeof event.data === 'string' ? event.data : '') as Record<string, unknown>;
-        const market = normalizeTradeMarket(String(payload.market || 'bitcoin'));
-        await authenticatePredictAdmin(c.env, payload.userId, payload.initData);
-        authenticated = true;
-        clearTimeout(authTimer);
-
-        const source = new WebSocket(marketStreamUrl(market));
-        source.binaryType = 'arraybuffer';
-        upstream = source;
-        source.addEventListener('message', async (message) => {
-          if (upstream !== source) return;
-          try {
-            const text = await readWebSocketText(message.data);
-            if (!text || upstream !== source) return;
-            const data = JSON.parse(text) as { p?: unknown };
-            const price = cleanPrice(data.p);
-            ws.send(JSON.stringify({ type: 'price', price }));
-          } catch {}
-        });
-        source.addEventListener('error', () => {
-          if (upstream !== source) return;
-          try { ws.send(JSON.stringify({ type: 'error', error: 'Live price feed unavailable' })); } catch {}
-          try { ws.close(1011, 'Live price feed unavailable'); } catch {}
-        });
-        source.addEventListener('close', () => {
-          if (upstream === source) upstream = null;
-          try { ws.close(1012, 'Live price feed closed'); } catch {}
-        });
-      } catch (error) {
-        clearTimeout(authTimer);
-        try { ws.send(JSON.stringify({ type: 'error', error: error instanceof Error ? error.message : 'Could not open live price feed' })); } catch {}
-        try { ws.close(1008, 'Predict stream rejected'); } catch {}
-      } finally {
-        authenticating = false;
-      }
-    },
-    onClose: () => {
-      clearTimeout(authTimer);
-      closeUpstream();
-    },
-    onError: () => {
-      clearTimeout(authTimer);
-      closeUpstream();
-    },
-  };
-}));
 
 app.post('/app/api/predict-bet', async (c) => {
   let betId = '';
@@ -360,35 +289,13 @@ async function getBet(env: Env, id: string) {
   const b = await env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(cleanDbText(id, 'Prediction bet is not ready')).first<BetRow>();
   return b ? betJson(b) : null;
 }
-function marketSymbol(market: TradeMarket): string {
-  return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
-}
-function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
-}
-async function readWebSocketText(value: unknown): Promise<string> {
-  if (typeof value === 'string') return value;
-  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value);
-  if (ArrayBuffer.isView(value)) return new TextDecoder().decode(value as ArrayBufferView);
-  if (typeof Blob !== 'undefined' && value instanceof Blob) return value.text();
-  return '';
-}
-async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
-  const symbol = marketSymbol(market);
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/markPriceKlines?symbol=${symbol}&interval=1m&limit=23`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster mark price snapshot failed: HTTP ${res.status}`);
-  const rows = await res.json() as unknown;
-  if (!Array.isArray(rows)) throw new Error('Invalid Aster mark price snapshot');
-  const history = rows.map((row) => Array.isArray(row) ? Number(row[4]) : 0).filter((price) => Number.isFinite(price) && price > 0).slice(-23);
-  if (!history.length) throw new Error('Aster mark price snapshot is empty');
-  return { price: history[history.length - 1], history };
-}
 async function fetchPrice(market: TradeMarket): Promise<number> {
-  const symbol = marketSymbol(market);
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/premiumIndex?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster mark price request failed: HTTP ${res.status}`);
-  const data = await res.json() as { markPrice?: string };
-  return cleanPrice(data.markPrice);
+  const symbol = market === 'ton' ? 'GRAMUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUTUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
+  const baseUrl = market === 'oil' ? 'https://fapi.binance.com/fapi/v1/ticker/price' : 'https://api.binance.com/api/v3/ticker/price';
+  const res = await fetch(`${baseUrl}?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Binance price request failed: HTTP ${res.status}`);
+  const data = await res.json() as { price?: string };
+  return cleanPrice(data.price);
 }
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
