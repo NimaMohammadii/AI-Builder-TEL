@@ -141,27 +141,38 @@ export const PREDICT_ZONE_SCRIPT = `
     function y(v,scale){return Math.max(P,Math.min(H-P,P+((scale.max-v)/(scale.max-scale.min||1))*(H-P*2)))}
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
     function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
-    function axisCapacity(){return window.innerWidth<=380?3:4}
+    function axisPixelHeight(){var height=chart&&chart.clientHeight?chart.clientHeight:170;return Math.max(1,height*(H-P*2)/H)}
+    function axisMinGap(){return window.innerWidth<=380?42:44}
+    function axisCapacity(){return Math.max(2,Math.min(3,Math.floor(axisPixelHeight()/axisMinGap())+1))}
     function priceTicks(scale){
-      var c=cfg(),maxCount=axisCapacity(),span=scale.max-scale.min,fixedStep=Number(c.axisStep||0),quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,first,v,ticks,mid,best,bestScore,i,windowTicks,score;
-      for(count=maxCount;count>=2;count--){
-        step=fixedStep>0?fixedStep:Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));
-        if(!(fixedStep>0))step=Math.ceil((step-1e-12)/quantum)*quantum;
+      var c=cfg(),maxCount=axisCapacity(),span=scale.max-scale.min,fixedStep=Number(c.axisStep||0),quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),plotPx=axisPixelHeight(),minGap=axisMinGap(),minStepByPixels=span*(minGap/Math.max(1,plotPx)),step,multiplier,first,v,ticks=[],attempt;
+      if(fixedStep>0){
+        multiplier=Math.max(1,Math.ceil((minStepByPixels-1e-12)/fixedStep));
+        for(attempt=0;attempt<8;attempt++){
+          step=fixedStep*(multiplier+attempt);first=Math.ceil(scale.min/step)*step;ticks=[];
+          for(v=first;v<=scale.max+step*1e-9&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(precision)));
+          if(ticks.length>=2&&ticks.length<=maxCount)return ticks;
+        }
+        step=fixedStep;first=Math.ceil(scale.min/step)*step;ticks=[];
+        for(v=first;v<=scale.max+step*1e-9&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(precision)));
+        while(ticks.length>maxCount){var thinned=[];for(var i=0;i<ticks.length;i+=2)thinned.push(ticks[i]);ticks=thinned}
+        return ticks.slice(0,maxCount);
+      }
+      step=Math.max(quantum,niceTickStep(span,Math.max(1,maxCount-1)),minStepByPixels);step=Math.ceil((step-1e-12)/quantum)*quantum;
+      for(attempt=0;attempt<8;attempt++){
         first=Math.ceil(scale.min/step)*step;ticks=[];
         for(v=first;v<=scale.max+step*1e-9&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(precision)));
-        if(ticks.length<2)continue;
-        if(ticks.length>count){mid=(scale.min+scale.max)/2;best=ticks.slice(0,count);bestScore=Infinity;for(i=0;i<=ticks.length-count;i++){windowTicks=ticks.slice(i,i+count);score=Math.abs((windowTicks[0]+windowTicks[windowTicks.length-1])/2-mid);if(score<bestScore){bestScore=score;best=windowTicks}}ticks=best}
-        return ticks;
+        if(ticks.length>=2&&ticks.length<=maxCount)return ticks;
+        step=Math.ceil((step*1.35-1e-12)/quantum)*quantum;
       }
-      return[];
+      return ticks.slice(0,maxCount);
     }
     function autoScale(prices){
       var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*8,Number(c.axisStep||0)*2,precision*8),min,max,span,mid,pad,targetMin,targetMax,outward,alpha,actualSpan;
-      if(entry>0)valid.push(entry);
       if(!valid.length)valid.push(Number(current||last||1));
       min=Math.min.apply(Math,valid);max=Math.max.apply(Math,valid);span=max-min;
       if(!isFinite(span)||span<minSpan){mid=(min+max)/2;min=mid-minSpan/2;max=mid+minSpan/2;span=minSpan}
-      pad=Math.max(span*.22,c.step*1.15);targetMin=min-pad;targetMax=max+pad;
+      pad=Math.max(span*(Number(c.axisStep||0)>0?.10:.22),c.step*1.15);targetMin=min-pad;targetMax=max+pad;
       if(!scaleMin||!scaleMax){scaleMin=targetMin;scaleMax=targetMax;return{min:scaleMin,max:scaleMax}}
       outward=targetMin<scaleMin||targetMax>scaleMax;alpha=outward?.10:.025;
       scaleMin+=(targetMin-scaleMin)*alpha;scaleMax+=(targetMax-scaleMax)*alpha;
