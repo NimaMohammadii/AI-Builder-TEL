@@ -43,10 +43,14 @@ export const CREDIT_GUARD_SCRIPT = `
   function haptic(){
     try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred)tg.HapticFeedback.notificationOccurred('warning')}catch(e){}
   }
+  function playCreditSound(){
+    try{if(window.VexaAudio&&typeof window.VexaAudio.play==='function')window.VexaAudio.play('wallet-credit')}catch(e){}
+  }
   function openWalletForCredit(detail){
     var now=Date.now();
     if(now-lastOpenAt<650)return false;
     lastOpenAt=now;
+    playCreditSound();
     haptic();
     if(document.body&&document.body.classList.contains('wallet-open')){
       animateWalletCard();
