@@ -40,7 +40,7 @@ const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'pl
 
 const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), avatarUrl: z.string().url().max(1_500).nullable().optional(), section: z.string().max(40).nullable().optional(), countryCode: z.string().max(2).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
-const codeLockSchema = z.object({ sectionId: z.string().min(1).max(80), code: z.string().min(1).max(80) });
+const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
 const gameBalanceEventSchema = z.object({ eventId: z.string().min(12).max(80).regex(/^[0-9A-Za-z_-]+$/), deltaNano: z.number().int(), section: z.string().max(40).optional() });
 const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initData: z.string().min(1).max(8192), deltas: z.array(gameBalanceEventSchema).min(1).max(20) });
