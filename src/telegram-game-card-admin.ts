@@ -16,8 +16,8 @@ type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' | 'audio' };
 type AudioGame = 'slot' | 'dice';
 type PaymentMethod = 'stars' | 'gram' | 'nft';
-type PredictAsset = 'card' | 'logo';
-type PredictMarket = 'bitcoin' | 'solana' | 'ethereum' | 'gold' | 'oil';
+type PredictAsset = 'logo';
+type PredictMarket = 'bitcoin' | 'gold' | 'oil';
 
 type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'predict'; asset: PredictAsset; market: PredictMarket } | { kind: 'audio'; game: AudioGame } | { kind: 'share-invite' };
 
@@ -62,7 +62,7 @@ const PAYMENT_METHODS = [
   ['stars', '⭐ Stars'], ['gram', '💎 Gram'], ['nft', '🖼 NFT'],
 ] as const;
 const PREDICT_MARKETS = [
-  ['bitcoin', 'Bitcoin'], ['solana', 'Solana'], ['ethereum', 'Ethereum'], ['gold', 'Gold'], ['oil', 'Oil'],
+  ['bitcoin', 'Bitcoin'], ['gold', 'Gold'], ['oil', 'Oil'],
 ] as const;
 const MAX_BYTES = 10_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -297,8 +297,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       const market = normalizePredictMarket(marketValue);
       if (asset && market) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${PREDICT_STATE_PREFIX}${asset}:${market}`, { expirationTtl: 900 });
-        const title = asset === 'card' ? 'تصویر کارت' : 'لوگو';
-        await promptImage(token, chatId, messageId, `📈 ${title} ${predictMarketLabel(market)}`, asset === 'card' ? 'تصویر کامل پس‌زمینه کارت را بفرستید.' : 'لوگوی بازار را ترجیحاً به‌صورت PNG شفاف و File/Document بفرستید.', 'botadmin:predictimages');
+        await promptImage(token, chatId, messageId, `📈 لوگو ${predictMarketLabel(market)}`, 'لوگوی بازار را ترجیحاً به‌صورت PNG شفاف و File/Document بفرستید.', 'botadmin:predictimages');
       }
     } else if (data.startsWith('botadmin:gamebackground:')) {
       const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
@@ -474,11 +473,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (target.kind === 'payment-method') {
       await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/uploaded-image/payment-method/${target.method}.png?v=${Date.now()}`, `✅ تصویر روش پرداخت ${paymentMethodLabel(target.method)} ذخیره شد.`, '💳 تصاویر روش پرداخت', 'botadmin:paymentmethods');
     } else if (target.kind === 'predict') {
-      const imageUrl = target.asset === 'card'
-        ? `${PUBLIC_BASE_URL}/app/api/predict-crypto-card-image/${target.market}.png?v=${Date.now()}`
-        : `${PUBLIC_BASE_URL}/app/api/predict-market-image/${target.market}.png?v=${Date.now()}`;
-      const title = target.asset === 'card' ? 'تصویر کارت' : 'لوگوی';
-      await sendSavedImage(env, token, message.chat.id, imageUrl, `✅ ${title} ${predictMarketLabel(target.market)} ذخیره شد.`, '📈 تصاویر Predict', 'botadmin:predictimages');
+      await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/predict-market-image/${target.market}.png?v=${Date.now()}`, `✅ لوگوی ${predictMarketLabel(target.market)} ذخیره شد.`, '📈 تصاویر Predict', 'botadmin:predictimages');
     } else {
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
         chat_id: message.chat.id,
@@ -508,7 +503,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     [{ text: '🎵 صداهای بازی', callback_data: 'botadmin:audiomenu' }],
     [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
-    [{ text: '📈 کارت‌ها و لوگوهای Predict', callback_data: 'botadmin:predictimages' }],
+    [{ text: '📈 لوگوهای Predict', callback_data: 'botadmin:predictimages' }],
     [{ text: '🎰 شکل‌های بازی Slot', callback_data: 'botadmin:slotsymbols' }],
     [
       { text: '🎰 اسلات Home', callback_data: 'botadmin:homeslot' },
@@ -552,16 +547,12 @@ async function sendGameMenu(token: string, chatId: number, messageId?: number): 
 }
 
 async function sendPredictImageMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const status = await Promise.all(PREDICT_MARKETS.map(async ([market]) => ({
-    card: await env.ASSETS.head(predictAssetKey('card', market)).then(Boolean).catch(() => false),
-    logo: await env.ASSETS.head(predictAssetKey('logo', market)).then(Boolean).catch(() => false),
-  })));
+  const present = await Promise.all(PREDICT_MARKETS.map(([market]) => env.ASSETS.head(predictAssetKey('logo', market)).then(Boolean).catch(() => false)));
   const rows: Keyboard = PREDICT_MARKETS.map(([market, title], index) => [
-    { text: `${status[index].card ? '✅ ' : ''}کارت ${title}`, callback_data: `botadmin:predictimage:card:${market}` },
-    { text: `${status[index].logo ? '✅ ' : ''}لوگو ${title}`, callback_data: `botadmin:predictimage:logo:${market}` },
+    { text: `${present[index] ? '✅ ' : ''}لوگو ${title}`, callback_data: `botadmin:predictimage:logo:${market}` },
   ]);
   rows.push([{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]);
-  await upsert(token, chatId, messageId, '📈 تصاویر Predict\n\nبرای هرکدام از پنج بازار، تصویر کامل کارت و لوگوی آن را جداگانه می‌توانید آپلود کنید. علامت ✅ یعنی تصویر آن بخش قبلاً ذخیره شده است.', rows);
+  await upsert(token, chatId, messageId, '📈 تصاویر Predict\n\nلوگوی بازار را انتخاب کنید. علامت ✅ یعنی تصویر آن بخش قبلاً ذخیره شده است.', rows);
 }
 
 async function sendBackgroundMenu(token: string, chatId: number, messageId?: number): Promise<void> {
@@ -823,10 +814,10 @@ function normalizeTarget(value: unknown): UploadTarget | null {
 function normalizePaymentMethod(value: unknown): PaymentMethod | null { const clean = String(value || '').replace(/\.png$/i, '').trim().toLowerCase(); return clean === 'stars' || clean === 'gram' || clean === 'nft' ? clean : null; }
 function paymentMethodLabel(method: PaymentMethod): string { return PAYMENT_METHODS.find(([id]) => id === method)?.[1] || method; }
 function paymentMethodKey(method: PaymentMethod): string { return `payment-method/${method}`; }
-function normalizePredictAsset(value: unknown): PredictAsset | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'card' || clean === 'logo' ? clean : null; }
+function normalizePredictAsset(value: unknown): PredictAsset | null { return String(value || '').trim().toLowerCase() === 'logo' ? 'logo' : null; }
 function normalizePredictMarket(value: unknown): PredictMarket | null { const clean = String(value || '').trim().toLowerCase(); return PREDICT_MARKETS.some(([market]) => market === clean) ? clean as PredictMarket : null; }
 function predictMarketLabel(market: PredictMarket): string { return PREDICT_MARKETS.find(([id]) => id === market)?.[1] || market; }
-function predictAssetKey(asset: PredictAsset, market: PredictMarket): string { return asset === 'card' ? `predict/crypto-card/${market}` : `predict/${market}/question-image`; }
+function predictAssetKey(_asset: PredictAsset, market: PredictMarket): string { return `predict/${market}/question-image`; }
 function normalizeAudioGame(value: unknown): AudioGame | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'slot' || clean === 'dice' ? clean : null; }
 function audioGameLabel(game: AudioGame): string { return game === 'slot' ? 'Slot' : 'Dice'; }
 function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }

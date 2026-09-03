@@ -1,5 +1,4 @@
 import app from './index';
-import './predict-settings-routes';
 import './prediction-events';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
@@ -9,11 +8,8 @@ import { isMiniAppAdmin } from './section-access';
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
 const CACHE_PREDICT_IMAGE_MANIFEST = 'public, max-age=300, stale-while-revalidate=86400';
-const PREDICT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const PREDICT_MARKETS = ['bitcoin', 'ethereum', 'solana', 'gold', 'oil', 'football', 'politics', 'fun'] as const;
-const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'oil'] as const;
-const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
-const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
+const PREDICT_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
+const TRADE_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
 const ASTER_FUTURES_WS_HTTP_BASE = 'https://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
@@ -22,8 +18,6 @@ const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
-type PredictCryptoCardMarket = typeof PREDICT_CRYPTO_CARD_MARKETS[number];
-type PredictButtonSide = typeof PREDICT_BUTTON_SIDES[number];
 type TradeMarket = typeof TRADE_MARKETS[number];
 type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
@@ -42,28 +36,6 @@ app.post('/app/api/predict-access', async (c) => {
 });
 
 app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
-
-app.get('/app/api/predict-crypto-card-images', async (c) => c.json(await getPredictCryptoCardImages(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
-
-app.get('/app/api/predict-button-images', async (c) => c.json(await getPredictButtonImages(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
-
-app.get('/app/api/predict-button-image/:side', async (c) => {
-  try {
-    const side = normalizePredictButtonSide(c.req.param('side').replace(/\.png$/i, ''));
-    return getPredictImageResponse(c.env, predictButtonImageKey(side));
-  } catch {
-    return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
-  }
-});
-
-app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
-  try {
-    const market = normalizePredictCryptoCardMarket(c.req.param('market').replace(/\.png$/i, ''));
-    return getPredictImageResponse(c.env, predictCryptoCardImageKey(market));
-  } catch {
-    return c.text('Not found', 404, { 'cache-control': CACHE_NONE });
-  }
-});
 
 app.get('/app/api/predict-round', async (c) => {
   try {
@@ -176,36 +148,6 @@ async function getPredictMarkets(env: Env): Promise<{ markets: Record<PredictMar
   return { markets: Object.fromEntries(entries) as Record<PredictMarket, { imageUrl: string }> };
 }
 
-async function getPredictCryptoCardImages(env: Env): Promise<{ images: Record<PredictCryptoCardMarket, { imageUrl: string }> }> {
-  const entries = await Promise.all(PREDICT_CRYPTO_CARD_MARKETS.map(async (market) => {
-    const head = await env.ASSETS.head(predictCryptoCardImageKey(market)).catch(() => null);
-    const version = head?.customMetadata?.version || '1';
-    return [market, { imageUrl: head ? `/app/api/predict-crypto-card-image/${market}.png?v=${version}` : '' }] as const;
-  }));
-  return { images: Object.fromEntries(entries) as Record<PredictCryptoCardMarket, { imageUrl: string }> };
-}
-
-async function getPredictButtonImages(env: Env): Promise<{ images: Record<PredictButtonSide, { imageUrl: string }> }> {
-  const entries = await Promise.all(PREDICT_BUTTON_SIDES.map(async (side) => {
-    const head = await env.ASSETS.head(predictButtonImageKey(side)).catch(() => null);
-    const version = head?.customMetadata?.version || '1';
-    return [side, { imageUrl: head ? `/app/api/predict-button-image/${side}.png?v=${version}` : '' }] as const;
-  }));
-  return { images: Object.fromEntries(entries) as Record<PredictButtonSide, { imageUrl: string }> };
-}
-
-function normalizePredictButtonSide(value: string): PredictButtonSide {
-  if ((PREDICT_BUTTON_SIDES as readonly string[]).includes(value)) return value as PredictButtonSide;
-  throw new Error('Invalid predict button');
-}
-function normalizePredictCryptoCardMarket(value: string): PredictCryptoCardMarket {
-  if ((PREDICT_CRYPTO_CARD_MARKETS as readonly string[]).includes(value)) return value as PredictCryptoCardMarket;
-  throw new Error('Invalid predict card market');
-}
-
-function predictCryptoCardImageKey(market: PredictCryptoCardMarket): string {
-  return `predict/crypto-card/${market}`;
-}
 async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePrice = 0) {
   await ensurePredictTables(env);
   const cleanedUserId = cleanUserIdOptional(userId);
@@ -310,7 +252,7 @@ async function getBet(env: Env, id: string) {
   return b ? betJson(b) : null;
 }
 function marketSymbol(market: TradeMarket): string {
-  return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
+  return market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
   return `${ASTER_FUTURES_WS_HTTP_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
@@ -343,25 +285,16 @@ async function getPredictImageResponse(env: Env, key: string): Promise<Response>
   return new Response(object.body, { headers });
 }
 function predictImageKey(market: PredictMarket): string { return `predict/${market}/question-image`; }
-function predictButtonImageKey(side: PredictButtonSide): string { return `predict/buttons/${side}-image`; }
 function normalizePredictMarket(value: string): PredictMarket {
   const market = value.trim().toLowerCase();
   if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
-  if (market === 'ethereum' || market === 'eth') return 'ethereum';
-  if (market === 'solana' || market === 'sol') return 'solana';
   if (market === 'gold' || market === 'paxg') return 'gold';
   if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
-  if (market === 'football') return 'football';
-  if (market === 'politics') return 'politics';
-  if (market === 'fun') return 'fun';
   throw new Error('Invalid predict market');
 }
 function normalizeTradeMarket(value: string): TradeMarket {
   const market = value.trim().toLowerCase();
   if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
-  if (market === 'ethereum' || market === 'eth') return 'ethereum';
-  if (market === 'solana' || market === 'sol') return 'solana';
-  if (market === 'ton') return 'ton';
   if (market === 'gold' || market === 'paxg') return 'gold';
   if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
   throw new Error('Invalid predict market');
