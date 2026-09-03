@@ -289,7 +289,7 @@ export const PREDICT_ZONE_SCRIPT = `
     window.VexaPredictBack=function(){if(betOpen){closeBet();return true}return false};
     if(window.VexaUploadedImages&&window.VexaUploadedImages.load){try{window.VexaUploadedImages.load()}catch(e){}}
     if(window.VexaTonBalance&&window.VexaTonBalance.render){try{window.VexaTonBalance.render()}catch(e){}}
-    loadImages();selectMarket('world');
+    loadImages();selectMarket('bitcoin');
   });
 })();
 `;
