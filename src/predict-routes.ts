@@ -16,7 +16,7 @@ const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'o
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
-const ASTER_FUTURES_WS_HTTP_BASE = 'https://fstream.asterdex.com';
+const ASTER_FUTURES_WS_BASE = 'wss://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -106,11 +106,7 @@ app.get('/app/api/predict-stream', upgradeWebSocket((c) => {
         authenticated = true;
         clearTimeout(authTimer);
 
-        const response = await fetch(marketStreamUrl(market), { headers: { Upgrade: 'websocket' } });
-        const source = (response as Response & { webSocket?: WebSocket | null }).webSocket;
-        if (!source) throw new Error(`Aster live price WebSocket rejected: HTTP ${response.status}`);
-        const acceptedSource = source as WebSocket & { accept?: (options?: { allowHalfOpen?: boolean }) => void };
-        acceptedSource.accept?.({ allowHalfOpen: true });
+        const source = new WebSocket(marketStreamUrl(market));
         source.binaryType = 'arraybuffer';
         upstream = source;
         source.addEventListener('message', async (message) => {
@@ -368,7 +364,7 @@ function marketSymbol(market: TradeMarket): string {
   return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_HTTP_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
+  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
 }
 async function readWebSocketText(value: unknown): Promise<string> {
   if (typeof value === 'string') return value;
