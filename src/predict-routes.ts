@@ -11,7 +11,7 @@ const PREDICT_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const TRADE_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
-const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
+const MONTH_ROUND_MS = 30 * 24 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
@@ -50,6 +50,8 @@ app.post('/app/api/predict-bet', async (c) => {
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
+    const controls = await getUserControls(c.env, userId);
+    if (Number(controls.tonBalanceNano || 0) < stakeNano) throw new Error('Insufficient balance');
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
@@ -140,7 +142,18 @@ async function ensurePredictTables(env: Env): Promise<void> {
 async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPrice = 0): Promise<RoundRow> {
   await ensurePredictTables(env);
   const now = Date.now();
-  const existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
+  const roundMs = roundMsForMarket(market);
+  let existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
+  if (existing && market !== 'bitcoin') {
+    const existingDuration = Date.parse(existing.ends_at) - Date.parse(existing.starts_at);
+    if (Math.abs(existingDuration - roundMs) > 1000) {
+      const betCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status != 'failed'").bind(existing.id).first<{ count: number }>();
+      if (Number(betCount?.count || 0) <= 0) {
+        await env.DB.prepare('DELETE FROM predict_rounds WHERE id = ?').bind(existing.id).run();
+        existing = null;
+      }
+    }
+  }
   if (existing) {
     if (Number(existing.start_price) > 0) return existing;
     const repairedPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
@@ -149,8 +162,7 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
     if (!repaired) throw new Error('Could not repair prediction round');
     return repaired;
   }
-  const roundMs = roundMsForMarket(market);
-  const startMs = Math.floor(now / roundMs) * roundMs;
+  const startMs = Math.floor(now / ROUND_MS) * ROUND_MS;
   const startsAt = new Date(startMs).toISOString();
   const endsAt = new Date(startMs + roundMs).toISOString();
   const id = `pr_${market}_${startMs}`;
@@ -266,7 +278,7 @@ function normalizeTradeMarket(value: string): TradeMarket {
   if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
   throw new Error('Invalid predict market');
 }
-function roundMsForMarket(market: TradeMarket): number { return market === 'oil' ? OIL_ROUND_MS : ROUND_MS; }
+function roundMsForMarket(market: TradeMarket): number { return market === 'bitcoin' ? ROUND_MS : MONTH_ROUND_MS; }
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
