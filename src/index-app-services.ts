@@ -16,9 +16,12 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'oga', 'webm', 'mp4', 'm4a', 'aac']);
 const MINIAPP_AUDIO_KEY = 'miniapp/audio';
+const WALLET_CREDIT_AUDIO_KEY = 'miniapp/audio/wallet-credit';
 const MINIAPP_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
+
+type MiniappAudioTarget = 'dice' | 'wallet-credit';
 
 const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
   home: ['global-loading', 'home'],
@@ -37,7 +40,7 @@ const UPLOADED_IMAGE_CONTEXT_ASSETS: Record<string, Array<'credit' | 'ton' | 'pl
 
 const activitySchema = z.object({ userId: z.string().min(1).max(64), username: z.string().max(80).nullable().optional(), firstName: z.string().max(120).nullable().optional(), avatarUrl: z.string().url().max(1_500).nullable().optional(), section: z.string().max(40).nullable().optional(), countryCode: z.string().max(2).nullable().optional() });
 const lockSchema = z.object({ sectionId: z.string().min(1).max(40), locked: z.boolean() });
-const codeLockSchema = z.object({ sectionId: z.string().min(1).max(40), code: z.string().min(1).max(80) });
+const codeLockSchema = z.object({ sectionId: z.string().min(1).max(80), code: z.string().min(1).max(80) });
 const userIdSchema = z.object({ userId: z.string().min(1).max(80) });
 const gameBalanceEventSchema = z.object({ eventId: z.string().min(12).max(80).regex(/^[0-9A-Za-z_-]+$/), deltaNano: z.number().int(), section: z.string().max(40).optional() });
 const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initData: z.string().min(1).max(8192), deltas: z.array(gameBalanceEventSchema).min(1).max(20) });
@@ -126,8 +129,11 @@ app.get('/app/api/uploaded-images', async (c) => {
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
 app.get('/app/api/uploaded-image/plinko-ball.png', async (c) => getAssetResponse(c.env, 'plinko-ball', '/app/api/credit-icon.png'));
-app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env));
-app.get('/app/api/miniapp-audio-file', async (c) => getAssetResponse(c.env, MINIAPP_AUDIO_KEY, null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' }));
+app.get('/app/api/miniapp-audio', async (c) => getMiniappAudioResponse(c.env, normalizeMiniappAudioTarget(c.req.query('target'))));
+app.get('/app/api/miniapp-audio-file', async (c) => {
+  const target = normalizeMiniappAudioTarget(c.req.query('target'));
+  return getAssetResponse(c.env, miniappAudioKey(target), null, { rangeHeader: c.req.header('range'), defaultContentType: 'audio/mpeg' });
+});
 
 function uploadedImageAssetScopeForSections(sections: string[] | null): Array<'credit' | 'ton' | 'plinko' | 'mines'> {
   if (!sections) return ['credit', 'ton', 'plinko', 'mines'];
@@ -150,8 +156,29 @@ app.get('/app/api/section-access', zValidator('query', userIdSchema), async (c) 
   return c.json({ ok: true, locks: bySection, serverNow: Math.floor(Date.now() / 1000) }, 200, { 'cache-control': 'no-store' });
 });
 
-async function getMiniappAudioJson(env: Env): Promise<Record<string, unknown>> { const object = await env.ASSETS.head(MINIAPP_AUDIO_KEY).catch(() => null); const enabled = (await env.BOT_CACHE.get(MINIAPP_AUDIO_ENABLED_KEY).catch(() => '0')) === '1'; const version = assetVersion(object); return { ok: true, hasAudio: Boolean(object), enabled: Boolean(object) && enabled, version, type: object?.httpMetadata?.contentType || '', url: object ? `/app/api/miniapp-audio-file?v=${version}` : null }; }
-async function getMiniappAudioResponse(env: Env): Promise<Response> { return Response.json(await getMiniappAudioJson(env), { headers: { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL } }); }
+function normalizeMiniappAudioTarget(value: unknown): MiniappAudioTarget {
+  return String(value || '').trim().toLowerCase() === 'wallet-credit' ? 'wallet-credit' : 'dice';
+}
+function miniappAudioKey(target: MiniappAudioTarget): string {
+  return target === 'wallet-credit' ? WALLET_CREDIT_AUDIO_KEY : MINIAPP_AUDIO_KEY;
+}
+async function getMiniappAudioJson(env: Env, target: MiniappAudioTarget): Promise<Record<string, unknown>> {
+  const object = await env.ASSETS.head(miniappAudioKey(target)).catch(() => null);
+  const enabled = target === 'dice'
+    ? (await env.BOT_CACHE.get(MINIAPP_AUDIO_ENABLED_KEY).catch(() => '0')) === '1'
+    : true;
+  const version = assetVersion(object);
+  return {
+    ok: true,
+    target,
+    hasAudio: Boolean(object),
+    enabled: Boolean(object) && enabled,
+    version,
+    type: object?.httpMetadata?.contentType || '',
+    url: object ? `/app/api/miniapp-audio-file?target=${encodeURIComponent(target)}&v=${encodeURIComponent(version)}` : null,
+  };
+}
+async function getMiniappAudioResponse(env: Env, target: MiniappAudioTarget): Promise<Response> { return Response.json(await getMiniappAudioJson(env, target), { headers: { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL } }); }
 async function getAssetResponse(env: Env, key: string, fallbackUrl: string | null, options: { rangeHeader?: string; defaultContentType?: string; cacheControl?: string } = {}): Promise<Response> { const head = await env.ASSETS.head(key).catch(() => null); if (!head) return fallbackUrl ? Response.redirect(fallbackUrl, 302) : new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } }); const range = parseByteRange(options.rangeHeader, head.size); const object = await env.ASSETS.get(key, range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined).catch(() => null); if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } }); const headers = new Headers({ 'content-type': object.httpMetadata?.contentType || head.httpMetadata?.contentType || options.defaultContentType || 'image/png', 'cache-control': options.cacheControl || UPLOADED_IMAGE_CACHE_CONTROL, 'accept-ranges': 'bytes', 'content-length': String(range ? range.end - range.start + 1 : head.size) }); if (range) headers.set('content-range', `bytes ${range.start}-${range.end}/${head.size}`); return new Response(object.body, { status: range ? 206 : 200, headers }); }
 function parseByteRange(header: string | undefined, size: number): { start: number; end: number } | null { if (!header || !Number.isFinite(size) || size <= 0) return null; const match = header.match(/^bytes=(\d*)-(\d*)$/); if (!match || (!match[1] && !match[2])) return null; let start = match[1] ? Number(match[1]) : size - Number(match[2]); let end = match[2] ? Number(match[2]) : size - 1; if (!Number.isInteger(start) || !Number.isInteger(end)) return null; start = Math.max(0, start); end = Math.min(size - 1, end); return start <= end ? { start, end } : null; }
 function audioContentTypeFromExtension(extension: string): string { if (extension === 'wav') return 'audio/wav'; if (extension === 'ogg' || extension === 'oga') return 'audio/ogg'; if (extension === 'webm') return 'audio/webm'; if (extension === 'mp4' || extension === 'm4a') return 'audio/mp4'; if (extension === 'aac') return 'audio/aac'; return 'audio/mpeg'; }
