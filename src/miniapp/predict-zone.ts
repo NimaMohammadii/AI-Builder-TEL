@@ -194,7 +194,7 @@ export const PREDICT_ZONE_SCRIPT = `
     function seed(price){var i;values=(historyValues||[]).map(Number).filter(function(v){return isFinite(v)&&v>0}).slice(-HISTORY);if(!values.length){for(i=0;i<HISTORY;i++)values.push(price)}current=price;last=price;raw=price;priceFrom=price;priceTarget=price;priceAnimStarted=0;scaleMin=0;scaleMax=0;lastPointAt=Date.now()}
     function draw(){
       if(!readyPrice||!values.length||!line||!fill||eventMode)return;
-      var right=W-R,step=(W-L-R)/HISTORY,phase=lastPointAt?Math.max(0,Math.min(1,(Date.now()-lastPointAt)/SAMPLE_MS)):1,rawPts=values.map(function(v,i){return{x:right-(values.length-1-i+phase)*step,v:v}});
+      var right=W-R,step=(W-L-R)/HISTORY,phase=lastPointAt?Math.max(0,(Date.now()-lastPointAt)/SAMPLE_MS):1,rawPts=values.map(function(v,i){return{x:right-(values.length-1-i+phase)*step,v:v}});
       rawPts.push({x:right,v:current});
       var visibleRaw=clipVisible(rawPts,right),scale=autoScale(visibleRaw.map(function(p){return p.v})),ticks=priceTicks(scale),visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
       line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');
@@ -236,7 +236,12 @@ export const PREDICT_ZONE_SCRIPT = `
       var firstPrice=!readyPrice,previous=Number(raw||current||0),now=Date.now(),sampled=false,changed=firstPrice||p!==previous;raw=p;last=p;
       if(firstPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready');startChartMotion()}
       else{
-        if(!lastPointAt||now-lastPointAt>=SAMPLE_MS){values.push(Number(current||p));if(values.length>HISTORY)values.shift();lastPointAt=now;sampled=true}
+        if(!lastPointAt||now-lastPointAt>=SAMPLE_MS){
+          var catchUp=0;
+          while(lastPointAt&&now-lastPointAt>=SAMPLE_MS&&catchUp<3){values.push(Number(current||p));if(values.length>HISTORY)values.shift();lastPointAt+=SAMPLE_MS;catchUp++;sampled=true}
+          if(!lastPointAt){lastPointAt=now;sampled=true}
+          if(now-lastPointAt>=SAMPLE_MS)lastPointAt=now;
+        }
         if(changed)setChartPriceTarget(p)
       }
       if(changed&&live){var liveText=formatPrice(p);if(live.textContent!==liveText)live.textContent=liveText}
