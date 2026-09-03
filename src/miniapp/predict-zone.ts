@@ -254,7 +254,14 @@ export const PREDICT_ZONE_SCRIPT = `
     function submitBet(){if(busy)return;var amount=Number(betInput&&betInput.value||0),id=uid(),initData=telegramInitData();if(!id||!initData){setStatus('Open the Mini App inside Telegram.','bad');return}if(!amount||amount<=0){setStatus('Enter a valid GRAM amount.','bad');focusBetInput();return}busy=true;if(betSubmit){betSubmit.disabled=true;betSubmit.textContent='Placing...'}setStatus('Checking balance...','');fetch(eventMode?'/app/api/prediction-events/bet':'/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(eventMode?{userId:id,initData:initData,eventId:currentEvent&&currentEvent.id,pick:side,stakeTon:amount}:{userId:id,initData:initData,market:market,side:side,stakeTon:amount,tonUsdSnapshot:0})}).then(function(r){return r.json().then(function(j){return{ok:r.ok,json:j}})}).then(function(x){if(!x.ok||!x.json||x.json.ok===false)throw new Error((x.json&&x.json.error)||'Could not place prediction');updateBalance(x.json);setStatus('Prediction placed.','good');if(eventMode&&x.json.event){renderEvent(x.json.event)}else if(x.json.round&&x.json.round.round){currentRound=x.json.round.round;renderHistory(currentRound)}setTimeout(closeBet,450)}).catch(function(e){setStatus(e&&e.message?e.message:'Could not place prediction.','bad')}).finally(function(){busy=false;if(betSubmit){betSubmit.disabled=false;betSubmit.textContent='Place prediction'}})}
     function updateMenu(){menu.querySelectorAll('[data-vexa-predict-market]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-vexa-predict-market')===market)})}
     function stopClock(){if(clockTimer){clearTimeout(clockTimer);clockTimer=0}}
-    function clockDelay(remaining){var ms=Math.max(0,Number(remaining)||0);if(ms>3600000){var minuteRemainder=ms%60000,minuteDelay=Math.max(1000,(minuteRemainder||60000)+24);return Math.min(minuteDelay,Math.max(250,ms-3600000+24))}return Math.max(250,1000-(Date.now()%1000)+24)}
+    function clockDelay(remaining){
+      var ms=Math.max(0,Number(remaining)||0);
+      if(ms>3600000){
+        var seconds=Math.ceil(ms/1000),fraction=ms-(seconds-1)*1000,minuteDelay=fraction+(seconds%60)*1000+24;
+        return Math.min(Math.max(250,minuteDelay),Math.max(250,ms-3600000+24));
+      }
+      return Math.max(250,1000-(Date.now()%1000)+24);
+    }
     function renderClock(){
       stopClock();if(!isActive())return;
       var now=Date.now(),remaining=0;
@@ -276,7 +283,8 @@ export const PREDICT_ZONE_SCRIPT = `
       if(!isActive())return;
       var wasSuspended=runtimeSuspended;runtimeSuspended=false;
       if(eventMode){if(wasSuspended&&(!currentEvent||eventDeadline<=Date.now())){selectEventCategory(market);return}if(currentEvent&&!clockTimer)startClock();return}
-      if(!clockTimer)startClock();if(!ws&&!reconnectTimer)connectFeed(seq,market);if(wasSuspended){syncRound(seq,market);if(!readyPrice||!values.length)loadPriceHistory(seq,market);queueDraw()}
+      if(wasSuspended){var resumedSlot=slotFor(Date.now());if(resumedSlot!==slot){slot=resumedSlot;entry=Number(raw||current||last||0)}syncRound(seq,market);if(!historyValues.length)loadPriceHistory(seq,market);queueDraw()}
+      if(!clockTimer)startClock();if(!ws&&!reconnectTimer)connectFeed(seq,market);
     }
     function syncActiveState(){if(isActive())resume();else suspend()}
 
