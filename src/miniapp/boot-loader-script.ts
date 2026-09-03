@@ -1,8 +1,34 @@
+export const BOOT_LOADER_STYLES = `
+.vexa-boot .vexa-boot-card{position:absolute!important;inset:0!important;display:block!important;transform:none!important;animation:none!important;z-index:2!important}
+.vexa-boot .vexa-boot-card:before,.vexa-boot .vexa-boot-card:after{display:none!important;content:none!important}
+.vexa-boot .vexa-boot-logo{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;border-radius:0!important;object-fit:cover!important;object-position:center!important;margin:0!important;box-shadow:none!important;filter:none!important;opacity:0;transform:none!important;animation:none!important;transition:opacity .18s ease;background:#000}
+.vexa-boot .vexa-boot-logo.is-ready{opacity:1}
+.vexa-boot-progress{position:absolute;left:50%;top:50%;width:min(68vw,300px);height:10px;padding:2px;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(0,0,0,.42);box-shadow:0 12px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.09);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;z-index:4}
+.vexa-boot-progress-bar{display:block;width:0;height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,.72),#fff);box-shadow:0 0 12px rgba(255,255,255,.18);transition:width .22s cubic-bezier(.2,.8,.2,1);will-change:width}
+@media (prefers-reduced-motion:reduce){.vexa-boot .vexa-boot-logo,.vexa-boot-progress-bar{transition:none!important}}
+`;
+
 export const BOOT_LOADER_SCRIPT = `
 (function(){
   var bootHidden=false;
+  var bootProgress=0;
   var READY_TIMEOUT_MS=12000;
-  function hide(){if(bootHidden)return;bootHidden=true;var boot=document.getElementById('vexaBoot');if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
+  var STARTUP_MANIFEST_URL='/app/api/uploaded-images?context=startup';
+  var BOOT_IMAGE_URL_CACHE_KEY='vexa:boot-image-url:v1';
+  var startupManifestJob=null;
+  function bootNode(){return document.getElementById('vexaBoot')}
+  function bootImage(){return document.getElementById('vexaBootImage')}
+  function bootProgressNode(){return document.getElementById('vexaBootProgress')}
+  function setBootProgress(value){
+    var next=Math.max(0,Math.min(100,Number(value)||0));
+    if(next<bootProgress)return;
+    bootProgress=next;
+    var bar=bootProgressNode();if(bar)bar.style.width=next.toFixed(2)+'%';
+    var root=bootNode();if(root)root.setAttribute('aria-valuenow',String(Math.round(next)))
+  }
+  function advanceBootProgress(weight){setBootProgress(bootProgress+(Number(weight)||0))}
+  function progressGate(promise,weight){return Promise.resolve(promise).then(function(value){advanceBootProgress(weight);return value},function(error){advanceBootProgress(weight);throw error})}
+  function hide(){if(bootHidden)return;bootHidden=true;setBootProgress(100);var boot=bootNode();if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
   function settle(promise,ms,fallback){
     return new Promise(function(resolve){
       var done=false,timer=setTimeout(function(){finish(fallback)},ms);
@@ -98,6 +124,11 @@ export const BOOT_LOADER_SCRIPT = `
       return gameImageDelay(GAME_IMAGE_RETRY_MS).then(function(){return fetchJsonStrict(url,attempt+1)})
     })
   }
+  function startupManifestReady(){
+    if(startupManifestJob)return startupManifestJob;
+    startupManifestJob=fetchJsonStrict(STARTUP_MANIFEST_URL,0);
+    return startupManifestJob
+  }
   function preloadGameImageStrict(url){
     url=String(url||'').trim();
     if(!url||url==='none'||url.indexOf('data:image/')===0)return Promise.resolve(true);
@@ -143,6 +174,29 @@ export const BOOT_LOADER_SCRIPT = `
     return Promise.all(jobs)
   }
   function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
+  function cachedBootImageUrl(){try{return cleanGameImageUrl(localStorage.getItem(BOOT_IMAGE_URL_CACHE_KEY)||'')}catch(e){return ''}}
+  function rememberBootImageUrl(url){try{if(url)localStorage.setItem(BOOT_IMAGE_URL_CACHE_KEY,url)}catch(e){}}
+  function showBootImageUrl(url,ms){
+    var img=bootImage();url=cleanGameImageUrl(url);
+    if(!img||!url)return Promise.resolve(false);
+    var current=String(img.getAttribute('src')||'').trim();
+    if(current!==url)img.src=url;
+    return imageReady(img,ms||6500).then(function(ok){if(ok)img.classList.add('is-ready');return ok})
+  }
+  function prepareBootImage(){
+    var img=bootImage();
+    if(!img)return Promise.resolve(false);
+    var cached=cachedBootImageUrl();
+    var initial=String(img.getAttribute('src')||'').trim();
+    var first=cached?showBootImageUrl(cached,4500):showBootImageUrl(initial,4500);
+    return startupManifestReady().then(function(manifest){
+      var url=cleanGameImageUrl(manifest&&manifest.loadingImageUrl);
+      if(!url)return first;
+      rememberBootImageUrl(url);
+      if(url===cached||url===initial)return first;
+      return showBootImageUrl(url,6500)
+    },function(){return first})
+  }
   function ghostRunUrls(j){
     var out=[],map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};
     Object.keys(map).forEach(function(key){out.push(map[key])});
@@ -154,7 +208,7 @@ export const BOOT_LOADER_SCRIPT = `
     return (j&&Array.isArray(j.controls)?j.controls:[]).filter(function(item){return item&&item.id==='spin'}).map(function(item){return item.imageUrl})
   }
   var GAME_IMAGE_MANIFESTS=[
-    {url:'/app/api/uploaded-images?context=startup',urls:preloadArrayUrls},
+    {url:STARTUP_MANIFEST_URL,urls:preloadArrayUrls},
     {url:'/app/api/uploaded-images?context=mines',game:'mines',urls:preloadArrayUrls},
     {url:'/app/api/uploaded-images?context=plinko',game:'plinko',urls:preloadArrayUrls},
     {url:'/app/api/ghost-run-assets',game:'ghostrun',urls:ghostRunUrls},
@@ -166,7 +220,8 @@ export const BOOT_LOADER_SCRIPT = `
     if(spec.game&&!shouldPreloadGame(spec.game))return Promise.resolve(true);
     var cached=cache&&cache[spec.url];
     var cachedJob=preloadUrlList(spec.urls(cached));
-    return fetchJsonStrict(spec.url,0).then(function(j){
+    var liveJob=spec.url===STARTUP_MANIFEST_URL?startupManifestReady():fetchJsonStrict(spec.url,0);
+    return liveJob.then(function(j){
       if(!j)return cachedJob.then(function(){return true});
       cache[spec.url]=j;
       writeManifestCache(cache);
@@ -191,6 +246,8 @@ export const BOOT_LOADER_SCRIPT = `
     });
     return window.__vexaAllGameImagesReady
   }
+
+  var bootImageReady=prepareBootImage();
 
   function headerAndHomeAssetsReady(){
     var jobs=[];
@@ -247,14 +304,17 @@ export const BOOT_LOADER_SCRIPT = `
     if(window.__vexaInitialUiReadyStarted)return;
     window.__vexaInitialUiReadyStarted=true;
     var ready=Promise.all([
-      settle(windowReady(),8000,true),
-      settle(homeReady(),10000,false),
-      settle(playHubReady(),10000,false),
-      lazySectionsReady()
+      progressGate(settle(bootImageReady,7000,false),10),
+      progressGate(settle(windowReady(),8000,true),8),
+      progressGate(settle(homeReady(),10000,false),24),
+      progressGate(settle(playHubReady(),10000,false),18),
+      progressGate(lazySectionsReady(),6)
     ]);
     var timedUiReady=settle(ready,READY_TIMEOUT_MS,false);
-    window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesReady()]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(function(){hide();resolve(true)})})})})
+    var gameImagesGate=progressGate(gameImagesReady(),32);
+    window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesGate]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){setBootProgress(100);requestAnimationFrame(function(){hide();resolve(true)})})})})
   }
+  setBootProgress(0);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
 })();
 `;
