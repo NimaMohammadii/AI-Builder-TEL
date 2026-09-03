@@ -120,7 +120,7 @@ export const PREDICT_ZONE_SCRIPT = `
       oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'wss://fstream.asterdex.com/ws/clusdt@markPrice@1s',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
       gold:{label:'Gold',question:'Gold up or down?',stream:'wss://fstream.asterdex.com/ws/xauusdt@markPrice@1s',decimals:2,step:.5,duration:300000,symbol:'Au'}
     };
-    var EVENT_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',runtimeSuspended=true,runtimeStarted=false;
+    var EVENT_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,priceAnimRaf=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',runtimeSuspended=true,runtimeStarted=false;
     var W=360,H=220,L=0,R=58,P=24,HISTORY=23;
     var requestFrame=window.requestAnimationFrame?window.requestAnimationFrame.bind(window):function(cb){return setTimeout(function(){cb(Date.now())},16)};
     var cancelFrame=window.cancelAnimationFrame?window.cancelAnimationFrame.bind(window):function(id){clearTimeout(id)};
@@ -208,14 +208,34 @@ export const PREDICT_ZONE_SCRIPT = `
     }
     function cancelDraw(){if(drawRaf){cancelFrame(drawRaf);drawRaf=0}}
     function queueDraw(){if(drawRaf||!isActive()||eventMode||betAnimating)return;drawRaf=requestFrame(function(){drawRaf=0;if(isActive()&&!eventMode&&!betAnimating)draw()})}
+    function cancelPriceAnimation(){if(priceAnimRaf){cancelFrame(priceAnimRaf);priceAnimRaf=0}}
+    function animateChartPrice(target,my,id){
+      cancelPriceAnimation();
+      var from=Number(current||target),to=Number(target),started=0,lastFrame=0,duration=560,reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(!isFinite(from)||!isFinite(to)||from<=0||reduced){current=to;queueDraw();return}
+      function step(ts){
+        if(my!==seq||id!==market||eventMode||!isActive()){priceAnimRaf=0;return}
+        if(!started)started=ts;
+        if(ts-lastFrame<30&&ts-started<duration){priceAnimRaf=requestFrame(step);return}
+        lastFrame=ts;
+        var t=Math.min(1,(ts-started)/duration),eased=1-Math.pow(1-t,3);
+        current=from+(to-from)*eased;
+        if(!betAnimating)draw();
+        if(t<1)priceAnimRaf=requestFrame(step);else{priceAnimRaf=0;current=to;if(!betAnimating)draw()}
+      }
+      priceAnimRaf=requestFrame(step);
+    }
     function applyPrice(value,my,id){
       if(my!==seq||id!==market||eventMode)return false;
       var p=Number(value);if(!isFinite(p)||p<=0)return false;
-      var firstPrice=!readyPrice,previous=Number(current||0),now=Date.now(),sampled=false,changed=firstPrice||p!==previous;raw=p;last=p;current=p;
+      var firstPrice=!readyPrice,previous=Number(raw||current||0),now=Date.now(),sampled=false,changed=firstPrice||p!==previous;raw=p;last=p;
       if(firstPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready')}
-      else if(!lastPointAt||now-lastPointAt>=3000){values.push(p);if(values.length>HISTORY)values.shift();lastPointAt=now;sampled=true}
+      else{
+        if(!lastPointAt||now-lastPointAt>=3000){values.push(p);if(values.length>HISTORY)values.shift();lastPointAt=now;sampled=true}
+        if(changed)animateChartPrice(p,my,id);
+      }
       if(changed&&live){var liveText=formatPrice(p);if(live.textContent!==liveText)live.textContent=liveText}
-      if(changed)syncTrend();if(changed||sampled)queueDraw();
+      if(changed)syncTrend();if(firstPrice||(!changed&&sampled))queueDraw();
       return true;
     }
     function clearReconnect(){if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=0}}
@@ -227,7 +247,7 @@ export const PREDICT_ZONE_SCRIPT = `
         reconnectDelay=1000;try{socket.close()}catch(e){if(ws===socket){ws=null;scheduleReconnect(my,id)}}
       },7000);
     }
-    function stopFeed(){seq++;clearReconnect();clearFeedWatchdog();if(ws){try{ws.onopen=null;ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
+    function stopFeed(){seq++;clearReconnect();clearFeedWatchdog();cancelPriceAnimation();if(ws){try{ws.onopen=null;ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function scheduleReconnect(my,id){clearReconnect();if(my!==seq||id!==market||eventMode||!isActive())return;var delay=reconnectDelay;reconnectDelay=Math.min(60000,reconnectDelay*2);reconnectTimer=setTimeout(function(){reconnectTimer=0;if(my===seq&&id===market&&isActive()&&!eventMode)connectFeed(my,id)},delay)}
     function connectFeed(my,id){
       if(my!==seq||id!==market||eventMode||!isActive())return;
