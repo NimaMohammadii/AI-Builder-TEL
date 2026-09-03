@@ -33,7 +33,7 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
       const prizes = await getLotteryPrizes(env, prizePoolNano);
       const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, roundTicketCount, userTicketCount, prizePoolNano, prizes, lastDrawWon, winChancePercent });
+      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, ticketCount: userTicketCount, roundTicketCount, userTicketCount, prizePoolNano, prizes, lastDrawWon, winChancePercent });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
