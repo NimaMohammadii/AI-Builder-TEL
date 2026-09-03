@@ -13,6 +13,10 @@ const files = {
   backgrounds: read('src/miniapp/section-background-script.ts'),
   appServices: read('src/index-app-services.ts'),
   sectionBackgrounds: read('src/section-backgrounds.ts'),
+  lotteryPrizes: read('src/lottery-prizes.ts'),
+  lotteryHttp: read('src/lottery-http.ts'),
+  lotteryAdmin: read('src/telegram-lottery-admin.ts'),
+  home: read('src/miniapp/home.ts'),
   ghost: read('src/miniapp/ghost-run/index.ts'),
   slot: read('src/miniapp/slot/script.ts'),
   pump: read('src/miniapp/pump/section.ts'),
@@ -76,6 +80,14 @@ expect('Runtime section backgrounds must use the Play Zone preload gate.', has(f
 expect('Runtime section backgrounds must stop when visibility denies the section.', has(files.backgrounds, 'if(!visibilityAllowsSection(id))return false;'));
 expect('Generic section backgrounds must not advertise Home.', !has(files.appServices, "{ id: 'home', label: 'Home', description: 'Home section background' }"));
 expect('Generic section backgrounds must reject Home and home-* paths.', has(files.sectionBackgrounds, "if (/^home(?:-|$)/.test(cleaned)) throw new Error('Home does not use generic section backgrounds');"));
+
+expect('Lottery must have exactly three winners.', has(files.lotteryPrizes, 'export const LOTTERY_WINNER_COUNT = 3;'));
+expect('Lottery prize configuration must be percentage-based.', has(files.lotteryPrizes, 'const PRIZE_PERCENT_TOTAL_BPS = 10_000;') && has(files.lotteryPrizes, 'setLotteryPrizePercentages'));
+expect('Lottery percentages must allocate the entire Prize Pool.', has(files.lotteryPrizes, 'let remainder = pool - amounts.reduce((sum, amount) => sum + amount, 0);'));
+expect('Lottery APIs must expose the authoritative three-winner count.', has(files.lotteryHttp, 'winnerCount: LOTTERY_WINNER_COUNT'));
+expect('Lottery admin must remove fixed per-rank prize inputs.', !has(files.lotteryAdmin, 'setLotteryPrize(') && has(files.lotteryAdmin, 'parsePrizePercentages'));
+expect('Home must render no more than three lottery winner cards.', has(files.home, 'Math.min(3,Math.floor(Number(state&&state.winnerCount)||0))') && has(files.home, 'Math.min(3,count)'));
+expect('Home winner cards must fill the three-row frame.', has(files.home, 'grid-template-rows:repeat(3,minmax(0,1fr))!important'));
 
 expect('Ghost Run runtime must require an active visible section.', has(files.ghost, "function isActive(){return !!(root&&root.classList.contains('active')&&!document.hidden)}"));
 expect('Ghost Run reconnects must stop while inactive.', has(files.ghost, 'function scheduleReconnect(){if(!isActive()'));

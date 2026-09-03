@@ -3,10 +3,11 @@ import { ensureLevelTables } from './levels';
 import { ensureTonBalanceColumn } from './user-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
 
-export const LOTTERY_WINNER_COUNT = 10;
-const MAX_PRIZE_NANO = 1_000_000_000_000;
+export const LOTTERY_WINNER_COUNT = 3;
+const PRIZE_PERCENT_TOTAL_BPS = 10_000;
+const DEFAULT_PRIZE_BPS = [5_000, 3_000, 2_000] as const;
 
-type PrizeRow = { rank: number; prize_nano: number; updated_at: string };
+type PrizeRow = { rank: number; prize_bps: number; updated_at: string };
 type WinnerRow = {
   id: string;
   round_id: string;
@@ -27,6 +28,8 @@ type ExistingWinnerRow = { rank: number; user_id: string };
 
 export type LotteryPrize = {
   rank: number;
+  percentBps: number;
+  percent: number;
   prizeNano: number;
   updatedAt: string;
 };
@@ -48,16 +51,25 @@ export type LotteryWinner = {
 export async function ensureLotteryPrizeTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_prizes (
     rank INTEGER PRIMARY KEY,
-    prize_nano INTEGER NOT NULL DEFAULT 0,
+    prize_bps INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
+  await env.DB.prepare('ALTER TABLE lottery_prizes ADD COLUMN prize_bps INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 
-  const seed = Array.from({ length: LOTTERY_WINNER_COUNT }, (_, index) =>
-    env.DB.prepare(`INSERT OR IGNORE INTO lottery_prizes (rank,prize_nano,updated_at)
-      VALUES (?,0,CURRENT_TIMESTAMP)`).bind(index + 1),
+  const seed = DEFAULT_PRIZE_BPS.map((prizeBps, index) =>
+    env.DB.prepare(`INSERT OR IGNORE INTO lottery_prizes (rank,prize_bps,updated_at)
+      VALUES (?,?,CURRENT_TIMESTAMP)`).bind(index + 1, prizeBps),
   );
   await env.DB.batch(seed);
   await env.DB.prepare('DELETE FROM lottery_prizes WHERE rank > ?').bind(LOTTERY_WINNER_COUNT).run();
+
+  const total = await env.DB.prepare('SELECT COALESCE(SUM(prize_bps),0) AS total FROM lottery_prizes WHERE rank<=?')
+    .bind(LOTTERY_WINNER_COUNT).first<{ total: number }>();
+  if (Math.floor(Number(total?.total || 0)) !== PRIZE_PERCENT_TOTAL_BPS) {
+    await env.DB.batch(DEFAULT_PRIZE_BPS.map((prizeBps, index) =>
+      env.DB.prepare('UPDATE lottery_prizes SET prize_bps=?,updated_at=CURRENT_TIMESTAMP WHERE rank=?').bind(prizeBps, index + 1),
+    ));
+  }
 
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_winners (
     id TEXT PRIMARY KEY,
@@ -77,23 +89,27 @@ export async function ensureLotteryPrizeTables(env: Env): Promise<void> {
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_lottery_winners_user_round ON lottery_winners(user_id,round_id)').run();
 }
 
-export async function getLotteryPrizes(env: Env): Promise<LotteryPrize[]> {
+export async function getLotteryPrizes(env: Env, prizePoolNanoInput: unknown = 0): Promise<LotteryPrize[]> {
   await ensureLotteryPrizeTables(env);
-  const rows = await env.DB.prepare('SELECT rank,prize_nano,updated_at FROM lottery_prizes ORDER BY rank ASC')
+  const rows = await env.DB.prepare('SELECT rank,prize_bps,updated_at FROM lottery_prizes ORDER BY rank ASC')
     .all<PrizeRow>();
-  return (rows.results || []).slice(0, LOTTERY_WINNER_COUNT).map((row) => ({
+  const configured = (rows.results || []).slice(0, LOTTERY_WINNER_COUNT).map((row) => ({
     rank: Math.max(1, Math.min(LOTTERY_WINNER_COUNT, Math.floor(Number(row.rank) || 1))),
-    prizeNano: Math.max(0, Math.floor(Number(row.prize_nano) || 0)),
+    percentBps: cleanPrizeBps(row.prize_bps),
     updatedAt: String(row.updated_at || ''),
   }));
+  const amounts = allocatePrizePool(prizePoolNanoInput, configured.map((item) => item.percentBps));
+  return configured.map((item, index) => ({ ...item, percent: item.percentBps / 100, prizeNano: amounts[index] || 0 }));
 }
 
-export async function setLotteryPrize(env: Env, rankInput: unknown, prizeNanoInput: unknown): Promise<LotteryPrize[]> {
+export async function setLotteryPrizePercentages(env: Env, percentBpsInput: unknown[]): Promise<LotteryPrize[]> {
   await ensureLotteryPrizeTables(env);
-  const rank = cleanRank(rankInput);
-  const prizeNano = cleanPrize(prizeNanoInput);
-  await env.DB.prepare(`UPDATE lottery_prizes SET prize_nano=?,updated_at=CURRENT_TIMESTAMP WHERE rank=?`)
-    .bind(prizeNano, rank).run();
+  if (!Array.isArray(percentBpsInput) || percentBpsInput.length !== LOTTERY_WINNER_COUNT) throw new Error('Exactly three prize percentages are required');
+  const percentBps = percentBpsInput.map(cleanPrizeBps);
+  if (percentBps.reduce((sum, value) => sum + value, 0) !== PRIZE_PERCENT_TOTAL_BPS) throw new Error('Prize percentages must total 100%');
+  await env.DB.batch(percentBps.map((value, index) =>
+    env.DB.prepare('UPDATE lottery_prizes SET prize_bps=?,updated_at=CURRENT_TIMESTAMP WHERE rank=?').bind(value, index + 1),
+  ));
   return getLotteryPrizes(env);
 }
 
@@ -133,7 +149,9 @@ export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): P
   const roundId = String(roundIdInput || '').trim();
   if (!roundId) throw new Error('Missing Lottery round');
 
-  const prizes = await getLotteryPrizes(env);
+  const poolRow = await env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano
+    FROM lottery_tickets WHERE round_id=?`).bind(roundId).first<{ prize_pool_nano: number }>();
+  const prizes = await getLotteryPrizes(env, poolRow?.prize_pool_nano);
   const existingRows = await env.DB.prepare(`SELECT rank,user_id FROM lottery_winners
     WHERE round_id=? ORDER BY rank ASC`).bind(roundId).all<ExistingWinnerRow>();
   const existing = existingRows.results || [];
@@ -252,16 +270,18 @@ function publicWinner(row: WinnerRow): LotteryWinner {
   };
 }
 
-function cleanRank(value: unknown): number {
-  const rank = Math.floor(Number(value));
-  if (!Number.isSafeInteger(rank) || rank < 1 || rank > LOTTERY_WINNER_COUNT) throw new Error(`Rank must be 1-${LOTTERY_WINNER_COUNT}`);
-  return rank;
+function cleanPrizeBps(value: unknown): number {
+  const bps = Math.floor(Number(value));
+  if (!Number.isSafeInteger(bps) || bps < 0 || bps > PRIZE_PERCENT_TOTAL_BPS) throw new Error('Invalid Lottery prize percentage');
+  return bps;
 }
 
-function cleanPrize(value: unknown): number {
-  const amount = Math.floor(Number(value));
-  if (!Number.isSafeInteger(amount) || amount < 0 || amount > MAX_PRIZE_NANO) throw new Error('Invalid Lottery prize');
-  return amount;
+function allocatePrizePool(prizePoolNanoInput: unknown, percentBps: number[]): number[] {
+  const pool = Math.max(0, Math.floor(Number(prizePoolNanoInput) || 0));
+  const amounts = percentBps.map((bps) => Math.floor(pool * cleanPrizeBps(bps) / PRIZE_PERCENT_TOTAL_BPS));
+  let remainder = pool - amounts.reduce((sum, amount) => sum + amount, 0);
+  for (let index = 0; remainder > 0 && index < amounts.length; index += 1, remainder -= 1) amounts[index] += 1;
+  return amounts;
 }
 
 function cleanUsername(value: unknown): string {

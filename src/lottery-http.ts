@@ -17,13 +17,13 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
         ? env.DB.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(price_nano),0) AS prize_pool_nano
             FROM lottery_tickets WHERE round_id=?`).bind(state.round.id).first<{ count: number; prize_pool_nano: number }>()
         : Promise.resolve(null);
-      const [lastDrawWon, prizes, roundStatsRow] = await Promise.all([
+      const [lastDrawWon, roundStatsRow] = await Promise.all([
         userWonLotteryRound(env, userId, state.lastDraw?.roundId),
-        getLotteryPrizes(env),
         roundStatsQuery,
       ]);
       const roundTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.count || 0)));
       const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
+      const prizes = await getLotteryPrizes(env, prizePoolNano);
       const serverNowMs = Date.now();
       return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, roundTicketCount, prizePoolNano, prizes, lastDrawWon });
     }
@@ -43,10 +43,15 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
         && previousWinnersAtMs > serverNowMs,
       );
       const roundId = waitingForWinner ? '' : (state.lastDraw?.roundId || '');
-      const [winners, prizes] = await Promise.all([
+      const poolQuery = round
+        ? env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano FROM lottery_tickets WHERE round_id=?`)
+          .bind(round.id).first<{ prize_pool_nano: number }>()
+        : Promise.resolve(null);
+      const [winners, poolRow] = await Promise.all([
         roundId ? getLotteryWinners(env, roundId) : Promise.resolve([]),
-        getLotteryPrizes(env),
+        poolQuery,
       ]);
+      const prizes = await getLotteryPrizes(env, poolRow?.prize_pool_nano);
       const nextDisplayChangeAtMs = waitingForWinner
         ? previousWinnersAtMs
         : round?.status === 'open' && Number.isFinite(drawAtMs) && drawAtMs > serverNowMs
