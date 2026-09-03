@@ -107,11 +107,28 @@ export const MINIAPP_SCRIPT = `
     try{tg.BackButton.hide()}catch(e){}
   }
   function ensureSection(id){return !id||q(id)||(window.VexaLazySections&&window.VexaLazySections.ensure&&window.VexaLazySections.ensure(id))}
+  var primaryTabs={home:true,playzone:true,rewards:true};
+  var sectionTransitionTimer=0;
+  function clearSectionTransition(node){if(!node)return;node.classList.remove('view-transition-in','view-transition-out');node.style.position='';node.style.left='';node.style.top='';node.style.width='';node.style.height='';node.style.margin=''}
+  function canAnimateSectionChange(from,to){return !!(from&&primaryTabs[from.id]&&primaryTabs[to.id]&&!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches))}
+  function transitionPrimarySection(from,to){
+    if(sectionTransitionTimer){clearTimeout(sectionTransitionTimer);sectionTransitionTimer=0}
+    document.querySelectorAll('.view.view-transition-in,.view.view-transition-out').forEach(clearSectionTransition);
+    var app=document.querySelector('main.app'),fromRect=from.getBoundingClientRect(),appRect=app&&app.getBoundingClientRect();
+    if(!appRect||!fromRect.width||!fromRect.height){from.classList.remove('active');to.classList.add('active');return}
+    from.style.position='absolute';from.style.left=(fromRect.left-appRect.left)+'px';from.style.top=(fromRect.top-appRect.top)+'px';from.style.width=fromRect.width+'px';from.style.height=fromRect.height+'px';from.style.margin='0';
+    from.classList.remove('active');from.classList.add('view-transition-out');to.classList.add('active','view-transition-in');
+    sectionTransitionTimer=setTimeout(function(){clearSectionTransition(from);clearSectionTransition(to);sectionTransitionTimer=0},380);
+  }
 
   function show(id){
     if(!ensureSection(id))return false;
-    document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active')});
-    var v=q(id);if(v)v.classList.add('active');
+    var v=q(id),current=document.querySelector('.view.active');
+    if(!v)return false;
+    if(current!==v){
+      if(canAnimateSectionChange(current,v))transitionPrimarySection(current,v);
+      else{document.querySelectorAll('.view').forEach(function(n){n.classList.remove('active');clearSectionTransition(n)});v.classList.add('active')}
+    }
     document.querySelectorAll('.tab').forEach(function(n){n.classList.toggle('active',n.getAttribute('data-view')===id)});
     setText('brandTitle',sectionTitles[id]||'Vexa');
     syncTelegramBackButton(id);
