@@ -8,7 +8,9 @@ button{border:0}
 b,strong,.top-balance-pill b,#crashMultiplier,#minesMultiplier,#plinkoRowsValue,.stat b,.wave-time,.crash-history span,input{font-family:var(--font-num);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1,"kern" 1}
 h1,h2,h3,.brand h1,.hero h2{font-family:var(--font-main);font-weight:850;letter-spacing:-.055em}
 .app{position:relative;width:min(100%,560px);height:100dvh;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));background:#000!important;overflow:hidden}
+.app:has(#predictzone.active){padding-left:0!important;padding-right:0!important}
 .top{height:72px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.app:has(#predictzone.active)>.top{margin-left:16px;margin-right:16px}
 .brand{display:flex;gap:12px;align-items:center;min-width:0}.brand>div{min-width:0}
 .logo,.avatar{width:64px;height:64px;border-radius:26px;object-fit:cover;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
 .brand h1{font-size:21px;line-height:1.18;margin:-2px 0 -1px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:178px;padding:2px 1px 3px;min-height:29px}
@@ -18,6 +20,7 @@ h1,h2,h3,.brand h1,.hero h2{font-family:var(--font-main);font-weight:850;letter-
 .top-balance-pill b{font-size:12.5px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.025em}.ton-mini-icon{width:26px;height:26px;display:grid;place-items:center;flex:0 0 auto}.ton-mini-icon svg{width:26px;height:26px;display:block}
 .content{height:calc(100dvh - 72px - 94px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden}
 .view{display:none;height:100%;overflow:auto;padding-bottom:8px;position:relative}.view.active{display:block}.view.view-transition-in{will-change:opacity;animation:vexa-section-crossfade .8s cubic-bezier(.22,.75,.2,1) both}@keyframes vexa-section-crossfade{from{opacity:.58}to{opacity:1}}@media(prefers-reduced-motion:reduce){.view.view-transition-in{animation:none}}
+.app:has(#predictzone.active) #predictzone.predict-zone-view{overflow-y:hidden!important;overscroll-behavior-y:none!important;-webkit-overflow-scrolling:auto!important}
 .hero h2{font-size:clamp(46px,13vw,72px);line-height:.88;margin:12px 0 10px}.hero p{color:var(--muted);line-height:1.45;margin:0 0 16px;font-weight:470;letter-spacing:-.015em}
 .card,.glass-card{border:1px solid var(--line);border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.03));box-shadow:0 28px 80px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.10);margin-bottom:13px;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
 .pad{padding:16px}.title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.title h3{margin:0;font-size:16px;font-weight:760;letter-spacing:-.035em}.title span,.tiny,label{font-size:12px;color:var(--muted);font-weight:520;letter-spacing:-.01em}label{font-size:10.5px;letter-spacing:.085em;text-transform:uppercase;font-weight:720}
