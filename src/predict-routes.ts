@@ -16,7 +16,7 @@ const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'o
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
-const ASTER_FUTURES_WS_BASE = 'wss://fstream.asterdex.com';
+const ASTER_FUTURES_WS_HTTP_BASE = 'https://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -106,13 +106,20 @@ app.get('/app/api/predict-stream', upgradeWebSocket((c) => {
         authenticated = true;
         clearTimeout(authTimer);
 
-        const source = new WebSocket(marketStreamUrl(market));
+        const response = await fetch(marketStreamUrl(market), { headers: { Upgrade: 'websocket' } });
+        const source = (response as Response & { webSocket?: WebSocket | null }).webSocket;
+        if (!source) throw new Error(`Aster live price WebSocket rejected: HTTP ${response.status}`);
+        const acceptedSource = source as WebSocket & { accept?: (options?: { allowHalfOpen?: boolean }) => void };
+        acceptedSource.accept?.({ allowHalfOpen: true });
+        source.binaryType = 'arraybuffer';
         upstream = source;
-        source.addEventListener('message', (message) => {
+        source.addEventListener('message', async (message) => {
           if (upstream !== source) return;
           try {
-            const data = JSON.parse(typeof message.data === 'string' ? message.data : '') as { c?: unknown; p?: unknown };
-            const price = cleanPrice(data.c ?? data.p);
+            const text = await readWebSocketText(message.data);
+            if (!text || upstream !== source) return;
+            const data = JSON.parse(text) as { p?: unknown };
+            const price = cleanPrice(data.p);
             ws.send(JSON.stringify({ type: 'price', price }));
           } catch {}
         });
@@ -361,24 +368,31 @@ function marketSymbol(market: TradeMarket): string {
   return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@aggTrade`;
+  return `${ASTER_FUTURES_WS_HTTP_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
+}
+async function readWebSocketText(value: unknown): Promise<string> {
+  if (typeof value === 'string') return value;
+  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value);
+  if (ArrayBuffer.isView(value)) return new TextDecoder().decode(value as ArrayBufferView);
+  if (typeof Blob !== 'undefined' && value instanceof Blob) return value.text();
+  return '';
 }
 async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
   const symbol = marketSymbol(market);
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=23`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster market snapshot failed: HTTP ${res.status}`);
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/markPriceKlines?symbol=${symbol}&interval=1m&limit=23`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster mark price snapshot failed: HTTP ${res.status}`);
   const rows = await res.json() as unknown;
-  if (!Array.isArray(rows)) throw new Error('Invalid Aster market snapshot');
+  if (!Array.isArray(rows)) throw new Error('Invalid Aster mark price snapshot');
   const history = rows.map((row) => Array.isArray(row) ? Number(row[4]) : 0).filter((price) => Number.isFinite(price) && price > 0).slice(-23);
-  if (!history.length) throw new Error('Aster market snapshot is empty');
+  if (!history.length) throw new Error('Aster mark price snapshot is empty');
   return { price: history[history.length - 1], history };
 }
 async function fetchPrice(market: TradeMarket): Promise<number> {
   const symbol = marketSymbol(market);
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/ticker/price?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster price request failed: HTTP ${res.status}`);
-  const data = await res.json() as { price?: string };
-  return cleanPrice(data.price);
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/premiumIndex?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster mark price request failed: HTTP ${res.status}`);
+  const data = await res.json() as { markPrice?: string };
+  return cleanPrice(data.markPrice);
 }
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
