@@ -112,9 +112,10 @@ export const MINIAPP_SCRIPT = `
   function animatePrimarySection(node){
     if(sectionTransitionTimer){clearTimeout(sectionTransitionTimer);sectionTransitionTimer=0}
     node.classList.remove('view-transition-in');
-    void node.offsetWidth;
-    node.classList.add('view-transition-in');
-    sectionTransitionTimer=setTimeout(function(){node.classList.remove('view-transition-in');sectionTransitionTimer=0},340);
+    requestAnimationFrame(function(){
+      node.classList.add('view-transition-in');
+      sectionTransitionTimer=setTimeout(function(){node.classList.remove('view-transition-in');sectionTransitionTimer=0},280);
+    });
   }
 
   function show(id){
