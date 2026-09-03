@@ -66,6 +66,7 @@ export const HOME_STYLES = `
     radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%)!important;
   box-shadow:inset 0 1px 0 rgba(112,18,49,.065)!important;
 }
+#home #homeDrawInfoCard.home-draw-info-card{backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important}
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
 #home .home-ticket-card .home-ticket-card-head{
