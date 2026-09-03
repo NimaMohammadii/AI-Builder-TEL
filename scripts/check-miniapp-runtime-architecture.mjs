@@ -11,6 +11,8 @@ const files = {
   playZone: read('src/miniapp/play-zone.ts'),
   boot: read('src/miniapp/boot-loader-script.ts'),
   backgrounds: read('src/miniapp/section-background-script.ts'),
+  appServices: read('src/index-app-services.ts'),
+  sectionBackgrounds: read('src/section-backgrounds.ts'),
   ghost: read('src/miniapp/ghost-run/index.ts'),
   slot: read('src/miniapp/slot/script.ts'),
   pump: read('src/miniapp/pump/section.ts'),
@@ -72,6 +74,8 @@ expect('Per-game boot manifests must be gated by shouldPreloadGame.', has(files.
 expect('Section background URLs in boot preload must be visibility-gated.', has(files.boot, 'if(url&&shouldPreloadGame(id))out.push(url)'));
 expect('Runtime section backgrounds must use the Play Zone preload gate.', has(files.backgrounds, 'state.shouldPreload(id)'));
 expect('Runtime section backgrounds must stop when visibility denies the section.', has(files.backgrounds, 'if(!visibilityAllowsSection(id))return false;'));
+expect('Generic section backgrounds must not advertise Home.', !has(files.appServices, "{ id: 'home', label: 'Home', description: 'Home section background' }"));
+expect('Generic section backgrounds must reject Home and home-* paths.', has(files.sectionBackgrounds, "if (/^home(?:-|$)/.test(cleaned)) throw new Error('Home does not use generic section backgrounds');"));
 
 expect('Ghost Run runtime must require an active visible section.', has(files.ghost, "function isActive(){return !!(root&&root.classList.contains('active')&&!document.hidden)}"));
 expect('Ghost Run reconnects must stop while inactive.', has(files.ghost, 'function scheduleReconnect(){if(!isActive()'));

@@ -73,7 +73,6 @@ app.post('/app/api/ton-balance/game-delta', zValidator('json', gameTonBalanceSch
 
 app.get('/app/api/section-backgrounds', async (c) => {
   const adminSections = [
-    { id: 'home', label: 'Home', description: 'Home section background' },
     { id: 'playzone', label: 'Play Zone', description: 'Play Zone background' },
     { id: 'predict', label: 'Predict', description: 'Predict background' },
     { id: 'mines', label: 'Mines', description: 'Mines background' },
