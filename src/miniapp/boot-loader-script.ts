@@ -41,6 +41,7 @@ export const BOOT_LOADER_SCRIPT = `
   var GAME_IMAGE_MAX_ATTEMPTS=2;
   var GAME_IMAGE_MANIFEST_CACHE_KEY='vexa:game-image-manifests:v1';
   var GAME_IMAGE_COMMON_URLS=[
+    '/assets/Home.PNG?v=1',
     '/assets/Playhub.PNG?v=1',
     '/assets/Rewards.PNG?v=1',
     '/app/api/uploaded-image/ton-icon.png'

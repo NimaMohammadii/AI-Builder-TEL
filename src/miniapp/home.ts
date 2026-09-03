@@ -1,4 +1,45 @@
 export const HOME_STYLES = `
+html body:has(#home.active){
+  isolation:isolate!important;
+  background:#000!important;
+}
+html body:has(#home.active)::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  background-color:#000!important;
+  background-image:url('/assets/Home.PNG?v=1')!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  opacity:1!important;
+}
+html body:has(#home.active)::after,
+html body:has(#home.active) .app::before,
+html body:has(#home.active) .app::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  background-image:none!important;
+}
+html body:has(#home.active) .app,
+html body:has(#home.active) main.app,
+html body:has(#home.active) .content,
+html body:has(#home.active) #home.view,
+html body:has(#home.active) .top,
+html body:has(#home.active) header.top{
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+}
 #home{padding-top:4px}
 #rankPill{display:none!important}
 #home #homeDrawInfoCard.home-draw-info-card,
