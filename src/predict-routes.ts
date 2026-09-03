@@ -1,4 +1,3 @@
-import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import app from './index';
 import './predict-settings-routes';
 import './prediction-events';
@@ -16,7 +15,7 @@ const PREDICT_CRYPTO_CARD_MARKETS = ['bitcoin', 'solana', 'ethereum', 'gold', 'o
 const PREDICT_BUTTON_SIDES = ['up', 'down'] as const;
 const TRADE_MARKETS = ['bitcoin', 'ethereum', 'solana', 'ton', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
-const ASTER_FUTURES_WS_BASE = 'wss://fstream.asterdex.com';
+const ASTER_FUTURES_WS_HTTP_BASE = 'https://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -79,73 +78,23 @@ app.get('/app/api/predict-round', async (c) => {
   }
 });
 
-app.get('/app/api/predict-stream', upgradeWebSocket((c) => {
-  let upstream: WebSocket | null = null;
-  let authenticated = false;
-  let authenticating = false;
-  const authTimer = setTimeout(() => {
-    if (authenticated) return;
-    try { upstream?.close(1000, 'Authentication timeout'); } catch {}
-  }, 10_000);
-
-  const closeUpstream = () => {
-    if (!upstream) return;
-    const socket = upstream;
-    upstream = null;
-    try { socket.close(1000, 'Client closed'); } catch {}
-  };
-
-  return {
-    onMessage: async (event, ws) => {
-      if (authenticated || authenticating) return;
-      authenticating = true;
-      try {
-        const payload = JSON.parse(typeof event.data === 'string' ? event.data : '') as Record<string, unknown>;
-        const market = normalizeTradeMarket(String(payload.market || 'bitcoin'));
-        await authenticatePredictAdmin(c.env, payload.userId, payload.initData);
-        authenticated = true;
-        clearTimeout(authTimer);
-
-        const source = new WebSocket(marketStreamUrl(market));
-        source.binaryType = 'arraybuffer';
-        upstream = source;
-        source.addEventListener('message', async (message) => {
-          if (upstream !== source) return;
-          try {
-            const text = await readWebSocketText(message.data);
-            if (!text || upstream !== source) return;
-            const data = JSON.parse(text) as { p?: unknown };
-            const price = cleanPrice(data.p);
-            ws.send(JSON.stringify({ type: 'price', price }));
-          } catch {}
-        });
-        source.addEventListener('error', () => {
-          if (upstream !== source) return;
-          try { ws.send(JSON.stringify({ type: 'error', error: 'Live price feed unavailable' })); } catch {}
-          try { ws.close(1011, 'Live price feed unavailable'); } catch {}
-        });
-        source.addEventListener('close', () => {
-          if (upstream === source) upstream = null;
-          try { ws.close(1012, 'Live price feed closed'); } catch {}
-        });
-      } catch (error) {
-        clearTimeout(authTimer);
-        try { ws.send(JSON.stringify({ type: 'error', error: error instanceof Error ? error.message : 'Could not open live price feed' })); } catch {}
-        try { ws.close(1008, 'Predict stream rejected'); } catch {}
-      } finally {
-        authenticating = false;
-      }
-    },
-    onClose: () => {
-      clearTimeout(authTimer);
-      closeUpstream();
-    },
-    onError: () => {
-      clearTimeout(authTimer);
-      closeUpstream();
-    },
-  };
-}));
+app.get('/app/api/predict-stream', async (c) => {
+  try {
+    if (String(c.req.header('Upgrade') || '').toLowerCase() !== 'websocket') {
+      return c.json({ error: 'Expected websocket' }, 426, { 'cache-control': CACHE_NONE });
+    }
+    const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
+    await authenticatePredictAdmin(c.env, c.req.query('userId'), c.req.query('initData'));
+    const upstream = await fetch(marketStreamUrl(market), { headers: { Upgrade: 'websocket' } });
+    const webSocket = (upstream as Response & { webSocket?: WebSocket | null }).webSocket;
+    if (!webSocket) {
+      return c.json({ error: `Aster live price WebSocket rejected: HTTP ${upstream.status}` }, 502, { 'cache-control': CACHE_NONE });
+    }
+    return upstream;
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Could not open live price feed' }, 400, { 'cache-control': CACHE_NONE });
+  }
+});
 
 app.post('/app/api/predict-bet', async (c) => {
   let betId = '';
@@ -364,14 +313,7 @@ function marketSymbol(market: TradeMarket): string {
   return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
-}
-async function readWebSocketText(value: unknown): Promise<string> {
-  if (typeof value === 'string') return value;
-  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value);
-  if (ArrayBuffer.isView(value)) return new TextDecoder().decode(value as ArrayBufferView);
-  if (typeof Blob !== 'undefined' && value instanceof Blob) return value.text();
-  return '';
+  return `${ASTER_FUTURES_WS_HTTP_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
 }
 async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
   const symbol = marketSymbol(market);
