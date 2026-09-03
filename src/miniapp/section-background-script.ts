@@ -6,7 +6,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
   var targetSelectors={
     connect:['#connect'],
     playzone:['#playzone','#playzone .play-zone-stage'],
-    predict:['#predictzone','#predict'],
     'predict-zone-card':['#playzone .play-zone-predict-card','#playzone [data-admin-image-slot="predict-zone-card"]','#predictzone .predict-zone-glass-card'],
     'playzone-row-ad-right':['#playzone .playzone-row-ad-right','#playzone [data-playzone-ad="right"]','#playzone [data-play-zone-ad="playzone-row-ad-right"]','#playzone [data-play-zone-ad="playzone-row-ad-2"]'],
     'playzone-row-ad-left':['#playzone .playzone-row-ad-left','#playzone [data-playzone-ad="left"]','#playzone [data-play-zone-ad="playzone-row-ad-left"]','#playzone [data-play-zone-ad="playzone-row-ad-1"]'],
@@ -37,6 +36,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   function applyBackgroundToElement(el,url){if(!el||el.tagName==='IMG')return;el.classList.add('has-admin-background');el.style.setProperty('--admin-section-background-image',cssUrl(url))}
   function clearBackgroundFromElement(el){if(!el||el.tagName==='IMG')return;el.classList.remove('has-admin-background');el.style.removeProperty('--admin-section-background-image')}
+  function applyPredictBackground(url){var root=document.documentElement;if(!root)return;if(url)root.style.setProperty('--admin-predict-background-image',cssUrl(url));else root.style.removeProperty('--admin-predict-background-image')}
   function remember(img,name,value){if(!img.dataset[name])img.dataset[name]=value||''}
   function overrideImage(img,url){
     if(!img||img.tagName!=='IMG'||!url)return;
@@ -76,6 +76,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   function applySectionBackground(section){
     if(!section||!section.id)return;
     if(section.id==='ghostrun')return;
+    if(section.id==='predict'){applyPredictBackground(section.backgroundUrl||'');return}
     var found=targets(section.id);
     if(!found.length)return;
     found.forEach(function(el){
@@ -93,7 +94,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
   function sectionVisible(id){var el=document.getElementById(aliases[id]||id);return !!(el&&el.classList&&el.classList.contains('active'))}
   function visibilityAllowsSection(id){var state=window.VexaPlayZoneVisibility;return !state||typeof state.shouldPreload!=='function'||state.shouldPreload(id)}
   function shouldApplySection(section){if(!section||!section.id)return false;var id=aliases[section.id]||section.id;if(section.id==='home'||section.id.indexOf('home-')===0||section.id==='ghostrun')return false;if(!visibilityAllowsSection(id))return false;if(section.id.indexOf('playzone-')===0)return sectionVisible('playzone');if(['mines','plinko','crash','wheel','dice','slot','tower','coinflip','hilo','predict-zone-card'].indexOf(section.id)>=0)return sectionVisible('playzone')||sectionVisible(id);return sectionVisible(id)}
-  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(shouldApplySection(section))applySectionBackground(section)})}
+  function apply(sections){if(!Array.isArray(sections))return;sections.forEach(function(section){if(section&&section.id==='predict'){applySectionBackground(section);return}if(shouldApplySection(section))applySectionBackground(section)})}
   function load(force){
     if(!force&&cache){apply(cache.sections);return Promise.resolve(cache)}
     if(inFlight)return inFlight;
