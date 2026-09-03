@@ -33,7 +33,7 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
       const prizes = await getLotteryPrizes(env, prizePoolNano);
       const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, roundTicketCount, prizePoolNano, prizes, lastDrawWon, winChancePercent });
+      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, roundTicketCount, userTicketCount, prizePoolNano, prizes, lastDrawWon, winChancePercent });
     }
 
     if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
@@ -91,8 +91,9 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const body = await request.json().catch(() => ({})) as { initData?: unknown; quantity?: unknown; purchaseId?: unknown };
       const userId = await validateTelegramInitData(body.initData, gameBotToken(env));
       const result = await buyLotteryTickets(env, userId, body.quantity, body.purchaseId);
-      const poolRow = await env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano
-        FROM lottery_tickets WHERE round_id=?`).bind(result.round.id).first<{ prize_pool_nano: number }>();
+      const poolRow = await env.DB.prepare(`SELECT COUNT(*) AS round_ticket_count, COALESCE(SUM(price_nano),0) AS prize_pool_nano
+        FROM lottery_tickets WHERE round_id=?`).bind(result.round.id).first<{ round_ticket_count: number; prize_pool_nano: number }>();
+      const roundTicketCount = Math.max(0, Math.floor(Number(poolRow?.round_ticket_count || 0)));
       const prizePoolNano = Math.max(0, Math.floor(Number(poolRow?.prize_pool_nano || 0)));
       await publishLiveActivity(env, {
         kind: 'ticket',
@@ -102,10 +103,11 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
         section: 'home',
         roundId: result.round.id,
         prizePoolNano,
+        roundTicketCount,
         key: String(body.purchaseId || result.tickets[0]?.id || ''),
         createdAt: result.tickets[0]?.createdAt,
       }).catch((error) => console.warn('ticket live activity failed', error));
-      return json({ ok: true, serverNowMs: Date.now(), prizePoolNano, ...result });
+      return json({ ok: true, serverNowMs: Date.now(), prizePoolNano, roundTicketCount, ...result });
     }
 
     return json({ error: 'Lottery endpoint not found' }, 404);
