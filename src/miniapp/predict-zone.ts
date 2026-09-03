@@ -156,7 +156,7 @@ export const PREDICT_ZONE_SCRIPT = `
       return[];
     }
     function autoScale(prices){
-      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*8,precision*8),min,max,span,mid,pad,targetMin,targetMax,outward,alpha,actualSpan;
+      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*8,Number(c.axisStep||0)*2,precision*8),min,max,span,mid,pad,targetMin,targetMax,outward,alpha,actualSpan;
       if(entry>0)valid.push(entry);
       if(!valid.length)valid.push(Number(current||last||1));
       min=Math.min.apply(Math,valid);max=Math.max.apply(Math,valid);span=max-min;
