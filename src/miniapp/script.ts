@@ -114,7 +114,7 @@ export const MINIAPP_SCRIPT = `
     node.classList.remove('view-transition-in');
     requestAnimationFrame(function(){
       node.classList.add('view-transition-in');
-      sectionTransitionTimer=setTimeout(function(){node.classList.remove('view-transition-in');sectionTransitionTimer=0},280);
+      sectionTransitionTimer=setTimeout(function(){node.classList.remove('view-transition-in');sectionTransitionTimer=0},820);
     });
   }
 
