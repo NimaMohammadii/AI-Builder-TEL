@@ -10,7 +10,6 @@ const CACHE_PREDICT_IMAGE_MANIFEST = 'public, max-age=300, stale-while-revalidat
 const PREDICT_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const TRADE_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
-const ASTER_FUTURES_WS_HTTP_BASE = 'https://fstream.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const OIL_ROUND_MS = 72 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
@@ -36,59 +35,6 @@ app.get('/app/api/predict-round', async (c) => {
     return c.json({ ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Could not load prediction round' }, 400, { 'cache-control': CACHE_NONE });
-  }
-});
-
-app.get('/app/api/predict-stream', async (c) => {
-  let upstream: WebSocket | null = null;
-  let downstream: WebSocket | null = null;
-  try {
-    if (String(c.req.header('Upgrade') || '').toLowerCase() !== 'websocket') {
-      return c.json({ error: 'Expected websocket' }, 426, { 'cache-control': CACHE_NONE });
-    }
-    const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
-    await authenticateUser(c.env, c.req.query('userId'), c.req.query('initData'));
-    const upstreamResponse = await fetch(marketStreamUrl(market), { headers: { Upgrade: 'websocket' } });
-    upstream = (upstreamResponse as Response & { webSocket?: WebSocket | null }).webSocket || null;
-    if (!upstream) {
-      return c.json({ error: `Aster live price WebSocket rejected: HTTP ${upstreamResponse.status}` }, 502, { 'cache-control': CACHE_NONE });
-    }
-
-    const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
-    downstream = server;
-    const acceptSocket = (socket: WebSocket) => (socket as WebSocket & { accept: (options?: { allowHalfOpen?: boolean }) => void }).accept({ allowHalfOpen: true });
-    acceptSocket(upstream);
-    acceptSocket(server);
-
-    let active = true;
-    const closePair = (code: number, reason: string) => {
-      if (!active) return;
-      active = false;
-      try { upstream?.close(code, reason); } catch {}
-      try { server.close(code, reason); } catch {}
-    };
-
-    upstream.addEventListener('message', async (message) => {
-      if (!active) return;
-      try {
-        const text = await readWebSocketText(message.data);
-        if (!text || !active) return;
-        const data = JSON.parse(text) as { p?: unknown };
-        const price = cleanPrice(data.p);
-        if (server.readyState === 1) server.send(JSON.stringify({ p: price }));
-      } catch {}
-    });
-    upstream.addEventListener('error', () => closePair(1011, 'Aster live price feed unavailable'));
-    upstream.addEventListener('close', () => closePair(1012, 'Aster live price feed closed'));
-    server.addEventListener('error', () => closePair(1011, 'Predict stream failed'));
-    server.addEventListener('close', () => closePair(1000, 'Predict stream closed'));
-
-    return new Response(null, { status: 101, webSocket: client });
-  } catch (error) {
-    try { upstream?.close(1011, 'Predict stream failed'); } catch {}
-    try { downstream?.close(1011, 'Predict stream failed'); } catch {}
-    return c.json({ error: error instanceof Error ? error.message : 'Could not open live price feed' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
 
@@ -277,16 +223,6 @@ async function getBet(env: Env, id: string) {
 }
 function marketSymbol(market: TradeMarket): string {
   return market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
-}
-function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_HTTP_BASE}/ws/${marketSymbol(market).toLowerCase()}@markPrice@1s`;
-}
-async function readWebSocketText(value: unknown): Promise<string> {
-  if (typeof value === 'string') return value;
-  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value);
-  if (ArrayBuffer.isView(value)) return new TextDecoder().decode(value as ArrayBufferView);
-  if (typeof Blob !== 'undefined' && value instanceof Blob) return value.text();
-  return '';
 }
 async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
   const symbol = marketSymbol(market);
