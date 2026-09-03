@@ -2,6 +2,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
 (function(){
   var aliases={predict:'predictzone'};
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  var PREDICT_BACKGROUND_URL_KEY='vexaPredictBackgroundUrl:v1';
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
     connect:['#connect'],
@@ -36,7 +37,9 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   function applyBackgroundToElement(el,url){if(!el||el.tagName==='IMG')return;el.classList.add('has-admin-background');el.style.setProperty('--admin-section-background-image',cssUrl(url))}
   function clearBackgroundFromElement(el){if(!el||el.tagName==='IMG')return;el.classList.remove('has-admin-background');el.style.removeProperty('--admin-section-background-image')}
-  function applyPredictBackground(url){var root=document.documentElement;if(!root)return;if(url)root.style.setProperty('--admin-predict-background-image',cssUrl(url));else root.style.removeProperty('--admin-predict-background-image')}
+  function readPredictBackground(){try{return String(localStorage.getItem(PREDICT_BACKGROUND_URL_KEY)||'').trim()}catch(e){return ''}}
+  function applyPredictBackground(url,persist){var root=document.documentElement,clean=String(url||'').trim();if(!root)return;if(clean)root.style.setProperty('--admin-predict-background-image',cssUrl(clean));else root.style.removeProperty('--admin-predict-background-image');if(persist===false)return;try{if(clean)localStorage.setItem(PREDICT_BACKGROUND_URL_KEY,clean);else localStorage.removeItem(PREDICT_BACKGROUND_URL_KEY)}catch(e){}}
+  var storedPredictBackground=readPredictBackground();if(storedPredictBackground)applyPredictBackground(storedPredictBackground,false);
   function remember(img,name,value){if(!img.dataset[name])img.dataset[name]=value||''}
   function overrideImage(img,url){
     if(!img||img.tagName!=='IMG'||!url)return;
