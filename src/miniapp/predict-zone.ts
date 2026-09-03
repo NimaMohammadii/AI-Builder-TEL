@@ -116,9 +116,9 @@ export const PREDICT_ZONE_SCRIPT = `
     root.dataset.predictRuntimeReady='1';
 
     var MARKETS={
-      bitcoin:{label:'Bitcoin',question:'Bitcoin up or down?',decimals:0,step:5,duration:300000,symbol:'₿'},
-      oil:{label:'Oil',question:'Oil in 72h up or down?',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
-      gold:{label:'Gold',question:'Gold up or down?',decimals:2,step:.5,duration:300000,symbol:'Au'}
+      bitcoin:{label:'Bitcoin',question:'Bitcoin up or down?',stream:'wss://fstream.asterdex.com/ws/btcusdt@markPrice@1s',decimals:0,step:5,duration:300000,symbol:'₿'},
+      oil:{label:'Oil',question:'Oil in 72h up or down?',stream:'wss://fstream.asterdex.com/ws/clusdt@markPrice@1s',decimals:2,step:.05,duration:259200000,symbol:'Oil'},
+      gold:{label:'Gold',question:'Gold up or down?',stream:'wss://fstream.asterdex.com/ws/xauusdt@markPrice@1s',decimals:2,step:.5,duration:300000,symbol:'Au'}
     };
     var EVENT_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,slot=0,lastPointAt=0,currentRound=null,side='up',busy=false,images={},trend='flat',runtimeSuspended=true,runtimeStarted=false;
     var W=360,H=220,L=0,R=58,P=24,HISTORY=23;
@@ -142,101 +142,29 @@ export const PREDICT_ZONE_SCRIPT = `
     function path(points){if(!points.length)return'';var d='M'+points[0].x.toFixed(1)+' '+points[0].y.toFixed(1);for(var i=0;i<points.length-1;i++){var a=points[i],b=points[i+1],mx=(a.x+b.x)/2;d+=' C '+mx.toFixed(1)+' '+a.y.toFixed(1)+' '+mx.toFixed(1)+' '+b.y.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1)}return d}
     function niceTickStep(span,count){if(!isFinite(span)||span<=0)return 1;var rough=span/Math.max(1,count),power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),error=rough/power,factor=error>=Math.sqrt(50)?10:error>=Math.sqrt(10)?5:error>=Math.sqrt(2)?2:1;return factor*power}
     function axisCapacity(){return window.innerWidth<=380?3:4}
-    function priceTicks(scale){
-      var c=cfg(),maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,first,v,ticks,mid,best,bestScore,i,windowTicks,score;
-      for(count=maxCount;count>=2;count--){
-        step=Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));
-        step=Math.ceil((step-1e-12)/quantum)*quantum;
-        first=Math.ceil(scale.min/step)*step;ticks=[];
-        for(v=first;v<=scale.max+step*1e-9&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(precision)));
-        if(ticks.length<2)continue;
-        if(ticks.length>count){mid=(scale.min+scale.max)/2;best=ticks.slice(0,count);bestScore=Infinity;for(i=0;i<=ticks.length-count;i++){windowTicks=ticks.slice(i,i+count);score=Math.abs((windowTicks[0]+windowTicks[windowTicks.length-1])/2-mid);if(score<bestScore){bestScore=score;best=windowTicks}}ticks=best}
-        return ticks;
-      }
-      return[];
-    }
-    function autoScale(prices){
-      var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*8,precision*8),min,max,span,mid,pad,targetMin,targetMax,currentSpan,innerMin,innerMax,targetSpan,targetMid;
-      if(entry>0)valid.push(entry);
-      if(!valid.length)valid.push(Number(current||last||1));
-      min=Math.min.apply(Math,valid);max=Math.max.apply(Math,valid);span=max-min;
-      if(!isFinite(span)||span<minSpan){mid=(min+max)/2;min=mid-minSpan/2;max=mid+minSpan/2;span=minSpan}
-      pad=Math.max(span*.18,c.step*.75);targetMin=min-pad;targetMax=max+pad;
-      if(!scaleMin||!scaleMax){scaleMin=targetMin;scaleMax=targetMax;return{min:scaleMin,max:scaleMax}}
-      currentSpan=scaleMax-scaleMin;innerMin=scaleMin+currentSpan*.20;innerMax=scaleMax-currentSpan*.20;
-      if(min<innerMin||max>innerMax||(targetMax-targetMin)>currentSpan*.92){
-        targetSpan=Math.max(currentSpan,targetMax-targetMin,minSpan);targetMid=(min+max)/2;
-        if(max>innerMax)targetMid+=Math.min(targetSpan*.08,max-innerMax);else if(min<innerMin)targetMid-=Math.min(targetSpan*.08,innerMin-min);
-        scaleMin=targetMid-targetSpan/2;scaleMax=targetMid+targetSpan/2;
-      }
-      return{min:scaleMin,max:scaleMax}
-    }
-    function renderPriceTicks(scale,ticks){
-      if(!axisLayer||!gridLayer)return;
-      var max=4,label,lineEl,i,top,text;
-      while(axisLayer.children.length<max){label=document.createElement('span');label.style.opacity='0';axisLayer.appendChild(label)}
-      while(gridLayer.children.length<max){lineEl=document.createElement('span');lineEl.style.opacity='0';gridLayer.appendChild(lineEl)}
-      for(i=0;i<max;i++){
-        label=axisLayer.children[i];lineEl=gridLayer.children[i];
-        if(i<ticks.length){top=y(ticks[i],scale)/H*100+'%';text=formatPrice(ticks[i]);if(label.textContent!==text)label.textContent=text;if(label.style.top!==top)label.style.top=top;if(lineEl.style.top!==top)lineEl.style.top=top;if(label.style.opacity!=='1')label.style.opacity='1';if(lineEl.style.opacity!=='1')lineEl.style.opacity='1'}
-        else{if(label.style.opacity!=='0')label.style.opacity='0';if(lineEl.style.opacity!=='0')lineEl.style.opacity='0'}
-      }
-    }
-    function clipVisible(points,right){
-      var out=[],first=0,a,b,t,i;
-      while(first<points.length&&points[first].x<L)first++;
-      if(first>0&&first<points.length){a=points[first-1];b=points[first];t=(L-a.x)/((b.x-a.x)||1);out.push({x:L,v:a.v+(b.v-a.v)*t})}
-      else if(first===0&&points.length){out.push({x:L,v:points[0].v})}
-      for(i=first;i<points.length;i++){if(points[i].x<=right&&(!out.length||points[i].x>out[out.length-1].x+.001))out.push(points[i])}
-      return out.length>=2?out:points.slice(-2);
-    }
+    function priceTicks(scale){var c=cfg(),maxCount=axisCapacity(),span=scale.max-scale.min,quantum=Math.max(c.step,Math.pow(10,-Math.max(0,c.decimals))),precision=Math.max(0,c.decimals+4),count,step,first,v,ticks,mid,best,bestScore,i,windowTicks,score;for(count=maxCount;count>=2;count--){step=Math.max(quantum,niceTickStep(span,Math.max(1,count-1)));step=Math.ceil((step-1e-12)/quantum)*quantum;first=Math.ceil(scale.min/step)*step;ticks=[];for(v=first;v<=scale.max+step*1e-9&&ticks.length<32;v+=step)ticks.push(Number(v.toFixed(precision)));if(ticks.length<2)continue;if(ticks.length>count){mid=(scale.min+scale.max)/2;best=ticks.slice(0,count);bestScore=Infinity;for(i=0;i<=ticks.length-count;i++){windowTicks=ticks.slice(i,i+count);score=Math.abs((windowTicks[0]+windowTicks[windowTicks.length-1])/2-mid);if(score<bestScore){bestScore=score;best=windowTicks}}ticks=best}return ticks}return[]}
+    function autoScale(prices){var c=cfg(),valid=prices.filter(function(v){return isFinite(v)&&v>0}),precision=Math.pow(10,-Math.max(0,c.decimals)),minSpan=Math.max(c.step*8,precision*8),min,max,span,mid,pad,targetMin,targetMax,currentSpan,innerMin,innerMax,targetSpan,targetMid;if(entry>0)valid.push(entry);if(!valid.length)valid.push(Number(current||last||1));min=Math.min.apply(Math,valid);max=Math.max.apply(Math,valid);span=max-min;if(!isFinite(span)||span<minSpan){mid=(min+max)/2;min=mid-minSpan/2;max=mid+minSpan/2;span=minSpan}pad=Math.max(span*.18,c.step*.75);targetMin=min-pad;targetMax=max+pad;if(!scaleMin||!scaleMax){scaleMin=targetMin;scaleMax=targetMax;return{min:scaleMin,max:scaleMax}}currentSpan=scaleMax-scaleMin;innerMin=scaleMin+currentSpan*.20;innerMax=scaleMax-currentSpan*.20;if(min<innerMin||max>innerMax||(targetMax-targetMin)>currentSpan*.92){targetSpan=Math.max(currentSpan,targetMax-targetMin,minSpan);targetMid=(min+max)/2;if(max>innerMax)targetMid+=Math.min(targetSpan*.08,max-innerMax);else if(min<innerMin)targetMid-=Math.min(targetSpan*.08,innerMin-min);scaleMin=targetMid-targetSpan/2;scaleMax=targetMid+targetSpan/2}return{min:scaleMin,max:scaleMax}}
+    function renderPriceTicks(scale,ticks){if(!axisLayer||!gridLayer)return;var max=4,label,lineEl,i,top,text;while(axisLayer.children.length<max){label=document.createElement('span');label.style.opacity='0';axisLayer.appendChild(label)}while(gridLayer.children.length<max){lineEl=document.createElement('span');lineEl.style.opacity='0';gridLayer.appendChild(lineEl)}for(i=0;i<max;i++){label=axisLayer.children[i];lineEl=gridLayer.children[i];if(i<ticks.length){top=y(ticks[i],scale)/H*100+'%';text=formatPrice(ticks[i]);if(label.textContent!==text)label.textContent=text;if(label.style.top!==top)label.style.top=top;if(lineEl.style.top!==top)lineEl.style.top=top;if(label.style.opacity!=='1')label.style.opacity='1';if(lineEl.style.opacity!=='1')lineEl.style.opacity='1'}else{if(label.style.opacity!=='0')label.style.opacity='0';if(lineEl.style.opacity!=='0')lineEl.style.opacity='0'}}}
+    function clipVisible(points,right){var out=[],first=0,a,b,t,i;while(first<points.length&&points[first].x<L)first++;if(first>0&&first<points.length){a=points[first-1];b=points[first];t=(L-a.x)/((b.x-a.x)||1);out.push({x:L,v:a.v+(b.v-a.v)*t})}else if(first===0&&points.length){out.push({x:L,v:points[0].v})}for(i=first;i<points.length;i++){if(points[i].x<=right&&(!out.length||points[i].x>out[out.length-1].x+.001))out.push(points[i])}return out.length>=2?out:points.slice(-2)}
     function setTrend(next){var n=next==='up'?'up':next==='down'?'down':'flat';if(trend===n&&card&&card.classList.contains('trend-'+n))return;trend=n;if(card){card.classList.remove('trend-up','trend-down','trend-flat');card.classList.add('trend-'+n)}if(trendLabel)trendLabel.textContent=n==='up'?'Above start':n==='down'?'Below start':'At start'}
     function syncTrend(){var p=Number(raw||current||last||0),base=Number(entry||0);if(!p||!base){setTrend('flat');if(trendLabel)trendLabel.textContent='Waiting for price';return}var delta=p-base,epsilon=Math.max(base*.0000005,Math.pow(10,-Math.max(0,cfg().decimals))*0.25);setTrend(delta>epsilon?'up':delta<-epsilon?'down':'flat')}
     function showLoading(){readyPrice=false;scaleMin=0;scaleMax=0;setTrend('flat');if(chart)chart.classList.remove('ready');if(live)live.textContent='Loading';if(start)start.textContent='Loading';if(trendLabel)trendLabel.textContent='Waiting for price';if(axisLayer)axisLayer.textContent='';if(gridLayer)gridLayer.textContent=''}
     function seed(price){var i;values=(historyValues||[]).map(Number).filter(function(v){return isFinite(v)&&v>0}).slice(-HISTORY);if(!values.length){for(i=0;i<HISTORY;i++)values.push(price)}current=price;last=price;raw=price;scaleMin=0;scaleMax=0;lastPointAt=Date.now()}
-    function draw(){
-      if(!readyPrice||!values.length||!line||!fill||eventMode)return;
-      var right=W-R,step=(W-L-R)/HISTORY,rawPts=values.map(function(v,i){return{x:right-(values.length-i)*step,v:v}});
-      rawPts.push({x:right,v:current});
-      var visibleRaw=clipVisible(rawPts,right),scale=autoScale(visibleRaw.map(function(p){return p.v})),ticks=priceTicks(scale),visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;
-      line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');
-      if(dot){var left=xp+'%',top=yp+'%';if(dot.style.left!==left)dot.style.left=left;if(dot.style.top!==top)dot.style.top=top}
-      if(guide){var guideTop=yp+'%';if(guide.style.top!==guideTop)guide.style.top=guideTop}
-      renderPriceTicks(scale,ticks);
-      if(startGuide){var show=entry&&entry<=scale.max&&entry>=scale.min;if(show){var startTop=y(entry,scale)/H*100+'%';if(startGuide.style.top!==startTop)startGuide.style.top=startTop;startGuide.classList.add('show')}else startGuide.classList.remove('show')}
-      if(start&&entry){var startText=formatPrice(entry);if(start.textContent!==startText)start.textContent=startText}
-    }
+    function draw(){if(!readyPrice||!values.length||!line||!fill||eventMode)return;var right=W-R,step=(W-L-R)/HISTORY,rawPts=values.map(function(v,i){return{x:right-(values.length-i)*step,v:v}});rawPts.push({x:right,v:current});var visibleRaw=clipVisible(rawPts,right),scale=autoScale(visibleRaw.map(function(p){return p.v})),ticks=priceTicks(scale),visible=visibleRaw.map(function(p){return{x:p.x,y:y(p.v,scale),v:p.v}}),d=path(visible),first=visible[0],lastPoint=visible[visible.length-1],xp=lastPoint.x/W*100,yp=lastPoint.y/H*100;line.setAttribute('d',d);fill.setAttribute('d',d+' L '+lastPoint.x.toFixed(1)+' '+H+' L '+first.x.toFixed(1)+' '+H+' Z');if(dot){var left=xp+'%',top=yp+'%';if(dot.style.left!==left)dot.style.left=left;if(dot.style.top!==top)dot.style.top=top}if(guide){var guideTop=yp+'%';if(guide.style.top!==guideTop)guide.style.top=guideTop}renderPriceTicks(scale,ticks);if(startGuide){var show=entry&&entry<=scale.max&&entry>=scale.min;if(show){var startTop=y(entry,scale)/H*100+'%';if(startGuide.style.top!==startTop)startGuide.style.top=startTop;startGuide.classList.add('show')}else startGuide.classList.remove('show')}if(start&&entry){var startText=formatPrice(entry);if(start.textContent!==startText)start.textContent=startText}}
     function cancelDraw(){if(drawRaf){cancelFrame(drawRaf);drawRaf=0}}
     function queueDraw(){if(drawRaf||!isActive()||eventMode||betAnimating)return;drawRaf=requestFrame(function(){drawRaf=0;if(isActive()&&!eventMode&&!betAnimating)draw()})}
-    function applyPrice(value,my,id){
-      if(my!==seq||id!==market||eventMode)return false;
-      var p=Number(value);if(!isFinite(p)||p<=0)return false;
-      var firstPrice=!readyPrice,previous=Number(current||0),now=Date.now(),sampled=false,changed=firstPrice||p!==previous;raw=p;last=p;current=p;
-      if(firstPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready')}
-      else if(!lastPointAt||now-lastPointAt>=3000){values.push(p);if(values.length>HISTORY)values.shift();lastPointAt=now;sampled=true}
-      if(changed&&live){var liveText=formatPrice(p);if(live.textContent!==liveText)live.textContent=liveText}
-      if(changed)syncTrend();if(changed||sampled)queueDraw();
-      return true;
-    }
+    function applyPrice(value,my,id){if(my!==seq||id!==market||eventMode)return false;var p=Number(value);if(!isFinite(p)||p<=0)return false;var firstPrice=!readyPrice,previous=Number(current||0),now=Date.now(),sampled=false,changed=firstPrice||p!==previous;raw=p;last=p;current=p;if(firstPrice){readyPrice=true;seed(p);if(chart)chart.classList.add('ready')}else if(!lastPointAt||now-lastPointAt>=3000){values.push(p);if(values.length>HISTORY)values.shift();lastPointAt=now;sampled=true}if(changed&&live){var liveText=formatPrice(p);if(live.textContent!==liveText)live.textContent=liveText}if(changed)syncTrend();if(changed||sampled)queueDraw();return true}
     function clearReconnect(){if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=0}}
     function clearFeedWatchdog(){if(feedWatchdog){clearTimeout(feedWatchdog);feedWatchdog=0}}
-    function armFeedWatchdog(my,id,socket){
-      clearFeedWatchdog();if(my!==seq||id!==market||eventMode||!isActive()||ws!==socket)return;
-      feedWatchdog=setTimeout(function(){
-        feedWatchdog=0;if(my!==seq||id!==market||eventMode||!isActive()||ws!==socket)return;
-        reconnectDelay=1000;try{socket.close()}catch(e){if(ws===socket){ws=null;scheduleReconnect(my,id)}}
-      },7000);
-    }
+    function armFeedWatchdog(my,id,socket){clearFeedWatchdog();if(my!==seq||id!==market||eventMode||!isActive()||ws!==socket)return;feedWatchdog=setTimeout(function(){feedWatchdog=0;if(my!==seq||id!==market||eventMode||!isActive()||ws!==socket)return;reconnectDelay=1000;try{socket.close()}catch(e){if(ws===socket){ws=null;scheduleReconnect(my,id)}}},7000)}
     function stopFeed(){seq++;clearReconnect();clearFeedWatchdog();if(ws){try{ws.onopen=null;ws.onmessage=null;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}ws=null}}
     function scheduleReconnect(my,id){clearReconnect();if(my!==seq||id!==market||eventMode||!isActive())return;var delay=reconnectDelay;reconnectDelay=Math.min(60000,reconnectDelay*2);reconnectTimer=setTimeout(function(){reconnectTimer=0;if(my===seq&&id===market&&isActive()&&!eventMode)connectFeed(my,id)},delay)}
     function connectFeed(my,id){
       if(my!==seq||id!==market||eventMode||!isActive())return;
-      var userId=uid(),initData=telegramInitData();clearReconnect();clearFeedWatchdog();
-      if(!userId||!initData){if(trendLabel)trendLabel.textContent='Open inside Telegram';return}
+      var c=MARKETS[id]||cfg();clearReconnect();clearFeedWatchdog();
+      if(!c.stream)return;
       try{
-        var protocol=location.protocol==='https:'?'wss:':'ws:';
-        var url=protocol+'//'+location.host+'/app/api/predict-stream?market='+encodeURIComponent(id)+'&userId='+encodeURIComponent(userId)+'&initData='+encodeURIComponent(initData);
-        var socket=new WebSocket(url);ws=socket;
+        var socket=new WebSocket(c.stream);ws=socket;
         socket.onopen=function(){if(my!==seq||id!==market||ws!==socket)return;armFeedWatchdog(my,id,socket)};
         socket.onmessage=function(e){if(my!==seq||id!==market||ws!==socket)return;try{var j=JSON.parse(e.data);if(j&&j.p!==undefined&&applyPrice(j.p,my,id)){reconnectDelay=6000;armFeedWatchdog(my,id,socket)}}catch(_){}};
         socket.onclose=function(){if(my!==seq||id!==market||ws!==socket)return;ws=null;clearFeedWatchdog();scheduleReconnect(my,id)};
@@ -247,17 +175,7 @@ export const PREDICT_ZONE_SCRIPT = `
     function loadImages(){fetch('/app/api/predict-markets',{cache:'force-cache'}).then(function(r){return r.ok?r.json():null}).then(function(d){var map=d&&d.markets||{};['bitcoin','oil','gold'].forEach(function(id){var u=map[id]&&map[id].imageUrl||'';if(u)images[id]=u});renderImage()}).catch(function(){})}
     function renderHistory(round){if(!result||!round)return;var all=[];(round.userBets||[]).forEach(function(b){all.push(b)});(round.recentUserBets||[]).forEach(function(b){if(!all.some(function(x){return x.id===b.id}))all.push(b)});var list=all.filter(function(b){return b&&b.status}).slice(0,20);result.className='predict-zone-result-strip';if(!list.length){result.innerHTML='';return}var html='<div class="predict-zone-history-track">';list.forEach(function(b){var st=String(b.status||''),stake=Number(b.stakeTon||0),pay=Number(b.payoutTon||0),kind=st==='won'?'win':st==='lost'?'loss':st==='refunded'?'refund':'active',amount=st==='won'?('+'+formatTon(pay)):st==='lost'?('-'+formatTon(stake)):formatTon(pay||stake),isDown=String(b.side||'').toLowerCase()==='down',label=isDown?'Down':'Up',direction=isDown?'history-down':'history-up';html+='<span class="predict-zone-history-card predict-zone-choice '+kind+' '+direction+'">'+label+' '+amount+'</span>'});result.innerHTML=html+'</div>';result.classList.add('show')}
     function updateBalance(payload){var controls=payload&&payload.userControls;if(!controls||controls.tonBalanceNano===undefined)return;try{if(window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(Number(controls.tonBalanceNano),0,false);else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{tonBalanceNano:Number(controls.tonBalanceNano)}}))}catch(e){}}
-    function syncRound(my,id){
-      var userId=uid(),initData=telegramInitData(),headers={};if(userId&&initData)headers['x-telegram-init-data']=initData;
-      return fetch('/app/api/predict-round?market='+encodeURIComponent(id)+'&userId='+encodeURIComponent(userId),{cache:'no-store',headers:headers}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j&&j.error)||'Could not load prediction round');return j})}).then(function(d){
-        if(my!==seq||id!==market||eventMode)return false;
-        historyValues=(Array.isArray(d&&d.history)?d.history:[]).map(Number).filter(function(v){return isFinite(v)&&v>0}).slice(-HISTORY);
-        var round=d&&d.round;if(!round)throw new Error('Prediction round unavailable');
-        currentRound=round;updateBalance(d);renderHistory(round);var starts=Date.parse(round.startsAt||'');if(starts)slot=starts;if(Number(round.startPrice)>0){entry=Number(round.startPrice);if(start)start.textContent=formatPrice(entry)}
-        var initialPrice=Number(round.livePrice||round.startPrice||0);if(!readyPrice&&initialPrice>0)applyPrice(initialPrice,my,id);else if(readyPrice&&historyValues.length){values=historyValues.slice(-HISTORY);queueDraw()}
-        if(countdown&&Number(round.remainingMs)>=0){var text=timeLeft(Number(round.remainingMs));if(countdown.textContent!==text)countdown.textContent=text}syncTrend();updateEstimate();return true;
-      }).catch(function(){if(my!==seq||id!==market||eventMode)return false;if(trendLabel)trendLabel.textContent='Price unavailable';return false})
-    }
+    function syncRound(my,id){var userId=uid(),initData=telegramInitData(),headers={};if(userId&&initData)headers['x-telegram-init-data']=initData;return fetch('/app/api/predict-round?market='+encodeURIComponent(id)+'&userId='+encodeURIComponent(userId),{cache:'no-store',headers:headers}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j&&j.error)||'Could not load prediction round');return j})}).then(function(d){if(my!==seq||id!==market||eventMode)return false;historyValues=(Array.isArray(d&&d.history)?d.history:[]).map(Number).filter(function(v){return isFinite(v)&&v>0}).slice(-HISTORY);var round=d&&d.round;if(!round)throw new Error('Prediction round unavailable');currentRound=round;updateBalance(d);renderHistory(round);var starts=Date.parse(round.startsAt||'');if(starts)slot=starts;if(Number(round.startPrice)>0){entry=Number(round.startPrice);if(start)start.textContent=formatPrice(entry)}var initialPrice=Number(round.livePrice||round.startPrice||0);if(!readyPrice&&initialPrice>0)applyPrice(initialPrice,my,id);else if(readyPrice&&historyValues.length){values=historyValues.slice(-HISTORY);queueDraw()}if(countdown&&Number(round.remainingMs)>=0){var text=timeLeft(Number(round.remainingMs));if(countdown.textContent!==text)countdown.textContent=text}syncTrend();updateEstimate();return true}).catch(function(){if(my!==seq||id!==market||eventMode)return false;if(trendLabel)trendLabel.textContent='Price unavailable';return false})}
     function estimate(amount){var pools=currentRound&&currentRound.pools;if(!amount||!pools)return 0;var chosen=eventMode?(side==='no'?'no':'yes'):(side==='down'?'down':'up'),other=eventMode?(chosen==='yes'?'no':'yes'):(chosen==='up'?'down':'up'),own=Number(pools[chosen]&&pools[chosen].stakeTon||0),opp=Number(pools[other]&&pools[other].stakeTon||0);if(opp<=0)return amount;return amount+(amount/(own+amount))*(opp*.95)}
     function updateEstimate(){var amount=Number(betInput&&betInput.value||0);if(betUsd)betUsd.textContent='≈ $0.00';if(betEstimate)betEstimate.textContent=amount>0?'+'+formatTon(estimate(amount)):''}
     function setStatus(text,type){if(!betStatus)return;betStatus.textContent=text||'';betStatus.classList.toggle('bad',type==='bad');betStatus.classList.toggle('good',type==='good')}
@@ -270,39 +188,14 @@ export const PREDICT_ZONE_SCRIPT = `
     function submitBet(){if(busy)return;var amount=Number(betInput&&betInput.value||0),id=uid(),initData=telegramInitData();if(!id||!initData){setStatus('Open the Mini App inside Telegram.','bad');return}if(!amount||amount<=0){setStatus('Enter a valid GRAM amount.','bad');focusBetInput();return}busy=true;if(betSubmit){betSubmit.disabled=true;betSubmit.textContent='Placing...'}setStatus('Checking balance...','');fetch(eventMode?'/app/api/prediction-events/bet':'/app/api/predict-bet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(eventMode?{userId:id,initData:initData,eventId:currentEvent&&currentEvent.id,pick:side,stakeTon:amount}:{userId:id,initData:initData,market:market,side:side,stakeTon:amount,tonUsdSnapshot:0})}).then(function(r){return r.json().then(function(j){return{ok:r.ok,json:j}})}).then(function(x){if(!x.ok||!x.json||x.json.ok===false)throw new Error((x.json&&x.json.error)||'Could not place prediction');updateBalance(x.json);setStatus('Prediction placed.','good');if(eventMode&&x.json.event){renderEvent(x.json.event)}else if(x.json.round&&x.json.round.round){currentRound=x.json.round.round;renderHistory(currentRound)}setTimeout(closeBet,450)}).catch(function(e){setStatus(e&&e.message?e.message:'Could not place prediction.','bad')}).finally(function(){busy=false;if(betSubmit){betSubmit.disabled=false;betSubmit.textContent='Place prediction'}})}
     function updateMenu(){menu.querySelectorAll('[data-vexa-predict-market]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-vexa-predict-market')===market)})}
     function stopClock(){if(clockTimer){clearTimeout(clockTimer);clockTimer=0}}
-    function clockDelay(remaining){
-      var ms=Math.max(0,Number(remaining)||0);
-      if(ms>3600000){
-        var seconds=Math.ceil(ms/1000),fraction=ms-(seconds-1)*1000,minuteDelay=fraction+(seconds%60)*1000+24;
-        return Math.min(Math.max(250,minuteDelay),Math.max(250,ms-3600000+24));
-      }
-      return Math.max(250,1000-(Date.now()%1000)+24);
-    }
-    function renderClock(){
-      stopClock();if(!isActive())return;
-      var now=Date.now(),remaining=0;
-      if(eventMode){
-        if(!currentEvent||eventDeadline<=0)return;
-        remaining=Math.max(0,eventDeadline-now);var eventText=timeLeft(remaining);if(countdown&&countdown.textContent!==eventText)countdown.textContent=eventText;if(eventSource){var sourceText=String(currentEvent.category||'Vexa event')+' • closes '+eventText;if(eventSource.textContent!==sourceText)eventSource.textContent=sourceText}if(remaining<=0)return;
-      }else{
-        var newSlot=slotFor(now);if(newSlot!==slot){slot=newSlot;entry=Number(raw||current||last||0);syncRound(seq,market)}
-        remaining=cfg().duration-((now-slot)%cfg().duration);var roundText=timeLeft(remaining);if(countdown&&countdown.textContent!==roundText)countdown.textContent=roundText;
-      }
-      clockTimer=setTimeout(renderClock,clockDelay(remaining));
-    }
+    function clockDelay(remaining){var ms=Math.max(0,Number(remaining)||0);if(ms>3600000){var seconds=Math.ceil(ms/1000),fraction=ms-(seconds-1)*1000,minuteDelay=fraction+(seconds%60)*1000+24;return Math.min(Math.max(250,minuteDelay),Math.max(250,ms-3600000+24))}return Math.max(250,1000-(Date.now()%1000)+24)}
+    function renderClock(){stopClock();if(!isActive())return;var now=Date.now(),remaining=0;if(eventMode){if(!currentEvent||eventDeadline<=0)return;remaining=Math.max(0,eventDeadline-now);var eventText=timeLeft(remaining);if(countdown&&countdown.textContent!==eventText)countdown.textContent=eventText;if(eventSource){var sourceText=String(currentEvent.category||'Vexa event')+' • closes '+eventText;if(eventSource.textContent!==sourceText)eventSource.textContent=sourceText}if(remaining<=0)return}else{var newSlot=slotFor(now);if(newSlot!==slot){slot=newSlot;entry=Number(raw||current||last||0);syncRound(seq,market)}remaining=cfg().duration-((now-slot)%cfg().duration);var roundText=timeLeft(remaining);if(countdown&&countdown.textContent!==roundText)countdown.textContent=roundText}clockTimer=setTimeout(renderClock,clockDelay(remaining))}
     function startClock(){stopClock();if(isActive())renderClock()}
     function renderEvent(event){currentEvent=event;eventDeadline=Date.now()+Math.max(0,Number(event.remainingMs||0));currentRound={pools:event.pools||{yes:{stakeTon:0},no:{stakeTon:0}}};if(question)question.textContent=event.question||'Prediction';if(eventYes)eventYes.textContent=formatTon(event.pools&&event.pools.yes&&event.pools.yes.stakeTon||0)+' GRAM';if(eventNo)eventNo.textContent=formatTon(event.pools&&event.pools.no&&event.pools.no.stakeTon||0)+' GRAM';if(start)start.textContent=formatTon(event.pools&&event.pools.yes&&event.pools.yes.stakeTon||0)+' GRAM';if(live)live.textContent=formatTon(event.pools&&event.pools.no&&event.pools.no.stakeTon||0)+' GRAM';if(trendLabel)trendLabel.textContent=event.locked?'Prediction closed':'';if(eventSummary)eventSummary.style.display='';if(card)card.classList.toggle('event-locked',!!event.locked);startClock()}
     function selectEventCategory(category){stopFeed();cancelDraw();stopClock();market=category;eventMode=true;currentEvent=null;eventDeadline=0;currentRound=null;readyPrice=false;updateMenu();setChoiceLabels(true);if(card)card.classList.remove('trend-up','trend-down','trend-flat');if(card)card.classList.add('event-mode');if(questionImage){questionImage.style.backgroundImage='';questionImage.classList.remove('has-image')}if(chart)chart.classList.add('event-mode');if(question)question.textContent='Loading '+category+' prediction...';if(symbolFallback)symbolFallback.textContent=category==='tech'?'✦':category==='culture'?'★':'◉';if(startLabel)startLabel.textContent='Yes pool';if(liveLabel)liveLabel.textContent='No pool';if(start)start.textContent='Loading';if(live)live.textContent='Loading';if(trendLabel)trendLabel.textContent='Choose Yes or No';if(countdown)countdown.textContent='--:--';var id=uid(),headers={},my=seq;if(id&&telegramInitData())headers['x-telegram-init-data']=telegramInitData();fetch('/app/api/prediction-events?userId='+encodeURIComponent(id),{cache:'no-store',headers:headers}).then(function(r){return r.json()}).then(function(d){if(my!==seq||market!==category||!eventMode)return;var events=(d&&d.events||[]).filter(function(e){return e&&e.category===category&&(e.status==='open'||e.status==='locked')});if(!events.length)throw new Error('No live prediction');renderEvent(events[0]);updateBalance(d)}).catch(function(){if(my!==seq||market!==category||!eventMode)return;if(question)question.textContent='No live '+category+' prediction yet';if(trendLabel)trendLabel.textContent='Check back after an admin publishes one';if(eventSummary)eventSummary.style.display='none';if(category==='world')selectMarket('bitcoin')})}
     function selectMarket(id){if(EVENT_CATEGORIES[id]){selectEventCategory(id);return}if(!MARKETS[id])return;stopFeed();cancelDraw();stopClock();market=id;eventMode=false;currentEvent=null;eventDeadline=0;if(card)card.classList.remove('event-mode');if(chart)chart.classList.remove('event-mode');if(eventSummary)eventSummary.style.display='none';setChoiceLabels(false);if(startLabel)startLabel.textContent='Start';if(liveLabel)liveLabel.textContent='Live';values=[];historyValues=[];current=0;last=0;raw=0;scaleMin=0;scaleMax=0;entry=0;readyPrice=false;currentRound=null;slot=slotFor(Date.now());lastPointAt=0;reconnectDelay=6000;showLoading();updateMenu();if(question)question.textContent=cfg().question;renderImage();if(result){result.className='predict-zone-result-strip';result.innerHTML=''}var my=seq,selectedMarket=market;connectFeed(my,selectedMarket);syncRound(my,selectedMarket);startClock()}
     function suspend(){if(runtimeSuspended)return;runtimeSuspended=true;stopClock();cancelDraw();stopFeed();setKeyboardOpen(false);closeBet(true)}
-    function resume(){
-      if(!isActive())return;
-      var wasSuspended=runtimeSuspended;runtimeSuspended=false;
-      if(!runtimeStarted){runtimeStarted=true;loadImages();selectMarket('world');return}
-      if(eventMode){if(wasSuspended&&(!currentEvent||eventDeadline<=Date.now())){selectEventCategory(market);return}if(currentEvent&&!clockTimer)startClock();return}
-      if(wasSuspended){var resumedSlot=slotFor(Date.now());if(resumedSlot!==slot){slot=resumedSlot;entry=Number(raw||current||last||0)}var my=seq,id=market;if(!ws&&!reconnectTimer)connectFeed(my,id);syncRound(my,id);queueDraw()}
-      if(!clockTimer)startClock();if(!wasSuspended&&!ws&&!reconnectTimer)connectFeed(seq,market);
-    }
+    function resume(){if(!isActive())return;var wasSuspended=runtimeSuspended;runtimeSuspended=false;if(!runtimeStarted){runtimeStarted=true;loadImages();selectMarket('world');return}if(eventMode){if(wasSuspended&&(!currentEvent||eventDeadline<=Date.now())){selectEventCategory(market);return}if(currentEvent&&!clockTimer)startClock();return}if(wasSuspended){var resumedSlot=slotFor(Date.now());if(resumedSlot!==slot){slot=resumedSlot;entry=Number(raw||current||last||0)}var my=seq,id=market;if(!ws&&!reconnectTimer)connectFeed(my,id);syncRound(my,id);queueDraw()}if(!clockTimer)startClock();if(!wasSuspended&&!ws&&!reconnectTimer)connectFeed(seq,market)}
     function syncActiveState(){if(isActive())resume();else suspend()}
 
     menu.addEventListener('click',function(e){var btn=e.target&&e.target.closest&&e.target.closest('[data-vexa-predict-market]');if(!btn)return;var id=btn.getAttribute('data-vexa-predict-market');if(!MARKETS[id]&&!EVENT_CATEGORIES[id])return;e.preventDefault();e.stopPropagation();selectMarket(id)},true);
