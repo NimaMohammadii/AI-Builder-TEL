@@ -361,7 +361,7 @@ function marketSymbol(market: TradeMarket): string {
   return market === 'ton' ? 'TONUSDT' : market === 'ethereum' ? 'ETHUSDT' : market === 'solana' ? 'SOLUSDT' : market === 'gold' ? 'XAUUSDT' : market === 'oil' ? 'CLUSDT' : 'BTCUSDT';
 }
 function marketStreamUrl(market: TradeMarket): string {
-  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@miniTicker`;
+  return `${ASTER_FUTURES_WS_BASE}/ws/${marketSymbol(market).toLowerCase()}@aggTrade`;
 }
 async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot> {
   const symbol = marketSymbol(market);
