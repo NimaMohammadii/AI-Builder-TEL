@@ -4,6 +4,7 @@ import './prediction-events';
 import type { Env } from './types';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
 import { gameBotToken, validateTelegramInitData } from './utils';
+import { isMiniAppAdmin } from './section-access';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
 const CACHE_NONE = 'no-store';
@@ -26,6 +27,16 @@ type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
 type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
+
+app.post('/app/api/predict-access', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+    const userId = await validateTelegramInitData(body.initData, gameBotToken(c.env));
+    return c.json({ ok: true, admin: isMiniAppAdmin(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
+  } catch {
+    return c.json({ ok: false, admin: false }, 401, { 'cache-control': CACHE_NONE });
+  }
+});
 
 app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
 
@@ -54,8 +65,7 @@ app.get('/app/api/predict-crypto-card-image/:market', async (c) => {
 app.get('/app/api/predict-round', async (c) => {
   try {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
-    const claimedUserId = cleanUserIdOptional(c.req.query('userId'));
-    const userId = claimedUserId ? await authenticateUser(c.env, claimedUserId, c.req.header('x-telegram-init-data')) : '';
+    const userId = await authenticatePredictAdmin(c.env, c.req.query('userId'), c.req.header('x-telegram-init-data'));
     let livePrice = 0;
     try { livePrice = await fetchPrice(market); } catch {}
     const round = await getOrCreateCurrentRound(c.env, market, livePrice);
@@ -74,7 +84,7 @@ app.post('/app/api/predict-bet', async (c) => {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     const market = normalizeTradeMarket(String(body.market || 'bitcoin'));
     const side = normalizeSide(body.side);
-    userId = await authenticateUser(c.env, body.userId, body.initData);
+    userId = await authenticatePredictAdmin(c.env, body.userId, body.initData);
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
@@ -331,3 +341,4 @@ function cleanDbText(value: unknown, message: string): string { const text = Str
 function cleanUserId(value: unknown): string { const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); if (!id) throw new Error('Missing user id'); return id; }
 function cleanUserIdOptional(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
 async function authenticateUser(env: Env, claimedInput: unknown, initDataInput: unknown): Promise<string> { const claimed = cleanUserId(claimedInput); const verified = await validateTelegramInitData(initDataInput, gameBotToken(env)); if (verified !== claimed) throw new Error('Telegram user mismatch'); return verified; }
+async function authenticatePredictAdmin(env: Env, claimedInput: unknown, initDataInput: unknown): Promise<string> { const userId = await authenticateUser(env, claimedInput, initDataInput); if (!isMiniAppAdmin(env, userId)) throw new Error('Predict is only available to administrators'); return userId; }
