@@ -14,7 +14,7 @@ type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' | 'audio' };
-type AudioGame = 'slot' | 'dice';
+type AudioGame = 'slot' | 'dice' | 'wallet-credit';
 type PaymentMethod = 'stars' | 'gram' | 'nft';
 type PredictAsset = 'logo';
 type PredictMarket = 'bitcoin' | 'gold' | 'oil';
@@ -47,6 +47,7 @@ const HOME_SLOT_STATE = 'home-slot';
 const SHARE_INVITE_STATE = 'share-invite-image';
 const SLOT_AUDIO_KEY = 'slot-spin-audio';
 const DICE_AUDIO_KEY = 'miniapp/audio';
+const WALLET_CREDIT_AUDIO_KEY = 'miniapp/audio/wallet-credit';
 const DICE_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const RANKS = ['Rookie', 'Explorer', 'Pro', 'Elite', 'Master', 'Legend', 'Titan'] as const;
 const GHOST_ASSETS = [
@@ -524,15 +525,17 @@ async function sendPaymentMethodMenu(env: Env, token: string, chatId: number, me
 }
 
 async function sendAudioMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
-  const [slotAudio, diceAudio] = await Promise.all([
+  const [slotAudio, diceAudio, walletCreditAudio] = await Promise.all([
     env.ASSETS.head(SLOT_AUDIO_KEY).then(Boolean).catch(() => false),
     env.ASSETS.head(DICE_AUDIO_KEY).then(Boolean).catch(() => false),
+    env.ASSETS.head(WALLET_CREDIT_AUDIO_KEY).then(Boolean).catch(() => false),
   ]);
   await upsert(token, chatId, messageId, '🎵 صداهای بازی\n\nصدای بازی را انتخاب کنید و فایل جدید را بفرستید. آپلود جدید مستقیماً جایگزین صدای فعلی می‌شود.', [
     [
       { text: `${slotAudio ? '✅ ' : ''}🎰 Slot`, callback_data: 'botadmin:audio:slot' },
       { text: `${diceAudio ? '✅ ' : ''}🎲 Dice`, callback_data: 'botadmin:audio:dice' },
     ],
+    [{ text: `${walletCreditAudio ? '✅ ' : ''}💳 Wallet · موجودی ناکافی`, callback_data: 'botadmin:audio:wallet-credit' }],
     [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
   ]);
 }
@@ -647,7 +650,7 @@ async function saveAudio(env: Env, token: string, game: AudioGame, source: Uploa
   const responseType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   const contentType = AUDIO_TYPES.has(source.type) ? source.type : AUDIO_TYPES.has(responseType) ? responseType : 'audio/mpeg';
   const version = String(Date.now());
-  const assetKey = game === 'slot' ? SLOT_AUDIO_KEY : DICE_AUDIO_KEY;
+  const assetKey = game === 'slot' ? SLOT_AUDIO_KEY : game === 'dice' ? DICE_AUDIO_KEY : WALLET_CREDIT_AUDIO_KEY;
   await env.ASSETS.put(assetKey, bytes, {
     httpMetadata: { contentType },
     customMetadata: { version, gameId: game, contentType, uploadedVia: `telegram-admin-${source.via}` },
@@ -818,8 +821,8 @@ function normalizePredictAsset(value: unknown): PredictAsset | null { return Str
 function normalizePredictMarket(value: unknown): PredictMarket | null { const clean = String(value || '').trim().toLowerCase(); return PREDICT_MARKETS.some(([market]) => market === clean) ? clean as PredictMarket : null; }
 function predictMarketLabel(market: PredictMarket): string { return PREDICT_MARKETS.find(([id]) => id === market)?.[1] || market; }
 function predictAssetKey(_asset: PredictAsset, market: PredictMarket): string { return `predict/${market}/question-image`; }
-function normalizeAudioGame(value: unknown): AudioGame | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'slot' || clean === 'dice' ? clean : null; }
-function audioGameLabel(game: AudioGame): string { return game === 'slot' ? 'Slot' : 'Dice'; }
+function normalizeAudioGame(value: unknown): AudioGame | null { const clean = String(value || '').trim().toLowerCase(); return clean === 'slot' || clean === 'dice' || clean === 'wallet-credit' ? clean : null; }
+function audioGameLabel(game: AudioGame): string { return game === 'slot' ? 'Slot' : game === 'dice' ? 'Dice' : 'Wallet · موجودی ناکافی'; }
 function normalizeRank(value: unknown): string | null { return RANKS.find((rank) => rank.toLowerCase() === String(value || '').trim().toLowerCase()) || null; }
 function normalizeGhostAsset(value: unknown): string | null { const clean = String(value || '').trim().toLowerCase(); return GHOST_ASSETS.some(([asset]) => asset === clean) ? clean : null; }
 function ghostAssetLabel(asset: string): string { return GHOST_ASSETS.find(([id]) => id === asset)?.[1] || asset; }
