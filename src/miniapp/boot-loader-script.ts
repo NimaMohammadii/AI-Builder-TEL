@@ -3,7 +3,7 @@ export const BOOT_LOADER_STYLES = `
 .vexa-boot .vexa-boot-card:before,.vexa-boot .vexa-boot-card:after{display:none!important;content:none!important}
 .vexa-boot .vexa-boot-logo{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;border-radius:0!important;object-fit:cover!important;object-position:center!important;margin:0!important;box-shadow:none!important;filter:none!important;opacity:0;transform:none!important;animation:none!important;transition:opacity .18s ease;background:#000}
 .vexa-boot .vexa-boot-logo.is-ready{opacity:1}
-.vexa-boot-progress{position:absolute;left:50%;top:50%;width:min(68vw,300px);height:10px;padding:2px;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(0,0,0,.42);box-shadow:0 12px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.09);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;z-index:4}
+.vexa-boot-progress{position:absolute;left:50%;top:50%;width:min(34vw,150px);height:10px;padding:2px;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(0,0,0,.42);box-shadow:0 12px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.09);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;z-index:4}
 .vexa-boot-progress-bar{display:block;width:0;height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,.72),#fff);box-shadow:0 0 12px rgba(255,255,255,.18);transition:width .22s cubic-bezier(.2,.8,.2,1);will-change:width}
 @media (prefers-reduced-motion:reduce){.vexa-boot .vexa-boot-logo,.vexa-boot-progress-bar{transition:none!important}}
 `;
