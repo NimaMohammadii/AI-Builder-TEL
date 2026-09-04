@@ -117,8 +117,6 @@ html body:has(#home.active) header.top{
     radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
     #070707!important;
   box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
     inset 1px 1px 1px -.5px rgba(140,29,61,.22),
@@ -206,8 +204,6 @@ html body:has(#home.active) header.top{
   font-size:12px!important;
   font-weight:950!important;
   box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.48),
     inset 1px 1px 1px -.5px rgba(140,29,61,.30),
