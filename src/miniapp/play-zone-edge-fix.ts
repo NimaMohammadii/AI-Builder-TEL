@@ -10,7 +10,20 @@ export const PLAY_ZONE_EDGE_FIX = `
 #playzone .game-players i,#playzone .game-players i:before{animation:none!important}
 @media (prefers-reduced-motion:reduce){#playzone .game-card,#playzone .game-card-shell,#playzone .game-players b{transition:none!important;animation:none!important}}
 
+html body:has(#playzone.active){
+  isolation:isolate!important;
+  background:#020202!important;
+}
 html body:has(#playzone.active)::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  background-color:#020202!important;
   background-image:url('/assets/Playhub.PNG?v=1')!important;
   background-size:cover!important;
   background-position:center top!important;
