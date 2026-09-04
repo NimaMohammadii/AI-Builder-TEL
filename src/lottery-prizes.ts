@@ -8,6 +8,7 @@ const PRIZE_PERCENT_TOTAL_BPS = 10_000;
 const DEFAULT_PRIZE_BPS = [5_000, 3_000, 2_000] as const;
 
 type PrizeRow = { rank: number; prize_bps: number; updated_at: string };
+type PrizePoolRow = { status: string; ticket_pool_nano: number; adjustment_nano: number };
 type WinnerRow = {
   id: string;
   round_id: string;
@@ -159,6 +160,42 @@ export async function searchLotteryTicketHolders(env: Env, roundIdInput: unknown
   });
 }
 
+export async function getLotteryPrizePoolNano(env: Env, roundIdInput: unknown): Promise<number> {
+  await ensureLotteryPrizeTables(env);
+  const roundId = String(roundIdInput || '').trim();
+  if (!roundId) return 0;
+  const row = await env.DB.prepare(`SELECT r.status,
+      COALESCE((SELECT SUM(t.price_nano) FROM lottery_tickets t WHERE t.round_id=r.id),0) AS ticket_pool_nano,
+      COALESCE(r.prize_pool_adjustment_nano,0) AS adjustment_nano
+    FROM lottery_rounds r WHERE r.id=? LIMIT 1`).bind(roundId).first<PrizePoolRow>();
+  if (!row) return 0;
+  return cleanPrizePoolTotal(Number(row.ticket_pool_nano || 0) + Number(row.adjustment_nano || 0));
+}
+
+export async function adjustLotteryPrizePool(env: Env, roundIdInput: unknown, deltaNanoInput: unknown): Promise<number> {
+  await ensureLotteryPrizeTables(env);
+  const roundId = String(roundIdInput || '').trim();
+  const deltaNano = cleanPrizePoolDelta(deltaNanoInput);
+  if (!roundId) throw new Error('راند Lottery موجود نیست.');
+  const current = await env.DB.prepare(`SELECT r.status,
+      COALESCE((SELECT SUM(t.price_nano) FROM lottery_tickets t WHERE t.round_id=r.id),0) AS ticket_pool_nano,
+      COALESCE(r.prize_pool_adjustment_nano,0) AS adjustment_nano
+    FROM lottery_rounds r WHERE r.id=? LIMIT 1`).bind(roundId).first<PrizePoolRow>();
+  if (!current || current.status !== 'open') throw new Error('فقط Prize Pool راند باز قابل تغییر است.');
+  const currentTotal = cleanPrizePoolTotal(Number(current.ticket_pool_nano || 0) + Number(current.adjustment_nano || 0));
+  if (currentTotal + deltaNano < 0) throw new Error('Prize Pool نمی‌تواند کمتر از صفر شود.');
+  const nextAdjustment = Number(current.adjustment_nano || 0) + deltaNano;
+  if (!Number.isSafeInteger(nextAdjustment)) throw new Error('مقدار Prize Pool بیش از حد بزرگ است.');
+  const updated = await env.DB.prepare(`UPDATE lottery_rounds
+    SET prize_pool_adjustment_nano=COALESCE(prize_pool_adjustment_nano,0)+?,updated_at=CURRENT_TIMESTAMP
+    WHERE id=? AND status='open'
+      AND COALESCE((SELECT SUM(price_nano) FROM lottery_tickets WHERE round_id=lottery_rounds.id),0)
+        + COALESCE(prize_pool_adjustment_nano,0) + ? >= 0`)
+    .bind(deltaNano, roundId, deltaNano).run();
+  if (Number(updated.meta?.changes || 0) <= 0) throw new Error('Prize Pool تغییر نکرد؛ دوباره تلاش کنید.');
+  return getLotteryPrizePoolNano(env, roundId);
+}
+
 export async function getLotteryPrizes(env: Env, prizePoolNanoInput: unknown = 0): Promise<LotteryPrize[]> {
   await ensureLotteryPrizeTables(env);
   const rows = await env.DB.prepare('SELECT rank,prize_bps,updated_at FROM lottery_prizes ORDER BY rank ASC')
@@ -220,9 +257,7 @@ export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): P
   const roundId = String(roundIdInput || '').trim();
   if (!roundId) throw new Error('Missing Lottery round');
 
-  const poolRow = await env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano
-    FROM lottery_tickets WHERE round_id=?`).bind(roundId).first<{ prize_pool_nano: number }>();
-  const prizes = await getLotteryPrizes(env, poolRow?.prize_pool_nano);
+  const prizes = await getLotteryPrizes(env, await getLotteryPrizePoolNano(env, roundId));
   const existingRows = await env.DB.prepare(`SELECT rank,user_id FROM lottery_winners
     WHERE round_id=? ORDER BY rank ASC`).bind(roundId).all<ExistingWinnerRow>();
   const existing = existingRows.results || [];
@@ -379,6 +414,18 @@ function cleanPrizeBps(value: unknown): number {
   const bps = Math.floor(Number(value));
   if (!Number.isSafeInteger(bps) || bps < 0 || bps > PRIZE_PERCENT_TOTAL_BPS) throw new Error('Invalid Lottery prize percentage');
   return bps;
+}
+
+function cleanPrizePoolTotal(value: unknown): number {
+  const total = Math.floor(Number(value));
+  if (!Number.isSafeInteger(total)) throw new Error('مقدار Prize Pool بیش از حد بزرگ است.');
+  return Math.max(0, total);
+}
+
+function cleanPrizePoolDelta(value: unknown): number {
+  const delta = Math.trunc(Number(value));
+  if (!Number.isSafeInteger(delta) || delta === 0) throw new Error('مقدار تغییر Prize Pool نامعتبر است.');
+  return delta;
 }
 
 function allocatePrizePool(prizePoolNanoInput: unknown, percentBps: number[]): number[] {
