@@ -155,6 +155,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     state.autoResume=true;
     state.playOptions=options||{};
     rememberUrl(state,url,version);
+    if(state.url===url&&state.audio&&!state.audio.paused)return Promise.resolve(true);
     var audio=setUrl(state.target,url);
     return audio?startState(state,Object.assign({},state.playOptions,{restart:false})):Promise.resolve(false)
   }
@@ -208,7 +209,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
       }).catch(function(){try{audio.muted=wasMuted}catch(e){}});
     }catch(e){}
   }
-  function primeLoaded(){Object.keys(states).forEach(function(key){primeAudio(states[key]&&states[key].audio)})}
+  function primeLoaded(){Object.keys(states).forEach(function(key){var state=states[key];if(state&&!state.autoResume)primeAudio(state.audio)})}
   function bind(){
     preload('wallet-credit');
     document.addEventListener('pointerdown',primeLoaded,{capture:true,once:true,passive:true});
