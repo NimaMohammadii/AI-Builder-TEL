@@ -1,7 +1,7 @@
 import type { Env } from './types';
 
 const SHARE_INVITE_IMAGE_SETTING = 'share-invite-image-file-id';
-const MAIN_MENU_IMAGE_SETTING = 'main-menu-image-file-id';
+const MAIN_MENU_MEDIA_SETTING = 'main-menu-image-file-id';
 
 type SettingRow = { value_json: string };
 export type MainMenuMedia = { fileId: string; type: 'photo' | 'video' };
@@ -55,14 +55,14 @@ export async function saveMainMenuMedia(env: Env, fileId: string, type: MainMenu
   await env.DB.prepare(`INSERT INTO admin_settings (name, value_json, updated_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(name) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP`)
-    .bind(MAIN_MENU_IMAGE_SETTING, JSON.stringify(value))
+    .bind(MAIN_MENU_MEDIA_SETTING, JSON.stringify(value))
     .run();
 }
 
 export async function getMainMenuMedia(env: Env): Promise<MainMenuMedia | null> {
   await ensureAdminSettingsTable(env);
   const row = await env.DB.prepare('SELECT value_json FROM admin_settings WHERE name = ?')
-    .bind(MAIN_MENU_IMAGE_SETTING)
+    .bind(MAIN_MENU_MEDIA_SETTING)
     .first<SettingRow>();
   try {
     const value = JSON.parse(String(row?.value_json || ''));
