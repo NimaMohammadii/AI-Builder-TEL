@@ -4,7 +4,7 @@ import { finalizeLotteryWinners } from './lottery-prizes';
 
 export const LOTTERY_DEFAULT_TICKET_PRICE_NANO = 150_000_000;
 export const LOTTERY_DEFAULT_DRAW_INTERVAL_MINUTES = 24 * 60;
-export const LOTTERY_MAX_PURCHASE_QUANTITY = 20;
+export const LOTTERY_MAX_PURCHASE_QUANTITY = 60;
 export const LOTTERY_DRAW_DELAY_MS = 5_000;
 export const LOTTERY_DRAW_ANIMATION_MS = 18_260;
 export const LOTTERY_NEXT_ROUND_DELAY_MS = 10_000;
@@ -124,12 +124,14 @@ export async function ensureLotteryTables(env: Env): Promise<void> {
     winning_code TEXT,
     drawn_at TEXT,
     draw_lock TEXT,
+    prize_pool_adjustment_nano INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
   await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN winning_code TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN drawn_at TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN draw_lock TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN prize_pool_adjustment_nano INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
 
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS lottery_round_free_claims (
     user_id TEXT NOT NULL,
