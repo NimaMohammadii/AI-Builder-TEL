@@ -33,6 +33,14 @@ html body:has(#playzone.active)::before{
   filter:none!important;
   opacity:1!important;
 }
+html body:has(#playzone.active)::after,
+html body:has(#playzone.active) .app::before,
+html body:has(#playzone.active) .app::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  background-image:none!important;
+}
 
 html body:has(#dice.active){
   isolation:isolate!important;
