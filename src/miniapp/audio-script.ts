@@ -39,7 +39,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     if(!state||!state.audio)return null;
     if(state.gain)return state.gain;
     var ctx=context();
-    if(!ctx||typeof ctx.createMediaElementSource!=='function'||typeof ctx.createGain!=='function')return null;
+    if(!ctx||ctx.state!=='running'||typeof ctx.createMediaElementSource!=='function'||typeof ctx.createGain!=='function')return null;
     try{
       var source=ctx.createMediaElementSource(state.audio);
       var gain=ctx.createGain();
@@ -53,7 +53,9 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
   }
   function resumeContext(){
     var ctx=context();
-    if(!ctx||ctx.state!=='suspended'||typeof ctx.resume!=='function')return Promise.resolve(true);
+    if(!ctx)return Promise.resolve(false);
+    if(ctx.state==='running')return Promise.resolve(true);
+    if(ctx.state!=='suspended'||typeof ctx.resume!=='function')return Promise.resolve(false);
     try{return Promise.resolve(ctx.resume()).then(function(){return ctx.state==='running'},function(){return false})}catch(e){return Promise.resolve(false)}
   }
   function startState(state,options){
@@ -63,20 +65,20 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     state.playOptions=options;
     var audio=state.audio;
     try{audio.loop=options.loop===true;audio.muted=false;if(options.restart!==false)audio.currentTime=0;audio.volume=1}catch(e){}
-    var gain=options.gain!==false?ensureGain(state):null;
-    if(gain){
-      try{var ctx=context(),now=ctx?ctx.currentTime:0;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(1,now)}catch(e){try{gain.gain.value=1}catch(_e){}}
-    }
-    var contextReady=gain?resumeContext():Promise.resolve(true);
+    var wantsGain=options.gain!==false;
+    var contextReady=wantsGain?resumeContext():Promise.resolve(false);
     var result;
     try{result=audio.play()}catch(e){if(options.retryOnGesture!==false)installUnlock(state);return Promise.resolve(false)}
     var playbackReady=result&&typeof result.then==='function'
       ? result.then(function(){return true},function(){return false})
       : Promise.resolve(!audio.paused);
-    return Promise.all([playbackReady,contextReady]).then(function(values){
-      var ok=!!values[0]&&!!values[1];
-      if(ok)clearUnlock(state);else if(options.retryOnGesture!==false)installUnlock(state);
-      return ok
+    return playbackReady.then(function(played){
+      if(!played){if(options.retryOnGesture!==false)installUnlock(state);return false}
+      return contextReady.then(function(contextIsReady){
+        if(wantsGain&&contextIsReady)ensureGain(state);
+        if(wantsGain&&!contextIsReady&&options.retryOnGesture!==false)installUnlock(state);else clearUnlock(state);
+        return true
+      })
     })
   }
   function installUnlock(state){
@@ -85,7 +87,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     function resume(){
       clearUnlock(state);
       if(!state.autoResume)return;
-      resumeContext().then(function(){startState(state,Object.assign({},state.playOptions||{},{retryOnGesture:false,restart:false}))})
+      startState(state,Object.assign({},state.playOptions||{},{retryOnGesture:false,restart:false}))
     }
     state.unlockCleanup=function(){events.forEach(function(name){window.removeEventListener(name,resume,true)})};
     events.forEach(function(name){window.addEventListener(name,resume,true)})
@@ -174,7 +176,6 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     var gain=state.gain;
     if(gain){
       var ctx=context();
-      resumeContext();
       try{
         var now=ctx?ctx.currentTime:0;
         var current=Math.max(0,Math.min(1,Number(gain.gain.value)||1));
