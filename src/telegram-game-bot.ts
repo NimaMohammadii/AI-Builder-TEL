@@ -1,10 +1,11 @@
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
 import { getUserRegionPreference, setUserRegionPreference } from './admin-users';
-import { VEXA_LOCALE_LABELS } from './miniapp/i18n';
+import { DEFAULT_VEXA_LOCALE, VEXA_LOCALES, VEXA_LOCALE_LABELS, type VexaLocale } from './miniapp/i18n';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getMainMenuImageFileId } from './share-invite-config';
 
 type TelegramApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type TelegramEnvelope<T = unknown> = {
@@ -14,6 +15,14 @@ type TelegramEnvelope<T = unknown> = {
   error_code?: number;
 };
 type TelegramSentMessage = { message_id?: number };
+type MainMenuCopy = {
+  tagline: string;
+  quickGames: string;
+  predictions: string;
+  lotteries: string;
+  dailyChance: string;
+  ready: string;
+};
 
 const USER_REGION_OPTIONS = [
   ['US', '🇺🇸 United States'], ['RU', '🇷🇺 Россия'], ['TR', '🇹🇷 Türkiye'], ['AE', '🇦🇪 العربية'],
@@ -23,6 +32,185 @@ const USER_REGION_OPTIONS = [
   ['KR', '🇰🇷 한국'], ['JP', '🇯🇵 日本'], ['PK', '🇵🇰 Pakistan'], ['PH', '🇵🇭 Philippines'],
   ['MY', '🇲🇾 Malaysia'], ['TW', '🇹🇼 繁體中文'],
 ] as const;
+
+const MAIN_MENU_COPY: Readonly<Record<VexaLocale, MainMenuCopy>> = {
+  en: {
+    tagline: 'Play, predict, and increase your chances of winning.',
+    quickGames: 'Quick games',
+    predictions: 'Market & event predictions',
+    lotteries: 'Lotteries & rewards',
+    dailyChance: 'New chances to win every day.',
+    ready: 'Ready to play and win?',
+  },
+  fa: {
+    tagline: 'بازی کن، پیش‌بینی کن و شانس برنده شدنت را بیشتر کن.',
+    quickGames: 'بازی‌های سریع',
+    predictions: 'پیش‌بینی بازار و رویدادها',
+    lotteries: 'لاتاری‌ها و جوایز',
+    dailyChance: 'هر روز شانس‌های تازه‌ای برای برنده شدن داری.',
+    ready: 'آماده‌ای بازی کنی و برنده بشی؟',
+  },
+  ru: {
+    tagline: 'Играйте, прогнозируйте и повышайте свои шансы на победу.',
+    quickGames: 'Быстрые игры',
+    predictions: 'Прогнозы рынков и событий',
+    lotteries: 'Лотереи и награды',
+    dailyChance: 'Новые шансы на победу каждый день.',
+    ready: 'Готовы играть и побеждать?',
+  },
+  tr: {
+    tagline: 'Oyna, tahmin et ve kazanma şansını artır.',
+    quickGames: 'Hızlı oyunlar',
+    predictions: 'Piyasa ve etkinlik tahminleri',
+    lotteries: 'Çekilişler ve ödüller',
+    dailyChance: 'Her gün yeni kazanma şansları.',
+    ready: 'Oynamaya ve kazanmaya hazır mısın?',
+  },
+  ar: {
+    tagline: 'العب، توقّع، وزِد فرصك في الفوز.',
+    quickGames: 'ألعاب سريعة',
+    predictions: 'توقعات الأسواق والأحداث',
+    lotteries: 'السحوبات والمكافآت',
+    dailyChance: 'فرص جديدة للفوز كل يوم.',
+    ready: 'هل أنت مستعد للعب والفوز؟',
+  },
+  es: {
+    tagline: 'Juega, predice y aumenta tus posibilidades de ganar.',
+    quickGames: 'Juegos rápidos',
+    predictions: 'Predicciones de mercados y eventos',
+    lotteries: 'Sorteos y recompensas',
+    dailyChance: 'Nuevas oportunidades de ganar cada día.',
+    ready: '¿Listo para jugar y ganar?',
+  },
+  'pt-BR': {
+    tagline: 'Jogue, faça previsões e aumente suas chances de ganhar.',
+    quickGames: 'Jogos rápidos',
+    predictions: 'Previsões de mercado e eventos',
+    lotteries: 'Sorteios e recompensas',
+    dailyChance: 'Novas chances de ganhar todos os dias.',
+    ready: 'Pronto para jogar e ganhar?',
+  },
+  id: {
+    tagline: 'Main, prediksi, dan tingkatkan peluangmu untuk menang.',
+    quickGames: 'Game cepat',
+    predictions: 'Prediksi pasar & peristiwa',
+    lotteries: 'Undian & hadiah',
+    dailyChance: 'Peluang baru untuk menang setiap hari.',
+    ready: 'Siap bermain dan menang?',
+  },
+  hi: {
+    tagline: 'खेलें, भविष्यवाणी करें और जीतने की संभावना बढ़ाएँ।',
+    quickGames: 'त्वरित गेम',
+    predictions: 'बाज़ार और इवेंट की भविष्यवाणियाँ',
+    lotteries: 'लॉटरी और रिवॉर्ड',
+    dailyChance: 'हर दिन जीतने के नए मौके।',
+    ready: 'खेलने और जीतने के लिए तैयार हैं?',
+  },
+  de: {
+    tagline: 'Spiele, tippe voraus und erhöhe deine Gewinnchancen.',
+    quickGames: 'Schnelle Spiele',
+    predictions: 'Markt- & Event-Prognosen',
+    lotteries: 'Lotterien & Belohnungen',
+    dailyChance: 'Jeden Tag neue Gewinnchancen.',
+    ready: 'Bereit zu spielen und zu gewinnen?',
+  },
+  fr: {
+    tagline: 'Joue, fais tes prédictions et augmente tes chances de gagner.',
+    quickGames: 'Jeux rapides',
+    predictions: 'Prédictions de marchés et d’événements',
+    lotteries: 'Loteries et récompenses',
+    dailyChance: 'De nouvelles chances de gagner chaque jour.',
+    ready: 'Prêt à jouer et à gagner ?',
+  },
+  it: {
+    tagline: 'Gioca, fai previsioni e aumenta le tue possibilità di vincere.',
+    quickGames: 'Giochi rapidi',
+    predictions: 'Previsioni su mercati ed eventi',
+    lotteries: 'Lotterie e premi',
+    dailyChance: 'Nuove possibilità di vincere ogni giorno.',
+    ready: 'Pronto a giocare e vincere?',
+  },
+  uk: {
+    tagline: 'Грайте, прогнозуйте та збільшуйте свої шанси на перемогу.',
+    quickGames: 'Швидкі ігри',
+    predictions: 'Прогнози ринків і подій',
+    lotteries: 'Лотереї та нагороди',
+    dailyChance: 'Нові шанси на перемогу щодня.',
+    ready: 'Готові грати та перемагати?',
+  },
+  pl: {
+    tagline: 'Graj, przewiduj i zwiększaj swoje szanse na wygraną.',
+    quickGames: 'Szybkie gry',
+    predictions: 'Prognozy rynków i wydarzeń',
+    lotteries: 'Loterie i nagrody',
+    dailyChance: 'Nowe szanse na wygraną każdego dnia.',
+    ready: 'Gotowy, by grać i wygrywać?',
+  },
+  vi: {
+    tagline: 'Chơi, dự đoán và tăng cơ hội chiến thắng của bạn.',
+    quickGames: 'Trò chơi nhanh',
+    predictions: 'Dự đoán thị trường & sự kiện',
+    lotteries: 'Xổ số & phần thưởng',
+    dailyChance: 'Cơ hội chiến thắng mới mỗi ngày.',
+    ready: 'Sẵn sàng chơi và chiến thắng?',
+  },
+  th: {
+    tagline: 'เล่น ทำนาย และเพิ่มโอกาสชนะของคุณ',
+    quickGames: 'เกมรวดเร็ว',
+    predictions: 'การคาดการณ์ตลาดและเหตุการณ์',
+    lotteries: 'ลอตเตอรี่และรางวัล',
+    dailyChance: 'โอกาสชนะใหม่ทุกวัน',
+    ready: 'พร้อมเล่นและชนะหรือยัง?',
+  },
+  ko: {
+    tagline: '플레이하고 예측하며 승리 확률을 높여보세요.',
+    quickGames: '빠른 게임',
+    predictions: '시장 & 이벤트 예측',
+    lotteries: '복권 & 보상',
+    dailyChance: '매일 새로운 승리 기회.',
+    ready: '플레이하고 승리할 준비가 되셨나요?',
+  },
+  ja: {
+    tagline: 'プレイして予想し、勝つチャンスを高めよう。',
+    quickGames: 'クイックゲーム',
+    predictions: '市場・イベント予測',
+    lotteries: '抽選・報酬',
+    dailyChance: '毎日、新しい勝利のチャンス。',
+    ready: 'プレイして勝つ準備はできた？',
+  },
+  ur: {
+    tagline: 'کھیلیں، پیش گوئی کریں اور جیتنے کے امکانات بڑھائیں۔',
+    quickGames: 'فوری گیمز',
+    predictions: 'مارکیٹ اور ایونٹ کی پیش گوئیاں',
+    lotteries: 'لاٹریاں اور انعامات',
+    dailyChance: 'ہر روز جیتنے کے نئے مواقع۔',
+    ready: 'کھیلنے اور جیتنے کے لیے تیار ہیں؟',
+  },
+  fil: {
+    tagline: 'Maglaro, manghula, at dagdagan ang tsansa mong manalo.',
+    quickGames: 'Mabilis na games',
+    predictions: 'Mga prediction sa market & events',
+    lotteries: 'Mga lottery & rewards',
+    dailyChance: 'Bagong pagkakataong manalo araw-araw.',
+    ready: 'Handa ka nang maglaro at manalo?',
+  },
+  ms: {
+    tagline: 'Main, ramal dan tingkatkan peluang anda untuk menang.',
+    quickGames: 'Permainan pantas',
+    predictions: 'Ramalan pasaran & acara',
+    lotteries: 'Loteri & ganjaran',
+    dailyChance: 'Peluang baharu untuk menang setiap hari.',
+    ready: 'Bersedia untuk bermain dan menang?',
+  },
+  'zh-Hant': {
+    tagline: '遊玩、預測，提升你的獲勝機會。',
+    quickGames: '快速遊戲',
+    predictions: '市場與事件預測',
+    lotteries: '抽獎與獎勵',
+    dailyChance: '每天都有新的獲勝機會。',
+    ready: '準備好遊玩並獲勝了嗎？',
+  },
+};
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
   const token = botToken(env);
@@ -98,7 +286,7 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
     }
 
     await deleteIncomingMessage(token, message.chat.id, message.message_id);
-    await sendGameHome(env, token, message.chat.id);
+    await sendGameHome(env, token, message.chat.id, undefined, telegramLanguageCode(message.from));
   }
 }
 
@@ -118,7 +306,7 @@ async function handleUserRegionCallback(env: Env, token: string, q: NonNullable<
   }
   const preference = await setUserRegionPreference(env, q.from.id, countryCode);
   await telegram(token, 'answerCallbackQuery', { callback_query_id: q.id, text: preference.mode === 'automatic' ? 'Automatic detection enabled' : 'Region updated' }).catch(() => undefined);
-  await sendGameHome(env, token, chatId, q.message?.message_id);
+  await sendGameHome(env, token, chatId, q.message?.message_id, telegramLanguageCode(q.from));
   return true;
 }
 
@@ -145,20 +333,100 @@ function isAdminCommand(text: string | undefined): boolean {
   return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
 }
 
-async function sendGameHome(env: Env, token: string, chatId: number, existingMessageId?: number): Promise<void> {
-  await replaceMenuMessage(env, token, chatId, {
-    text: 'Open the Mini App',
-    reply_markup: {
-      inline_keyboard: [[{
-        text: 'Open Mini App',
-        web_app: { url: `${PUBLIC_BASE_URL}/app` },
-      }]],
-    },
-  }, existingMessageId);
+async function sendGameHome(env: Env, token: string, chatId: number, existingMessageId?: number, languageCode?: string): Promise<void> {
+  const locale = localeForTelegramLanguage(languageCode);
+  const text = mainMenuText(locale);
+  const imageFileId = await getMainMenuImageFileId(env).catch(() => null);
+  const reply_markup = {
+    inline_keyboard: [[{
+      text: `🎪 ${stylizeLatin('Open Vexa Game')}`,
+      web_app: { url: `${PUBLIC_BASE_URL}/app` },
+    }]],
+  };
+  await replaceMenuMessage(env, token, chatId, imageFileId
+    ? { photo: imageFileId, text, parse_mode: 'HTML', reply_markup }
+    : { text, parse_mode: 'HTML', reply_markup }, existingMessageId);
+}
+
+function telegramLanguageCode(user: unknown): string | undefined {
+  if (!user || typeof user !== 'object') return undefined;
+  const value = (user as { language_code?: unknown }).language_code;
+  return typeof value === 'string' ? value : undefined;
+}
+
+function localeForTelegramLanguage(languageCode: string | undefined): VexaLocale {
+  const normalized = String(languageCode || '').trim().replace(/_/g, '-').toLowerCase();
+  if (!normalized) return DEFAULT_VEXA_LOCALE;
+  if (normalized === 'pt' || normalized.startsWith('pt-')) return 'pt-BR';
+  if (normalized === 'tl' || normalized.startsWith('tl-') || normalized === 'fil' || normalized.startsWith('fil-')) return 'fil';
+  if (normalized === 'zh' || normalized.startsWith('zh-')) return 'zh-Hant';
+  const base = normalized.split('-')[0] || normalized;
+  const exact = VEXA_LOCALES.find((locale) => locale.toLowerCase() === normalized);
+  if (exact) return exact;
+  const byBase = VEXA_LOCALES.find((locale) => locale.toLowerCase() === base);
+  return byBase ?? DEFAULT_VEXA_LOCALE;
+}
+
+function mainMenuText(locale: VexaLocale): string {
+  const copy = MAIN_MENU_COPY[locale] ?? MAIN_MENU_COPY[DEFAULT_VEXA_LOCALE];
+  const line = (value: string) => `<b>${escapeHtml(stylizeLatin(value))}</b>`;
+  return [
+    `🎪 ${line('Vexa Game')}`,
+    '',
+    line(copy.tagline),
+    '',
+    `🧩 ${line(copy.quickGames)}`,
+    `💸 ${line(copy.predictions)}`,
+    `🎟 ${line(copy.lotteries)}`,
+    '',
+    `🎁 ${line(copy.dailyChance)}`,
+    '',
+    `${line(copy.ready)} 👇`,
+  ].join('\n');
+}
+
+function stylizeLatin(value: string): string {
+  return Array.from(value.normalize('NFD')).map((char) => {
+    const code = char.codePointAt(0) ?? 0;
+    if (code >= 65 && code <= 90) return String.fromCodePoint(0x1D5D4 + code - 65);
+    if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5EE + code - 97);
+    if (code >= 48 && code <= 57) return String.fromCodePoint(0x1D7EC + code - 48);
+    return char;
+  }).join('');
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>, existingMessageId?: number): Promise<void> {
   const messageId = existingMessageId ?? await getTelegramMenuMessageId(env, chatId);
+  const photo = typeof content.photo === 'string' ? content.photo : '';
+  if (photo) {
+    const caption = String(content.text ?? '');
+    const parseMode = typeof content.parse_mode === 'string' ? content.parse_mode : undefined;
+    const replyMarkup = content.reply_markup;
+    if (messageId) {
+      const edited = await telegram(token, 'editMessageMedia', {
+        chat_id: chatId,
+        message_id: messageId,
+        media: { type: 'photo', media: photo, caption, ...(parseMode ? { parse_mode: parseMode } : {}) },
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      }).then(() => true).catch(() => false);
+      if (edited) return;
+      await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
+    }
+    const sent = await telegram<TelegramSentMessage>(token, 'sendPhoto', {
+      chat_id: chatId,
+      photo,
+      caption,
+      ...(parseMode ? { parse_mode: parseMode } : {}),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    });
+    if (sent?.message_id) await setTelegramMenuMessageId(env, chatId, sent.message_id);
+    return;
+  }
+
   const payload = { chat_id: chatId, ...content };
   if (messageId) {
     const edited = await telegram(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
