@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { gameBotToken, validateTelegramInitData } from './utils';
-import { LOTTERY_NEXT_ROUND_DELAY_MS, buyLotteryTickets, getLotteryUserState, listLotteryTickets } from './lottery';
+import { LOTTERY_NEXT_ROUND_DELAY_MS, buyLotteryTickets, getLotteryUserState } from './lottery';
 import { LOTTERY_WINNER_COUNT, getLotteryPrizes, getLotteryWinners, userWonLotteryRound } from './lottery-prizes';
 import { publishLiveActivity } from './live-activity';
 
@@ -13,78 +13,55 @@ export async function handleLotteryRequest(request: Request, env: Env): Promise<
       const serverStartedAtMs = Date.now();
       const userId = await authenticatedUser(request, env);
       const state = await getLotteryUserState(env, userId);
-      const roundStatsQuery = state.round
-        ? env.DB.prepare(`SELECT COUNT(*) AS count,
-            COALESCE(SUM(price_nano),0) AS prize_pool_nano,
-            COALESCE(SUM(CASE WHEN user_id=? THEN 1 ELSE 0 END),0) AS user_ticket_count
-            FROM lottery_tickets WHERE round_id=?`)
-          .bind(userId, state.round.id)
-          .first<{ count: number; prize_pool_nano: number; user_ticket_count: number }>()
-        : Promise.resolve(null);
-      const [lastDrawWon, roundStatsRow] = await Promise.all([
-        userWonLotteryRound(env, userId, state.lastDraw?.roundId),
-        roundStatsQuery,
-      ]);
-      const roundTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.count || 0)));
-      const userTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.user_ticket_count || 0)));
-      const winChancePercent = state.round?.status === 'open' && roundTicketCount > 0
-        ? Number(((userTicketCount / roundTicketCount) * 100).toFixed(6))
-        : 0;
-      const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
-      const prizes = await getLotteryPrizes(env, prizePoolNano);
-      const serverNowMs = Date.now();
-      return json({ ok: true, serverStartedAtMs, serverNowMs, winnerCount: LOTTERY_WINNER_COUNT, ...state, ticketCount: userTicketCount, roundTicketCount, userTicketCount, prizePoolNano, prizes, lastDrawWon, winChancePercent });
-    }
-
-    if (request.method === 'GET' && url.pathname === '/app/api/lottery/winners') {
-      const userId = await authenticatedUser(request, env);
-      const state = await getLotteryUserState(env, userId);
-      const serverNowMs = Date.now();
       const round = state.round;
-      const drawAtMs = Date.parse(String(round?.drawAt || ''));
+      const snapshotNowMs = Date.now();
       const nextRoundStartsAtMs = Date.parse(String(round?.nextRoundStartsAt || ''));
       const previousWinnersAtMs = Number.isFinite(nextRoundStartsAtMs)
         ? nextRoundStartsAtMs - LOTTERY_NEXT_ROUND_DELAY_MS
         : 0;
       const waitingForWinner = Boolean(
         round?.status === 'closed'
-        && previousWinnersAtMs > serverNowMs,
+        && previousWinnersAtMs > snapshotNowMs,
       );
-      const roundId = waitingForWinner ? '' : (state.lastDraw?.roundId || '');
-      const poolQuery = round
-        ? env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano FROM lottery_tickets WHERE round_id=?`)
-          .bind(round.id).first<{ prize_pool_nano: number }>()
+      const winnerRoundId = waitingForWinner ? '' : (state.lastDraw?.roundId || '');
+      const roundStatsQuery = round
+        ? env.DB.prepare(`SELECT COUNT(*) AS count,
+            COALESCE(SUM(price_nano),0) AS prize_pool_nano,
+            COALESCE(SUM(CASE WHEN user_id=? THEN 1 ELSE 0 END),0) AS user_ticket_count
+            FROM lottery_tickets WHERE round_id=?`)
+          .bind(userId, round.id)
+          .first<{ count: number; prize_pool_nano: number; user_ticket_count: number }>()
         : Promise.resolve(null);
-      const [winners, poolRow] = await Promise.all([
-        roundId ? getLotteryWinners(env, roundId) : Promise.resolve([]),
-        poolQuery,
+      const [lastDrawWon, roundStatsRow, winners] = await Promise.all([
+        userWonLotteryRound(env, userId, state.lastDraw?.roundId),
+        roundStatsQuery,
+        winnerRoundId ? getLotteryWinners(env, winnerRoundId) : Promise.resolve([]),
       ]);
-      const prizes = await getLotteryPrizes(env, poolRow?.prize_pool_nano);
-      const nextDisplayChangeAtMs = waitingForWinner
-        ? previousWinnersAtMs
-        : round?.status === 'open' && Number.isFinite(drawAtMs) && drawAtMs > serverNowMs
-          ? drawAtMs
-          : Number.isFinite(nextRoundStartsAtMs) && nextRoundStartsAtMs > serverNowMs
-            ? nextRoundStartsAtMs
-            : 0;
+      const roundTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.count || 0)));
+      const userTicketCount = Math.max(0, Math.floor(Number(roundStatsRow?.user_ticket_count || 0)));
+      const winChancePercent = round?.status === 'open' && roundTicketCount > 0
+        ? Number(((userTicketCount / roundTicketCount) * 100).toFixed(6))
+        : 0;
+      const prizePoolNano = Math.max(0, Math.floor(Number(roundStatsRow?.prize_pool_nano || 0)));
+      const prizes = await getLotteryPrizes(env, prizePoolNano);
+      const serverNowMs = Date.now();
       return json({
         ok: true,
+        serverStartedAtMs,
         serverNowMs,
         winnerCount: LOTTERY_WINNER_COUNT,
-        roundId,
-        waitingForWinner,
-        winnerView: waitingForWinner ? 'waiting' : 'previous',
-        nextDisplayChangeAtMs,
-        winners,
+        ...state,
+        ticketCount: userTicketCount,
+        roundTicketCount,
+        userTicketCount,
+        prizePoolNano,
         prizes,
+        lastDrawWon,
+        winChancePercent,
+        waitingForWinner,
+        winnerDisplayAtMs: waitingForWinner ? previousWinnersAtMs : 0,
+        winners,
       });
-    }
-
-    if (request.method === 'GET' && url.pathname === '/app/api/lottery/tickets') {
-      const userId = await authenticatedUser(request, env);
-      const state = await getLotteryUserState(env, userId);
-      const tickets = await listLotteryTickets(env, userId, state.round?.id, 250);
-      return json({ ok: true, serverNowMs: Date.now(), round: state.round, ticketCount: tickets.length, tickets });
     }
 
     if (request.method === 'POST' && url.pathname === '/app/api/lottery/tickets') {
