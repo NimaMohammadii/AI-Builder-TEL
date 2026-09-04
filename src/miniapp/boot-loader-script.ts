@@ -15,7 +15,11 @@ export const BOOT_LOADER_SCRIPT = `
   var READY_TIMEOUT_MS=12000;
   var STARTUP_MANIFEST_URL='/app/api/uploaded-images?context=startup';
   var BOOT_IMAGE_URL_CACHE_KEY='vexa:boot-image-url:v1';
+  var BOOT_AUDIO_URL_CACHE_KEY='vexa:boot-audio-url:v1';
   var startupManifestJob=null;
+  var bootAudio=null;
+  var bootAudioUnlockCleanup=null;
+  var bootAudioFadeFrame=0;
   function bootNode(){return document.getElementById('vexaBoot')}
   function bootImage(){return document.getElementById('vexaBootImage')}
   function bootProgressNode(){return document.getElementById('vexaBootProgress')}
@@ -28,7 +32,72 @@ export const BOOT_LOADER_SCRIPT = `
   }
   function advanceBootProgress(weight){setBootProgress(bootProgress+(Number(weight)||0))}
   function progressGate(promise,weight){return Promise.resolve(promise).then(function(value){advanceBootProgress(weight);return value},function(error){advanceBootProgress(weight);throw error})}
-  function hide(){if(bootHidden)return;bootHidden=true;setBootProgress(100);var boot=bootNode();if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
+  function clearBootAudioUnlock(){if(typeof bootAudioUnlockCleanup==='function'){try{bootAudioUnlockCleanup()}catch(e){}bootAudioUnlockCleanup=null}}
+  function getBootAudio(){
+    if(bootAudio)return bootAudio;
+    bootAudio=new Audio();
+    bootAudio.preload='auto';
+    bootAudio.autoplay=true;
+    bootAudio.loop=true;
+    bootAudio.volume=1;
+    try{bootAudio.setAttribute('playsinline','')}catch(e){}
+    return bootAudio
+  }
+  function installBootAudioUnlock(){
+    if(bootHidden||bootAudioUnlockCleanup)return;
+    var events=['pointerdown','touchstart','keydown'];
+    function resume(){
+      clearBootAudioUnlock();
+      if(bootHidden)return;
+      var audio=getBootAudio(),play;
+      try{play=audio.play()}catch(e){return}
+      if(play&&typeof play.catch==='function')play.catch(function(){})
+    }
+    bootAudioUnlockCleanup=function(){events.forEach(function(name){window.removeEventListener(name,resume,true)})};
+    events.forEach(function(name){window.addEventListener(name,resume,true)})
+  }
+  function startBootAudioUrl(value){
+    var url=cleanBootAudioUrl(value);
+    if(bootHidden||!url)return Promise.resolve(false);
+    var audio=getBootAudio();
+    var current=String(audio.getAttribute('src')||'').trim();
+    if(current!==url){
+      clearBootAudioUnlock();
+      try{audio.pause()}catch(e){}
+      audio.src=url;
+      try{audio.load()}catch(e){}
+    }
+    try{audio.volume=1}catch(e){}
+    var play;
+    try{play=audio.play()}catch(e){installBootAudioUnlock();return Promise.resolve(false)}
+    if(play&&typeof play.then==='function')return play.then(function(){clearBootAudioUnlock();return true}).catch(function(){installBootAudioUnlock();return false});
+    return Promise.resolve(!audio.paused)
+  }
+  function fadeOutBootAudio(ms){
+    clearBootAudioUnlock();
+    var audio=bootAudio;
+    if(!audio)return;
+    if(bootAudioFadeFrame){try{cancelAnimationFrame(bootAudioFadeFrame)}catch(e){}bootAudioFadeFrame=0}
+    var from=Number(audio.volume);if(!isFinite(from)||from<0)from=1;
+    var duration=Math.max(300,Number(ms)||1200);
+    var started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
+    function frame(now){
+      var current=typeof now==='number'?now:Date.now();
+      var progress=Math.max(0,Math.min(1,(current-started)/duration));
+      try{audio.volume=Math.max(0,from*(1-progress))}catch(e){}
+      if(progress<1){bootAudioFadeFrame=requestAnimationFrame(frame);return}
+      bootAudioFadeFrame=0;
+      try{audio.volume=0;audio.pause()}catch(e){}
+    }
+    bootAudioFadeFrame=requestAnimationFrame(frame)
+  }
+  function stopBootAudio(){
+    clearBootAudioUnlock();
+    if(bootAudioFadeFrame){try{cancelAnimationFrame(bootAudioFadeFrame)}catch(e){}bootAudioFadeFrame=0}
+    if(!bootAudio)return;
+    try{bootAudio.pause();bootAudio.volume=0}catch(e){}
+  }
+  function hide(){if(bootHidden)return;bootHidden=true;setBootProgress(100);fadeOutBootAudio(1200);var boot=bootNode();if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
   function settle(promise,ms,fallback){
     return new Promise(function(resolve){
       var done=false,timer=setTimeout(function(){finish(fallback)},ms);
@@ -163,6 +232,10 @@ export const BOOT_LOADER_SCRIPT = `
     var url=String(value||'').trim();
     return !url||url==='none'||url.indexOf('data:image/')===0?'':url
   }
+  function cleanBootAudioUrl(value){
+    var url=String(value||'').trim();
+    return !url||url==='none'?'':url
+  }
   function preloadUrlList(values){
     var seen={},jobs=[];
     (Array.isArray(values)?values:[]).forEach(function(value){
@@ -176,6 +249,8 @@ export const BOOT_LOADER_SCRIPT = `
   function preloadArrayUrls(j){return j&&Array.isArray(j.preload)?j.preload:[]}
   function cachedBootImageUrl(){try{return cleanGameImageUrl(localStorage.getItem(BOOT_IMAGE_URL_CACHE_KEY)||'')}catch(e){return ''}}
   function rememberBootImageUrl(url){try{if(url)localStorage.setItem(BOOT_IMAGE_URL_CACHE_KEY,url)}catch(e){}}
+  function cachedBootAudioUrl(){try{return cleanBootAudioUrl(localStorage.getItem(BOOT_AUDIO_URL_CACHE_KEY)||'')}catch(e){return ''}}
+  function rememberBootAudioUrl(url){try{if(url)localStorage.setItem(BOOT_AUDIO_URL_CACHE_KEY,url)}catch(e){}}
   function showBootImageUrl(url,ms){
     var img=bootImage();url=cleanGameImageUrl(url);
     if(!img||!url)return Promise.resolve(false);
@@ -195,6 +270,17 @@ export const BOOT_LOADER_SCRIPT = `
       rememberBootImageUrl(url);
       if(url===cached||url===initial)return first;
       return showBootImageUrl(url,6500)
+    },function(){return first})
+  }
+  function prepareBootAudio(){
+    var cached=cachedBootAudioUrl();
+    var first=cached?startBootAudioUrl(cached):Promise.resolve(false);
+    return startupManifestReady().then(function(manifest){
+      var url=cleanBootAudioUrl(manifest&&manifest.loadingAudioUrl);
+      if(!url)return first;
+      rememberBootAudioUrl(url);
+      if(url===cached)return first;
+      return first.then(function(){return startBootAudioUrl(url)})
     },function(){return first})
   }
   function ghostRunUrls(j){
@@ -248,6 +334,7 @@ export const BOOT_LOADER_SCRIPT = `
   }
 
   var bootImageReady=prepareBootImage();
+  prepareBootAudio();
 
   function headerAndHomeAssetsReady(){
     var jobs=[];
@@ -315,6 +402,7 @@ export const BOOT_LOADER_SCRIPT = `
     window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesGate]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){setBootProgress(100);requestAnimationFrame(function(){hide();resolve(true)})})})})
   }
   setBootProgress(0);
+  window.addEventListener('pagehide',stopBootAudio,{once:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
 })();
 `;
