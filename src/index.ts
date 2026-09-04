@@ -122,20 +122,6 @@ app.get('/app/api/credit-icon.png', async (c) => {
   return new Response(FALLBACK_PNG, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } });
 });
 
-app.get('/app/api/home-lottery-slot-meta', async (c) => {
-  const image = await c.env.ASSETS.head(HOME_LOTTERY_SLOT_KEY).catch(() => null);
-  const version = String(image?.customMetadata?.version || image?.uploaded?.getTime?.() || '1');
-  return c.json(
-    {
-      ok: true,
-      hasImage: Boolean(image),
-      version,
-      url: image ? `/app/api/home-lottery-slot.png?v=${encodeURIComponent(version)}` : null,
-    },
-    200,
-    { 'cache-control': 'no-store' },
-  );
-});
 app.get('/app/api/home-lottery-slot.png', async (c) => {
   const image = await c.env.ASSETS.get(HOME_LOTTERY_SLOT_KEY).catch(() => null);
   if (!image) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
