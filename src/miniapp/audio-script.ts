@@ -54,7 +54,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
   function resumeContext(){
     var ctx=context();
     if(!ctx||ctx.state!=='suspended'||typeof ctx.resume!=='function')return Promise.resolve(true);
-    try{return Promise.resolve(ctx.resume()).then(function(){return true},function(){return false})}catch(e){return Promise.resolve(false)}
+    try{return Promise.resolve(ctx.resume()).then(function(){return ctx.state==='running'},function(){return false})}catch(e){return Promise.resolve(false)}
   }
   function startState(state,options){
     if(!state||!state.audio)return Promise.resolve(false);
@@ -67,11 +67,17 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     if(gain){
       try{var ctx=context(),now=ctx?ctx.currentTime:0;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(1,now)}catch(e){try{gain.gain.value=1}catch(_e){}}
     }
-    resumeContext();
+    var contextReady=gain?resumeContext():Promise.resolve(true);
     var result;
     try{result=audio.play()}catch(e){if(options.retryOnGesture!==false)installUnlock(state);return Promise.resolve(false)}
-    if(result&&typeof result.then==='function')return result.then(function(){clearUnlock(state);return true}).catch(function(){if(options.retryOnGesture!==false)installUnlock(state);return false});
-    return Promise.resolve(!audio.paused)
+    var playbackReady=result&&typeof result.then==='function'
+      ? result.then(function(){return true},function(){return false})
+      : Promise.resolve(!audio.paused);
+    return Promise.all([playbackReady,contextReady]).then(function(values){
+      var ok=!!values[0]&&!!values[1];
+      if(ok)clearUnlock(state);else if(options.retryOnGesture!==false)installUnlock(state);
+      return ok
+    })
   }
   function installUnlock(state){
     if(!state||state.unlockCleanup||!state.autoResume)return;
