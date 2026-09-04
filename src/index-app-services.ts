@@ -25,8 +25,8 @@ const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 type MiniappAudioTarget = 'dice' | 'wallet-credit' | 'loading';
 
 const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
-  home: ['global-loading', 'home'],
-  startup: ['global-loading', 'home'],
+  home: ['home'],
+  startup: ['home'],
   playzone: ['playzone', 'mines', 'plinko', 'crash', 'slot', 'coinflip', 'hilo', 'ghostrun'],
   mines: ['mines'],
   plinko: ['plinko'],
@@ -94,12 +94,6 @@ app.get('/app/api/section-background/:section', async (c) => {
   try {
     const section = cleanSectionId(c.req.param('section').replace(/\.png$/i, ''));
     const key = sectionBackgroundR2Key(section);
-    if (section === 'global-loading' && !c.req.query('v')) {
-      const head = await c.env.ASSETS.head(key).catch(() => null);
-      if (!head) return c.text('Not found', 404, { 'cache-control': 'no-store' });
-      const versioned = new URL(`/app/api/section-background/global-loading.png?v=${encodeURIComponent(assetVersion(head))}`, c.req.url);
-      return new Response(null, { status: 302, headers: { location: versioned.toString(), 'cache-control': 'no-store' } });
-    }
     return getAssetResponse(c.env, key, null, { cacheControl: c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : 'no-store' });
   } catch {
     return c.text('Not found', 404, { 'cache-control': 'no-store' });
@@ -110,8 +104,7 @@ app.get('/app/api/uploaded-images', async (c) => {
   const scopedSections = context ? UPLOADED_IMAGE_CONTEXT_SECTIONS[context] : null;
   const assetScope = new Set(context ? UPLOADED_IMAGE_CONTEXT_ASSETS[context] : uploadedImageAssetScopeForSections(scopedSections));
   const head = (enabled: boolean, key: string) => enabled ? c.env.ASSETS.head(key).catch(() => null) : Promise.resolve(null);
-  const [loadingHead, loadingAudioHead, creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
-    head(Boolean(scopedSections?.includes('global-loading')), sectionBackgroundR2Key('global-loading')),
+  const [loadingAudioHead, creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
     head(context === 'startup', LOADING_AUDIO_KEY),
     head(assetScope.has('credit'), 'credit-icon'),
     head(assetScope.has('ton'), 'ton-icon'),
@@ -119,15 +112,14 @@ app.get('/app/api/uploaded-images', async (c) => {
     head(assetScope.has('mines'), 'mines-tile/safe'),
     head(assetScope.has('mines'), 'mines-tile/bomb'),
   ]);
-  const loadingImageUrl = loadingHead ? `/app/api/section-background/global-loading.png?v=${assetVersion(loadingHead)}` : null;
   const loadingAudioUrl = loadingAudioHead ? `/app/api/miniapp-audio-file?target=loading&v=${assetVersion(loadingAudioHead)}` : null;
   const creditIconUrl = assetScope.has('credit') ? `/app/api/credit-icon.png?v=${assetVersion(creditHead)}` : null;
   const tonIconUrl = assetScope.has('ton') ? (tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl) : null;
   const plinkoBallUrl = assetScope.has('plinko') ? (plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl) : null;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
-  const preload = [loadingImageUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl].filter(Boolean);
-  return c.json({ loadingImageUrl, loadingAudioUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  const preload = [creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl].filter(Boolean);
+  return c.json({ loadingAudioUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
