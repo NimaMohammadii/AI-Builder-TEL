@@ -203,7 +203,7 @@ export function miniAppShellHtml(): string {
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
     .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
-    .predict-live-badge{display:none;align-items:center;justify-content:center;gap:6px;height:24px;padding:0 9px;background:transparent;border:0;box-shadow:none;color:#b31332;font-family:"SF Pro Rounded","SF Pro Text","Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:10px;font-weight:760;line-height:1;letter-spacing:.045em;white-space:nowrap;pointer-events:none;transform:translateY(-1px)}
+    .predict-live-badge{display:none;align-items:center;justify-content:center;gap:6px;height:24px;padding:0 9px;background:transparent;border:0;box-shadow:none;color:#b31332;font-family:"SF Pro Rounded","SF Pro Text","Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:20px;font-weight:760;line-height:1;letter-spacing:.045em;white-space:nowrap;pointer-events:none;transform:translate(-4px,-1px)}
     body:has(#predictzone.active) .predict-live-badge{display:inline-flex}
     .predict-live-dot{position:relative;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#b31332}
     .predict-live-dot::after{content:"";position:absolute;inset:-3px;border:1px solid rgba(179,19,50,.38);border-radius:50%;animation:vexaPredictLivePulse 1.7s ease-out infinite}
