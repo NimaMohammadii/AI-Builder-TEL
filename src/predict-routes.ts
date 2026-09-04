@@ -11,7 +11,7 @@ const PREDICT_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const TRADE_MARKETS = ['bitcoin', 'gold', 'oil'] as const;
 const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
-const MONTH_ROUND_MS = 30 * 24 * 60 * 60 * 1000;
+const MONTH_BET_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
@@ -53,7 +53,7 @@ app.post('/app/api/predict-bet', async (c) => {
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
-    if (Date.now() >= Date.parse(round.ends_at) - LOCK_MS) throw new Error('This round is locked. Wait for the next round.');
+    if (Date.now() >= betLockAtMs(round)) throw new Error('This prediction is closed. Wait for the next round.');
     await ensurePredictTables(c.env);
 
     let existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
@@ -130,7 +130,8 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePr
   const userControls = cleanedUserId ? await getUserControls(env, cleanedUserId) : null;
   const now = Date.now();
   const ends = Date.parse(String(round.ends_at || ''));
-  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), livePrice: Number(livePrice) > 0 ? Number(livePrice) : null, endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= ends - LOCK_MS && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, ends - LOCK_MS - now), pools, userBets, recentUserBets } };
+  const lockAt = betLockAtMs(round);
+  return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), livePrice: Number(livePrice) > 0 ? Number(livePrice) : null, endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= lockAt && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, lockAt - now), pools, userBets, recentUserBets } };
 }
 async function ensurePredictTables(env: Env): Promise<void> {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (id TEXT PRIMARY KEY, market TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, start_price REAL NOT NULL, end_price REAL, status TEXT NOT NULL DEFAULT 'open', result TEXT, settled_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
@@ -142,35 +143,52 @@ async function ensurePredictTables(env: Env): Promise<void> {
 async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPrice = 0): Promise<RoundRow> {
   await ensurePredictTables(env);
   const now = Date.now();
-  const roundMs = roundMsForMarket(market);
-  let existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
-  if (existing && market !== 'bitcoin') {
-    const existingDuration = Date.parse(existing.ends_at) - Date.parse(existing.starts_at);
-    if (Math.abs(existingDuration - roundMs) > 1000) {
-      const betCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status != 'failed'").bind(existing.id).first<{ count: number }>();
-      if (Number(betCount?.count || 0) <= 0) {
-        await env.DB.prepare('DELETE FROM predict_rounds WHERE id = ?').bind(existing.id).run();
-        existing = null;
-      }
+  if (market === 'bitcoin') {
+    let existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
+    if (existing) {
+      if (Number(existing.start_price) > 0) return existing;
+      const repairedPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+      await env.DB.prepare('UPDATE predict_rounds SET start_price = ? WHERE id = ?').bind(repairedPrice, existing.id).run();
+      const repaired = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(existing.id).first<RoundRow>();
+      if (!repaired) throw new Error('Could not repair prediction round');
+      return repaired;
     }
+    const startMs = Math.floor(now / ROUND_MS) * ROUND_MS;
+    const startsAt = new Date(startMs).toISOString();
+    const endsAt = new Date(startMs + ROUND_MS).toISOString();
+    const id = `pr_${market}_${startMs}`;
+    const startPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+    await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
+    const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
+    if (!row) throw new Error('Could not create prediction round');
+    return row;
   }
+
+  const window = calendarMonthWindow(now);
+  const startsAt = new Date(window.startMs).toISOString();
+  const endsAt = new Date(window.endMs).toISOString();
+  let existing = await env.DB.prepare('SELECT * FROM predict_rounds WHERE market = ? AND starts_at = ? AND ends_at = ? LIMIT 1').bind(market, startsAt, endsAt).first<RoundRow>();
   if (existing) {
     if (Number(existing.start_price) > 0) return existing;
-    const repairedPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+    const repairedPrice = await fetchMonthlyBoundaryPrice(market, window.startMs, 'start');
     await env.DB.prepare('UPDATE predict_rounds SET start_price = ? WHERE id = ?').bind(repairedPrice, existing.id).run();
     const repaired = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(existing.id).first<RoundRow>();
-    if (!repaired) throw new Error('Could not repair prediction round');
+    if (!repaired) throw new Error('Could not repair monthly prediction round');
     return repaired;
   }
-  const startMs = Math.floor(now / ROUND_MS) * ROUND_MS;
-  const startsAt = new Date(startMs).toISOString();
-  const endsAt = new Date(startMs + roundMs).toISOString();
-  const id = `pr_${market}_${startMs}`;
-  const startPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+
+  const legacy = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
+  if (legacy) {
+    const betCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status != 'failed'").bind(legacy.id).first<{ count: number }>();
+    if (Number(betCount?.count || 0) <= 0) await env.DB.prepare('DELETE FROM predict_rounds WHERE id = ?').bind(legacy.id).run();
+  }
+
+  const id = `pr_${market}_${window.startMs}`;
+  const startPrice = await fetchMonthlyBoundaryPrice(market, window.startMs, 'start');
   await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
-  const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
-  if (!row) throw new Error('Could not create prediction round');
-  return row;
+  existing = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
+  if (!existing) throw new Error('Could not create monthly prediction round');
+  return existing;
 }
 async function settleDueRounds(env: Env, market: TradeMarket, force = false): Promise<number> {
   await ensurePredictTables(env);
@@ -189,7 +207,8 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const freshId = cleanDbText(fresh.id, 'Prediction round is not ready');
   const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
   if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
-  const endPrice = fresh.end_price == null ? await fetchPrice(normalizeTradeMarket(fresh.market)) : Number(fresh.end_price);
+  const market = normalizeTradeMarket(fresh.market);
+  const endPrice = fresh.end_price == null ? (market === 'bitcoin' ? await fetchPrice(market) : await fetchMonthlyBoundaryPrice(market, Date.parse(fresh.ends_at), 'end')) : Number(fresh.end_price);
   const result: RoundResult = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
   const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status != 'settled'`).bind(endPrice, result, freshId).run();
   if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
@@ -253,6 +272,16 @@ async function fetchPrice(market: TradeMarket): Promise<number> {
   const data = await res.json() as { markPrice?: string };
   return cleanPrice(data.markPrice);
 }
+async function fetchMonthlyBoundaryPrice(market: TradeMarket, boundaryMs: number, boundary: 'start' | 'end'): Promise<number> {
+  const symbol = marketSymbol(market);
+  const timeQuery = boundary === 'start' ? `startTime=${Math.floor(boundaryMs)}` : `endTime=${Math.floor(boundaryMs - 1)}`;
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/markPriceKlines?symbol=${symbol}&interval=1m&${timeQuery}&limit=1`, { cf: { cacheTtl: 60, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster monthly boundary price failed: HTTP ${res.status}`);
+  const rows = await res.json() as unknown;
+  if (!Array.isArray(rows) || !rows.length || !Array.isArray(rows[0])) throw new Error('Monthly boundary price is unavailable');
+  const row = rows[0] as unknown[];
+  return cleanPrice(boundary === 'start' ? row[1] : row[4]);
+}
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
@@ -278,7 +307,18 @@ function normalizeTradeMarket(value: string): TradeMarket {
   if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
   throw new Error('Invalid predict market');
 }
-function roundMsForMarket(market: TradeMarket): number { return market === 'bitcoin' ? ROUND_MS : MONTH_ROUND_MS; }
+function calendarMonthWindow(now: number): { startMs: number; endMs: number } {
+  const date = new Date(now);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  return { startMs: Date.UTC(year, month, 1), endMs: Date.UTC(year, month + 1, 1) };
+}
+function betLockAtMs(round: RoundRow): number {
+  const starts = Date.parse(String(round.starts_at || ''));
+  const ends = Date.parse(String(round.ends_at || ''));
+  if (!Number.isFinite(starts) || !Number.isFinite(ends)) return 0;
+  return String(round.market || '') === 'bitcoin' ? Math.max(starts, ends - LOCK_MS) : Math.min(ends, starts + MONTH_BET_WINDOW_MS);
+}
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }
