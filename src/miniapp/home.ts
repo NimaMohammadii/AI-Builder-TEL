@@ -1,4 +1,4 @@
-export const HOME_STYLES = `
+const HOME_BASE_STYLES = `
 html body:has(#home.active){
   isolation:isolate!important;
   background:#000!important;
@@ -331,7 +331,57 @@ html body:has(#home.active) header.top{
 #home .home-lottery-winner-name{min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;font-size:9.5px!important;font-weight:900!important;line-height:1.08!important}
 #home .home-lottery-winner-amount{align-self:center!important;color:rgba(255,255,255,.34)!important;font-size:7.5px!important;font-weight:800!important;white-space:nowrap!important;margin-left:2px!important}
 #home .home-lottery-winners-empty{height:100%!important;display:grid!important;place-items:center!important;text-align:center!important;color:rgba(255,255,255,.34)!important;font-size:9px!important;font-weight:760!important;line-height:1.3!important;padding:0 12px!important;box-sizing:border-box!important}
-`
+`;
+
+const HOME_MARKUP_STYLES = [
+  '#home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:calc(98px + env(safe-area-inset-bottom))!important;background:transparent!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}',
+  '#homeLuckyCodeSection{display:block!important;padding:0!important;margin:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}',
+  'body:has(#home.active) #home{overflow-y:auto!important;overflow-x:hidden!important}',
+  '.home-lucky-card{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible!important}',
+  '.home-lucky-head{display:none!important}',
+  '#home .home-lottery-slot-card{width:100%!important;height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;overflow:hidden!important;padding:0!important;position:relative!important;box-sizing:border-box!important}',
+  '#home .home-lottery-slot-card:before,#home .home-lottery-slot-card:after{display:none!important;content:none!important}',
+  '#home .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;box-shadow:none!important;opacity:1!important}',
+  '#home .home-slot-number-grid{position:absolute!important;inset:0!important;z-index:2!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;padding:7px 8px!important;box-sizing:border-box!important;pointer-events:none!important}',
+  '#home .home-slot-number-reel{position:relative!important;display:block!important;border-radius:17px!important;overflow:hidden!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+  '#home .home-slot-number-reel:before{display:none!important;content:none!important}',
+  '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:40px!important;will-change:transform!important;transition:none!important}',
+  '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1.2px)!important}',
+  '#home .home-slot-number-digit{height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:34px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.065em!important;text-shadow:0 1px 0 rgba(255,255,255,.32),0 0 16px rgba(255,86,137,.54),0 12px 26px rgba(0,0,0,.54)!important;font-variant-numeric:tabular-nums!important;background:linear-gradient(180deg,#fff 0%,#ffe9f1 42%,#d85a7a 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}',
+  '.home-ticket-layout{margin-top:14px!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;align-items:stretch!important}',
+  '.home-ticket-finance-visual{min-height:154px!important;height:100%!important;position:relative!important;display:grid!important;place-items:center!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;pointer-events:none!important}',
+  '.home-ticket-drawer-backdrop{position:fixed!important;inset:0!important;z-index:99994!important;background:transparent!important;display:none!important}.home-ticket-drawer-backdrop.is-open{display:block!important}',
+  '.home-ticket-drawer{position:fixed!important;left:0!important;top:calc(120px + env(safe-area-inset-top))!important;bottom:calc(88px + env(safe-area-inset-bottom))!important;width:min(44vw,210px)!important;max-width:210px!important;z-index:99995!important;padding:24px 14px 14px!important;border-radius:0 30px 30px 0!important;color:#fff!important;transform:translate3d(-104%,0,0)!important;transition:transform .36s cubic-bezier(.18,.88,.24,1)!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;gap:14px!important;overflow:hidden!important}.home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}',
+  '.home-ticket-drawer-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}.home-ticket-drawer-head strong{font-size:16px!important;font-weight:950!important}.home-ticket-drawer-close{width:32px!important;height:32px!important;border-radius:13px!important;border:0!important;background:rgba(255,255,255,.07)!important;color:#fff!important;font-size:18px!important}',
+  '.home-ticket-drawer-count{height:54px!important;border-radius:20px!important;background:rgba(0,0,0,.16)!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:20px!important;font-weight:950!important}.home-ticket-list{min-height:0!important;display:grid!important;align-content:start!important;gap:8px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:0 0 8px!important}.home-ticket-list::-webkit-scrollbar{display:none!important}.home-ticket-list-item{height:38px!important;border-radius:16px!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 10px!important;font-size:12px!important;font-weight:850!important}.home-ticket-list-item span{color:rgba(255,255,255,.54)!important;font-size:11px!important}'
+].join('');
+
+const HOME_SLOT_STYLES = [
+  'body:has(#home.active) #home, #home.view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important}#home .home-bonus-list,#home .home-ticket-drawer,#home .home-ticket-list,.home-bonus-list,.home-ticket-drawer{touch-action:pan-y!important;overscroll-behavior:contain!important}',
+  '#home .home-lottery-slot-card{pointer-events:auto!important}',
+  '#home .home-slot-number-reel{margin:5px 13px 6px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;pointer-events:auto!important}',
+  '#home .home-slot-number-reel:first-child{transform:translateX(1px)!important}',
+  '#home .home-slot-number-reel:nth-child(2){transform:translateX(0px)!important}',
+  '#home .home-slot-number-reel:nth-child(4){transform:translateX(-2px)!important}',
+  '#home .home-slot-number-reel:last-child{transform:translateX(-3px)!important}',
+  '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important;pointer-events:none!important}',
+  '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1px)!important}',
+  '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:31px!important;font-weight:900!important;letter-spacing:-.045em!important;color:transparent!important;background:linear-gradient(180deg,#fff2f4 0%,#d48994 18%,#7f182b 46%,#3b0711 72%,#b94a5d 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:.35px rgba(255,205,215,.34)!important;text-shadow:0 1px 0 rgba(255,210,218,.22),0 2px 2px rgba(0,0,0,.74),0 0 12px rgba(115,10,30,.34),0 10px 20px rgba(0,0,0,.64)!important;filter:drop-shadow(0 0 7px rgba(110,7,25,.22))!important}',
+  '#home .home-draw-info-card{height:68px!important;margin:0 0 12px!important;border-radius:28px!important;padding:9px 12px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;box-sizing:border-box!important}',
+  '#home .home-draw-main{min-width:0!important;flex:1 1 auto!important;display:flex!important;align-items:center!important;gap:9px!important;overflow:hidden!important}#home .home-draw-copy{min-width:98px!important;flex:0 1 106px!important;padding-left:5px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;white-space:nowrap!important;overflow:visible!important}.home-draw-label,.home-prize-label{color:rgba(255,255,255,.54)!important;font-size:10px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.01em!important;text-transform:none!important;transform:translateY(-2px)!important}.home-draw-time{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;color:transparent!important;background:linear-gradient(180deg,#ffffff 0%,#ffffff 26%,#d9d9dd 58%,#ffffff 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:.045em!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important;text-shadow:0 1px 0 rgba(255,255,255,.12),0 2px 2px rgba(0,0,0,.62)!important;filter:none!important}',
+  '#home .home-draw-divider{width:1px!important;height:36px!important;flex:0 0 1px!important;transform:translateX(3px)!important;border-radius:999px!important;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.20),rgba(255,255,255,.03))!important;box-shadow:0 0 10px rgba(255,255,255,.025)!important}.home-prize-copy{min-width:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;overflow:hidden!important}.home-prize-value{min-width:0!important;display:flex!important;align-items:center!important;gap:0!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:0!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important}.home-prize-value [data-prize-pool]{color:transparent!important;background:linear-gradient(180deg,#9b455d 0%,#741c36 26%,#4b0b20 58%,#7d263f 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;text-shadow:0 1px 0 rgba(164,59,89,.18),0 2px 2px rgba(0,0,0,.66)!important;filter:none!important}.home-prize-icon{width:26px!important;height:26px!important;flex:0 0 26px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}.home-prize-icon img{width:26px!important;height:26px!important;object-fit:contain!important;transform:translateY(.5px)!important}',
+  '#home .home-draw-actions{display:flex!important;align-items:center!important;gap:7px!important;flex:0 0 auto!important}.home-draw-actions .home-ticket-image-button{height:38px!important;min-width:88px!important;padding:0 12px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.home-bonus-button{width:38px!important;height:38px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;display:grid!important;place-items:center!important;padding:0!important;position:relative!important;overflow:hidden!important}.home-bonus-svg{width:27px!important;height:27px!important;display:block!important;fill:none!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.28))!important;transform-origin:center!important}.home-bonus-svg path,.home-bonus-svg rect{stroke:currentColor!important}.home-bonus-bow{transform-box:fill-box!important;transform-origin:bottom center!important}.home-bonus-button.home-action-pop{animation:none!important}.home-bonus-button.home-action-pop .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button.home-action-pop .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}@media(hover:hover){.home-bonus-button:hover .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button:hover .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}}@keyframes homeGiftShake{0%{transform:rotate(0)}18%{transform:rotate(-7deg)}38%{transform:rotate(6deg)}58%{transform:rotate(-4deg)}78%{transform:rotate(3deg)}100%{transform:rotate(0)}}@keyframes homeGiftBow{0%{transform:scale(1)}31%{transform:scale(1.18)}50%{transform:scale(.96)}69%{transform:scale(1.06)}100%{transform:scale(1)}}.home-action-pop{animation:homeActionPop .42s cubic-bezier(.18,.9,.22,1.25)!important;transform-origin:center!important}@keyframes homeActionPop{0%{transform:scale(1)}34%{transform:scale(.9) translateY(1px)}68%{transform:scale(1.07) translateY(-1px)}100%{transform:scale(1)}}',
+  '.home-bonus-backdrop{position:fixed!important;inset:0!important;z-index:99994!important;background:rgba(0,0,0,.24)!important;opacity:0!important;visibility:hidden!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;transition:opacity .24s ease,visibility 0s linear .24s!important}.home-bonus-backdrop.is-open{opacity:1!important;visibility:visible!important;transition:opacity .24s ease!important}.home-bonus-panel{position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:99995!important;max-height:min(72dvh,620px)!important;padding:10px 16px calc(18px + env(safe-area-inset-bottom))!important;border-radius:34px 34px 0 0!important;background:rgba(14,10,12,.92)!important;color:#fff!important;box-shadow:0 -18px 54px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.12)!important;backdrop-filter:blur(18px) saturate(1.12)!important;-webkit-backdrop-filter:blur(18px) saturate(1.12)!important;transform:translate3d(0,105%,0)!important;transition:transform .34s cubic-bezier(.2,.9,.26,1)!important;display:grid!important;grid-template-rows:auto auto auto minmax(0,1fr)!important;gap:12px!important;overflow:hidden!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Inter","Segoe UI",sans-serif!important;letter-spacing:-.018em!important}.home-bonus-panel.is-open{transform:translate3d(0,0,0)!important}.home-bonus-grab{width:36px!important;height:4px!important;margin:0 auto 2px!important;border-radius:999px!important;background:rgba(255,255,255,.20)!important}.home-bonus-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}.home-bonus-title{display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important}.home-bonus-title svg{width:22px!important;height:22px!important;color:#e9a6b6!important;flex:0 0 auto!important}.home-bonus-head strong{font-family:inherit!important;font-size:18px!important;font-weight:800!important;letter-spacing:-.035em!important;line-height:1!important}.home-bonus-close{width:34px!important;height:34px!important;min-width:34px!important;border-radius:999px!important;border:0!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:grid!important;place-items:center!important;padding:0!important;box-sizing:border-box!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.085),inset 0 -1px 0 rgba(255,255,255,.055),0 16px 34px rgba(0,0,0,.28)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;font-family:inherit!important;font-size:24px!important;font-weight:900!important;line-height:1!important;text-align:center!important;-webkit-tap-highlight-color:transparent!important;transition:transform .18s ease,background .18s ease!important}.home-bonus-close:active{transform:scale(.92)!important}.home-bonus-next{position:relative!important;overflow:hidden!important;min-height:48px!important;display:grid!important;grid-template-columns:26px minmax(0,1fr)!important;gap:7px!important;align-items:center!important;padding:0 10px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-sizing:border-box!important;box-shadow:inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}.home-bonus-next>svg{width:26px!important;height:26px!important;padding:4px!important;box-sizing:border-box!important;border-radius:50%!important;background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.82)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)!important}.home-bonus-guide-icon svg{width:20px!important;height:20px!important;color:#e9a6b6!important}.home-bonus-next span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:11px!important;font-weight:700!important;line-height:1.25!important}.home-bonus-guide-copy span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:700!important;line-height:1.25!important}.home-bonus-next b{display:block!important;margin-top:2px!important;color:#fff!important;font-size:13px!important;font-weight:800!important;line-height:1.15!important}.home-bonus-guide{display:grid!important;gap:8px!important}.home-bonus-guide-row{display:grid!important;grid-template-columns:24px minmax(0,1fr)!important;gap:9px!important;align-items:start!important}.home-bonus-guide-icon{padding-top:1px!important}.home-bonus-guide-copy b{display:block!important;margin-bottom:2px!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important}.home-bonus-list{min-height:0!important;display:grid!important;grid-auto-rows:48px!important;align-content:start!important;gap:7px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:2px 0 4px!important}.home-bonus-list::-webkit-scrollbar{display:none!important}.home-bonus-row{position:relative!important;overflow:hidden!important;height:48px!important;min-height:48px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-shadow:inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;color:#fff!important;display:grid!important;grid-template-columns:26px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}.home-bonus-rank-avatar{width:26px!important;height:26px!important;border-radius:50%!important;display:grid!important;place-items:center!important;overflow:hidden!important;background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.82)!important;font-size:10.5px!important;font-weight:800!important;line-height:1!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)!important}.home-bonus-row .home-live-winner-user{min-width:0!important;display:flex!important;align-items:center!important}.home-bonus-row .home-live-winner-user span{display:block!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.08!important}.home-bonus-row .home-live-winner-amount{color:rgba(255,255,255,.34)!important;font-size:12px!important;font-weight:750!important;white-space:nowrap!important}.home-bonus-prize-amount{display:inline-flex!important;align-items:center!important;gap:2px!important}.home-bonus-prize-icon{width:20px!important;height:20px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 20px!important}.home-bonus-prize-icon img{width:20px!important;height:20px!important;display:block!important;object-fit:contain!important}',
+  '.home-ticket-drawer{background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}',
+  '.home-ticket-drawer-count{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
+  '.home-ticket-list-item{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
+  '.vexa-confetti-layer{position:fixed!important;inset:0!important;z-index:999999!important;pointer-events:none!important;overflow:hidden!important;opacity:1!important;transition:opacity 420ms ease!important}',
+  '.vexa-confetti-layer.is-ending{opacity:0!important}',
+  '.vexa-confetti-piece{position:absolute!important;top:var(--y)!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:.94;transform-origin:center!important;animation:vexaConfettiFall 6000ms linear 0ms forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
+  '@keyframes vexaConfettiFall{0%{transform:translate3d(0,-42px,0) rotate(0deg)}78%{transform:translate3d(var(--ex),172vh,0) rotate(var(--r3))}100%{transform:translate3d(var(--ex),230vh,0) rotate(var(--r3))}}'
+].join('');
+
+export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STYLES;
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
 export const HOME_SECTION = `<section id="home" class="view active"></section>`;
@@ -339,7 +389,6 @@ export const HOME_SECTION = `<section id="home" class="view active"></section>`;
 const HOME_MARKUP_SCRIPT = `
 (function(){
   function q(s,r){return (r||document).querySelector(s)}
-  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
   function lotteryText(key){
     var all=window.__vexaLotteryTexts||{},tg=window.Telegram&&window.Telegram.WebApp,user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user||{},code=String(user.language_code||navigator.language||'en').replace('_','-');
     var aliases={pt:'pt-BR','pt-PT':'pt-BR',zh:'zh-Hant','zh-TW':'zh-Hant','zh-HK':'zh-Hant','zh-MO':'zh-Hant'};
@@ -348,33 +397,6 @@ const HOME_MARKUP_SCRIPT = `
     return String((all[locale]&&all[locale][key])||(all.en&&all.en[key])||'');
   }
   window.VexaLotteryText=lotteryText;
-  function css(){
-    var old=q('#homeLuckyCodeStyle');if(old)old.outerHTML='';
-    var st=document.createElement('style');st.id='homeLuckyCodeStyle';
-    st.textContent=[
-      '#home{overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:calc(98px + env(safe-area-inset-bottom))!important;background:transparent!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}',
-      '#homeLuckyCodeSection{display:block!important;padding:0!important;margin:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}',
-      'body:has(#home.active) #home{overflow-y:auto!important;overflow-x:hidden!important}',
-      '.home-lucky-card{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible!important}',
-      '.home-lucky-head{display:none!important}',
-      '#home .home-lottery-slot-card{width:100%!important;height:88px!important;min-height:88px!important;max-height:88px!important;margin:0 0 10px!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;overflow:hidden!important;padding:0!important;position:relative!important;box-sizing:border-box!important}',
-      '#home .home-lottery-slot-card:before,#home .home-lottery-slot-card:after{display:none!important;content:none!important}',
-      '#home .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;box-shadow:none!important;opacity:1!important}',
-      '#home .home-slot-number-grid{position:absolute!important;inset:0!important;z-index:2!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;padding:7px 8px!important;box-sizing:border-box!important;pointer-events:none!important}',
-      '#home .home-slot-number-reel{position:relative!important;display:block!important;border-radius:17px!important;overflow:hidden!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
-      '#home .home-slot-number-reel:before{display:none!important;content:none!important}',
-      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:40px!important;will-change:transform!important;transition:none!important}',
-      '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1.2px)!important}',
-      '#home .home-slot-number-digit{height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:34px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.065em!important;text-shadow:0 1px 0 rgba(255,255,255,.32),0 0 16px rgba(255,86,137,.54),0 12px 26px rgba(0,0,0,.54)!important;font-variant-numeric:tabular-nums!important;background:linear-gradient(180deg,#fff 0%,#ffe9f1 42%,#d85a7a 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}',
-      '.home-ticket-layout{margin-top:14px!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;align-items:stretch!important}',
-      '.home-ticket-finance-visual{min-height:154px!important;height:100%!important;position:relative!important;display:grid!important;place-items:center!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;pointer-events:none!important}',
-      '.home-ticket-drawer-backdrop{position:fixed!important;inset:0!important;z-index:99994!important;background:transparent!important;display:none!important}.home-ticket-drawer-backdrop.is-open{display:block!important}',
-      '.home-ticket-drawer{position:fixed!important;left:0!important;top:calc(120px + env(safe-area-inset-top))!important;bottom:calc(88px + env(safe-area-inset-bottom))!important;width:min(44vw,210px)!important;max-width:210px!important;z-index:99995!important;padding:24px 14px 14px!important;border-radius:0 30px 30px 0!important;color:#fff!important;transform:translate3d(-104%,0,0)!important;transition:transform .36s cubic-bezier(.18,.88,.24,1)!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;gap:14px!important;overflow:hidden!important}.home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}',
-      '.home-ticket-drawer-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}.home-ticket-drawer-head strong{font-size:16px!important;font-weight:950!important}.home-ticket-drawer-close{width:32px!important;height:32px!important;border-radius:13px!important;border:0!important;background:rgba(255,255,255,.07)!important;color:#fff!important;font-size:18px!important}',
-      '.home-ticket-drawer-count{height:54px!important;border-radius:20px!important;background:rgba(0,0,0,.16)!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:20px!important;font-weight:950!important}.home-ticket-list{min-height:0!important;display:grid!important;align-content:start!important;gap:8px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:0 0 8px!important}.home-ticket-list::-webkit-scrollbar{display:none!important}.home-ticket-list-item{height:38px!important;border-radius:16px!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 10px!important;font-size:12px!important;font-weight:850!important}.home-ticket-list-item span{color:rgba(255,255,255,.54)!important;font-size:11px!important}'
-    ].join('');
-    document.head.appendChild(st);
-  }
   function reelY(index){return 'translate3d(0,-'+((index*40)+20)+'px,0)'}
   function reelDigitsHtml(){var html='';for(var cycle=0;cycle<4;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
   function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=0;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
@@ -399,7 +421,7 @@ const HOME_MARKUP_SCRIPT = `
     sec.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeTicketImageButton'){e.preventDefault();setDrawer(true,sec)}},true);
     document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeTicketDrawerClose'){e.preventDefault();setDrawer(false,sec);return}if(t&&t.id==='homeTicketDrawerBackdrop'){e.preventDefault();setDrawer(false,sec)}},true);
   }
-  function init(){css();var sec=build();if(sec)bind(sec)}
+  function init(){var sec=build();if(sec)bind(sec)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 `;
@@ -412,35 +434,6 @@ const HOME_SLOT_SCRIPT = `
   function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
   function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
   function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
-  function tune(){
-    if(q('#homeSlotTuningStyle'))return;
-    var st=document.createElement('style');st.id='homeSlotTuningStyle';
-    st.textContent=[
-      'body:has(#home.active) #home, #home.view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important}#home .home-bonus-list,#home .home-ticket-drawer,#home .home-ticket-list,.home-bonus-list,.home-ticket-drawer{touch-action:pan-y!important;overscroll-behavior:contain!important}',
-      '#home .home-lottery-slot-card{pointer-events:auto!important}',
-      '#home .home-slot-number-reel{margin:5px 13px 6px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;pointer-events:auto!important}',
-      '#home .home-slot-number-reel:first-child{transform:translateX(1px)!important}',
-      '#home .home-slot-number-reel:nth-child(2){transform:translateX(0px)!important}',
-      '#home .home-slot-number-reel:nth-child(4){transform:translateX(-2px)!important}',
-      '#home .home-slot-number-reel:last-child{transform:translateX(-3px)!important}',
-      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important;pointer-events:none!important}',
-      '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1px)!important}',
-      '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:31px!important;font-weight:900!important;letter-spacing:-.045em!important;color:transparent!important;background:linear-gradient(180deg,#fff2f4 0%,#d48994 18%,#7f182b 46%,#3b0711 72%,#b94a5d 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:.35px rgba(255,205,215,.34)!important;text-shadow:0 1px 0 rgba(255,210,218,.22),0 2px 2px rgba(0,0,0,.74),0 0 12px rgba(115,10,30,.34),0 10px 20px rgba(0,0,0,.64)!important;filter:drop-shadow(0 0 7px rgba(110,7,25,.22))!important}',
-      '#home .home-draw-info-card{height:68px!important;margin:0 0 12px!important;border-radius:28px!important;padding:9px 12px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;box-sizing:border-box!important}',
-      '#home .home-draw-main{min-width:0!important;flex:1 1 auto!important;display:flex!important;align-items:center!important;gap:9px!important;overflow:hidden!important}#home .home-draw-copy{min-width:98px!important;flex:0 1 106px!important;padding-left:5px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;white-space:nowrap!important;overflow:visible!important}.home-draw-label,.home-prize-label{color:rgba(255,255,255,.54)!important;font-size:10px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.01em!important;text-transform:none!important;transform:translateY(-2px)!important}.home-draw-time{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;color:transparent!important;background:linear-gradient(180deg,#ffffff 0%,#ffffff 26%,#d9d9dd 58%,#ffffff 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:.045em!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important;text-shadow:0 1px 0 rgba(255,255,255,.12),0 2px 2px rgba(0,0,0,.62)!important;filter:none!important}',
-      '#home .home-draw-divider{width:1px!important;height:36px!important;flex:0 0 1px!important;transform:translateX(3px)!important;border-radius:999px!important;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.20),rgba(255,255,255,.03))!important;box-shadow:0 0 10px rgba(255,255,255,.025)!important}.home-prize-copy{min-width:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;overflow:hidden!important}.home-prize-value{min-width:0!important;display:flex!important;align-items:center!important;gap:0!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:0!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important}.home-prize-value [data-prize-pool]{color:transparent!important;background:linear-gradient(180deg,#9b455d 0%,#741c36 26%,#4b0b20 58%,#7d263f 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;text-shadow:0 1px 0 rgba(164,59,89,.18),0 2px 2px rgba(0,0,0,.66)!important;filter:none!important}.home-prize-icon{width:26px!important;height:26px!important;flex:0 0 26px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}.home-prize-icon img{width:26px!important;height:26px!important;object-fit:contain!important;transform:translateY(.5px)!important}',
-      '#home .home-draw-actions{display:flex!important;align-items:center!important;gap:7px!important;flex:0 0 auto!important}.home-draw-actions .home-ticket-image-button{height:38px!important;min-width:88px!important;padding:0 12px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.home-bonus-button{width:38px!important;height:38px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;display:grid!important;place-items:center!important;padding:0!important;position:relative!important;overflow:hidden!important}.home-bonus-svg{width:27px!important;height:27px!important;display:block!important;fill:none!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.28))!important;transform-origin:center!important}.home-bonus-svg path,.home-bonus-svg rect{stroke:currentColor!important}.home-bonus-bow{transform-box:fill-box!important;transform-origin:bottom center!important}.home-bonus-button.home-action-pop{animation:none!important}.home-bonus-button.home-action-pop .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button.home-action-pop .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}@media(hover:hover){.home-bonus-button:hover .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button:hover .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}}@keyframes homeGiftShake{0%{transform:rotate(0)}18%{transform:rotate(-7deg)}38%{transform:rotate(6deg)}58%{transform:rotate(-4deg)}78%{transform:rotate(3deg)}100%{transform:rotate(0)}}@keyframes homeGiftBow{0%{transform:scale(1)}31%{transform:scale(1.18)}50%{transform:scale(.96)}69%{transform:scale(1.06)}100%{transform:scale(1)}}.home-action-pop{animation:homeActionPop .42s cubic-bezier(.18,.9,.22,1.25)!important;transform-origin:center!important}@keyframes homeActionPop{0%{transform:scale(1)}34%{transform:scale(.9) translateY(1px)}68%{transform:scale(1.07) translateY(-1px)}100%{transform:scale(1)}}',
-      '.home-bonus-backdrop{position:fixed!important;inset:0!important;z-index:99994!important;background:rgba(0,0,0,.24)!important;opacity:0!important;visibility:hidden!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;transition:opacity .24s ease,visibility 0s linear .24s!important}.home-bonus-backdrop.is-open{opacity:1!important;visibility:visible!important;transition:opacity .24s ease!important}.home-bonus-panel{position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:99995!important;max-height:min(72dvh,620px)!important;padding:10px 16px calc(18px + env(safe-area-inset-bottom))!important;border-radius:34px 34px 0 0!important;background:rgba(14,10,12,.92)!important;color:#fff!important;box-shadow:0 -18px 54px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.12)!important;backdrop-filter:blur(18px) saturate(1.12)!important;-webkit-backdrop-filter:blur(18px) saturate(1.12)!important;transform:translate3d(0,105%,0)!important;transition:transform .34s cubic-bezier(.2,.9,.26,1)!important;display:grid!important;grid-template-rows:auto auto auto minmax(0,1fr)!important;gap:12px!important;overflow:hidden!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Inter","Segoe UI",sans-serif!important;letter-spacing:-.018em!important}.home-bonus-panel.is-open{transform:translate3d(0,0,0)!important}.home-bonus-grab{width:36px!important;height:4px!important;margin:0 auto 2px!important;border-radius:999px!important;background:rgba(255,255,255,.20)!important}.home-bonus-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}.home-bonus-title{display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important}.home-bonus-title svg{width:22px!important;height:22px!important;color:#e9a6b6!important;flex:0 0 auto!important}.home-bonus-head strong{font-family:inherit!important;font-size:18px!important;font-weight:800!important;letter-spacing:-.035em!important;line-height:1!important}.home-bonus-close{width:34px!important;height:34px!important;min-width:34px!important;border-radius:999px!important;border:0!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:grid!important;place-items:center!important;padding:0!important;box-sizing:border-box!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.085),inset 0 -1px 0 rgba(255,255,255,.055),0 16px 34px rgba(0,0,0,.28)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important;font-family:inherit!important;font-size:24px!important;font-weight:900!important;line-height:1!important;text-align:center!important;-webkit-tap-highlight-color:transparent!important;transition:transform .18s ease,background .18s ease!important}.home-bonus-close:active{transform:scale(.92)!important}.home-bonus-next{position:relative!important;overflow:hidden!important;min-height:48px!important;display:grid!important;grid-template-columns:26px minmax(0,1fr)!important;gap:7px!important;align-items:center!important;padding:0 10px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-sizing:border-box!important;box-shadow:inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}.home-bonus-next>svg{width:26px!important;height:26px!important;padding:4px!important;box-sizing:border-box!important;border-radius:50%!important;background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.82)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)!important}.home-bonus-guide-icon svg{width:20px!important;height:20px!important;color:#e9a6b6!important}.home-bonus-next span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:11px!important;font-weight:700!important;line-height:1.25!important}.home-bonus-guide-copy span{display:block!important;color:rgba(255,255,255,.48)!important;font-size:10px!important;font-weight:700!important;line-height:1.25!important}.home-bonus-next b{display:block!important;margin-top:2px!important;color:#fff!important;font-size:13px!important;font-weight:800!important;line-height:1.15!important}.home-bonus-guide{display:grid!important;gap:8px!important}.home-bonus-guide-row{display:grid!important;grid-template-columns:24px minmax(0,1fr)!important;gap:9px!important;align-items:start!important}.home-bonus-guide-icon{padding-top:1px!important}.home-bonus-guide-copy b{display:block!important;margin-bottom:2px!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important}.home-bonus-list{min-height:0!important;display:grid!important;grid-auto-rows:48px!important;align-content:start!important;gap:7px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:2px 0 4px!important}.home-bonus-list::-webkit-scrollbar{display:none!important}.home-bonus-row{position:relative!important;overflow:hidden!important;height:48px!important;min-height:48px!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-shadow:inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;color:#fff!important;display:grid!important;grid-template-columns:26px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}.home-bonus-rank-avatar{width:26px!important;height:26px!important;border-radius:50%!important;display:grid!important;place-items:center!important;overflow:hidden!important;background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.82)!important;font-size:10.5px!important;font-weight:800!important;line-height:1!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)!important}.home-bonus-row .home-live-winner-user{min-width:0!important;display:flex!important;align-items:center!important}.home-bonus-row .home-live-winner-user span{display:block!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.08!important}.home-bonus-row .home-live-winner-amount{color:rgba(255,255,255,.34)!important;font-size:12px!important;font-weight:750!important;white-space:nowrap!important}.home-bonus-prize-amount{display:inline-flex!important;align-items:center!important;gap:2px!important}.home-bonus-prize-icon{width:20px!important;height:20px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 20px!important}.home-bonus-prize-icon img{width:20px!important;height:20px!important;display:block!important;object-fit:contain!important}',
-      '.home-ticket-drawer{background:rgba(13,13,13,.54)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.105),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.055),0 16px 36px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px) saturate(1.12)!important;-webkit-backdrop-filter:blur(10px) saturate(1.12)!important}',
-      '.home-ticket-drawer-count{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
-      '.home-ticket-list-item{height:44px!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;color:#fff!important;font-weight:950!important}',
-      '.vexa-confetti-layer{position:fixed!important;inset:0!important;z-index:999999!important;pointer-events:none!important;overflow:hidden!important;opacity:1!important;transition:opacity 420ms ease!important}',
-      '.vexa-confetti-layer.is-ending{opacity:0!important}',
-      '.vexa-confetti-piece{position:absolute!important;top:var(--y)!important;left:var(--x)!important;width:var(--w)!important;height:var(--h)!important;border-radius:var(--r)!important;background:var(--c)!important;opacity:.94;transform-origin:center!important;animation:vexaConfettiFall 6000ms linear 0ms forwards!important;box-shadow:0 0 9px rgba(255,210,90,.18)!important}',
-      '@keyframes vexaConfettiFall{0%{transform:translate3d(0,-42px,0) rotate(0deg)}78%{transform:translate3d(var(--ex),172vh,0) rotate(var(--r3))}100%{transform:translate3d(var(--ex),230vh,0) rotate(var(--r3))}}'
-    ].join('');
-    document.head.appendChild(st);
-  }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
   function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Lottery"><svg class="home-bonus-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.65"/><path d="M12 8v13" stroke="currentColor" stroke-width="1.65"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" stroke="currentColor" stroke-width="1.65"/><g class="home-bonus-bow"><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" stroke="currentColor" stroke-width="1.65"/></g></svg></button></div></div>'}
   function ensureBonusPanel(){
@@ -453,7 +446,7 @@ const HOME_SLOT_SCRIPT = `
   function tapAction(el){if(!el)return;el.classList.remove('home-action-pop');void el.offsetWidth;el.classList.add('home-action-pop');setTimeout(function(){try{el.classList.remove('home-action-pop')}catch(e){}},440)}
   function ensureDrawInfoCard(){var slot=q('#home .home-lottery-slot-card');if(!slot)return;var card=q('#homeDrawInfoCard');if(!card)slot.insertAdjacentHTML('beforebegin',drawInfoHtml());ensureBonusPanel()}
   function prepare(){
-    tune();enableHomeScroll();ensureDrawInfoCard();
+    enableHomeScroll();ensureDrawInfoCard();
     qa('#home .home-slot-number-reel').forEach(function(reel){
       var strip=q('[data-slot-strip]',reel);if(!strip)return;
       if(strip.dataset.tuned!=='3'){strip.innerHTML=digits();strip.dataset.tuned='3'}
@@ -516,64 +509,18 @@ const HOME_ASSET_SCRIPT = `
 (function(){
   var introAppliedUrl='';
   var tonLogoAppliedUrl='';
-  var homeSlotAppliedUrl='';
   var tonLogoInFlight=null;
   var introInFlight=null;
-  var homeSlotInFlight=null;
   var tonLogoCheckedAt=0;
-  var homeSlotCheckedAt=0;
   var META_CACHE_MS=300000;
   var TON_META_KEY='vexaTonLogoMeta:v1';
   var INTRO_META_KEY='vexaHomeIntroImageMeta:v1';
-  var HOME_SLOT_META_KEY='vexaHomeLotterySlotMeta:v1';
   function cacheIntro(url){try{if(!url||!('caches'in window))return;var req=new Request(url,{cache:'force-cache'});caches.open('vexa-home-intro-images-v1').then(function(cache){cache.match(req).then(function(hit){if(hit)return;fetch(req,{cache:'force-cache'}).then(function(res){if(res&&res.ok)cache.put(req,res.clone())}).catch(function(){})}).catch(function(){})}).catch(function(){})}catch(e){}}
   function setRewardsIntroAspect(url){try{var img=new Image();img.onload=function(){if(!img.naturalWidth||!img.naturalHeight)return;var ratio=img.naturalWidth+'/'+img.naturalHeight;document.querySelectorAll('#rewards .rewards-home-intro-card,#rewards .rewards-home-intro-image-frame').forEach(function(n){n.style.setProperty('--rewards-intro-aspect',ratio);n.style.setProperty('aspect-ratio',ratio,'important');n.style.setProperty('height','auto','important');n.style.setProperty('min-height','0','important')})};img.src=url}catch(e){}}
   function applyIntroUrl(url){if(!url)return;if(introAppliedUrl!==url){introAppliedUrl=url;cacheIntro(url);setRewardsIntroAspect(url)}var bg='url("'+String(url).replace(/"/g,'')+'")';var frames=document.querySelectorAll('#rewards .home-intro-image-frame,#rewards .rewards-home-intro-image-frame');for(var j=0;j<frames.length;j++){frames[j].style.setProperty('background-image',bg,'important');if(frames[j].classList&&frames[j].classList.contains('rewards-home-intro-image-frame')){frames[j].style.setProperty('background-size','100% 100%','important');frames[j].style.setProperty('background-position','center center','important')}}var rewardCards=document.querySelectorAll('#rewards .rewards-home-intro-card');for(var k=0;k<rewardCards.length;k++){rewardCards[k].style.setProperty('background-image','none','important');rewardCards[k].style.setProperty('--rewards-intro-bg',bg)}}
   function applyTonLogo(url){if(!url)return;tonLogoAppliedUrl=url;var icons=document.querySelectorAll('.ton-mini-icon img');for(var i=0;i<icons.length;i++){if(icons[i].getAttribute('src')!==url)icons[i].setAttribute('src',url)}}
-  function applyHomeSlotUrl(url){
-    if(!url)return false;
-    homeSlotAppliedUrl=url;
-    var nodes=document.querySelectorAll('#home .home-lottery-slot-image');
-    var applied=false;
-    for(var i=0;i<nodes.length;i++){
-      var img=nodes[i];
-      if(img.getAttribute('data-vexa-home-slot-url')===url){applied=true;continue}
-      img.setAttribute('data-vexa-home-slot-url',url);
-      img.setAttribute('data-vexa-home-slot-retry','0');
-      img.onload=function(){this.setAttribute('data-vexa-home-slot-retry','0')};
-      img.onerror=function(){
-        if(this.getAttribute('data-vexa-home-slot-retry')==='1')return;
-        this.setAttribute('data-vexa-home-slot-retry','1');
-        var wanted=this.getAttribute('data-vexa-home-slot-url')||'';
-        if(!wanted)return;
-        this.src=wanted+(wanted.indexOf('?')>=0?'&':'?')+'retry='+Date.now();
-      };
-      if(img.getAttribute('src')!==url)img.setAttribute('src',url);
-      applied=true;
-    }
-    return applied;
-  }
   function readMeta(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
   function saveMeta(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}}
-  function loadHomeSlotVersion(force){
-    try{
-      var cached=readMeta(HOME_SLOT_META_KEY);
-      if(cached&&cached.url)applyHomeSlotUrl(cached.url);
-      if(!force&&cached&&cached.checkedAt&&Date.now()-Number(cached.checkedAt)<META_CACHE_MS){homeSlotCheckedAt=Number(cached.checkedAt)||0;return Promise.resolve(cached)}
-      if(!force&&homeSlotCheckedAt)return Promise.resolve(cached);
-      if(homeSlotInFlight)return homeSlotInFlight;
-      homeSlotInFlight=fetch('/app/api/home-lottery-slot-meta',{cache:'no-store',credentials:'same-origin',headers:{'accept':'application/json'}})
-        .then(function(r){return r.ok?r.json():null})
-        .then(function(meta){
-          homeSlotCheckedAt=Date.now();
-          if(meta&&meta.hasImage&&meta.url){var next={url:meta.url,version:meta.version||'',checkedAt:homeSlotCheckedAt};saveMeta(HOME_SLOT_META_KEY,next);applyHomeSlotUrl(meta.url);return next}
-          return cached;
-        })
-        .catch(function(){return cached})
-        .finally(function(){homeSlotInFlight=null});
-      return homeSlotInFlight;
-    }catch(e){return Promise.resolve(null)}
-  }
   function loadTonLogo(force){
     try{
       var cached=readMeta(TON_META_KEY);if(cached&&cached.url){applyTonLogo(cached.url);tonLogoCheckedAt=Math.max(tonLogoCheckedAt,Number(cached.checkedAt)||0)}
@@ -600,9 +547,9 @@ const HOME_ASSET_SCRIPT = `
       return introInFlight;
     }catch(e){return Promise.resolve(null)}
   }
-  function apply(){loadHomeSlotVersion(false);loadTonLogo(false);loadIntroImageVersion(false)}
+  function apply(){loadTonLogo(false);loadIntroImageVersion(false)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
-  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){return loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};window.VexaRefreshHomeLotterySlotImage=function(){homeSlotCheckedAt=0;return loadHomeSlotVersion(true)};
+  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){return loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
 })();
 `;
 
@@ -613,6 +560,7 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
   var winnerEffectDrawId='',drawSpinTimer=0,scheduledDrawId='',resultResetTimer=0;
   var officialSpinActive=false,suppressedWindowFocus=false;
   var ticketAudioCtx=null;
+  var heightObserver=null,observedTicket=null;
   var prizePoolRaf=0,prizePoolAnimationTargetNano=0,prizePoolAnimationLastMs=0,displayedPrizePoolNano=0,displayedPrizePoolReady=false,displayedPrizePoolRoundId='';
   var DRAW_DELAY_MS=5000,DRAW_ANIMATION_MS=18260,NEXT_ROUND_DELAY_MS=10000;
   var initialHydrationPending=true,INITIAL_STATE_TIMEOUT_MS=6000;
@@ -635,91 +583,41 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
     return Promise.race([fetch('/app/api/lottery/state',options),deadline]).finally(function(){if(timer)clearTimeout(timer)});
   }
   function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;return value.toFixed(2).replace(/\\.00$/,'').replace(/(\\.\\d)0$/,'$1')}
+  function winnerGram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')}
   function gramPrice(nano){var value=Math.max(0,Number(nano)||0)/1000000000,text=value.toFixed(4).replace(/0+$/,'');var dot=text.indexOf('.');if(dot<0)return text+'.00';var decimals=text.length-dot-1;if(decimals===0)return text+'00';if(decimals===1)return text+'0';return text}
+  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
+  function cleanWinnerCount(value){var count=Math.floor(Number(value)||0);return Math.max(0,Math.min(3,count))}
+  function winnerMap(winners,count){var map={},limit=cleanWinnerCount(count);(Array.isArray(winners)?winners:[]).forEach(function(item){var rank=Math.floor(Number(item&&item.rank)||0);if(rank>=1&&rank<=limit)map[rank]=item});return map}
+  function displayName(item){var name=String(item&&item.displayName||'').trim();return esc(name||'Player')}
+  function winnerAvatar(item,rank){var raw=String(item&&item.avatarUrl||'').trim(),url='';try{var parsed=new URL(raw);if(parsed.protocol==='https:')url=parsed.href}catch(e){}return '<div class="home-lottery-winner-avatar">'+(url?'<img src="'+esc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':esc('#'+rank))+'</div>'}
+  function winnerRow(rank,item,waiting){var name,amount,face;if(waiting){name='Waiting for draw';amount='—';face='<div class="home-lottery-winner-avatar">#'+rank+'</div>'}else if(!item){name='No results this round';amount='—';face='<div class="home-lottery-winner-avatar">#'+rank+'</div>'}else{name=displayName(item);amount='+'+winnerGram(item.prizeNano)+' GRAM';face=winnerAvatar(item,rank)}return '<article class="home-lottery-winner-row">'+face+'<div class="home-lottery-winner-copy"><div class="home-lottery-winner-name">'+name+'</div></div><div class="home-lottery-winner-amount">'+esc(amount)+'</div></article>'}
+  function winnersHost(){return q('#home .home-ticket-finance-visual')}
+  function syncWinnerHeight(){var card=winnersHost(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
+  function watchWinnerHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncWinnerHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncWinnerHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncWinnerHeight()});heightObserver.observe(ticket)}}
+  function updateWinnerFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
+  function ensureWinnersSurface(){var card=winnersHost();if(!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title>Previous Winners</span></div><div class="home-lottery-winners-list"></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></section>';surface=q(':scope>.home-lottery-winners',card)}var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateWinnerFade(list)},{passive:true})}watchWinnerHeight();return list}
+  function renderWinners(){var list=ensureWinnersSurface();if(!list)return;var limit=cleanWinnerCount(state&&state.winnerCount),map=winnerMap(state&&state.winners,limit),html='',waiting=!!(state&&state.waitingForWinner);for(var rank=1;rank<=limit;rank++)html+=winnerRow(rank,map[rank],waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateWinnerFade(list)})}
   function purchaseId(){
     try{if(crypto&&crypto.randomUUID)return 'lp_'+crypto.randomUUID().replace(/-/g,'')}catch(e){}
     try{var bytes=new Uint8Array(12);crypto.getRandomValues(bytes);return 'lp_'+Array.prototype.map.call(bytes,function(v){return v.toString(16).padStart(2,'0')}).join('')}catch(e){}
     return 'lp_'+Date.now().toString(36)
   }
   function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
-  function ticketAudio(){
-    try{
-      var AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;
-      if(!ticketAudioCtx)ticketAudioCtx=new AudioCtor({latencyHint:'interactive'});
-      if(ticketAudioCtx.state==='suspended')ticketAudioCtx.resume().catch(function(){});
-      return ticketAudioCtx;
-    }catch(e){return null}
-  }
-  function ticketTone(fromHz,toHz,delayMs,durationMs,peak){
-    var ctx=ticketAudio();if(!ctx)return;
-    try{
-      var start=ctx.currentTime+(Math.max(0,Number(delayMs)||0)/1000),duration=Math.max(.045,(Number(durationMs)||82)/1000),end=start+duration,attack=Math.min(.014,duration*.28);
-      var osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type='sine';osc.frequency.setValueAtTime(Math.max(40,Number(fromHz)||680),start);osc.frequency.exponentialRampToValueAtTime(Math.max(40,Number(toHz)||760),end);
-      gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.008,Number(peak)||.034),start+attack);gain.gain.exponentialRampToValueAtTime(.0001,end);
-      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(end+.014);
-    }catch(e){}
-  }
-  function ticketSound(kind){
-    if(kind==='plus'){ticketTone(680,820,0,82,.038);return}
-    if(kind==='minus'){ticketTone(640,540,0,84,.036);return}
-    ticketTone(650,780,0,86,.034);ticketTone(780,920,64,96,.030);
-  }
+  function ticketAudio(){try{var AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;if(!ticketAudioCtx)ticketAudioCtx=new AudioCtor({latencyHint:'interactive'});if(ticketAudioCtx.state==='suspended')ticketAudioCtx.resume().catch(function(){});return ticketAudioCtx}catch(e){return null}}
+  function ticketTone(fromHz,toHz,delayMs,durationMs,peak){var ctx=ticketAudio();if(!ctx)return;try{var start=ctx.currentTime+(Math.max(0,Number(delayMs)||0)/1000),duration=Math.max(.045,(Number(durationMs)||82)/1000),end=start+duration,attack=Math.min(.014,duration*.28);var osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.setValueAtTime(Math.max(40,Number(fromHz)||680),start);osc.frequency.exponentialRampToValueAtTime(Math.max(40,Number(toHz)||760),end);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.008,Number(peak)||.034),start+attack);gain.gain.exponentialRampToValueAtTime(.0001,end);osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(end+.014)}catch(e){}}
+  function ticketSound(kind){if(kind==='plus'){ticketTone(680,820,0,82,.038);return}if(kind==='minus'){ticketTone(640,540,0,84,.036);return}ticketTone(650,780,0,86,.034);ticketTone(780,920,64,96,.030)}
   function openTicketWallet(){var trigger=document.querySelector('[data-view="wallet"]');if(trigger&&typeof trigger.click==='function'){trigger.click();return true}return false}
-  function syncServerClock(payload,requestStartedAt,receivedAt){
-    var serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(serverNow)||serverNow<=0)return;
-    var started=Number(requestStartedAt)||receivedAt,total=Math.max(0,receivedAt-started),serverStarted=Number(payload&&payload.serverStartedAtMs);
-    var processing=Number.isFinite(serverStarted)&&serverStarted>0?Math.max(0,serverNow-serverStarted):0;
-    var transitRtt=Math.max(0,total-processing);
-    serverOffsetMs=(serverNow+(transitRtt/2))-receivedAt;window.VexaLotteryServerOffsetMs=serverOffsetMs;
-  }
+  function syncServerClock(payload,requestStartedAt,receivedAt){var serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(serverNow)||serverNow<=0)return;var started=Number(requestStartedAt)||receivedAt,total=Math.max(0,receivedAt-started),serverStarted=Number(payload&&payload.serverStartedAtMs);var processing=Number.isFinite(serverStarted)&&serverStarted>0?Math.max(0,serverNow-serverStarted):0;var transitRtt=Math.max(0,total-processing);serverOffsetMs=(serverNow+(transitRtt/2))-receivedAt;window.VexaLotteryServerOffsetMs=serverOffsetMs}
   function liveServerNow(){return Date.now()+serverOffsetMs}
-  function roundTime(name,fallback){
-    var round=state&&state.round,raw=round&&round[name],value=Date.parse(String(raw||''));
-    if(Number.isFinite(value))return value;
-    var drawAt=Date.parse(String(round&&round.drawAt||''));
-    return Number.isFinite(drawAt)?drawAt+(Number(fallback)||0):0;
-  }
+  function roundTime(name,fallback){var round=state&&state.round,raw=round&&round[name],value=Date.parse(String(raw||''));if(Number.isFinite(value))return value;var drawAt=Date.parse(String(round&&round.drawAt||''));return Number.isFinite(drawAt)?drawAt+(Number(fallback)||0):0}
   function formatCountdown(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
-  function lifecycleDueTime(){
-    var round=state&&state.round;if(!round)return 0;
-    return round.status==='open'?roundTime('drawAt',0):roundTime('nextRoundStartsAt',DRAW_DELAY_MS+DRAW_ANIMATION_MS+NEXT_ROUND_DELAY_MS);
-  }
+  function lifecycleDueTime(){var round=state&&state.round;if(!round)return 0;if(round.status==='open')return roundTime('drawAt',0);var winnerAt=Math.max(0,Number(state&&state.winnerDisplayAtMs)||0);if(state&&state.waitingForWinner&&winnerAt)return winnerAt;return roundTime('nextRoundStartsAt',DRAW_DELAY_MS+DRAW_ANIMATION_MS+NEXT_ROUND_DELAY_MS)}
   function clearLifecycleTimer(){if(lifecycleTimer){clearTimeout(lifecycleTimer);lifecycleTimer=0}}
-  function scheduleLifecycleRefresh(delay){
-    clearLifecycleTimer();
-    lifecycleTimer=setTimeout(function(){lifecycleTimer=0;refreshLifecycle()},Math.max(80,Math.floor(Number(delay)||0)));
-  }
-  function armLifecycle(){
-    clearLifecycleTimer();
-    var due=lifecycleDueTime();if(!due)return;
-    var now=liveServerNow();
-    if(due>now){lifecycleRetryMs=800;scheduleLifecycleRefresh(due-now+80);return}
-    scheduleLifecycleRefresh(lifecycleRetryMs);
-  }
-  function refreshLifecycle(){
-    if(drawRefreshPending||busy||loading){if(!lifecycleTimer)scheduleLifecycleRefresh(lifecycleRetryMs);return}
-    drawRefreshPending=true;
-    load(true).finally(function(){drawRefreshPending=false});
-  }
-  function updateCountdown(){
-    var round=state&&state.round,time=q('#homeDrawInfoCard [data-draw-time]'),now=liveServerNow();
-    if(!round){if(time)time.textContent='00:00:00';return}
-    var drawAt=roundTime('drawAt',0);
-    if(round.status==='open'){
-      if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}
-      if(time)time.textContent='00:00:00';
-      if(!lifecycleTimer&&!drawRefreshPending&&!loading)scheduleLifecycleRefresh(80);
-      return;
-    }
-    if(time)time.textContent='00:00:00';
-    var nextStartsAt=roundTime('nextRoundStartsAt',DRAW_DELAY_MS+DRAW_ANIMATION_MS+NEXT_ROUND_DELAY_MS);
-    if(nextStartsAt&&now>=nextStartsAt&&!lifecycleTimer&&!drawRefreshPending&&!loading)scheduleLifecycleRefresh(80);
-  }
-  function listHtml(tickets){
-    if(!tickets||!tickets.length)return '<div class="home-ticket-list-item"><b>No tickets</b><span>empty</span></div>';
-    return tickets.map(function(ticket){var label=ticket.isFree?'FREE':gram(ticket.priceNano)+' GRAM';return '<div class="home-ticket-list-item"><b>#'+String(ticket.ticketNumber||'').padStart(5,'0').slice(-5)+'</b><span>'+label+'</span></div>'}).join('');
-  }
+  function scheduleLifecycleRefresh(delay){clearLifecycleTimer();lifecycleTimer=setTimeout(function(){lifecycleTimer=0;refreshLifecycle()},Math.max(80,Math.floor(Number(delay)||0)))}
+  function armLifecycle(){clearLifecycleTimer();var due=lifecycleDueTime();if(!due)return;var now=liveServerNow();if(due>now){lifecycleRetryMs=800;scheduleLifecycleRefresh(due-now+80);return}scheduleLifecycleRefresh(lifecycleRetryMs)}
+  function refreshLifecycle(){if(drawRefreshPending||busy||loading){if(!lifecycleTimer)scheduleLifecycleRefresh(lifecycleRetryMs);return}drawRefreshPending=true;load(true).finally(function(){drawRefreshPending=false})}
+  function updateCountdown(){var round=state&&state.round,time=q('#homeDrawInfoCard [data-draw-time]'),now=liveServerNow();if(!round){if(time)time.textContent='00:00:00';return}var drawAt=roundTime('drawAt',0);if(round.status==='open'){if(drawAt&&now<drawAt){if(time)time.textContent=formatCountdown(drawAt-now);return}if(time)time.textContent='00:00:00';if(!lifecycleTimer&&!drawRefreshPending&&!loading)scheduleLifecycleRefresh(80);return}if(time)time.textContent='00:00:00';var due=lifecycleDueTime();if(due&&now>=due&&!lifecycleTimer&&!drawRefreshPending&&!loading)scheduleLifecycleRefresh(80)}
+  function listHtml(tickets){if(!tickets||!tickets.length)return '<div class="home-ticket-list-item"><b>No tickets</b><span>empty</span></div>';return tickets.map(function(ticket){var label=ticket.isFree?'FREE':gram(ticket.priceNano)+' GRAM';return '<div class="home-ticket-list-item"><b>#'+String(ticket.ticketNumber||'').padStart(5,'0').slice(-5)+'</b><span>'+label+'</span></div>'}).join('')}
   function purchaseCostNano(){if(!state)return 0;var free=state.freeTicketAvailable?1:0;return Math.max(0,quantity-free)*Math.max(0,Number(state.settings&&state.settings.ticketPriceNano)||150000000)}
   function remainingLimit(){if(!state||!state.settings)return MAX_QTY;var limit=Math.max(0,Number(state.settings.maxTicketsPerUser)||0);if(!limit)return MAX_QTY;return Math.max(0,limit-Math.max(0,Number(state.ticketCount)||0))}
   function maxSelectable(){return Math.max(1,Math.min(MAX_QTY,remainingLimit()||1))}
@@ -728,92 +626,20 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
   function prizeIconHtml(){var src=balanceIconSrc();if(!src)return '';return '<span class="home-bonus-prize-icon"><img src="'+String(src).replace(/"/g,'&quot;')+'" alt="" aria-hidden="true"></span>'}
   function prizePoolNano(){return Math.max(0,Math.floor(Number(state&&state.prizePoolNano)||0))}
   function setPrizePoolText(nano){var value=q('#homeDrawInfoCard [data-prize-pool]');if(value)value.textContent=(Math.max(0,Number(nano)||0)/1000000000).toFixed(2)}
-  function animatePrizePool(target){
-    var value=q('#homeDrawInfoCard [data-prize-pool]');target=Math.max(0,Number(target)||0);
-    if(!value){displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;return}
-    prizePoolAnimationTargetNano=Math.max(prizePoolAnimationTargetNano,target);
-    if(prizePoolRaf)return;
-    var raf=window.requestAnimationFrame||function(cb){return setTimeout(function(){cb(Date.now())},16)};
-    prizePoolAnimationLastMs=window.performance&&typeof window.performance.now==='function'?window.performance.now():Date.now();
-    var step=function(now){
-      var stamp=Number(now)||Date.now(),dt=Math.max(1,Math.min(64,stamp-prizePoolAnimationLastMs));prizePoolAnimationLastMs=stamp;
-      var remaining=prizePoolAnimationTargetNano-displayedPrizePoolNano;
-      if(remaining<=500000){displayedPrizePoolNano=prizePoolAnimationTargetNano;setPrizePoolText(displayedPrizePoolNano);prizePoolRaf=0;return}
-      var blend=1-Math.exp(-dt/1600);
-      displayedPrizePoolNano+=remaining*blend;
-      setPrizePoolText(displayedPrizePoolNano);
-      prizePoolRaf=raf(step);
-    };
-    prizePoolRaf=raf(step);
-  }
-  function renderPrizePool(){
-    var icon=q('#homeDrawInfoCard [data-prize-pool-icon]'),target=prizePoolNano(),roundId=String(state&&state.round&&state.round.id||'');
-    if(!displayedPrizePoolReady||displayedPrizePoolRoundId!==roundId){if(prizePoolRaf&&window.cancelAnimationFrame)window.cancelAnimationFrame(prizePoolRaf);prizePoolRaf=0;prizePoolAnimationTargetNano=target;prizePoolAnimationLastMs=0;displayedPrizePoolReady=true;displayedPrizePoolRoundId=roundId;displayedPrizePoolNano=target;setPrizePoolText(target)}
-    else if(Math.abs(target-displayedPrizePoolNano)>.5)animatePrizePool(target);
-    if(icon){var src=balanceIconSrc();if(src){if(icon.getAttribute('src')!==src)icon.setAttribute('src',src);icon.style.display='block'}else icon.style.display='none'}
-  }
+  function animatePrizePool(target){var value=q('#homeDrawInfoCard [data-prize-pool]');target=Math.max(0,Number(target)||0);if(!value){displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;return}prizePoolAnimationTargetNano=Math.max(prizePoolAnimationTargetNano,target);if(prizePoolRaf)return;var raf=window.requestAnimationFrame||function(cb){return setTimeout(function(){cb(Date.now())},16)};prizePoolAnimationLastMs=window.performance&&typeof window.performance.now==='function'?window.performance.now():Date.now();var step=function(now){var stamp=Number(now)||Date.now(),dt=Math.max(1,Math.min(64,stamp-prizePoolAnimationLastMs));prizePoolAnimationLastMs=stamp;var remaining=prizePoolAnimationTargetNano-displayedPrizePoolNano;if(remaining<=500000){displayedPrizePoolNano=prizePoolAnimationTargetNano;setPrizePoolText(displayedPrizePoolNano);prizePoolRaf=0;return}var blend=1-Math.exp(-dt/1600);displayedPrizePoolNano+=remaining*blend;setPrizePoolText(displayedPrizePoolNano);prizePoolRaf=raf(step)};prizePoolRaf=raf(step)}
+  function renderPrizePool(){var icon=q('#homeDrawInfoCard [data-prize-pool-icon]'),target=prizePoolNano(),roundId=String(state&&state.round&&state.round.id||'');if(!displayedPrizePoolReady||displayedPrizePoolRoundId!==roundId){if(prizePoolRaf&&window.cancelAnimationFrame)window.cancelAnimationFrame(prizePoolRaf);prizePoolRaf=0;prizePoolAnimationTargetNano=target;prizePoolAnimationLastMs=0;displayedPrizePoolReady=true;displayedPrizePoolRoundId=roundId;displayedPrizePoolNano=target;setPrizePoolText(target)}else if(Math.abs(target-displayedPrizePoolNano)>.5)animatePrizePool(target);if(icon){var src=balanceIconSrc();if(src){if(icon.getAttribute('src')!==src)icon.setAttribute('src',src);icon.style.display='block'}else icon.style.display='none'}}
   function winChanceText(value){var chance=Math.max(0,Math.min(100,Number(value)||0));if(chance<=0)return '0%';if(chance<.01)return '<0.01%';if(chance>=99.995)return '100%';if(chance<1)return chance.toFixed(2)+'%';return chance.toFixed(1).replace(/\\.0$/,'')+'%'}
   function renderWinChance(){var track=q('#home [data-win-chance-track]'),fill=q('#home [data-win-chance-fill]'),value=q('#home [data-win-chance]'),chance=Math.max(0,Math.min(100,Number(state&&state.winChancePercent)||0));if(fill)fill.style.width=chance.toFixed(6)+'%';if(value)value.textContent=winChanceText(chance);if(track)track.setAttribute('aria-valuenow',chance.toFixed(6))}
   function winnerCount(){return Math.max(0,Math.min(3,Math.floor(Number(state&&state.winnerCount)||0)))}
-  function prizeRowsHtml(prizes){
-    var rows=Array.isArray(prizes)?prizes:[],html='',limit=winnerCount();
-    for(var i=0;i<limit;i++){
-      var prize=rows[i]||{rank:i+1,prizeNano:0,percent:0},rank=i+1,percent=Math.max(0,Number(prize.percent)||0);
-      html+='<article class="home-bonus-row"><div class="home-bonus-rank-avatar">#'+rank+'</div><div class="home-live-winner-user"><span>'+percent.toLocaleString(undefined,{maximumFractionDigits:2})+'%</span></div><div class="home-live-winner-amount home-bonus-prize-amount"><span>'+gram(prize.prizeNano)+'</span>'+prizeIconHtml()+'</div></article>';
-    }
-    return html;
-  }
-  function lotteryCopy(){
-    var set=function(selector,key){var el=q(selector);if(el)el.textContent=String(window.VexaLotteryText&&window.VexaLotteryText(key)||'')};
-    set('[data-lottery-title]','lottery');set('[data-lottery-draw-label]','drawAt');set('[data-lottery-how-title]','howItWorks');set('[data-lottery-ticket-note]','ticketNote');set('[data-lottery-prize-title]','prizeSplit');set('[data-lottery-prize-note]','threeWinners');
-    var draw=q('[data-lottery-draw-at]'),drawAt=Date.parse(String(state&&state.round&&state.round.drawAt||''));
-    if(draw)draw.textContent=Number.isFinite(drawAt)?new Intl.DateTimeFormat(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(drawAt)):'—';
-  }
+  function prizeRowsHtml(prizes){var rows=Array.isArray(prizes)?prizes:[],html='',limit=winnerCount();for(var i=0;i<limit;i++){var prize=rows[i]||{rank:i+1,prizeNano:0,percent:0},rank=i+1,percent=Math.max(0,Number(prize.percent)||0);html+='<article class="home-bonus-row"><div class="home-bonus-rank-avatar">#'+rank+'</div><div class="home-live-winner-user"><span>'+percent.toLocaleString(undefined,{maximumFractionDigits:2})+'%</span></div><div class="home-live-winner-amount home-bonus-prize-amount"><span>'+gram(prize.prizeNano)+'</span>'+prizeIconHtml()+'</div></article>'}return html}
+  function lotteryCopy(){var set=function(selector,key){var el=q(selector);if(el)el.textContent=String(window.VexaLotteryText&&window.VexaLotteryText(key)||'')};set('[data-lottery-title]','lottery');set('[data-lottery-draw-label]','drawAt');set('[data-lottery-how-title]','howItWorks');set('[data-lottery-ticket-note]','ticketNote');set('[data-lottery-prize-title]','prizeSplit');set('[data-lottery-prize-note]','threeWinners');var draw=q('[data-lottery-draw-at]'),drawAt=Date.parse(String(state&&state.round&&state.round.drawAt||''));if(draw)draw.textContent=Number.isFinite(drawAt)?new Intl.DateTimeFormat(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(drawAt)):'—'}
   function renderPrizePanel(){var list=q('#homeBonusPanel .home-bonus-list');if(list&&state&&Array.isArray(state.prizes))list.innerHTML=prizeRowsHtml(state.prizes);lotteryCopy()}
-  function render(){
-    var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');
-    var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);
-    var max=maxSelectable();if(quantity>max)quantity=max;if(quantity<1)quantity=1;
-    if(cardCount)cardCount.textContent=quantity+' ticket'+(quantity===1?'':'s');
-    if(drawerCount)drawerCount.textContent=count+' ticket'+(count===1?'':'s');
-    if(list)list.innerHTML=listHtml(state&&state.tickets||[]);
-    var minus=q('#home [data-ticket-minus]'),plus=q('#home [data-ticket-plus]');
-    if(minus)minus.disabled=busy||quantity<=1||limitReached;
-    if(plus)plus.disabled=busy||quantity>=max||!state||!state.canBuy||limitReached;
-    if(button){
-      var cost=purchaseCostNano();
-      if(busy){button.textContent='Getting Ticket…';button.removeAttribute('aria-label')}
-      else if(limitReached){button.textContent='Ticket limit reached';button.removeAttribute('aria-label')}
-      else if(state&&state.canBuy&&cost<=0){button.textContent='Get Free Ticket';button.setAttribute('aria-label','Get Free Ticket')}
-      else if(state&&state.canBuy){button.innerHTML=paidButtonHtml(cost);button.setAttribute('aria-label',gramPrice(cost)+' GRAM')}
-      else if(state&&state.reason){button.textContent=state.reason;button.removeAttribute('aria-label')}
-      else if(!initData()){button.textContent='Open in Telegram';button.removeAttribute('aria-label')}
-      button.disabled=busy||!state||!state.canBuy||!initData()||limitReached;
-    }
-    renderWinChance();
-    renderPrizePool();
-    renderPrizePanel();
-    updateCountdown();
-  }
+  function render(){var cardCount=q('#home .home-ticket-card [data-ticket-count]'),drawerCount=q('#homeTicketDrawer [data-ticket-count]'),list=q('#homeTicketList'),button=q('#homeTicketButton');var count=Math.max(0,Number(state&&state.ticketCount)||0),limitReached=!!(state&&state.settings&&Number(state.settings.maxTicketsPerUser)>0&&remainingLimit()<=0);var max=maxSelectable();if(quantity>max)quantity=max;if(quantity<1)quantity=1;if(cardCount)cardCount.textContent=quantity+' ticket'+(quantity===1?'':'s');if(drawerCount)drawerCount.textContent=count+' ticket'+(count===1?'':'s');if(list)list.innerHTML=listHtml(state&&state.tickets||[]);var minus=q('#home [data-ticket-minus]'),plus=q('#home [data-ticket-plus]');if(minus)minus.disabled=busy||quantity<=1||limitReached;if(plus)plus.disabled=busy||quantity>=max||!state||!state.canBuy||limitReached;if(button){var cost=purchaseCostNano();if(busy){button.textContent='Getting Ticket…';button.removeAttribute('aria-label')}else if(limitReached){button.textContent='Ticket limit reached';button.removeAttribute('aria-label')}else if(state&&state.canBuy&&cost<=0){button.textContent='Get Free Ticket';button.setAttribute('aria-label','Get Free Ticket')}else if(state&&state.canBuy){button.innerHTML=paidButtonHtml(cost);button.setAttribute('aria-label',gramPrice(cost)+' GRAM')}else if(state&&state.reason){button.textContent=state.reason;button.removeAttribute('aria-label')}else if(!initData()){button.textContent='Open in Telegram';button.removeAttribute('aria-label')}button.disabled=busy||!state||!state.canBuy||!initData()||limitReached}renderWinners();renderWinChance();renderPrizePool();renderPrizePanel();updateCountdown()}
   function slotEngine(){return window.VexaLotterySlotEngine||null}
-  function replaySuppressedFocus(){
-    if(!suppressedWindowFocus)return;
-    suppressedWindowFocus=false;
-    setTimeout(function(){
-      try{window.dispatchEvent(new Event('focus'))}
-      catch(e){try{var event=document.createEvent('Event');event.initEvent('focus',false,false);window.dispatchEvent(event)}catch(x){}}
-    },0);
-  }
+  function replaySuppressedFocus(){if(!suppressedWindowFocus)return;suppressedWindowFocus=false;setTimeout(function(){try{window.dispatchEvent(new Event('focus'))}catch(e){try{var event=document.createEvent('Event');event.initEvent('focus',false,false);window.dispatchEvent(event)}catch(x){}}},0)}
   function setOfficialSpinActive(active){officialSpinActive=!!active;if(!officialSpinActive)replaySuppressedFocus()}
-  function guardOfficialSpinFocus(event){
-    if(!officialSpinActive||event&&event.target!==window)return;
-    suppressedWindowFocus=true;
-    if(event&&typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();
-  }
-  function setStaticCode(code){
-    var engine=slotEngine();if(!engine||typeof engine.setCode!=='function')return;
-    try{engine.setCode(code)}catch(e){}
-  }
+  function guardOfficialSpinFocus(event){if(!officialSpinActive||event&&event.target!==window)return;suppressedWindowFocus=true;if(event&&typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation()}
+  function setStaticCode(code){var engine=slotEngine();if(!engine||typeof engine.setCode!=='function')return;try{engine.setCode(code)}catch(e){}}
   function cancelScheduledDraw(){if(drawSpinTimer){clearTimeout(drawSpinTimer);drawSpinTimer=0}scheduledDrawId=''}
   function cancelResultReset(){if(resultResetTimer){clearTimeout(resultResetTimer);resultResetTimer=0}}
   function setIdleCode(){if(!officialSpinActive)setStaticCode('00000')}
@@ -821,126 +647,20 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
   function winnerEffectAlreadyShown(drawId){try{return localStorage.getItem('vexaLotteryWinnerEffect:'+drawId)==='1'}catch(e){return false}}
   function markWinnerEffectShown(drawId){try{localStorage.setItem('vexaLotteryWinnerEffect:'+drawId,'1')}catch(e){}}
   function playWinnerEffect(){try{if(typeof window.VexaLotteryWinnerEffect==='function')window.VexaLotteryWinnerEffect()}catch(e){}}
-  function triggerWinnerEffect(drawId){
-    if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;
-    winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');playWinnerEffect();
-  }
-  function scheduleLiveDraw(drawId,code,won,startAt){
-    if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;
-    cancelResultReset();scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);
-    var run=function(){
-      drawSpinTimer=0;
-      var engine=slotEngine();
-      if(!engine||typeof engine.spinTo!=='function'){scheduledDrawId='';return}
-      setOfficialSpinActive(true);
-      var started=false;
-      try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId='';scheduleIdleCode()})}catch(e){started=false}
-      if(!started){setOfficialSpinActive(false);scheduledDrawId='';setIdleCode()}
-    };
-    drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()));
-  }
-  function applyDrawResult(){
-    var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon),now=liveServerNow();
-    if(!round||round.status==='open'){
-      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
-    }
-    if(!drawId||!/^\\d{5}$/.test(code)){
-      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
-    }
-    var sameClosedRound=round.status==='closed'&&String(round.id||'')===drawId;
-    if(!sameClosedRound){
-      cancelScheduledDraw();cancelResultReset();setIdleCode();return;
-    }
-    var startAt=roundTime('drawStartsAt',DRAW_DELAY_MS);
-    var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;
-    var animationEndsAt=startAt?startAt+duration:0;
-    if(startAt&&now<startAt){
-      cancelResultReset();setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return;
-    }
-    if(animationEndsAt&&now<animationEndsAt){
-      if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,won,now);
-      return;
-    }
-    cancelScheduledDraw();cancelResultReset();setIdleCode();if(won)triggerWinnerEffect(drawId);
-  }
-  function handleLivePrizePool(event){
-    var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;
-    if(String(item.roundId||'')!==String(state.round.id||''))return;
-    var target=Math.max(0,Math.floor(Number(item.prizePoolNano)||0)),current=Math.max(0,Math.floor(Number(state.prizePoolNano)||0));
-    if(target>=current){state.prizePoolNano=target;renderPrizePool()}
-    var total=Math.max(0,Math.floor(Number(item.roundTicketCount)||0)),known=Math.max(0,Math.floor(Number(state.roundTicketCount)||0));
-    if(!busy&&state.round.status==='open'&&total>0&&total>=known){var mine=Math.max(0,Math.floor(Number(state.userTicketCount)||0));state.roundTicketCount=total;state.winChancePercent=mine>0?Math.max(0,Math.min(100,(mine/total)*100)):0;renderWinChance()}
-  }
-  async function load(force){
-    if(loading)return false;
-    var now=Date.now();if(!force&&now-lastLoadAt<500)return false;
-    var data=initData();
-    if(!data){state={winnerCount:0,ticketCount:0,roundTicketCount:0,userTicketCount:0,winChancePercent:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:true,canBuy:false,reason:'Open in Telegram',prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};clearLifecycleTimer();render();cancelResultReset();setIdleCode();markHomeHydrated('fallback');return false}
-    loading=true;lastLoadAt=now;
-    var started=Date.now();
-    var hydrationStatus='error';
-    try{
-      var response=await requestLotteryState(data);
-      var payload=await response.json().catch(function(){return null}),received=Date.now();
-      if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');
-      syncServerClock(payload,started,received);state=payload;render();applyDrawResult();
-      var due=lifecycleDueTime();
-      if(due&&due<=liveServerNow())lifecycleRetryMs=Math.min(5000,Math.max(800,Math.round(lifecycleRetryMs*1.7)));
-      else lifecycleRetryMs=800;
-      armLifecycle();
-      hydrationStatus='ready';
-      return true;
-    }catch(error){
-      state={winnerCount:0,ticketCount:0,roundTicketCount:0,userTicketCount:0,winChancePercent:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:false,canBuy:false,reason:String(error&&error.message||'Lottery unavailable'),prizes:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}};render();cancelResultReset();setIdleCode();
-      lifecycleRetryMs=Math.min(15000,Math.max(1200,Math.round(lifecycleRetryMs*1.8)));
-      if(q('#home.active')&&!document.hidden)scheduleLifecycleRefresh(lifecycleRetryMs);
-      return false;
-    }finally{loading=false;markHomeHydrated(hydrationStatus)}
-  }
-  async function buy(){
-    if(busy||!state||!state.canBuy||!initData()||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
-    var cost=purchaseCostNano(),balance=Math.max(0,Number(state.gramBalanceNano)||0);
-    if(cost>balance){haptic('error');openTicketWallet();return}
-    busy=true;render();
-    try{
-      var response=await fetch('/app/api/lottery/tickets',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({initData:initData(),quantity:quantity,purchaseId:purchaseId()})});
-      var payload=await response.json().catch(function(){return null});
-      if(!response.ok)throw new Error(payload&&payload.error||'Could not get ticket');
-      if(window.VexaTonBalance&&typeof window.VexaTonBalance.write==='function'&&payload.gramBalanceNano!==undefined)window.VexaTonBalance.write(Number(payload.gramBalanceNano)||0,0);
-      if(state&&payload.prizePoolNano!==undefined&&(!payload.round||!state.round||String(payload.round.id||'')===String(state.round.id||''))){state.prizePoolNano=Math.max(Number(state.prizePoolNano)||0,Number(payload.prizePoolNano)||0);renderPrizePool()}
-      quantity=1;haptic('success');await load(true);
-    }catch(error){
-      var message=String(error&&error.message||'Could not get ticket');haptic('error');if(/insufficient balance/i.test(message)){openTicketWallet();return}var button=q('#homeTicketButton');if(button){button.textContent=message;setTimeout(render,1200)}
-    }finally{busy=false;setTimeout(render,0)}
-  }
-  function handleTicketControls(event){
-    var target=event.target&&event.target.closest?event.target.closest('#homeTicketButton,#home [data-ticket-plus],#home [data-ticket-minus]'):null;if(!target)return;
-    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-    if(target.id==='homeTicketButton'){ticketSound('buy');buy();return}
-    if(busy||!state||!state.canBuy||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;
-    if(target.hasAttribute('data-ticket-plus')){quantity=Math.min(maxSelectable(),quantity+1);ticketSound('plus')}
-    if(target.hasAttribute('data-ticket-minus')){quantity=Math.max(1,quantity-1);ticketSound('minus')}
-    haptic('light');render();
-  }
-  function handleSmartRefresh(event){
-    var target=event.target&&event.target.closest?event.target:null;if(!target)return;
-    var homeLink=target.closest('[data-view="home"]'),bonus=target.closest('#homeBonusButton');
-    if(homeLink)setTimeout(function(){if(q('#home.active')&&!busy){startClock();load(false)}},60);
-    else if(bonus)setTimeout(function(){if(q('#home.active')&&!busy)load(false)},0);
-  }
+  function triggerWinnerEffect(drawId){if(!drawId||winnerEffectDrawId===drawId||winnerEffectAlreadyShown(drawId))return;winnerEffectDrawId=drawId;markWinnerEffectShown(drawId);haptic('success');playWinnerEffect()}
+  function scheduleLiveDraw(drawId,code,won,startAt){if(!drawId||!/^\\d{5}$/.test(String(code||''))||scheduledDrawId===drawId)return;cancelResultReset();scheduledDrawId=drawId;if(drawSpinTimer)clearTimeout(drawSpinTimer);var run=function(){drawSpinTimer=0;var engine=slotEngine();if(!engine||typeof engine.spinTo!=='function'){scheduledDrawId='';return}setOfficialSpinActive(true);var started=false;try{started=engine.spinTo(code,function(){setOfficialSpinActive(false);haptic('success');if(won)triggerWinnerEffect(drawId);scheduledDrawId='';scheduleIdleCode()})}catch(e){started=false}if(!started){setOfficialSpinActive(false);scheduledDrawId='';setIdleCode()}};drawSpinTimer=setTimeout(run,Math.max(0,(Number(startAt)||liveServerNow())-liveServerNow()))}
+  function applyDrawResult(){var round=state&&state.round,draw=state&&state.lastDraw,drawId=draw&&String(draw.roundId||''),code=draw&&String(draw.winningCode||''),won=!!(state&&state.lastDrawWon),now=liveServerNow();if(!round||round.status==='open'){cancelScheduledDraw();cancelResultReset();setIdleCode();return}if(!drawId||!/^\\d{5}$/.test(code)){cancelScheduledDraw();cancelResultReset();setIdleCode();return}var sameClosedRound=round.status==='closed'&&String(round.id||'')===drawId;if(!sameClosedRound){cancelScheduledDraw();cancelResultReset();setIdleCode();return}var startAt=roundTime('drawStartsAt',DRAW_DELAY_MS);var engine=slotEngine(),duration=engine&&Number(engine.durationMs)>0?Number(engine.durationMs):DRAW_ANIMATION_MS;var animationEndsAt=startAt?startAt+duration:0;if(startAt&&now<startAt){cancelResultReset();setIdleCode();scheduleLiveDraw(drawId,code,won,startAt);return}if(animationEndsAt&&now<animationEndsAt){if(!officialSpinActive&&scheduledDrawId!==drawId)scheduleLiveDraw(drawId,code,won,now);return}cancelScheduledDraw();cancelResultReset();setIdleCode();if(won)triggerWinnerEffect(drawId)}
+  function handleLivePrizePool(event){var item=event&&event.detail;if(!item||item.kind!=='ticket'||item.prizePoolNano===null||item.prizePoolNano===undefined||!state||!state.round)return;if(String(item.roundId||'')!==String(state.round.id||''))return;var target=Math.max(0,Math.floor(Number(item.prizePoolNano)||0)),current=Math.max(0,Math.floor(Number(state.prizePoolNano)||0));if(target>=current){state.prizePoolNano=target;renderPrizePool()}var total=Math.max(0,Math.floor(Number(item.roundTicketCount)||0)),known=Math.max(0,Math.floor(Number(state.roundTicketCount)||0));if(!busy&&state.round.status==='open'&&total>0&&total>=known){var mine=Math.max(0,Math.floor(Number(state.userTicketCount)||0));state.roundTicketCount=total;state.winChancePercent=mine>0?Math.max(0,Math.min(100,(mine/total)*100)):0;renderWinChance()}}
+  function emptyState(reason,free){return {winnerCount:0,ticketCount:0,roundTicketCount:0,userTicketCount:0,winChancePercent:0,prizePoolNano:0,tickets:[],round:null,lastDraw:null,lastDrawWon:false,freeTicketAvailable:!!free,canBuy:false,reason:reason||'',prizes:[],waitingForWinner:false,winnerDisplayAtMs:0,winners:[],settings:{ticketPriceNano:150000000,maxTicketsPerUser:0,drawIntervalMinutes:1440}}}
+  async function load(force){if(loading)return false;var now=Date.now();if(!force&&now-lastLoadAt<500)return false;var data=initData();if(!data){state=emptyState('Open in Telegram',true);clearLifecycleTimer();render();cancelResultReset();setIdleCode();markHomeHydrated('fallback');return false}loading=true;lastLoadAt=now;var started=Date.now();var hydrationStatus='error';try{var response=await requestLotteryState(data);var payload=await response.json().catch(function(){return null}),received=Date.now();if(!response.ok)throw new Error(payload&&payload.error||'Could not load Lottery');syncServerClock(payload,started,received);state=payload;render();applyDrawResult();var due=lifecycleDueTime();if(due&&due<=liveServerNow())lifecycleRetryMs=Math.min(5000,Math.max(800,Math.round(lifecycleRetryMs*1.7)));else lifecycleRetryMs=800;armLifecycle();hydrationStatus='ready';return true}catch(error){state=emptyState(String(error&&error.message||'Lottery unavailable'),false);render();cancelResultReset();setIdleCode();lifecycleRetryMs=Math.min(15000,Math.max(1200,Math.round(lifecycleRetryMs*1.8)));if(q('#home.active')&&!document.hidden)scheduleLifecycleRefresh(lifecycleRetryMs);return false}finally{loading=false;markHomeHydrated(hydrationStatus)}}
+  async function buy(){if(busy||!state||!state.canBuy||!initData()||remainingLimit()<=0&&Number(state.settings&&state.settings.maxTicketsPerUser)>0)return;var cost=purchaseCostNano(),balance=Math.max(0,Number(state.gramBalanceNano)||0);if(cost>balance){haptic('error');openTicketWallet();return}busy=true;render();try{var response=await fetch('/app/api/lottery/tickets',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({initData:initData(),quantity:quantity,purchaseId:purchaseId()})});var payload=await response.json().catch(function(){return null});if(!response.ok)throw new Error(payload&&payload.error||'Could not get ticket');if(window.VexaTonBalance&&typeof window.VexaTonBalance.write==='function'&&payload.gramBalanceNano!==undefined)window.VexaTonBalance.write(Number(payload.gramBalanceNano)||0,0);if(state&&payload.prizePoolNano!==undefined&&(!payload.round||!state.round||String(payload.round.id||'')===String(state.round.id||''))){state.prizePoolNano=Math.max(Number(state.prizePoolNano)||0,Number(payload.prizePoolNano)||0);renderPrizePool()}quantity=1;haptic('success');await load(true)}catch(error){var message=String(error&&error.message||'Could not get ticket');haptic('error');if(/insufficient balance/i.test(message)){openTicketWallet();return}var button=q('#homeTicketButton');if(button){button.textContent=message;setTimeout(render,1200)}}finally{busy=false;setTimeout(render,0)}}
+  function handleTicketControls(event){var target=event.target&&event.target.closest?event.target.closest('#homeTicketButton,#home [data-ticket-plus],#home [data-ticket-minus]'):null;if(!target)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();if(target.id==='homeTicketButton'){ticketSound('buy');buy();return}if(busy||!state||!state.canBuy||remainingLimit()<=0&&Number(state.settings.maxTicketsPerUser)>0)return;if(target.hasAttribute('data-ticket-plus')){quantity=Math.min(maxSelectable(),quantity+1);ticketSound('plus')}if(target.hasAttribute('data-ticket-minus')){quantity=Math.max(1,quantity-1);ticketSound('minus')}haptic('light');render()}
+  function handleSmartRefresh(event){var target=event.target&&event.target.closest?event.target:null;if(!target)return;var homeLink=target.closest('[data-view="home"]'),bonus=target.closest('#homeBonusButton');if(homeLink)setTimeout(function(){if(q('#home.active')&&!busy){startClock();load(false)}},60);else if(bonus)setTimeout(function(){if(q('#home.active')&&!busy)load(false)},0)}
   function stopClock(){if(clockTimer){clearTimeout(clockTimer);clockTimer=0}}
-  function startClock(){
-    if(clockTimer||document.hidden||!q('#home.active'))return;
-    var tick=function(){
-      clockTimer=0;updateCountdown();
-      if(document.hidden||!q('#home.active'))return;
-      var next=1000-(Math.floor(liveServerNow())%1000)+16;
-      clockTimer=setTimeout(tick,Math.max(120,next));
-    };
-    tick();
-  }
+  function startClock(){if(clockTimer||document.hidden||!q('#home.active'))return;var tick=function(){clockTimer=0;updateCountdown();if(document.hidden||!q('#home.active'))return;var next=1000-(Math.floor(liveServerNow())%1000)+16;clockTimer=setTimeout(tick,Math.max(120,next))};tick()}
   function refreshWhenVisible(){if(!document.hidden&&q('#home.active')&&!busy){startClock();load(false)}else stopClock()}
-  function init(){lotteryCopy();document.addEventListener('click',handleTicketControls,true);document.addEventListener('click',handleSmartRefresh,true);window.addEventListener('vexa:live-activity',handleLivePrizePool);load(true);startClock();window.VexaLotteryRefresh=function(){return load(true)}}
+  function handleResize(){syncWinnerHeight();updateWinnerFade(ensureWinnersSurface())}
+  function init(){lotteryCopy();document.addEventListener('click',handleTicketControls,true);document.addEventListener('click',handleSmartRefresh,true);window.addEventListener('vexa:live-activity',handleLivePrizePool);window.addEventListener('resize',handleResize,{passive:true});load(true);startClock();window.VexaLotteryRefresh=function(){return load(true)}}
   window.addEventListener('focus',guardOfficialSpinFocus,true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   window.addEventListener('focus',refreshWhenVisible);
@@ -949,40 +669,4 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
 })();
 `;
 
-const HOME_WINNERS_CLIENT_SCRIPT = `
-(function(){
-  var loading=false,lastRequestAt=0,phaseTimer=0,retryTimer=0,retryDelay=1000;
-  var heightObserver=null,observedTicket=null;
-  function q(s,r){return (r||document).querySelector(s)}
-  function homeRoot(){return document.getElementById('home')}
-  function host(){var home=homeRoot();return home?q('.home-ticket-finance-visual',home):null}
-  function initData(){var tg=window.Telegram&&window.Telegram.WebApp;return String(tg&&tg.initData||'')}
-  function gram(nano){var value=Math.max(0,Number(nano)||0)/1000000000;if(value>=1000)return value.toLocaleString('en-US',{maximumFractionDigits:1});if(value>=10)return value.toFixed(1).replace(/\\.0$/,'');return value.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')}
-  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':'&quot;'})}
-  function cleanCount(value){var count=Math.floor(Number(value)||0);return Math.max(0,Math.min(3,count))}
-  function winnerMap(winners,count){var map={},limit=cleanCount(count);(Array.isArray(winners)?winners:[]).forEach(function(item){var rank=Math.floor(Number(item&&item.rank)||0);if(rank>=1&&rank<=limit)map[rank]=item});return map}
-  function displayName(item){var name=String(item&&item.displayName||'').trim();return esc(name||'Player')}
-  function avatar(item,rank){var raw=String(item&&item.avatarUrl||'').trim(),url='';try{var parsed=new URL(raw);if(parsed.protocol==='https:')url=parsed.href}catch(e){}return '<div class="home-lottery-winner-avatar">'+(url?'<img src="'+esc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':esc('#'+rank))+'</div>'}
-  function row(rank,item,waiting){var name,amount,face;if(waiting){name='Waiting for draw';amount='—';face='<div class="home-lottery-winner-avatar">#'+rank+'</div>'}else if(!item){name='No results this round';amount='—';face='<div class="home-lottery-winner-avatar">#'+rank+'</div>'}else{name=displayName(item);amount='+'+gram(item.prizeNano)+' GRAM';face=avatar(item,rank)}return '<article class="home-lottery-winner-row">'+face+'<div class="home-lottery-winner-copy"><div class="home-lottery-winner-name">'+name+'</div></div><div class="home-lottery-winner-amount">'+esc(amount)+'</div></article>'}
-  function syncHeight(){var card=host(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
-  function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
-  function updateFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
-  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();return list}
-  function render(winners,waiting,count){var list=ensureSurface();if(!list)return;var limit=cleanCount(count),map=winnerMap(winners,limit),html='';for(var rank=1;rank<=limit;rank++)html+=row(rank,map[rank],!!waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateFade(list)})}
-  function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
-  function scheduleRetry(){var home=homeRoot();if(retryTimer||!home||!home.classList.contains('active')||document.hidden)return;var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));retryTimer=setTimeout(function(){retryTimer=0;load(true)},delay)}
-  function schedulePhaseRefresh(payload){if(phaseTimer){clearTimeout(phaseTimer);phaseTimer=0}var next=Number(payload&&payload.nextDisplayChangeAtMs),serverNow=Number(payload&&payload.serverNowMs);if(!Number.isFinite(next)||!Number.isFinite(serverNow)||next<=serverNow)return;phaseTimer=setTimeout(function(){phaseTimer=0;load(true)},Math.max(80,next-serverNow+80))}
-  async function load(force){var home=homeRoot(),list=ensureSurface(),data=initData();if(!home||!home.classList.contains('active')||!list||!data||loading)return false;var now=Date.now();if(!force&&now-lastRequestAt<500)return false;loading=true;lastRequestAt=now;try{var response=await fetch('/app/api/lottery/winners',{cache:'no-store',headers:{'accept':'application/json','x-telegram-init-data':data}});var payload=await response.json().catch(function(){return null});if(!response.ok||!payload)throw new Error('Could not load lottery results');clearRetry();retryDelay=1000;render(payload.winners||[],!!payload.waitingForWinner,payload.winnerCount);schedulePhaseRefresh(payload);return true}catch(e){scheduleRetry();return false}finally{loading=false}}
-  function bind(){var home=homeRoot(),list=ensureSurface();if(!home||!list)return;updateFade(list);if(home.classList.contains('active'))load(false)}
-  function refreshWhenVisible(){var home=homeRoot();if(!document.hidden&&home&&home.classList.contains('active'))load(false)}
-  document.addEventListener('click',function(ev){var target=ev.target&&ev.target.closest&&ev.target.closest('[data-view="home"]');if(target)setTimeout(bind,60)},true);
-  window.addEventListener('vexa:section-mounted',bind);
-  window.addEventListener('vexa-country-detected',bind);
-  window.addEventListener('resize',function(){syncHeight();updateFade(ensureSurface())},{passive:true});
-  window.addEventListener('focus',refreshWhenVisible);
-  document.addEventListener('visibilitychange',refreshWhenVisible);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
-})();
-`;
-
-export const HOME_SCRIPT = HOME_ASSET_SCRIPT + HOME_MARKUP_SCRIPT + HOME_SLOT_SCRIPT + HOME_LOTTERY_CLIENT_SCRIPT + HOME_WINNERS_CLIENT_SCRIPT;
+export const HOME_SCRIPT = HOME_ASSET_SCRIPT + HOME_MARKUP_SCRIPT + HOME_SLOT_SCRIPT + HOME_LOTTERY_CLIENT_SCRIPT;
