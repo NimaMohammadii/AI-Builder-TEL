@@ -387,7 +387,7 @@ const HOME_MARKUP_SCRIPT = `
   function q(s,r){return (r||document).querySelector(s)}
   function lotteryText(key){
     var all=window.__vexaLotteryTexts||{},tg=window.Telegram&&window.Telegram.WebApp,user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user||{},code=String(user.language_code||navigator.language||'en').replace('_','-');
-    var aliases={pt:'pt-BR','pt-PT':'pt-BR',zh:'zh-Hant','zh-TW':'zh-Hant','zh-HK':'zh-Hant','zh-Hant':'zh-Hant'};
+    var aliases={pt:'pt-BR','pt-PT':'pt-BR',zh:'zh-Hant','zh-TW':'zh-Hant','zh-HK':'zh-Hant','zh-MO':'zh-Hant'};
     var country=String(window.VexaDetectedCountryCode||'').trim().toUpperCase(),countryLocale=String((window.__vexaCountryLocales||{})[country]||'');
     var locale=all[countryLocale]?countryLocale:(all[code]?code:(aliases[code]||aliases[code.split('-')[0]]||code.split('-')[0]));
     return String((all[locale]&&all[locale][key])||(all.en&&all.en[key])||'');
