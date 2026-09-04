@@ -36,7 +36,7 @@ import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
 import { BOOT_LOADER_SCRIPT, BOOT_LOADER_STYLES } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
-import { MINIAPP_AUDIO_SCRIPT } from './audio-script';
+import { MINIAPP_AUDIO_MANAGER_SCRIPT, MINIAPP_AUDIO_SCRIPT } from './audio-script';
 import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
 import { TELEGRAM_BACK_BUTTON_SCRIPT } from './telegram-back-button-script';
 import { SECTION_ACCESS_SCRIPT } from './section-access-script';
@@ -169,6 +169,7 @@ function lazySectionLoaderScript(): string {
 function scripts(): string {
   return [
     `window.__vexaLotteryTexts=${inlineScriptJson(LOTTERY_HOME_TEXT)};window.__vexaCountryLocales=${inlineScriptJson(COUNTRY_TO_VEXA_LOCALE)};`,
+    MINIAPP_AUDIO_MANAGER_SCRIPT,
     BOOT_LOADER_SCRIPT,
     lazySectionLoaderScript(),
     MINIAPP_SCRIPT,

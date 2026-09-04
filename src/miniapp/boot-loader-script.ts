@@ -28,7 +28,10 @@ export const BOOT_LOADER_SCRIPT = `
   }
   function advanceBootProgress(weight){setBootProgress(bootProgress+(Number(weight)||0))}
   function progressGate(promise,weight){return Promise.resolve(promise).then(function(value){advanceBootProgress(weight);return value},function(error){advanceBootProgress(weight);throw error})}
-  function hide(){if(bootHidden)return;bootHidden=true;setBootProgress(100);var boot=bootNode();if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
+  function bootAudioManager(){var manager=window.VexaAudio;return manager&&typeof manager.playUrl==='function'&&typeof manager.fadeStop==='function'?manager:null}
+  function fadeOutBootAudio(){var manager=bootAudioManager();if(manager)try{manager.fadeStop('loading',1600)}catch(e){}}
+  function stopBootAudio(){var manager=bootAudioManager();if(manager&&typeof manager.stop==='function')try{manager.stop('loading')}catch(e){}}
+  function hide(){if(bootHidden)return;bootHidden=true;setBootProgress(100);fadeOutBootAudio();var boot=bootNode();if(boot){boot.classList.add('hide');setTimeout(function(){if(boot&&boot.parentNode)boot.parentNode.removeChild(boot)},520)}}
   function settle(promise,ms,fallback){
     return new Promise(function(resolve){
       var done=false,timer=setTimeout(function(){finish(fallback)},ms);
@@ -197,6 +200,17 @@ export const BOOT_LOADER_SCRIPT = `
       return showBootImageUrl(url,6500)
     },function(){return first})
   }
+  function prepareBootAudio(){
+    var manager=bootAudioManager();
+    if(!manager)return Promise.resolve(false);
+    var options={loop:true,gain:true,retryOnGesture:true,restart:false};
+    try{if(typeof manager.playCached==='function')manager.playCached('loading',options)}catch(e){}
+    return startupManifestReady().then(function(manifest){
+      var url=String(manifest&&manifest.loadingAudioUrl||'').trim();
+      if(!url)return false;
+      try{return Promise.resolve(manager.playUrl('loading',url,options)).then(function(value){return value!==false},function(){return false})}catch(e){return false}
+    },function(){return false})
+  }
   function ghostRunUrls(j){
     var out=[],map=j&&j.urls&&typeof j.urls==='object'?j.urls:{};
     Object.keys(map).forEach(function(key){out.push(map[key])});
@@ -248,6 +262,7 @@ export const BOOT_LOADER_SCRIPT = `
   }
 
   var bootImageReady=prepareBootImage();
+  prepareBootAudio();
 
   function headerAndHomeAssetsReady(){
     var jobs=[];
@@ -315,6 +330,7 @@ export const BOOT_LOADER_SCRIPT = `
     window.__vexaInitialUiReady=Promise.all([timedUiReady,gameImagesGate]).then(function(){return new Promise(function(resolve){requestAnimationFrame(function(){setBootProgress(100);requestAnimationFrame(function(){hide();resolve(true)})})})})
   }
   setBootProgress(0);
+  window.addEventListener('pagehide',stopBootAudio,{once:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',revealWhenReady,{once:true});else revealWhenReady();
 })();
 `;
