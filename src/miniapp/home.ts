@@ -221,10 +221,14 @@ html body:has(#home.active) header.top{
   position:relative!important;
   display:inline-grid!important;
   place-items:center!important;
-  width:.57em!important;
-  height:1.08em!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  height:1.28em!important;
+  margin-inline:-.06em!important;
+  padding-inline:.06em!important;
   overflow:hidden!important;
-  vertical-align:middle!important;
+  box-sizing:content-box!important;
 }
 #home #homeDrawInfoCard .home-prize-digit-current,
 #home #homeDrawInfoCard .home-prize-digit-old,
@@ -238,23 +242,24 @@ html body:has(#home.active) header.top{
 }
 #home #homeDrawInfoCard .home-prize-digit-current{
   grid-area:1/1!important;
-  display:grid!important;
-  place-items:center!important;
-  width:100%!important;
-  height:100%!important;
+  display:block!important;
+  width:auto!important;
+  height:auto!important;
+  line-height:1.08!important;
 }
 #home #homeDrawInfoCard .home-prize-digit-old{
   position:absolute!important;
-  inset:0!important;
+  inset:0 .06em!important;
   display:grid!important;
   place-items:center!important;
+  line-height:1.08!important;
   pointer-events:none!important;
 }
 #home #homeDrawInfoCard .home-prize-separator{
-  display:inline-grid!important;
-  place-items:center!important;
-  width:.27em!important;
-  height:1.08em!important;
+  display:inline-block!important;
+  width:auto!important;
+  height:auto!important;
+  line-height:1.08!important;
 }
 #home .home-ticket-layout>.home-ticket-card{
   border:1px solid rgba(124,22,53,.24)!important;
@@ -588,7 +593,7 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
   function cancelPrizePoolAnimations(){for(var i=0;i<prizePoolAnimations.length;i++){try{prizePoolAnimations[i].onfinish=null;prizePoolAnimations[i].oncancel=null;prizePoolAnimations[i].cancel()}catch(e){}}prizePoolAnimations=[];prizePoolPendingNano=null;prizePoolAnimationTargetNano=displayedPrizePoolNano}
   function prizePoolReducedMotion(){try{return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)}catch(e){return false}}
   function finishPrizePoolAnimation(target){prizePoolAnimations=[];displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;setPrizePoolText(target);var pending=prizePoolPendingNano;prizePoolPendingNano=null;if(pending!==null&&Math.abs(pending-target)>.5)animatePrizePool(pending)}
-  function animatePrizePool(target){var value=q('#homeDrawInfoCard [data-prize-pool]');target=Math.max(0,Number(target)||0);if(prizePoolAnimations.length){if(Math.abs(target-prizePoolAnimationTargetNano)>.5)prizePoolPendingNano=target;return}var previous=displayedPrizePoolNano;if(Math.abs(target-previous)<=.5){displayedPrizePoolNano=target;setPrizePoolText(target);return}if(!value||document.hidden||!q('#home.active')||prizePoolReducedMotion()||typeof value.animate!=='function'){displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;setPrizePoolText(target);return}var oldText=prizePoolText(previous),newText=prizePoolText(target),len=Math.max(oldText.length,newText.length),oldPad=oldText.padStart(len,' '),newPad=newText.padStart(len,' '),dot=newPad.indexOf('.'),maxIntegerRank=-1,html='',changed=0;for(var scan=0;scan<len;scan++){if(scan<dot&&oldPad.charAt(scan)!==newPad.charAt(scan))maxIntegerRank=Math.max(maxIntegerRank,dot-1-scan)}for(var i=0;i<len;i++){var oldChar=oldPad.charAt(i),newChar=newPad.charAt(i);if(newChar==='.'||oldChar==='.'){html+='<span class="home-prize-separator" aria-hidden="true">.</span>';continue}if(oldChar!==newChar){var delay=i<dot?Math.max(0,dot-1-i)*82:(maxIntegerRank>=0?(maxIntegerRank+1)*82:0)+Math.max(0,i-dot-1)*24;html+='<span class="home-prize-digit" aria-hidden="true" data-prize-roll="1" data-prize-delay="'+delay+'"><span class="home-prize-digit-current">'+prizePoolChar(newChar)+'</span><span class="home-prize-digit-old">'+prizePoolChar(oldChar)+'</span></span>';changed++}else html+='<span class="home-prize-digit" aria-hidden="true"><span class="home-prize-digit-current">'+prizePoolChar(newChar)+'</span></span>'}value.setAttribute('aria-label',newText);value.innerHTML=html;if(!changed){displayedPrizePoolNano=target;setPrizePoolText(target);return}prizePoolAnimationTargetNano=target;var cells=value.querySelectorAll('[data-prize-roll="1"]'),pending=cells.length,finished=false;var finishOne=function(){if(finished)return;pending--;if(pending<=0){finished=true;finishPrizePoolAnimation(target)}};for(var j=0;j<cells.length;j++){var cell=cells[j],next=q('.home-prize-digit-current',cell),old=q('.home-prize-digit-old',cell),delay=Math.max(0,Number(cell.getAttribute('data-prize-delay'))||0);if(!next||!old||typeof next.animate!=='function'){finishOne();continue}try{var options={duration:520,delay:delay,easing:'cubic-bezier(.16,1,.3,1)',fill:'both'},incoming=next.animate([{transform:'translate3d(0,-112%,0)',opacity:.10,offset:0},{transform:'translate3d(0,7%,0)',opacity:1,offset:.82},{transform:'translate3d(0,0,0)',opacity:1,offset:1}],options),outgoing=old.animate([{transform:'translate3d(0,0,0)',opacity:1,offset:0},{transform:'translate3d(0,112%,0)',opacity:.08,offset:1}],options);prizePoolAnimations.push(incoming,outgoing);incoming.onfinish=finishOne;incoming.oncancel=function(){};outgoing.oncancel=function(){}}catch(e){finishOne()}}if(pending<=0&&!finished){finished=true;finishPrizePoolAnimation(target)}}
+  function animatePrizePool(target){var value=q('#homeDrawInfoCard [data-prize-pool]');target=Math.max(0,Number(target)||0);if(prizePoolAnimations.length){if(Math.abs(target-prizePoolAnimationTargetNano)>.5)prizePoolPendingNano=target;return}var previous=displayedPrizePoolNano;if(Math.abs(target-previous)<=.5){displayedPrizePoolNano=target;setPrizePoolText(target);return}if(!value||document.hidden||!q('#home.active')||prizePoolReducedMotion()||typeof value.animate!=='function'){displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;setPrizePoolText(target);return}var oldText=prizePoolText(previous),newText=prizePoolText(target),len=Math.max(oldText.length,newText.length),oldPad=oldText.padStart(len,' '),newPad=newText.padStart(len,' '),dot=newPad.indexOf('.'),maxIntegerRank=-1,html='',changed=0;for(var scan=0;scan<len;scan++){if(scan<dot&&oldPad.charAt(scan)!==newPad.charAt(scan))maxIntegerRank=Math.max(maxIntegerRank,dot-1-scan)}for(var i=0;i<len;i++){var oldChar=oldPad.charAt(i),newChar=newPad.charAt(i);if(newChar==='.'||oldChar==='.'){html+='<span class="home-prize-separator" aria-hidden="true">.</span>';continue}if(oldChar!==newChar){var delay=i<dot?Math.max(0,dot-1-i)*94:(maxIntegerRank>=0?(maxIntegerRank+1)*94:0)+Math.max(0,i-dot-1)*28;html+='<span class="home-prize-digit" aria-hidden="true" data-prize-roll="1" data-prize-delay="'+delay+'"><span class="home-prize-digit-current">'+prizePoolChar(newChar)+'</span><span class="home-prize-digit-old">'+prizePoolChar(oldChar)+'</span></span>';changed++}else html+='<span class="home-prize-digit" aria-hidden="true"><span class="home-prize-digit-current">'+prizePoolChar(newChar)+'</span></span>'}value.setAttribute('aria-label',newText);value.innerHTML=html;if(!changed){displayedPrizePoolNano=target;setPrizePoolText(target);return}prizePoolAnimationTargetNano=target;var cells=value.querySelectorAll('[data-prize-roll="1"]'),pending=cells.length,finished=false;var finishOne=function(){if(finished)return;pending--;if(pending<=0){finished=true;finishPrizePoolAnimation(target)}};for(var j=0;j<cells.length;j++){var cell=cells[j],next=q('.home-prize-digit-current',cell),old=q('.home-prize-digit-old',cell),delay=Math.max(0,Number(cell.getAttribute('data-prize-delay'))||0);if(!next||!old||typeof next.animate!=='function'){finishOne();continue}try{var options={duration:600,delay:delay,easing:'cubic-bezier(.16,1,.3,1)',fill:'both'},incoming=next.animate([{transform:'translate3d(0,-112%,0)',opacity:.10,offset:0},{transform:'translate3d(0,7%,0)',opacity:1,offset:.82},{transform:'translate3d(0,0,0)',opacity:1,offset:1}],options),outgoing=old.animate([{transform:'translate3d(0,0,0)',opacity:1,offset:0},{transform:'translate3d(0,112%,0)',opacity:.08,offset:1}],options);prizePoolAnimations.push(incoming,outgoing);incoming.onfinish=finishOne;incoming.oncancel=function(){};outgoing.oncancel=function(){}}catch(e){finishOne()}}if(pending<=0&&!finished){finished=true;finishPrizePoolAnimation(target)}}
   function renderPrizePool(){var icon=q('#homeDrawInfoCard [data-prize-pool-icon]'),target=prizePoolNano(),roundId=String(state&&state.round&&state.round.id||'');if(!displayedPrizePoolReady||displayedPrizePoolRoundId!==roundId){cancelPrizePoolAnimations();displayedPrizePoolReady=true;displayedPrizePoolRoundId=roundId;displayedPrizePoolNano=target;prizePoolAnimationTargetNano=target;setPrizePoolText(target)}else if(Math.abs(target-displayedPrizePoolNano)>.5)animatePrizePool(target);if(icon){var src=balanceIconSrc();if(src){if(icon.getAttribute('src')!==src)icon.setAttribute('src',src);icon.style.display='block'}else icon.style.display='none'}}
   function winChanceText(value){var chance=Math.max(0,Math.min(100,Number(value)||0));if(chance<=0)return '0%';if(chance<.01)return '<0.01%';if(chance>=99.995)return '100%';if(chance<1)return chance.toFixed(2)+'%';return chance.toFixed(1).replace(/\\.0$/,'')+'%'}
   function renderWinChanceText(){var value=q('#homeTicketDrawer [data-win-chance]'),chance=Math.max(0,Math.min(100,Number(state&&state.winChancePercent)||0));if(value)value.textContent=winChanceText(chance)}
