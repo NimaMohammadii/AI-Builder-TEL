@@ -12,7 +12,6 @@ import { gameBotToken, PUBLIC_BASE_URL, validateTelegramInitData } from './utils
 const app = new Hono<{ Bindings: Env }>();
 const FALLBACK_PNG = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,63,0,5,254,2,254,167,53,129,132,0,0,0,0,73,69,78,68,174,66,96,130]);
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const HOME_INTRO_IMAGE_KEY = 'home-intro/image';
 const HOME_LOTTERY_SLOT_KEY = 'home-lottery-slot';
 const VERSIONED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
@@ -131,26 +130,6 @@ app.get('/app/api/home-lottery-slot.png', async (c) => {
       'cache-control': c.req.query('v') ? VERSIONED_IMAGE_CACHE_CONTROL : 'public, max-age=300, must-revalidate',
     },
   });
-});
-
-app.get('/app/api/home-intro-image-cached.png', async (c) => {
-  const image = await c.env.ASSETS.get(HOME_INTRO_IMAGE_KEY).catch(() => null);
-  if (!image) return new Response('', { status: 204, headers: { 'cache-control': 'no-store' } });
-  return new Response(image.body, {
-    headers: {
-      'content-type': image.httpMetadata?.contentType ?? 'image/png',
-      'cache-control': 'public, max-age=31536000, immutable',
-    },
-  });
-});
-app.get('/app/api/home-intro-image-meta', async (c) => {
-  const image = await c.env.ASSETS.head(HOME_INTRO_IMAGE_KEY).catch(() => null);
-  const version = image?.customMetadata?.version || image?.uploaded?.getTime?.() || 'default';
-  return c.json(
-    { ok: true, version: String(version), url: `/app/api/home-intro-image-cached.png?v=${encodeURIComponent(String(version))}` },
-    200,
-    { 'cache-control': 'private, max-age=300' },
-  );
 });
 
 registerFriendGameRoutes(app);

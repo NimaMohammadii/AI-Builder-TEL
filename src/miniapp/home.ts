@@ -437,17 +437,11 @@ const HOME_SLOT_SCRIPT = `
 
 const HOME_ASSET_SCRIPT = `
 (function(){
-  var introAppliedUrl='';
   var tonLogoAppliedUrl='';
   var tonLogoInFlight=null;
-  var introInFlight=null;
   var tonLogoCheckedAt=0;
   var META_CACHE_MS=300000;
   var TON_META_KEY='vexaTonLogoMeta:v1';
-  var INTRO_META_KEY='vexaHomeIntroImageMeta:v1';
-  function cacheIntro(url){try{if(!url||!('caches'in window))return;var req=new Request(url,{cache:'force-cache'});caches.open('vexa-home-intro-images-v1').then(function(cache){cache.match(req).then(function(hit){if(hit)return;fetch(req,{cache:'force-cache'}).then(function(res){if(res&&res.ok)cache.put(req,res.clone())}).catch(function(){})}).catch(function(){})}).catch(function(){})}catch(e){}}
-  function setRewardsIntroAspect(url){try{var img=new Image();img.onload=function(){if(!img.naturalWidth||!img.naturalHeight)return;var ratio=img.naturalWidth+'/'+img.naturalHeight;document.querySelectorAll('#rewards .rewards-home-intro-card,#rewards .rewards-home-intro-image-frame').forEach(function(n){n.style.setProperty('--rewards-intro-aspect',ratio);n.style.setProperty('aspect-ratio',ratio,'important');n.style.setProperty('height','auto','important');n.style.setProperty('min-height','0','important')})};img.src=url}catch(e){}}
-  function applyIntroUrl(url){if(!url)return;if(introAppliedUrl!==url){introAppliedUrl=url;cacheIntro(url);setRewardsIntroAspect(url)}var bg='url("'+String(url).replace(/"/g,'')+'")';var frames=document.querySelectorAll('#rewards .home-intro-image-frame,#rewards .rewards-home-intro-image-frame');for(var j=0;j<frames.length;j++){frames[j].style.setProperty('background-image',bg,'important');if(frames[j].classList&&frames[j].classList.contains('rewards-home-intro-image-frame')){frames[j].style.setProperty('background-size','100% 100%','important');frames[j].style.setProperty('background-position','center center','important')}}var rewardCards=document.querySelectorAll('#rewards .rewards-home-intro-card');for(var k=0;k<rewardCards.length;k++){rewardCards[k].style.setProperty('background-image','none','important');rewardCards[k].style.setProperty('--rewards-intro-bg',bg)}}
   function applyTonLogo(url){if(!url)return;tonLogoAppliedUrl=url;var icons=document.querySelectorAll('.ton-mini-icon img');for(var i=0;i<icons.length;i++){if(icons[i].getAttribute('src')!==url)icons[i].setAttribute('src',url)}}
   function readMeta(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
   function saveMeta(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}}
@@ -464,22 +458,9 @@ const HOME_ASSET_SCRIPT = `
       return tonLogoInFlight;
     }catch(e){return Promise.resolve(null)}
   }
-  function loadIntroImageVersion(force){
-    try{
-      var cached=readMeta(INTRO_META_KEY);if(cached&&cached.url)applyIntroUrl(cached.url);
-      if(!force&&cached&&cached.checkedAt&&Date.now()-Number(cached.checkedAt)<META_CACHE_MS)return Promise.resolve(cached);
-      if(introInFlight)return introInFlight;
-      introInFlight=fetch('/app/api/home-intro-image-meta',{headers:{'accept':'application/json'}})
-        .then(function(r){return r.ok?r.json():null})
-        .then(function(meta){if(meta&&meta.url){meta.checkedAt=Date.now();saveMeta(INTRO_META_KEY,meta);applyIntroUrl(meta.url)}return meta})
-        .catch(function(){return cached})
-        .finally(function(){introInFlight=null});
-      return introInFlight;
-    }catch(e){return Promise.resolve(null)}
-  }
-  function apply(){loadTonLogo(false);loadIntroImageVersion(false)}
+  function apply(){loadTonLogo(false)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
-  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshHomeIntroImage=function(){return loadIntroImageVersion(true)};window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
+  window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
 })();
 `;
 
