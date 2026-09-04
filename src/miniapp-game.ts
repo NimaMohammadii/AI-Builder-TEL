@@ -1,7 +1,6 @@
 import { miniAppShellHtml } from './miniapp/shell';
 
 const EMPTY_HOME_SLOT_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
-const HOME_SLOT_META_KEY = 'vexaHomeLotterySlotMeta:v1';
 const DEFAULT_PAYMENT_METHOD_IMAGES = {
   stars: '/app/api/deposit-method-icon/stars.png',
   gram: '/app/api/credit-icon.png',
@@ -36,11 +35,6 @@ export function miniAppHtml(homeSlotImageUrl = EMPTY_HOME_SLOT_IMAGE, paymentMet
   paymentPreloads.forEach((url) => {
     if (url) headExtras.push(`<link rel="preload" as="image" href="${url}">`);
   });
-
-  if (homeSlotImageUrl && homeSlotImageUrl !== EMPTY_HOME_SLOT_IMAGE) {
-    const cachedUrl = JSON.stringify(homeSlotImageUrl);
-    headExtras.push(`<script>try{localStorage.setItem('${HOME_SLOT_META_KEY}',JSON.stringify({url:${cachedUrl},checkedAt:Date.now()}))}catch(e){}</script>`);
-  }
 
   if (headExtras.length) shell = shell.replace('</head>', `${headExtras.join('')}</head>`);
   return shell;
