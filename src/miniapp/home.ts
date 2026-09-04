@@ -109,20 +109,21 @@ html body:has(#home.active) header.top{
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
-#home .home-ticket-win-chance{
-  position:relative!important;
-  width:100%!important;
-  height:18px!important;
+#home #homeDrawInfoCard .home-ticket-win-chance{
+  position:absolute!important;
+  left:12px!important;
+  right:12px!important;
+  bottom:7px!important;
+  width:auto!important;
+  height:12px!important;
   overflow:hidden!important;
-  border-radius:28px!important;
+  border-radius:999px!important;
   border:1px solid rgba(124,22,53,.24)!important;
   background:
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
     radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
     #070707!important;
   box-shadow:
-    0 12px 30px rgba(31,1,10,.32),
-    0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
     inset 1px 1px 1px -.5px rgba(140,29,61,.22),
@@ -133,7 +134,7 @@ html body:has(#home.active) header.top{
   box-sizing:border-box!important;
   isolation:isolate!important;
 }
-#home .home-ticket-win-chance-fill{
+#home #homeDrawInfoCard .home-ticket-win-chance-fill{
   position:absolute!important;
   left:0!important;
   top:0!important;
@@ -142,8 +143,8 @@ html body:has(#home.active) header.top{
   border-radius:inherit!important;
   background:
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
-    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
-    #3f091d!important;
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.52) 0%,rgba(92,10,35,.30) 46%,rgba(69,5,26,0) 78%),
+    rgba(156,38,70,.52)!important;
   box-shadow:
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
@@ -152,7 +153,7 @@ html body:has(#home.active) header.top{
   transition:width .9s cubic-bezier(.2,.9,.25,1)!important;
   will-change:width!important;
 }
-#home .home-ticket-win-chance-label{
+#home #homeDrawInfoCard .home-ticket-win-chance-label{
   position:absolute!important;
   inset:0!important;
   z-index:1!important;
@@ -160,20 +161,20 @@ html body:has(#home.active) header.top{
   align-items:center!important;
   justify-content:center!important;
   color:rgba(255,255,255,.62)!important;
-  font-size:8.75px!important;
+  font-size:7.5px!important;
   font-weight:850!important;
   line-height:1!important;
   letter-spacing:-.01em!important;
   white-space:nowrap!important;
   pointer-events:none!important;
 }
-#home .home-ticket-win-chance-label [data-win-chance]{
-  margin-left:4px!important;
+#home #homeDrawInfoCard .home-ticket-win-chance-label [data-win-chance]{
+  margin-left:3px!important;
   color:#fff!important;
   font-weight:950!important;
   font-variant-numeric:tabular-nums!important;
 }
-@media (prefers-reduced-motion:reduce){#home .home-ticket-win-chance-fill{transition:none!important}}
+@media (prefers-reduced-motion:reduce){#home #homeDrawInfoCard .home-ticket-win-chance-fill{transition:none!important}}
 #home .home-ticket-card .home-ticket-stepper{
   display:grid!important;
   grid-template-columns:1fr 1fr!important;
@@ -316,7 +317,7 @@ html body:has(#home.active) header.top{
 #home .home-live-winner-amount{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
 #home .home-live-winner-card .vexa-premium-corner,#home .home-live-winner-card .vexa-bonus-premium,#home .home-live-winner-card .vexa-premium-star,#home .home-live-winner-card .vexa-bonus-star{display:none!important;content:none!important}
 #home .home-ticket-finance-visual{min-height:154px!important;height:var(--home-lottery-winners-height,154px)!important;align-self:start!important;place-items:stretch!important;pointer-events:auto!important;overflow:visible!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:0!important;outline:0!important;border-radius:0!important;padding:0!important}
-#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
+#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
 #home .home-lottery-winners-title{display:flex!important;align-items:center!important;gap:6px!important;min-height:13px!important;padding:0 4px!important;color:rgba(255,255,255,.66)!important;font-size:9px!important;font-weight:850!important;line-height:1!important;letter-spacing:-.01em!important}
 #home .home-lottery-winners-title svg{width:13px!important;height:13px!important;color:#d990a5!important;flex:0 0 auto!important}
 #home .home-lottery-winners-list{position:relative!important;display:grid!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;align-content:stretch!important;gap:6px!important;min-height:0!important;height:100%!important;overflow:hidden!important;padding:0 2px!important;box-sizing:border-box!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}
@@ -426,7 +427,7 @@ const HOME_SLOT_SCRIPT = `
       '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:49%!important;display:grid!important;grid-auto-rows:34px!important;will-change:transform!important;transition:none!important;pointer-events:none!important}',
       '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1px)!important}',
       '#home .home-slot-number-digit{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:31px!important;font-weight:900!important;letter-spacing:-.045em!important;color:transparent!important;background:linear-gradient(180deg,#fff2f4 0%,#d48994 18%,#7f182b 46%,#3b0711 72%,#b94a5d 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:.35px rgba(255,205,215,.34)!important;text-shadow:0 1px 0 rgba(255,210,218,.22),0 2px 2px rgba(0,0,0,.74),0 0 12px rgba(115,10,30,.34),0 10px 20px rgba(0,0,0,.64)!important;filter:drop-shadow(0 0 7px rgba(110,7,25,.22))!important}',
-      '#home .home-draw-info-card{height:68px!important;margin:0 0 12px!important;border-radius:28px!important;padding:9px 12px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;box-sizing:border-box!important}',
+      '#home .home-draw-info-card{height:82px!important;margin:0 0 12px!important;border-radius:28px!important;padding:8px 12px 22px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;box-sizing:border-box!important}',
       '#home .home-draw-main{min-width:0!important;flex:1 1 auto!important;display:flex!important;align-items:center!important;gap:9px!important;overflow:hidden!important}#home .home-draw-copy{min-width:98px!important;flex:0 1 106px!important;padding-left:5px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;white-space:nowrap!important;overflow:visible!important}.home-draw-label,.home-prize-label{color:rgba(255,255,255,.54)!important;font-size:10px!important;line-height:1!important;font-weight:900!important;letter-spacing:-.01em!important;text-transform:none!important;transform:translateY(-2px)!important}.home-draw-time{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;color:transparent!important;background:linear-gradient(180deg,#ffffff 0%,#ffffff 26%,#d9d9dd 58%,#ffffff 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:.045em!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important;text-shadow:0 1px 0 rgba(255,255,255,.12),0 2px 2px rgba(0,0,0,.62)!important;filter:none!important}',
       '#home .home-draw-divider{width:1px!important;height:36px!important;flex:0 0 1px!important;transform:translateX(3px)!important;border-radius:999px!important;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.20),rgba(255,255,255,.03))!important;box-shadow:0 0 10px rgba(255,255,255,.025)!important}.home-prize-copy{min-width:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;overflow:hidden!important}.home-prize-value{min-width:0!important;display:flex!important;align-items:center!important;gap:0!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif!important;font-size:19px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:0!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important}.home-prize-value [data-prize-pool]{color:transparent!important;background:linear-gradient(180deg,#9b455d 0%,#741c36 26%,#4b0b20 58%,#7d263f 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:0!important;text-shadow:0 1px 0 rgba(164,59,89,.18),0 2px 2px rgba(0,0,0,.66)!important;filter:none!important}.home-prize-icon{width:26px!important;height:26px!important;flex:0 0 26px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}.home-prize-icon img{width:26px!important;height:26px!important;object-fit:contain!important;transform:translateY(.5px)!important}',
       '#home .home-draw-actions{display:flex!important;align-items:center!important;gap:7px!important;flex:0 0 auto!important}.home-draw-actions .home-ticket-image-button{height:38px!important;min-width:88px!important;padding:0 12px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.home-bonus-button{width:38px!important;height:38px!important;border:0!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;display:grid!important;place-items:center!important;padding:0!important;position:relative!important;overflow:hidden!important}.home-bonus-svg{width:27px!important;height:27px!important;display:block!important;fill:none!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.28))!important;transform-origin:center!important}.home-bonus-svg path,.home-bonus-svg rect{stroke:currentColor!important}.home-bonus-bow{transform-box:fill-box!important;transform-origin:bottom center!important}.home-bonus-button.home-action-pop{animation:none!important}.home-bonus-button.home-action-pop .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button.home-action-pop .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}@media(hover:hover){.home-bonus-button:hover .home-bonus-svg{animation:homeGiftShake 1s ease-in-out both!important}.home-bonus-button:hover .home-bonus-bow{animation:homeGiftBow .8s cubic-bezier(.34,1.4,.64,1) .16s both!important}}@keyframes homeGiftShake{0%{transform:rotate(0)}18%{transform:rotate(-7deg)}38%{transform:rotate(6deg)}58%{transform:rotate(-4deg)}78%{transform:rotate(3deg)}100%{transform:rotate(0)}}@keyframes homeGiftBow{0%{transform:scale(1)}31%{transform:scale(1.18)}50%{transform:scale(.96)}69%{transform:scale(1.06)}100%{transform:scale(1)}}.home-action-pop{animation:homeActionPop .42s cubic-bezier(.18,.9,.22,1.25)!important;transform-origin:center!important}@keyframes homeActionPop{0%{transform:scale(1)}34%{transform:scale(.9) translateY(1px)}68%{transform:scale(1.07) translateY(-1px)}100%{transform:scale(1)}}',
@@ -442,7 +443,7 @@ const HOME_SLOT_SCRIPT = `
     document.head.appendChild(st);
   }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
-  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Lottery"><svg class="home-bonus-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.65"/><path d="M12 8v13" stroke="currentColor" stroke-width="1.65"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" stroke="currentColor" stroke-width="1.65"/><g class="home-bonus-bow"><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" stroke="currentColor" stroke-width="1.65"/></g></svg></button></div></div>'}
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Lottery"><svg class="home-bonus-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.65"/><path d="M12 8v13" stroke="currentColor" stroke-width="1.65"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" stroke="currentColor" stroke-width="1.65"/><g class="home-bonus-bow"><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" stroke="currentColor" stroke-width="1.65"/></g></svg></button></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></div>'}
   function ensureBonusPanel(){
     if(q('#homeBonusPanel'))return;
     var wrap=document.createElement('div');
@@ -641,7 +642,7 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
     try{var bytes=new Uint8Array(12);crypto.getRandomValues(bytes);return 'lp_'+Array.prototype.map.call(bytes,function(v){return v.toString(16).padStart(2,'0')}).join('')}catch(e){}
     return 'lp_'+Date.now().toString(36)
   }
-  function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
+  function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){} }
   function ticketAudio(){
     try{
       var AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;
@@ -967,7 +968,7 @@ const HOME_WINNERS_CLIENT_SCRIPT = `
   function syncHeight(){var card=host(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
   function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
   function updateFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
-  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();if(window.VexaLotteryRefreshChance)window.VexaLotteryRefreshChance();return list}
+  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();return list}
   function render(winners,waiting,count){var list=ensureSurface();if(!list)return;var limit=cleanCount(count),map=winnerMap(winners,limit),html='';for(var rank=1;rank<=limit;rank++)html+=row(rank,map[rank],!!waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateFade(list)})}
   function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
   function scheduleRetry(){var home=homeRoot();if(retryTimer||!home||!home.classList.contains('active')||document.hidden)return;var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));retryTimer=setTimeout(function(){retryTimer=0;load(true)},delay)}
