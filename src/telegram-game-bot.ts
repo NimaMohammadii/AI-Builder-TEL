@@ -16,11 +16,11 @@ type TelegramEnvelope<T = unknown> = {
 type TelegramSentMessage = { message_id?: number };
 
 const USER_REGION_OPTIONS = [
-  ['US', '🇺🇸 United States'], ['IR', '🇮🇷 ایران'], ['RU', '🇷🇺 Россия'], ['TR', '🇹🇷 Türkiye'],
-  ['AE', '🇦🇪 العربية'], ['ES', '🇪🇸 España'], ['BR', '🇧🇷 Brasil'], ['ID', '🇮🇩 Indonesia'],
-  ['IN', '🇮🇳 India'], ['DE', '🇩🇪 Deutschland'], ['FR', '🇫🇷 France'], ['IT', '🇮🇹 Italia'],
+  ['US', '🇺🇸 United States'], ['RU', '🇷🇺 Россия'], ['TR', '🇹🇷 Türkiye'], ['AE', '🇦🇪 العربية'],
+  ['ES', '🇪🇸 España'], ['BR', '🇧🇷 Brasil'], ['ID', '🇮🇩 Indonesia'], ['IN', '🇮🇳 India'],
+  ['DE', '🇩🇪 Deutschland'], ['IR', '🇮🇷 Iran'], ['FR', '🇫🇷 France'], ['IT', '🇮🇹 Italia'],
   ['UA', '🇺🇦 Україна'], ['PL', '🇵🇱 Polska'], ['VN', '🇻🇳 Việt Nam'], ['TH', '🇹🇭 ไทย'],
-  ['KR', '🇰🇷 한국'], ['JP', '🇯🇵 日本'], ['PK', '🇵🇰 پاکستان'], ['PH', '🇵🇭 Philippines'],
+  ['KR', '🇰🇷 한국'], ['JP', '🇯🇵 日本'], ['PK', '🇵🇰 Pakistan'], ['PH', '🇵🇭 Philippines'],
   ['MY', '🇲🇾 Malaysia'], ['TW', '🇹🇼 繁體中文'],
 ] as const;
 
@@ -127,11 +127,11 @@ async function sendUserRegionMenu(env: Env, token: string, chatId: number, userI
   const currentCode = preference.countryCode || '';
   const currentLanguage = preference.languageCode ? (VEXA_LOCALE_LABELS as Record<string, string>)[preference.languageCode] : '';
   const title = preference.mode === 'automatic'
-    ? '🌐 Region & Language\n\nAutomatic detection is active. Open the Mini App and the system will use your time zone, then IP only when that time zone belongs to more than one country.'
-    : `🌐 Region & Language\n\nCurrent: ${currentCode} · ${currentLanguage}\n\nChoose a country. Its app language will be selected automatically.`;
+    ? '<b>🌐 Region &amp; Language</b>\n\n<b>Automatic detection is active.</b> Open the Mini App and the system will use your time zone, then IP only when that time zone belongs to more than one country.'
+    : `<b>🌐 Region &amp; Language</b>\n\n<b>Current:</b> ${currentCode} · ${currentLanguage}\n\n<b>Choose a country.</b> Its app language will be selected automatically.`;
   const rows = chunk(USER_REGION_OPTIONS.map(([code, label]) => ({ text: `${currentCode === code ? '✓ ' : ''}${label}`, callback_data: `vexa:region:${code}` })), 2);
   rows.push([{ text: `${preference.mode === 'automatic' ? '✓ ' : ''}Automatic (System)`, callback_data: 'vexa:region:AUTO' }]);
-  await replaceMenuMessage(env, token, chatId, { text: title, reply_markup: { inline_keyboard: rows } }, messageId);
+  await replaceMenuMessage(env, token, chatId, { text: title, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } }, messageId);
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
