@@ -74,7 +74,13 @@ html body:has(#home.active) header.top{
   gap:10px!important;
   align-content:space-between!important;
   box-sizing:border-box!important;
-  box-shadow:none!important;
+  box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035)!important;
 }
 #home #homeDrawInfoCard.home-draw-info-card:before,
 #home .home-ticket-card:before{
@@ -99,25 +105,24 @@ html body:has(#home.active) header.top{
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
     radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),
     radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%)!important;
-  box-shadow:none!important;
+  box-shadow:inset 0 1px 0 rgba(112,18,49,.065)!important;
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
-#home #homeDrawInfoCard .home-ticket-win-chance{
-  position:absolute!important;
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  width:auto!important;
-  height:10px!important;
+#home .home-ticket-win-chance{
+  position:relative!important;
+  width:100%!important;
+  height:18px!important;
   overflow:hidden!important;
-  border-radius:0 0 28px 28px!important;
-  border:0!important;
+  border-radius:28px!important;
+  border:1px solid rgba(124,22,53,.24)!important;
   background:
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
     radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
     #070707!important;
   box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
     inset 1px 1px 1px -.5px rgba(140,29,61,.22),
@@ -128,7 +133,7 @@ html body:has(#home.active) header.top{
   box-sizing:border-box!important;
   isolation:isolate!important;
 }
-#home #homeDrawInfoCard .home-ticket-win-chance-fill{
+#home .home-ticket-win-chance-fill{
   position:absolute!important;
   left:0!important;
   top:0!important;
@@ -137,8 +142,8 @@ html body:has(#home.active) header.top{
   border-radius:inherit!important;
   background:
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
-    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.52) 0%,rgba(92,10,35,.30) 46%,rgba(69,5,26,0) 78%),
-    rgba(156,38,70,.52)!important;
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
+    #3f091d!important;
   box-shadow:
     inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
     inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
@@ -147,7 +152,7 @@ html body:has(#home.active) header.top{
   transition:width .9s cubic-bezier(.2,.9,.25,1)!important;
   will-change:width!important;
 }
-#home #homeDrawInfoCard .home-ticket-win-chance-label{
+#home .home-ticket-win-chance-label{
   position:absolute!important;
   inset:0!important;
   z-index:1!important;
@@ -155,20 +160,20 @@ html body:has(#home.active) header.top{
   align-items:center!important;
   justify-content:center!important;
   color:rgba(255,255,255,.62)!important;
-  font-size:7.5px!important;
+  font-size:8.75px!important;
   font-weight:850!important;
   line-height:1!important;
   letter-spacing:-.01em!important;
   white-space:nowrap!important;
   pointer-events:none!important;
 }
-#home #homeDrawInfoCard .home-ticket-win-chance-label [data-win-chance]{
-  margin-left:3px!important;
+#home .home-ticket-win-chance-label [data-win-chance]{
+  margin-left:4px!important;
   color:#fff!important;
   font-weight:950!important;
   font-variant-numeric:tabular-nums!important;
 }
-@media (prefers-reduced-motion:reduce){#home #homeDrawInfoCard .home-ticket-win-chance-fill{transition:none!important}}
+@media (prefers-reduced-motion:reduce){#home .home-ticket-win-chance-fill{transition:none!important}}
 #home .home-ticket-card .home-ticket-stepper{
   display:grid!important;
   grid-template-columns:1fr 1fr!important;
@@ -204,7 +209,17 @@ html body:has(#home.active) header.top{
   color:#fff!important;
   font-size:12px!important;
   font-weight:950!important;
-  box-shadow:none!important;
+  box-shadow:
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.48),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.30),
+    inset -1px -1px 1px -.5px rgba(124,22,53,.24),
+    inset 0 0 6px 6px rgba(255,255,255,.055),
+    inset 0 0 2px 2px rgba(255,255,255,.035),
+    inset 0 1px 0 rgba(112,18,49,.065),
+    inset 0 -1px 0 rgba(88,12,37,.15)!important;
   backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   -webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;
   isolation:isolate!important;
@@ -281,7 +296,14 @@ html body:has(#home.active) header.top{
   background:
     radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
     radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%)!important;
-  box-shadow:none!important;
+  box-shadow:
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.22),
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30),
+    inset 6px 5px 13px -8px rgba(255,255,255,.13),
+    inset -5px -4px 11px -8px rgba(255,255,255,.055),
+    inset 0 0 10px rgba(69,5,26,.12)!important;
 }
 #home .home-ticket-card .home-ticket-count{
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.055),inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important;
@@ -294,7 +316,7 @@ html body:has(#home.active) header.top{
 #home .home-live-winner-amount{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
 #home .home-live-winner-card .vexa-premium-corner,#home .home-live-winner-card .vexa-bonus-premium,#home .home-live-winner-card .vexa-premium-star,#home .home-live-winner-card .vexa-bonus-star{display:none!important;content:none!important}
 #home .home-ticket-finance-visual{min-height:154px!important;height:var(--home-lottery-winners-height,154px)!important;align-self:start!important;place-items:stretch!important;pointer-events:auto!important;overflow:visible!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:0!important;outline:0!important;border-radius:0!important;padding:0!important}
-#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
+#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
 #home .home-lottery-winners-title{display:flex!important;align-items:center!important;gap:6px!important;min-height:13px!important;padding:0 4px!important;color:rgba(255,255,255,.66)!important;font-size:9px!important;font-weight:850!important;line-height:1!important;letter-spacing:-.01em!important}
 #home .home-lottery-winners-title svg{width:13px!important;height:13px!important;color:#d990a5!important;flex:0 0 auto!important}
 #home .home-lottery-winners-list{position:relative!important;display:grid!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;align-content:stretch!important;gap:6px!important;min-height:0!important;height:100%!important;overflow:hidden!important;padding:0 2px!important;box-sizing:border-box!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}
@@ -302,7 +324,7 @@ html body:has(#home.active) header.top{
 #home .home-lottery-winners-list.has-overflow:not(.is-scrolled){mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)!important}
 #home .home-lottery-winners-list.has-overflow.is-scrolled:not(.is-at-bottom){mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%)!important}
 #home .home-lottery-winners-list.has-overflow.is-at-bottom{mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 100%)!important;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 100%)!important}
-#home .home-lottery-winner-row{position:relative!important;overflow:hidden!important;height:auto!important;min-height:0!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-shadow:none!important;display:grid!important;grid-template-columns:26px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}
+#home .home-lottery-winner-row{position:relative!important;overflow:hidden!important;height:auto!important;min-height:0!important;border:0!important;outline:0!important;border-radius:28px!important;background:radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),radial-gradient(36px 36px at 100% 100%,rgba(172,46,79,.15) 0%,rgba(133,30,60,.065) 43%,rgba(94,16,39,0) 78%),radial-gradient(118% 76% at 10% -16%,rgba(255,255,255,.12) 0%,rgba(255,255,255,.032) 30%,rgba(255,255,255,0) 58%),radial-gradient(96% 72% at 102% 108%,rgba(255,255,255,.052) 0%,rgba(255,255,255,.010) 34%,rgba(255,255,255,0) 62%),radial-gradient(92% 78% at 88% 112%,rgba(72,5,27,.11) 0%,rgba(42,3,16,0) 60%),#000!important;box-shadow:0 12px 30px rgba(31,1,10,.32),0 0 18px rgba(69,5,26,.15),inset 3px 3px .5px -3.5px rgba(255,255,255,.10),inset -3px -3px .5px -3.5px rgba(156,38,70,.48),inset 1px 1px 1px -.5px rgba(140,29,61,.30),inset -1px -1px 1px -.5px rgba(124,22,53,.24),inset 0 0 6px 6px rgba(255,255,255,.055),inset 0 0 2px 2px rgba(255,255,255,.035),inset 0 1px 0 rgba(112,18,49,.065),inset 0 -1px 0 rgba(88,12,37,.15)!important;display:grid!important;grid-template-columns:26px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important;padding:0 10px!important;box-sizing:border-box!important;backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;-webkit-backdrop-filter:blur(22px) saturate(1.40) brightness(1.05) contrast(1.04)!important;isolation:isolate!important;transform:translateZ(0)!important}
 #home .home-lottery-winner-avatar{width:26px!important;height:26px!important;border-radius:50%!important;display:grid!important;place-items:center!important;overflow:hidden!important;background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.82)!important;font-size:8px!important;font-weight:900!important;line-height:1!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)!important}
 #home .home-lottery-winner-avatar img{width:100%!important;height:100%!important;display:block!important;object-fit:cover!important}
 #home .home-lottery-winner-copy{min-width:0!important;display:flex!important;align-items:center!important;overflow:hidden!important}
@@ -339,7 +361,64 @@ const HOME_MARKUP_SCRIPT = `
       '#home .home-lottery-slot-card:before,#home .home-lottery-slot-card:after{display:none!important;content:none!important}',
       '#home .home-lottery-slot-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center!important;border:0!important;outline:0!important;border-radius:22px!important;background:transparent!important;box-shadow:none!important;opacity:1!important}',
       '#home .home-slot-number-grid{position:absolute!important;inset:0!important;z-index:2!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;padding:7px 8px!important;box-sizing:border-box!important;pointer-events:none!important}',
-      '#home .home-slot-number-reel{position:relative!important;display:block!important;border-radius:17px!important;overflow:hidden!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;pointer-events:auto!important}',
+      '#home .home-slot-number-reel{position:relative!important;display:block!important;border-radius:17px!important;overflow:hidden!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+      '#home .home-slot-number-reel:before{display:none!important;content:none!important}',
+      '#home .home-slot-number-strip{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:grid!important;grid-auto-rows:40px!important;will-change:transform!important;transition:none!important}',
+      '#home .home-slot-number-reel.is-spinning .home-slot-number-strip{filter:blur(1.2px)!important}',
+      '#home .home-slot-number-digit{height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:34px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.065em!important;text-shadow:0 1px 0 rgba(255,255,255,.32),0 0 16px rgba(255,86,137,.54),0 12px 26px rgba(0,0,0,.54)!important;font-variant-numeric:tabular-nums!important;background:linear-gradient(180deg,#fff 0%,#ffe9f1 42%,#d85a7a 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}',
+      '.home-ticket-layout{margin-top:14px!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;align-items:stretch!important}',
+      '.home-ticket-finance-visual{min-height:154px!important;height:100%!important;position:relative!important;display:grid!important;place-items:center!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;pointer-events:none!important}',
+      '.home-ticket-drawer-backdrop{position:fixed!important;inset:0!important;z-index:99994!important;background:transparent!important;display:none!important}.home-ticket-drawer-backdrop.is-open{display:block!important}',
+      '.home-ticket-drawer{position:fixed!important;left:0!important;top:calc(120px + env(safe-area-inset-top))!important;bottom:calc(88px + env(safe-area-inset-bottom))!important;width:min(44vw,210px)!important;max-width:210px!important;z-index:99995!important;padding:24px 14px 14px!important;border-radius:0 30px 30px 0!important;color:#fff!important;transform:translate3d(-104%,0,0)!important;transition:transform .36s cubic-bezier(.18,.88,.24,1)!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;gap:14px!important;overflow:hidden!important}.home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}',
+      '.home-ticket-drawer-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}.home-ticket-drawer-head strong{font-size:16px!important;font-weight:950!important}.home-ticket-drawer-close{width:32px!important;height:32px!important;border-radius:13px!important;border:0!important;background:rgba(255,255,255,.07)!important;color:#fff!important;font-size:18px!important}',
+      '.home-ticket-drawer-count{height:54px!important;border-radius:20px!important;background:rgba(0,0,0,.16)!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;font-size:20px!important;font-weight:950!important}.home-ticket-list{min-height:0!important;display:grid!important;align-content:start!important;gap:8px!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding:0 0 8px!important}.home-ticket-list::-webkit-scrollbar{display:none!important}.home-ticket-list-item{height:38px!important;border-radius:16px!important;background:rgba(255,255,255,.045)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 10px!important;font-size:12px!important;font-weight:850!important}.home-ticket-list-item span{color:rgba(255,255,255,.54)!important;font-size:11px!important}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+  function reelY(index){return 'translate3d(0,-'+((index*40)+20)+'px,0)'}
+  function reelDigitsHtml(){var html='';for(var cycle=0;cycle<4;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
+  function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=0;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
+  function placeSection(home,sec){if(home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
+  function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})}
+  function setDrawer(open,sec){ensureDrawerPortal(sec);var drawer=q('#homeTicketDrawer'),backdrop=q('#homeTicketDrawerBackdrop');if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
+  function build(){
+    var home=q('#home');if(!home)return null;
+    var sec=q('#homeLuckyCodeSection',home);
+    if(!sec){
+      sec=document.createElement('section');
+      sec.id='homeLuckyCodeSection';
+      sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head" aria-hidden="true"></div><section class="home-lottery-slot-card" aria-label="Lottery slot image"><img class="home-lottery-slot-image" src="/app/api/home-lottery-slot.png?v=home-lottery" alt="" decoding="async" loading="eager"/>'+slotsHtml()+'</section><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-count" data-ticket-count>1 ticket</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"></div></div></div>';
+    }
+    placeSection(home,sec);
+    ensureDrawerPortal(sec);
+    return sec;
+  }
+  function bind(sec){
+    if(sec.dataset.ticketUiBound==='1')return;
+    sec.dataset.ticketUiBound='1';
+    sec.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeTicketImageButton'){e.preventDefault();setDrawer(true,sec)}},true);
+    document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='homeTicketDrawerClose'){e.preventDefault();setDrawer(false,sec);return}if(t&&t.id==='homeTicketDrawerBackdrop'){e.preventDefault();setDrawer(false,sec)}},true);
+  }
+  function init(){css();var sec=build();if(sec)bind(sec)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+`;
+
+const HOME_SLOT_SCRIPT = `
+(function(){
+  var busy=false,row=34,restLoop=20,spinLoops=25,totalSpinMs=6000,reelStopGapMs=3000;
+  function q(s,r){return (r||document).querySelector(s)}
+  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+  function y(i){return 'translate3d(0,-'+((i*row)+(row/2))+'px,0)'}
+  function digits(){var h='';for(var c=0;c<90;c++)for(var n=0;n<10;n++)h+='<span class="home-slot-number-digit">'+n+'</span>';return h}
+  function indexFor(v,loop){return loop*10+Math.max(0,Math.min(9,Math.floor(Number(v)||0)))}
+  function tune(){
+    if(q('#homeSlotTuningStyle'))return;
+    var st=document.createElement('style');st.id='homeSlotTuningStyle';
+    st.textContent=[
+      'body:has(#home.active) #home, #home.view.active{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important}#home .home-bonus-list,#home .home-ticket-drawer,#home .home-ticket-list,.home-bonus-list,.home-ticket-drawer{touch-action:pan-y!important;overscroll-behavior:contain!important}',
+      '#home .home-lottery-slot-card{pointer-events:auto!important}',
+      '#home .home-slot-number-reel{margin:5px 13px 6px!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.34) 0%,#000 36%,#000 64%,rgba(0,0,0,.34) 100%)!important;pointer-events:auto!important}',
       '#home .home-slot-number-reel:first-child{transform:translateX(1px)!important}',
       '#home .home-slot-number-reel:nth-child(2){transform:translateX(0px)!important}',
       '#home .home-slot-number-reel:nth-child(4){transform:translateX(-2px)!important}',
@@ -363,7 +442,7 @@ const HOME_MARKUP_SCRIPT = `
     document.head.appendChild(st);
   }
   function enableHomeScroll(){var h=q('#home');document.body.classList.remove('home-scroll-locked');if(h){h.style.removeProperty('overflow-y');h.style.removeProperty('touch-action');h.scrollLeft=0}}
-  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Lottery"><svg class="home-bonus-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.65"/><path d="M12 8v13" stroke="currentColor" stroke-width="1.65"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" stroke="currentColor" stroke-width="1.65"/><g class="home-bonus-bow"><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" stroke="currentColor" stroke-width="1.65"/></g></svg></button></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></div>'}
+  function drawInfoHtml(){return '<div class="home-draw-info-card" id="homeDrawInfoCard"><div class="home-draw-main"><div class="home-draw-copy"><span class="home-draw-label">Next Draw in</span><strong class="home-draw-time" data-draw-time>00:00:00</strong></div><span class="home-draw-divider" aria-hidden="true"></span><div class="home-prize-copy"><span class="home-prize-label">Prize Pool</span><strong class="home-prize-value"><span data-prize-pool>0.00</span><span class="home-prize-icon ton-mini-icon"><img data-prize-pool-icon alt="" aria-hidden="true" style="display:none"></span></strong></div></div><div class="home-draw-actions" id="homeDrawActions"><button class="home-ticket-image-button" id="homeTicketImageButton" type="button">My Tickets</button><button class="home-bonus-button" id="homeBonusButton" type="button" aria-label="Lottery"><svg class="home-bonus-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.65"/><path d="M12 8v13" stroke="currentColor" stroke-width="1.65"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" stroke="currentColor" stroke-width="1.65"/><g class="home-bonus-bow"><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" stroke="currentColor" stroke-width="1.65"/></g></svg></button></div></div>'}
   function ensureBonusPanel(){
     if(q('#homeBonusPanel'))return;
     var wrap=document.createElement('div');
@@ -562,7 +641,7 @@ const HOME_LOTTERY_CLIENT_SCRIPT = `
     try{var bytes=new Uint8Array(12);crypto.getRandomValues(bytes);return 'lp_'+Array.prototype.map.call(bytes,function(v){return v.toString(16).padStart(2,'0')}).join('')}catch(e){}
     return 'lp_'+Date.now().toString(36)
   }
-  function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){} }
+  function haptic(kind){try{var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.HapticFeedback){if(kind==='success'||kind==='error')tg.HapticFeedback.notificationOccurred(kind);else tg.HapticFeedback.impactOccurred(kind||'light')}}catch(e){}}
   function ticketAudio(){
     try{
       var AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;
@@ -888,7 +967,7 @@ const HOME_WINNERS_CLIENT_SCRIPT = `
   function syncHeight(){var card=host(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
   function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
   function updateFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
-  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();return list}
+  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();if(window.VexaLotteryRefreshChance)window.VexaLotteryRefreshChance();return list}
   function render(winners,waiting,count){var list=ensureSurface();if(!list)return;var limit=cleanCount(count),map=winnerMap(winners,limit),html='';for(var rank=1;rank<=limit;rank++)html+=row(rank,map[rank],!!waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateFade(list)})}
   function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
   function scheduleRetry(){var home=homeRoot();if(retryTimer||!home||!home.classList.contains('active')||document.hidden)return;var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));retryTimer=setTimeout(function(){retryTimer=0;load(true)},delay)}
