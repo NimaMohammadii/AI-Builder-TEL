@@ -98,7 +98,6 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     state.url=url;
     state.audio=audio;
     try{audio.load()}catch(e){}
-    if(state.autoResume)startState(state,Object.assign({},state.playOptions||{},{restart:false}));
     return audio;
   }
   function rememberUrl(state,url,version){
@@ -124,7 +123,9 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
       var url=String(data.url||'').trim();
       if(!url)return state.audio;
       rememberUrl(state,url,data.version);
-      return setUrl(state.target,url);
+      var audio=setUrl(state.target,url);
+      if(state.autoResume&&audio)startState(state,Object.assign({},state.playOptions||{},{restart:false}));
+      return audio;
     }catch(e){return state.audio}
   }
   function preload(raw){
@@ -155,9 +156,7 @@ export const MINIAPP_AUDIO_MANAGER_SCRIPT = `
     state.playOptions=options||{};
     rememberUrl(state,url,version);
     var audio=setUrl(state.target,url);
-    if(!audio)return Promise.resolve(false);
-    if(state.url===url&&state.audio===audio)return startState(state,Object.assign({},state.playOptions,{restart:false}));
-    return Promise.resolve(false)
+    return audio?startState(state,Object.assign({},state.playOptions,{restart:false})):Promise.resolve(false)
   }
   function fadeStop(raw,ms){
     var state=stateFor(raw);if(!state)return;
