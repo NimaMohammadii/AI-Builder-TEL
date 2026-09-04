@@ -1,4 +1,6 @@
 import { handleBotAdminCallback, handleBotAdminMessage } from './telegram-bot-admin-panel';
+import { getUserRegionPreference, setUserRegionPreference } from './admin-users';
+import { VEXA_LOCALE_LABELS } from './miniapp/i18n';
 import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-deposits';
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
@@ -12,6 +14,15 @@ type TelegramEnvelope<T = unknown> = {
   error_code?: number;
 };
 type TelegramSentMessage = { message_id?: number };
+
+const USER_REGION_OPTIONS = [
+  ['US', '🇺🇸 United States'], ['IR', '🇮🇷 ایران'], ['RU', '🇷🇺 Россия'], ['TR', '🇹🇷 Türkiye'],
+  ['AE', '🇦🇪 العربية'], ['ES', '🇪🇸 España'], ['BR', '🇧🇷 Brasil'], ['ID', '🇮🇩 Indonesia'],
+  ['IN', '🇮🇳 India'], ['DE', '🇩🇪 Deutschland'], ['FR', '🇫🇷 France'], ['IT', '🇮🇹 Italia'],
+  ['UA', '🇺🇦 Україна'], ['PL', '🇵🇱 Polska'], ['VN', '🇻🇳 Việt Nam'], ['TH', '🇹🇭 ไทย'],
+  ['KR', '🇰🇷 한국'], ['JP', '🇯🇵 日本'], ['PK', '🇵🇰 پاکستان'], ['PH', '🇵🇭 Philippines'],
+  ['MY', '🇲🇾 Malaysia'], ['TW', '🇹🇼 繁體中文'],
+] as const;
 
 export async function setTelegramWebhook(env: Env): Promise<{ ok: boolean; description?: string; error_code?: number }> {
   const token = botToken(env);
@@ -62,6 +73,7 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
 
   if (update.callback_query) {
     if (await handleBotAdminCallback(env, token, update.callback_query, telegram as TelegramApi)) return;
+    if (await handleUserRegionCallback(env, token, update.callback_query)) return;
     await telegram(token, 'answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
     return;
   }
@@ -79,9 +91,53 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
       return;
     }
 
+    if (isRegionCommand(message.text)) {
+      await deleteIncomingMessage(token, message.chat.id, message.message_id);
+      await sendUserRegionMenu(env, token, message.chat.id, message.from?.id ?? message.chat.id);
+      return;
+    }
+
     await deleteIncomingMessage(token, message.chat.id, message.message_id);
     await sendGameHome(env, token, message.chat.id);
   }
+}
+
+function isRegionCommand(text: string | undefined): boolean {
+  return /^\/region(?:@[-_a-z0-9]+)?$/i.test(String(text || '').trim());
+}
+
+async function handleUserRegionCallback(env: Env, token: string, q: NonNullable<TelegramUpdate['callback_query']>): Promise<boolean> {
+  const data = String(q.data || '');
+  if (!data.startsWith('vexa:region:')) return false;
+  const chatId = q.message?.chat.id ?? q.from.id;
+  const action = data.slice('vexa:region:'.length).trim().toUpperCase();
+  const countryCode = action === 'AUTO' ? null : USER_REGION_OPTIONS.some(([code]) => code === action) ? action : null;
+  if (action !== 'AUTO' && !countryCode) {
+    await telegram(token, 'answerCallbackQuery', { callback_query_id: q.id, text: 'Unknown region' }).catch(() => undefined);
+    return true;
+  }
+  const preference = await setUserRegionPreference(env, q.from.id, countryCode);
+  await telegram(token, 'answerCallbackQuery', { callback_query_id: q.id, text: preference.mode === 'automatic' ? 'Automatic detection enabled' : 'Region updated' }).catch(() => undefined);
+  await sendUserRegionMenu(env, token, chatId, q.from.id, q.message?.message_id);
+  return true;
+}
+
+async function sendUserRegionMenu(env: Env, token: string, chatId: number, userId: number, messageId?: number): Promise<void> {
+  const preference = await getUserRegionPreference(env, userId);
+  const currentCode = preference.countryCode || '';
+  const currentLanguage = preference.languageCode ? (VEXA_LOCALE_LABELS as Record<string, string>)[preference.languageCode] : '';
+  const title = preference.mode === 'automatic'
+    ? '🌐 Region & Language\n\nAutomatic detection is active. Open the Mini App and the system will use your time zone, then IP only when that time zone belongs to more than one country.'
+    : `🌐 Region & Language\n\nCurrent: ${currentCode} · ${currentLanguage}\n\nChoose a country. Its app language will be selected automatically.`;
+  const rows = chunk(USER_REGION_OPTIONS.map(([code, label]) => ({ text: `${currentCode === code ? '✓ ' : ''}${label}`, callback_data: `vexa:region:${code}` })), 2);
+  rows.push([{ text: `${preference.mode === 'automatic' ? '✓ ' : ''}Automatic (System)`, callback_data: 'vexa:region:AUTO' }]);
+  await replaceMenuMessage(env, token, chatId, { text: title, reply_markup: { inline_keyboard: rows } }, messageId);
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += size) rows.push(items.slice(index, index + size));
+  return rows;
 }
 
 function isAdminCommand(text: string | undefined): boolean {
@@ -101,8 +157,8 @@ async function sendGameHome(env: Env, token: string, chatId: number): Promise<vo
   });
 }
 
-async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>): Promise<void> {
-  const messageId = await getTelegramMenuMessageId(env, chatId);
+async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>, existingMessageId?: number): Promise<void> {
+  const messageId = existingMessageId ?? await getTelegramMenuMessageId(env, chatId);
   const payload = { chat_id: chatId, ...content };
   if (messageId) {
     const edited = await telegram(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
