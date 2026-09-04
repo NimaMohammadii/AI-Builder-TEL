@@ -28,7 +28,6 @@ const GAMES = [
 ] as const;
 const GAME_IDS = new Set(GAMES.map(([id]) => id));
 const BACKGROUND_GAMES = [
-  ['global-loading', 'Loading Screen'],
   ['predict', 'Predict'],
   ['ghostrun', 'Ghost Run'],
   ['coinflip', 'Pump'],
@@ -306,11 +305,8 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
       if (game) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${BACKGROUND_STATE_PREFIX}${game}`, { expirationTtl: 900 });
-        const loadingScreen = game === 'global-loading';
-        await upsert(token, chatId, messageId, loadingScreen
-          ? '🖼 تصویر Loading Screen\n\nتصویر تمام‌صفحه‌ای که در اولین لود اپ نمایش داده می‌شود را بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند. برای بهترین کیفیت، File/Document پیشنهاد می‌شود.'
-          : `🌄 بک‌گراند ${backgroundLabel(game)}\n\nتصویر را به‌صورت عکس معمولی یا File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
-          [{ text: '⬅️ بازگشت', callback_data: loadingScreen ? 'botadmin:imagesmenu' : 'botadmin:gamebackgrounds' }],
+        await upsert(token, chatId, messageId, `🌄 بک‌گراند ${backgroundLabel(game)}\n\nتصویر را به‌صورت عکس معمولی یا File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
+          [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gamebackgrounds' }],
         ]);
       }
     } else if (data.startsWith('botadmin:crashstage:')) {
@@ -362,8 +358,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     const menuMessageId = await trackedMenuMessageId(env, message.chat.id);
     if (target.kind === 'game') await sendGameMenu(token, message.chat.id, menuMessageId);
     else if (target.kind === 'background') {
-      if (target.game === 'global-loading') await sendImagesMenu(token, message.chat.id, menuMessageId);
-      else await sendBackgroundMenu(token, message.chat.id, menuMessageId);
+      await sendBackgroundMenu(token, message.chat.id, menuMessageId);
     }
     else if (target.kind === 'crash-stage') await sendCrashStageMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id, menuMessageId);
@@ -456,18 +451,14 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
       await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'background') {
-      if (target.game === 'global-loading') {
-        await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/section-background/global-loading.png?v=${Date.now()}`, '✅ تصویر Loading Screen ذخیره شد و از ورود بعدی روی لودر اولیه نمایش داده می‌شود.', '🖼 تغییر Loading Screen', 'botadmin:gamebackground:global-loading');
-      } else {
-        const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
-        const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
-          chat_id: message.chat.id,
-          photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
-          caption: successText,
-          reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
-        }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
-        await trackMenuMessage(env, message.chat.id, sent?.message_id);
-      }
+      const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
+      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+        chat_id: message.chat.id,
+        photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
+        caption: successText,
+        reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
+      }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
+      await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'crash-stage') {
       const successText = `✅ تصویر ${target.slot} از 5 مسیر افقی Crash ذخیره شد.`;
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
@@ -510,7 +501,6 @@ async function sendHome(env: Env, token: string, chatId: number, messageId?: num
 
 async function sendImagesMenu(token: string, chatId: number, messageId?: number): Promise<void> {
   await upsert(token, chatId, messageId, '🖼 تصاویر و ظاهر\n\nبخش موردنظر را انتخاب کنید.', [
-    [{ text: '🖼 تصویر Loading Screen', callback_data: 'botadmin:gamebackground:global-loading' }],
     [{ text: '💳 تصاویر روش پرداخت', callback_data: 'botadmin:paymentmethods' }],
     [
       { text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' },
@@ -576,7 +566,7 @@ async function sendPredictImageMenu(env: Env, token: string, chatId: number, mes
 }
 
 async function sendBackgroundMenu(token: string, chatId: number, messageId?: number): Promise<void> {
-  const gameBackgrounds = BACKGROUND_GAMES.filter(([id]) => id !== 'global-loading');
+  const gameBackgrounds = BACKGROUND_GAMES;
   const rows: Keyboard = [
     gameBackgrounds.map(([id, name]) => ({ text: name, callback_data: `botadmin:gamebackground:${id}` })),
     [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
