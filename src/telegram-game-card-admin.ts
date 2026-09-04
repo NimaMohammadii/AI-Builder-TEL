@@ -1,19 +1,21 @@
 import type { Env } from './types';
-import { saveMainMenuImageFileId, saveShareInviteImageFileId } from './share-invite-config';
+import { saveMainMenuMedia, saveShareInviteImageFileId } from './share-invite-config';
 import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
 import { sectionBackgroundR2Key } from './section-backgrounds';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Photo = { file_id: string; file_size?: number };
+type Video = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
 type Document = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
 type Audio = { file_id: string; file_size?: number; mime_type?: string; file_name?: string };
-type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; document?: Document; audio?: Audio };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string; photo?: Photo[]; video?: Video; document?: Document; audio?: Audio };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type UploadSource = { fileId: string; size?: number; type: string; via: 'photo' | 'document' | 'audio' };
+type MainMenuMediaSource = { fileId: string; size?: number; type: 'photo' | 'video' };
 type AudioGame = 'slot' | 'dice' | 'wallet-credit' | 'loading';
 type PaymentMethod = 'stars' | 'gram' | 'nft';
 type PredictAsset = 'logo';
@@ -68,6 +70,7 @@ const PREDICT_MARKETS = [
   ['bitcoin', 'Bitcoin'], ['gold', 'Gold'], ['oil', 'Oil'],
 ] as const;
 const MAX_BYTES = 10_000_000;
+const MAIN_MENU_VIDEO_MAX_BYTES = 50_000_000;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave', 'audio/ogg', 'application/ogg', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/x-m4a', 'audio/m4a']);
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'oga', 'webm', 'mp4', 'm4a', 'aac']);
@@ -252,7 +255,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       await promptImage(token, chatId, messageId, '🎰 تصویر اسلات صفحه Home', 'تصویری که داخل کادر شیشه‌ای اسلات در Home نمایش داده می‌شود را بفرستید.', 'botadmin:imagesmenu');
     } else if (data === 'botadmin:mainmenuimage') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), MAIN_MENU_STATE, { expirationTtl: 900 });
-      await upsert(token, chatId, messageId, '🎪 تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲\n\nتصویر را به‌صورت عکس معمولی بفرستید، نه File/Document. همین تصویر همراه متن منوی اصلی و دکمهٔ ورود به اپ نمایش داده می‌شود.', [
+      await upsert(token, chatId, messageId, '🎪 مدیای منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲\n\nیک عکس یا ویدیوی معمولی بفرستید. ویدیو باید به‌صورت Video تلگرام ارسال شود، نه File/Document. همان مدیا همراه متن منوی اصلی و دکمهٔ ورود به اپ نمایش داده می‌شود.', [
         [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
       ]);
     } else if (data === 'botadmin:shareinviteimage') {
@@ -405,25 +408,30 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
   }
 
   if (target.kind === 'main-menu') {
-    const source = imageFromMessage(message);
-    if (!source || source.via !== 'photo') {
-      await replaceUploadPrompt(env, token, message, '❌ تصویر منوی اصلی را به‌صورت عکس معمولی بفرستید، نه File/Document.');
+    const source = mainMenuMediaFromMessage(message);
+    if (!source) {
+      await replaceUploadPrompt(env, token, message, '❌ یک عکس یا ویدیوی معمولی بفرستید. ویدیو را به‌صورت Video تلگرام ارسال کنید، نه File/Document.');
+      return ok();
+    }
+    if (source.type === 'video' && source.size && source.size > MAIN_MENU_VIDEO_MAX_BYTES) {
+      await replaceUploadPrompt(env, token, message, '❌ حجم ویدیوی منوی اصلی باید حداکثر ۵۰ مگابایت باشد.');
       return ok();
     }
     try {
-      await saveMainMenuImageFileId(env, source.fileId);
+      await saveMainMenuMedia(env, source.fileId, source.type);
       await clearState(env, message.from.id);
       await deleteMessage(token, message.chat.id, message.message_id);
       await deleteTrackedMenu(env, token, message.chat.id);
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
-        chat_id: message.chat.id,
-        photo: source.fileId,
-        caption: '✅ تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.',
-        reply_markup: { inline_keyboard: [[{ text: '🎪 تغییر تصویر منوی اصلی', callback_data: 'botadmin:mainmenuimage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
-      }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: '✅ تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.' }));
+      const successText = `✅ ${source.type === 'video' ? 'ویدیو' : 'تصویر'} منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.`;
+      const reply_markup = { inline_keyboard: [[{ text: '🎪 تغییر مدیای منوی اصلی', callback_data: 'botadmin:mainmenuimage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] };
+      const sent = source.type === 'video'
+        ? await tg<{ message_id?: number }>(token, 'sendVideo', { chat_id: message.chat.id, video: source.fileId, caption: successText, supports_streaming: true, reply_markup })
+          .catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText, reply_markup }))
+        : await tg<{ message_id?: number }>(token, 'sendPhoto', { chat_id: message.chat.id, photo: source.fileId, caption: successText, reply_markup })
+          .catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText, reply_markup }));
       await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } catch (error) {
-      await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'ذخیرهٔ تصویر منوی اصلی انجام نشد.'}`);
+      await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'ذخیرهٔ مدیای منوی اصلی انجام نشد.'}`);
     }
     return ok();
   }
@@ -538,7 +546,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
     ],
     [{ text: '🎵 صداها', callback_data: 'botadmin:audiomenu' }],
-    [{ text: '🎪 تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:mainmenuimage' }],
+    [{ text: '🎪 مدیای منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:mainmenuimage' }],
     [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: '📈 لوگوهای Predict', callback_data: 'botadmin:predictimages' }],
@@ -741,6 +749,14 @@ async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, 
     httpMetadata: { contentType },
     customMetadata: metadata,
   });
+}
+
+function mainMenuMediaFromMessage(message: Message): MainMenuMediaSource | null {
+  const photo = message.photo?.at(-1);
+  if (photo?.file_id) return { fileId: photo.file_id, size: photo.file_size, type: 'photo' };
+  const video = message.video;
+  if (video?.file_id) return { fileId: video.file_id, size: video.file_size, type: 'video' };
+  return null;
 }
 
 function imageFromMessage(message: Message): UploadSource | null {
