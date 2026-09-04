@@ -118,7 +118,7 @@ async function handleUserRegionCallback(env: Env, token: string, q: NonNullable<
   }
   const preference = await setUserRegionPreference(env, q.from.id, countryCode);
   await telegram(token, 'answerCallbackQuery', { callback_query_id: q.id, text: preference.mode === 'automatic' ? 'Automatic detection enabled' : 'Region updated' }).catch(() => undefined);
-  await sendUserRegionMenu(env, token, chatId, q.from.id, q.message?.message_id);
+  await sendGameHome(env, token, chatId, q.message?.message_id);
   return true;
 }
 
@@ -145,7 +145,7 @@ function isAdminCommand(text: string | undefined): boolean {
   return normalized === 'admin' || normalized === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(normalized);
 }
 
-async function sendGameHome(env: Env, token: string, chatId: number): Promise<void> {
+async function sendGameHome(env: Env, token: string, chatId: number, existingMessageId?: number): Promise<void> {
   await replaceMenuMessage(env, token, chatId, {
     text: 'Open the Mini App',
     reply_markup: {
@@ -154,7 +154,7 @@ async function sendGameHome(env: Env, token: string, chatId: number): Promise<vo
         web_app: { url: `${PUBLIC_BASE_URL}/app` },
       }]],
     },
-  });
+  }, existingMessageId);
 }
 
 async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>, existingMessageId?: number): Promise<void> {
