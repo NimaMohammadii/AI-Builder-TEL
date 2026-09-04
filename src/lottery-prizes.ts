@@ -26,12 +26,6 @@ type WinnerRow = {
 };
 type CandidateRow = { id: string; user_id: string; code: string };
 type ExistingWinnerRow = { rank: number; user_id: string };
-type ForcedRoundRow = {
-  status: string;
-  forced_winner_1_user_id?: string | null;
-  forced_winner_2_user_id?: string | null;
-  forced_winner_3_user_id?: string | null;
-};
 
 export type LotteryPrize = {
   rank: number;
@@ -53,11 +47,6 @@ export type LotteryWinner = {
   prizeNano: number;
   paid: boolean;
   createdAt: string;
-};
-
-export type LotteryWinnerSelection = {
-  rank: number;
-  userId: string | null;
 };
 
 export async function ensureLotteryPrizeTables(env: Env): Promise<void> {
@@ -99,10 +88,6 @@ export async function ensureLotteryPrizeTables(env: Env): Promise<void> {
   )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_lottery_winners_round_rank ON lottery_winners(round_id,rank)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_lottery_winners_user_round ON lottery_winners(user_id,round_id)').run();
-
-  await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN forced_winner_1_user_id TEXT').run().catch(() => undefined);
-  await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN forced_winner_2_user_id TEXT').run().catch(() => undefined);
-  await env.DB.prepare('ALTER TABLE lottery_rounds ADD COLUMN forced_winner_3_user_id TEXT').run().catch(() => undefined);
 }
 
 export async function getLotteryPrizes(env: Env, prizePoolNanoInput: unknown = 0): Promise<LotteryPrize[]> {
@@ -127,44 +112,6 @@ export async function setLotteryPrizePercentages(env: Env, percentBpsInput: unkn
     env.DB.prepare('UPDATE lottery_prizes SET prize_bps=?,updated_at=CURRENT_TIMESTAMP WHERE rank=?').bind(value, index + 1),
   ));
   return getLotteryPrizes(env);
-}
-
-export async function getLotteryWinnerSelections(env: Env, roundIdInput: unknown): Promise<LotteryWinnerSelection[]> {
-  await ensureLotteryPrizeTables(env);
-  const roundId = cleanRoundId(roundIdInput);
-  const row = await env.DB.prepare(`SELECT status,forced_winner_1_user_id,forced_winner_2_user_id,forced_winner_3_user_id
-    FROM lottery_rounds WHERE id=? LIMIT 1`).bind(roundId).first<ForcedRoundRow>();
-  if (!row) throw new Error('Lottery round is unavailable');
-  return [
-    { rank: 1, userId: cleanForcedUserId(row.forced_winner_1_user_id) },
-    { rank: 2, userId: cleanForcedUserId(row.forced_winner_2_user_id) },
-    { rank: 3, userId: cleanForcedUserId(row.forced_winner_3_user_id) },
-  ];
-}
-
-export async function setLotteryWinnerSelections(env: Env, roundIdInput: unknown, userIdsInput: unknown[]): Promise<LotteryWinnerSelection[]> {
-  await ensureLotteryPrizeTables(env);
-  const roundId = cleanRoundId(roundIdInput);
-  const userIds = Array.from({ length: LOTTERY_WINNER_COUNT }, (_, index) => cleanForcedUserId(Array.isArray(userIdsInput) ? userIdsInput[index] : null));
-  const configured = userIds.filter((value): value is string => Boolean(value));
-  if (new Set(configured).size !== configured.length) throw new Error('Each configured Lottery winner must be a different user');
-
-  const round = await env.DB.prepare('SELECT status FROM lottery_rounds WHERE id=? LIMIT 1').bind(roundId).first<{ status: string }>();
-  if (!round) throw new Error('Lottery round is unavailable');
-  if (round.status !== 'open') throw new Error('Winners can only be configured for the next open round');
-
-  for (const userId of configured) {
-    const ticket = await env.DB.prepare('SELECT id FROM lottery_tickets WHERE round_id=? AND user_id=? LIMIT 1')
-      .bind(roundId, userId).first<{ id: string }>();
-    if (!ticket?.id) throw new Error(`User ${userId} has no ticket in this Lottery round`);
-  }
-
-  const result = await env.DB.prepare(`UPDATE lottery_rounds SET
-    forced_winner_1_user_id=?,forced_winner_2_user_id=?,forced_winner_3_user_id=?,updated_at=CURRENT_TIMESTAMP
-    WHERE id=? AND status='open'`)
-    .bind(userIds[0], userIds[1], userIds[2], roundId).run();
-  if (Number(result.meta?.changes || 0) <= 0) throw new Error('Lottery round changed before winner configuration was saved');
-  return getLotteryWinnerSelections(env, roundId);
 }
 
 export async function getLotteryWinners(env: Env, roundIdInput?: unknown): Promise<LotteryWinner[]> {
@@ -201,7 +148,8 @@ export async function userWonLotteryRound(env: Env, userIdInput: unknown, roundI
 
 export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): Promise<LotteryWinner[]> {
   await ensureLotteryPrizeTables(env);
-  const roundId = cleanRoundId(roundIdInput);
+  const roundId = String(roundIdInput || '').trim();
+  if (!roundId) throw new Error('Missing Lottery round');
 
   const poolRow = await env.DB.prepare(`SELECT COALESCE(SUM(price_nano),0) AS prize_pool_nano
     FROM lottery_tickets WHERE round_id=?`).bind(roundId).first<{ prize_pool_nano: number }>();
@@ -211,24 +159,11 @@ export async function finalizeLotteryWinners(env: Env, roundIdInput: unknown): P
   const existing = existingRows.results || [];
   const selectedUsers = existing.map((row) => String(row.user_id || '')).filter(Boolean);
   const occupiedRanks = new Set(existing.map((row) => Math.floor(Number(row.rank) || 0)));
-  const forcedSelections = await getLotteryWinnerSelections(env, roundId);
-  const forcedByRank = new Map(forcedSelections.filter((item) => item.userId).map((item) => [item.rank, item.userId as string]));
-  const reservedForcedUsers = forcedSelections.map((item) => item.userId).filter((value): value is string => Boolean(value));
 
   for (let rank = 1; rank <= LOTTERY_WINNER_COUNT; rank += 1) {
     if (occupiedRanks.has(rank)) continue;
-    const forcedUserId = forcedByRank.get(rank) || null;
-    let candidate: CandidateRow | null = null;
-    if (forcedUserId) {
-      if (selectedUsers.includes(forcedUserId)) throw new Error(`Configured Lottery winner ${forcedUserId} is duplicated`);
-      candidate = await randomCandidateForUser(env, roundId, forcedUserId);
-      if (!candidate) throw new Error(`Configured Lottery winner ${forcedUserId} has no valid ticket`);
-    } else {
-      const excluded = Array.from(new Set([...selectedUsers, ...reservedForcedUsers]));
-      candidate = await randomCandidate(env, roundId, excluded);
-    }
-    if (!candidate) continue;
-
+    const candidate = await randomCandidate(env, roundId, selectedUsers);
+    if (!candidate) break;
     const prizeNano = Math.max(0, Math.floor(Number(prizes[rank - 1]?.prizeNano) || 0));
     const winnerId = `lw_${randomHex(24)}`;
     const result = await env.DB.prepare(`INSERT OR IGNORE INTO lottery_winners
@@ -264,31 +199,10 @@ async function randomCandidate(env: Env, roundId: string, excludedUsers: string[
     WHERE round_id=? AND COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5))!=''${exclusion}
     ORDER BY datetime(created_at) ASC,id ASC LIMIT 1 OFFSET ?`;
   const row = await env.DB.prepare(rowSql).bind(roundId, ...excludedUsers, offset).first<CandidateRow>();
-  return normalizeCandidate(row);
-}
-
-async function randomCandidateForUser(env: Env, roundId: string, userId: string): Promise<CandidateRow | null> {
-  const countRow = await env.DB.prepare(`SELECT COUNT(*) AS count FROM lottery_tickets
-    WHERE round_id=? AND user_id=? AND COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5))!=''`)
-    .bind(roundId, userId).first<{ count: number }>();
-  const count = Math.max(0, Math.floor(Number(countRow?.count || 0)));
-  if (!count) return null;
-  const offset = secureRandomIndex(count);
-  const row = await env.DB.prepare(`SELECT id,user_id,COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5)) AS code
-    FROM lottery_tickets
-    WHERE round_id=? AND user_id=? AND COALESCE(NULLIF(ticket_code,''),substr(ticket_number,-5))!=''
-    ORDER BY datetime(created_at) ASC,id ASC LIMIT 1 OFFSET ?`)
-    .bind(roundId, userId, offset).first<CandidateRow>();
-  return normalizeCandidate(row);
-}
-
-function normalizeCandidate(row: CandidateRow | null): CandidateRow | null {
   if (!row) return null;
   const code = String(row.code || '').replace(/[^0-9]/g, '').slice(-5).padStart(5, '0');
   if (!/^\d{5}$/.test(code)) return null;
-  const userId = cleanForcedUserId(row.user_id);
-  if (!userId) return null;
-  return { id: String(row.id || ''), user_id: userId, code };
+  return { id: row.id, user_id: row.user_id, code };
 }
 
 async function payPendingLotteryWinners(env: Env, roundId: string): Promise<void> {
@@ -360,20 +274,6 @@ function publicWinner(row: WinnerRow): LotteryWinner {
 
 async function ensureLotteryWinnerProfileColumn(env: Env): Promise<void> {
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN avatar_url TEXT').run().catch(() => undefined);
-}
-
-function cleanRoundId(value: unknown): string {
-  const roundId = String(value || '').trim().replace(/[^0-9A-Za-z_-]/g, '').slice(0, 120);
-  if (!roundId) throw new Error('Missing Lottery round');
-  return roundId;
-}
-
-function cleanForcedUserId(value: unknown): string | null {
-  const raw = String(value ?? '').trim();
-  if (!raw || /^(?:auto|random|none|null|-|0)$/i.test(raw)) return null;
-  const userId = raw.replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80);
-  if (!userId) throw new Error('Invalid Lottery winner user ID');
-  return userId;
 }
 
 function cleanAvatarUrl(value: unknown): string | null {
