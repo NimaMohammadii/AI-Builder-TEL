@@ -109,44 +109,50 @@ html body:has(#home.active) header.top{
 }
 #home #homeDrawInfoCard.home-draw-info-card>*,
 #home .home-ticket-card>*{position:relative!important;z-index:1!important}
-#home .home-ticket-card .home-ticket-card-head{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  gap:0!important;
-  width:100%!important;
-  padding-left:0!important;
-  box-sizing:border-box!important;
-}
-#home .home-ticket-card .home-ticket-win-chance{
+#home .home-ticket-win-chance{
   position:relative!important;
   width:100%!important;
   height:18px!important;
   overflow:hidden!important;
-  border-radius:999px!important;
+  border-radius:28px!important;
+  border:1px solid rgba(124,22,53,.24)!important;
   background:
-    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.16) 0%,rgba(146,35,66,.07) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
     radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
     #070707!important;
   box-shadow:
-    inset 0 0 0 1px rgba(124,22,53,.24),
+    0 12px 30px rgba(31,1,10,.32),
+    0 0 18px rgba(69,5,26,.15),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
     inset 1px 1px 1px -.5px rgba(140,29,61,.22),
-    inset -1px -1px 1px -.5px rgba(92,10,35,.30)!important;
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30),
+    inset 6px 5px 13px -8px rgba(255,255,255,.13),
+    inset -5px -4px 11px -8px rgba(255,255,255,.055),
+    inset 0 0 10px rgba(69,5,26,.12)!important;
+  box-sizing:border-box!important;
   isolation:isolate!important;
 }
-#home .home-ticket-card .home-ticket-win-chance-fill{
+#home .home-ticket-win-chance-fill{
   position:absolute!important;
   left:0!important;
   top:0!important;
   bottom:0!important;
   width:0%;
   border-radius:inherit!important;
-  background:linear-gradient(90deg,rgba(104,18,44,.76) 0%,rgba(146,35,66,.82) 58%,rgba(156,38,70,.88) 100%)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 10px rgba(69,5,26,.16)!important;
+  background:
+    radial-gradient(34px 34px at 0 0,rgba(186,53,87,.20) 0%,rgba(146,35,66,.09) 42%,rgba(104,18,44,0) 76%),
+    radial-gradient(38px 38px at 100% 100%,rgba(156,38,70,.26) 0%,rgba(92,10,35,.12) 46%,rgba(69,5,26,0) 78%),
+    #3f091d!important;
+  box-shadow:
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.10),
+    inset -3px -3px .5px -3.5px rgba(156,38,70,.52),
+    inset 1px 1px 1px -.5px rgba(140,29,61,.22),
+    inset -1px -1px 1px -.5px rgba(92,10,35,.30)!important;
   transition:width .9s cubic-bezier(.2,.9,.25,1)!important;
   will-change:width!important;
 }
-#home .home-ticket-card .home-ticket-win-chance-label{
+#home .home-ticket-win-chance-label{
   position:absolute!important;
   inset:0!important;
   z-index:1!important;
@@ -161,13 +167,13 @@ html body:has(#home.active) header.top{
   white-space:nowrap!important;
   pointer-events:none!important;
 }
-#home .home-ticket-card .home-ticket-win-chance-label [data-win-chance]{
+#home .home-ticket-win-chance-label [data-win-chance]{
   margin-left:4px!important;
   color:#fff!important;
   font-weight:950!important;
   font-variant-numeric:tabular-nums!important;
 }
-@media (prefers-reduced-motion:reduce){#home .home-ticket-card .home-ticket-win-chance-fill{transition:none!important}}
+@media (prefers-reduced-motion:reduce){#home .home-ticket-win-chance-fill{transition:none!important}}
 #home .home-ticket-card .home-ticket-stepper{
   display:grid!important;
   grid-template-columns:1fr 1fr!important;
@@ -310,7 +316,7 @@ html body:has(#home.active) header.top{
 #home .home-live-winner-amount{color:#fff!important;font-size:13px!important;font-weight:950!important;white-space:nowrap!important}
 #home .home-live-winner-card .vexa-premium-corner,#home .home-live-winner-card .vexa-bonus-premium,#home .home-live-winner-card .vexa-premium-star,#home .home-live-winner-card .vexa-bonus-star{display:none!important;content:none!important}
 #home .home-ticket-finance-visual{min-height:154px!important;height:var(--home-lottery-winners-height,154px)!important;align-self:start!important;place-items:stretch!important;pointer-events:auto!important;overflow:visible!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:0!important;outline:0!important;border-radius:0!important;padding:0!important}
-#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
+#home .home-ticket-finance-visual>.home-lottery-winners{width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:7px!important;align-content:stretch!important;min-width:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:visible!important;padding:0!important}
 #home .home-lottery-winners-title{display:flex!important;align-items:center!important;gap:6px!important;min-height:13px!important;padding:0 4px!important;color:rgba(255,255,255,.66)!important;font-size:9px!important;font-weight:850!important;line-height:1!important;letter-spacing:-.01em!important}
 #home .home-lottery-winners-title svg{width:13px!important;height:13px!important;color:#d990a5!important;flex:0 0 auto!important}
 #home .home-lottery-winners-list{position:relative!important;display:grid!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;align-content:stretch!important;gap:6px!important;min-height:0!important;height:100%!important;overflow:hidden!important;padding:0 2px!important;box-sizing:border-box!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}
@@ -381,7 +387,7 @@ const HOME_MARKUP_SCRIPT = `
     if(!sec){
       sec=document.createElement('section');
       sec.id='homeLuckyCodeSection';
-      sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head" aria-hidden="true"></div><section class="home-lottery-slot-card" aria-label="Lottery slot image"><img class="home-lottery-slot-image" src="/app/api/home-lottery-slot.png?v=home-lottery" alt="" decoding="async" loading="eager"/>'+slotsHtml()+'</section><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-card-head"><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></div><div class="home-ticket-count" data-ticket-count>1 ticket</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"></div></div></div>';
+      sec.innerHTML='<div class="home-ticket-drawer-backdrop" id="homeTicketDrawerBackdrop"></div><div class="home-ticket-drawer" id="homeTicketDrawer"><div class="home-ticket-drawer-head"><strong>My Tickets</strong><button class="home-ticket-drawer-close" id="homeTicketDrawerClose" type="button">×</button></div><div class="home-ticket-drawer-count" data-ticket-count>0 tickets</div><div class="home-ticket-list" id="homeTicketList"></div></div><div class="home-lucky-card"><div class="home-lucky-head" aria-hidden="true"></div><section class="home-lottery-slot-card" aria-label="Lottery slot image"><img class="home-lottery-slot-image" src="/app/api/home-lottery-slot.png?v=home-lottery" alt="" decoding="async" loading="eager"/>'+slotsHtml()+'</section><div class="home-ticket-layout"><div class="home-ticket-card"><div class="home-ticket-count" data-ticket-count>1 ticket</div><div class="home-ticket-stepper"><button class="home-ticket-step" type="button" data-ticket-minus>-</button><button class="home-ticket-step" type="button" data-ticket-plus>+</button></div><button class="home-ticket-button" id="homeTicketButton" type="button">Get Ticket</button></div><div class="home-ticket-finance-visual" aria-hidden="true"></div></div></div>';
     }
     placeSection(home,sec);
     ensureDrawerPortal(sec);
@@ -961,7 +967,7 @@ const HOME_WINNERS_CLIENT_SCRIPT = `
   function syncHeight(){var card=host(),ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!card||!ticket)return;var h=Math.ceil(ticket.getBoundingClientRect().height||0);if(h>0)card.style.setProperty('--home-lottery-winners-height',Math.max(154,h)+'px')}
   function watchHeight(){var ticket=q('#home .home-ticket-layout>.home-ticket-card:not(.home-ticket-finance-visual)');if(!ticket)return;if(observedTicket===ticket){syncHeight();return}if(heightObserver){heightObserver.disconnect();heightObserver=null}observedTicket=ticket;syncHeight();if(window.ResizeObserver){heightObserver=new ResizeObserver(function(){syncHeight()});heightObserver.observe(ticket)}}
   function updateFade(list){if(!list)return;var max=Math.max(0,list.scrollHeight-list.clientHeight),overflow=max>2;list.classList.toggle('has-overflow',overflow);list.classList.toggle('is-scrolled',overflow&&list.scrollTop>2);list.classList.toggle('is-at-bottom',overflow&&list.scrollTop>=max-2)}
-  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();return list}
+  function ensureSurface(){var home=homeRoot(),card=host();if(!home||!card)return null;card.removeAttribute('aria-hidden');card.classList.remove('home-ticket-card');var surface=q(':scope>.home-lottery-winners',card);if(!surface){card.innerHTML='<section class="home-lottery-winners" aria-label="Lottery results"><div class="home-lottery-winners-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 13v4M8.5 20h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lottery-winners-title></span></div><div class="home-lottery-winners-list"></div><div class="home-ticket-win-chance" data-win-chance-track role="progressbar" aria-label="Your chance to win" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="home-ticket-win-chance-fill" data-win-chance-fill></div><div class="home-ticket-win-chance-label">Your chance to win <span data-win-chance>0%</span></div></div></section>';surface=q(':scope>.home-lottery-winners',card)}var title=surface&&q('[data-lottery-winners-title]',surface);if(title)title.textContent='Previous Winners';var list=surface&&q('.home-lottery-winners-list',surface);if(list&&list.dataset.winnersScrollBound!=='1'){list.dataset.winnersScrollBound='1';list.addEventListener('scroll',function(){updateFade(list)},{passive:true})}watchHeight();if(window.VexaLotteryRefreshChance)window.VexaLotteryRefreshChance();return list}
   function render(winners,waiting,count){var list=ensureSurface();if(!list)return;var limit=cleanCount(count),map=winnerMap(winners,limit),html='';for(var rank=1;rank<=limit;rank++)html+=row(rank,map[rank],!!waiting);list.innerHTML=html;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){updateFade(list)})}
   function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
   function scheduleRetry(){var home=homeRoot();if(retryTimer||!home||!home.classList.contains('active')||document.hidden)return;var delay=retryDelay;retryDelay=Math.min(15000,Math.round(retryDelay*1.8));retryTimer=setTimeout(function(){retryTimer=0;load(true)},delay)}
