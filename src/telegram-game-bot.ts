@@ -5,7 +5,7 @@ import { handleStarsPreCheckout, handleStarsSuccessfulPayment } from './stars-de
 import type { Env, TelegramUpdate } from './types';
 import { PUBLIC_BASE_URL } from './utils';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
-import { getMainMenuImageFileId } from './share-invite-config';
+import { getMainMenuMedia } from './share-invite-config';
 
 type TelegramApi = <T = unknown>(token: string, method: string, payload: unknown) => Promise<T>;
 type TelegramEnvelope<T = unknown> = {
@@ -336,15 +336,15 @@ function isAdminCommand(text: string | undefined): boolean {
 async function sendGameHome(env: Env, token: string, chatId: number, existingMessageId?: number, languageCode?: string): Promise<void> {
   const locale = localeForTelegramLanguage(languageCode);
   const text = mainMenuText(locale);
-  const imageFileId = await getMainMenuImageFileId(env).catch(() => null);
+  const media = await getMainMenuMedia(env).catch(() => null);
   const reply_markup = {
     inline_keyboard: [[{
       text: `🎪 ${stylizeLatin('Open Vexa Game')}`,
       web_app: { url: `${PUBLIC_BASE_URL}/app` },
     }]],
   };
-  await replaceMenuMessage(env, token, chatId, imageFileId
-    ? { photo: imageFileId, text, parse_mode: 'HTML', reply_markup }
+  await replaceMenuMessage(env, token, chatId, media
+    ? { [media.type]: media.fileId, text, parse_mode: 'HTML', reply_markup }
     : { text, parse_mode: 'HTML', reply_markup }, existingMessageId);
 }
 
@@ -402,7 +402,10 @@ function escapeHtml(value: string): string {
 async function replaceMenuMessage(env: Env, token: string, chatId: number, content: Record<string, unknown>, existingMessageId?: number): Promise<void> {
   const messageId = existingMessageId ?? await getTelegramMenuMessageId(env, chatId);
   const photo = typeof content.photo === 'string' ? content.photo : '';
-  if (photo) {
+  const video = typeof content.video === 'string' ? content.video : '';
+  const mediaFileId = video || photo;
+  if (mediaFileId) {
+    const mediaType = video ? 'video' : 'photo';
     const caption = String(content.text ?? '');
     const parseMode = typeof content.parse_mode === 'string' ? content.parse_mode : undefined;
     const replyMarkup = content.reply_markup;
@@ -410,16 +413,18 @@ async function replaceMenuMessage(env: Env, token: string, chatId: number, conte
       const edited = await telegram(token, 'editMessageMedia', {
         chat_id: chatId,
         message_id: messageId,
-        media: { type: 'photo', media: photo, caption, ...(parseMode ? { parse_mode: parseMode } : {}) },
+        media: { type: mediaType, media: mediaFileId, caption, ...(parseMode ? { parse_mode: parseMode } : {}) },
         ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }).then(() => true).catch(() => false);
       if (edited) return;
       await telegram(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
     }
-    const sent = await telegram<TelegramSentMessage>(token, 'sendPhoto', {
+    const method = mediaType === 'video' ? 'sendVideo' : 'sendPhoto';
+    const sent = await telegram<TelegramSentMessage>(token, method, {
       chat_id: chatId,
-      photo,
+      [mediaType]: mediaFileId,
       caption,
+      ...(mediaType === 'video' ? { supports_streaming: true } : {}),
       ...(parseMode ? { parse_mode: parseMode } : {}),
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     });
