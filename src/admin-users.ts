@@ -23,8 +23,15 @@ type AdminUserRow = {
   source: string | null;
   region_code?: string | null;
   language_code?: string | null;
+  region_mode?: string | null;
   timezone?: string | null;
   return_count?: number | null;
+};
+
+export type UserRegionPreference = {
+  mode: 'automatic' | 'manual';
+  countryCode: string | null;
+  languageCode: string | null;
 };
 
 type ClientResetState = { resetVersion: string; resetAllVersion: string };
@@ -34,7 +41,7 @@ const CLIENT_RESET_PREFIX = 'miniapp-client-reset:';
 const CLIENT_RESET_ALL_KEY = 'miniapp-client-reset:all';
 const CLIENT_RESET_TTL_SECONDS = 180 * 24 * 60 * 60;
 
-export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; banned: boolean; tonBalanceNano: number; winChancePercent: number; resetVersion: string; resetAllVersion: string; level: Awaited<ReturnType<typeof getUserLevel>> } | { ok: false; error: string }> {
+export async function trackAppUser(env: Env, payload: AppUserActivityPayload): Promise<{ ok: true; banned: boolean; tonBalanceNano: number; winChancePercent: number; regionPreference: UserRegionPreference; resetVersion: string; resetAllVersion: string; level: Awaited<ReturnType<typeof getUserLevel>> } | { ok: false; error: string }> {
   const userId = String(payload.userId ?? '').trim();
   if (!userId) return { ok: false, error: 'Missing user id' };
   const username = cleanText(payload.username, 80);
@@ -45,9 +52,8 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
 
   try {
     await ensureTonBalanceColumn(env);
+    await ensureUserRegionColumns(env);
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
-    await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
-    await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
     await env.DB.prepare('ALTER TABLE app_users ADD COLUMN avatar_url TEXT').run().catch(() => undefined);
     const [controls, resetState, level] = await Promise.all([
       getUserControls(env, userId),
@@ -62,8 +68,8 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         username = excluded.username,
         avatar_url = COALESCE(excluded.avatar_url, app_users.avatar_url),
         current_section = excluded.current_section,
-        region_code = COALESCE(excluded.region_code, app_users.region_code),
-        language_code = COALESCE(excluded.language_code, app_users.language_code),
+        region_code = CASE WHEN COALESCE(app_users.region_mode, 'automatic') = 'manual' THEN app_users.region_code ELSE COALESCE(excluded.region_code, app_users.region_code) END,
+        language_code = CASE WHEN COALESCE(app_users.region_mode, 'automatic') = 'manual' THEN app_users.language_code ELSE COALESCE(excluded.language_code, app_users.language_code) END,
         return_count = CASE
           WHEN datetime(COALESCE(app_users.last_seen_at, app_users.created_at)) < datetime('now', '-30 minutes') THEN COALESCE(app_users.return_count, 1) + 1
           ELSE COALESCE(app_users.return_count, 1)
@@ -72,11 +78,54 @@ export async function trackAppUser(env: Env, payload: AppUserActivityPayload): P
         updated_at = CURRENT_TIMESTAMP`)
       .bind(userId, firstName, username, cleanAvatarUrl(payload.avatarUrl), section, tonBalanceNano, regionCode, languageCode)
       .run();
-    return { ok: true, banned: controls.banned, tonBalanceNano, winChancePercent: controls.winChancePercent, ...resetState, level };
+    const regionPreference = await getUserRegionPreference(env, userId);
+    return { ok: true, banned: controls.banned, tonBalanceNano, winChancePercent: controls.winChancePercent, regionPreference, ...resetState, level };
   } catch (error) {
     console.error('track app user failed', error);
     return { ok: false, error: 'Database is not ready. Run migrations.' };
   }
+}
+
+export async function getUserRegionPreference(env: Env, userIdInput: unknown): Promise<UserRegionPreference> {
+  const userId = cleanUserId(userIdInput);
+  await ensureUserRegionColumns(env);
+  const row = await env.DB.prepare('SELECT region_code, language_code, region_mode FROM app_users WHERE telegram_user_id = ? LIMIT 1')
+    .bind(userId)
+    .first<{ region_code?: string | null; language_code?: string | null; region_mode?: string | null }>();
+  const manual = String(row?.region_mode || '').trim().toLowerCase() === 'manual';
+  return {
+    mode: manual ? 'manual' : 'automatic',
+    countryCode: manual ? cleanCountryCode(row?.region_code) : null,
+    languageCode: manual ? cleanLocaleCode(row?.language_code) : null,
+  };
+}
+
+export async function setUserRegionPreference(env: Env, userIdInput: unknown, countryCodeInput: unknown): Promise<UserRegionPreference> {
+  const userId = cleanUserId(userIdInput);
+  const countryCode = cleanCountryCode(countryCodeInput);
+  await ensureTonBalanceColumn(env);
+  await ensureUserRegionColumns(env);
+  if (!countryCode) {
+    await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, region_code, language_code, region_mode, updated_at)
+      VALUES (?, NULL, NULL, 'automatic', CURRENT_TIMESTAMP)
+      ON CONFLICT(telegram_user_id) DO UPDATE SET region_code = NULL, language_code = NULL, region_mode = 'automatic', updated_at = CURRENT_TIMESTAMP`)
+      .bind(userId)
+      .run();
+    return { mode: 'automatic', countryCode: null, languageCode: null };
+  }
+  const languageCode = vexaLocaleForCountry(countryCode);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, region_code, language_code, region_mode, updated_at)
+    VALUES (?, ?, ?, 'manual', CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET region_code = excluded.region_code, language_code = excluded.language_code, region_mode = 'manual', updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, countryCode, languageCode)
+    .run();
+  return { mode: 'manual', countryCode, languageCode };
+}
+
+async function ensureUserRegionColumns(env: Env): Promise<void> {
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
+  await env.DB.prepare("ALTER TABLE app_users ADD COLUMN region_mode TEXT NOT NULL DEFAULT 'automatic'").run().catch(() => undefined);
 }
 
 function cleanAvatarUrl(value: unknown): string | null {
@@ -92,8 +141,7 @@ function cleanAvatarUrl(value: unknown): string | null {
 
 export async function adminUsersJson(env: Env): Promise<{ users: Array<Record<string, unknown>>; stats: Record<string, number> }> {
   await ensureTonBalanceColumn(env);
-  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN region_code TEXT').run().catch(() => undefined);
-  await env.DB.prepare('ALTER TABLE app_users ADD COLUMN language_code TEXT').run().catch(() => undefined);
+  await ensureUserRegionColumns(env);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN timezone TEXT').run().catch(() => undefined);
   await env.DB.prepare('ALTER TABLE app_users ADD COLUMN return_count INTEGER NOT NULL DEFAULT 1').run().catch(() => undefined);
   const rows = await env.DB.prepare(`WITH ranked AS (
@@ -303,6 +351,11 @@ function cleanText(value: unknown, max: number): string | null {
 function cleanCountryCode(value: unknown): string | null {
   const code = String(value || '').trim().toUpperCase();
   return /^[A-Z]{2}$/.test(code) ? code : null;
+}
+
+function cleanLocaleCode(value: unknown): string | null {
+  const code = String(value || '').trim();
+  return /^[A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?$/.test(code) ? code : null;
 }
 
 function cleanSection(value: unknown): string {
