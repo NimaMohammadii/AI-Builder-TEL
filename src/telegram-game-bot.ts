@@ -127,8 +127,8 @@ async function sendUserRegionMenu(env: Env, token: string, chatId: number, userI
   const currentCode = preference.countryCode || '';
   const currentLanguage = preference.languageCode ? (VEXA_LOCALE_LABELS as Record<string, string>)[preference.languageCode] : '';
   const title = preference.mode === 'automatic'
-    ? '<b>🌐 Region &amp; Language</b>\n\n<b>Automatic (System)</b>'
-    : `<b>🌐 Region &amp; Language</b>\n\n<b>Current:</b> ${currentCode} · ${currentLanguage}`;
+    ? '<b>🌐 Region &amp; Language</b>\n\n<b>Automatic (System)</b>\nYour region and language will be selected automatically.'
+    : `<b>🌐 Region &amp; Language</b>\n\n<b>Current:</b> ${currentCode} · ${currentLanguage}\n\nChoose a region below.`;
   const rows = chunk(USER_REGION_OPTIONS.map(([code, label]) => ({ text: `${currentCode === code ? '✓ ' : ''}${label}`, callback_data: `vexa:region:${code}` })), 2);
   rows.push([{ text: `${preference.mode === 'automatic' ? '✓ ' : ''}Automatic (System)`, callback_data: 'vexa:region:AUTO' }]);
   await replaceMenuMessage(env, token, chatId, { text: title, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } }, messageId);
