@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { getCurrentLotteryRound, getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, startLotteryNow, updateLotterySettings } from './lottery';
-import { getLotteryPrizes, LOTTERY_WINNER_COUNT, setLotteryPrizePercentages } from './lottery-prizes';
+import { getLotteryPrizes, getLotteryWinnerSelections, LOTTERY_WINNER_COUNT, setLotteryPrizePercentages, setLotteryWinnerSelections } from './lottery-prizes';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
@@ -8,7 +8,7 @@ type Callback = { id: string; data?: string; from: { id: number }; message?: { m
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
-type InputMode = 'draw' | 'price' | 'limit' | 'interval' | 'prizes';
+type InputMode = 'draw' | 'price' | 'limit' | 'interval' | 'prizes' | 'winners';
 
 const STATE_PREFIX = 'admin:lottery-input:';
 const NANO = 1_000_000_000;
@@ -70,9 +70,28 @@ async function handleCallback(env: Env, callback: Callback): Promise<Response> {
       return ok();
     }
 
+    if (action === 'winners') {
+      await sendWinnerMenu(env, chatId, messageId);
+      return ok();
+    }
+
     if (action === 'askprizes') {
       await setState(env, callback.from.id, 'prizes');
       await prompt(env, chatId, messageId, 'prizes');
+      return ok();
+    }
+
+    if (action === 'askwinners') {
+      await setState(env, callback.from.id, 'winners');
+      await prompt(env, chatId, messageId, 'winners');
+      return ok();
+    }
+
+    if (action === 'clearwinners') {
+      const round = await getCurrentLotteryRound(env, true);
+      if (!round || round.status !== 'open') throw new Error('هیچ Round بازی برای تنظیم برنده وجود ندارد.');
+      await setLotteryWinnerSelections(env, round.id, [null, null, null]);
+      await sendWinnerMenu(env, chatId, messageId, '✅ هر سه رتبه به حالت شانسی برگشتند.');
       return ok();
     }
 
@@ -123,6 +142,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
     if (text === '/cancel' || text === 'لغو') {
       await clearState(env, userId);
       if (mode === 'prizes') await sendPrizeMenu(env, message.chat.id, menuMessageId);
+      else if (mode === 'winners') await sendWinnerMenu(env, message.chat.id, menuMessageId);
       else await sendLotteryMenu(env, message.chat.id, menuMessageId);
       return;
     }
@@ -132,6 +152,16 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       await setLotteryPrizePercentages(env, percentBps);
       await finishInput(env, message, userId);
       await sendPrizeMenu(env, message.chat.id, menuMessageId, '✅ تقسیم Prize Pool برای سه برنده ذخیره شد.');
+      return;
+    }
+
+    if (mode === 'winners') {
+      const round = await getCurrentLotteryRound(env, true);
+      if (!round || round.status !== 'open') throw new Error('هیچ Round بازی برای تنظیم برنده وجود ندارد.');
+      const userIds = parseWinnerUserIds(text);
+      await setLotteryWinnerSelections(env, round.id, userIds);
+      await finishInput(env, message, userId);
+      await sendWinnerMenu(env, message.chat.id, menuMessageId, '✅ برنده‌های راند بعدی ذخیره شدند. رتبه‌های Auto همچنان شانسی انتخاب می‌شوند.');
       return;
     }
 
@@ -180,6 +210,10 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
   const overview = await getLotteryAdminOverview(env);
   const { settings, round, stats } = overview;
   const drawMs = round?.status === 'open' ? Date.parse(round.drawAt) - Date.now() : 0;
+  const selections = round?.status === 'open'
+    ? await getLotteryWinnerSelections(env, round.id).catch(() => [])
+    : [];
+  const forcedCount = selections.filter((item) => item.userId).length;
   const text = [
     notice,
     '🎟 Lottery Control',
@@ -189,6 +223,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
     `تیکت رایگان هر Round: ${settings.freeTicketEnabled ? 'فعال ✅' : 'غیرفعال ❌'}`,
     `قیمت هر تیکت: ${formatGram(settings.ticketPriceNano)} GRAM`,
     `برنده در هر Round: ${LOTTERY_WINNER_COUNT} نفر`,
+    `انتخاب راند بعدی: ${forcedCount ? `${forcedCount} رتبه ثابت / ${LOTTERY_WINNER_COUNT - forcedCount} شانسی` : 'کاملاً شانسی 🎲'}`,
     `سقف هر کاربر: ${settings.maxTicketsPerUser > 0 ? settings.maxTicketsPerUser : 'بدون محدودیت'}`,
     `فاصله پیش‌فرض Draw: ${formatMinutes(settings.drawIntervalMinutes)}`,
     '',
@@ -205,6 +240,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
 
   const rows: Keyboard = [
     [{ text: '🚀 Start Now', callback_data: 'botadmin:lottery:startnow' }],
+    [{ text: '🎯 برنده‌های راند بعدی', callback_data: 'botadmin:lottery:winners' }],
     [{ text: '🏆 تقسیم Prize Pool برای ۳ برنده', callback_data: 'botadmin:lottery:prizes' }],
     [{ text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' }],
     [
@@ -256,17 +292,48 @@ async function sendPrizeMenu(env: Env, chatId: number, messageId?: number, notic
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
+async function sendWinnerMenu(env: Env, chatId: number, messageId?: number, notice = ''): Promise<void> {
+  const round = await getCurrentLotteryRound(env, true);
+  const selections = round?.status === 'open'
+    ? await getLotteryWinnerSelections(env, round.id)
+    : Array.from({ length: LOTTERY_WINNER_COUNT }, (_, index) => ({ rank: index + 1, userId: null as string | null }));
+  const lines = selections.map((item) => `${item.rank}. ${item.userId ? `ID ${item.userId} 🎯` : 'Auto 🎲'}`);
+  const text = [
+    notice,
+    '🎯 Winners — Next Draw',
+    '',
+    `Round: ${round?.status === 'open' ? round.id : '—'}`,
+    '',
+    ...lines,
+    '',
+    'هر ID باید در همین Round حداقل یک تیکت داشته باشد.',
+    'هر رتبه‌ای که Auto باشد با همان انتخاب شانسی اصلی Lottery مشخص می‌شود.',
+    'سه برنده همیشه باید کاربرهای متفاوت باشند.',
+  ].filter(Boolean).join('\n');
+
+  const rows: Keyboard = [
+    [{ text: '✏️ تعیین ID برنده‌ها', callback_data: 'botadmin:lottery:askwinners' }],
+    [{ text: '🎲 هر سه رتبه شانسی', callback_data: 'botadmin:lottery:clearwinners' }],
+    [{ text: '⬅️ Lottery Control', callback_data: 'botadmin:lottery:menu' }],
+  ];
+  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
+  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  if (active) await setTelegramMenuMessageId(env, chatId, active);
+}
+
 async function prompt(env: Env, chatId: number, messageId: number | undefined, mode: InputMode): Promise<void> {
   const text = mode === 'prizes'
     ? '🏆 تقسیم Prize Pool\n\nدرصد رتبه اول، دوم و سوم را به‌ترتیب بفرستید.\nمثال: 50,30,20\nمجموع باید دقیقاً 100 باشد.'
-    : mode === 'draw'
-      ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
-      : mode === 'price'
-        ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
-        : mode === 'limit'
-          ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
-          : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
-  const back = mode === 'prizes' ? 'botadmin:lottery:prizes' : 'botadmin:lottery:menu';
+    : mode === 'winners'
+      ? '🎯 برنده‌های راند بعدی\n\nTelegram User IDها را به‌ترتیب رتبه اول تا سوم بفرستید.\nمثال: 123456789,987654321,555555555\n\nبرای هر رتبه‌ای که باید شانسی باشد بنویسید auto.\nمثال: 123456789,auto,555555555\n\nاگر فقط یک یا دو ID بفرستید، رتبه‌های باقی‌مانده خودکار شانسی می‌شوند.'
+      : mode === 'draw'
+        ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
+        : mode === 'price'
+          ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
+          : mode === 'limit'
+            ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
+            : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
+  const back = mode === 'prizes' ? 'botadmin:lottery:prizes' : mode === 'winners' ? 'botadmin:lottery:winners' : 'botadmin:lottery:menu';
   const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
   const active = await upsert(env.BOT_TOKEN, chatId, tracked, `${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
@@ -278,7 +345,7 @@ async function finishInput(env: Env, message: Message, userId: number): Promise<
 }
 
 function normalizeMode(value: string): InputMode | null {
-  return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' || value === 'prizes' ? value : null;
+  return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' || value === 'prizes' || value === 'winners' ? value : null;
 }
 function parsePrizePercentages(value: string): number[] {
   const parts = value.replace(/٪/g, '%').split(/[،,;|/\s]+/).map((item) => item.replace('%', '').trim()).filter(Boolean);
@@ -290,6 +357,21 @@ function parsePrizePercentages(value: string): number[] {
   });
   if (percentBps.reduce((sum, item) => sum + item, 0) !== 10_000) throw new Error('مجموع درصدها باید دقیقاً 100 باشد.');
   return percentBps;
+}
+function parseWinnerUserIds(value: string): Array<string | null> {
+  const raw = value.trim();
+  if (/^(?:auto|random|شانسی)$/i.test(raw)) return [null, null, null];
+  const parts = raw.split(/[،,;|/\s]+/).map((item) => item.trim()).filter(Boolean);
+  if (!parts.length || parts.length > LOTTERY_WINNER_COUNT) throw new Error('بین 1 تا 3 User ID بفرستید. مثال: 123456789,auto,987654321');
+  const result = parts.map((item) => {
+    if (/^(?:auto|random|-|0|شانسی)$/i.test(item)) return null;
+    if (!/^\d{3,20}$/.test(item)) throw new Error(`User ID نامعتبر است: ${item}`);
+    return item;
+  });
+  while (result.length < LOTTERY_WINNER_COUNT) result.push(null);
+  const configured = result.filter((item): item is string => Boolean(item));
+  if (new Set(configured).size !== configured.length) throw new Error('یک کاربر نمی‌تواند برای دو رتبه انتخاب شود.');
+  return result;
 }
 function stateKey(userId: number): string { return `${STATE_PREFIX}${userId}`; }
 async function getState(env: Env, userId: number): Promise<InputMode | null> {
