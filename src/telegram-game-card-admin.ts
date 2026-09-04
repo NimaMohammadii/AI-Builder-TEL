@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { saveShareInviteImageFileId } from './share-invite-config';
+import { saveMainMenuImageFileId, saveShareInviteImageFileId } from './share-invite-config';
 import { sendAdminHome as sendCurrentAdminHome } from './telegram-section-access-admin';
 import { PUBLIC_BASE_URL } from './utils';
 import { sectionBackgroundR2Key } from './section-backgrounds';
@@ -19,7 +19,7 @@ type PaymentMethod = 'stars' | 'gram' | 'nft';
 type PredictAsset = 'logo';
 type PredictMarket = 'bitcoin' | 'gold' | 'oil';
 
-type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'predict'; asset: PredictAsset; market: PredictMarket } | { kind: 'audio'; game: AudioGame } | { kind: 'share-invite' };
+type UploadTarget = { kind: 'game'; game: string } | { kind: 'background'; game: string } | { kind: 'crash-stage'; slot: number } | { kind: 'ton' } | { kind: 'home-slot' } | { kind: 'rank'; rank: string } | { kind: 'ghost-asset'; asset: string } | { kind: 'slot-symbol'; symbol: string } | { kind: 'payment-method'; method: PaymentMethod } | { kind: 'predict'; asset: PredictAsset; market: PredictMarket } | { kind: 'audio'; game: AudioGame } | { kind: 'main-menu' } | { kind: 'share-invite' };
 
 const GAMES = [
   ['mines', 'Mines'], ['plinko', 'Plinko'], ['slot', 'Slot'],
@@ -44,6 +44,7 @@ const AUDIO_STATE_PREFIX = 'audio:';
 const PREDICT_STATE_PREFIX = 'predict:';
 const TON_STATE = 'ton-icon';
 const HOME_SLOT_STATE = 'home-slot';
+const MAIN_MENU_STATE = 'main-menu-image';
 const SHARE_INVITE_STATE = 'share-invite-image';
 const SLOT_AUDIO_KEY = 'slot-spin-audio';
 const DICE_AUDIO_KEY = 'miniapp/audio';
@@ -199,6 +200,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:crashstage'
       || data === 'botadmin:tonlogo'
       || data === 'botadmin:homeslot'
+      || data === 'botadmin:mainmenuimage'
       || data === 'botadmin:predictimages'
       || data === 'botadmin:shareinviteimage'
       || data === 'botadmin:ranks'
@@ -248,6 +250,11 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:homeslot') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), HOME_SLOT_STATE, { expirationTtl: 900 });
       await promptImage(token, chatId, messageId, '🎰 تصویر اسلات صفحه Home', 'تصویری که داخل کادر شیشه‌ای اسلات در Home نمایش داده می‌شود را بفرستید.', 'botadmin:imagesmenu');
+    } else if (data === 'botadmin:mainmenuimage') {
+      await env.BOT_CACHE.put(stateKey(callback.from.id), MAIN_MENU_STATE, { expirationTtl: 900 });
+      await upsert(token, chatId, messageId, '🎪 تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲\n\nتصویر را به‌صورت عکس معمولی بفرستید، نه File/Document. همین تصویر همراه متن منوی اصلی و دکمهٔ ورود به اپ نمایش داده می‌شود.', [
+        [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
+      ]);
     } else if (data === 'botadmin:shareinviteimage') {
       await env.BOT_CACHE.put(stateKey(callback.from.id), SHARE_INVITE_STATE, { expirationTtl: 900 });
       await promptImage(token, chatId, messageId, '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', 'یک تصویر را به‌صورت عکس معمولی بفرستید. همین تصویر همراه متن دعوت و دکمهٔ ورود به اپ ارسال می‌شود.', 'botadmin:imagesmenu');
@@ -397,6 +404,30 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     return ok();
   }
 
+  if (target.kind === 'main-menu') {
+    const source = imageFromMessage(message);
+    if (!source || source.via !== 'photo') {
+      await replaceUploadPrompt(env, token, message, '❌ تصویر منوی اصلی را به‌صورت عکس معمولی بفرستید، نه File/Document.');
+      return ok();
+    }
+    try {
+      await saveMainMenuImageFileId(env, source.fileId);
+      await clearState(env, message.from.id);
+      await deleteMessage(token, message.chat.id, message.message_id);
+      await deleteTrackedMenu(env, token, message.chat.id);
+      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+        chat_id: message.chat.id,
+        photo: source.fileId,
+        caption: '✅ تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.',
+        reply_markup: { inline_keyboard: [[{ text: '🎪 تغییر تصویر منوی اصلی', callback_data: 'botadmin:mainmenuimage' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
+      }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: '✅ تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲 ذخیره شد.' }));
+      await trackMenuMessage(env, message.chat.id, sent?.message_id);
+    } catch (error) {
+      await replaceUploadPrompt(env, token, message, `❌ ${error instanceof Error ? error.message : 'ذخیرهٔ تصویر منوی اصلی انجام نشد.'}`);
+    }
+    return ok();
+  }
+
   if (target.kind === 'share-invite') {
     const source = imageFromMessage(message);
     if (!source || source.via !== 'photo') {
@@ -507,6 +538,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
     ],
     [{ text: '🎵 صداها', callback_data: 'botadmin:audiomenu' }],
+    [{ text: '🎪 تصویر منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:mainmenuimage' }],
     [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],
     [{ text: '💎 لوگوی TON', callback_data: 'botadmin:tonlogo' }],
     [{ text: '📈 لوگوهای Predict', callback_data: 'botadmin:predictimages' }],
@@ -666,7 +698,7 @@ async function saveAudio(env: Env, token: string, game: AudioGame, source: Uploa
   if (game === 'dice') await env.BOT_CACHE.put(DICE_AUDIO_ENABLED_KEY, '1');
 }
 
-async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'audio' } | { kind: 'share-invite' }>, source: UploadSource): Promise<void> {
+async function saveImage(env: Env, token: string, target: Exclude<UploadTarget, { kind: 'audio' } | { kind: 'share-invite' } | { kind: 'main-menu' }>, source: UploadSource): Promise<void> {
   if (source.size && source.size > MAX_BYTES) throw new Error('حجم تصویر باید کمتر از ۱۰ مگابایت باشد.');
   const file = await tg<{ file_path?: string }>(token, 'getFile', { file_id: source.fileId });
   if (!file.file_path) throw new Error('فایل از تلگرام دریافت نشد.');
@@ -782,6 +814,7 @@ function normalizeCrashStageSlot(value: unknown): number | null {
 }
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();
+  if (raw === MAIN_MENU_STATE) return { kind: 'main-menu' };
   if (raw === SHARE_INVITE_STATE) return { kind: 'share-invite' };
   if (raw === TON_STATE) return { kind: 'ton' };
   if (raw === HOME_SLOT_STATE) return { kind: 'home-slot' };
