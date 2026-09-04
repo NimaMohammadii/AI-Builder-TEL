@@ -17,11 +17,12 @@ const AUDIO_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wa
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'oga', 'webm', 'mp4', 'm4a', 'aac']);
 const MINIAPP_AUDIO_KEY = 'miniapp/audio';
 const WALLET_CREDIT_AUDIO_KEY = 'miniapp/audio/wallet-credit';
+const LOADING_AUDIO_KEY = 'miniapp/audio/loading';
 const MINIAPP_AUDIO_ENABLED_KEY = 'admin:miniapp-audio-enabled';
 const UPLOADED_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const UPLOADED_IMAGE_INDEX_CACHE_CONTROL = 'no-store';
 
-type MiniappAudioTarget = 'dice' | 'wallet-credit';
+type MiniappAudioTarget = 'dice' | 'wallet-credit' | 'loading';
 
 const UPLOADED_IMAGE_CONTEXT_SECTIONS: Record<string, string[]> = {
   home: ['global-loading', 'home'],
@@ -47,7 +48,7 @@ const gameTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), initD
 const userTonBalanceSchema = z.object({ userId: z.string().min(1).max(80), tonBalanceNano: z.number().int().nonnegative() });
 const userTonBalanceAdjustSchema = z.object({ userId: z.string().min(1).max(80), deltaNano: z.number().int() });
 const userWinChanceSchema = z.object({ userId: z.string().min(1).max(80), winChancePercent: z.number().int().min(0).max(100) });
-const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(80), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
+const userSectionBlockSchema = z.object({ userId: z.string().min(1).max(40), sectionId: z.string().min(1).max(40), blocked: z.boolean() });
 const audioEnabledSchema = z.object({ enabled: z.boolean() });
 const playZoneCardVisibilitySchema = z.object({ gameId: z.string().min(1).max(40), visible: z.boolean() });
 const sectionAccessLockSchema = z.object({ sectionId: z.string().min(1).max(40), minutes: z.number().int().min(1).max(43_200) });
@@ -109,8 +110,9 @@ app.get('/app/api/uploaded-images', async (c) => {
   const scopedSections = context ? UPLOADED_IMAGE_CONTEXT_SECTIONS[context] : null;
   const assetScope = new Set(context ? UPLOADED_IMAGE_CONTEXT_ASSETS[context] : uploadedImageAssetScopeForSections(scopedSections));
   const head = (enabled: boolean, key: string) => enabled ? c.env.ASSETS.head(key).catch(() => null) : Promise.resolve(null);
-  const [loadingHead, creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
+  const [loadingHead, loadingAudioHead, creditHead, tonHead, plinkoHead, minesSafeHead, minesBombHead] = await Promise.all([
     head(Boolean(scopedSections?.includes('global-loading')), sectionBackgroundR2Key('global-loading')),
+    head(context === 'startup', LOADING_AUDIO_KEY),
     head(assetScope.has('credit'), 'credit-icon'),
     head(assetScope.has('ton'), 'ton-icon'),
     head(assetScope.has('plinko'), 'plinko-ball'),
@@ -118,13 +120,14 @@ app.get('/app/api/uploaded-images', async (c) => {
     head(assetScope.has('mines'), 'mines-tile/bomb'),
   ]);
   const loadingImageUrl = loadingHead ? `/app/api/section-background/global-loading.png?v=${assetVersion(loadingHead)}` : null;
+  const loadingAudioUrl = loadingAudioHead ? `/app/api/miniapp-audio-file?target=loading&v=${assetVersion(loadingAudioHead)}` : null;
   const creditIconUrl = assetScope.has('credit') ? `/app/api/credit-icon.png?v=${assetVersion(creditHead)}` : null;
   const tonIconUrl = assetScope.has('ton') ? (tonHead ? `/app/api/uploaded-image/ton-icon.png?v=${assetVersion(tonHead)}` : creditIconUrl) : null;
   const plinkoBallUrl = assetScope.has('plinko') ? (plinkoHead ? `/app/api/uploaded-image/plinko-ball.png?v=${assetVersion(plinkoHead)}` : creditIconUrl) : null;
   const minesSafeUrl = minesSafeHead ? `/app/api/uploaded-image/mines-safe.png?v=${assetVersion(minesSafeHead)}` : null;
   const minesBombUrl = minesBombHead ? `/app/api/uploaded-image/mines-bomb.png?v=${assetVersion(minesBombHead)}` : null;
   const preload = [loadingImageUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl].filter(Boolean);
-  return c.json({ loadingImageUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
+  return c.json({ loadingImageUrl, loadingAudioUrl, creditIconUrl, tonIconUrl, plinkoBallUrl, minesSafeUrl, minesBombUrl, preload }, 200, { 'cache-control': UPLOADED_IMAGE_INDEX_CACHE_CONTROL });
 });
 
 app.get('/app/api/uploaded-image/ton-icon.png', async (c) => getAssetResponse(c.env, 'ton-icon', '/app/api/credit-icon.png'));
@@ -157,10 +160,11 @@ app.get('/app/api/section-access', zValidator('query', userIdSchema), async (c) 
 });
 
 function normalizeMiniappAudioTarget(value: unknown): MiniappAudioTarget {
-  return String(value || '').trim().toLowerCase() === 'wallet-credit' ? 'wallet-credit' : 'dice';
+  const clean = String(value || '').trim().toLowerCase();
+  return clean === 'loading' ? 'loading' : clean === 'wallet-credit' ? 'wallet-credit' : 'dice';
 }
 function miniappAudioKey(target: MiniappAudioTarget): string {
-  return target === 'wallet-credit' ? WALLET_CREDIT_AUDIO_KEY : MINIAPP_AUDIO_KEY;
+  return target === 'loading' ? LOADING_AUDIO_KEY : target === 'wallet-credit' ? WALLET_CREDIT_AUDIO_KEY : MINIAPP_AUDIO_KEY;
 }
 async function getMiniappAudioJson(env: Env, target: MiniappAudioTarget): Promise<Record<string, unknown>> {
   const object = await env.ASSETS.head(miniappAudioKey(target)).catch(() => null);
