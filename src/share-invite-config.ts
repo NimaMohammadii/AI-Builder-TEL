@@ -75,3 +75,11 @@ export async function getMainMenuMedia(env: Env): Promise<MainMenuMedia | null> 
     return null;
   }
 }
+
+export function saveMainMenuImageFileId(env: Env, fileId: string): Promise<void> {
+  return saveMainMenuMedia(env, fileId, 'photo');
+}
+
+export async function getMainMenuImageFileId(env: Env): Promise<string | null> {
+  return (await getMainMenuMedia(env))?.fileId ?? null;
+}
