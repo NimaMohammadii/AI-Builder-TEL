@@ -26,7 +26,6 @@ export const SECTION_BACKGROUND_SCRIPT = `
     coinflip:playZoneCardSelectors('coinflip'),
     hilo:playZoneCardSelectors('hilo'),
     'wheel-separator':['#wheel .wheel-separator','[data-section-background-target="wheel-separator"]'],
-    'global-loading':['[data-section-background-target="global-loading"]']
   };
   function cssUrl(url){return 'url("'+String(url).replace(/\\\\/g,'\\\\\\\\').replace(/"/g,'\\\\"')+'")'}
   function add(list,el){if(el&&list.indexOf(el)<0)list.push(el)}
