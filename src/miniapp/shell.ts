@@ -34,7 +34,7 @@ import { PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from '
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
-import { BOOT_LOADER_SCRIPT, BOOT_LOADER_STYLES } from './boot-loader-script';
+import { BOOT_LOADING_IMAGE_DATA_URI, BOOT_LOADER_SCRIPT, BOOT_LOADER_STYLES } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
 import { MINIAPP_AUDIO_MANAGER_SCRIPT, MINIAPP_AUDIO_SCRIPT } from './audio-script';
 import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
@@ -208,7 +208,7 @@ export function miniAppShellHtml(): string {
 <body>
   <div id="vexaBoot" class="vexa-boot" role="progressbar" aria-label="Loading Vexa Game" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <div class="vexa-boot-card">
-      <img id="vexaBootImage" class="vexa-boot-logo" src="/app/api/section-background/global-loading.png" alt="" decoding="async" fetchpriority="high"/>
+      <img id="vexaBootImage" class="vexa-boot-logo" src="${BOOT_LOADING_IMAGE_DATA_URI}" alt="" decoding="async" fetchpriority="high"/>
       <div class="vexa-boot-progress" aria-hidden="true"><span id="vexaBootProgress" class="vexa-boot-progress-bar"></span></div>
     </div>
   </div>
