@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { getCurrentLotteryRound, getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, startLotteryNow, updateLotterySettings } from './lottery';
-import { clearLotteryWinnerSelections, getLotteryPrizes, getLotteryWinnerSelections, LOTTERY_WINNER_COUNT, searchLotteryTicketHolders, setLotteryPrizePercentages, setLotteryWinnerSelection } from './lottery-prizes';
+import { adjustLotteryPrizePool, clearLotteryWinnerSelections, getLotteryPrizePoolNano, getLotteryPrizes, getLotteryWinnerSelections, LOTTERY_WINNER_COUNT, searchLotteryTicketHolders, setLotteryPrizePercentages, setLotteryWinnerSelection } from './lottery-prizes';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
@@ -8,7 +8,7 @@ type Callback = { id: string; data?: string; from: { id: number }; message?: { m
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
-type InputMode = 'draw' | 'price' | 'limit' | 'interval' | 'prizes' | `winner${1 | 2 | 3}`;
+type InputMode = 'draw' | 'price' | 'limit' | 'interval' | 'prizes' | 'pooladd' | 'poolsubtract' | `winner${1 | 2 | 3}`;
 
 const STATE_PREFIX = 'admin:lottery-input:';
 const NANO = 1_000_000_000;
@@ -173,6 +173,16 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       return;
     }
 
+    if (mode === 'pooladd' || mode === 'poolsubtract') {
+      const round = await getCurrentLotteryRound(env, false);
+      if (!round || round.status !== 'open') throw new Error('راند باز Lottery وجود ندارد.');
+      const amountNano = parsePrizePoolAmountNano(text);
+      const nextPoolNano = await adjustLotteryPrizePool(env, round.id, mode === 'pooladd' ? amountNano : -amountNano);
+      await finishInput(env, message, userId);
+      await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ Prize Pool ${mode === 'pooladd' ? 'افزایش' : 'کاهش'} یافت.\nمقدار جدید: ${formatPrizePoolGram(nextPoolNano)} GRAM`);
+      return;
+    }
+
     if (mode.startsWith('winner')) {
       const rank = Number(mode.slice(-1));
       const round = await getCurrentLotteryRound(env, false);
@@ -227,6 +237,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
 async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, notice = ''): Promise<void> {
   const overview = await getLotteryAdminOverview(env);
   const { settings, round, stats } = overview;
+  const prizePoolNano = round ? await getLotteryPrizePoolNano(env, round.id) : 0;
   const drawMs = round?.status === 'open' ? Date.parse(round.drawAt) - Date.now() : 0;
   const text = [
     notice,
@@ -243,6 +254,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
     `Round: ${round ? round.id : '—'}`,
     `Round status: ${round?.status || '—'}`,
     `Next Draw: ${round?.status === 'open' ? formatRemaining(drawMs) : 'Round closed'}`,
+    `🏆 Prize Pool: ${formatPrizePoolGram(prizePoolNano)} GRAM`,
     '',
     `🎫 Tickets: ${stats.ticketCount.toLocaleString()}`,
     `👥 Players: ${stats.playerCount.toLocaleString()}`,
@@ -255,6 +267,10 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
     [{ text: '🚀 Start Now', callback_data: 'botadmin:lottery:startnow' }],
     [{ text: '🎯 تعیین ۳ برنده راند بعدی', callback_data: 'botadmin:lottery:winners' }],
     [{ text: '🏆 تقسیم Prize Pool برای ۳ برنده', callback_data: 'botadmin:lottery:prizes' }],
+    [
+      { text: '➕ افزایش Prize Pool', callback_data: 'botadmin:lottery:ask:pooladd' },
+      { text: '➖ کاهش Prize Pool', callback_data: 'botadmin:lottery:ask:poolsubtract' },
+    ],
     [{ text: settings.enabled ? '❌ خاموش کردن Lottery' : '✅ روشن کردن Lottery', callback_data: 'botadmin:lottery:toggle:enabled' }],
     [
       { text: settings.salesOpen ? '⏸ توقف فروش' : '▶️ شروع فروش', callback_data: 'botadmin:lottery:toggle:sales' },
@@ -358,13 +374,17 @@ async function prompt(env: Env, chatId: number, messageId: number | undefined, m
     ? `🔎 جستجوی برنده رتبه ${mode.slice(-1)}\n\nیوزرنیم (با یا بدون @) یا Telegram ID کاربر دارای تیکت را بفرستید.`
     : mode === 'prizes'
     ? '🏆 تقسیم Prize Pool\n\nدرصد رتبه اول، دوم و سوم را به‌ترتیب بفرستید.\nمثال: 50,30,20\nمجموع باید دقیقاً 100 باشد.'
-    : mode === 'draw'
-      ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
-      : mode === 'price'
-        ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
-        : mode === 'limit'
-          ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
-          : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
+    : mode === 'pooladd'
+      ? '➕ افزایش Prize Pool\n\nمقداری که می‌خواهید به Prize Pool همین راند اضافه شود را به GRAM بفرستید.\nمثال: 25 یا 0.5'
+      : mode === 'poolsubtract'
+        ? '➖ کاهش Prize Pool\n\nمقداری که می‌خواهید از Prize Pool همین راند کم شود را به GRAM بفرستید.\nمقدار نهایی نمی‌تواند کمتر از صفر شود.'
+        : mode === 'draw'
+          ? '🕒 زمان Draw\n\nتعداد دقیقه از الان را بفرستید.\nمثال: 90 یعنی یک ساعت و نیم دیگر.'
+          : mode === 'price'
+            ? '💎 قیمت تیکت\n\nقیمت هر تیکت را به GRAM بفرستید.\nمثال: 0.15'
+            : mode === 'limit'
+              ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
+              : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
   const back = mode === 'prizes' ? 'botadmin:lottery:prizes' : mode.startsWith('winner') ? `botadmin:lottery:winner:${mode.slice(-1)}` : 'botadmin:lottery:menu';
   const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
   const active = await upsert(env.BOT_TOKEN, chatId, tracked, `${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
@@ -377,7 +397,7 @@ async function finishInput(env: Env, message: Message, userId: number): Promise<
 }
 
 function normalizeMode(value: string): InputMode | null {
-  return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' || value === 'prizes' || /^winner[123]$/.test(value) ? value as InputMode : null;
+  return value === 'draw' || value === 'price' || value === 'limit' || value === 'interval' || value === 'prizes' || value === 'pooladd' || value === 'poolsubtract' || /^winner[123]$/.test(value) ? value as InputMode : null;
 }
 function parsePrizePercentages(value: string): number[] {
   const parts = value.replace(/٪/g, '%').split(/[،,;|/\s]+/).map((item) => item.replace('%', '').trim()).filter(Boolean);
@@ -389,6 +409,12 @@ function parsePrizePercentages(value: string): number[] {
   });
   if (percentBps.reduce((sum, item) => sum + item, 0) !== 10_000) throw new Error('مجموع درصدها باید دقیقاً 100 باشد.');
   return percentBps;
+}
+function parsePrizePoolAmountNano(value: string): number {
+  const gram = Number(value.trim().replace(',', '.'));
+  const nano = Math.round(gram * NANO);
+  if (!Number.isFinite(gram) || gram <= 0 || !Number.isSafeInteger(nano) || nano <= 0) throw new Error('یک مقدار مثبت و معتبر GRAM بفرستید.');
+  return nano;
 }
 function stateKey(userId: number): string { return `${STATE_PREFIX}${userId}`; }
 async function getState(env: Env, userId: number): Promise<InputMode | null> {
@@ -410,6 +436,9 @@ function isAdminCommand(text: string): boolean {
 }
 function formatGram(nano: number): string {
   return (Math.max(0, Number(nano) || 0) / NANO).toFixed(4).replace(/0+$/,'').replace(/\.$/,'') || '0';
+}
+function formatPrizePoolGram(nano: number): string {
+  return (Math.max(0, Number(nano) || 0) / NANO).toFixed(9).replace(/0+$/,'').replace(/\.$/,'') || '0';
 }
 function formatPercent(bps: number): string { return `${(Math.max(0, Number(bps) || 0) / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}%`; }
 function formatMinutes(minutes: number): string {
