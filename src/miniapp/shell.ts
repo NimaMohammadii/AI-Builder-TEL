@@ -78,11 +78,11 @@ function initialSections(): string {
     HOME_SECTION,
     PLAY_ZONE_SECTION,
     PREDICT_ZONE_SECTION,
+    WALLET_SECTION,
   ].join('');
 }
 
 const LAZY_SECTIONS: Array<{ id: string; html: string; scripts?: string[] }> = [
-  { id: 'wallet', html: WALLET_SECTION },
   { id: 'results', html: RESULTS_SECTION },
   { id: 'mines', html: MINES_SECTION, scripts: [MINES_SCRIPT] },
   { id: 'plinko', html: PLINKO_SECTION, scripts: [PLINKO_SCRIPT, PLINKO_DROP_FEEDBACK_SCRIPT, PLINKO_PERFORMANCE_SCRIPT, PLINKO_PANEL_SCRIPT] },
