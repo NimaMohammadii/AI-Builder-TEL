@@ -13,13 +13,14 @@ const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const MONTH_BET_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
+const SETTLEMENT_LEASE_MS = 90 * 1000;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
 type TradeMarket = typeof TRADE_MARKETS[number];
 type PredictSide = 'up' | 'down';
 type RoundResult = 'up' | 'down' | 'draw' | null;
-type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
+type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; settlement_claim_id: string | null; settlement_claimed_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
 type MarketSnapshot = { price: number; history: number[] };
 
@@ -195,31 +196,77 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   if (!fresh) return;
   const freshId = cleanDbText(fresh.id, 'Prediction round is not ready');
   const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
-  if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
+  const hasActiveBets = Number(activeCount?.count || 0) > 0;
+  if (fresh.status === 'settled' && !hasActiveBets) return;
   const market = normalizeTradeMarket(fresh.market);
   const endPrice = fresh.end_price == null ? await fetchBoundaryPrice(market, Date.parse(fresh.ends_at), 'end', market === 'bitcoin' ? '5m' : '1m') : Number(fresh.end_price);
-  const result: RoundResult = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
-  const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status != 'settled'`).bind(endPrice, result, freshId).run();
-  if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
-  const all = (await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(freshId).all<BetRow>()).results || [];
-  const eligible = all.filter((b) => b.status !== 'failed' && b.status !== 'pending');
-  const active = eligible.filter((b) => b.status === 'active' || b.status === 'settling_payment');
-  const upPool = eligible.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
-  const downPool = eligible.filter((b) => b.side === 'down').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
-  const winnerPool = result === 'up' ? upPool : result === 'down' ? downPool : 0;
-  const loserPool = result === 'up' ? downPool : result === 'down' ? upPool : 0;
-  const fee = Math.floor(loserPool * PLATFORM_FEE_BPS / 10000);
-  const distributable = Math.max(0, loserPool - fee);
-  for (const bet of active) {
-    const stake = Number(bet.stake_nano || 0);
-    const isWinner = result !== 'draw' && bet.side === result && winnerPool > 0 && loserPool > 0;
-    const shouldRefund = result === 'draw' || winnerPool <= 0 || loserPool <= 0;
-    if (shouldRefund) await payBet(env, bet, stake, 'refunded');
-    else if (isWinner) await payBet(env, bet, stake + Math.floor(stake / winnerPool * distributable), 'won');
-    else await env.DB.prepare(`UPDATE predict_bets SET status = 'lost', payout_nano = 0 WHERE id = ? AND status = 'active'`).bind(cleanDbText(bet.id, 'Prediction bet is not ready')).run();
+  const calculatedResult: Exclude<RoundResult, null> = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
+  const claimId = 'psettle_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+  const claimedAt = new Date().toISOString();
+  const staleBefore = new Date(Date.now() - SETTLEMENT_LEASE_MS).toISOString();
+  const claim = await env.DB.prepare(`UPDATE predict_rounds
+    SET status = 'settling', end_price = COALESCE(end_price, ?), result = COALESCE(result, ?), settlement_claim_id = ?, settlement_claimed_at = ?
+    WHERE id = ? AND (? = 1 OR status != 'settled')
+      AND (settlement_claim_id IS NULL OR settlement_claimed_at IS NULL OR datetime(settlement_claimed_at) <= datetime(?))`)
+    .bind(endPrice, calculatedResult, claimId, claimedAt, freshId, hasActiveBets ? 1 : 0, staleBefore)
+    .run();
+  if ((claim.meta?.changes || 0) <= 0) return;
+
+  const claimed = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(freshId).first<RoundRow>();
+  if (!claimed || claimed.settlement_claim_id !== claimId) return;
+  const persistedEndPrice = Number(claimed.end_price);
+  const persistedResult: Exclude<RoundResult, null> | null = claimed.result === 'up' || claimed.result === 'down' || claimed.result === 'draw' ? claimed.result : null;
+  const expectedResult: Exclude<RoundResult, null> = persistedEndPrice > Number(claimed.start_price) ? 'up' : persistedEndPrice < Number(claimed.start_price) ? 'down' : 'draw';
+  if (!Number.isFinite(persistedEndPrice) || persistedEndPrice <= 0 || !persistedResult || persistedResult !== expectedResult) {
+    await releaseSettlementClaim(env, freshId, claimId);
+    throw new Error('Prediction settlement result is inconsistent');
   }
-  const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
-  if (Number(remaining?.count || 0) <= 0) await env.DB.prepare(`UPDATE predict_rounds SET status = 'settled', end_price = ?, result = ?, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP) WHERE id = ?`).bind(endPrice, result, freshId).run();
+
+  try {
+    const all = (await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(freshId).all<BetRow>()).results || [];
+    const eligible = all.filter((b) => b.status !== 'failed' && b.status !== 'pending');
+    const active = eligible.filter((b) => b.status === 'active' || b.status === 'settling_payment');
+    const upPool = eligible.filter((b) => b.side === 'up').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
+    const downPool = eligible.filter((b) => b.side === 'down').reduce((s, b) => s + Number(b.stake_nano || 0), 0);
+    const winnerPool = persistedResult === 'up' ? upPool : persistedResult === 'down' ? downPool : 0;
+    const loserPool = persistedResult === 'up' ? downPool : persistedResult === 'down' ? upPool : 0;
+    const fee = Math.floor(loserPool * PLATFORM_FEE_BPS / 10000);
+    const distributable = Math.max(0, loserPool - fee);
+    for (const bet of active) {
+      if (!(await renewSettlementClaim(env, freshId, claimId))) return;
+      const stake = Number(bet.stake_nano || 0);
+      const isWinner = persistedResult !== 'draw' && bet.side === persistedResult && winnerPool > 0 && loserPool > 0;
+      const shouldRefund = persistedResult === 'draw' || winnerPool <= 0 || loserPool <= 0;
+      if (shouldRefund) await payBet(env, bet, stake, 'refunded');
+      else if (isWinner) await payBet(env, bet, stake + Math.floor(stake / winnerPool * distributable), 'won');
+      else await env.DB.prepare(`UPDATE predict_bets SET status = 'lost', payout_nano = 0 WHERE id = ? AND status = 'active'`).bind(cleanDbText(bet.id, 'Prediction bet is not ready')).run();
+    }
+    if (!(await renewSettlementClaim(env, freshId, claimId))) return;
+    const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
+    if (Number(remaining?.count || 0) <= 0) {
+      await env.DB.prepare(`UPDATE predict_rounds
+        SET status = 'settled', end_price = ?, result = ?, settled_at = CURRENT_TIMESTAMP, settlement_claim_id = NULL, settlement_claimed_at = NULL
+        WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
+        .bind(persistedEndPrice, persistedResult, freshId, claimId)
+        .run();
+    } else {
+      await releaseSettlementClaim(env, freshId, claimId);
+    }
+  } catch (error) {
+    await releaseSettlementClaim(env, freshId, claimId).catch(() => undefined);
+    throw error;
+  }
+}
+async function renewSettlementClaim(env: Env, roundId: string, claimId: string): Promise<boolean> {
+  const renewed = await env.DB.prepare(`UPDATE predict_rounds SET settlement_claimed_at = ? WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
+    .bind(new Date().toISOString(), roundId, claimId)
+    .run();
+  return (renewed.meta?.changes || 0) > 0;
+}
+async function releaseSettlementClaim(env: Env, roundId: string, claimId: string): Promise<void> {
+  await env.DB.prepare(`UPDATE predict_rounds SET settlement_claim_id = NULL, settlement_claimed_at = NULL WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
+    .bind(roundId, claimId)
+    .run();
 }
 async function payBet(env: Env, bet: BetRow, payoutNano: number, status: 'won' | 'refunded'): Promise<void> {
   const betId = cleanDbText(bet.id, 'Prediction bet is not ready');
