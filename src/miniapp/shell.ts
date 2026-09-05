@@ -196,10 +196,19 @@ export function miniAppShellHtml(): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <script>
+    (function(){
+      var launch=String(location.search||'')+'&'+String(location.hash||'');
+      if(!/(?:^|[?&#])tgWebApp(?:Data|Version|Platform|ThemeParams)=/.test(launch))document.documentElement.classList.add('vexa-web');
+    })();
+  </script>
   <meta name="theme-color" content="#12070a"/>
   <title>Vexa FLOW</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>${STYLES}
+    html.vexa-web .app{padding-top:0!important}
+    html.vexa-web .vexa-boot{top:calc(-1 * env(safe-area-inset-top))!important;right:calc(-1 * env(safe-area-inset-right))!important;bottom:calc(-1 * env(safe-area-inset-bottom))!important;left:calc(-1 * env(safe-area-inset-left))!important}
+    html.vexa-web body:has(#home.active)::before{top:calc(-1 * env(safe-area-inset-top))!important;right:calc(-1 * env(safe-area-inset-right))!important;bottom:calc(-1 * env(safe-area-inset-bottom))!important;left:calc(-1 * env(safe-area-inset-left))!important;width:auto!important;height:auto!important}
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
     .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
