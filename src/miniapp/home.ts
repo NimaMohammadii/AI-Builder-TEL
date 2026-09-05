@@ -457,8 +457,8 @@ const HOME_MARKUP_SCRIPT = `
   function reelY(index){return 'translate3d(0,-'+((index*40)+20)+'px,0)'}
   function reelDigitsHtml(){var html='';for(var cycle=0;cycle<4;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
   function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=0;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
-  function placeSection(home,sec){var promo=q('#homePromoCarousel',home),anchor=promo?promo.nextSibling:home.firstChild;if(anchor!==sec)home.insertBefore(sec,anchor)}
-  function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})}
+  function placeSection(home,sec){var promo=q('#homePromoCarousel',home);if(promo&&promo.parentNode===home){home.insertBefore(sec,promo);return}if(home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
+  function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})
   function setDrawer(open,sec){ensureDrawerPortal(sec);var drawer=q('#homeTicketDrawer'),backdrop=q('#homeTicketDrawerBackdrop');if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
   function build(){
     var home=q('#home');if(!home)return null;
