@@ -1,8 +1,10 @@
 import type { Env, TelegramPreCheckoutQuery, TelegramSuccessfulPayment } from './types';
-import { adjustUserTonBalance, assertUserNotBanned } from './user-controls';
+import { assertUserNotBanned } from './user-controls';
 import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
 import { gameBotToken } from './utils';
+import { ensureTonTransactionsTable } from './ton-transactions';
+import { publishLiveActivity } from './live-activity';
 
 const MIN_STARS_DEPOSIT = 2;
 const TELEGRAM_STAR_REWARD_USD = 0.013;
@@ -85,28 +87,44 @@ export async function createStarsDeposit(env: Env, userId: string, starsInput: u
   if (amountNano < limits.minDepositNano) throw new Error(`Minimum deposit is ${formatTonAmount(limits.minDepositNano)} Gram`);
   if (limits.maxDepositNano && amountNano > limits.maxDepositNano) throw new Error(`Maximum deposit is ${formatTonAmount(limits.maxDepositNano)} Gram`);
   const id = 'stars_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
-  await ensureStarsDepositsTable(env);
-  await env.DB.prepare(`INSERT INTO stars_deposits (id, user_id, stars_amount, amount_nano, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
-    .bind(id, user, stars, amountNano)
-    .run();
-  const invoiceLink = await createInvoiceLink(env, id, stars, amountNano);
-  const row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
-  return rowToDeposit(row ?? { id, user_id: user, stars_amount: stars, amount_nano: amountNano, status: 'pending', telegram_payment_charge_id: null, provider_payment_charge_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, invoiceLink);
+  const transactionId = `finance_starsdep:${id}`;
+  const metadataJson = JSON.stringify({ starsAmount: stars, displayCurrency: 'Gram' });
+
+  await Promise.all([ensureStarsDepositsTable(env), ensureTonTransactionsTable(env)]);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO stars_deposits (id, user_id, stars_amount, amount_nano, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+      .bind(id, user, stars, amountNano),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+      VALUES (?,?,'deposit','Stars purchase',?,?,COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=?),0),'pending',?,'stars_deposit',?,CURRENT_TIMESTAMP)`)
+      .bind(transactionId, user, `${stars} Stars converted to Gram balance`, amountNano, user, id, metadataJson),
+  ]);
+
+  let invoiceLink: string;
+  try {
+    invoiceLink = await createInvoiceLink(env, id, stars, amountNano);
+  } catch (error) {
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM ton_transactions WHERE user_id=? AND kind='deposit' AND reference_type='stars_deposit' AND reference_id=? AND status='pending'`).bind(user, id),
+      env.DB.prepare(`DELETE FROM stars_deposits WHERE id=? AND user_id=? AND status='pending'`).bind(id, user),
+    ]);
+    throw error;
+  }
+
+  const row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ? AND user_id = ?').bind(id, user).first<StarDepositRow>();
+  if (!row) throw new Error('Stars deposit creation failed');
+  return rowToDeposit(row, invoiceLink);
 }
 
 export async function listUserStarsDeposits(env: Env, userId: string): Promise<{ deposits: StarDeposit[]; rate: StarsGramRate }> {
   const rate = await getStarsGramRate();
-  try {
-    const user = cleanUserId(userId);
-    await ensureStarsDepositsTable(env);
-    const rows = await env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
-      .bind(user)
-      .all<StarDepositRow>();
-    return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)), rate };
-  } catch {
-    return { deposits: [], rate };
-  }
+  const user = cleanUserId(userId);
+  await ensureStarsDepositsTable(env);
+  const rows = await env.DB.prepare('SELECT * FROM stars_deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 30')
+    .bind(user)
+    .all<StarDepositRow>();
+  return { deposits: (rows.results ?? []).map((row) => rowToDeposit(row, null)), rate };
 }
 
 export async function handleStarsPreCheckout(env: Env, query: TelegramPreCheckoutQuery): Promise<void> {
@@ -126,9 +144,9 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
   const userId = cleanUserId(userIdInput);
   const telegramChargeId = String(payment.telegram_payment_charge_id || '').trim() || null;
   const providerChargeId = String(payment.provider_payment_charge_id || '').trim() || null;
-  await ensureStarsDepositsTable(env);
+  await Promise.all([ensureStarsDepositsTable(env), ensureTonTransactionsTable(env)]);
 
-  let row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
+  const row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
   if (!row || row.status === 'completed') return;
   if (row.user_id !== userId) return;
   if (Number(payment.total_amount) !== Number(row.stars_amount)) return;
@@ -139,41 +157,56 @@ export async function handleStarsSuccessfulPayment(env: Env, userIdInput: unknow
       .first<{ id: string }>();
     if (used && used.id !== row.id) return;
   }
-
-  if (row.status === 'pending') {
-    const claimed = await env.DB.prepare(`UPDATE stars_deposits
-      SET status = 'crediting', telegram_payment_charge_id = ?, provider_payment_charge_id = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND user_id = ? AND status = 'pending'`)
-      .bind(telegramChargeId, providerChargeId, id, userId)
-      .run();
-    if ((claimed.meta?.changes || 0) > 0) {
-      row = { ...row, status: 'crediting', telegram_payment_charge_id: telegramChargeId, provider_payment_charge_id: providerChargeId };
-    } else {
-      row = await env.DB.prepare('SELECT * FROM stars_deposits WHERE id = ?').bind(id).first<StarDepositRow>();
-      if (!row || row.status === 'completed') return;
-    }
-  }
-
-  if (row.status !== 'crediting') return;
   if (row.telegram_payment_charge_id && telegramChargeId && row.telegram_payment_charge_id !== telegramChargeId) return;
   if (row.provider_payment_charge_id && providerChargeId && row.provider_payment_charge_id !== providerChargeId) return;
 
-  await adjustUserTonBalance(env, row.user_id, row.amount_nano, {
+  const transactionId = `finance_starsdep:${id}`;
+  const metadataJson = JSON.stringify({ starsAmount: row.stars_amount, telegramPaymentChargeId: telegramChargeId, providerPaymentChargeId: providerChargeId, displayCurrency: 'Gram' });
+  const results = await env.DB.batch([
+    env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
+      VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(telegram_user_id) DO NOTHING`).bind(userId),
+    env.DB.prepare(`UPDATE stars_deposits
+      SET status='crediting', telegram_payment_charge_id=COALESCE(telegram_payment_charge_id, ?),
+          provider_payment_charge_id=COALESCE(provider_payment_charge_id, ?), updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND user_id=? AND status IN ('pending','crediting')`)
+      .bind(telegramChargeId, providerChargeId, id, userId),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+      SELECT ?,d.user_id,'deposit','Stars purchase',(d.stars_amount || ' Stars converted to Gram balance'),d.amount_nano,
+        COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=d.user_id),0),'pending',d.id,'stars_deposit',?,d.created_at
+      FROM stars_deposits d
+      WHERE d.id=? AND d.user_id=?
+        AND NOT EXISTS (SELECT 1 FROM ton_transactions t WHERE t.user_id=d.user_id AND t.reference_type='stars_deposit' AND t.reference_id=d.id AND t.kind='deposit')`)
+      .bind(transactionId, metadataJson, id, userId),
+    env.DB.prepare(`UPDATE app_users
+      SET ton_balance_nano=ton_balance_nano+?, updated_at=CURRENT_TIMESTAMP
+      WHERE telegram_user_id=?
+        AND EXISTS (SELECT 1 FROM stars_deposits WHERE id=? AND user_id=? AND status='crediting')
+        AND EXISTS (SELECT 1 FROM ton_transactions WHERE user_id=? AND kind='deposit' AND reference_type='stars_deposit' AND reference_id=? AND status!='completed')`)
+      .bind(row.amount_nano, userId, id, userId, userId, id),
+    env.DB.prepare(`UPDATE ton_transactions
+      SET status='completed', amount_nano=?, balance_after_nano=COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=?),balance_after_nano),
+          title='Stars purchase', description=?, metadata_json=?
+      WHERE user_id=? AND kind='deposit' AND reference_type='stars_deposit' AND reference_id=?
+        AND EXISTS (SELECT 1 FROM stars_deposits WHERE id=? AND user_id=? AND status='crediting')`)
+      .bind(row.amount_nano, userId, `${row.stars_amount} Stars converted to Gram balance`, metadataJson, userId, id, id, userId),
+    env.DB.prepare(`UPDATE stars_deposits
+      SET status='completed', telegram_payment_charge_id=COALESCE(telegram_payment_charge_id, ?),
+          provider_payment_charge_id=COALESCE(provider_payment_charge_id, ?), updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND user_id=? AND status='crediting'`)
+      .bind(telegramChargeId, providerChargeId, id, userId),
+  ]);
+
+  const applied = Number(results[1]?.meta?.changes || 0) > 0;
+  if (!applied) return;
+  await publishLiveActivity(env, {
     kind: 'deposit',
-    title: 'Stars purchase',
-    description: `${row.stars_amount} Stars converted to Gram balance`,
-    referenceId: row.id,
-    referenceType: 'stars_deposit',
-    status: 'completed',
-    metadata: { starsAmount: row.stars_amount, telegramPaymentChargeId: telegramChargeId },
-  });
-
-  await env.DB.prepare(`UPDATE stars_deposits
-    SET status = 'completed', telegram_payment_charge_id = COALESCE(telegram_payment_charge_id, ?), provider_payment_charge_id = COALESCE(provider_payment_charge_id, ?), updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND user_id = ? AND status = 'crediting'`)
-    .bind(telegramChargeId, providerChargeId, id, userId)
-    .run();
-
+    userId: row.user_id,
+    amountNano: row.amount_nano,
+    key: row.id,
+    createdAt: new Date().toISOString(),
+  }).catch((error) => console.warn('Stars deposit live activity failed', error));
   await awardDepositXp(env, row.user_id, 'stars_deposit', row.id)
     .catch((error) => console.warn('Stars deposit XP award failed', error));
 }
