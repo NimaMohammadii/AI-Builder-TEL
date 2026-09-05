@@ -94,6 +94,12 @@ app.get('/app/api/section-background/:section', async (c) => {
   try {
     const section = cleanSectionId(c.req.param('section').replace(/\.png$/i, ''));
     const key = sectionBackgroundR2Key(section);
+    if (section === 'global-loading' && !c.req.query('v')) {
+      const head = await c.env.ASSETS.head(key).catch(() => null);
+      if (!head) return c.text('Not found', 404, { 'cache-control': 'no-store' });
+      const versioned = new URL(`/app/api/section-background/global-loading.png?v=${encodeURIComponent(assetVersion(head))}`, c.req.url);
+      return new Response(null, { status: 302, headers: { location: versioned.toString(), 'cache-control': 'no-store' } });
+    }
     return getAssetResponse(c.env, key, null, { cacheControl: c.req.query('v') ? UPLOADED_IMAGE_CACHE_CONTROL : 'no-store' });
   } catch {
     return c.text('Not found', 404, { 'cache-control': 'no-store' });

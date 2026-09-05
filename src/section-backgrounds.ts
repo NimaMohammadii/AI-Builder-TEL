@@ -36,6 +36,5 @@ export function cleanSectionId(value: unknown): string {
   const cleaned = String(value ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60);
   if (!cleaned) throw new Error('Invalid section');
   if (/^home(?:-|$)/.test(cleaned)) throw new Error('Home does not use generic section backgrounds');
-  if (cleaned === 'global-loading') throw new Error('Loading screen does not use generic section backgrounds');
   return cleaned;
 }
