@@ -30,7 +30,7 @@ app.get('/app/api/predict-round', async (c) => {
     const market = normalizeTradeMarket(String(c.req.query('market') || 'bitcoin'));
     const userId = await authenticateUser(c.env, c.req.query('userId'), c.req.header('x-telegram-init-data'));
     const snapshot = await fetchMarketSnapshot(market);
-    const round = await getOrCreateCurrentRound(c.env, market, snapshot.price);
+    const round = await getOrCreateCurrentRound(c.env, market);
     await settleDueRounds(c.env, market);
     return c.json({ ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
@@ -131,13 +131,13 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePr
   const lockAt = betLockAtMs(round);
   return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), livePrice: Number(livePrice) > 0 ? Number(livePrice) : null, endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= lockAt && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, lockAt - now), pools, userBets, recentUserBets } };
 }
-async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPrice = 0): Promise<RoundRow> {
+async function getOrCreateCurrentRound(env: Env, market: TradeMarket): Promise<RoundRow> {
   const now = Date.now();
   if (market === 'bitcoin') {
     let existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
     if (existing) {
       if (Number(existing.start_price) > 0) return existing;
-      const repairedPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+      const repairedPrice = await fetchBoundaryPrice(market, Date.parse(existing.starts_at), 'start', '5m');
       await env.DB.prepare('UPDATE predict_rounds SET start_price = ? WHERE id = ?').bind(repairedPrice, existing.id).run();
       const repaired = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(existing.id).first<RoundRow>();
       if (!repaired) throw new Error('Could not repair prediction round');
@@ -147,7 +147,7 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
     const startsAt = new Date(startMs).toISOString();
     const endsAt = new Date(startMs + ROUND_MS).toISOString();
     const id = `pr_${market}_${startMs}`;
-    const startPrice = Number(latestPrice) > 0 ? Number(latestPrice) : await fetchPrice(market);
+    const startPrice = await fetchBoundaryPrice(market, startMs, 'start', '5m');
     await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
     const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
     if (!row) throw new Error('Could not create prediction round');
@@ -160,7 +160,7 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
   let existing = await env.DB.prepare('SELECT * FROM predict_rounds WHERE market = ? AND starts_at = ? AND ends_at = ? LIMIT 1').bind(market, startsAt, endsAt).first<RoundRow>();
   if (existing) {
     if (Number(existing.start_price) > 0) return existing;
-    const repairedPrice = await fetchMonthlyBoundaryPrice(market, window.startMs, 'start');
+    const repairedPrice = await fetchBoundaryPrice(market, window.startMs, 'start', '1m');
     await env.DB.prepare('UPDATE predict_rounds SET start_price = ? WHERE id = ?').bind(repairedPrice, existing.id).run();
     const repaired = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(existing.id).first<RoundRow>();
     if (!repaired) throw new Error('Could not repair monthly prediction round');
@@ -174,7 +174,7 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
   }
 
   const id = `pr_${market}_${window.startMs}`;
-  const startPrice = await fetchMonthlyBoundaryPrice(market, window.startMs, 'start');
+  const startPrice = await fetchBoundaryPrice(market, window.startMs, 'start', '1m');
   await env.DB.prepare(`INSERT OR IGNORE INTO predict_rounds (id, market, starts_at, ends_at, start_price, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP)`).bind(id, market, startsAt, endsAt, startPrice).run();
   existing = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(id).first<RoundRow>();
   if (!existing) throw new Error('Could not create monthly prediction round');
@@ -197,7 +197,7 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
   if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
   const market = normalizeTradeMarket(fresh.market);
-  const endPrice = fresh.end_price == null ? (market === 'bitcoin' ? await fetchPrice(market) : await fetchMonthlyBoundaryPrice(market, Date.parse(fresh.ends_at), 'end')) : Number(fresh.end_price);
+  const endPrice = fresh.end_price == null ? await fetchBoundaryPrice(market, Date.parse(fresh.ends_at), 'end', market === 'bitcoin' ? '5m' : '1m') : Number(fresh.end_price);
   const result: RoundResult = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
   const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status != 'settled'`).bind(endPrice, result, freshId).run();
   if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
@@ -254,21 +254,18 @@ async function fetchMarketSnapshot(market: TradeMarket): Promise<MarketSnapshot>
   if (!history.length) throw new Error('Aster mark price snapshot is empty');
   return { price: history[history.length - 1], history };
 }
-async function fetchPrice(market: TradeMarket): Promise<number> {
+async function fetchBoundaryPrice(market: TradeMarket, boundaryMs: number, boundary: 'start' | 'end', interval: '1m' | '5m'): Promise<number> {
+  if (!Number.isFinite(boundaryMs) || boundaryMs <= 0) throw new Error('Invalid prediction boundary time');
+  const intervalMs = interval === '5m' ? ROUND_MS : 60 * 1000;
+  const candleStartMs = boundary === 'start' ? Math.floor(boundaryMs) : Math.floor(boundaryMs - intervalMs);
+  const candleEndMs = candleStartMs + intervalMs - 1;
   const symbol = marketSymbol(market);
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/premiumIndex?symbol=${symbol}`, { cf: { cacheTtl: 1, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster mark price request failed: HTTP ${res.status}`);
-  const data = await res.json() as { markPrice?: string };
-  return cleanPrice(data.markPrice);
-}
-async function fetchMonthlyBoundaryPrice(market: TradeMarket, boundaryMs: number, boundary: 'start' | 'end'): Promise<number> {
-  const symbol = marketSymbol(market);
-  const timeQuery = boundary === 'start' ? `startTime=${Math.floor(boundaryMs)}` : `endTime=${Math.floor(boundaryMs - 1)}`;
-  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/markPriceKlines?symbol=${symbol}&interval=1m&${timeQuery}&limit=1`, { cf: { cacheTtl: 60, cacheEverything: false } } as RequestInit);
-  if (!res.ok) throw new Error(`Aster monthly boundary price failed: HTTP ${res.status}`);
+  const res = await fetch(`${ASTER_FUTURES_REST_BASE}/fapi/v1/markPriceKlines?symbol=${symbol}&interval=${interval}&startTime=${candleStartMs}&endTime=${candleEndMs}&limit=1`, { cf: { cacheTtl: 60, cacheEverything: false } } as RequestInit);
+  if (!res.ok) throw new Error(`Aster boundary price failed: HTTP ${res.status}`);
   const rows = await res.json() as unknown;
-  if (!Array.isArray(rows) || !rows.length || !Array.isArray(rows[0])) throw new Error('Monthly boundary price is unavailable');
+  if (!Array.isArray(rows) || rows.length !== 1 || !Array.isArray(rows[0])) throw new Error('Prediction boundary price is unavailable');
   const row = rows[0] as unknown[];
+  if (Number(row[0]) !== candleStartMs) throw new Error('Prediction boundary candle does not match the requested time');
   return cleanPrice(boundary === 'start' ? row[1] : row[4]);
 }
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
