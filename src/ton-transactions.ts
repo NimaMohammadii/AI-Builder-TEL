@@ -38,37 +38,6 @@ type TonTransactionRow = {
   created_at: string;
 };
 
-type TonDepositSourceRow = {
-  id: string;
-  user_id: string;
-  amount_ton: string;
-  ton_balance_nano: number;
-  status: string;
-  tx_hash: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type StarsDepositSourceRow = {
-  id: string;
-  user_id: string;
-  stars_amount: number;
-  amount_nano: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type WithdrawalSourceRow = {
-  id: string;
-  user_id: string;
-  wallet_address: string;
-  amount_nano: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export type TonTransaction = {
   id: string;
   userId: string;
@@ -185,123 +154,107 @@ function isMissingTonTransactionsTable(error: unknown): boolean {
   return /no such table:\s*ton_transactions/i.test(message);
 }
 
-export async function listUserTonTransactions(env: Env, userId: string, limit = 50): Promise<{ transactions: TonTransaction[] }> {
+export async function listUserTonTransactions(
+  env: Env,
+  userId: string,
+  limit = 50,
+  kinds: TonTransactionKind[] = [],
+): Promise<{ transactions: TonTransaction[] }> {
+  const safeUserId = cleanUserId(userId);
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 50)));
-  let rows;
-  try {
-    rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
-      .bind(cleanUserId(userId), safeLimit)
-      .all<TonTransactionRow>();
-  } catch (error) {
-    if (!isMissingTonTransactionsTable(error)) throw error;
-    await ensureTonTransactionsTable(env);
-    rows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`)
-      .bind(cleanUserId(userId), safeLimit)
-      .all<TonTransactionRow>();
+  const safeKinds = Array.from(new Set((Array.isArray(kinds) ? kinds : []).map(cleanKind)));
+  await ensureTonTransactionsTable(env);
+  if (safeKinds.includes('deposit') || safeKinds.includes('withdraw')) {
+    await migrateLegacyWalletTransactions(env, safeUserId);
   }
+
+  const placeholders = safeKinds.map(() => '?').join(',');
+  const sql = safeKinds.length
+    ? `SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN (${placeholders}) ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`
+    : `SELECT * FROM ton_transactions WHERE user_id = ? ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`;
+  const bindings: unknown[] = safeKinds.length ? [safeUserId, ...safeKinds, safeLimit] : [safeUserId, safeLimit];
+  const rows = await env.DB.prepare(sql).bind(...bindings).all<TonTransactionRow>();
   return { transactions: (rows.results ?? []).map(rowToTransaction) };
 }
 
-export async function listUserTonWalletTransactions(env: Env, userId: string, limit = 100): Promise<{ transactions: TonTransaction[] }> {
-  const safeUserId = cleanUserId(userId);
-  const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 100)));
-  let ledgerRows: TonTransactionRow[];
-  try {
-    ledgerRows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
-      .bind(safeUserId, safeLimit)
-      .all<TonTransactionRow>()
-      .then((rows) => rows.results ?? []);
-  } catch (error) {
-    if (!isMissingTonTransactionsTable(error)) throw error;
-    await ensureTonTransactionsTable(env);
-    ledgerRows = await env.DB.prepare(`SELECT * FROM ton_transactions WHERE user_id = ? AND kind IN ('deposit', 'withdraw') ORDER BY datetime(created_at) DESC LIMIT ?`)
-      .bind(safeUserId, safeLimit)
-      .all<TonTransactionRow>()
-      .then((rows) => rows.results ?? []);
+// One-way compatibility migration for records created before wallet operations wrote
+// directly to ton_transactions. History is always returned from ton_transactions;
+// source state tables are never merged into the response.
+async function migrateLegacyWalletTransactions(env: Env, userId: string): Promise<void> {
+  const tables = await env.DB.prepare(`SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name IN ('ton_deposits','stars_deposits','ton_withdrawals')`)
+    .all<{ name: string }>();
+  const existing = new Set((tables.results ?? []).map((row) => String(row.name || '')));
+  const statements: D1PreparedStatement[] = [];
+
+  if (existing.has('ton_deposits')) {
+    statements.push(
+      env.DB.prepare(`INSERT INTO ton_transactions
+        (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+        SELECT ('legacy_tondep:' || d.id), d.user_id, 'deposit', 'GRAM wallet deposit',
+          (d.amount_ton || ' GRAM wallet payment'), d.ton_balance_nano, 0,
+          CASE WHEN d.status = 'completed' THEN 'completed' ELSE d.status END,
+          d.id, 'ton_deposit', NULL, d.created_at
+        FROM ton_deposits d
+        WHERE d.user_id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM ton_transactions t
+            WHERE t.user_id = d.user_id AND t.reference_type = 'ton_deposit' AND t.reference_id = d.id AND t.kind = 'deposit'
+          )`).bind(userId),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status = COALESCE((SELECT CASE WHEN d.status = 'completed' THEN 'completed' ELSE d.status END
+          FROM ton_deposits d WHERE d.id = ton_transactions.reference_id AND d.user_id = ton_transactions.user_id), status)
+        WHERE user_id = ? AND kind = 'deposit' AND reference_type = 'ton_deposit'
+          AND EXISTS (SELECT 1 FROM ton_deposits d WHERE d.id = ton_transactions.reference_id AND d.user_id = ton_transactions.user_id)`).bind(userId),
+    );
   }
-  const [tonDepositRows, starDepositRows, withdrawalRows] = await Promise.all([
-    readWalletSourceRows<TonDepositSourceRow>(env, `SELECT id, user_id, amount_ton, ton_balance_nano, status, tx_hash, created_at, updated_at FROM ton_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
-    readWalletSourceRows<StarsDepositSourceRow>(env, `SELECT id, user_id, stars_amount, amount_nano, status, created_at, updated_at FROM stars_deposits WHERE user_id = ? AND status = 'completed' ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
-    readWalletSourceRows<WithdrawalSourceRow>(env, `SELECT id, user_id, wallet_address, amount_nano, status, created_at, updated_at FROM ton_withdrawals WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`, safeUserId, safeLimit),
-  ]);
 
-  const bySource = new Map<string, TonTransaction>();
-  for (const row of ledgerRows) {
-    const item = rowToTransaction(row);
-    const sourceKey = sourceKeyFor(item.referenceType, item.referenceId);
-    if (sourceKey) bySource.set(sourceKey, item);
+  if (existing.has('stars_deposits')) {
+    statements.push(
+      env.DB.prepare(`INSERT INTO ton_transactions
+        (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+        SELECT ('legacy_starsdep:' || d.id), d.user_id, 'deposit', 'Stars purchase',
+          (d.stars_amount || ' Stars converted to Gram balance'), d.amount_nano, 0,
+          CASE WHEN d.status = 'completed' THEN 'completed' ELSE d.status END,
+          d.id, 'stars_deposit', NULL, d.created_at
+        FROM stars_deposits d
+        WHERE d.user_id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM ton_transactions t
+            WHERE t.user_id = d.user_id AND t.reference_type = 'stars_deposit' AND t.reference_id = d.id AND t.kind = 'deposit'
+          )`).bind(userId),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status = COALESCE((SELECT CASE WHEN d.status = 'completed' THEN 'completed' ELSE d.status END
+          FROM stars_deposits d WHERE d.id = ton_transactions.reference_id AND d.user_id = ton_transactions.user_id), status)
+        WHERE user_id = ? AND kind = 'deposit' AND reference_type = 'stars_deposit'
+          AND EXISTS (SELECT 1 FROM stars_deposits d WHERE d.id = ton_transactions.reference_id AND d.user_id = ton_transactions.user_id)`).bind(userId),
+    );
   }
 
-  const merged = ledgerRows.map(rowToTransaction);
-  for (const row of tonDepositRows) pushSourceTransaction(merged, bySource, tonDepositToTransaction(row));
-  for (const row of starDepositRows) pushSourceTransaction(merged, bySource, starsDepositToTransaction(row));
-  for (const row of withdrawalRows) pushSourceTransaction(merged, bySource, withdrawalToTransaction(row), { refreshExisting: true });
-
-  merged.sort((a, b) => transactionTime(b) - transactionTime(a) || b.id.localeCompare(a.id));
-  return { transactions: merged.slice(0, safeLimit) };
-}
-
-async function readWalletSourceRows<T>(env: Env, sql: string, userId: string, limit: number): Promise<T[]> {
-  return env.DB.prepare(sql).bind(userId, limit).all<T>().then((rows) => rows.results ?? []).catch(() => []);
-}
-
-function pushSourceTransaction(items: TonTransaction[], bySource: Map<string, TonTransaction>, item: TonTransaction, options: { refreshExisting?: boolean } = {}): void {
-  const key = sourceKeyFor(item.referenceType, item.referenceId);
-  const existing = key ? bySource.get(key) : undefined;
-  if (existing) {
-    if (options.refreshExisting) refreshSourceTransaction(existing, item);
-    return;
+  if (existing.has('ton_withdrawals')) {
+    statements.push(
+      env.DB.prepare(`INSERT INTO ton_transactions
+        (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+        SELECT ('legacy_withdraw:' || w.id), w.user_id, 'withdraw', 'Gram withdrawal',
+          ('Withdrawal request to ' || w.wallet_address), -ABS(w.amount_nano), 0,
+          CASE WHEN w.status = 'paid' THEN 'completed' ELSE w.status END,
+          w.id, 'ton_withdrawal', NULL, w.created_at
+        FROM ton_withdrawals w
+        WHERE w.user_id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM ton_transactions t
+            WHERE t.user_id = w.user_id AND t.reference_type = 'ton_withdrawal' AND t.reference_id = w.id
+              AND t.kind = 'withdraw' AND t.amount_nano < 0
+          )`).bind(userId),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status = COALESCE((SELECT CASE WHEN w.status = 'paid' THEN 'completed' ELSE w.status END
+          FROM ton_withdrawals w WHERE w.id = ton_transactions.reference_id AND w.user_id = ton_transactions.user_id), status)
+        WHERE user_id = ? AND kind = 'withdraw' AND amount_nano < 0 AND reference_type = 'ton_withdrawal'
+          AND EXISTS (SELECT 1 FROM ton_withdrawals w WHERE w.id = ton_transactions.reference_id AND w.user_id = ton_transactions.user_id)`).bind(userId),
+    );
   }
-  if (key) bySource.set(key, item);
-  items.push(item);
-}
 
-function refreshSourceTransaction(existing: TonTransaction, source: TonTransaction): void {
-  existing.status = source.status;
-  existing.title = source.title;
-  existing.description = source.description;
-  existing.metadata = { ...(existing.metadata || {}), ...(source.metadata || {}) };
-}
-
-function sourceKeyFor(referenceType: string | null | undefined, referenceId: string | null | undefined): string {
-  return referenceType && referenceId ? `${referenceType}:${referenceId}` : '';
-}
-
-function tonDepositToTransaction(row: TonDepositSourceRow): TonTransaction {
-  const amountNano = Number(row.ton_balance_nano || 0);
-  return sourceTransaction(row.id, row.user_id, 'deposit', 'GRAM wallet deposit', `${row.amount_ton} GRAM wallet payment`, amountNano, row.status, 'ton_deposit', row.id, row.created_at, { txHash: row.tx_hash });
-}
-
-function starsDepositToTransaction(row: StarsDepositSourceRow): TonTransaction {
-  const amountNano = Number(row.amount_nano || 0);
-  return sourceTransaction(row.id, row.user_id, 'deposit', 'Stars purchase', `${Number(row.stars_amount || 0)} Stars converted to GRAM balance`, amountNano, row.status, 'stars_deposit', row.id, row.created_at, { starsAmount: row.stars_amount });
-}
-
-function withdrawalToTransaction(row: WithdrawalSourceRow): TonTransaction {
-  const amountNano = -Math.abs(Number(row.amount_nano || 0));
-  return sourceTransaction(row.id, row.user_id, 'withdraw', withdrawalTitle(row.status), 'Withdrawal request to ' + shortWallet(String(row.wallet_address || '')), amountNano, withdrawalHistoryStatus(row.status), 'ton_withdrawal', row.id, row.created_at, { walletAddress: row.wallet_address, sourceStatus: row.status });
-}
-
-function withdrawalTitle(status: string): string {
-  return withdrawalHistoryStatus(status) === 'approved' ? 'GRAM withdrawal approved' : 'GRAM withdrawal';
-}
-
-function withdrawalHistoryStatus(status: string): string {
-  const normalized = String(status || '').toLowerCase();
-  return normalized === 'paid' ? 'approved' : normalized;
-}
-
-function sourceTransaction(id: string, userId: string, kind: TonTransactionKind, title: string, description: string, amountNano: number, status: string, referenceType: string, referenceId: string, createdAt: string, metadata: Record<string, unknown>): TonTransaction {
-  return { id, userId, kind, title, description, amountNano, balanceAfterNano: 0, status, referenceId, referenceType, metadata, createdAt };
-}
-
-function transactionTime(item: TonTransaction): number {
-  const value = Date.parse(item.createdAt || '');
-  return Number.isFinite(value) ? value : 0;
-}
-
-function shortWallet(wallet: string): string {
-  return wallet.length > 14 ? wallet.slice(0, 6) + '...' + wallet.slice(-6) : wallet;
+  if (statements.length) await env.DB.batch(statements);
 }
 
 function rowToTransaction(row: TonTransactionRow): TonTransaction {
@@ -373,5 +326,7 @@ function parseJson(value: string | null): Record<string, unknown> {
 }
 
 function cleanUserId(value: unknown): string {
-  return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  const id = String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+  if (!id) throw new Error('Missing user id');
+  return id;
 }
