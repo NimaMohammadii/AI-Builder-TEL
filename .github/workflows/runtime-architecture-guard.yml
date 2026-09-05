@@ -25,13 +25,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Restore Telegram webhook target
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          response="$(curl --fail --silent --show-error --max-time 20 https://v.vexaagent.workers.dev/setup-webhook)"
-          printf '%s\n' "$response"
-          printf '%s' "$response" | grep -q '"webhookUrl":"https://vexa.games/telegram/webhook"'
-
       - name: Install dependencies
         run: npm install --no-package-lock --legacy-peer-deps
 
