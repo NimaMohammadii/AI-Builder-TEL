@@ -34,7 +34,7 @@ import { PREDICT_ZONE_SCRIPT, PREDICT_ZONE_SECTION, PREDICT_ZONE_STYLES } from '
 import { MINIAPP_SCRIPT } from './script';
 import { TON_BALANCE_SCRIPT } from './ton-balance-script';
 import { PLAY_ZONE_STACK_SCROLL_SCRIPT } from './play-zone-stack-scroll-script';
-import { BOOT_LOADER_SCRIPT, BOOT_LOADER_STYLES } from './boot-loader-script';
+import { BOOT_LOADING_IMAGE_DATA_URI, BOOT_LOADER_SCRIPT, BOOT_LOADER_STYLES } from './boot-loader-script';
 import { ACTIVITY_SCRIPT } from './activity-script';
 import { MINIAPP_AUDIO_MANAGER_SCRIPT, MINIAPP_AUDIO_SCRIPT } from './audio-script';
 import { XP_BAR_EFFECTS_SCRIPT } from './xp-bar-effects-script';
@@ -204,8 +204,8 @@ export function miniAppShellHtml(): string {
   </script>
   <meta name="theme-color" content="#12070a"/>
   <script>if(document.documentElement.classList.contains('vexa-web'))document.querySelector('meta[name="theme-color"]').setAttribute('content','#000000');</script>
-  <link rel="preload" as="image" href="/app/api/section-background/global-loading.png" fetchpriority="high"/>
   <title>Vexa FLOW</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>${STYLES}
     html.vexa-web .app{padding-top:0!important}
     html.vexa-web,html.vexa-web body{background:#000!important}
@@ -228,11 +228,10 @@ export function miniAppShellHtml(): string {
   <div id="vexaBoot" class="vexa-boot" role="progressbar" aria-label="Loading Vexa Game" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <div class="vexa-boot-top-shadow" aria-hidden="true"></div>
     <div class="vexa-boot-card">
-      <img id="vexaBootImage" class="vexa-boot-logo" src="/app/api/section-background/global-loading.png" alt="" decoding="sync" loading="eager" fetchpriority="high"/>
+      <img id="vexaBootImage" class="vexa-boot-logo" src="${BOOT_LOADING_IMAGE_DATA_URI}" alt="" decoding="async" fetchpriority="high"/>
       <div class="vexa-boot-progress" aria-hidden="true"><span id="vexaBootProgress" class="vexa-boot-progress-bar"></span></div>
     </div>
   </div>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <main class="app">
     <header class="top">
       <div class="brand">
