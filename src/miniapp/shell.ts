@@ -203,14 +203,15 @@ export function miniAppShellHtml(): string {
     })();
   </script>
   <meta name="theme-color" content="#12070a"/>
+  <script>if(document.documentElement.classList.contains('vexa-web'))document.querySelector('meta[name="theme-color"]').setAttribute('content','#000000');</script>
   <title>Vexa FLOW</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>${STYLES}
     html.vexa-web .app{padding-top:0!important}
-    html.vexa-web,html.vexa-web body{background:#12070a!important}
-    html.vexa-web body:has(#home.active){background:#12070a!important}
-    html.vexa-web .vexa-boot{inset:0!important}
-    html.vexa-web body:has(#home.active)::before{inset:0!important;width:auto!important;height:auto!important;background-color:transparent!important}
+    html.vexa-web,html.vexa-web body{background:#000!important}
+    html.vexa-web body:has(#home.active){background:#000!important}
+    html.vexa-web .vexa-boot{inset:0!important;box-shadow:inset 0 82px 64px -34px rgba(0,0,0,.96)!important}
+    html.vexa-web body:has(#home.active)::before{inset:0!important;width:auto!important;height:auto!important;background-color:transparent!important;box-shadow:inset 0 82px 64px -34px rgba(0,0,0,.96)!important}
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
     .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
