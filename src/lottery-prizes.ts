@@ -5,6 +5,8 @@ import { ensureTonTransactionsTable } from './ton-transactions';
 
 export const LOTTERY_WINNER_COUNT = 3;
 const PRIZE_PERCENT_TOTAL_BPS = 10_000;
+const LOTTERY_PLATFORM_FEE_BPS = 2_000;
+const LOTTERY_TICKET_PRIZE_BPS = PRIZE_PERCENT_TOTAL_BPS - LOTTERY_PLATFORM_FEE_BPS;
 const DEFAULT_PRIZE_BPS = [5_000, 3_000, 2_000] as const;
 
 type PrizeRow = { rank: number; prize_bps: number; updated_at: string };
@@ -169,7 +171,7 @@ export async function getLotteryPrizePoolNano(env: Env, roundIdInput: unknown): 
       COALESCE(r.prize_pool_adjustment_nano,0) AS adjustment_nano
     FROM lottery_rounds r WHERE r.id=? LIMIT 1`).bind(roundId).first<PrizePoolRow>();
   if (!row) return 0;
-  return cleanPrizePoolTotal(Number(row.ticket_pool_nano || 0) + Number(row.adjustment_nano || 0));
+  return cleanPrizePoolTotal(ticketPrizeContributionNano(row.ticket_pool_nano) + Number(row.adjustment_nano || 0));
 }
 
 export async function adjustLotteryPrizePool(env: Env, roundIdInput: unknown, deltaNanoInput: unknown): Promise<number> {
@@ -182,16 +184,16 @@ export async function adjustLotteryPrizePool(env: Env, roundIdInput: unknown, de
       COALESCE(r.prize_pool_adjustment_nano,0) AS adjustment_nano
     FROM lottery_rounds r WHERE r.id=? LIMIT 1`).bind(roundId).first<PrizePoolRow>();
   if (!current || current.status !== 'open') throw new Error('فقط Prize Pool راند باز قابل تغییر است.');
-  const currentTotal = cleanPrizePoolTotal(Number(current.ticket_pool_nano || 0) + Number(current.adjustment_nano || 0));
+  const ticketContributionNano = ticketPrizeContributionNano(current.ticket_pool_nano);
+  const currentTotal = cleanPrizePoolTotal(ticketContributionNano + Number(current.adjustment_nano || 0));
   if (currentTotal + deltaNano < 0) throw new Error('Prize Pool نمی‌تواند کمتر از صفر شود.');
   const nextAdjustment = Number(current.adjustment_nano || 0) + deltaNano;
   if (!Number.isSafeInteger(nextAdjustment)) throw new Error('مقدار Prize Pool بیش از حد بزرگ است.');
   const updated = await env.DB.prepare(`UPDATE lottery_rounds
     SET prize_pool_adjustment_nano=COALESCE(prize_pool_adjustment_nano,0)+?,updated_at=CURRENT_TIMESTAMP
     WHERE id=? AND status='open'
-      AND COALESCE((SELECT SUM(price_nano) FROM lottery_tickets WHERE round_id=lottery_rounds.id),0)
-        + COALESCE(prize_pool_adjustment_nano,0) + ? >= 0`)
-    .bind(deltaNano, roundId, deltaNano).run();
+      AND COALESCE(prize_pool_adjustment_nano,0) + ? + ? >= 0`)
+    .bind(deltaNano, roundId, deltaNano, ticketContributionNano).run();
   if (Number(updated.meta?.changes || 0) <= 0) throw new Error('Prize Pool تغییر نکرد؛ دوباره تلاش کنید.');
   return getLotteryPrizePoolNano(env, roundId);
 }
@@ -426,6 +428,18 @@ function cleanPrizePoolDelta(value: unknown): number {
   const delta = Math.trunc(Number(value));
   if (!Number.isSafeInteger(delta) || delta === 0) throw new Error('مقدار تغییر Prize Pool نامعتبر است.');
   return delta;
+}
+
+function applyBpsFloor(value: unknown, bpsInput: unknown): number {
+  const total = cleanPrizePoolTotal(value);
+  const bps = cleanPrizeBps(bpsInput);
+  const whole = Math.floor(total / PRIZE_PERCENT_TOTAL_BPS);
+  const remainder = total % PRIZE_PERCENT_TOTAL_BPS;
+  return whole * bps + Math.floor(remainder * bps / PRIZE_PERCENT_TOTAL_BPS);
+}
+
+function ticketPrizeContributionNano(ticketRevenueNano: unknown): number {
+  return applyBpsFloor(ticketRevenueNano, LOTTERY_TICKET_PRIZE_BPS);
 }
 
 function allocatePrizePool(prizePoolNanoInput: unknown, percentBps: number[]): number[] {
