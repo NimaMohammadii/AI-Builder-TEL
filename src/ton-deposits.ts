@@ -3,7 +3,8 @@ import type { Env } from './types';
 import { assertUserNotBanned } from './user-controls';
 import { getFinanceLimits, formatTonAmount } from './admin-finance-controls';
 import { awardDepositXp } from './xp-rewards';
-import { recordTonTransaction } from './ton-transactions';
+import { ensureTonTransactionsTable } from './ton-transactions';
+import { publishLiveActivity } from './live-activity';
 
 const TONCENTER_BASE = 'https://toncenter.com/api/v3';
 const DEFAULT_MIN_TON = 1;
@@ -66,24 +67,23 @@ export async function createTonDeposit(env: Env, userId: string, amountTonInput:
   const amountNano = tonToNanoString(amountTon);
   const tonBalanceNano = amountNanoValue;
   const depositId = 'dep_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
-  await ensureTonDepositsTable(env);
-  await env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, ton_balance_nano, status, wallet_address, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'pending', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
-    .bind(depositId, user, amountTon, amountNano, tonBalanceNano, senderWallet)
-    .run();
-  return rowToDeposit({
-    id: depositId,
-    user_id: user,
-    amount_ton: amountTon,
-    amount_nano: amountNano,
-    ton_balance_nano: tonBalanceNano,
-    status: 'pending',
-    tx_hash: null,
-    wallet_address: senderWallet,
-    credited_at: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }, wallet);
+  const transactionId = `finance_tondep:${depositId}`;
+  const metadataJson = JSON.stringify({ senderWallet, displayCurrency: 'Gram' });
+
+  await Promise.all([ensureTonDepositsTable(env), ensureTonTransactionsTable(env)]);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO ton_deposits (id, user_id, amount_ton, amount_nano, ton_balance_nano, status, wallet_address, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+      .bind(depositId, user, amountTon, amountNano, tonBalanceNano, senderWallet),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+      VALUES (?,?,'deposit','GRAM wallet deposit',?,?,COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=?),0),'pending',?,'ton_deposit',?,CURRENT_TIMESTAMP)`)
+      .bind(transactionId, user, `${amountTon} GRAM wallet payment`, tonBalanceNano, user, depositId, metadataJson),
+  ]);
+
+  const row = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ? AND user_id = ?').bind(depositId, user).first<DepositRow>();
+  if (!row) throw new Error('Deposit creation failed');
+  return rowToDeposit(row, wallet);
 }
 
 export async function getTonDeposit(env: Env, userId: string, depositId: string): Promise<TonDeposit | null> {
@@ -98,7 +98,7 @@ export async function getTonDeposit(env: Env, userId: string, depositId: string)
 export async function verifyTonDeposit(env: Env, userId: string, depositId: string): Promise<TonDeposit> {
   const id = cleanDepositId(depositId);
   const user = cleanUserId(userId);
-  await ensureTonDepositsTable(env);
+  await Promise.all([ensureTonDepositsTable(env), ensureTonTransactionsTable(env)]);
   const row = await env.DB.prepare('SELECT * FROM ton_deposits WHERE id = ? AND user_id = ?').bind(id, user).first<DepositRow>();
   if (!row) throw new Error('Deposit not found');
   const wallet = treasuryWallet(env);
@@ -115,15 +115,13 @@ export async function verifyTonDeposit(env: Env, userId: string, depositId: stri
   const finalRow = completed ?? { ...row, status: settlement.applied ? 'completed' : row.status, tx_hash: settlement.applied ? txHash : row.tx_hash };
 
   if (settlement.applied) {
-    await recordTonTransaction(env, row.user_id, row.ton_balance_nano, settlement.balanceAfterNano, {
+    await publishLiveActivity(env, {
       kind: 'deposit',
-      title: 'GRAM wallet deposit',
-      description: `${row.amount_ton} GRAM wallet payment`,
-      referenceId: row.id,
-      referenceType: 'ton_deposit',
-      status: 'completed',
-      metadata: { txHash, senderWallet: row.wallet_address },
-    }).catch((error) => console.warn('GRAM deposit ledger record failed', error));
+      userId: row.user_id,
+      amountNano: row.ton_balance_nano,
+      key: row.id,
+      createdAt: finalRow.updated_at || new Date().toISOString(),
+    }).catch((error) => console.warn('GRAM deposit live activity failed', error));
     await awardDepositXp(env, row.user_id, 'ton_deposit', row.id);
   }
 
@@ -139,21 +137,38 @@ export async function listUserTonDeposits(env: Env, userId: string): Promise<{ d
 
 async function settleTonDeposit(env: Env, row: DepositRow, txHash: string): Promise<{ applied: boolean; balanceAfterNano: number }> {
   const claim = 'credit_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
+  const transactionId = `finance_tondep:${row.id}`;
+  const metadataJson = JSON.stringify({ txHash, senderWallet: row.wallet_address, displayCurrency: 'Gram' });
   const results = await env.DB.batch([
     env.DB.prepare(`UPDATE ton_deposits
-      SET status = 'completed', tx_hash = ?, credited_at = ?, updated_at = CURRENT_TIMESTAMP
+      SET status = 'crediting', tx_hash = ?, credited_at = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND user_id = ? AND status != 'completed' AND credited_at IS NULL`)
       .bind(txHash, claim, row.id, row.user_id),
     env.DB.prepare(`INSERT INTO app_users (telegram_user_id, current_section, ton_balance_nano, last_seen_at, updated_at)
-      SELECT ?, 'home', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-      WHERE EXISTS (SELECT 1 FROM ton_deposits WHERE id = ? AND user_id = ? AND credited_at = ?)
-      ON CONFLICT(telegram_user_id) DO UPDATE SET
-        ton_balance_nano = max(0, app_users.ton_balance_nano + excluded.ton_balance_nano),
-        updated_at = CURRENT_TIMESTAMP`)
-      .bind(row.user_id, row.ton_balance_nano, row.id, row.user_id, claim),
+      VALUES (?, 'home', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(telegram_user_id) DO NOTHING`).bind(row.user_id),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+      SELECT ?,d.user_id,'deposit','GRAM wallet deposit',(d.amount_ton || ' GRAM wallet payment'),d.ton_balance_nano,
+        COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=d.user_id),0),'pending',d.id,'ton_deposit',?,d.created_at
+      FROM ton_deposits d
+      WHERE d.id=? AND d.user_id=?
+        AND NOT EXISTS (SELECT 1 FROM ton_transactions t WHERE t.user_id=d.user_id AND t.reference_type='ton_deposit' AND t.reference_id=d.id AND t.kind='deposit')`)
+      .bind(transactionId, metadataJson, row.id, row.user_id),
+    env.DB.prepare(`UPDATE app_users
+      SET ton_balance_nano = ton_balance_nano + ?, updated_at = CURRENT_TIMESTAMP
+      WHERE telegram_user_id = ?
+        AND EXISTS (SELECT 1 FROM ton_deposits WHERE id = ? AND user_id = ? AND credited_at = ? AND status = 'crediting')`)
+      .bind(row.ton_balance_nano, row.user_id, row.id, row.user_id, claim),
+    env.DB.prepare(`UPDATE ton_transactions
+      SET status='completed', amount_nano=?, balance_after_nano=COALESCE((SELECT ton_balance_nano FROM app_users WHERE telegram_user_id=?),balance_after_nano),
+          title='GRAM wallet deposit', description=?, metadata_json=?
+      WHERE user_id=? AND kind='deposit' AND reference_type='ton_deposit' AND reference_id=?
+        AND EXISTS (SELECT 1 FROM ton_deposits WHERE id=? AND user_id=? AND credited_at=? AND status='crediting')`)
+      .bind(row.ton_balance_nano, row.user_id, `${row.amount_ton} GRAM wallet payment`, metadataJson, row.user_id, row.id, row.id, row.user_id, claim),
     env.DB.prepare(`UPDATE ton_deposits
-      SET credited_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND user_id = ? AND credited_at = ?`)
+      SET status = 'completed', credited_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ? AND credited_at = ? AND status = 'crediting'`)
       .bind(row.id, row.user_id, claim),
   ]);
   const applied = Number(results[0]?.meta?.changes || 0) > 0;
