@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Diagnose live Worker origin
+      - name: Refresh Telegram webhook on verified Worker
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          status="$(curl --silent --show-error --output /tmp/vexa-app.html --write-out '%{http_code}' https://v.vexaagent.workers.dev/app)"
-          printf 'WORKER_STATUS=%s\n' "$status"
-          test "$status" = "200"
-          grep -q 'Vexa' /tmp/vexa-app.html
-          printf 'WORKER_APP_OK=true\n'
+          response="$(curl --fail --silent --show-error --max-time 20 https://v.vexaagent.workers.dev/setup-webhook)"
+          printf '%s\n' "$response"
+          printf '%s' "$response" | grep -q 'Webhook updated'
+          printf '%s' "$response" | grep -q 'https://v.vexaagent.workers.dev/telegram/webhook'
+          printf 'TELEGRAM_WEBHOOK_REFRESHED=true\n'
 
       - name: Install dependencies
         run: npm install --no-package-lock --legacy-peer-deps
