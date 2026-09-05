@@ -177,6 +177,10 @@ export async function listUserTonTransactions(
   return { transactions: (rows.results ?? []).map(rowToTransaction) };
 }
 
+export function listUserTonWalletTransactions(env: Env, userId: string, limit = 100): Promise<{ transactions: TonTransaction[] }> {
+  return listUserTonTransactions(env, userId, limit, ['deposit', 'withdraw']);
+}
+
 // One-way compatibility migration for records created before wallet operations wrote
 // directly to ton_transactions. History is always returned from ton_transactions;
 // source state tables are never merged into the response.
