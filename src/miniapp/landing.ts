@@ -1,7 +1,7 @@
 export const LANDING_STYLES = `
 #landing{background:transparent!important}
-@media(max-width:699px){#landing{display:none!important}}
-@media(min-width:700px){
+@media(max-width:699px),(max-height:599px){#landing{display:none!important}}
+@media(min-width:700px) and (min-height:600px){
   html body:has(#landing.active) main.app{width:min(100%,1180px)!important;padding-left:32px!important;padding-right:32px!important}
   html body:has(#landing.active) .top{width:min(100%,1080px)!important;margin-left:auto!important;margin-right:auto!important}
   #landing.web-landing-view{padding:8px 0 36px!important;overflow-y:auto!important;overflow-x:hidden!important}
@@ -21,7 +21,7 @@ export const LANDING_STYLES = `
   #landing .web-landing-card span{display:block!important;margin-top:6px!important;color:rgba(255,255,255,.48)!important;font-size:12px!important;font-weight:560!important;line-height:1.45!important}
   #landing .web-landing-card b{color:rgba(255,255,255,.72)!important;font-size:11px!important;font-weight:800!important;letter-spacing:.02em!important}
 }
-@media(min-width:700px) and (max-width:899px){
+@media(min-width:700px) and (min-height:600px) and (max-width:899px){
   #landing .web-landing-shell{width:min(100%,680px)!important}
   #landing .web-landing-hero{min-height:250px!important;padding:28px!important}
   #landing .web-landing-grid{grid-template-columns:1fr!important}
