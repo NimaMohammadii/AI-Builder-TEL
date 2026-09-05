@@ -1,7 +1,7 @@
 import type { Env } from './types';
 
 export const APP_NAME = 'Vexa Games';
-export const PUBLIC_BASE_URL = 'https://vexa.games';
+export const PUBLIC_BASE_URL = 'https://v.vexaagent.workers.dev';
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
