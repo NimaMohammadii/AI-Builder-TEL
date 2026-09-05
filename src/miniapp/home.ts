@@ -362,7 +362,7 @@ const HOME_SLOT_STYLES = [
 ].join('');
 
 export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STYLES + `
-@media(min-width:700px){
+@media(min-width:700px) and (min-height:600px){
   html body:has(#home.active) main.app{width:min(100%,820px)!important;padding-left:28px!important;padding-right:28px!important}
   html body:has(#home.active) .top{width:min(100%,680px)!important;margin-left:auto!important;margin-right:auto!important}
   html body:has(#home.active) #home{padding-top:6px!important;padding-left:0!important;padding-right:0!important;padding-bottom:36px!important}
@@ -384,7 +384,7 @@ export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STY
   body:has(#home.active) .home-ticket-drawer{left:max(22px,calc((100vw - 760px)/2))!important;top:calc(174px + env(safe-area-inset-top))!important;bottom:32px!important;width:272px!important;max-width:272px!important;border-radius:28px!important;padding:24px 16px 16px!important;transform:translate3d(calc(-100% - 56px),0,0)!important}
   body:has(#home.active) .home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}
 }
-@media(min-width:900px){
+@media(min-width:900px) and (min-height:600px){
   html body:has(#home.active) main.app{width:min(100%,1080px)!important;padding-left:32px!important;padding-right:32px!important}
   html body:has(#home.active) .top{width:min(100%,980px)!important}
   html body:has(#home.active) #homeLuckyCodeSection{width:min(100%,980px)!important;max-width:980px!important}
@@ -399,7 +399,7 @@ export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STY
   body:has(#home.active) .home-bonus-panel{bottom:24px!important;max-height:min(70dvh,620px)!important;border-radius:34px!important}
   body:has(#home.active) .home-ticket-drawer{left:max(28px,calc((100vw - 1020px)/2))!important;width:292px!important;max-width:292px!important}
 }
-@media(min-width:1200px){
+@media(min-width:1200px) and (min-height:600px){
   html body:has(#home.active) main.app{width:min(100%,1240px)!important;padding-left:36px!important;padding-right:36px!important}
   html body:has(#home.active) .top{width:min(100%,1120px)!important}
   html body:has(#home.active) #homeLuckyCodeSection{width:min(100%,1120px)!important;max-width:1120px!important}
