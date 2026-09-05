@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { adjustUserTonBalance, assertUserNotBanned, ensureTonBalanceColumn, getUserControls } from './user-controls';
+import { assertUserNotBanned, ensureTonBalanceColumn, getUserControls } from './user-controls';
 import { getFinanceLimits } from './admin-finance-controls';
 import { ensureTonTransactionsTable } from './ton-transactions';
 import { publishLiveActivity } from './live-activity';
@@ -83,7 +83,7 @@ export async function createTonWithdrawal(env: Env, userIdInput: unknown, amount
   ]);
 
   const id = 'wd_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
-  const transactionId = 'txn_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+  const transactionId = `finance_withdraw:${id}`;
   const description = 'Withdrawal request to ' + shortWallet(wallet);
   const metadataJson = JSON.stringify({ walletAddress: wallet, displayCurrency: 'Gram' });
 
@@ -159,7 +159,7 @@ export async function listAdminTonWithdrawals(env: Env, statusInput: unknown = '
 }
 
 export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown): Promise<TonWithdrawal> {
-  await ensureTonWithdrawalsTable(env);
+  await Promise.all([ensureTonWithdrawalsTable(env), ensureTonTransactionsTable(env)]);
   const id = cleanWithdrawalId(withdrawalIdInput);
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   if (!row) throw new Error('Withdrawal not found');
@@ -171,63 +171,68 @@ export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown)
     prepared = await prepareWithdrawalPayout(env, row);
   } catch (error) {
     const message = cleanError(error);
-    await env.DB.prepare(`UPDATE ton_withdrawals
-      SET status = 'failed', error_message = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status IN ('pending', 'failed')`)
-      .bind(message, id)
-      .run();
-    await markWithdrawalTransaction(env, id, 'failed', 'Gram withdrawal', 'Payout preparation failed: ' + message, {
-      walletAddress: row.wallet_address,
-      errorMessage: message,
-      displayCurrency: 'Gram',
-    });
+    const metadataJson = JSON.stringify({ walletAddress: row.wallet_address, errorMessage: message, displayCurrency: 'Gram' }).slice(0, 2000);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE ton_withdrawals
+        SET status='failed', error_message=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND status IN ('pending','failed')`).bind(message, id),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status='failed', title='Gram withdrawal', description=?, metadata_json=?
+        WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+          AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND status='failed')`)
+        .bind('Payout preparation failed: ' + message, metadataJson, id, id),
+    ]);
     throw new Error(message);
   }
 
-  const locked = await env.DB.prepare(`UPDATE ton_withdrawals
-    SET status = 'processing', submission_ref = ?, error_message = NULL,
-        approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND status IN ('pending', 'failed')`)
-    .bind(prepared.submissionRef, id)
-    .run();
-  if ((locked.meta?.changes ?? 0) !== 1) {
-    const current = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
-    if (current) return rowToWithdrawal(current);
-    throw new Error('Withdrawal is already being processed');
-  }
-
-  await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submitting', 'Single payout submission started', {
+  const processingMetadata = JSON.stringify({
     walletAddress: row.wallet_address,
     sourceWallet: prepared.sourceWallet,
     submissionRef: prepared.submissionRef,
     seqno: prepared.seqno,
     displayCurrency: 'Gram',
-  });
+  }).slice(0, 2000);
+  const locked = await env.DB.batch([
+    env.DB.prepare(`UPDATE ton_withdrawals
+      SET status='processing', submission_ref=?, error_message=NULL,
+          approved_at=COALESCE(approved_at,CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND status IN ('pending','failed')`).bind(prepared.submissionRef, id),
+    env.DB.prepare(`UPDATE ton_transactions
+      SET status='processing', title='Gram withdrawal submitting', description='Single payout submission started', metadata_json=?
+      WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+        AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND status='processing' AND submission_ref=?)`)
+      .bind(processingMetadata, id, id, prepared.submissionRef),
+  ]);
+  if ((locked[0]?.meta?.changes ?? 0) !== 1) {
+    const current = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
+    if (current) return rowToWithdrawal(current);
+    throw new Error('Withdrawal is already being processed');
+  }
 
   try {
     await prepared.sendOnce();
-    await env.DB.prepare(`UPDATE ton_withdrawals
-      SET error_message = NULL, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'processing'`)
-      .bind(id)
-      .run();
-    await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submitted', 'Submitted once; no automatic resend or polling', {
+    const submittedMetadata = JSON.stringify({
       walletAddress: row.wallet_address,
       sourceWallet: prepared.sourceWallet,
       submissionRef: prepared.submissionRef,
       seqno: prepared.seqno,
       sourceStatus: 'processing',
       displayCurrency: 'Gram',
-    });
+    }).slice(0, 2000);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE ton_withdrawals
+        SET error_message=NULL, updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND status='processing' AND submission_ref=?`).bind(id, prepared.submissionRef),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status='processing', title='Gram withdrawal submitted', description='Submitted once; no automatic resend or polling', metadata_json=?
+        WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+          AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND status='processing' AND submission_ref=?)`)
+        .bind(submittedMetadata, id, id, prepared.submissionRef),
+    ]);
   } catch (error) {
     const message = cleanError(error);
     const safeMessage = `Submission state uncertain. Do not resend or refund automatically. ${message}`;
-    await env.DB.prepare(`UPDATE ton_withdrawals
-      SET error_message = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'processing'`)
-      .bind(cleanText(safeMessage, 240), id)
-      .run();
-    await markWithdrawalTransaction(env, id, 'processing', 'Gram withdrawal submission uncertain', safeMessage, {
+    const uncertainMetadata = JSON.stringify({
       walletAddress: row.wallet_address,
       sourceWallet: prepared.sourceWallet,
       submissionRef: prepared.submissionRef,
@@ -235,7 +240,18 @@ export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown)
       errorMessage: message,
       sourceStatus: 'processing',
       displayCurrency: 'Gram',
-    });
+    }).slice(0, 2000);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE ton_withdrawals
+        SET error_message=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND status='processing' AND submission_ref=?`)
+        .bind(cleanText(safeMessage, 240), id, prepared.submissionRef),
+      env.DB.prepare(`UPDATE ton_transactions
+        SET status='processing', title='Gram withdrawal submission uncertain', description=?, metadata_json=?
+        WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+          AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND status='processing' AND submission_ref=?)`)
+        .bind(safeMessage, uncertainMetadata, id, id, prepared.submissionRef),
+    ]);
     throw new Error(safeMessage);
   }
 
@@ -244,7 +260,7 @@ export async function approveTonWithdrawal(env: Env, withdrawalIdInput: unknown)
 }
 
 export async function markTonWithdrawalPaid(env: Env, withdrawalIdInput: unknown): Promise<TonWithdrawal> {
-  await ensureTonWithdrawalsTable(env);
+  await Promise.all([ensureTonWithdrawalsTable(env), ensureTonTransactionsTable(env)]);
   const id = cleanWithdrawalId(withdrawalIdInput);
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   if (!row) throw new Error('Withdrawal not found');
@@ -252,25 +268,30 @@ export async function markTonWithdrawalPaid(env: Env, withdrawalIdInput: unknown
   if (row.status !== 'processing') throw new Error('Only a processing withdrawal can be marked paid');
   if (!row.submission_ref) throw new Error('Processing withdrawal has no submission reference');
 
-  const updated = await env.DB.prepare(`UPDATE ton_withdrawals
-    SET status = 'paid', paid_at = CURRENT_TIMESTAMP, error_message = NULL, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND status = 'processing' AND submission_ref IS NOT NULL`)
-    .bind(id)
-    .run();
-  if ((updated.meta?.changes ?? 0) !== 1) throw new Error('Withdrawal status changed before finalization');
-
-  await markWithdrawalTransaction(env, id, 'approved', 'Gram withdrawal paid', 'Marked paid by admin without resending funds', {
+  const metadataJson = JSON.stringify({
     walletAddress: row.wallet_address,
     submissionRef: row.submission_ref,
     displayCurrency: 'Gram',
     sourceStatus: 'paid',
-  });
+  }).slice(0, 2000);
+  const results = await env.DB.batch([
+    env.DB.prepare(`UPDATE ton_withdrawals
+      SET status='paid', paid_at=CURRENT_TIMESTAMP, error_message=NULL, updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND status='processing' AND submission_ref IS NOT NULL`).bind(id),
+    env.DB.prepare(`UPDATE ton_transactions
+      SET status='completed', title='Gram withdrawal paid', description='Withdrawal completed', metadata_json=?
+      WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+        AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND status='paid')`)
+      .bind(metadataJson, id, id),
+  ]);
+  if ((results[0]?.meta?.changes ?? 0) !== 1) throw new Error('Withdrawal status changed before finalization');
+
   const paid = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   return rowToWithdrawal(paid ?? { ...row, status: 'paid', paid_at: new Date().toISOString(), error_message: null });
 }
 
 export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, reasonInput: unknown = ''): Promise<TonWithdrawal> {
-  await ensureTonWithdrawalsTable(env);
+  await Promise.all([ensureTonWithdrawalsTable(env), ensureTonTransactionsTable(env), ensureTonBalanceColumn(env)]);
   const id = cleanWithdrawalId(withdrawalIdInput);
   const row = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   if (!row) throw new Error('Withdrawal not found');
@@ -278,32 +299,47 @@ export async function rejectTonWithdrawal(env: Env, withdrawalIdInput: unknown, 
   if (row.status === 'rejected') return rowToWithdrawal(row);
   if (row.status === 'processing') throw new Error('Processing withdrawal cannot be rejected or refunded because submission may already have happened');
 
-  const rejected = await env.DB.prepare(`UPDATE ton_withdrawals SET status = 'rejected', error_message = ?, rejected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('pending', 'failed')`)
-    .bind(cleanText(reasonInput, 180) || 'Rejected by admin', id)
-    .run();
-  if ((rejected.meta?.changes ?? 0) !== 1) throw new Error('Withdrawal cannot be rejected');
-
-  await adjustUserTonBalance(env, row.user_id, Math.abs(Number(row.amount_nano || 0)), {
-    kind: 'withdraw',
-    title: 'Gram withdrawal refunded',
-    description: 'Rejected withdrawal refunded',
-    referenceId: id,
-    referenceType: 'ton_withdrawal',
-    status: 'rejected',
-    metadata: { walletAddress: row.wallet_address, displayCurrency: 'Gram' },
-  });
+  const reason = cleanText(reasonInput, 180) || 'Rejected by admin';
+  const amountNano = Math.abs(Number(row.amount_nano || 0));
+  const refundTransactionId = `finance_withdraw_refund:${id}`;
+  const originalMetadata = JSON.stringify({ walletAddress: row.wallet_address, reason, displayCurrency: 'Gram', sourceStatus: 'rejected' }).slice(0, 2000);
+  const refundMetadata = JSON.stringify({ walletAddress: row.wallet_address, reason, displayCurrency: 'Gram', sourceStatus: 'rejected', refund: true }).slice(0, 2000);
+  const results = await env.DB.batch([
+    env.DB.prepare(`UPDATE ton_withdrawals
+      SET status='rejecting', error_message=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND status IN ('pending','failed')`).bind(reason, id),
+    env.DB.prepare(`INSERT INTO app_users (telegram_user_id,current_section,ton_balance_nano,last_seen_at,updated_at)
+      VALUES (?,'home',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+      ON CONFLICT(telegram_user_id) DO NOTHING`).bind(row.user_id),
+    env.DB.prepare(`UPDATE app_users
+      SET ton_balance_nano=ton_balance_nano+?, updated_at=CURRENT_TIMESTAMP
+      WHERE telegram_user_id=? AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND user_id=? AND status='rejecting')`)
+      .bind(amountNano, row.user_id, id, row.user_id),
+    env.DB.prepare(`UPDATE ton_transactions
+      SET status='rejected', title='Gram withdrawal rejected', description=?, metadata_json=?
+      WHERE reference_type='ton_withdrawal' AND reference_id=? AND kind='withdraw' AND amount_nano<0
+        AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND user_id=? AND status='rejecting')`)
+      .bind(reason, originalMetadata, id, id, row.user_id),
+    env.DB.prepare(`INSERT INTO ton_transactions
+      (id,user_id,kind,title,description,amount_nano,balance_after_nano,status,reference_id,reference_type,metadata_json,created_at)
+      SELECT ?,?,'withdraw','Gram withdrawal refunded','Rejected withdrawal refunded',?,u.ton_balance_nano,'completed',?,'ton_withdrawal_refund',?,CURRENT_TIMESTAMP
+      FROM app_users u
+      WHERE u.telegram_user_id=?
+        AND EXISTS (SELECT 1 FROM ton_withdrawals WHERE id=? AND user_id=? AND status='rejecting')
+        AND NOT EXISTS (SELECT 1 FROM ton_transactions WHERE id=?)`)
+      .bind(refundTransactionId, row.user_id, amountNano, id, refundMetadata, row.user_id, id, row.user_id, refundTransactionId),
+    env.DB.prepare(`UPDATE ton_withdrawals
+      SET status='rejected', rejected_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND user_id=? AND status='rejecting'`).bind(id, row.user_id),
+  ]);
+  if ((results[0]?.meta?.changes ?? 0) !== 1) {
+    const current = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id=?').bind(id).first<WithdrawRow>();
+    if (current?.status === 'rejected') return rowToWithdrawal(current);
+    throw new Error('Withdrawal cannot be rejected');
+  }
 
   const updated = await env.DB.prepare('SELECT * FROM ton_withdrawals WHERE id = ?').bind(id).first<WithdrawRow>();
   return rowToWithdrawal(updated ?? { ...row, status: 'rejected' });
-}
-
-async function markWithdrawalTransaction(env: Env, withdrawalId: string, status: string, title: string, description: string, metadata: Record<string, unknown>): Promise<void> {
-  await env.DB.prepare(`UPDATE ton_transactions
-    SET status = ?, title = ?, description = ?, metadata_json = ?
-    WHERE reference_type = 'ton_withdrawal' AND reference_id = ? AND kind = 'withdraw'`)
-    .bind(status, title, description, JSON.stringify(metadata).slice(0, 2000), withdrawalId)
-    .run()
-    .catch(() => undefined);
 }
 
 async function getDailyWithdrawalUsedNano(env: Env, userId: string): Promise<number> {
