@@ -54,7 +54,6 @@ app.post('/app/api/predict-bet', async (c) => {
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
     if (Date.now() >= betLockAtMs(round)) throw new Error('This prediction is closed. Wait for the next round.');
-    await ensurePredictTables(c.env);
 
     let existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
       .bind(roundId, userId)
@@ -121,7 +120,6 @@ async function getPredictMarkets(env: Env): Promise<{ markets: Record<PredictMar
 }
 
 async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePrice = 0) {
-  await ensurePredictTables(env);
   const cleanedUserId = cleanUserIdOptional(userId);
   const roundId = cleanDbText(round.id, 'Prediction round is not ready');
   const pools = await poolJson(env, roundId);
@@ -133,15 +131,7 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePr
   const lockAt = betLockAtMs(round);
   return { ok: true, userControls, round: { id: roundId, market: String(round.market || ''), startsAt: String(round.starts_at || ''), endsAt: String(round.ends_at || ''), startPrice: Number(round.start_price || 0), livePrice: Number(livePrice) > 0 ? Number(livePrice) : null, endPrice: round.end_price == null ? null : Number(round.end_price), status: now >= lockAt && round.status === 'open' ? 'locked' : String(round.status || 'open'), result: round.result || null, remainingMs: Math.max(0, ends - now), lockRemainingMs: Math.max(0, lockAt - now), pools, userBets, recentUserBets } };
 }
-async function ensurePredictTables(env: Env): Promise<void> {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_rounds (id TEXT PRIMARY KEY, market TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, start_price REAL NOT NULL, end_price REAL, status TEXT NOT NULL DEFAULT 'open', result TEXT, settled_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
-  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_rounds_market_end ON predict_rounds(market, ends_at)').run();
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_bets (id TEXT PRIMARY KEY, round_id TEXT NOT NULL, market TEXT NOT NULL, user_id TEXT NOT NULL, side TEXT NOT NULL, stake_nano INTEGER NOT NULL, ton_usd_snapshot REAL NOT NULL DEFAULT 0, stake_usd_snapshot REAL NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active', payout_nano INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
-  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_bets_round ON predict_bets(round_id)').run();
-  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_bets_user_round ON predict_bets(user_id, round_id)').run();
-}
 async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPrice = 0): Promise<RoundRow> {
-  await ensurePredictTables(env);
   const now = Date.now();
   if (market === 'bitcoin') {
     let existing = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND datetime(starts_at) <= datetime('now') AND datetime(ends_at) > datetime('now') ORDER BY datetime(starts_at) DESC LIMIT 1`).bind(market).first<RoundRow>();
@@ -191,7 +181,6 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
   return existing;
 }
 async function settleDueRounds(env: Env, market: TradeMarket, force = false): Promise<number> {
-  await ensurePredictTables(env);
   const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) AND (datetime(ends_at) <= datetime('now') OR ? = 1) ORDER BY datetime(ends_at) ASC LIMIT 10`).bind(market, force ? 1 : 0).all<RoundRow>();
   let settled = 0;
   for (const round of rows.results || []) {
