@@ -16,34 +16,25 @@ Do not create a second implementation just because it is easier.
 
 ## Responsive layout vocabulary
 
-The Vexa Game Web App is mobile-first and has only two responsive layout states:
+Use these names consistently in code, comments, implementation plans, and user-facing change descriptions:
 
-- **Compact Layout**: the default/base Web App layout. It is owned by the mobile/portrait implementation and must be used by phone portrait, iPad portrait, tablet portrait, and comparable portrait/narrow viewports. iPad/tablet portrait may naturally have more available space, but it must not have a separate layout implementation.
-- **Wide Layout**: the single shared wide Web App layout for phone landscape, iPad/tablet landscape, laptop, desktop, and other genuinely wide viewports. Wide may use fluid sizing to fit different widths, but it remains one layout state and one implementation.
+- **Compact Layout**: phone / narrow viewport. This is the existing mobile experience and must remain unchanged when a task is scoped only to Medium or Wide Layout.
+- **Medium Layout**: tablet / iPad portrait and comparable medium viewports. The current viewport contract is `min-width: 700px` and `min-height: 600px`, below the Wide Layout threshold.
+- **Wide Layout**: tablet / iPad landscape, laptop, desktop, and other wide viewports. The current viewport contract starts at `min-width: 900px` and `min-height: 600px`.
+- Screens wider than the Wide threshold are still **Wide Layout**. A larger-width refinement such as `1200px` is not a fourth layout or a separate implementation.
 
-There is no Medium Layout and there must not be an iPad-specific, tablet-specific, laptop-specific, desktop-specific, portrait-specific, or landscape-specific implementation of the same feature.
+These are responsive states, not device-specific code paths.
 
-These names describe Web App viewport/layout states, not native-device code paths.
+Rules:
 
-### Default instruction behavior
-
-1. **Compact/mobile is always the default target.** If the user asks to move, resize, restyle, add, remove, or otherwise change UI without explicitly naming a layout, make the change in the authoritative base/Compact implementation first.
-2. A Compact change must automatically apply to phone portrait and iPad/tablet portrait because they share the same DOM/component, CSS base, state, backend, and runtime path. Do not repeat the same change in a second portrait rule.
-3. Do not add a special iPad/tablet portrait media query just to copy or preserve a Compact/mobile change. If portrait needs more breathing room, use intrinsic/fluid sizing that does not create another layout state.
-4. A Wide-only change is made only when the user explicitly scopes the request to **Wide Layout**, landscape, laptop/desktop, or clearly describes a wide-screen arrangement.
-5. A Wide change must apply through the same Wide implementation to phone landscape, iPad/tablet landscape, laptop, and desktop. Do not duplicate the change per device.
-6. Larger widths inside Wide may refine spacing, max-width, or fluid size. Such refinements must not become a third layout, alternate DOM, separate component, alternate route, or different runtime path.
-
-### Responsive implementation rules
-
-1. Never use OS/device-name detection to choose a UI implementation. Use Web viewport/layout conditions and intrinsic/fluid CSS.
-2. Compact and Wide must reuse the same authoritative DOM/component, state, backend, and runtime path.
-3. Responsive changes belong in the existing feature owner file. Do not create `*-responsive`, `*-tablet`, `*-ipad`, `*-desktop`, `*-portrait`, `*-landscape`, `*-wide`, or similar parallel files.
-4. The base CSS/markup is Compact. Wide is an override of that same implementation, not a second implementation.
-5. Prefer content-driven/fluid CSS such as `min()`, `max()`, `clamp()`, `minmax()`, flexible Grid/Flex sizing, and max-width constraints so the same Compact or Wide state can fit different screen sizes cleanly.
-6. Do not create a new breakpoint merely because one device has a different physical screen size. A breakpoint is allowed only as a size refinement inside Compact or Wide and must not define a new layout state.
-7. If an existing Medium/iPad-portrait branch is encountered while working on that feature, remove/refactor that branch into the authoritative Compact base when safe and within the requested scope; do not preserve it as a parallel path.
-8. If a breakpoint contract must change, update the existing authoritative responsive rule in place; do not introduce a competing breakpoint path.
+1. Never create separate iPad, tablet, laptop, desktop, portrait, or landscape implementations for the same feature.
+2. Never use OS/device-name detection to choose a UI implementation. Use viewport/layout conditions.
+3. Compact, Medium, and Wide must reuse the same authoritative DOM/component, state, backend, and runtime path.
+4. Responsive changes belong in the existing feature owner file. Do not create `*-responsive`, `*-tablet`, `*-desktop`, `*-wide`, or similar parallel files.
+5. When a task says **Medium Layout**, change only the medium responsive state unless the user explicitly expands scope.
+6. When a task says **Wide Layout**, treat tablet/iPad landscape, laptop, and desktop as one shared layout state.
+7. When a task says **Compact Layout**, treat it as the phone/narrow state.
+8. If a breakpoint must change, update the existing responsive contract in place; do not introduce a competing breakpoint path.
 9. Preserve internal component geometry when it is intentionally coupled. For example, an image and coordinate-based overlay that form one visual unit must scale/move as one unit rather than being independently resized.
 
 ## Strictly forbidden unless explicitly requested
