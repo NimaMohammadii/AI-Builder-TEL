@@ -25,11 +25,15 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Refresh Telegram webhook target
+      - name: Diagnose and refresh Telegram webhook target
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          response="$(curl --fail --silent --show-error https://vexa.games/setup-webhook)"
-          printf '%s\n' "$response"
+          dns="$(curl --fail --silent --show-error --resolve cloudflare-dns.com:443:1.1.1.1 'https://cloudflare-dns.com/dns-query?name=vexa.games&type=A' -H 'accept: application/dns-json')"
+          printf 'DNS: %s\n' "$dns"
+          ip="$(printf '%s' "$dns" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const a=(j.Answer||[]).find(x=>x.type===1);if(a)process.stdout.write(a.data)})")"
+          test -n "$ip"
+          response="$(curl --fail --silent --show-error --resolve vexa.games:443:$ip https://vexa.games/setup-webhook)"
+          printf 'SETUP: %s\n' "$response"
           printf '%s' "$response" | grep -q '"ok":true'
 
       - name: Install dependencies
