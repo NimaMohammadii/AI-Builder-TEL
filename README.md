@@ -69,13 +69,13 @@ npm run deploy
 After deployment, open:
 
 ```text
-https://vexa.games/setup-webhook
+https://v.vexaagent.workers.dev/setup-webhook
 ```
 
 The webhook is registered at:
 
 ```text
-https://vexa.games/telegram/webhook
+https://v.vexaagent.workers.dev/telegram/webhook
 ```
 
 ## Cloudflare bindings
