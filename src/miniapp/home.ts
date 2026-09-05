@@ -57,7 +57,7 @@ html body:has(#home.active) header.top{
   transition:height 1.15s cubic-bezier(.22,.61,.18,1),margin-bottom .36s ease!important;
   touch-action:pan-y!important;
 }
-#home .home-promo-carousel.is-ready{margin-bottom:12px!important}
+#home .home-promo-carousel.is-ready{margin:8px 0 12px!important}
 #home .home-promo-track{
   width:100%!important;
   display:flex!important;
