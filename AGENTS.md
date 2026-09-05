@@ -14,6 +14,29 @@ Before writing code:
 
 Do not create a second implementation just because it is easier.
 
+## Responsive layout vocabulary
+
+Use these names consistently in code, comments, implementation plans, and user-facing change descriptions:
+
+- **Compact Layout**: phone / narrow viewport. This is the existing mobile experience and must remain unchanged when a task is scoped only to Medium or Wide Layout.
+- **Medium Layout**: tablet / iPad portrait and comparable medium viewports. The current viewport contract is `min-width: 700px` and `min-height: 600px`, below the Wide Layout threshold.
+- **Wide Layout**: tablet / iPad landscape, laptop, desktop, and other wide viewports. The current viewport contract starts at `min-width: 900px` and `min-height: 600px`.
+- Screens wider than the Wide threshold are still **Wide Layout**. A larger-width refinement such as `1200px` is not a fourth layout or a separate implementation.
+
+These are responsive states, not device-specific code paths.
+
+Rules:
+
+1. Never create separate iPad, tablet, laptop, desktop, portrait, or landscape implementations for the same feature.
+2. Never use OS/device-name detection to choose a UI implementation. Use viewport/layout conditions.
+3. Compact, Medium, and Wide must reuse the same authoritative DOM/component, state, backend, and runtime path.
+4. Responsive changes belong in the existing feature owner file. Do not create `*-responsive`, `*-tablet`, `*-desktop`, `*-wide`, or similar parallel files.
+5. When a task says **Medium Layout**, change only the medium responsive state unless the user explicitly expands scope.
+6. When a task says **Wide Layout**, treat tablet/iPad landscape, laptop, and desktop as one shared layout state.
+7. When a task says **Compact Layout**, treat it as the phone/narrow state.
+8. If a breakpoint must change, update the existing responsive contract in place; do not introduce a competing breakpoint path.
+9. Preserve internal component geometry when it is intentionally coupled. For example, an image and coordinate-based overlay that form one visual unit must scale/move as one unit rather than being independently resized.
+
 ## Strictly forbidden unless explicitly requested
 
 - Duplicate implementations of the same feature.
