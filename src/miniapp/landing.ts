@@ -1,9 +1,9 @@
 export const LANDING_STYLES = `
 #landing{background:transparent!important}
 /* Compact is the default Web App layout, including iPad/tablet portrait. */
-@media(orientation:portrait),(max-width:559px){#landing{display:none!important}}
+@media(orientation:portrait),(max-width:599px){#landing{display:none!important}}
 /* Wide Layout only: the same landing implementation across landscape phones/tablets and laptop/desktop. */
-@media(orientation:landscape) and (min-width:560px){
+@media(orientation:landscape) and (min-width:600px){
   html body:has(#landing.active) main.app{width:min(100%,1180px)!important;padding-left:32px!important;padding-right:32px!important}
   html body:has(#landing.active) .top{width:min(100%,1080px)!important;margin-left:auto!important;margin-right:auto!important}
   #landing.web-landing-view{padding:8px 0 36px!important;overflow-y:auto!important;overflow-x:hidden!important}
