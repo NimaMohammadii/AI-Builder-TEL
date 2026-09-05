@@ -199,6 +199,13 @@ export function miniAppShellHtml(): string {
   <meta name="theme-color" content="#12070a"/>
   <title>Vexa FLOW</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function(){
+      var tg=window.Telegram&&window.Telegram.WebApp;
+      if(!tg||tg.platform==='unknown')return;
+      try{if(tg.setHeaderColor)tg.setHeaderColor('#12070a')}catch(e){}
+    })();
+  </script>
   <style>${STYLES}
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
