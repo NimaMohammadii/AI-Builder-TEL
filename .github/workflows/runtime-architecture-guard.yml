@@ -25,16 +25,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Diagnose and refresh Telegram webhook target
+      - name: Diagnose live Worker origin
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          dns="$(curl --fail --silent --show-error --resolve cloudflare-dns.com:443:1.1.1.1 'https://cloudflare-dns.com/dns-query?name=vexa.games&type=A' -H 'accept: application/dns-json')"
-          printf 'DNS: %s\n' "$dns"
-          ip="$(printf '%s' "$dns" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const a=(j.Answer||[]).find(x=>x.type===1);if(a)process.stdout.write(a.data)})")"
-          test -n "$ip"
-          response="$(curl --fail --silent --show-error --resolve vexa.games:443:$ip https://vexa.games/setup-webhook)"
-          printf 'SETUP: %s\n' "$response"
-          printf '%s' "$response" | grep -q '"ok":true'
+          status="$(curl --silent --show-error --output /tmp/vexa-app.html --write-out '%{http_code}' https://v.vexaagent.workers.dev/app)"
+          printf 'WORKER_STATUS=%s\n' "$status"
+          test "$status" = "200"
+          grep -q 'Vexa' /tmp/vexa-app.html
+          printf 'WORKER_APP_OK=true\n'
 
       - name: Install dependencies
         run: npm install --no-package-lock --legacy-peer-deps
