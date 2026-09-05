@@ -3,7 +3,7 @@ export const NAV_GLASS_OVERRIDES = `
 .tabs .tab{position:relative;z-index:1;color:rgba(255,255,255,.74)!important;text-shadow:0 1px 10px rgba(0,0,0,.28);white-space:nowrap!important;font-size:13px!important;line-height:1.18!important;padding:2px 7px 3px!important;overflow:visible!important;transition:background .32s cubic-bezier(.22,.75,.2,1),color .24s ease,box-shadow .32s cubic-bezier(.22,.75,.2,1),transform .18s ease!important}
 .tabs .tab.active{background:linear-gradient(145deg,#ffffff 0%,#f4f4f5 48%,#d7d7da 100%)!important;color:#111216!important;box-shadow:0 7px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.96),inset 0 -1px 0 rgba(63,63,68,.16)!important;text-shadow:none}
 .tabs .web-only-tab{display:none!important}
-@media(min-width:700px){
+@media(min-width:700px) and (min-height:600px){
   .app>.top{margin-bottom:78px!important}
   .tabs{position:fixed!important;left:50%!important;right:auto!important;top:calc(104px + env(safe-area-inset-top))!important;bottom:auto!important;width:min(620px,calc(100vw - 48px))!important;max-width:none!important;height:56px!important;margin:0!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:4px!important;padding:5px!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:24px!important;background:rgba(13,13,15,.72)!important;box-shadow:0 18px 48px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(22px) saturate(1.16)!important;-webkit-backdrop-filter:blur(22px) saturate(1.16)!important;transform:translateX(-50%)!important;overflow:hidden!important}
   .tabs .web-only-tab{display:grid!important}
