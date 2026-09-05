@@ -25,6 +25,13 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Refresh Telegram webhook target
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          response="$(curl --fail --silent --show-error https://vexa.games/setup-webhook)"
+          printf '%s\n' "$response"
+          printf '%s' "$response" | grep -q '"ok":true'
+
       - name: Install dependencies
         run: npm install --no-package-lock --legacy-peer-deps
 
