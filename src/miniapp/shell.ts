@@ -207,8 +207,10 @@ export function miniAppShellHtml(): string {
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>${STYLES}
     html.vexa-web .app{padding-top:0!important}
-    html.vexa-web .vexa-boot{top:calc(-1 * env(safe-area-inset-top))!important;right:calc(-1 * env(safe-area-inset-right))!important;bottom:calc(-1 * env(safe-area-inset-bottom))!important;left:calc(-1 * env(safe-area-inset-left))!important}
-    html.vexa-web body:has(#home.active)::before{top:calc(-1 * env(safe-area-inset-top))!important;right:calc(-1 * env(safe-area-inset-right))!important;bottom:calc(-1 * env(safe-area-inset-bottom))!important;left:calc(-1 * env(safe-area-inset-left))!important;width:auto!important;height:auto!important}
+    html.vexa-web,html.vexa-web body{background:#12070a!important}
+    html.vexa-web body:has(#home.active){background:#12070a!important}
+    html.vexa-web .vexa-boot{inset:0!important}
+    html.vexa-web body:has(#home.active)::before{inset:0!important;width:auto!important;height:auto!important;background-color:transparent!important}
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
     .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
