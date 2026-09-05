@@ -361,7 +361,44 @@ const HOME_SLOT_STYLES = [
   '@keyframes vexaConfettiFall{0%{transform:translate3d(0,-42px,0) rotate(0deg)}78%{transform:translate3d(var(--ex),172vh,0) rotate(var(--r3))}100%{transform:translate3d(var(--ex),230vh,0) rotate(var(--r3))}}'
 ].join('');
 
-export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STYLES;
+export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STYLES + `
+@media (min-width:700px){
+  html body:has(#home.active) main.app{width:min(100%,880px)!important;padding-left:24px!important;padding-right:24px!important}
+  html body:has(#home.active) .top{width:min(100%,760px)!important;margin-left:auto!important;margin-right:auto!important}
+  html body:has(#home.active) #homeLuckyCodeSection{width:min(100%,760px)!important;max-width:760px!important;margin-left:auto!important;margin-right:auto!important}
+  #home .home-draw-info-card{height:76px!important;padding:11px 16px!important}
+  #home .home-draw-time,#home .home-prize-value{font-size:21px!important}
+  #home .home-ticket-layout{gap:16px!important}
+  body:has(#home.active) .home-bonus-panel{left:50%!important;right:auto!important;width:min(560px,calc(100vw - 32px))!important;transform:translate3d(-50%,105%,0)!important}
+  body:has(#home.active) .home-bonus-panel.is-open{transform:translate3d(-50%,0,0)!important}
+  body:has(#home.active) .home-ticket-drawer{left:max(18px,calc((100vw - 820px)/2))!important;top:calc(118px + env(safe-area-inset-top))!important;bottom:calc(92px + env(safe-area-inset-bottom))!important;width:260px!important;max-width:260px!important;border-radius:28px!important;transform:translate3d(calc(-100% - 48px),0,0)!important}
+  body:has(#home.active) .home-ticket-drawer.is-open{transform:translate3d(0,0,0)!important}
+}
+@media (min-width:1024px){
+  html body:has(#home.active) main.app{width:min(100%,1180px)!important;padding-left:34px!important;padding-right:34px!important}
+  html body:has(#home.active) .top{width:min(100%,1060px)!important;margin-left:auto!important;margin-right:auto!important}
+  html body:has(#home.active) #home{padding-top:8px!important;padding-left:0!important;padding-right:0!important;padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+  html body:has(#home.active) #homeLuckyCodeSection{width:min(100%,1060px)!important;max-width:1060px!important;margin-left:auto!important;margin-right:auto!important}
+  #home .home-lucky-card{display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(220px,.72fr) minmax(280px,.93fr)!important;grid-template-areas:"draw draw draw" "slot ticket winners"!important;gap:18px!important;align-items:stretch!important}
+  #home #homeDrawInfoCard{grid-area:draw!important;height:84px!important;margin:0!important;padding:13px 18px!important}
+  #home #homeDrawInfoCard .home-draw-main{gap:18px!important}
+  #home #homeDrawInfoCard .home-draw-copy{min-width:144px!important;flex-basis:154px!important}
+  #home #homeDrawInfoCard .home-draw-time,#home #homeDrawInfoCard .home-prize-value{font-size:24px!important}
+  #home #homeDrawInfoCard .home-draw-label,#home #homeDrawInfoCard .home-prize-label{font-size:11px!important}
+  #home #homeDrawInfoCard .home-draw-actions{gap:9px!important}
+  #home #homeDrawInfoCard .home-ticket-image-button{height:44px!important;min-width:108px!important;padding:0 16px!important;font-size:13px!important}
+  #home #homeDrawInfoCard .home-bonus-button{width:44px!important;height:44px!important}
+  #home .home-lottery-slot-card{grid-area:slot!important;height:154px!important;min-height:154px!important;max-height:154px!important;margin:0!important;border-radius:28px!important}
+  #home .home-lottery-slot-image{border-radius:28px!important}
+  #home .home-ticket-layout{display:contents!important;margin:0!important}
+  #home .home-ticket-layout>.home-ticket-card{grid-area:ticket!important;width:100%!important;height:154px!important;min-height:154px!important;align-self:stretch!important}
+  #home .home-ticket-finance-visual{grid-area:winners!important;width:100%!important;height:154px!important;min-height:154px!important;--home-lottery-winners-height:154px!important;align-self:stretch!important}
+  #home .home-lottery-winners-title{font-size:10px!important;min-height:14px!important}
+  #home .home-lottery-winner-name,#home .home-lottery-winner-amount{font-size:10px!important}
+  body:has(#home.active) .home-bonus-panel{bottom:24px!important;max-height:min(70dvh,620px)!important;border-radius:34px!important}
+  body:has(#home.active) .home-ticket-drawer{left:max(28px,calc((100vw - 1120px)/2))!important;top:132px!important;bottom:32px!important;width:292px!important;max-width:292px!important;padding:24px 16px 16px!important}
+}
+`;
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
 export const HOME_SECTION = `<section id="home" class="view active"></section>`;
