@@ -13,7 +13,7 @@ const ASTER_FUTURES_REST_BASE = 'https://fapi.asterdex.com';
 const ROUND_MS = 5 * 60 * 1000;
 const MONTH_BET_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const LOCK_MS = 15 * 1000;
-const SETTLEMENT_LEASE_MS = 90 * 1000;
+const SETTLEMENT_LEASE_SECONDS = 90;
 const PLATFORM_FEE_BPS = 500;
 const NANO = 1_000_000_000;
 type PredictMarket = typeof PREDICT_MARKETS[number];
@@ -87,7 +87,11 @@ app.post('/app/api/predict-bet', async (c) => {
     }
 
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId } });
-    const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
+    const active = await c.env.DB.prepare(`UPDATE predict_bets SET status = 'active'
+      WHERE id = ? AND status = 'pending'
+        AND EXISTS (SELECT 1 FROM predict_rounds WHERE id = predict_bets.round_id AND status = 'open' AND datetime(ends_at) > datetime('now'))`)
+      .bind(betId)
+      .run();
     if ((active.meta?.changes || 0) <= 0) {
       const fresh = await c.env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(betId).first<BetRow>();
       if (!fresh || fresh.status !== 'active') {
@@ -195,20 +199,16 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   const fresh = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(cleanDbText(round.id, 'Prediction round is not ready')).first<RoundRow>();
   if (!fresh) return;
   const freshId = cleanDbText(fresh.id, 'Prediction round is not ready');
-  const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
-  const hasActiveBets = Number(activeCount?.count || 0) > 0;
-  if (fresh.status === 'settled' && !hasActiveBets) return;
   const market = normalizeTradeMarket(fresh.market);
   const endPrice = fresh.end_price == null ? await fetchBoundaryPrice(market, Date.parse(fresh.ends_at), 'end', market === 'bitcoin' ? '5m' : '1m') : Number(fresh.end_price);
   const calculatedResult: Exclude<RoundResult, null> = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
   const claimId = 'psettle_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
-  const claimedAt = new Date().toISOString();
-  const staleBefore = new Date(Date.now() - SETTLEMENT_LEASE_MS).toISOString();
   const claim = await env.DB.prepare(`UPDATE predict_rounds
-    SET status = 'settling', end_price = COALESCE(end_price, ?), result = COALESCE(result, ?), settlement_claim_id = ?, settlement_claimed_at = ?
-    WHERE id = ? AND (? = 1 OR status != 'settled')
-      AND (settlement_claim_id IS NULL OR settlement_claimed_at IS NULL OR datetime(settlement_claimed_at) <= datetime(?))`)
-    .bind(endPrice, calculatedResult, claimId, claimedAt, freshId, hasActiveBets ? 1 : 0, staleBefore)
+    SET status = 'settling', end_price = COALESCE(end_price, ?), result = COALESCE(result, ?), settlement_claim_id = ?, settlement_claimed_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+      AND (status != 'settled' OR EXISTS (SELECT 1 FROM predict_bets WHERE round_id = predict_rounds.id AND status IN ('active', 'settling_payment')))
+      AND (settlement_claim_id IS NULL OR settlement_claimed_at IS NULL OR datetime(settlement_claimed_at) <= datetime('now', '-' || ? || ' seconds'))`)
+    .bind(endPrice, calculatedResult, claimId, freshId, SETTLEMENT_LEASE_SECONDS)
     .run();
   if ((claim.meta?.changes || 0) <= 0) return;
 
@@ -242,24 +242,21 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
       else await env.DB.prepare(`UPDATE predict_bets SET status = 'lost', payout_nano = 0 WHERE id = ? AND status = 'active'`).bind(cleanDbText(bet.id, 'Prediction bet is not ready')).run();
     }
     if (!(await renewSettlementClaim(env, freshId, claimId))) return;
-    const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
-    if (Number(remaining?.count || 0) <= 0) {
-      await env.DB.prepare(`UPDATE predict_rounds
-        SET status = 'settled', end_price = ?, result = ?, settled_at = CURRENT_TIMESTAMP, settlement_claim_id = NULL, settlement_claimed_at = NULL
-        WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
-        .bind(persistedEndPrice, persistedResult, freshId, claimId)
-        .run();
-    } else {
-      await releaseSettlementClaim(env, freshId, claimId);
-    }
+    const finalized = await env.DB.prepare(`UPDATE predict_rounds
+      SET status = 'settled', end_price = ?, result = ?, settled_at = CURRENT_TIMESTAMP, settlement_claim_id = NULL, settlement_claimed_at = NULL
+      WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?
+        AND NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = predict_rounds.id AND status IN ('active', 'settling_payment'))`)
+      .bind(persistedEndPrice, persistedResult, freshId, claimId)
+      .run();
+    if ((finalized.meta?.changes || 0) <= 0) await releaseSettlementClaim(env, freshId, claimId);
   } catch (error) {
     await releaseSettlementClaim(env, freshId, claimId).catch(() => undefined);
     throw error;
   }
 }
 async function renewSettlementClaim(env: Env, roundId: string, claimId: string): Promise<boolean> {
-  const renewed = await env.DB.prepare(`UPDATE predict_rounds SET settlement_claimed_at = ? WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
-    .bind(new Date().toISOString(), roundId, claimId)
+  const renewed = await env.DB.prepare(`UPDATE predict_rounds SET settlement_claimed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'settling' AND settlement_claim_id = ?`)
+    .bind(roundId, claimId)
     .run();
   return (renewed.meta?.changes || 0) > 0;
 }
