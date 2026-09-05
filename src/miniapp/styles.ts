@@ -7,7 +7,8 @@ button,input,select,textarea{font:inherit;font-family:var(--font-main)}
 button{border:0}
 b,strong,.top-balance-pill b,#crashMultiplier,#minesMultiplier,#plinkoRowsValue,.stat b,.wave-time,.crash-history span,input{font-family:var(--font-num);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1,"kern" 1}
 h1,h2,h3,.brand h1,.hero h2{font-family:var(--font-main);font-weight:850;letter-spacing:-.055em}
-.app{position:relative;width:min(100%,560px);height:100dvh;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));background:#000!important;overflow:hidden}
+.app{position:relative;width:min(100%,560px);height:100dvh;margin:auto;padding:env(safe-area-inset-top) 16px calc(76px + env(safe-area-inset-bottom));background:#000!important;overflow:hidden}
+html.vexa-telegram .app{padding-top:max(22px,env(safe-area-inset-top),var(--tg-content-safe-area-inset-top,0px))}
 .top{height:72px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
 .brand{display:flex;gap:12px;align-items:center;min-width:0}.brand>div{min-width:0}
 .logo,.avatar{width:64px;height:64px;border-radius:26px;object-fit:cover;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
