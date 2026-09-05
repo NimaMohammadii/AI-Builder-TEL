@@ -34,7 +34,8 @@ const BACKGROUND_GAMES = [
   ['ghostrun', 'Ghost Run'],
   ['coinflip', 'Pump'],
 ] as const;
-const BACKGROUND_GAME_IDS = new Set(BACKGROUND_GAMES.map(([id]) => id));
+const HOME_PROMO_GAMES = ['promo-1', 'promo-2', 'promo-3'] as const;
+const BACKGROUND_GAME_IDS = new Set<string>([...BACKGROUND_GAMES.map(([id]) => id), ...HOME_PROMO_GAMES]);
 const STATE_PREFIX = 'admin:game-card-upload:';
 const BACKGROUND_STATE_PREFIX = 'background:';
 const CRASH_STAGE_STATE_PREFIX = 'crash-stage:';
@@ -200,6 +201,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data === 'botadmin:audiomenu'
       || data === 'botadmin:gameimages'
       || data === 'botadmin:gamebackgrounds'
+      || data === 'botadmin:homepromos'
       || data === 'botadmin:crashstage'
       || data === 'botadmin:tonlogo'
       || data === 'botadmin:homeslot'
@@ -213,6 +215,7 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       || data.startsWith('botadmin:audio:')
       || data.startsWith('botadmin:gameimage:')
       || data.startsWith('botadmin:gamebackground:')
+      || data.startsWith('botadmin:homepromo:')
       || data.startsWith('botadmin:crashstage:')
       || data.startsWith('botadmin:rank:')
       || data.startsWith('botadmin:ghostasset:')
@@ -242,6 +245,9 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     } else if (data === 'botadmin:gamebackgrounds') {
       await clearState(env, callback.from.id);
       await sendBackgroundMenu(token, chatId, messageId);
+    } else if (data === 'botadmin:homepromos') {
+      await clearState(env, callback.from.id);
+      await sendHomePromoMenu(env, token, chatId, messageId);
     } else if (data === 'botadmin:crashstage') {
       await clearState(env, callback.from.id);
       await sendCrashStageMenu(env, token, chatId, messageId);
@@ -311,9 +317,17 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${PREDICT_STATE_PREFIX}${asset}:${market}`, { expirationTtl: 900 });
         await promptImage(token, chatId, messageId, `📈 لوگو ${predictMarketLabel(market)}`, 'لوگوی بازار را ترجیحاً به‌صورت PNG شفاف و File/Document بفرستید.', 'botadmin:predictimages');
       }
+    } else if (data.startsWith('botadmin:homepromo:')) {
+      const slot = normalizeHomePromoSlot(data.slice('botadmin:homepromo:'.length));
+      if (slot) {
+        await env.BOT_CACHE.put(stateKey(callback.from.id), `${BACKGROUND_STATE_PREFIX}${homePromoGame(slot)}`, { expirationTtl: 900 });
+        await upsert(token, chatId, messageId, `🖼 تبلیغ Home — تصویر ${slot} از 3\n\nتصویر را فقط به‌صورت File/Document بفرستید تا تلگرام آن را فشرده یا تبدیل نکند. فایل اصلی PNG، JPG یا WebP بدون تغییر ذخیره می‌شود.`, [
+          [{ text: '⬅️ تبلیغات Home', callback_data: 'botadmin:homepromos' }],
+        ]);
+      }
     } else if (data.startsWith('botadmin:gamebackground:')) {
       const game = normalizeBackgroundGame(data.slice('botadmin:gamebackground:'.length));
-      if (game) {
+      if (game && !homePromoSlotFromGame(game)) {
         await env.BOT_CACHE.put(stateKey(callback.from.id), `${BACKGROUND_STATE_PREFIX}${game}`, { expirationTtl: 900 });
         await upsert(token, chatId, messageId, `🌄 بک‌گراند ${backgroundLabel(game)}\n\nتصویر را به‌صورت عکس معمولی یا File/Document بفرستید. PNG، JPG و WebP پشتیبانی می‌شوند.`, [
           [{ text: '⬅️ بازگشت', callback_data: 'botadmin:gamebackgrounds' }],
@@ -368,7 +382,8 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     const menuMessageId = await trackedMenuMessageId(env, message.chat.id);
     if (target.kind === 'game') await sendGameMenu(token, message.chat.id, menuMessageId);
     else if (target.kind === 'background') {
-      await sendBackgroundMenu(token, message.chat.id, menuMessageId);
+      if (homePromoSlotFromGame(target.game)) await sendHomePromoMenu(env, token, message.chat.id, menuMessageId);
+      else await sendBackgroundMenu(token, message.chat.id, menuMessageId);
     }
     else if (target.kind === 'crash-stage') await sendCrashStageMenu(env, token, message.chat.id, menuMessageId);
     else if (target.kind === 'rank') await sendRankMenu(env, token, message.chat.id, menuMessageId);
@@ -473,6 +488,10 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
     await replaceUploadPrompt(env, token, message, '❌ برای اینکه تصویرهای متصل Crash فشرده و تار نشوند، تصویر را از بخش File به‌صورت Document بفرستید؛ عکس معمولی پذیرفته نمی‌شود.');
     return ok();
   }
+  if (target.kind === 'background' && homePromoSlotFromGame(target.game) && source.via !== 'document') {
+    await replaceUploadPrompt(env, token, message, '❌ تصاویر تبلیغاتی Home باید فقط به‌صورت File/Document ارسال شوند تا تلگرام هیچ فشرده‌سازی یا تبدیلی روی فایل انجام ندهد.', 'botadmin:homepromos');
+    return ok();
+  }
 
   try {
     await saveImage(env, token, target, source);
@@ -490,14 +509,19 @@ async function handleUpdate(env: Env, update: Update): Promise<Response | null> 
       }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
       await trackMenuMessage(env, message.chat.id, sent?.message_id);
     } else if (target.kind === 'background') {
-      const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
-      const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
-        chat_id: message.chat.id,
-        photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
-        caption: successText,
-        reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
-      }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
-      await trackMenuMessage(env, message.chat.id, sent?.message_id);
+      const promoSlot = homePromoSlotFromGame(target.game);
+      if (promoSlot) {
+        await sendSavedImage(env, token, message.chat.id, `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`, `✅ تصویر تبلیغاتی ${promoSlot} از 3 Home بدون تغییر ذخیره شد.`, '🖼 تبلیغات Home', 'botadmin:homepromos');
+      } else {
+        const successText = `✅ بک‌گراند ${backgroundLabel(target.game)} ذخیره شد.`;
+        const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
+          chat_id: message.chat.id,
+          photo: `${PUBLIC_BASE_URL}/app/api/section-background/${target.game}.png?v=${Date.now()}`,
+          caption: successText,
+          reply_markup: { inline_keyboard: [[{ text: '🌄 بک‌گراند بازی‌ها', callback_data: 'botadmin:gamebackgrounds' }], [{ text: '🖼 تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }]] },
+        }).catch(() => tg<{ message_id?: number }>(token, 'sendMessage', { chat_id: message.chat.id, text: successText }));
+        await trackMenuMessage(env, message.chat.id, sent?.message_id);
+      }
     } else if (target.kind === 'crash-stage') {
       const successText = `✅ تصویر ${target.slot} از 5 مسیر افقی Crash ذخیره شد.`;
       const sent = await tg<{ message_id?: number }>(token, 'sendPhoto', {
@@ -545,6 +569,7 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
       { text: '🎮 کارت بازی‌ها', callback_data: 'botadmin:gameimages' },
       { text: '🌄 بک‌گراندها', callback_data: 'botadmin:gamebackgrounds' },
     ],
+    [{ text: '🖼 تبلیغات Home', callback_data: 'botadmin:homepromos' }],
     [{ text: '🎵 صداها', callback_data: 'botadmin:audiomenu' }],
     [{ text: '🎪 مدیای منوی اصلی 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:mainmenuimage' }],
     [{ text: '🎪 تصویر دعوت 𝗩𝗲𝘅𝗮 𝗚𝗮𝗺𝗲', callback_data: 'botadmin:shareinviteimage' }],
@@ -557,6 +582,15 @@ async function sendImagesMenu(token: string, chatId: number, messageId?: number)
     ],
     [{ text: '👻 تصاویر داخل Ghost Run', callback_data: 'botadmin:ghostassets' }],
     [{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }],
+  ]);
+}
+
+async function sendHomePromoMenu(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  const present = await Promise.all(HOME_PROMO_GAMES.map((game) => env.ASSETS.head(sectionBackgroundR2Key(game)).then(Boolean).catch(() => false)));
+  const buttons = HOME_PROMO_GAMES.map((_, index) => ({ text: `${present[index] ? '✅ ' : ''}Image ${index + 1}`, callback_data: `botadmin:homepromo:${index + 1}` }));
+  await upsert(token, chatId, messageId, '🖼 تبلیغات Home\n\nسه جایگاه تصویر در بالای Home. هر تصویر را فقط به‌صورت File/Document بفرستید تا فایل اصلی بدون فشرده‌سازی و تبدیل ذخیره شود.', [
+    buttons,
+    [{ text: '⬅️ تصاویر و ظاهر', callback_data: 'botadmin:imagesmenu' }],
   ]);
 }
 
@@ -822,11 +856,20 @@ function normalizeGame(value: unknown): string | null {
 }
 function normalizeBackgroundGame(value: unknown): string | null {
   const game = String(value || '').replace(/\.png$/i, '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
-  return BACKGROUND_GAME_IDS.has(game as never) ? game : null;
+  return BACKGROUND_GAME_IDS.has(game) ? game : null;
 }
 function normalizeCrashStageSlot(value: unknown): number | null {
   const slot = Number(String(value || '').replace(/[^0-9]/g, ''));
   return Number.isInteger(slot) && slot >= 1 && slot <= 5 ? slot : null;
+}
+function normalizeHomePromoSlot(value: unknown): number | null {
+  const slot = Number(String(value || '').replace(/[^0-9]/g, ''));
+  return Number.isInteger(slot) && slot >= 1 && slot <= 3 ? slot : null;
+}
+function homePromoGame(slot: number): string { return `promo-${slot}`; }
+function homePromoSlotFromGame(game: string): number | null {
+  const match = String(game || '').match(/^promo-([1-3])$/);
+  return match ? Number(match[1]) : null;
 }
 function normalizeTarget(value: unknown): UploadTarget | null {
   const raw = String(value || '').trim().toLowerCase();

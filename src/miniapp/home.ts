@@ -41,6 +41,66 @@ html body:has(#home.active) header.top{
   background-image:none!important;
 }
 #home{padding-top:4px}
+#home .home-promo-carousel{
+  width:100%!important;
+  height:0;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  transition:height .72s cubic-bezier(.22,.77,.22,1),margin-bottom .28s ease!important;
+  touch-action:pan-y!important;
+}
+#home .home-promo-carousel.is-ready{margin-bottom:12px!important}
+#home .home-promo-track{
+  width:100%!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  transform:translate3d(0,0,0);
+  transition:transform .76s cubic-bezier(.22,.77,.22,1)!important;
+  will-change:transform!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#home .home-promo-track.is-jumping{transition:none!important}
+#home .home-promo-slide{
+  flex:0 0 100%!important;
+  width:100%!important;
+  min-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+#home .home-promo-slide img{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center top!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+@media (prefers-reduced-motion:reduce){
+  #home .home-promo-carousel,#home .home-promo-track{transition-duration:.01ms!important}
+}
 #rankPill{display:none!important}
 #home #homeDrawInfoCard.home-draw-info-card,
 #home .home-ticket-card{
@@ -364,7 +424,7 @@ const HOME_SLOT_STYLES = [
 export const HOME_STYLES = HOME_BASE_STYLES + HOME_MARKUP_STYLES + HOME_SLOT_STYLES;
 
 // Home owns its markup, styles, asset synchronization, and client behavior.
-export const HOME_SECTION = `<section id="home" class="view active"></section>`;
+export const HOME_SECTION = `<section id="home" class="view active"><section id="homePromoCarousel" class="home-promo-carousel" aria-label="Featured"></section></section>`;
 
 const HOME_MARKUP_SCRIPT = `
 (function(){
@@ -380,7 +440,7 @@ const HOME_MARKUP_SCRIPT = `
   function reelY(index){return 'translate3d(0,-'+((index*40)+20)+'px,0)'}
   function reelDigitsHtml(){var html='';for(var cycle=0;cycle<4;cycle++)for(var n=0;n<10;n++)html+='<span class="home-slot-number-digit">'+n+'</span>';return html}
   function slotsHtml(){var html='';for(var i=0;i<5;i++){var v=0;html+='<div class="home-slot-number-reel" data-slot-index="'+i+'" data-slot-value="'+v+'"><div class="home-slot-number-strip" data-slot-strip style="transform:'+reelY(20+v)+'">'+reelDigitsHtml()+'</div></div>'}return '<div class="home-slot-number-grid" aria-hidden="true">'+html+'</div>'}
-  function placeSection(home,sec){if(home.firstChild!==sec)home.insertBefore(sec,home.firstChild)}
+  function placeSection(home,sec){var promo=q('#homePromoCarousel',home),anchor=promo?promo.nextSibling:home.firstChild;if(anchor!==sec)home.insertBefore(sec,anchor)}
   function ensureDrawerPortal(sec){['homeTicketDrawerBackdrop','homeTicketDrawer'].forEach(function(id){var el=q('#'+id,sec);if(el&&el.parentNode!==document.body)document.body.appendChild(el)})}
   function setDrawer(open,sec){ensureDrawerPortal(sec);var drawer=q('#homeTicketDrawer'),backdrop=q('#homeTicketDrawerBackdrop');if(drawer)drawer.classList.toggle('is-open',!!open);if(backdrop)backdrop.classList.toggle('is-open',!!open)}
   function build(){
@@ -492,6 +552,7 @@ const HOME_ASSET_SCRIPT = `
   var tonLogoCheckedAt=0;
   var META_CACHE_MS=300000;
   var TON_META_KEY='vexaTonLogoMeta:v1';
+  var promoTimer=0,promoLoopTimer=0,promoIndex=0,promoCount=0,promoHost=null,promoTrack=null,promoLoaded=false,promoInFlight=null;
   function applyTonLogo(url){if(!url)return;tonLogoAppliedUrl=url;var icons=document.querySelectorAll('.ton-mini-icon img');for(var i=0;i<icons.length;i++){if(icons[i].getAttribute('src')!==url)icons[i].setAttribute('src',url)}}
   function readMeta(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
   function saveMeta(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}}
@@ -508,8 +569,75 @@ const HOME_ASSET_SCRIPT = `
       return tonLogoInFlight;
     }catch(e){return Promise.resolve(null)}
   }
-  function apply(){loadTonLogo(false)}
+  function clearPromoTimer(){if(promoTimer){clearTimeout(promoTimer);promoTimer=0}}
+  function clearPromoLoopTimer(){if(promoLoopTimer){clearTimeout(promoLoopTimer);promoLoopTimer=0}}
+  function promoImageUrl(slot){return '/app/api/section-background/promo-'+slot+'.png'}
+  function loadPromoImage(slot){
+    return new Promise(function(resolve){
+      var img=new Image();
+      img.alt='';img.decoding='async';img.loading='eager';img.draggable=false;
+      try{img.fetchPriority=slot===1?'high':'auto'}catch(e){}
+      var done=false,finish=function(value){if(done)return;done=true;resolve(value)};
+      img.addEventListener('load',function(){finish(img)},{once:true});
+      img.addEventListener('error',function(){finish(null)},{once:true});
+      img.src=promoImageUrl(slot);
+    });
+  }
+  function syncPromoHeight(){
+    if(!promoHost||!promoTrack||!promoCount)return;
+    var slide=promoTrack.children[Math.min(promoIndex,promoCount)]||promoTrack.children[0],img=slide&&slide.querySelector&&slide.querySelector('img');
+    if(!img)return;
+    var h=Math.ceil(img.getBoundingClientRect().height||0);
+    if(h>0)promoHost.style.height=h+'px';
+  }
+  function setPromoTransform(animate){
+    if(!promoTrack)return;
+    if(animate)promoTrack.classList.remove('is-jumping');else promoTrack.classList.add('is-jumping');
+    promoTrack.style.transform='translate3d(-'+(promoIndex*100)+'%,0,0)';
+    syncPromoHeight();
+    if(!animate){var track=promoTrack;void track.offsetWidth;(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){if(promoTrack===track)track.classList.remove('is-jumping')})}
+  }
+  function finishPromoLoop(){
+    clearPromoLoopTimer();
+    if(!promoTrack||promoCount<2||promoIndex!==promoCount)return;
+    promoIndex=0;setPromoTransform(false);
+  }
+  function schedulePromo(){
+    clearPromoTimer();
+    if(!promoTrack||promoCount<2||document.hidden)return;
+    promoTimer=setTimeout(function(){
+      promoTimer=0;if(!promoTrack||document.hidden)return;
+      promoIndex+=1;setPromoTransform(true);
+      if(promoIndex===promoCount){
+        var track=promoTrack,onEnd=function(event){if(event&&event.target!==track)return;track.removeEventListener('transitionend',onEnd);if(promoTrack===track)finishPromoLoop()};
+        track.addEventListener('transitionend',onEnd);
+        clearPromoLoopTimer();promoLoopTimer=setTimeout(function(){try{track.removeEventListener('transitionend',onEnd)}catch(e){}finishPromoLoop()},900);
+      }
+      schedulePromo();
+    },6000);
+  }
+  function renderHomePromos(images){
+    clearPromoTimer();clearPromoLoopTimer();
+    promoHost=document.getElementById('homePromoCarousel');if(!promoHost)return;
+    var available=(Array.isArray(images)?images:[]).filter(function(img){return !!img}).slice(0,3);
+    promoHost.innerHTML='';promoIndex=0;promoCount=available.length;promoTrack=null;
+    if(!promoCount){promoHost.classList.remove('is-ready');promoHost.style.height='0px';return}
+    var track=document.createElement('div');track.className='home-promo-track';
+    available.forEach(function(img){var slide=document.createElement('div');slide.className='home-promo-slide';slide.appendChild(img);track.appendChild(slide)});
+    if(promoCount>1){var first=track.firstElementChild,clone=first&&first.cloneNode(true);if(clone){clone.setAttribute('aria-hidden','true');track.appendChild(clone)}}
+    promoTrack=track;promoHost.appendChild(track);promoHost.classList.add('is-ready');
+    (window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(function(){syncPromoHeight();schedulePromo()});
+  }
+  function loadHomePromos(force){
+    if(promoInFlight)return promoInFlight;
+    if(promoLoaded&&!force)return Promise.resolve(true);
+    promoInFlight=Promise.all([1,2,3].map(loadPromoImage)).then(function(images){promoLoaded=true;renderHomePromos(images);return true}).catch(function(){promoLoaded=true;renderHomePromos([]);return false}).finally(function(){promoInFlight=null});
+    return promoInFlight;
+  }
+  function apply(){loadTonLogo(false);loadHomePromos(false)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
+  document.addEventListener('visibilitychange',function(){if(document.hidden){clearPromoTimer();clearPromoLoopTimer()}else schedulePromo()});
+  window.addEventListener('resize',function(){(window.requestAnimationFrame||function(cb){return setTimeout(cb,0)})(syncPromoHeight)},{passive:true});
   window.VexaRefreshHomeLotteryChrome=apply;window.VexaRefreshTonLogo=function(){return loadTonLogo(true)};
 })();
 `;
