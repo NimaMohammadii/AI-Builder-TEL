@@ -27,7 +27,6 @@ import { APP_BACKGROUND_OVERRIDES } from './app-background-overrides';
 import { SECTION_BACKGROUND_SCRIPT, SECTION_BACKGROUND_STYLES } from './section-background-script';
 import { GAME_LIVE_COUNT_SCRIPT, GAME_LIVE_COUNT_STYLES } from './game-live-counts';
 import { HOME_SCRIPT, HOME_SECTION, HOME_STYLES } from './home';
-import { LANDING_SECTION, LANDING_STYLES } from './landing';
 import { DEPOSIT_ENHANCEMENTS_SCRIPT, WALLET_GLOBAL_STYLES, WALLET_SECTION } from './wallet';
 import { RESULTS_SECTION } from './results';
 import { PLAY_ZONE_SECTION, PLAY_ZONE_VISIBILITY_SCRIPT } from './play-zone';
@@ -62,7 +61,6 @@ const STYLES = [
   PLAY_ZONE_ROW_IMAGE_FIX,
   PLAY_ZONE_EDGE_FIX,
   HOME_STYLES,
-  LANDING_STYLES,
   WALLET_GLOBAL_STYLES,
   BALANCE_OVERRIDES,
   NAV_GLASS_OVERRIDES,
@@ -78,7 +76,6 @@ const STYLES = [
 function initialSections(): string {
   return [
     HOME_SECTION,
-    LANDING_SECTION,
     PLAY_ZONE_SECTION,
     PREDICT_ZONE_SECTION,
     WALLET_SECTION,
@@ -199,19 +196,9 @@ export function miniAppShellHtml(): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-  <meta name="theme-color" content="#030202"/>
+  <meta name="theme-color" content="#12070a"/>
   <title>Vexa FLOW</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script>
-    (function(){
-      var tg=window.Telegram&&window.Telegram.WebApp;
-      if(!tg)return;
-      var color='#030202';
-      try{if(tg.setHeaderColor)tg.setHeaderColor(color)}catch(e){}
-      try{if(tg.setBackgroundColor)tg.setBackgroundColor(color)}catch(e){}
-      try{if(tg.setBottomBarColor)tg.setBottomBarColor(color)}catch(e){}
-    })();
-  </script>
   <style>${STYLES}
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
@@ -254,11 +241,9 @@ export function miniAppShellHtml(): string {
     </header>
     ${initialSections()}
     <nav class="tabs">
-      <button class="tab web-only-tab" data-view="landing">Home</button>
       <button class="tab active" data-view="home">Lucky Zone</button>
       <button class="tab" data-view="playzone">Play Hub</button>
       <button class="tab" data-view="predictzone">Predict</button>
-      <button class="tab web-only-tab" data-view="wallet">Wallet</button>
     </nav>
   </main>
   <div id="toast" class="toast"></div>
