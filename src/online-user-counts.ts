@@ -2,12 +2,18 @@ import type { Env } from './types';
 
 export type OnlineCountRange = { min: number; max: number };
 export type OnlineCountSchedule = Record<string, OnlineCountRange[]>;
-export type OnlineCountConfig = { schedule: OnlineCountSchedule; updatedAt?: string };
+export type OnlineCountTimedBoost = OnlineCountRange & { expiresAt: string };
+export type OnlineCountAdjustment = { permanent: number; timed?: OnlineCountTimedBoost };
+export type OnlineCountConfig = {
+  schedule: OnlineCountSchedule;
+  adjustments: Record<string, OnlineCountAdjustment>;
+  updatedAt?: string;
+};
 
 type AdminSettingRow = { value_json: string };
 
 const KEY = 'admin:online-user-counts';
-const SECTION_IDS = ['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun'];
+const SECTION_IDS = ['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun', 'predict'];
 const MAX_COUNT = 999_999;
 
 export const ONLINE_COUNT_SECTIONS = SECTION_IDS.map((id) => ({ id, label: labelForSection(id) }));
@@ -32,8 +38,10 @@ export async function resetOnlineUserCountConfig(env: Env): Promise<OnlineCountC
 
 function defaultOnlineCountConfig(): OnlineCountConfig {
   const schedule: OnlineCountSchedule = {};
+  const adjustments: Record<string, OnlineCountAdjustment> = {};
   for (const id of SECTION_IDS) schedule[id] = Array.from({ length: 24 }, (_, hour) => defaultCountFor(id, hour));
-  return { schedule };
+  for (const id of SECTION_IDS) adjustments[id] = { permanent: 0 };
+  return { schedule, adjustments };
 }
 
 function defaultCountFor(id: string, hour: number): OnlineCountRange {
@@ -75,13 +83,27 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
 
 function normalizeOnlineCountConfig(input: any): OnlineCountConfig {
   const source = input && typeof input === 'object' ? input.schedule ?? input : {};
-  const fallback = defaultOnlineCountConfig().schedule;
+  const defaults = defaultOnlineCountConfig();
+  const fallback = defaults.schedule;
   const schedule: OnlineCountSchedule = {};
+  const adjustments: Record<string, OnlineCountAdjustment> = {};
   for (const id of SECTION_IDS) {
     const values = Array.isArray(source?.[id]) ? source[id] : [];
     schedule[id] = Array.from({ length: 24 }, (_, hour) => normalizeRange(values[hour], fallback[id][hour]));
+    adjustments[id] = normalizeAdjustment(input?.adjustments?.[id]);
   }
-  return { schedule, updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined };
+  return { schedule, adjustments, updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined };
+}
+
+function normalizeAdjustment(value: unknown): OnlineCountAdjustment {
+  const raw = value && typeof value === 'object' ? value as { permanent?: unknown; timed?: unknown } : {};
+  const permanent = normalizeCount(raw.permanent, 0);
+  const timedRaw = raw.timed && typeof raw.timed === 'object'
+    ? raw.timed as { min?: unknown; max?: unknown; expiresAt?: unknown }
+    : null;
+  if (!timedRaw || typeof timedRaw.expiresAt !== 'string' || !Number.isFinite(Date.parse(timedRaw.expiresAt))) return { permanent };
+  const range = normalizeRange(timedRaw, { min: 0, max: 0 });
+  return { permanent, timed: { ...range, expiresAt: timedRaw.expiresAt } };
 }
 
 function normalizeRange(value: unknown, fallback: OnlineCountRange): OnlineCountRange {
@@ -101,6 +123,6 @@ function normalizeCount(value: unknown, fallback: number): number {
 }
 
 function labelForSection(id: string): string {
-  const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run' };
+  const labels: Record<string, string> = { mines: 'Mines', plinko: 'Plinko', wheel: 'Wheel', dice: 'Dice', crash: 'Crash', hilo: 'Chicken Cross', coinflip: 'Pump', slot: 'Slot', ghostrun: 'Ghost Run', predict: 'Predict' };
   return labels[id] || id;
 }

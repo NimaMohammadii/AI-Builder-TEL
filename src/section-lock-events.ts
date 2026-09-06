@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import type { SectionLock } from './section-access';
+import { getOnlineUserCountConfig, type OnlineCountAdjustment } from './online-user-counts';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
 type LockMessage = { type: 'section-access'; serverNow: number; locks: Record<string, SectionLock> };
@@ -85,6 +86,9 @@ function predictOpsMessage(state: PredictOpsRealtimeState, refreshRound = false)
 export class SectionLockEvents {
   private sessions = new Map<WebSocket, RealtimeSession>();
   private predictRoundSignatures = new Map<string, string>();
+  private predictAdjustment: OnlineCountAdjustment = { permanent: 0 };
+  private predictAdjustmentFetchedAt = 0;
+  private predictOnlineRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -113,7 +117,7 @@ export class SectionLockEvents {
       if (isPredictOpsRealtimeState(predictOpsState)) {
         try { server.send(JSON.stringify(predictOpsMessage(predictOpsState, false))); } catch { /* socket lifecycle owns cleanup */ }
       }
-      try { server.send(JSON.stringify(this.predictOnlineMessage())); } catch { this.sessions.delete(server); }
+      try { server.send(JSON.stringify(await this.predictOnlineMessage())); } catch { this.sessions.delete(server); }
       return new Response(null, { status: 101, webSocket: client });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
@@ -190,7 +194,7 @@ export class SectionLockEvents {
     const next = message.active === true;
     if (session.predictActive === next) return;
     session.predictActive = next;
-    this.broadcastPredictOnlineCount();
+    void this.broadcastPredictOnlineCount();
   }
 
   private async identifySession(socket: WebSocket, message: { initData?: unknown; predictActive?: unknown }): Promise<void> {
@@ -202,7 +206,7 @@ export class SectionLockEvents {
       if (!session || !userId) return;
       session.userId = userId;
       session.predictActive = !session.admin && message.predictActive === true;
-      this.broadcastPredictOnlineCount();
+      void this.broadcastPredictOnlineCount();
     } catch { /* invalid session cannot claim a realtime user target */ }
   }
 
@@ -430,19 +434,37 @@ export class SectionLockEvents {
     if (!session) return;
     const affectedPredictCount = !session.admin && session.predictActive && Boolean(session.userId);
     this.sessions.delete(socket);
-    if (affectedPredictCount) this.broadcastPredictOnlineCount();
+    if (affectedPredictCount) void this.broadcastPredictOnlineCount();
   }
 
-  private predictOnlineMessage(): PredictOnlineMessage {
+  private async predictOnlineMessage(): Promise<PredictOnlineMessage> {
     const users = new Set<string>();
     for (const session of this.sessions.values()) {
       if (!session.admin && session.predictActive && session.userId) users.add(session.userId);
     }
-    return { type: 'predict-online', count: users.size };
+    return { type: 'predict-online', count: users.size + await this.predictOnlineBoost() };
   }
 
-  private broadcastPredictOnlineCount(): void {
-    let payload = JSON.stringify(this.predictOnlineMessage());
+  private async predictOnlineBoost(): Promise<number> {
+    const now = Date.now();
+    if (!this.predictAdjustmentFetchedAt || now - this.predictAdjustmentFetchedAt >= 60_000) {
+      try {
+        const config = await getOnlineUserCountConfig(this.env);
+        this.predictAdjustment = config.adjustments.predict || { permanent: 0 };
+        this.predictAdjustmentFetchedAt = now;
+      } catch { /* retain the last known adjustment when settings are temporarily unavailable */ }
+    }
+    const permanent = Math.max(0, Math.floor(Number(this.predictAdjustment.permanent) || 0));
+    const timed = this.predictAdjustment.timed;
+    if (!timed || Date.parse(timed.expiresAt) <= now) return permanent;
+    const min = Math.max(0, Math.floor(Number(timed.min) || 0));
+    const max = Math.max(min, Math.floor(Number(timed.max) || 0));
+    const width = max - min + 1;
+    return permanent + min + (Math.floor(now / 90_000) * 37 % width);
+  }
+
+  private async broadcastPredictOnlineCount(): Promise<void> {
+    let payload = JSON.stringify(await this.predictOnlineMessage());
     let removedActive = false;
     for (const [socket, session] of this.sessions) {
       try { socket.send(payload); }
@@ -451,11 +473,25 @@ export class SectionLockEvents {
         this.sessions.delete(socket);
       }
     }
-    if (!removedActive) return;
-    payload = JSON.stringify(this.predictOnlineMessage());
-    for (const [socket] of this.sessions) {
-      try { socket.send(payload); } catch { this.sessions.delete(socket); }
+    if (removedActive) {
+      payload = JSON.stringify(await this.predictOnlineMessage());
+      for (const [socket] of this.sessions) {
+        try { socket.send(payload); } catch { this.sessions.delete(socket); }
+      }
     }
+    this.schedulePredictOnlineRefresh();
+  }
+
+  private schedulePredictOnlineRefresh(): void {
+    if (this.predictOnlineRefreshTimer) clearTimeout(this.predictOnlineRefreshTimer);
+    this.predictOnlineRefreshTimer = null;
+    const hasActivePredictUser = [...this.sessions.values()].some((session) => !session.admin && session.predictActive && Boolean(session.userId));
+    if (!hasActivePredictUser) return;
+    const delay = 90_000 - (Date.now() % 90_000) + 120;
+    this.predictOnlineRefreshTimer = setTimeout(() => {
+      this.predictOnlineRefreshTimer = null;
+      void this.broadcastPredictOnlineCount();
+    }, delay);
   }
 }
 
