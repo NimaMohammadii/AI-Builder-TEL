@@ -9,8 +9,9 @@ import {
   type PlinkoRisk,
   type PlinkoRow,
 } from './plinko-control';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -69,6 +70,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const config = await getPlinkoControl(env);
     const item = config.rows[row][risk];
     await upsertCopyBlock(
+      env,
       token,
       chatId,
       messageId,
@@ -96,6 +98,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const config = await getPlinkoControl(env);
     const item = config.rows[row][risk];
     await upsertCopyBlock(
+      env,
       token,
       chatId,
       messageId,
@@ -138,6 +141,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     if (!row || !risk) return ok();
     if (parts[5] !== 'confirm') {
       await upsert(
+        env,
         token,
         chatId,
         messageId,
@@ -160,6 +164,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     await clearState(env, callback.from.id);
     if (parts[3] !== 'confirm') {
       await upsert(
+        env,
         token,
         chatId,
         messageId,
@@ -175,7 +180,6 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     await sendMainMenu(env, token, chatId, messageId, '✅ تمام مودهای Plinko به پیش‌فرض برگشتند.');
     return ok();
   }
-
 
   return ok();
 }
@@ -193,6 +197,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   const state = await getState(env, adminId);
   if (!state) return null;
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, adminId);
@@ -203,12 +208,18 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (state.mode === 'edit-all') {
     const parsed = parseEditLines(text, Number(state.row) + 1);
     if (!parsed.ok) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${parsed.error}\n\nفرمت هر خط: شماره | ضریب | شانس درصد` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ ${parsed.error}\n\nفرمت هر خط: شماره | ضریب | شانس درصد\n\nلیست اصلاح‌شده را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: modeCallback(state.row, state.risk) }]],
+      );
       return ok();
     }
     const total = parsed.weights.reduce((sum, value) => sum + value, 0);
     if (Math.abs(total - 100) > 0.05) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ مجموع شانس‌ها ${trimNumber(total)}% است؛ باید دقیقاً 100% باشد.` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ مجموع شانس‌ها ${trimNumber(total)}% است؛ باید دقیقاً 100% باشد.\n\nلیست اصلاح‌شده را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: modeCallback(state.row, state.risk) }]],
+      );
       return ok();
     }
     try {
@@ -218,7 +229,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
       await clearState(env, adminId);
       await sendModeMenu(env, token, message.chat.id, state.row, state.risk, undefined, '✅ ضریب‌ها و شانس‌های این مود ذخیره شدند.');
     } catch (error) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}\n\nلیست را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: modeCallback(state.row, state.risk) }]],
+      );
     }
     return ok();
   }
@@ -226,7 +240,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (state.mode === 'edit-house') {
     const parsed = parseHouseLine(text, state.house);
     if (!parsed.ok) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${parsed.error}\n\nفرمت: شماره | ضریب | شانس درصد` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ ${parsed.error}\n\nفرمت: شماره | ضریب | شانس درصد\n\nخط اصلاح‌شده را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:plinko:houses:${state.row}:${state.risk}` }]],
+      );
       return ok();
     }
     try {
@@ -246,7 +263,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
         `✅ خانه #${state.house + 1} ذخیره شد. مجموع شانس‌ها همچنان 100% است.`,
       );
     } catch (error) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ ${error instanceof Error ? error.message : 'ذخیره انجام نشد.'}\n\nخط را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:plinko:houses:${state.row}:${state.risk}` }]],
+      );
     }
     return ok();
   }
@@ -267,6 +287,7 @@ async function sendMainMenu(env: Env, token: string, chatId: number, messageId?:
   ]);
   const updated = config.updatedAt ? `\nآخرین تغییر: ${formatUpdatedAt(config.updatedAt)}` : '';
   await upsert(
+    env,
     token,
     chatId,
     messageId,
@@ -292,6 +313,7 @@ async function sendModeMenu(
     `#${index + 1}  ${trimNumber(multiplier)}x · ${trimNumber(item.weights[index])}%`
   ).join('\n');
   await upsert(
+    env,
     token,
     chatId,
     messageId,
@@ -334,6 +356,7 @@ async function sendHousePicker(
   for (let index = 0; index < buttons.length; index += 2) keyboard.push(buttons.slice(index, index + 2));
   keyboard.push([{ text: '⬅️ برگشت به مود', callback_data: modeCallback(row, risk) }]);
   await upsert(
+    env,
     token,
     chatId,
     messageId,
@@ -537,16 +560,16 @@ function isAdminCommand(text: string): boolean {
   return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 
 async function upsertCopyBlock(
+  env: Env,
   token: string,
   chatId: number,
   messageId: number | undefined,
@@ -554,18 +577,12 @@ async function upsertCopyBlock(
   copyText: string,
   keyboard: Keyboard,
 ): Promise<void> {
-  const payload = {
-    chat_id: chatId,
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
     text: `${escapeHtml(text)}\n\n<pre>${escapeHtml(copyText)}</pre>`,
     parse_mode: 'HTML',
     reply_markup: { inline_keyboard: keyboard },
     disable_web_page_preview: true,
-  };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+  });
 }
 
 function escapeHtml(value: unknown): string {
