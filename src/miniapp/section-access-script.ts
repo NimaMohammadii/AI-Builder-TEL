@@ -54,6 +54,10 @@ export const SECTION_ACCESS_SCRIPT = `
   function applyPredictUserControls(result){
     if(!result)return false;predictUserControls=result;schedulePredictUserExpiry();renderPredictOps();return true;
   }
+  function applyUserControlsPayload(payload){
+    var controls=payload&&payload.controls;if(!controls||String(controls.userId||'')!==userId())return false;
+    return applyPredictUserControls(controls);
+  }
   function refreshPredictUserAccess(){
     var id=userId();if(!id)return Promise.resolve(false);
     var requestId=++predictUserAccessRequest;
@@ -111,7 +115,7 @@ export const SECTION_ACCESS_SCRIPT = `
   }
   function applyPredictOpsPayload(payload){
     if(!payload||!payload.state)return;
-    predictOpsState=payload.state;window.VexaPredictOpsState=predictOpsState;renderPredictOps();refreshPredictUserAccess();
+    predictOpsState=payload.state;window.VexaPredictOpsState=predictOpsState;renderPredictOps();
     try{window.dispatchEvent(new CustomEvent('vexa:predict-ops',{detail:{state:predictOpsState,refreshRound:payload.refreshRound===true}}))}catch(e){}
     if(payload.refreshRound===true){
       var root=document.getElementById('predictzone');
@@ -124,7 +128,7 @@ export const SECTION_ACCESS_SCRIPT = `
     var initData=String((tg&&tg.initData)||'');if(!initData)return;
     var proto=location.protocol==='https:'?'wss:':'ws:';
     var endpoint=proto+'//'+location.host+'/app/api/section-access/live?initData='+encodeURIComponent(initData);
-    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;refreshPredictUserAccess()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
+    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;refreshPredictUserAccess()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='user-controls')applyUserControlsPayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
   }
   function apply(j){
     var active=document.querySelector('.view.active');var section=active&&active.id||'home';
