@@ -115,7 +115,7 @@ export const PREDICT_ZONE_SCRIPT = `
 
     var MARKETS={
       bitcoin:{label:'Bitcoin',question:'Bitcoin up or down?',stream:'wss://fstream.asterdex.com/ws/btcusdt@markPrice@1s',decimals:0,step:5,axisStep:50,symbol:'₿'},
-      oil:{label:'Oil',question:'Oil this month: up or down?',stream:'wss://fstream.asterdex.com/ws/clusdt@markPrice@1s',decimals:2,step:.05,axisStep:.5,symbol:'Oil'},
+      oil:{label:'Oil',question:'Oil this month: up or down?',stream:'wss://fstream.asterdex.com/ws/clusdt@markPrice@1s',decimals:2,step:.05,symbol:'Oil'},
       gold:{label:'Gold',question:'Gold this month: up or down?',stream:'wss://fstream.asterdex.com/ws/xauusdt@markPrice@1s',decimals:2,step:.5,symbol:'Au'}
     };
     var EVENT_CATEGORIES={world:1,tech:1,culture:1},LOCKED_CATEGORIES={world:1,tech:1,culture:1},market='bitcoin',eventMode=false,currentEvent=null,eventDeadline=0,ws=null,reconnectTimer=0,feedWatchdog=0,reconnectDelay=6000,drawRaf=0,chartMotionRaf=0,chartMotionFrame=0,clockTimer=0,seq=0,values=[],historyValues=[],current=0,last=0,raw=0,priceFrom=0,priceTarget=0,priceAnimStarted=0,scaleMin=0,scaleMax=0,readyPrice=false,entry=0,lastPointAt=0,currentRound=null,roundLockDeadline=0,balanceNano=0,balanceKnown=false,gramUsd=0,side='up',busy=false,images={},trend='flat',runtimeSuspended=true,runtimeStarted=false;
