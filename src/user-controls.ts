@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { publishLiveActivity } from './live-activity';
+import { publishUserControls } from './section-lock-events';
 import { ensureTonTransactionsTable, recordTonTransaction, recordTonTransactions, type TonTransactionMeta, type TonTransactionWrite } from './ton-transactions';
 
 export type UserSectionBlock = {
@@ -204,7 +205,14 @@ export async function setUserSectionBlocked(env: Env, userId: string, sectionId:
     reason: normalizeBlockText(meta.reason, 80),
     adminNote: normalizeBlockText(meta.adminNote, 180),
   });
-  await saveControls(env, id, next, current.winChancePercent, current.banned);
+  const normalized = normalizeSectionBlocks(next);
+  await saveControls(env, id, normalized, current.winChancePercent, current.banned);
+  if (section.startsWith('predict-')) {
+    await publishUserControls(env, {
+      userId: id,
+      sectionBlocks: normalized.map((item) => ({ sectionId: item.sectionId, blocked: item.blocked, expiresAt: item.expiresAt, remainingMs: item.remainingMs })),
+    });
+  }
   return getUserControls(env, id);
 }
 
