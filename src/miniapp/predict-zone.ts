@@ -241,12 +241,10 @@ export const PREDICT_ZONE_SCRIPT = `
       if(chartMotionRaf||!readyPrice||!isActive()||eventMode||betAnimating)return;
       var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if(reduced){current=priceTarget||current;queueDraw();return}
-      if(!priceAnimStarted||!priceTarget||current===priceTarget){current=priceTarget||current;queueDraw();return}
       function step(ts){
-        if(!isActive()||eventMode||!readyPrice||betAnimating){chartMotionRaf=0;chartMotionFrame=0;return}
+        if(!isActive()||eventMode||!readyPrice){chartMotionRaf=0;chartMotionFrame=0;return}
         if(!chartMotionFrame||ts-chartMotionFrame>=32){chartMotionFrame=ts;updateChartPrice(ts);draw()}
-        if(priceAnimStarted&&current!==priceTarget){chartMotionRaf=requestFrame(step);return}
-        chartMotionRaf=0;chartMotionFrame=0;queueDraw()
+        chartMotionRaf=requestFrame(step)
       }
       chartMotionRaf=requestFrame(step)
     }
