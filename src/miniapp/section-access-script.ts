@@ -56,7 +56,7 @@ export const SECTION_ACCESS_SCRIPT = `
   }
   function applyUserControlsPayload(payload){
     var controls=payload&&payload.controls;if(!controls||String(controls.userId||'')!==userId())return false;
-    return applyPredictUserControls(controls);
+    predictUserAccessRequest++;return applyPredictUserControls(controls);
   }
   function refreshPredictUserAccess(){
     var id=userId();if(!id)return Promise.resolve(false);
