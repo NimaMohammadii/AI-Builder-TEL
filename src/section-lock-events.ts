@@ -121,6 +121,15 @@ export class SectionLockEvents {
       }
       return Response.json({ ok: true });
     }
+    if (request.method === 'POST' && url.pathname === '/publish-predict-round') {
+      const body = await request.json().catch(() => null) as { market?: unknown; roundId?: unknown; userId?: unknown } | null;
+      const market = cleanPredictMarket(body?.market);
+      if (!market) return Response.json({ ok: false }, { status: 400 });
+      const roundId = cleanPredictRoundId(body?.roundId, market);
+      if (!roundId) return Response.json({ ok: false }, { status: 400 });
+      await this.broadcastPredictRoundState(market, roundId, cleanUserId(body?.userId)).catch(() => undefined);
+      return Response.json({ ok: true });
+    }
     if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
       const body = await request.json().catch(() => null) as { state?: unknown; refreshRound?: unknown; userControls?: unknown } | null;
       if (!body || typeof body !== 'object') return Response.json({ ok: false }, { status: 400 });
@@ -202,7 +211,7 @@ export class SectionLockEvents {
     await this.broadcastPredictRoundState(market, roundId, session.userId).catch(() => undefined);
   }
 
-  private async broadcastPredictRoundState(market: PredictMarket, roundId: string, requestUserId: string): Promise<void> {
+  private async broadcastPredictRoundState(market: PredictMarket, roundId: string, requestUserId = ''): Promise<void> {
     const roundRow = await this.env.DB.prepare('SELECT id, market, status, result, end_price FROM predict_rounds WHERE id = ? AND market = ? LIMIT 1')
       .bind(roundId, market)
       .first<PredictRoundDbRow>();
@@ -259,6 +268,7 @@ export class SectionLockEvents {
       return;
     }
 
+    if (!requestUserId) return;
     const ownBet = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
         COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
       FROM predict_bets b
@@ -378,6 +388,20 @@ export async function publishPredictOpsState(env: Env, state: PredictOpsRealtime
     body: JSON.stringify({ state, refreshRound }),
   });
   if (!response.ok) throw new Error('Could not publish Predict Ops state.');
+}
+
+export async function publishPredictRoundState(env: Env, marketInput: unknown, roundIdInput: unknown, userIdInput: unknown = ''): Promise<void> {
+  const market = cleanPredictMarket(marketInput);
+  if (!market) throw new Error('Invalid Predict market.');
+  const roundId = cleanPredictRoundId(roundIdInput, market);
+  if (!roundId) throw new Error('Invalid Predict round.');
+  const id = env.SECTION_LOCK_EVENTS.idFromName('global');
+  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish-predict-round', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ market, roundId, userId: cleanUserId(userIdInput) }),
+  });
+  if (!response.ok) throw new Error('Could not publish Predict round state.');
 }
 
 function isRealtimeUserControls(value: unknown): value is RealtimeUserControls {
