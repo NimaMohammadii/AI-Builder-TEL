@@ -83,7 +83,7 @@ app.post('/app/api/predict-bet', async (c) => {
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
-    if (Date.now() >= betLockAtMs(round)) throw new Error('This prediction is closed. Wait for the next round.');
+    if (round.status !== 'open' || Date.now() >= betLockAtMs(round)) throw new Error('This prediction is closed. Wait for the next round.');
     await ensurePredictTables(c.env);
 
     let existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
@@ -106,10 +106,11 @@ app.post('/app/api/predict-bet', async (c) => {
       const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
         WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')
+          AND EXISTS (SELECT 1 FROM predict_rounds WHERE id = ? AND status = 'open')
           AND NOT EXISTS (SELECT 1 FROM predict_user_limits WHERE user_id = ? AND max_bet_nano > 0 AND ? > max_bet_nano)
           AND NOT EXISTS (SELECT 1 FROM predict_user_limits WHERE user_id = ? AND daily_limit_nano > 0 AND (SELECT COALESCE(SUM(stake_nano), 0) FROM predict_bets WHERE user_id = ? AND status != 'failed' AND date(created_at) = date('now')) + ? > daily_limit_nano)
           AND (? <= 0 OR (SELECT COALESCE(SUM(stake_nano), 0) FROM predict_bets WHERE market = ? AND status IN ('pending','active','settling_payment')) + ? <= ?)`)
-        .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId, userId, stakeNano, userId, userId, stakeNano, exposureLimit, market, stakeNano, exposureLimit)
+        .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId, roundId, userId, stakeNano, userId, userId, stakeNano, exposureLimit, market, stakeNano, exposureLimit)
         .run();
       if ((inserted.meta?.changes || 0) <= 0) {
         existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
@@ -128,7 +129,7 @@ app.post('/app/api/predict-bet', async (c) => {
     }
 
     await debitUserTonBalanceIfEnough(c.env, userId, stakeNano, { kind: 'predict', title: 'Prediction stake', referenceId: betId, referenceType: 'predict_bet', metadata: { market, side, roundId } });
-    const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending'").bind(betId).run();
+    const active = await c.env.DB.prepare("UPDATE predict_bets SET status = 'active' WHERE id = ? AND status = 'pending' AND EXISTS (SELECT 1 FROM predict_rounds WHERE id = ? AND status = 'open')").bind(betId, roundId).run();
     if ((active.meta?.changes || 0) <= 0) {
       const fresh = await c.env.DB.prepare('SELECT * FROM predict_bets WHERE id = ?').bind(betId).first<BetRow>();
       if (!fresh || fresh.status !== 'active') {
@@ -240,7 +241,7 @@ async function getOrCreateCurrentRound(env: Env, market: TradeMarket, latestPric
 }
 async function settleDueRounds(env: Env, market: TradeMarket, force = false): Promise<number> {
   await ensurePredictTables(env);
-  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) AND (datetime(ends_at) <= datetime('now') OR ? = 1) ORDER BY datetime(ends_at) ASC LIMIT 10`).bind(market, force ? 1 : 0).all<RoundRow>();
+  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE market = ? AND status NOT IN ('refunding','refunded') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) AND (datetime(ends_at) <= datetime('now') OR ? = 1) ORDER BY datetime(ends_at) ASC LIMIT 10`).bind(market, force ? 1 : 0).all<RoundRow>();
   let settled = 0;
   for (const round of rows.results || []) {
     if (!force && Date.parse(round.ends_at) > Date.now()) continue;
@@ -255,11 +256,12 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   if (!fresh) return;
   const freshId = cleanDbText(fresh.id, 'Prediction round is not ready');
   const activeCount = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id = ? AND status IN ('active', 'settling_payment')").bind(freshId).first<{ count: number }>();
+  if (fresh.status === 'refunding' || fresh.status === 'refunded') return;
   if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
   const market = normalizeTradeMarket(fresh.market);
   const endPrice = fresh.end_price == null ? (market === 'bitcoin' ? await fetchPrice(market) : await fetchMonthlyBoundaryPrice(market, Date.parse(fresh.ends_at), 'end')) : Number(fresh.end_price);
   const result: RoundResult = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
-  const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status != 'settled'`).bind(endPrice, result, freshId).run();
+  const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status NOT IN ('settled','refunding','refunded')`).bind(endPrice, result, freshId).run();
   if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
   const all = (await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(freshId).all<BetRow>()).results || [];
   const eligible = all.filter((b) => b.status !== 'failed' && b.status !== 'pending');
@@ -367,7 +369,7 @@ export async function getPredictOpsRound(env: Env, roundIdInput: unknown): Promi
 }
 
 export async function listPredictOpsDueRounds(env: Env): Promise<PredictOpsRoundView[]> {
-  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE datetime(ends_at) <= datetime('now') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) ORDER BY datetime(ends_at) ASC LIMIT 12`).all<RoundRow>().catch(() => ({ results: [] as RoundRow[] }));
+  const rows = await env.DB.prepare(`SELECT * FROM predict_rounds WHERE datetime(ends_at) <= datetime('now') AND status NOT IN ('refunding','refunded') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment'))) ORDER BY datetime(ends_at) ASC LIMIT 12`).all<RoundRow>().catch(() => ({ results: [] as RoundRow[] }));
   return Promise.all((rows.results || []).map((row) => predictOpsRoundView(env, row)));
 }
 
@@ -375,6 +377,7 @@ export async function retryPredictSettlement(env: Env, roundIdInput: unknown, ad
   const roundId = cleanPredictRoundId(roundIdInput);
   const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(roundId).first<RoundRow>();
   if (!row) throw new Error('Prediction round not found.');
+  if (row.status === 'refunding' || row.status === 'refunded') throw new Error('Refunded rounds cannot be settled.');
   if (Date.parse(String(row.ends_at || '')) > Date.now()) throw new Error('This round has not ended yet.');
   try {
     await settleRound(env, row);
@@ -569,23 +572,56 @@ export async function manualRefundPredictBet(env: Env, betIdInput: unknown, admi
   return updated;
 }
 
-export async function manualRefundPredictRound(env: Env, roundIdInput: unknown, adminIdInput: unknown): Promise<{ roundId: string; refundedCount: number; refundedNano: number }> {
+export async function manualRefundPredictRound(env: Env, roundIdInput: unknown, adminIdInput: unknown): Promise<{ roundId: string; refundedCount: number; refundedNano: number; mode: 'cancel' | 'safety' }> {
   const roundId = cleanPredictRoundId(roundIdInput);
-  const round = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id=? LIMIT 1').bind(roundId).first<RoundRow>();
+  await ensurePredictTables(env);
+  let round = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id=? LIMIT 1').bind(roundId).first<RoundRow>();
   if (!round) throw new Error('Prediction round not found.');
-  if (round.status !== 'settled') throw new Error('Round refunds are available only after settlement.');
-  const lost = await env.DB.prepare("SELECT id FROM predict_bets WHERE round_id=? AND status='lost' ORDER BY datetime(created_at) ASC").bind(roundId).all<{ id: string }>();
-  let refundedCount = 0;
-  let refundedNano = 0;
-  for (const row of lost.results || []) {
-    const before = await getPredictOpsBet(env, row.id);
-    if (!before?.refundable) continue;
-    await manualRefundPredictBet(env, row.id, adminIdInput, false);
-    refundedCount += 1;
-    refundedNano += before.stakeNano;
+  const market = normalizeTradeMarket(round.market);
+
+  if (round.status === 'settled') {
+    const lost = await env.DB.prepare("SELECT id FROM predict_bets WHERE round_id=? AND status='lost' ORDER BY datetime(created_at) ASC").bind(roundId).all<{ id: string }>();
+    let refundedCount = 0;
+    let refundedNano = 0;
+    for (const row of lost.results || []) {
+      const before = await getPredictOpsBet(env, row.id);
+      if (!before?.refundable) continue;
+      await manualRefundPredictBet(env, row.id, adminIdInput, false);
+      refundedCount += 1;
+      refundedNano += before.stakeNano;
+    }
+    await appendPredictAudit(env, adminIdInput, 'round_manual_refund', { market, targetId: roundId, detail: `${refundedCount} losing bets refunded; ${nanoToTon(refundedNano)} GRAM returned. Winners and existing refunds were unchanged.` }).catch(() => undefined);
+    return { roundId, refundedCount, refundedNano, mode: 'safety' };
   }
-  await appendPredictAudit(env, adminIdInput, 'round_manual_refund', { market: normalizeTradeMarket(round.market), targetId: roundId, detail: `${refundedCount} losing bets refunded; ${nanoToTon(refundedNano)} GRAM returned. Winners and existing refunds were unchanged.` }).catch(() => undefined);
-  return { roundId, refundedCount, refundedNano };
+
+  if (round.status === 'refunded') return { roundId, refundedCount: 0, refundedNano: 0, mode: 'cancel' };
+  if (round.status !== 'open' && round.status !== 'refunding') throw new Error('Only an open/locked round can be closed before settlement.');
+
+  if (round.status === 'open') {
+    const locked = await env.DB.prepare("UPDATE predict_rounds SET status='refunding', end_price=NULL, result=NULL WHERE id=? AND status='open'").bind(roundId).run();
+    if ((locked.meta?.changes || 0) <= 0) {
+      const fresh = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id=? LIMIT 1').bind(roundId).first<RoundRow>();
+      if (!fresh) throw new Error('Prediction round not found.');
+      if (fresh.status === 'refunded') return { roundId, refundedCount: 0, refundedNano: 0, mode: 'cancel' };
+      if (fresh.status !== 'refunding') throw new Error('Round state changed before close could start.');
+      round = fresh;
+    }
+  }
+
+  await env.DB.prepare("UPDATE predict_bets SET status='failed' WHERE round_id=? AND status='pending'").bind(roundId).run();
+  const refundable = await env.DB.prepare("SELECT * FROM predict_bets WHERE round_id=? AND status IN ('active','settling_payment') ORDER BY datetime(created_at) ASC").bind(roundId).all<BetRow>();
+  for (const bet of refundable.results || []) await payBet(env, bet, Number(bet.stake_nano || 0), 'refunded');
+
+  const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM predict_bets WHERE round_id=? AND status IN ('pending','active','settling_payment')").bind(roundId).first<{ count: number }>();
+  if (Number(remaining?.count || 0) > 0) throw new Error('Some round refunds are still pending. Retry Close & Refund.');
+
+  await env.DB.prepare("UPDATE predict_rounds SET status='refunded', end_price=NULL, result=NULL, settled_at=COALESCE(settled_at,CURRENT_TIMESTAMP) WHERE id=? AND status='refunding'").bind(roundId).run();
+  const totals = await env.DB.prepare("SELECT COUNT(*) AS count, COALESCE(SUM(payout_nano),0) AS total FROM predict_bets WHERE round_id=? AND status='refunded'").bind(roundId).first<{ count: number; total: number }>();
+  const refundedCount = Number(totals?.count || 0);
+  const refundedNano = normalizePolicyNano(totals?.total);
+  await appendPredictOpsIncident(env, 'round_cancel_refund', market, `${roundId} closed by admin; ${refundedCount} bets refunded.`).catch(() => undefined);
+  await appendPredictAudit(env, adminIdInput, 'round_cancel_refund', { market, targetId: roundId, detail: `Round closed before settlement; ${refundedCount} bets refunded; ${nanoToTon(refundedNano)} GRAM returned.` }).catch(() => undefined);
+  return { roundId, refundedCount, refundedNano, mode: 'cancel' };
 }
 
 export async function listPredictAuditLog(env: Env, limitInput = 20, userIdInput: unknown = null): Promise<PredictAuditEntry[]> {
@@ -603,7 +639,7 @@ async function getPredictOpsMarketStatus(env: Env, market: TradeMarket, control:
   const latestRow = await env.DB.prepare('SELECT * FROM predict_rounds WHERE market = ? ORDER BY datetime(starts_at) DESC LIMIT 1').bind(market).first<RoundRow>().catch(() => null);
   const latestRound = latestRow ? await predictOpsRoundView(env, latestRow) : null;
   const lastSettled = await env.DB.prepare("SELECT settled_at FROM predict_rounds WHERE market = ? AND status = 'settled' AND settled_at IS NOT NULL ORDER BY datetime(settled_at) DESC LIMIT 1").bind(market).first<{ settled_at: string }>().catch(() => null);
-  const due = await env.DB.prepare(`SELECT COUNT(*) AS count FROM predict_rounds WHERE market = ? AND datetime(ends_at) <= datetime('now') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment')))`).bind(market).first<{ count: number }>().catch(() => null);
+  const due = await env.DB.prepare(`SELECT COUNT(*) AS count FROM predict_rounds WHERE market = ? AND datetime(ends_at) <= datetime('now') AND status NOT IN ('refunding','refunded') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment')))`).bind(market).first<{ count: number }>().catch(() => null);
   const activeExposureNano = await getPredictMarketExposure(env, market);
   const exposureLimitNano = control.exposureLimitsNano[market];
   return { market, manualPaused: control.pausedMarkets[market], circuitOpen: feed.circuitOpen, circuitReason: feed.circuitReason, lastPrice: feed.lastPrice, lastSuccessAt: feed.lastSuccessAt, lastError: feed.lastError, lastErrorAt: feed.lastErrorAt, latestRound, lastSettledAt: lastSettled?.settled_at || null, dueSettlementCount: Number(due?.count || 0), activeExposureNano, exposureLimitNano, capacityReached: exposureLimitNano > 0 && activeExposureNano >= exposureLimitNano };
@@ -616,7 +652,8 @@ async function predictOpsRoundView(env: Env, row: RoundRow): Promise<PredictOpsR
   let totalBets = 0;
   let totalStakeNano = 0;
   for (const stat of stats.results || []) { const status = String(stat.status || 'unknown'); const count = Number(stat.count || 0); counts[status] = count; totalBets += count; totalStakeNano += Number(stat.stakeNano || 0); }
-  return { id: String(row.id || ''), market, startsAt: String(row.starts_at || ''), endsAt: String(row.ends_at || ''), startPrice: Number(row.start_price || 0), endPrice: row.end_price == null ? null : Number(row.end_price), status: String(row.status || ''), result: row.result == null ? null : String(row.result), settledAt: row.settled_at == null ? null : String(row.settled_at), createdAt: String(row.created_at || ''), due: Number.isFinite(Date.parse(String(row.ends_at || ''))) && Date.parse(String(row.ends_at || '')) <= Date.now() && (String(row.status || '') !== 'settled' || Number(counts.active || 0) + Number(counts.settling_payment || 0) > 0), totalBets, totalStakeNano, counts };
+  const status = String(row.status || '');
+  return { id: String(row.id || ''), market, startsAt: String(row.starts_at || ''), endsAt: String(row.ends_at || ''), startPrice: Number(row.start_price || 0), endPrice: row.end_price == null ? null : Number(row.end_price), status, result: row.result == null ? null : String(row.result), settledAt: row.settled_at == null ? null : String(row.settled_at), createdAt: String(row.created_at || ''), due: status !== 'refunding' && status !== 'refunded' && Number.isFinite(Date.parse(String(row.ends_at || ''))) && Date.parse(String(row.ends_at || '')) <= Date.now() && (status !== 'settled' || Number(counts.active || 0) + Number(counts.settling_payment || 0) > 0), totalBets, totalStakeNano, counts };
 }
 
 async function assertPredictBettingAvailable(env: Env, market: TradeMarket, userId: string, stakeNano: number, alreadyReserved: boolean): Promise<PredictBetGuard> {
