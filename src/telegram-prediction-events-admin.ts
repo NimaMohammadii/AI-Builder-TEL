@@ -41,9 +41,9 @@ import {
   type PredictUserMarketAccess,
 } from './predict-routes';
 import { ensurePredictVisitorTracking, getPredictOnlineUserIds } from './section-lock-events';
-import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -138,6 +138,7 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
   const opsState = await readPredictOpsState(env, adminId);
   if (opsState) {
     const text = String(message.text || '').trim();
+    await telegram(env.BOT_TOKEN, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
     if (text === '/cancel' || text === 'لغو') { await clearPredictOpsState(env, adminId); await sendPredictOpsMenu(env, message.chat.id); return ok(); }
     try {
       if (opsState.mode === 'maintenance') {
@@ -169,11 +170,12 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
         await publishPredictOpsRealtime(env); await clearPredictOpsState(env, adminId);
         await sendPredictUserPanel(env, message.chat.id, undefined, opsState.userId, `✅ محدودیت ${durationLabel(opsState.duration)} ثبت و همان لحظه اعمال شد.`); return ok();
       }
-    } catch (error) { await telegram(env.BOT_TOKEN, 'sendMessage', { chat_id: message.chat.id, text: '❌ ' + messageOf(error) + '\n\nبرای لغو /cancel را بفرستید.' }).catch(() => undefined); return ok(); }
+    } catch (error) { await upsert(env, message.chat.id, undefined, '❌ ' + messageOf(error) + '\n\nبرای لغو /cancel را بفرستید.', [[{ text: 'لغو', callback_data: 'botadmin:predictops:menu' }]]); return ok(); }
   }
   const state = await readState(env, adminId);
   if (!state) return null;
   const text = String(message.text || '').trim();
+  await telegram(env.BOT_TOKEN, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
   if (text === '/cancel' || text === 'لغو') { await clearState(env, adminId); await sendEventsMenu(env, message.chat.id); return ok(); }
   try {
     const patch = state.mode === 'question' ? { question: text } : state.mode === 'close' ? { closesAt: text } : { resolutionSource: text };
@@ -181,7 +183,7 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
     await sendEventPanel(env, message.chat.id, undefined, event, '✅ ذخیره شد.');
   } catch (error) {
     const hint = state.mode === 'close' ? '\nنمونه: 2026-12-31 18:00 UTC' : state.mode === 'source' ? '\nلینک HTTPS معتبر بفرستید.' : '';
-    await telegram(env.BOT_TOKEN, 'sendMessage', { chat_id: message.chat.id, text: '❌ ' + messageOf(error) + hint }).catch(() => undefined);
+    await upsert(env, message.chat.id, undefined, '❌ ' + messageOf(error) + hint, [[{ text: 'لغو', callback_data: 'botadmin:events:show:' + state.eventId }]]);
   }
   return ok();
 }
@@ -475,5 +477,5 @@ function messageOf(error: unknown): string { return error instanceof Error ? err
 function ok(): Response { return Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } }); }
 async function sendError(env: Env, chatId: number, messageId: number | undefined, error: unknown): Promise<void> { await upsert(env, chatId, messageId, '❌ ' + messageOf(error), [[{ text: '⬅️ رویدادها', callback_data: 'botadmin:events:list' }]]); }
 async function sendPredictOpsError(env: Env, chatId: number, messageId: number | undefined, error: unknown): Promise<void> { await upsert(env, chatId, messageId, '❌ Predict Ops\n\n' + messageOf(error), [[{ text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }]]); }
-async function upsert(env: Env, chatId: number, messageId: number | undefined, text: string, keyboard: Button[][]): Promise<void> { const activeId = messageId || await getTelegramMenuMessageId(env, chatId); const payload = { chat_id: chatId, text: limitTelegramText(text), reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true }; if (activeId && await telegram(env.BOT_TOKEN, 'editMessageText', { ...payload, message_id: activeId }).then(() => true).catch(() => false)) { await setTelegramMenuMessageId(env, chatId, activeId); return; } const sent = await telegram<{ message_id?: number }>(env.BOT_TOKEN, 'sendMessage', payload); if (sent?.message_id) await setTelegramMenuMessageId(env, chatId, sent.message_id); }
+async function upsert(env: Env, chatId: number, messageId: number | undefined, text: string, keyboard: Button[][]): Promise<void> { await upsertTelegramTextMenu(env, env.BOT_TOKEN, telegram, chatId, messageId, { text: limitTelegramText(text), reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true }); }
 async function telegram<T = unknown>(token: string, method: string, payload: unknown): Promise<T> { const response = await fetch('https://api.telegram.org/bot' + token + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); const result = await response.json().catch(() => ({})) as { ok?: boolean; result?: T; description?: string }; if (!response.ok || !result.ok) throw new Error(result.description || 'Telegram ' + method + ' failed'); return result.result as T; }
