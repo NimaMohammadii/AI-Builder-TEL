@@ -72,6 +72,7 @@ const PREDICT_RUNTIME_ISSUE_PREFIX = 'admin:predict-runtime-issue:v1:';
 const PREDICT_REALTIME_ISSUE_TYPE = 'round_realtime_publish_failed';
 const NANO = 1_000_000_000;
 const GAME_IDS = new Set(['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun']);
+let predictVisitorTrackingReady: Promise<void> | null = null;
 
 function messageFor(locks: SectionLock[]): LockMessage {
   return {
@@ -123,6 +124,9 @@ export class SectionLockEvents {
       try { server.send(JSON.stringify(await this.predictOnlineMessage())); } catch { this.sessions.delete(server); }
       try { server.send(JSON.stringify(await this.gameOnlineMessage())); } catch { this.sessions.delete(server); }
       return new Response(null, { status: 101, webSocket: client });
+    }
+    if (request.method === 'GET' && url.pathname === '/predict-online-users') {
+      return Response.json({ userIds: this.predictOnlineUserIds() });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
       const locks = await request.json().catch(() => []) as SectionLock[];
@@ -217,6 +221,7 @@ export class SectionLockEvents {
     const next = message.active === true;
     if (session.predictActive === next) return;
     session.predictActive = next;
+    if (next) await recordPredictVisit(this.env, session.userId).catch((error) => console.warn('record Predict visit failed', error));
     void this.broadcastPredictOnlineCount();
   }
 
@@ -230,6 +235,7 @@ export class SectionLockEvents {
       session.userId = userId;
       session.predictActive = !session.admin && message.predictActive === true;
       session.gameActive = !session.admin ? cleanGameId(message.gameActive) : '';
+      if (session.predictActive) await recordPredictVisit(this.env, userId).catch((error) => console.warn('record Predict visit failed', error));
       void this.broadcastPredictOnlineCount();
       void this.broadcastOnlineCounts();
     } catch { /* invalid session cannot claim a realtime user target */ }
@@ -483,12 +489,16 @@ export class SectionLockEvents {
     }
   }
 
-  private async predictOnlineMessage(): Promise<PredictOnlineMessage> {
+  private predictOnlineUserIds(): string[] {
     const users = new Set<string>();
     for (const session of this.sessions.values()) {
       if (!session.admin && session.predictActive && session.userId) users.add(session.userId);
     }
-    return { type: 'predict-online', count: users.size + await this.predictOnlineBoost() };
+    return [...users].sort();
+  }
+
+  private async predictOnlineMessage(): Promise<PredictOnlineMessage> {
+    return { type: 'predict-online', count: this.predictOnlineUserIds().length + await this.predictOnlineBoost() };
   }
 
   private async predictOnlineBoost(): Promise<number> {
@@ -539,6 +549,51 @@ export class SectionLockEvents {
       void this.broadcastPredictOnlineCount();
     }, delay);
   }
+}
+
+export async function ensurePredictVisitorTracking(env: Env): Promise<void> {
+  if (!predictVisitorTrackingReady) {
+    predictVisitorTrackingReady = (async () => {
+      await env.DB.prepare('ALTER TABLE app_users ADD COLUMN predict_first_seen_at TEXT').run().catch(() => undefined);
+      await env.DB.prepare('ALTER TABLE app_users ADD COLUMN predict_last_seen_at TEXT').run().catch(() => undefined);
+      await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_app_users_predict_last_seen ON app_users(predict_last_seen_at)').run();
+      await env.DB.prepare(`UPDATE app_users
+        SET predict_first_seen_at = COALESCE(predict_first_seen_at, (SELECT MIN(pb.created_at) FROM predict_bets pb WHERE pb.user_id = app_users.telegram_user_id)),
+            predict_last_seen_at = COALESCE(predict_last_seen_at, (SELECT MAX(pb.created_at) FROM predict_bets pb WHERE pb.user_id = app_users.telegram_user_id))
+        WHERE EXISTS (SELECT 1 FROM predict_bets pb WHERE pb.user_id = app_users.telegram_user_id)`).run().catch(() => undefined);
+      await env.DB.prepare(`UPDATE app_users
+        SET predict_first_seen_at = COALESCE(predict_first_seen_at, created_at, last_seen_at, CURRENT_TIMESTAMP),
+            predict_last_seen_at = COALESCE(last_seen_at, predict_last_seen_at, CURRENT_TIMESTAMP)
+        WHERE current_section = 'predictzone'`).run().catch(() => undefined);
+    })().catch((error) => {
+      predictVisitorTrackingReady = null;
+      throw error;
+    });
+  }
+  await predictVisitorTrackingReady;
+}
+
+async function recordPredictVisit(env: Env, userIdInput: unknown): Promise<void> {
+  const userId = cleanUserId(userIdInput);
+  if (!userId) return;
+  await ensurePredictVisitorTracking(env);
+  await env.DB.prepare(`INSERT INTO app_users (telegram_user_id, predict_first_seen_at, predict_last_seen_at)
+    VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(telegram_user_id) DO UPDATE SET
+      predict_first_seen_at = COALESCE(app_users.predict_first_seen_at, CURRENT_TIMESTAMP),
+      predict_last_seen_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId)
+    .run();
+}
+
+export async function getPredictOnlineUserIds(env: Env): Promise<string[]> {
+  const id = env.SECTION_LOCK_EVENTS.idFromName('global');
+  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/predict-online-users');
+  if (!response.ok) throw new Error('Could not load Predict online users.');
+  const body = await response.json().catch(() => null) as { userIds?: unknown } | null;
+  if (!Array.isArray(body?.userIds)) return [];
+  return [...new Set(body.userIds.map((value) => cleanUserId(value)).filter(Boolean))];
 }
 
 function cleanGameId(value: unknown): string {
@@ -614,7 +669,7 @@ function cleanPredictMarket(value: unknown): PredictMarket | null {
 
 function cleanPredictRoundId(value: unknown, market: PredictMarket): string {
   const roundId = String(value || '').trim();
-  return new RegExp(`^pr_${market}_\\d+$`).test(roundId) ? roundId : '';
+  return new RegExp(`^pr_${market}\\d+$`).test(roundId) ? roundId : '';
 }
 
 function normalizeNano(value: unknown): number {
