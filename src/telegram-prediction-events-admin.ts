@@ -25,6 +25,7 @@ import {
   type PredictOpsMarketStatus,
   type PredictOpsRoundView,
 } from './predict-routes';
+import { publishPredictOpsState, type PredictOpsRealtimeState } from './section-lock-events';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
@@ -137,8 +138,9 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
       }
       try {
         await setPredictOpsMaintenanceMessage(env, text);
+        await publishPredictOpsRealtime(env);
         await clearPredictOpsState(env, userId);
-        await sendPredictOpsMenu(env, message.chat.id, undefined, '✅ پیام نگهداری ذخیره شد.');
+        await sendPredictOpsMenu(env, message.chat.id, undefined, '✅ پیام نگهداری ذخیره شد و همان لحظه به اپ‌های باز ارسال شد.');
       } catch (error) {
         await telegram(env.BOT_TOKEN, 'sendMessage', { chat_id: message.chat.id, text: '❌ ' + messageOf(error) }).catch(() => undefined);
       }
@@ -172,13 +174,15 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
 
 async function handlePredictOpsCallback(env: Env, adminId: number, chatId: number, messageId: number | undefined, data: string): Promise<void> {
   if (data === 'botadmin:predictops:menu' || data === 'botadmin:predictops:refresh') {
+    await publishPredictOpsRealtime(env);
     await sendPredictOpsMenu(env, chatId, messageId);
     return;
   }
   if (data.startsWith('botadmin:predictops:emergency:')) {
     const paused = data.slice('botadmin:predictops:emergency:'.length) === 'on';
     await setPredictOpsEmergencyPaused(env, paused);
-    await sendPredictOpsMenu(env, chatId, messageId, paused ? '🚨 ثبت bet جدید برای Bitcoin، Gold و Oil متوقف شد.' : '✅ توقف اضطراری برداشته شد.');
+    await publishPredictOpsRealtime(env);
+    await sendPredictOpsMenu(env, chatId, messageId, paused ? '🚨 ثبت bet جدید برای Bitcoin، Gold و Oil متوقف شد و همان لحظه روی اپ‌های باز اعمال شد.' : '✅ توقف اضطراری برداشته شد و همان لحظه روی اپ‌های باز اعمال شد.');
     return;
   }
   if (data.startsWith('botadmin:predictops:marketpause:')) {
@@ -186,7 +190,8 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
     const market = cleanOpsMarket(parts[3]);
     const paused = parts[4] === 'on';
     await setPredictOpsMarketPaused(env, market, paused);
-    await sendPredictOpsMarket(env, chatId, messageId, market, paused ? '⏸ ثبت bet جدید این بازار متوقف شد.' : '✅ این بازار دوباره برای bet جدید باز شد.');
+    await publishPredictOpsRealtime(env);
+    await sendPredictOpsMarket(env, chatId, messageId, market, paused ? '⏸ ثبت bet جدید این بازار متوقف شد و همان لحظه روی اپ‌های باز اعمال شد.' : '✅ این بازار همان لحظه برای bet جدید باز شد.');
     return;
   }
   if (data.startsWith('botadmin:predictops:market:')) {
@@ -212,7 +217,8 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
   if (data.startsWith('botadmin:predictops:retry:')) {
     const roundId = data.slice('botadmin:predictops:retry:'.length);
     const round = await retryPredictSettlement(env, roundId);
-    await sendPredictOpsRound(env, chatId, messageId, round.id, '✅ Retry Settlement با همان مسیر اصلی settlement اجرا شد.');
+    await publishPredictOpsRealtime(env, true);
+    await sendPredictOpsRound(env, chatId, messageId, round.id, '✅ Retry Settlement با همان مسیر اصلی settlement اجرا شد و round بازِ کاربران بدون refresh صفحه resync شد.');
     return;
   }
   if (data === 'botadmin:predictops:incidents') {
@@ -226,7 +232,8 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
   }
   if (data === 'botadmin:predictops:clearmaintenance') {
     await setPredictOpsMaintenanceMessage(env, '');
-    await sendPredictOpsMenu(env, chatId, messageId, '✅ پیام نگهداری حذف شد.');
+    await publishPredictOpsRealtime(env);
+    await sendPredictOpsMenu(env, chatId, messageId, '✅ پیام نگهداری حذف شد و همان لحظه روی اپ‌های باز اعمال شد.');
     return;
   }
 }
@@ -379,6 +386,26 @@ function predictOpsMarketSummaryLines(status: PredictOpsMarketStatus, dashboard:
     `${marketIcon(status.market)} ${marketLabel(status.market)} — ${paused ? '⏸ Paused' : '✅ Active'} • Feed ${status.circuitOpen ? '🛑' : status.lastSuccessAt ? '✅' : '⚪'}`,
     `   Price ${formatOpsPrice(status.market, status.lastPrice)} • Round ${round ? round.status : '—'} • Active bets ${round ? Number(round.counts.active || 0) : 0} • Due ${status.dueSettlementCount}`,
   ];
+}
+
+async function publishPredictOpsRealtime(env: Env, refreshRound = false): Promise<void> {
+  const dashboard = await getPredictOpsDashboard(env);
+  const state: PredictOpsRealtimeState = {
+    emergencyPaused: dashboard.emergencyPaused,
+    maintenanceMessage: dashboard.maintenanceMessage,
+    updatedAt: dashboard.updatedAt,
+    markets: {
+      bitcoin: realtimeMarketState(dashboard, 'bitcoin'),
+      gold: realtimeMarketState(dashboard, 'gold'),
+      oil: realtimeMarketState(dashboard, 'oil'),
+    },
+  };
+  await publishPredictOpsState(env, state, refreshRound);
+}
+
+function realtimeMarketState(dashboard: PredictOpsDashboard, market: PredictOpsMarket): { manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null } {
+  const status = requireMarketStatus(dashboard, market);
+  return { manualPaused: status.manualPaused, circuitOpen: status.circuitOpen, circuitReason: status.circuitReason };
 }
 
 function requireMarketStatus(dashboard: PredictOpsDashboard, market: PredictOpsMarket): PredictOpsMarketStatus {
