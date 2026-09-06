@@ -6,8 +6,9 @@ import {
   saveOnlineUserCountConfig,
   type OnlineCountRange,
 } from './online-user-counts';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -53,7 +54,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
 
   if (data === 'botadmin:online:reset:ask') {
     await clearState(env, callback.from.id);
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       '♻️ بازگردانی Online Counts\n\nتمام مقادیر پایه و افزایش‌های Online Counts به حالت پیش‌فرض برمی‌گردد. مطمئن هستید؟',
       [
         [{ text: '✅ بله، ریست کن', callback_data: 'botadmin:online:reset:confirm' }],
@@ -97,7 +98,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const sectionId = normalizeSectionId(data.slice('botadmin:online:timed:'.length));
     if (!sectionId) return ok();
     await setState(env, callback.from.id, { mode: 'timed-amount', sectionId });
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `⏱ افزایش زمان‌دار ${sectionLabel(sectionId)}\n\nمقدار ثابت یا بازهٔ افزایشی را بفرستید.\nمثال ثابت: 100\nمثال متغیر: 20-100`,
       [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${sectionId}` }]],
     );
@@ -120,7 +121,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     await setState(env, callback.from.id, { mode: 'base', sectionId });
     const config = await getOnlineUserCountConfig(env);
     const current = normalizeRange(config.ranges[sectionId]);
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `✏️ ${sectionLabel(sectionId)} — مقدار پایه\n\nمقدار فعلی: ${current.min} تا ${current.max}\n\nحداقل و حداکثر را در یک پیام بفرستید.\nمثال: 120-280`,
       [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${sectionId}` }]],
     );
@@ -142,6 +143,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   const state = await getState(env, userId);
   if (!state) return null;
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, userId);
@@ -152,7 +154,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (state.mode === 'base') {
     const range = parseRange(text);
     if (!range) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `دو عدد بین 0 تا ${MAX_COUNT} بفرستید. مثال: 120-280` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ دو عدد بین 0 تا ${MAX_COUNT} بفرستید. مثال: 120-280\n\nحداقل و حداکثر را دوباره در یک پیام بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${state.sectionId}` }]],
+      );
       return ok();
     }
     try {
@@ -162,7 +167,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
       await clearState(env, userId);
       await sendSectionMenu(env, token, message.chat.id, state.sectionId, undefined, `✅ مقدار پایه روی ${range.min} تا ${range.max} ذخیره و همان لحظه اعمال شد.`);
     } catch (error) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: errorText(error) }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `${errorText(error)}\n\nمقدار را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${state.sectionId}` }]],
+      );
     }
     return ok();
   }
@@ -170,18 +178,27 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (state.mode === 'timed-amount') {
     const range = parseBoostRange(text);
     if (!range) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `یک عدد یا بازه بین 0 تا ${MAX_COUNT} بفرستید. مثال: 100 یا 20-100` }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        `❌ یک عدد یا بازه بین 0 تا ${MAX_COUNT} بفرستید. مثال: 100 یا 20-100\n\nمقدار را دوباره بفرستید.`,
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${state.sectionId}` }]],
+      );
       return ok();
     }
     await setState(env, userId, { mode: 'timed-hours', sectionId: state.sectionId, range });
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'این افزایش چند ساعت فعال بماند؟ یک عدد از 1 تا 720 بفرستید.' }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      '⏱ مدت افزایش زمان‌دار\n\nاین افزایش چند ساعت فعال بماند؟ یک عدد از 1 تا 720 بفرستید.',
+      [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${state.sectionId}` }]],
+    );
     return ok();
   }
 
   if (state.mode === 'timed-hours') {
     const hours = Number(text);
     if (!Number.isInteger(hours) || hours < 1 || hours > 720) {
-      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'مدت باید یک عدد صحیح از 1 تا 720 ساعت باشد.' }).catch(() => undefined);
+      await upsert(env, token, message.chat.id, undefined,
+        '❌ مدت باید یک عدد صحیح از 1 تا 720 ساعت باشد.\n\nتعداد ساعت را دوباره بفرستید.',
+        [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${state.sectionId}` }]],
+      );
       return ok();
     }
     const config = await getOnlineUserCountConfig(env);
@@ -210,7 +227,7 @@ async function sendMainMenu(env: Env, token: string, chatId: number, messageId?:
     { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
   ]);
 
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}👥 Online Counts\n\nبرای هر بازی یک Min/Max پایه تنظیم می‌شود و کاربران واقعاً حاضر در همان بازی به آن اضافه می‌شوند. عدد پایهٔ Predict فقط از کاربران واقعاً آنلاین می‌آید.${config.updatedAt ? `\n\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}`,
     rows,
   );
@@ -232,7 +249,7 @@ async function sendSectionMenu(env: Env, token: string, chatId: number, sectionI
   if (timed) rows.push([{ text: '🛑 حذف افزایش زمان‌دار', callback_data: `botadmin:online:timedclear:${sectionId}` }]);
   rows.push([{ text: '⬅️ بازی‌ها', callback_data: 'botadmin:online:list' }]);
 
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}👥 ${sectionLabel(sectionId)} — Online Counts\n\nافزودهٔ دائمی: +${adjustment.permanent}\n${timed ? `افزایش زمان‌دار: +${timed.min === timed.max ? timed.min : `${timed.min} تا ${timed.max}`} (تا ${formatUpdatedAt(timed.expiresAt)})` : 'افزایش زمان‌دار: غیرفعال'}\n\n${isPredict ? 'مقدار پایه: تعداد کاربران واقعاً آنلاین در Predict' : `مقدار پایه: ${base.min} تا ${base.max} + کاربران واقعاً حاضر در بازی`}\n\nعدد نمایشی = مقدار پایه + کاربران واقعی + افزودهٔ دائمی + افزایش زمان‌دار فعال. دکمه‌های ± فقط افزودهٔ دائمی را تغییر می‌دهند.`,
     rows,
   );
@@ -332,13 +349,12 @@ function errorText(error: unknown): string {
   return `❌ ${error instanceof Error ? error.message : 'عملیات ناموفق بود.'}`;
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
