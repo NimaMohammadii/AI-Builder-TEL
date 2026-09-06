@@ -1,7 +1,7 @@
 import type { Env } from './types';
 import { getCurrentLotteryRound, getLotteryAdminOverview, getLotterySettings, setLotteryDrawMinutesFromNow, startLotteryNow, updateLotterySettings } from './lottery';
 import { adjustLotteryPrizePool, clearLotteryWinnerSelections, getLotteryPrizePoolNano, getLotteryPrizes, getLotteryWinnerSelections, LOTTERY_WINNER_COUNT, searchLotteryTicketHolders, setLotteryPrizePercentages, setLotteryWinnerSelection } from './lottery-prizes';
-import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId, upsertTelegramTextMenu } from './telegram-menu-state';
 
 type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
@@ -156,6 +156,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
   const text = String(message.text || '').trim();
   const userId = message.from?.id as number;
   const menuMessageId = await getTelegramMenuMessageId(env, message.chat.id);
+  await tg(env.BOT_TOKEN, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
   try {
     if (text === '/cancel' || text === 'لغو') {
       await clearState(env, userId);
@@ -168,7 +169,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
     if (mode === 'prizes') {
       const percentBps = parsePrizePercentages(text);
       await setLotteryPrizePercentages(env, percentBps);
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendPrizeMenu(env, message.chat.id, menuMessageId, '✅ تقسیم Prize Pool برای سه برنده ذخیره شد.');
       return;
     }
@@ -178,7 +179,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!round || round.status !== 'open') throw new Error('راند باز Lottery وجود ندارد.');
       const amountNano = parsePrizePoolAmountNano(text);
       const nextPoolNano = await adjustLotteryPrizePool(env, round.id, mode === 'pooladd' ? amountNano : -amountNano);
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ Prize Pool ${mode === 'pooladd' ? 'افزایش' : 'کاهش'} یافت.\nمقدار جدید: ${formatPrizePoolGram(nextPoolNano)} GRAM`);
       return;
     }
@@ -188,7 +189,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       const round = await getCurrentLotteryRound(env, false);
       if (!round || round.status !== 'open') throw new Error('راند بازی وجود ندارد.');
       const matches = await searchLotteryTicketHolders(env, round.id, text, 12);
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendWinnerCandidates(env, message.chat.id, menuMessageId, rank, text, matches);
       return;
     }
@@ -198,7 +199,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       const minutes = Number(text);
       await setLotteryDrawMinutesFromNow(env, minutes);
       await getCurrentLotteryRound(env, true);
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ Draw برای ${formatMinutes(minutes)} دیگر تنظیم شد.`);
       return;
     }
@@ -208,7 +209,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!Number.isFinite(gram) || gram <= 0 || gram > 1000) throw new Error('قیمت معتبر GRAM بفرستید. مثال: 0.15');
       const nano = Math.round(gram * NANO);
       await updateLotterySettings(env, { ticketPriceNano: nano });
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ قیمت هر تیکت روی ${formatGram(nano)} GRAM تنظیم شد.`);
       return;
     }
@@ -217,7 +218,7 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!/^\d+$/.test(text)) throw new Error('یک عدد صحیح بفرستید. 0 یعنی بدون محدودیت.');
       const limit = Number(text);
       await updateLotterySettings(env, { maxTicketsPerUser: limit });
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ سقف تیکت هر کاربر ${limit === 0 ? 'برداشته شد' : `روی ${limit} قرار گرفت`}.`);
       return;
     }
@@ -226,11 +227,11 @@ async function handleInput(env: Env, message: Message, mode: InputMode): Promise
       if (!/^\d+$/.test(text)) throw new Error('فاصله Draw را به دقیقه بفرستید. مثال: 1440');
       const minutes = Number(text);
       await updateLotterySettings(env, { drawIntervalMinutes: minutes });
-      await finishInput(env, message, userId);
+      await finishInput(env, userId);
       await sendLotteryMenu(env, message.chat.id, menuMessageId, `✅ فاصله پیش‌فرض Draw روی ${formatMinutes(minutes)} تنظیم شد.`);
     }
   } catch (error) {
-    await tg(env.BOT_TOKEN, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'مقدار نامعتبر است.'}` }).catch(() => undefined);
+    await prompt(env, message.chat.id, menuMessageId, mode, `❌ ${error instanceof Error ? error.message : 'مقدار نامعتبر است.'}`);
   }
 }
 
@@ -295,8 +296,7 @@ async function sendLotteryMenu(env: Env, chatId: number, messageId?: number, not
       { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
     ],
   ];
-  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  const active = await upsert(env, env.BOT_TOKEN, chatId, messageId, text, rows);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
@@ -323,8 +323,7 @@ async function sendWinnerMenu(env: Env, chatId: number, messageId?: number, noti
   }]);
   rows.push([{ text: '🧹 پاک‌کردن همه (حالت خودکار)', callback_data: 'botadmin:lottery:clearwinners' }]);
   rows.push([{ text: '⬅️ Lottery Control', callback_data: 'botadmin:lottery:menu' }]);
-  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  const active = await upsert(env, env.BOT_TOKEN, chatId, messageId, text, rows);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
@@ -343,8 +342,7 @@ async function sendWinnerCandidates(env: Env, chatId: number, messageId: number 
   }]);
   rows.push([{ text: '🔎 جستجوی یوزرنیم یا ID', callback_data: `botadmin:lottery:searchwinner:${rank}` }]);
   rows.push([{ text: '⬅️ برنده‌های راند', callback_data: 'botadmin:lottery:winners' }]);
-  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  const active = await upsert(env, env.BOT_TOKEN, chatId, messageId, text, rows);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
@@ -364,12 +362,11 @@ async function sendPrizeMenu(env: Env, chatId: number, messageId?: number, notic
   const rows: Keyboard = [[{ text: '✏️ تنظیم درصد رتبه‌ها', callback_data: 'botadmin:lottery:askprizes' }]];
   rows.push([{ text: '⬅️ Lottery Control', callback_data: 'botadmin:lottery:menu' }]);
 
-  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, text, rows);
+  const active = await upsert(env, env.BOT_TOKEN, chatId, messageId, text, rows);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
-async function prompt(env: Env, chatId: number, messageId: number | undefined, mode: InputMode): Promise<void> {
+async function prompt(env: Env, chatId: number, messageId: number | undefined, mode: InputMode, notice = ''): Promise<void> {
   const text = mode.startsWith('winner')
     ? `🔎 جستجوی برنده رتبه ${mode.slice(-1)}\n\nیوزرنیم (با یا بدون @) یا Telegram ID کاربر دارای تیکت را بفرستید.`
     : mode === 'prizes'
@@ -386,14 +383,12 @@ async function prompt(env: Env, chatId: number, messageId: number | undefined, m
               ? '👤 سقف تیکت هر کاربر\n\nیک عدد صحیح بفرستید.\n0 یعنی بدون محدودیت.'
               : '🔁 فاصله پیش‌فرض Draw\n\nتعداد دقیقه را بفرستید.\nمثال: 1440 یعنی 24 ساعت.';
   const back = mode === 'prizes' ? 'botadmin:lottery:prizes' : mode.startsWith('winner') ? `botadmin:lottery:winner:${mode.slice(-1)}` : 'botadmin:lottery:menu';
-  const tracked = messageId ?? await getTelegramMenuMessageId(env, chatId);
-  const active = await upsert(env.BOT_TOKEN, chatId, tracked, `${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
+  const active = await upsert(env, env.BOT_TOKEN, chatId, messageId, `${notice ? notice + '\n\n' : ''}${text}\n\n/cancel برای لغو`, [[{ text: '⬅️ بازگشت', callback_data: back }]]);
   if (active) await setTelegramMenuMessageId(env, chatId, active);
 }
 
-async function finishInput(env: Env, message: Message, userId: number): Promise<void> {
+async function finishInput(env: Env, userId: number): Promise<void> {
   await clearState(env, userId);
-  await tg(env.BOT_TOKEN, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 }
 
 function normalizeMode(value: string): InputMode | null {
@@ -453,15 +448,12 @@ function formatRemaining(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return 'الان';
   return formatMinutes(Math.max(1, Math.ceil(ms / 60_000)));
 }
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return messageId;
-    await tg(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
-  }
-  const sent = await tg<{ message_id?: number }>(token, 'sendMessage', payload);
-  return sent?.message_id;
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
+  return upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
