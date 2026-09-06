@@ -66,7 +66,7 @@ app.post('/app/api/predict-bet', async (c) => {
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
-    await assertPredictBettingAvailable(c.env, market);
+    await assertPredictBettingAvailable(c.env, market, userId);
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
@@ -441,8 +441,9 @@ async function predictOpsRoundView(env: Env, row: RoundRow): Promise<PredictOpsR
   };
 }
 
-async function assertPredictBettingAvailable(env: Env, market: TradeMarket): Promise<void> {
-  const [control, feed] = await Promise.all([readPredictOpsControl(env), readPredictOpsFeed(env, market)]);
+async function assertPredictBettingAvailable(env: Env, market: TradeMarket, userId: string): Promise<void> {
+  const [control, feed, userControls] = await Promise.all([readPredictOpsControl(env), readPredictOpsFeed(env, market), getUserControls(env, userId)]);
+  if (userControls.blockedSections.includes(`predict-${market}`)) throw new Error('Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.');
   if (control.emergencyPaused) throw new Error(control.maintenanceMessage || DEFAULT_PREDICT_MAINTENANCE);
   if (control.pausedMarkets[market]) throw new Error(control.maintenanceMessage || `${marketLabel(market)} predictions are temporarily paused.`);
   if (feed.circuitOpen) throw new Error(control.maintenanceMessage || `${marketLabel(market)} live price feed is unavailable. New predictions are paused automatically.`);

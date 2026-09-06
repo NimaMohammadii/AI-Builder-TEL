@@ -24,7 +24,7 @@ export type GameTonBalanceDelta = {
   section?: string;
 };
 
-const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun']);
+const VALID_SECTIONS = new Set(['home', 'plinko', 'playzone', 'mines', 'crash', 'wheel', 'dice', 'tower', 'slot', 'coinflip', 'hilo', 'ghostrun', 'predict-bitcoin', 'predict-gold', 'predict-oil']);
 const GAME_BALANCE_BATCH_MAX = 20;
 let gameBalanceLedgerReady: Promise<void> | null = null;
 

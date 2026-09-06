@@ -27,14 +27,16 @@ import {
 } from './predict-routes';
 import { publishPredictOpsState, type PredictOpsRealtimeState } from './section-lock-events';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getUserControls, setUserSectionBlocked } from './user-controls';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type InputState = { eventId: string; mode: 'question' | 'close' | 'source' };
-type PredictOpsInputState = { mode: 'maintenance' };
+type PredictOpsInputState = { mode: 'maintenance' | 'user-access' };
 type AdminEvent = { id: string; source_market_id: string; source_url: string; category: string; question: string; description: string | null; closes_at: string; resolution_source: string | null; status: string; result: string | null; featured: number; created_at: string; updated_at: string; published_at: string | null; settled_at: string | null };
+type PredictOpsUserRow = { telegram_user_id: string; username: string | null; first_name: string | null };
 
 const STATE_PREFIX = 'admin:prediction-event-input:';
 const PREDICT_OPS_STATE_PREFIX = 'admin:predict-ops-input:';
@@ -146,6 +148,16 @@ async function handleMessage(env: Env, message: Message): Promise<Response | nul
       }
       return ok();
     }
+    if (opsState.mode === 'user-access') {
+      try {
+        const target = await resolvePredictOpsUser(env, text);
+        await clearPredictOpsState(env, userId);
+        await sendPredictUserAccessPanel(env, message.chat.id, undefined, target.telegram_user_id);
+      } catch (error) {
+        await telegram(env.BOT_TOKEN, 'sendMessage', { chat_id: message.chat.id, text: '❌ ' + messageOf(error) + '\n\nTelegram ID یا @username معتبر بفرستید، یا /cancel را بزنید.' }).catch(() => undefined);
+      }
+      return ok();
+    }
   }
 
   const state = await readState(env, userId);
@@ -192,6 +204,25 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
     await setPredictOpsMarketPaused(env, market, paused);
     await publishPredictOpsRealtime(env);
     await sendPredictOpsMarket(env, chatId, messageId, market, paused ? '⏸ ثبت bet جدید این بازار متوقف شد و همان لحظه روی اپ‌های باز اعمال شد.' : '✅ این بازار همان لحظه برای bet جدید باز شد.');
+    return;
+  }
+  if (data === 'botadmin:predictops:useraccess') {
+    await env.BOT_CACHE.put(predictOpsStateKey(adminId), JSON.stringify({ mode: 'user-access' }), { expirationTtl: 900 });
+    await upsert(env, chatId, messageId, '👤 User Market Access\n\nTelegram ID یا @username کاربر را بفرستید. بعد می‌توانید دسترسی Bitcoin، Gold و Oil را برای همان کاربر جداگانه ببندید یا باز کنید.', [[{ text: 'لغو', callback_data: 'botadmin:predictops:menu' }]]);
+    return;
+  }
+  if (data.startsWith('botadmin:predictops:userblock:')) {
+    const parts = data.split(':');
+    const targetUserId = cleanPredictUserId(parts[3]);
+    const market = cleanOpsMarket(parts[4]);
+    const blocked = parts[5] === 'on';
+    await setUserSectionBlocked(env, targetUserId, `predict-${market}`, blocked);
+    await publishPredictOpsRealtime(env);
+    await sendPredictUserAccessPanel(env, chatId, messageId, targetUserId, blocked ? `⛔ دسترسی ${marketLabel(market)} برای این کاربر بسته شد و همان لحظه روی اپ اعمال شد.` : `✅ دسترسی ${marketLabel(market)} برای این کاربر باز شد و همان لحظه روی اپ اعمال شد.`);
+    return;
+  }
+  if (data.startsWith('botadmin:predictops:user:')) {
+    await sendPredictUserAccessPanel(env, chatId, messageId, cleanPredictUserId(data.slice('botadmin:predictops:user:'.length)));
     return;
   }
   if (data.startsWith('botadmin:predictops:market:')) {
@@ -259,6 +290,7 @@ async function sendPredictOpsMenu(env: Env, chatId: number, messageId?: number, 
       { text: '🛢 Oil', callback_data: 'botadmin:predictops:market:oil' },
     ],
     [{ text: dashboard.emergencyPaused ? '✅ Resume All Markets' : '🚨 Emergency Pause All', callback_data: `botadmin:predictops:emergency:${dashboard.emergencyPaused ? 'off' : 'on'}` }],
+    [{ text: '👤 User Market Access', callback_data: 'botadmin:predictops:useraccess' }],
     [
       { text: '🧾 Settlement Queue', callback_data: 'botadmin:predictops:queue' },
       { text: '📜 Incident Log', callback_data: 'botadmin:predictops:incidents' },
@@ -306,6 +338,37 @@ async function sendPredictOpsMarket(env: Env, chatId: number, messageId: number 
       { text: '🧾 Settlement Queue', callback_data: 'botadmin:predictops:queue' },
     ],
     [{ text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }],
+  ];
+  await upsert(env, chatId, messageId, text, rows);
+}
+
+async function sendPredictUserAccessPanel(env: Env, chatId: number, messageId: number | undefined, userId: string, notice = ''): Promise<void> {
+  const user = await findPredictOpsUserById(env, userId);
+  if (!user) throw new Error('کاربر پیدا نشد.');
+  const controls = await getUserControls(env, user.telegram_user_id);
+  const blocked = new Set(controls.blockedSections);
+  const bitcoin = blocked.has('predict-bitcoin');
+  const gold = blocked.has('predict-gold');
+  const oil = blocked.has('predict-oil');
+  const identity = predictUserLabel(user);
+  const text = [
+    notice,
+    '👤 Predict Market Access',
+    '',
+    `User: ${identity}`,
+    `ID: ${user.telegram_user_id}`,
+    '',
+    `₿ Bitcoin: ${bitcoin ? '⛔ Blocked' : '✅ Allowed'}`,
+    `🥇 Gold: ${gold ? '⛔ Blocked' : '✅ Allowed'}`,
+    `🛢 Oil: ${oil ? '⛔ Blocked' : '✅ Allowed'}`,
+    '',
+    'این کنترل فقط دسترسی همین کاربر به ثبت prediction در مارکت انتخابی را تغییر می‌دهد و همان لحظه روی اپ باز او اعمال می‌شود.',
+  ].filter(Boolean).join('\n');
+  const rows: Button[][] = [
+    [{ text: bitcoin ? '✅ Allow Bitcoin' : '⛔ Block Bitcoin', callback_data: `botadmin:predictops:userblock:${user.telegram_user_id}:bitcoin:${bitcoin ? 'off' : 'on'}` }],
+    [{ text: gold ? '✅ Allow Gold' : '⛔ Block Gold', callback_data: `botadmin:predictops:userblock:${user.telegram_user_id}:gold:${gold ? 'off' : 'on'}` }],
+    [{ text: oil ? '✅ Allow Oil' : '⛔ Block Oil', callback_data: `botadmin:predictops:userblock:${user.telegram_user_id}:oil:${oil ? 'off' : 'on'}` }],
+    [{ text: '🔎 کاربر دیگر', callback_data: 'botadmin:predictops:useraccess' }, { text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }],
   ];
   await upsert(env, chatId, messageId, text, rows);
 }
@@ -406,6 +469,43 @@ async function publishPredictOpsRealtime(env: Env, refreshRound = false): Promis
 function realtimeMarketState(dashboard: PredictOpsDashboard, market: PredictOpsMarket): { manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null } {
   const status = requireMarketStatus(dashboard, market);
   return { manualPaused: status.manualPaused, circuitOpen: status.circuitOpen, circuitReason: status.circuitReason };
+}
+
+async function resolvePredictOpsUser(env: Env, input: string): Promise<PredictOpsUserRow> {
+  const value = String(input || '').trim();
+  if (/^\d{1,20}$/.test(value)) {
+    const row = await findPredictOpsUserById(env, value);
+    if (!row) throw new Error('کاربر پیدا نشد.');
+    return row;
+  }
+  const username = value.replace(/^@+/, '').trim();
+  if (!/^[0-9A-Za-z_]{3,64}$/.test(username)) throw new Error('ID یا username معتبر نیست.');
+  const row = await env.DB.prepare('SELECT telegram_user_id,username,first_name FROM app_users WHERE lower(username)=lower(?) ORDER BY datetime(COALESCE(last_seen_at,created_at)) DESC LIMIT 1')
+    .bind(username)
+    .first<PredictOpsUserRow>();
+  if (!row) throw new Error('کاربر پیدا نشد.');
+  return row;
+}
+
+async function findPredictOpsUserById(env: Env, userId: string): Promise<PredictOpsUserRow | null> {
+  return env.DB.prepare('SELECT telegram_user_id,username,first_name FROM app_users WHERE telegram_user_id=? LIMIT 1')
+    .bind(cleanPredictUserId(userId))
+    .first<PredictOpsUserRow>();
+}
+
+function predictUserLabel(user: PredictOpsUserRow): string {
+  const firstName = String(user.first_name || '').replace(/[<>]/g, '').trim();
+  const username = String(user.username || '').replace(/^@+/, '').replace(/[^0-9A-Za-z_]/g, '').slice(0, 64);
+  if (firstName && username) return `${firstName} (@${username})`;
+  if (firstName) return firstName;
+  if (username) return `@${username}`;
+  return 'User';
+}
+
+function cleanPredictUserId(value: unknown): string {
+  const id = String(value || '').trim();
+  if (!/^\d{1,20}$/.test(id)) throw new Error('User ID نامعتبر است.');
+  return id;
 }
 
 function requireMarketStatus(dashboard: PredictOpsDashboard, market: PredictOpsMarket): PredictOpsMarketStatus {
@@ -514,7 +614,7 @@ async function readPredictOpsState(env: Env, userId: number): Promise<PredictOps
   if (!raw) return null;
   try {
     const state = JSON.parse(raw) as PredictOpsInputState;
-    return state && state.mode === 'maintenance' ? state : null;
+    return state && (state.mode === 'maintenance' || state.mode === 'user-access') ? state : null;
   } catch { return null; }
 }
 function clearPredictOpsState(env: Env, userId: number): Promise<void> { return env.BOT_CACHE.delete(predictOpsStateKey(userId)).catch(() => undefined); }
