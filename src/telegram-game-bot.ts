@@ -470,6 +470,9 @@ async function telegramRequest<T = unknown>(token: string, method: string, paylo
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({})) as TelegramEnvelope<T>;
+  if (!data.ok && (method === 'editMessageText' || method === 'editMessageMedia') && /message is not modified/i.test(String(data.description || ''))) {
+    return { ok: true, result: data.result };
+  }
   if (!response.ok && typeof data.ok !== 'boolean') {
     return { ok: false, description: `Telegram ${method} failed with HTTP ${response.status}` };
   }
