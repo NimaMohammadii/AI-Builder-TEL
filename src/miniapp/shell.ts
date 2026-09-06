@@ -216,12 +216,14 @@ export function miniAppShellHtml(): string {
     #rankPill:empty,#userLine:empty{display:none!important}
     .brand .logo[src="${GAME_BOT_PROFILE_IMAGE}"]{visibility:hidden!important}
     .top-balance-pill:has(#topTonBalance:empty),.top-balance-pill:has(.ton-mini-icon img[src^="data:image/"]){visibility:hidden!important}
-    .predict-live-badge{display:none;align-items:center;justify-content:center;gap:6px;height:24px;padding:0 9px;background:transparent;border:0;box-shadow:none;color:#b31332;font-family:"SF Pro Rounded","SF Pro Text","Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:20px;font-weight:760;line-height:1;letter-spacing:.045em;white-space:nowrap;pointer-events:none;transform:translate(-4px,-1px)}
-    body:has(#predictzone.active) .predict-live-badge{display:inline-flex}
-    .predict-live-dot{position:relative;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#b31332}
-    .predict-live-dot::after{content:"";position:absolute;inset:-3px;border:1px solid rgba(179,19,50,.38);border-radius:50%;animation:vexaPredictLivePulse 1.7s ease-out infinite}
-    @keyframes vexaPredictLivePulse{0%{transform:scale(.72);opacity:.7}70%,100%{transform:scale(1.65);opacity:0}}
-    @media(prefers-reduced-motion:reduce){.predict-live-dot::after{animation:none;opacity:.32;transform:none}}
+    .predict-online-badge{display:none;align-items:center;justify-content:center;gap:5px;height:22px;padding:0;background:transparent;border:0;box-shadow:none;color:rgba(255,255,255,.82);font-family:"SF Pro Rounded","SF Pro Text","Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1;white-space:nowrap;pointer-events:none;transform:translateY(1px)}
+    body:has(#predictzone.active) .predict-online-badge{display:inline-flex}
+    .predict-online-dot{position:relative;width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#35d979;box-shadow:0 0 0 1px rgba(53,217,121,.16)}
+    .predict-online-dot::after{content:"";position:absolute;inset:-2px;border:1px solid rgba(53,217,121,.36);border-radius:50%;animation:vexaPredictOnlinePulse 1.8s ease-in-out infinite}
+    .predict-online-count{min-width:12px;color:rgba(255,255,255,.94);font-size:11px;font-weight:850;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+    .predict-online-label{color:rgba(255,255,255,.54);font-size:9.5px;font-weight:760;letter-spacing:-.01em}
+    @keyframes vexaPredictOnlinePulse{0%,100%{transform:scale(.92);opacity:.18}50%{transform:scale(1.16);opacity:.62}}
+    @media(prefers-reduced-motion:reduce){.predict-online-dot::after{animation:none;opacity:.3;transform:none}}
   </style>
 </head>
 <body>
@@ -239,7 +241,7 @@ export function miniAppShellHtml(): string {
         <div>
           <div style="display:flex;align-items:center;gap:9px;min-width:0">
             <h1 id="brandTitle">Lucky Zone</h1>
-            <span class="predict-live-badge" aria-label="Live"><span class="predict-live-dot" aria-hidden="true"></span><span>Live</span></span>
+            <span class="predict-online-badge" id="predictOnlineBadge" aria-label="Predict online users"><span class="predict-online-dot" aria-hidden="true"></span><b class="predict-online-count" id="predictOnlineCount">—</b><span class="predict-online-label">Online</span></span>
             <div id="rankPill" aria-label="Current rank" style="height:30px;min-width:74px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.055);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(4px) saturate(1.15);-webkit-backdrop-filter:blur(4px) saturate(1.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.32);transform:translateY(-1px)"></div>
           </div>
           <p id="userLine"></p>
