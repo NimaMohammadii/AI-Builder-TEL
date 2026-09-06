@@ -77,6 +77,14 @@
     {
       "tag": "v9",
       "new_sqlite_classes": ["CrashLiveRoom"]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": ["PredictSettlementScheduler"]
+    },
+    {
+      "tag": "v11",
+      "deleted_classes": ["PredictSettlementScheduler"]
     }
   ],
   "d1_databases": [
