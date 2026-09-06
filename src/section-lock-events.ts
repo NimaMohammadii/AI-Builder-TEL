@@ -131,9 +131,9 @@ export class SectionLockEvents {
       try {
         await this.broadcastPredictRoundState(market, roundId, cleanUserId(body?.userId));
         return Response.json({ ok: true });
-      } catch {
+      } catch (error) {
         this.broadcastPredictSyncError(market, roundId);
-        return Response.json({ ok: false }, { status: 503 });
+        return Response.json({ ok: false, error: predictSyncErrorMessage(error) }, { status: 503 });
       }
     }
     if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
@@ -222,85 +222,94 @@ export class SectionLockEvents {
   }
 
   private async broadcastPredictRoundState(market: PredictMarket, roundId: string, requestUserId = ''): Promise<void> {
-    const roundRow = await this.env.DB.prepare('SELECT id, market, status, result, end_price FROM predict_rounds WHERE id = ? AND market = ? LIMIT 1')
-      .bind(roundId, market)
-      .first<PredictRoundDbRow>();
-    if (!roundRow) return;
+    let stage = 'round lookup';
+    try {
+      const roundRow = await this.env.DB.prepare('SELECT id, market, status, result, end_price FROM predict_rounds WHERE id = ? AND market = ? LIMIT 1')
+        .bind(roundId, market)
+        .first<PredictRoundDbRow>();
+      if (!roundRow) return;
 
-    const poolRows = await this.env.DB.prepare(`SELECT side, COALESCE(SUM(stake_nano), 0) AS stakeNano, COUNT(*) AS count
-      FROM predict_bets
-      WHERE round_id = ? AND status NOT IN ('failed','pending')
-      GROUP BY side`)
-      .bind(roundId)
-      .all<PredictPoolDbRow>();
-    const pools = {
-      up: { stakeNano: 0, stakeTon: 0, count: 0 },
-      down: { stakeNano: 0, stakeTon: 0, count: 0 },
-    };
-    for (const row of poolRows.results || []) {
-      if (row.side !== 'up' && row.side !== 'down') continue;
-      const stakeNano = normalizeNano(row.stakeNano);
-      pools[row.side] = { stakeNano, stakeTon: nanoToTon(stakeNano), count: Math.max(0, Math.floor(Number(row.count) || 0)) };
-    }
-
-    const round: PredictRoundRealtime = {
-      market,
-      roundId,
-      status: String(roundRow.status || ''),
-      result: roundRow.result == null ? null : String(roundRow.result),
-      endPrice: roundRow.end_price == null ? null : Number(roundRow.end_price),
-      pools,
-      updatedAt: new Date().toISOString(),
-    };
-    const signature = JSON.stringify([round.status, round.result, round.endPrice, pools.up.stakeNano, pools.up.count, pools.down.stakeNano, pools.down.count]);
-    const changed = this.predictRoundSignatures.get(roundId) !== signature;
-    this.predictRoundSignatures.set(roundId, signature);
-
-    if (changed) {
-      const payload = JSON.stringify({ type: 'predict-round', round } satisfies PredictRoundMessage);
-      for (const [target, targetSession] of this.sessions) {
-        if (targetSession.admin || !targetSession.predictActive || !targetSession.userId) continue;
-        try { target.send(payload); } catch { this.sessions.delete(target); }
+      stage = 'pool aggregation';
+      const poolRows = await this.env.DB.prepare(`SELECT side, COALESCE(SUM(stake_nano), 0) AS stakeNano, COUNT(*) AS count
+        FROM predict_bets
+        WHERE round_id = ? AND status NOT IN ('failed','pending')
+        GROUP BY side`)
+        .bind(roundId)
+        .all<PredictPoolDbRow>();
+      const pools = {
+        up: { stakeNano: 0, stakeTon: 0, count: 0 },
+        down: { stakeNano: 0, stakeTon: 0, count: 0 },
+      };
+      for (const row of poolRows.results || []) {
+        if (row.side !== 'up' && row.side !== 'down') continue;
+        const stakeNano = normalizeNano(row.stakeNano);
+        pools[row.side] = { stakeNano, stakeTon: nanoToTon(stakeNano), count: Math.max(0, Math.floor(Number(row.count) || 0)) };
       }
-    }
 
-    const terminal = round.status === 'settled' || round.status === 'refunded';
-    if (terminal && changed) {
-      const bets = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
+      const round: PredictRoundRealtime = {
+        market,
+        roundId,
+        status: String(roundRow.status || ''),
+        result: roundRow.result == null ? null : String(roundRow.result),
+        endPrice: roundRow.end_price == null ? null : Number(roundRow.end_price),
+        pools,
+        updatedAt: new Date().toISOString(),
+      };
+      const signature = JSON.stringify([round.status, round.result, round.endPrice, pools.up.stakeNano, pools.up.count, pools.down.stakeNano, pools.down.count]);
+      const changed = this.predictRoundSignatures.get(roundId) !== signature;
+      this.predictRoundSignatures.set(roundId, signature);
+
+      if (changed) {
+        const payload = JSON.stringify({ type: 'predict-round', round } satisfies PredictRoundMessage);
+        for (const [target, targetSession] of this.sessions) {
+          if (targetSession.admin || !targetSession.predictActive || !targetSession.userId) continue;
+          try { target.send(payload); } catch { this.sessions.delete(target); }
+        }
+      }
+
+      const terminal = round.status === 'settled' || round.status === 'refunded';
+      if (terminal && changed) {
+        stage = 'terminal user result lookup';
+        const bets = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
+            COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
+          FROM predict_bets b
+          LEFT JOIN app_users u ON u.telegram_user_id = b.user_id
+          WHERE b.round_id = ? AND b.status != 'failed'
+          ORDER BY datetime(b.created_at) DESC`)
+          .bind(roundId)
+          .all<PredictUserBetDbRow>();
+        for (const bet of bets.results || []) this.sendPredictUserRoundUpdate(bet);
+        return;
+      }
+
+      if (!requestUserId) return;
+      stage = 'user bet lookup';
+      const ownBet = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
           COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
         FROM predict_bets b
         LEFT JOIN app_users u ON u.telegram_user_id = b.user_id
-        WHERE b.round_id = ? AND b.status != 'failed'
-        ORDER BY datetime(b.created_at) DESC`)
-        .bind(roundId)
-        .all<PredictUserBetDbRow>();
-      for (const bet of bets.results || []) this.sendPredictUserRoundUpdate(bet);
-      return;
+        WHERE b.round_id = ? AND b.user_id = ? AND b.status != 'failed'
+        ORDER BY datetime(b.created_at) DESC LIMIT 1`)
+        .bind(roundId, requestUserId)
+        .first<PredictUserBetDbRow>();
+      if (ownBet) {
+        this.sendPredictUserRoundUpdate(ownBet);
+        return;
+      }
+      stage = 'user balance lookup';
+      const balance = await this.env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ? LIMIT 1')
+        .bind(requestUserId)
+        .first<{ ton_balance_nano: number }>();
+      this.sendPredictUserRoundPayload({
+        userId: requestUserId,
+        market,
+        roundId,
+        tonBalanceNano: normalizeNano(balance?.ton_balance_nano),
+        bet: null,
+      });
+    } catch (error) {
+      throw new Error(`SectionLockEvents.broadcastPredictRoundState → ${stage}: ${predictSyncErrorMessage(error)}`);
     }
-
-    if (!requestUserId) return;
-    const ownBet = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
-        COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
-      FROM predict_bets b
-      LEFT JOIN app_users u ON u.telegram_user_id = b.user_id
-      WHERE b.round_id = ? AND b.user_id = ? AND b.status != 'failed'
-      ORDER BY datetime(b.created_at) DESC LIMIT 1`)
-      .bind(roundId, requestUserId)
-      .first<PredictUserBetDbRow>();
-    if (ownBet) {
-      this.sendPredictUserRoundUpdate(ownBet);
-      return;
-    }
-    const balance = await this.env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ? LIMIT 1')
-      .bind(requestUserId)
-      .first<{ ton_balance_nano: number }>();
-    this.sendPredictUserRoundPayload({
-      userId: requestUserId,
-      market,
-      roundId,
-      tonBalanceNano: normalizeNano(balance?.ton_balance_nano),
-      bet: null,
-    });
   }
 
   private sendPredictSyncError(socket: WebSocket, market: PredictMarket, roundId: string): void {
@@ -424,7 +433,11 @@ export async function publishPredictRoundState(env: Env, marketInput: unknown, r
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ market, roundId, userId: cleanUserId(userIdInput) }),
   });
-  if (!response.ok) throw new Error('Could not publish Predict round state.');
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: unknown } | null;
+    const detail = String(body?.error || `HTTP ${response.status}`).replace(/\s+/g, ' ').trim().slice(0, 320);
+    throw new Error(`SectionLockEvents /publish-predict-round: ${detail || `HTTP ${response.status}`}`);
+  }
 }
 
 function isRealtimeUserControls(value: unknown): value is RealtimeUserControls {
@@ -448,7 +461,7 @@ function cleanPredictMarket(value: unknown): PredictMarket | null {
 
 function cleanPredictRoundId(value: unknown, market: PredictMarket): string {
   const roundId = String(value || '').trim();
-  return new RegExp(`^pr_${market}_\\d+$`).test(roundId) ? roundId : '';
+  return new RegExp(`^pr_${market}\\d+$`).test(roundId) ? roundId : '';
 }
 
 function normalizeNano(value: unknown): number {
@@ -463,6 +476,10 @@ function nanoToTon(value: number): number {
 
 function cleanUserId(value: unknown): string {
   return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80);
+}
+
+function predictSyncErrorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error || 'Unknown Predict realtime error')).replace(/\s+/g, ' ').trim().slice(0, 320) || 'Unknown Predict realtime error';
 }
 
 function isPredictOpsRealtimeState(value: unknown): value is PredictOpsRealtimeState {
