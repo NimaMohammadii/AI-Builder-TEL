@@ -63,8 +63,11 @@ type PredictUserBetDbRow = {
   created_at: string;
   ton_balance_nano: number | null;
 };
+type PredictRealtimeIssue = { type: string; market: PredictMarket; where: string; message: string; firstAt: string; lastAt: string };
 
 const PREDICT_OPS_STATE_KEY = 'predict-ops:realtime-state:v1';
+const PREDICT_RUNTIME_ISSUE_PREFIX = 'admin:predict-runtime-issue:v1:';
+const PREDICT_REALTIME_ISSUE_TYPE = 'round_realtime_publish_failed';
 const NANO = 1_000_000_000;
 
 function messageFor(locks: SectionLock[]): LockMessage {
@@ -130,6 +133,7 @@ export class SectionLockEvents {
       if (!roundId) return Response.json({ ok: false }, { status: 400 });
       try {
         await this.broadcastPredictRoundState(market, roundId, cleanUserId(body?.userId));
+        await this.recoverPredictRealtimeIssue(market, roundId).catch(() => undefined);
         return Response.json({ ok: true });
       } catch (error) {
         this.broadcastPredictSyncError(market, roundId);
@@ -216,7 +220,9 @@ export class SectionLockEvents {
     if (!roundId) return;
     try {
       await this.broadcastPredictRoundState(market, roundId, session.userId);
-    } catch {
+      await this.recoverPredictRealtimeIssue(market, roundId).catch(() => undefined);
+    } catch (error) {
+      await this.reportPredictRealtimeIssue(market, roundId, error).catch(() => undefined);
       this.sendPredictSyncError(socket, market, roundId);
     }
   }
@@ -310,6 +316,66 @@ export class SectionLockEvents {
     } catch (error) {
       throw new Error(`SectionLockEvents.broadcastPredictRoundState → ${stage}: ${predictSyncErrorMessage(error)}`);
     }
+  }
+
+  private async reportPredictRealtimeIssue(market: PredictMarket, roundId: string, error: unknown): Promise<void> {
+    const key = predictRealtimeIssueKey(market);
+    const previous = await this.readPredictRealtimeIssue(key);
+    const now = new Date().toISOString();
+    const issue: PredictRealtimeIssue = {
+      type: PREDICT_REALTIME_ISSUE_TYPE,
+      market,
+      where: 'section-lock-events.ts → WebSocket predict-round-sync → broadcastPredictRoundState',
+      message: `Round ${roundId}: ${predictSyncErrorMessage(error)}`,
+      firstAt: previous?.firstAt || now,
+      lastAt: now,
+    };
+    await this.env.BOT_CACHE.put(key, JSON.stringify(issue));
+    if (!previous || previous.message !== issue.message || previous.where !== issue.where) await this.notifyPredictRealtimeAdmins('error', issue);
+  }
+
+  private async recoverPredictRealtimeIssue(market: PredictMarket, roundId: string): Promise<void> {
+    const key = predictRealtimeIssueKey(market);
+    const previous = await this.readPredictRealtimeIssue(key);
+    if (!previous) return;
+    try { await this.env.BOT_CACHE.delete(key); } catch { return; }
+    await this.notifyPredictRealtimeAdmins('recovered', previous, `Realtime round sync succeeded for ${roundId}.`);
+  }
+
+  private async readPredictRealtimeIssue(key: string): Promise<PredictRealtimeIssue | null> {
+    const raw = await this.env.BOT_CACHE.get(key).catch(() => null);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Partial<PredictRealtimeIssue>;
+      const market = cleanPredictMarket(parsed.market);
+      if (!market || parsed.type !== PREDICT_REALTIME_ISSUE_TYPE || !parsed.where || !parsed.message || !parsed.firstAt) return null;
+      return {
+        type: PREDICT_REALTIME_ISSUE_TYPE,
+        market,
+        where: String(parsed.where).replace(/\s+/g, ' ').trim().slice(0, 260),
+        message: predictSyncErrorMessage(parsed.message),
+        firstAt: String(parsed.firstAt).slice(0, 40),
+        lastAt: String(parsed.lastAt || parsed.firstAt).slice(0, 40),
+      };
+    } catch { return null; }
+  }
+
+  private async notifyPredictRealtimeAdmins(status: 'error' | 'recovered', issue: PredictRealtimeIssue, recovery = ''): Promise<void> {
+    const token = String(gameBotToken(this.env) || '').trim();
+    const adminIds = Array.from(new Set(String(this.env.BOT_ADMIN || '').split(/[\s,;|]+/).map((value) => value.trim()).filter((value) => /^\d+$/.test(value))));
+    if (!token || !adminIds.length) return;
+    const now = new Date().toISOString();
+    const text = status === 'error'
+      ? ['🚨 Predict Runtime Alert', 'Status: ERROR', `Type: ${issue.type}`, `Market: ${predictMarketLabel(issue.market)}`, `Where: ${issue.where}`, `Root error: ${issue.message}`, `First seen: ${issue.firstAt}`, `Detected: ${now}`].join('\n').slice(0, 3800)
+      : ['✅ Predict Recovered', 'Status: RECOVERED', `Type: ${issue.type}`, `Market: ${predictMarketLabel(issue.market)}`, `Where: ${issue.where}`, `Previous error: ${issue.message}`, `Started: ${issue.firstAt}`, `Recovered: ${now}`, `Result: ${recovery || 'Realtime round sync completed successfully again.'}`].join('\n').slice(0, 3800);
+    await Promise.allSettled(adminIds.map(async (chatId) => {
+      const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      });
+      if (!response.ok) throw new Error(`Predict realtime admin alert failed: HTTP ${response.status}`);
+    }));
   }
 
   private sendPredictSyncError(socket: WebSocket, market: PredictMarket, roundId: string): void {
@@ -480,6 +546,14 @@ function cleanUserId(value: unknown): string {
 
 function predictSyncErrorMessage(error: unknown): string {
   return (error instanceof Error ? error.message : String(error || 'Unknown Predict realtime error')).replace(/\s+/g, ' ').trim().slice(0, 320) || 'Unknown Predict realtime error';
+}
+
+function predictRealtimeIssueKey(market: PredictMarket): string {
+  return `${PREDICT_RUNTIME_ISSUE_PREFIX}${market}:${PREDICT_REALTIME_ISSUE_TYPE}`;
+}
+
+function predictMarketLabel(market: PredictMarket): string {
+  return market === 'bitcoin' ? 'Bitcoin' : market === 'gold' ? 'Gold' : 'Oil';
 }
 
 function isPredictOpsRealtimeState(value: unknown): value is PredictOpsRealtimeState {
