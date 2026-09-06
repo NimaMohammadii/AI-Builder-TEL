@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { getPlayZoneCardVisibility, isPlayZoneVisibilityAdmin, setPlayZoneCardVisibility } from './play-zone-card-visibility';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { callback_query?: Callback };
@@ -22,7 +23,10 @@ export async function handlePlayZoneCardAdminRequest(request: Request, env: Env)
     }
     await sendMenu(env, env.BOT_TOKEN, chatId, messageId);
   } catch (error) {
-    await tg(env.BOT_TOKEN, 'sendMessage', { chat_id: chatId, text: `❌ ${error instanceof Error ? error.message : 'ذخیره تنظیمات ناموفق بود.'}` }).catch(() => undefined);
+    await upsertTelegramTextMenu(env, env.BOT_TOKEN, tg, chatId, messageId, {
+      text: `❌ ${error instanceof Error ? error.message : 'ذخیره تنظیمات ناموفق بود.'}`,
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:playcards' }]] },
+    }).catch(() => undefined);
   }
   return ok();
 }
@@ -34,13 +38,10 @@ async function sendMenu(env: Env, token: string, chatId: number, messageId?: num
     callback_data: `botadmin:playcard:${card.id}:${card.visible ? 'hide' : 'show'}`,
   }]);
   rows.push([{ text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]);
-  await upsert(token, chatId, messageId, '🎮 نمایش کارت‌های Play Hub\n\nبا لمس هر بازی، کارت آن برای همه کاربران از جمله ادمین مخفی یا دوباره نمایش داده می‌شود.', rows);
-}
-
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Button[][]): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard } };
-  if (messageId && await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false)) return;
-  await tg(token, 'sendMessage', payload);
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text: '🎮 نمایش کارت‌های Play Hub\n\nبا لمس هر بازی، کارت آن برای همه کاربران از جمله ادمین مخفی یا دوباره نمایش داده می‌شود.',
+    reply_markup: { inline_keyboard: rows },
+  });
 }
 
 async function tg(token: string, method: string, payload: unknown): Promise<unknown> {
