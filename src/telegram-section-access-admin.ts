@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
-import { getTelegramMenuMessageId, setTelegramMenuMessageId } from './telegram-menu-state';
+import { getTelegramMenuMessageId, setTelegramMenuMessageId, upsertTelegramTextMenu } from './telegram-menu-state';
 
 type Message = { chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
@@ -55,7 +55,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     await clearLegacyAdminState(env, callback.from.id);
     await env.BOT_CACHE.put(lockStateKey(callback.from.id), sectionId, { expirationTtl: 900 });
     const label = sectionLabel(sectionId);
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `🔒 قفل ${label}\n\nمدت قفل را به دقیقه بفرستید.\nمثال: 30 یا 120\n\nحداقل 1 دقیقه و حداکثر 43200 دقیقه.`,
       [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:access:list' }]],
     );
@@ -90,6 +90,8 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   const sectionId = normalizeSectionId(await env.BOT_CACHE.get(lockStateKey(userId)).catch(() => null));
   if (!sectionId) return null;
 
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: (message as Message & { message_id?: number }).message_id }).catch(() => undefined);
+
   if (text === '/cancel' || text === 'لغو') {
     await clearLockState(env, userId);
     await sendAccessMenu(env, token, message.chat.id);
@@ -97,13 +99,19 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   }
 
   if (!/^\d+$/.test(text)) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'فقط تعداد دقیقه را به‌صورت عدد صحیح بفرستید. مثال: 60' }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      `❌ فقط تعداد دقیقه را به‌صورت عدد صحیح بفرستید. مثال: 60\n\n🔒 قفل ${sectionLabel(sectionId)}\n\nمدت قفل را به دقیقه بفرستید.`,
+      [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:access:list' }]],
+    );
     return ok();
   }
 
   const minutes = Number(text);
   if (!Number.isSafeInteger(minutes) || minutes < 1 || minutes > 43_200) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'مدت قفل باید بین 1 تا 43200 دقیقه باشد.' }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      `❌ مدت قفل باید بین 1 تا 43200 دقیقه باشد.\n\n🔒 قفل ${sectionLabel(sectionId)}\n\nمدت قفل را به دقیقه بفرستید.`,
+      [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:access:list' }]],
+    );
     return ok();
   }
 
@@ -112,14 +120,17 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     await clearLockState(env, userId);
     await sendAccessMenu(env, token, message.chat.id, undefined, `✅ ${sectionLabel(sectionId)} برای ${formatMinutes(minutes)} قفل شد.`);
   } catch (error) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'قفل کردن بخش ناموفق بود.'}` }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      `❌ ${error instanceof Error ? error.message : 'قفل کردن بخش ناموفق بود.'}\n\n🔒 قفل ${sectionLabel(sectionId)}\n\nمدت قفل را دوباره بفرستید.`,
+      [[{ text: '⬅️ بازگشت', callback_data: 'botadmin:access:list' }]],
+    );
   }
   return ok();
 }
 
 export async function sendAdminHome(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
   const trackedMessageId = messageId ?? await getTrackedMenuMessageId(env, chatId);
-  const activeMessageId = await upsert(token, chatId, trackedMessageId,
+  const activeMessageId = await upsert(env, token, chatId, trackedMessageId,
     '🛡 پنل مدیریت ربات گیم\n\nبخش موردنظر را انتخاب کنید.',
     [
       [
@@ -198,7 +209,7 @@ async function sendAccessMenu(env: Env, token: string, chatId: number, messageId
   ]);
 
   const status = activeLines.length ? `قفل‌های فعال:\n${activeLines.join('\n')}` : 'در حال حاضر هیچ بخشی قفل نیست.';
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}🔐 قفل بخش‌های مینی‌اپ\n\n${status}\n\nبرای قفل کردن یک بخش روی نامش بزنید. بخش‌های آزاد دو‌تایی چیده شده‌اند؛ قفل‌های فعال دکمه تمدید و باز کردن جدا دارند.`,
     rows,
   );
@@ -250,15 +261,12 @@ function isAdminCommand(text: string): boolean {
   return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return messageId;
-    await tg(token, 'deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => undefined);
-  }
-  const sent = await tg<{ message_id?: number }>(token, 'sendMessage', payload);
-  return sent?.message_id;
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<number | undefined> {
+  return upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
