@@ -461,7 +461,7 @@ function cleanPredictMarket(value: unknown): PredictMarket | null {
 
 function cleanPredictRoundId(value: unknown, market: PredictMarket): string {
   const roundId = String(value || '').trim();
-  return new RegExp(`^pr_${market}\\d+$`).test(roundId) ? roundId : '';
+  return new RegExp(`^pr_${market}_\\d+$`).test(roundId) ? roundId : '';
 }
 
 function normalizeNano(value: unknown): number {
