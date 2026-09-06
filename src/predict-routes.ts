@@ -272,10 +272,23 @@ async function settleRound(env: Env, round: RoundRow): Promise<void> {
   if (fresh.status === 'refunding' || fresh.status === 'refunded') return;
   if (fresh.status === 'settled' && Number(activeCount?.count || 0) <= 0) return;
   const market = normalizeTradeMarket(fresh.market);
-  const endPrice = fresh.end_price == null ? (market === 'bitcoin' ? await fetchPrice(market) : await fetchMonthlyBoundaryPrice(market, Date.parse(fresh.ends_at), 'end')) : Number(fresh.end_price);
-  const result: RoundResult = endPrice > Number(fresh.start_price) ? 'up' : endPrice < Number(fresh.start_price) ? 'down' : 'draw';
-  const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status NOT IN ('settled','refunding','refunded')`).bind(endPrice, result, freshId).run();
-  if (fresh.status !== 'settled' && (lock.meta?.changes || 0) <= 0) return;
+  let endPrice = fresh.end_price == null ? 0 : Number(fresh.end_price);
+  let result: RoundResult = fresh.result === 'up' || fresh.result === 'down' || fresh.result === 'draw' ? fresh.result : null;
+  if (fresh.status === 'open') {
+    const candidateEndPrice = endPrice > 0 ? endPrice : (market === 'bitcoin' ? await fetchPrice(market) : await fetchMonthlyBoundaryPrice(market, Date.parse(fresh.ends_at), 'end'));
+    const candidateResult: RoundResult = candidateEndPrice > Number(fresh.start_price) ? 'up' : candidateEndPrice < Number(fresh.start_price) ? 'down' : 'draw';
+    const lock = await env.DB.prepare(`UPDATE predict_rounds SET status = 'settling', end_price = ?, result = ? WHERE id = ? AND status = 'open'`).bind(candidateEndPrice, candidateResult, freshId).run();
+    if ((lock.meta?.changes || 0) > 0) {
+      endPrice = candidateEndPrice;
+      result = candidateResult;
+    } else {
+      const locked = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(freshId).first<RoundRow>();
+      if (!locked || locked.status === 'refunding' || locked.status === 'refunded') return;
+      endPrice = locked.end_price == null ? 0 : Number(locked.end_price);
+      result = locked.result === 'up' || locked.result === 'down' || locked.result === 'draw' ? locked.result : null;
+    }
+  }
+  if (!(endPrice > 0) || !result) return;
   const all = (await env.DB.prepare('SELECT * FROM predict_bets WHERE round_id = ?').bind(freshId).all<BetRow>()).results || [];
   const eligible = all.filter((b) => b.status !== 'failed' && b.status !== 'pending');
   const active = eligible.filter((b) => b.status === 'active' || b.status === 'settling_payment');
