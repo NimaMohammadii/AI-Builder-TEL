@@ -2,7 +2,7 @@ import type { Env } from './types';
 import type { SectionLock } from './section-access';
 
 type LockMessage = { type: 'section-access'; serverNow: number; locks: Record<string, SectionLock> };
-type PredictOpsMarketState = { manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null };
+type PredictOpsMarketState = { manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null; capacityReached?: boolean };
 export type PredictOpsRealtimeState = {
   emergencyPaused: boolean;
   maintenanceMessage: string;
@@ -105,6 +105,7 @@ function isPredictOpsRealtimeState(value: unknown): value is PredictOpsRealtimeS
     const item = state.markets[market] as PredictOpsMarketState | undefined;
     if (!item || typeof item.manualPaused !== 'boolean' || typeof item.circuitOpen !== 'boolean') return false;
     if (item.circuitReason !== null && typeof item.circuitReason !== 'string') return false;
+    if (item.capacityReached !== undefined && typeof item.capacityReached !== 'boolean') return false;
   }
   return state.updatedAt === null || typeof state.updatedAt === 'string';
 }

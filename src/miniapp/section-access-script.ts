@@ -9,8 +9,9 @@ export const SECTION_ACCESS_SCRIPT = `
   var liveReconnectTimer=0;
   var reconnectAttempt=0;
   var predictOpsState=null;
-  var predictUserAccess={blocked:{bitcoin:false,gold:false,oil:false}};
+  var predictUserControls=null;
   var predictUserAccessRequest=0;
+  var predictUserExpiryTimer=0;
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
@@ -39,38 +40,59 @@ export const SECTION_ACCESS_SCRIPT = `
     var market=String(button&&button.getAttribute('data-vexa-predict-market')||'bitcoin').toLowerCase();
     return market==='bitcoin'||market==='gold'||market==='oil'?market:'';
   }
+  function clearPredictUserExpiry(){if(predictUserExpiryTimer){clearTimeout(predictUserExpiryTimer);predictUserExpiryTimer=0}}
+  function schedulePredictUserExpiry(){
+    clearPredictUserExpiry();
+    var blocks=predictUserControls&&Array.isArray(predictUserControls.sectionBlocks)?predictUserControls.sectionBlocks:[],next=0;
+    blocks.forEach(function(block){
+      var section=String(block&&block.sectionId||'');if(section.indexOf('predict-')!==0)return;
+      var remaining=Number(block&&block.remainingMs);if(!isFinite(remaining)||remaining<=0)return;
+      if(!next||remaining<next)next=remaining;
+    });
+    if(next>0)predictUserExpiryTimer=setTimeout(function(){predictUserExpiryTimer=0;refreshPredictUserAccess()},Math.max(50,Math.ceil(next)+60));
+  }
+  function applyPredictUserControls(result){
+    if(!result)return false;predictUserControls=result;schedulePredictUserExpiry();renderPredictOps();return true;
+  }
   function refreshPredictUserAccess(){
     var id=userId();if(!id)return Promise.resolve(false);
     var requestId=++predictUserAccessRequest;
     return fetch('/app/api/user-controls?userId='+encodeURIComponent(id),{cache:'no-store'})
       .then(function(response){return response.ok?response.json():null})
-      .then(function(result){
-        if(requestId!==predictUserAccessRequest||!result)return false;
-        var sections=Array.isArray(result.blockedSections)?result.blockedSections:[];
-        predictUserAccess={blocked:{
-          bitcoin:sections.indexOf('predict-bitcoin')>=0,
-          gold:sections.indexOf('predict-gold')>=0,
-          oil:sections.indexOf('predict-oil')>=0
-        }};
-        renderPredictOps();
-        return true;
-      })
+      .then(function(result){if(requestId!==predictUserAccessRequest||!result)return false;return applyPredictUserControls(result)})
       .catch(function(){return false});
+  }
+  function activePredictUserBlock(market){
+    var blocks=predictUserControls&&Array.isArray(predictUserControls.sectionBlocks)?predictUserControls.sectionBlocks:[];
+    for(var i=0;i<blocks.length;i++){var block=blocks[i];if(block&&block.blocked!==false&&String(block.sectionId||'')==='predict-'+market)return block}
+    return null;
   }
   function predictOpsBlockState(){
     var market=activePredictMarket();if(!market)return null;
-    if(predictUserAccess&&predictUserAccess.blocked&&predictUserAccess.blocked[market])return{kind:'user',message:'Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.'};
+    if(activePredictUserBlock(market))return{kind:'user',health:'Access limited',message:'Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.'};
     var state=predictOpsState||window.VexaPredictOpsState;if(!state)return null;
     var item=state.markets&&state.markets[market];
     var custom=String(state.maintenanceMessage||'').trim();
-    if(state.emergencyPaused)return{kind:'market',message:custom||'Predictions are temporarily unavailable. Please try again shortly.'};
-    if(item&&item.manualPaused)return{kind:'market',message:custom||(market==='bitcoin'?'Bitcoin':market==='gold'?'Gold':'Oil')+' predictions are temporarily paused.'};
-    if(item&&item.circuitOpen)return{kind:'market',message:custom||String(item.circuitReason||'Live price feed is temporarily unavailable. New predictions are paused.')};
+    if(state.emergencyPaused)return{kind:'market',health:'Paused',message:custom||'Predictions are temporarily unavailable. Please try again shortly.'};
+    if(item&&item.manualPaused)return{kind:'market',health:'Paused',message:custom||(market==='bitcoin'?'Bitcoin':market==='gold'?'Gold':'Oil')+' predictions are temporarily paused.'};
+    if(item&&item.circuitOpen)return{kind:'feed',health:'Price feed issue',message:custom||'Live price feed is temporarily unavailable. New predictions are paused.'};
+    if(item&&item.capacityReached)return{kind:'capacity',health:'Capacity full',message:'This market has reached its current betting capacity. Please try again later.'};
     return null;
   }
   function removePredictOpsNotice(){var notice=document.getElementById('vexaPredictOpsNotice');if(notice)notice.remove()}
+  function removePredictHealth(){var health=document.getElementById('vexaPredictHealth');if(health)health.remove()}
+  function renderPredictHealth(){
+    var root=document.getElementById('predictzone');if(!root){removePredictHealth();return}
+    var card=root.querySelector('[data-predict-card]');if(!card)return;
+    var market=activePredictMarket();if(!market){removePredictHealth();return}
+    var block=predictOpsBlockState(),label=block&&block.health?block.health:(predictOpsState||window.VexaPredictOpsState?'Live':'Checking');
+    var health=document.getElementById('vexaPredictHealth');
+    if(!health){health=document.createElement('div');health.id='vexaPredictHealth';health.setAttribute('aria-live','polite');health.style.cssText='position:absolute;left:13px;top:15px;z-index:6;min-height:22px;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:transparent;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);box-shadow:none;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.70);font:760 9px/1 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.01em;pointer-events:none';card.appendChild(health)}
+    health.setAttribute('data-vexa-predict-health',String(block&&block.kind||'live'));if(health.textContent!==label)health.textContent=label;
+  }
   function renderPredictOps(){
-    var root=document.getElementById('predictzone');if(!root){removePredictOpsNotice();return}
+    var root=document.getElementById('predictzone');if(!root){removePredictOpsNotice();removePredictHealth();return}
+    renderPredictHealth();
     var block=predictOpsBlockState();
     if(!block||!block.message){removePredictOpsNotice();return}
     var card=root.querySelector('[data-predict-card]');if(!card)return;
@@ -118,7 +140,7 @@ export const SECTION_ACCESS_SCRIPT = `
   window.VexaSectionLocks={reload:reapply,refresh:function(){if(liveSocket)try{liveSocket.close()}catch(e){}else connectLive();return Promise.resolve(cache)}};
   window.addEventListener('vexa:section-mounted',function(){queueMicrotask(reapply)});
   window.addEventListener('vexa:view-changed',function(){queueMicrotask(renderPredictOps)});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(liveReconnectTimer)}else if(!liveSocket){refreshPredictUserAccess();connectLive()}});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(liveReconnectTimer);clearPredictUserExpiry()}else{refreshPredictUserAccess();schedulePredictUserExpiry();if(!liveSocket)connectLive()}});
   window.addEventListener('online',function(){refreshPredictUserAccess();if(!liveSocket)connectLive()});
   function init(){refreshPredictUserAccess();connectLive()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()

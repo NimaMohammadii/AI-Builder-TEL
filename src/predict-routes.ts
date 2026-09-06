@@ -1,7 +1,8 @@
 import app from './index';
 import './prediction-events';
 import type { Env } from './types';
-import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls } from './user-controls';
+import { publishPredictOpsState, type PredictOpsRealtimeState } from './section-lock-events';
+import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls, publicUserControls, setUserSectionBlocked, type UserSectionBlock } from './user-controls';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
 const CACHE_LONG = 'public, max-age=31536000, immutable';
@@ -20,6 +21,7 @@ const PREDICT_OPS_FEED_PREFIX = 'admin:predict-ops-feed:v1:';
 const PREDICT_OPS_INCIDENTS_KEY = 'admin:predict-ops-incidents:v1';
 const PREDICT_OPS_INCIDENT_LIMIT = 24;
 const DEFAULT_PREDICT_MAINTENANCE = 'Predictions are temporarily unavailable. Please try again shortly.';
+const USER_MARKET_BLOCK_MESSAGE = 'Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.';
 type PredictMarket = typeof PREDICT_MARKETS[number];
 type TradeMarket = typeof TRADE_MARKETS[number];
 type PredictSide = 'up' | 'down';
@@ -27,13 +29,24 @@ type RoundResult = 'up' | 'down' | 'draw' | null;
 type RoundRow = { id: string; market: string; starts_at: string; ends_at: string; start_price: number; end_price: number | null; status: string; result: string | null; settled_at: string | null; created_at: string };
 type BetRow = { id: string; round_id: string; market: string; user_id: string; side: string; stake_nano: number; ton_usd_snapshot: number; stake_usd_snapshot: number; status: string; payout_nano: number; created_at: string };
 type MarketSnapshot = { price: number; history: number[] };
-type PredictOpsControl = { emergencyPaused: boolean; maintenanceMessage: string; pausedMarkets: Record<TradeMarket, boolean>; updatedAt: string | null };
+type PredictOpsControl = { emergencyPaused: boolean; maintenanceMessage: string; pausedMarkets: Record<TradeMarket, boolean>; exposureLimitsNano: Record<TradeMarket, number>; updatedAt: string | null };
 type PredictOpsFeed = { lastPrice: number | null; lastSuccessAt: string | null; circuitOpen: boolean; circuitReason: string | null; circuitOpenedAt: string | null; lastError: string | null; lastErrorAt: string | null };
+type PredictUserLimitRow = { user_id: string; max_bet_nano: number; daily_limit_nano: number; updated_at: string };
+type PredictAuditRow = { id: string; admin_id: string; action: string; user_id: string | null; market: string | null; target_id: string | null; detail: string | null; created_at: string };
+type PredictBetAdminRow = BetRow & { round_status: string; round_result: string | null; round_ends_at: string };
 export type PredictOpsMarket = TradeMarket;
 export type PredictOpsIncident = { id: string; at: string; type: string; market: TradeMarket | null; message: string };
 export type PredictOpsRoundView = { id: string; market: TradeMarket; startsAt: string; endsAt: string; startPrice: number; endPrice: number | null; status: string; result: string | null; settledAt: string | null; createdAt: string; due: boolean; totalBets: number; totalStakeNano: number; counts: Record<string, number> };
-export type PredictOpsMarketStatus = { market: TradeMarket; manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null; lastPrice: number | null; lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null; latestRound: PredictOpsRoundView | null; lastSettledAt: string | null; dueSettlementCount: number };
+export type PredictOpsMarketStatus = { market: TradeMarket; manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null; lastPrice: number | null; lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null; latestRound: PredictOpsRoundView | null; lastSettledAt: string | null; dueSettlementCount: number; activeExposureNano: number; exposureLimitNano: number; capacityReached: boolean };
 export type PredictOpsDashboard = { emergencyPaused: boolean; maintenanceMessage: string; updatedAt: string | null; markets: PredictOpsMarketStatus[] };
+export type PredictUserLimits = { userId: string; maxBetNano: number; dailyLimitNano: number; updatedAt: string | null };
+export type PredictUserMarketAccess = { market: TradeMarket; blocked: boolean; expiresAt: string | null; remainingMs: number | null; reason: string | null; adminNote: string | null };
+export type PredictOpsBetView = { id: string; roundId: string; market: TradeMarket; userId: string; side: string; stakeNano: number; status: string; payoutNano: number; createdAt: string; roundStatus: string; roundResult: string | null; roundEndsAt: string; refundable: boolean };
+export type PredictUserInspector = { userId: string; totalBets: number; wins: number; losses: number; refunded: number; active: number; totalStakeNano: number; totalPayoutNano: number; netNano: number; todayStakeNano: number; lastBetAt: string | null; limits: PredictUserLimits; access: PredictUserMarketAccess[]; recentBets: PredictOpsBetView[] };
+export type PredictAuditEntry = { id: string; adminId: string; action: string; userId: string | null; market: TradeMarket | null; targetId: string | null; detail: string | null; createdAt: string };
+
+type PredictBetGuard = { control: PredictOpsControl; userLimits: PredictUserLimits };
+let predictOpsTablesReady: Promise<void> | null = null;
 
 app.get('/app/api/predict-markets', async (c) => c.json(await getPredictMarkets(c.env), 200, { 'cache-control': CACHE_PREDICT_IMAGE_MANIFEST }));
 
@@ -58,6 +71,7 @@ app.post('/app/api/predict-bet', async (c) => {
   let userId = '';
   let stakeNano = 0;
   let market: TradeMarket | null = null;
+  let guard: PredictBetGuard | null = null;
   try {
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
     market = normalizeTradeMarket(String(body.market || 'bitcoin'));
@@ -66,7 +80,6 @@ app.post('/app/api/predict-bet', async (c) => {
     stakeNano = tonToNano(body.stakeTon);
     const tonUsd = cleanOptionalPrice(body.tonUsdSnapshot);
     if (stakeNano <= 0) throw new Error('Enter a valid GRAM amount');
-    await assertPredictBettingAvailable(c.env, market, userId);
     await settleDueRounds(c.env, market);
     const round = await getOrCreateCurrentRound(c.env, market);
     const roundId = cleanDbText(round.id, 'Prediction round is not ready');
@@ -83,23 +96,34 @@ app.post('/app/api/predict-bet', async (c) => {
         throw new Error('A previous prediction is still processing. Retry the same prediction.');
       }
       betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+      guard = await assertPredictBettingAvailable(c.env, market, userId, stakeNano, true);
     } else {
+      guard = await assertPredictBettingAvailable(c.env, market, userId, stakeNano, false);
       const controls = await getUserControls(c.env, userId);
       if (Number(controls.tonBalanceNano || 0) < stakeNano) throw new Error('Insufficient balance');
       betId = 'pbet_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22);
+      const exposureLimit = guard.control.exposureLimitsNano[market];
       const inserted = await c.env.DB.prepare(`INSERT INTO predict_bets (id, round_id, market, user_id, side, stake_nano, ton_usd_snapshot, stake_usd_snapshot, status, payout_nano, created_at)
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP
-        WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')`)
-        .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId)
+        WHERE NOT EXISTS (SELECT 1 FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed')
+          AND NOT EXISTS (SELECT 1 FROM predict_user_limits WHERE user_id = ? AND max_bet_nano > 0 AND ? > max_bet_nano)
+          AND NOT EXISTS (SELECT 1 FROM predict_user_limits WHERE user_id = ? AND daily_limit_nano > 0 AND (SELECT COALESCE(SUM(stake_nano), 0) FROM predict_bets WHERE user_id = ? AND status != 'failed' AND date(created_at) = date('now')) + ? > daily_limit_nano)
+          AND (? <= 0 OR (SELECT COALESCE(SUM(stake_nano), 0) FROM predict_bets WHERE market = ? AND status IN ('pending','active','settling_payment')) + ? <= ?)`)
+        .bind(betId, roundId, market, userId, side, stakeNano, tonUsd, nanoToTon(stakeNano) * tonUsd, roundId, userId, userId, stakeNano, userId, userId, stakeNano, exposureLimit, market, stakeNano, exposureLimit)
         .run();
       if ((inserted.meta?.changes || 0) <= 0) {
         existing = await c.env.DB.prepare("SELECT * FROM predict_bets WHERE round_id = ? AND user_id = ? AND status != 'failed' ORDER BY datetime(created_at) DESC LIMIT 1")
           .bind(roundId, userId)
           .first<BetRow>();
-        if (!existing || existing.status !== 'pending' || existing.market !== market || existing.side !== side || Number(existing.stake_nano || 0) !== stakeNano) {
+        if (!existing) {
+          await assertPredictBettingAvailable(c.env, market, userId, stakeNano, false);
+          throw new Error('Prediction could not be reserved. Please try again.');
+        }
+        if (existing.status !== 'pending' || existing.market !== market || existing.side !== side || Number(existing.stake_nano || 0) !== stakeNano) {
           throw new Error('You already placed a prediction in this round. Wait for the next round.');
         }
         betId = cleanDbText(existing.id, 'Prediction bet is not ready');
+        guard = await assertPredictBettingAvailable(c.env, market, userId, stakeNano, true);
       }
     }
 
@@ -112,10 +136,16 @@ app.post('/app/api/predict-bet', async (c) => {
         throw new Error('Could not activate prediction');
       }
     }
-    return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await getUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
+    if (market && guard?.control.exposureLimitsNano[market] > 0) await publishPredictOpsRealtime(c.env).catch(() => undefined);
+    return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await publicUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     if (market && isPredictPriceFeedError(error)) await notePredictFeedFailure(c.env, market, messageOf(error)).catch(() => undefined);
-    if (betId) await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => undefined);
+    let releasedReservation = false;
+    if (betId) {
+      const failed = await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => null);
+      releasedReservation = Number(failed?.meta?.changes || 0) > 0;
+    }
+    if (releasedReservation && market) await publishPredictOpsRealtime(c.env).catch(() => undefined);
     return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not place prediction' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
@@ -145,7 +175,7 @@ async function publicRoundJson(env: Env, round: RoundRow, userId: string, livePr
   const pools = await poolJson(env, roundId);
   const userBets = cleanedUserId ? await userBetsJson(env, roundId, cleanedUserId) : [];
   const recentUserBets = cleanedUserId ? await recentUserBetsJson(env, String(round.market || ''), cleanedUserId) : [];
-  const userControls = cleanedUserId ? await getUserControls(env, cleanedUserId) : null;
+  const userControls = cleanedUserId ? await publicUserControls(env, cleanedUserId) : null;
   const now = Date.now();
   const ends = Date.parse(String(round.ends_at || ''));
   const lockAt = betLockAtMs(round);
@@ -217,6 +247,7 @@ async function settleDueRounds(env: Env, market: TradeMarket, force = false): Pr
     await settleRound(env, round);
     settled += 1;
   }
+  if (settled > 0) await publishPredictOpsRealtime(env).catch(() => undefined);
   return settled;
 }
 async function settleRound(env: Env, round: RoundRow): Promise<void> {
@@ -307,6 +338,21 @@ export async function getPredictOpsDashboard(env: Env): Promise<PredictOpsDashbo
   return { emergencyPaused: control.emergencyPaused, maintenanceMessage: control.maintenanceMessage, updatedAt: control.updatedAt, markets };
 }
 
+export async function publishPredictOpsRealtime(env: Env, refreshRound = false): Promise<void> {
+  const dashboard = await getPredictOpsDashboard(env);
+  const state: PredictOpsRealtimeState = {
+    emergencyPaused: dashboard.emergencyPaused,
+    maintenanceMessage: dashboard.maintenanceMessage,
+    updatedAt: dashboard.updatedAt,
+    markets: {
+      bitcoin: realtimeMarketState(dashboard, 'bitcoin'),
+      gold: realtimeMarketState(dashboard, 'gold'),
+      oil: realtimeMarketState(dashboard, 'oil'),
+    },
+  };
+  await publishPredictOpsState(env, state, refreshRound);
+}
+
 export async function listPredictOpsRounds(env: Env, marketInput: unknown, limit = 8): Promise<PredictOpsRoundView[]> {
   const market = normalizeTradeMarket(String(marketInput || ''));
   const cleanLimit = Math.max(1, Math.min(12, Math.floor(Number(limit) || 8)));
@@ -325,7 +371,7 @@ export async function listPredictOpsDueRounds(env: Env): Promise<PredictOpsRound
   return Promise.all((rows.results || []).map((row) => predictOpsRoundView(env, row)));
 }
 
-export async function retryPredictSettlement(env: Env, roundIdInput: unknown): Promise<PredictOpsRoundView> {
+export async function retryPredictSettlement(env: Env, roundIdInput: unknown, adminIdInput: unknown = ''): Promise<PredictOpsRoundView> {
   const roundId = cleanPredictRoundId(roundIdInput);
   const row = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id = ?').bind(roundId).first<RoundRow>();
   if (!row) throw new Error('Prediction round not found.');
@@ -335,41 +381,58 @@ export async function retryPredictSettlement(env: Env, roundIdInput: unknown): P
     const updated = await getPredictOpsRound(env, roundId);
     if (!updated) throw new Error('Prediction round not found after settlement retry.');
     await appendPredictOpsIncident(env, 'settlement_retry_ok', updated.market, `Settlement retry completed for ${roundId}.`).catch(() => undefined);
+    await appendPredictAudit(env, adminIdInput, 'settlement_retry', { market: updated.market, targetId: roundId, detail: 'Settlement retry completed.' }).catch(() => undefined);
+    await publishPredictOpsRealtime(env, true).catch(() => undefined);
     return updated;
   } catch (error) {
     const market = normalizeTradeMarket(row.market);
     if (isPredictPriceFeedError(error)) await notePredictFeedFailure(env, market, messageOf(error)).catch(() => undefined);
     await appendPredictOpsIncident(env, 'settlement_retry_failed', market, `Settlement retry failed for ${roundId}: ${messageOf(error)}`).catch(() => undefined);
+    await appendPredictAudit(env, adminIdInput, 'settlement_retry_failed', { market, targetId: roundId, detail: messageOf(error) }).catch(() => undefined);
     throw error;
   }
 }
 
-export async function setPredictOpsEmergencyPaused(env: Env, paused: boolean): Promise<PredictOpsControl> {
+export async function setPredictOpsEmergencyPaused(env: Env, paused: boolean, adminIdInput: unknown = ''): Promise<PredictOpsControl> {
   const current = await readPredictOpsControl(env);
   if (current.emergencyPaused === paused) return current;
   const next = { ...current, emergencyPaused: paused, updatedAt: new Date().toISOString() };
   await writePredictOpsControl(env, next);
   await appendPredictOpsIncident(env, paused ? 'emergency_pause' : 'emergency_resume', null, paused ? 'All market predictions paused.' : 'Emergency pause cleared.').catch(() => undefined);
+  await appendPredictAudit(env, adminIdInput, paused ? 'emergency_pause' : 'emergency_resume', { detail: paused ? 'All Predict markets paused.' : 'Emergency pause cleared.' }).catch(() => undefined);
   return next;
 }
 
-export async function setPredictOpsMarketPaused(env: Env, marketInput: unknown, paused: boolean): Promise<PredictOpsControl> {
+export async function setPredictOpsMarketPaused(env: Env, marketInput: unknown, paused: boolean, adminIdInput: unknown = ''): Promise<PredictOpsControl> {
   const market = normalizeTradeMarket(String(marketInput || ''));
   const current = await readPredictOpsControl(env);
   if (current.pausedMarkets[market] === paused) return current;
   const next = { ...current, pausedMarkets: { ...current.pausedMarkets, [market]: paused }, updatedAt: new Date().toISOString() };
   await writePredictOpsControl(env, next);
   await appendPredictOpsIncident(env, paused ? 'market_pause' : 'market_resume', market, paused ? `${market} predictions paused.` : `${market} predictions resumed.`).catch(() => undefined);
+  await appendPredictAudit(env, adminIdInput, paused ? 'market_pause' : 'market_resume', { market, detail: paused ? 'Market betting paused.' : 'Market betting resumed.' }).catch(() => undefined);
   return next;
 }
 
-export async function setPredictOpsMaintenanceMessage(env: Env, messageInput: unknown): Promise<PredictOpsControl> {
+export async function setPredictOpsMaintenanceMessage(env: Env, messageInput: unknown, adminIdInput: unknown = ''): Promise<PredictOpsControl> {
   const message = String(messageInput ?? '').replace(/\s+/g, ' ').trim().slice(0, 180);
   const current = await readPredictOpsControl(env);
   if (current.maintenanceMessage === message) return current;
   const next = { ...current, maintenanceMessage: message, updatedAt: new Date().toISOString() };
   await writePredictOpsControl(env, next);
   await appendPredictOpsIncident(env, message ? 'maintenance_message_set' : 'maintenance_message_cleared', null, message ? 'Predict maintenance message updated.' : 'Predict maintenance message cleared.').catch(() => undefined);
+  await appendPredictAudit(env, adminIdInput, message ? 'maintenance_message_set' : 'maintenance_message_cleared', { detail: message || 'Message cleared.' }).catch(() => undefined);
+  return next;
+}
+
+export async function setPredictOpsExposureLimit(env: Env, marketInput: unknown, limitNanoInput: unknown, adminIdInput: unknown = ''): Promise<PredictOpsControl> {
+  const market = normalizeTradeMarket(String(marketInput || ''));
+  const limitNano = normalizePolicyNano(limitNanoInput);
+  const current = await readPredictOpsControl(env);
+  if (current.exposureLimitsNano[market] === limitNano) return current;
+  const next = { ...current, exposureLimitsNano: { ...current.exposureLimitsNano, [market]: limitNano }, updatedAt: new Date().toISOString() };
+  await writePredictOpsControl(env, next);
+  await appendPredictAudit(env, adminIdInput, 'market_exposure_limit', { market, detail: limitNano > 0 ? `Exposure limit set to ${nanoToTon(limitNano)} GRAM.` : 'Exposure limit disabled.' }).catch(() => undefined);
   return next;
 }
 
@@ -389,25 +452,161 @@ export async function getPredictOpsIncidents(env: Env): Promise<PredictOpsIncide
   } catch { return []; }
 }
 
+export async function getPredictUserLimits(env: Env, userIdInput: unknown): Promise<PredictUserLimits> {
+  const userId = cleanUserId(userIdInput);
+  await ensurePredictOpsTables(env);
+  const row = await env.DB.prepare('SELECT user_id, max_bet_nano, daily_limit_nano, updated_at FROM predict_user_limits WHERE user_id = ? LIMIT 1').bind(userId).first<PredictUserLimitRow>();
+  return { userId, maxBetNano: normalizePolicyNano(row?.max_bet_nano), dailyLimitNano: normalizePolicyNano(row?.daily_limit_nano), updatedAt: row?.updated_at || null };
+}
+
+export async function setPredictUserLimits(env: Env, userIdInput: unknown, patch: { maxBetNano?: unknown; dailyLimitNano?: unknown }, adminIdInput: unknown): Promise<PredictUserLimits> {
+  const userId = cleanUserId(userIdInput);
+  const current = await getPredictUserLimits(env, userId);
+  const maxBetNano = patch.maxBetNano === undefined ? current.maxBetNano : normalizePolicyNano(patch.maxBetNano);
+  const dailyLimitNano = patch.dailyLimitNano === undefined ? current.dailyLimitNano : normalizePolicyNano(patch.dailyLimitNano);
+  await env.DB.prepare(`INSERT INTO predict_user_limits (user_id, max_bet_nano, daily_limit_nano, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET max_bet_nano = excluded.max_bet_nano, daily_limit_nano = excluded.daily_limit_nano, updated_at = CURRENT_TIMESTAMP`)
+    .bind(userId, maxBetNano, dailyLimitNano).run();
+  await appendPredictAudit(env, adminIdInput, 'user_bet_limits', { userId, detail: `Max/bet=${nanoToTon(maxBetNano)} GRAM; daily=${nanoToTon(dailyLimitNano)} GRAM.` }).catch(() => undefined);
+  return getPredictUserLimits(env, userId);
+}
+
+export async function getPredictUserAccess(env: Env, userIdInput: unknown): Promise<PredictUserMarketAccess[]> {
+  const userId = cleanUserId(userIdInput);
+  const controls = await getUserControls(env, userId);
+  return TRADE_MARKETS.map((market) => userMarketAccessFromControls(controls.sectionBlocks, market));
+}
+
+export async function setPredictUserMarketAccess(env: Env, adminIdInput: unknown, userIdInput: unknown, marketInput: unknown, blocked: boolean, options: { expiresAt?: unknown; reason?: unknown; adminNote?: unknown } = {}): Promise<PredictUserMarketAccess[]> {
+  const userId = cleanUserId(userIdInput);
+  const market = normalizeTradeMarket(String(marketInput || ''));
+  await setUserSectionBlocked(env, userId, `predict-${market}`, blocked, blocked ? options.expiresAt ?? null : null, { reason: options.reason, adminNote: options.adminNote });
+  await appendPredictAudit(env, adminIdInput, blocked ? 'user_market_block' : 'user_market_allow', {
+    userId,
+    market,
+    detail: blocked ? `Access blocked${options.expiresAt ? ` until ${String(options.expiresAt)}` : ' permanently'}. Reason: ${cleanAuditText(options.reason, 80) || 'Manual review'}.` : 'Access restored.',
+  }).catch(() => undefined);
+  return getPredictUserAccess(env, userId);
+}
+
+export async function setPredictUserAllAccess(env: Env, adminIdInput: unknown, userIdInput: unknown, blocked: boolean, options: { expiresAt?: unknown; reason?: unknown; adminNote?: unknown } = {}): Promise<PredictUserMarketAccess[]> {
+  const userId = cleanUserId(userIdInput);
+  for (const market of TRADE_MARKETS) await setUserSectionBlocked(env, userId, `predict-${market}`, blocked, blocked ? options.expiresAt ?? null : null, { reason: options.reason, adminNote: options.adminNote });
+  await appendPredictAudit(env, adminIdInput, blocked ? 'user_predict_block_all' : 'user_predict_allow_all', {
+    userId,
+    detail: blocked ? `All Predict markets blocked${options.expiresAt ? ` until ${String(options.expiresAt)}` : ' permanently'}. Reason: ${cleanAuditText(options.reason, 80) || 'Manual review'}.` : 'All Predict market access restored.',
+  }).catch(() => undefined);
+  return getPredictUserAccess(env, userId);
+}
+
+export async function updatePredictUserMarketAccessNote(env: Env, adminIdInput: unknown, userIdInput: unknown, marketInput: unknown, reasonInput: unknown, adminNoteInput: unknown): Promise<PredictUserMarketAccess[]> {
+  const userId = cleanUserId(userIdInput);
+  const market = normalizeTradeMarket(String(marketInput || ''));
+  const controls = await getUserControls(env, userId);
+  const block = controls.sectionBlocks.find((item) => item.sectionId === `predict-${market}` && item.blocked);
+  if (!block) throw new Error('This market is not blocked for the user.');
+  const reason = cleanAuditText(reasonInput, 80) || 'Manual review';
+  const adminNote = cleanAuditText(adminNoteInput, 180);
+  await setUserSectionBlocked(env, userId, `predict-${market}`, true, block.expiresAt, { reason, adminNote });
+  await appendPredictAudit(env, adminIdInput, 'user_market_note', { userId, market, detail: `Reason: ${reason}${adminNote ? `; note: ${adminNote}` : ''}` }).catch(() => undefined);
+  return getPredictUserAccess(env, userId);
+}
+
+export async function getPredictUserInspector(env: Env, userIdInput: unknown): Promise<PredictUserInspector> {
+  const userId = cleanUserId(userIdInput);
+  await Promise.all([ensurePredictTables(env), ensurePredictOpsTables(env)]);
+  const [stats, recent, limits, access] = await Promise.all([
+    env.DB.prepare(`SELECT
+      COUNT(*) AS totalBets,
+      COALESCE(SUM(CASE WHEN status='won' THEN 1 ELSE 0 END),0) AS wins,
+      COALESCE(SUM(CASE WHEN status='lost' THEN 1 ELSE 0 END),0) AS losses,
+      COALESCE(SUM(CASE WHEN status='refunded' THEN 1 ELSE 0 END),0) AS refunded,
+      COALESCE(SUM(CASE WHEN status IN ('pending','active','settling_payment') THEN 1 ELSE 0 END),0) AS active,
+      COALESCE(SUM(stake_nano),0) AS totalStakeNano,
+      COALESCE(SUM(payout_nano),0) AS totalPayoutNano,
+      COALESCE(SUM(CASE WHEN status!='failed' AND date(created_at)=date('now') THEN stake_nano ELSE 0 END),0) AS todayStakeNano,
+      MAX(created_at) AS lastBetAt
+      FROM predict_bets WHERE user_id=? AND status!='failed'`).bind(userId).first<{ totalBets: number; wins: number; losses: number; refunded: number; active: number; totalStakeNano: number; totalPayoutNano: number; todayStakeNano: number; lastBetAt: string | null }>(),
+    env.DB.prepare(`SELECT b.*, r.status AS round_status, r.result AS round_result, r.ends_at AS round_ends_at FROM predict_bets b JOIN predict_rounds r ON r.id=b.round_id WHERE b.user_id=? ORDER BY datetime(b.created_at) DESC LIMIT 8`).bind(userId).all<PredictBetAdminRow>(),
+    getPredictUserLimits(env, userId),
+    getPredictUserAccess(env, userId),
+  ]);
+  const totalStakeNano = normalizePolicyNano(stats?.totalStakeNano);
+  const totalPayoutNano = normalizePolicyNano(stats?.totalPayoutNano);
+  return {
+    userId,
+    totalBets: Number(stats?.totalBets || 0), wins: Number(stats?.wins || 0), losses: Number(stats?.losses || 0), refunded: Number(stats?.refunded || 0), active: Number(stats?.active || 0),
+    totalStakeNano, totalPayoutNano, netNano: totalPayoutNano - totalStakeNano, todayStakeNano: normalizePolicyNano(stats?.todayStakeNano), lastBetAt: stats?.lastBetAt || null,
+    limits, access, recentBets: (recent.results || []).map(predictOpsBetView),
+  };
+}
+
+export async function getPredictOpsBet(env: Env, betIdInput: unknown): Promise<PredictOpsBetView | null> {
+  const betId = cleanPredictBetId(betIdInput);
+  const row = await env.DB.prepare(`SELECT b.*, r.status AS round_status, r.result AS round_result, r.ends_at AS round_ends_at FROM predict_bets b JOIN predict_rounds r ON r.id=b.round_id WHERE b.id=? LIMIT 1`).bind(betId).first<PredictBetAdminRow>();
+  return row ? predictOpsBetView(row) : null;
+}
+
+export async function manualRefundPredictBet(env: Env, betIdInput: unknown, adminIdInput: unknown, writeAudit = true): Promise<PredictOpsBetView> {
+  const betId = cleanPredictBetId(betIdInput);
+  const view = await getPredictOpsBet(env, betId);
+  if (!view) throw new Error('Prediction bet not found.');
+  if (!view.refundable) throw new Error('Only a settled losing bet can be manually refunded safely.');
+  await adjustUserTonBalance(env, view.userId, view.stakeNano, {
+    kind: 'predict', title: 'Prediction admin refund', referenceId: `admin-refund:${betId}`, referenceType: 'predict_admin_refund',
+    metadata: { betId, roundId: view.roundId, market: view.market, adminId: cleanAdminId(adminIdInput) },
+  });
+  const changed = await env.DB.prepare("UPDATE predict_bets SET status='refunded', payout_nano=stake_nano WHERE id=? AND status='lost'").bind(betId).run();
+  if ((changed.meta?.changes || 0) <= 0) {
+    const fresh = await getPredictOpsBet(env, betId);
+    if (!fresh || fresh.status !== 'refunded') throw new Error('Could not finalize manual refund.');
+    return fresh;
+  }
+  if (writeAudit) await appendPredictAudit(env, adminIdInput, 'bet_manual_refund', { userId: view.userId, market: view.market, targetId: betId, detail: `${nanoToTon(view.stakeNano)} GRAM stake refunded.` }).catch(() => undefined);
+  const updated = await getPredictOpsBet(env, betId);
+  if (!updated) throw new Error('Prediction bet not found after refund.');
+  return updated;
+}
+
+export async function manualRefundPredictRound(env: Env, roundIdInput: unknown, adminIdInput: unknown): Promise<{ roundId: string; refundedCount: number; refundedNano: number }> {
+  const roundId = cleanPredictRoundId(roundIdInput);
+  const round = await env.DB.prepare('SELECT * FROM predict_rounds WHERE id=? LIMIT 1').bind(roundId).first<RoundRow>();
+  if (!round) throw new Error('Prediction round not found.');
+  if (round.status !== 'settled') throw new Error('Round refunds are available only after settlement.');
+  const lost = await env.DB.prepare("SELECT id FROM predict_bets WHERE round_id=? AND status='lost' ORDER BY datetime(created_at) ASC").bind(roundId).all<{ id: string }>();
+  let refundedCount = 0;
+  let refundedNano = 0;
+  for (const row of lost.results || []) {
+    const before = await getPredictOpsBet(env, row.id);
+    if (!before?.refundable) continue;
+    await manualRefundPredictBet(env, row.id, adminIdInput, false);
+    refundedCount += 1;
+    refundedNano += before.stakeNano;
+  }
+  await appendPredictAudit(env, adminIdInput, 'round_manual_refund', { market: normalizeTradeMarket(round.market), targetId: roundId, detail: `${refundedCount} losing bets refunded; ${nanoToTon(refundedNano)} GRAM returned. Winners and existing refunds were unchanged.` }).catch(() => undefined);
+  return { roundId, refundedCount, refundedNano };
+}
+
+export async function listPredictAuditLog(env: Env, limitInput = 20, userIdInput: unknown = null): Promise<PredictAuditEntry[]> {
+  await ensurePredictOpsTables(env);
+  const limit = Math.max(1, Math.min(50, Math.floor(Number(limitInput) || 20)));
+  const userId = userIdInput == null || String(userIdInput).trim() === '' ? null : cleanUserId(userIdInput);
+  const rows = userId
+    ? await env.DB.prepare('SELECT * FROM predict_admin_audit WHERE user_id=? ORDER BY datetime(created_at) DESC LIMIT ?').bind(userId, limit).all<PredictAuditRow>()
+    : await env.DB.prepare('SELECT * FROM predict_admin_audit ORDER BY datetime(created_at) DESC LIMIT ?').bind(limit).all<PredictAuditRow>();
+  return (rows.results || []).map((row) => ({ id: row.id, adminId: row.admin_id, action: row.action, userId: row.user_id, market: normalizePredictOpsMarketOrNull(row.market), targetId: row.target_id, detail: row.detail, createdAt: row.created_at }));
+}
+
 async function getPredictOpsMarketStatus(env: Env, market: TradeMarket, control: PredictOpsControl): Promise<PredictOpsMarketStatus> {
   const feed = await readPredictOpsFeed(env, market);
   const latestRow = await env.DB.prepare('SELECT * FROM predict_rounds WHERE market = ? ORDER BY datetime(starts_at) DESC LIMIT 1').bind(market).first<RoundRow>().catch(() => null);
   const latestRound = latestRow ? await predictOpsRoundView(env, latestRow) : null;
   const lastSettled = await env.DB.prepare("SELECT settled_at FROM predict_rounds WHERE market = ? AND status = 'settled' AND settled_at IS NOT NULL ORDER BY datetime(settled_at) DESC LIMIT 1").bind(market).first<{ settled_at: string }>().catch(() => null);
   const due = await env.DB.prepare(`SELECT COUNT(*) AS count FROM predict_rounds WHERE market = ? AND datetime(ends_at) <= datetime('now') AND (status != 'settled' OR id IN (SELECT round_id FROM predict_bets WHERE status IN ('active', 'settling_payment')))`).bind(market).first<{ count: number }>().catch(() => null);
-  return {
-    market,
-    manualPaused: control.pausedMarkets[market],
-    circuitOpen: feed.circuitOpen,
-    circuitReason: feed.circuitReason,
-    lastPrice: feed.lastPrice,
-    lastSuccessAt: feed.lastSuccessAt,
-    lastError: feed.lastError,
-    lastErrorAt: feed.lastErrorAt,
-    latestRound,
-    lastSettledAt: lastSettled?.settled_at || null,
-    dueSettlementCount: Number(due?.count || 0),
-  };
+  const activeExposureNano = await getPredictMarketExposure(env, market);
+  const exposureLimitNano = control.exposureLimitsNano[market];
+  return { market, manualPaused: control.pausedMarkets[market], circuitOpen: feed.circuitOpen, circuitReason: feed.circuitReason, lastPrice: feed.lastPrice, lastSuccessAt: feed.lastSuccessAt, lastError: feed.lastError, lastErrorAt: feed.lastErrorAt, latestRound, lastSettledAt: lastSettled?.settled_at || null, dueSettlementCount: Number(due?.count || 0), activeExposureNano, exposureLimitNano, capacityReached: exposureLimitNano > 0 && activeExposureNano >= exposureLimitNano };
 }
 
 async function predictOpsRoundView(env: Env, row: RoundRow): Promise<PredictOpsRoundView> {
@@ -416,37 +615,24 @@ async function predictOpsRoundView(env: Env, row: RoundRow): Promise<PredictOpsR
   const counts: Record<string, number> = {};
   let totalBets = 0;
   let totalStakeNano = 0;
-  for (const stat of stats.results || []) {
-    const status = String(stat.status || 'unknown');
-    const count = Number(stat.count || 0);
-    counts[status] = count;
-    totalBets += count;
-    totalStakeNano += Number(stat.stakeNano || 0);
-  }
-  return {
-    id: String(row.id || ''),
-    market,
-    startsAt: String(row.starts_at || ''),
-    endsAt: String(row.ends_at || ''),
-    startPrice: Number(row.start_price || 0),
-    endPrice: row.end_price == null ? null : Number(row.end_price),
-    status: String(row.status || ''),
-    result: row.result == null ? null : String(row.result),
-    settledAt: row.settled_at == null ? null : String(row.settled_at),
-    createdAt: String(row.created_at || ''),
-    due: Number.isFinite(Date.parse(String(row.ends_at || ''))) && Date.parse(String(row.ends_at || '')) <= Date.now() && (String(row.status || '') !== 'settled' || Number(counts.active || 0) + Number(counts.settling_payment || 0) > 0),
-    totalBets,
-    totalStakeNano,
-    counts,
-  };
+  for (const stat of stats.results || []) { const status = String(stat.status || 'unknown'); const count = Number(stat.count || 0); counts[status] = count; totalBets += count; totalStakeNano += Number(stat.stakeNano || 0); }
+  return { id: String(row.id || ''), market, startsAt: String(row.starts_at || ''), endsAt: String(row.ends_at || ''), startPrice: Number(row.start_price || 0), endPrice: row.end_price == null ? null : Number(row.end_price), status: String(row.status || ''), result: row.result == null ? null : String(row.result), settledAt: row.settled_at == null ? null : String(row.settled_at), createdAt: String(row.created_at || ''), due: Number.isFinite(Date.parse(String(row.ends_at || ''))) && Date.parse(String(row.ends_at || '')) <= Date.now() && (String(row.status || '') !== 'settled' || Number(counts.active || 0) + Number(counts.settling_payment || 0) > 0), totalBets, totalStakeNano, counts };
 }
 
-async function assertPredictBettingAvailable(env: Env, market: TradeMarket, userId: string): Promise<void> {
-  const [control, feed, userControls] = await Promise.all([readPredictOpsControl(env), readPredictOpsFeed(env, market), getUserControls(env, userId)]);
-  if (userControls.blockedSections.includes(`predict-${market}`)) throw new Error('Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.');
+async function assertPredictBettingAvailable(env: Env, market: TradeMarket, userId: string, stakeNano: number, alreadyReserved: boolean): Promise<PredictBetGuard> {
+  const [control, feed, userControls, userLimits] = await Promise.all([readPredictOpsControl(env), readPredictOpsFeed(env, market), getUserControls(env, userId), getPredictUserLimits(env, userId)]);
+  if (userControls.blockedSections.includes(`predict-${market}`)) throw new Error(USER_MARKET_BLOCK_MESSAGE);
   if (control.emergencyPaused) throw new Error(control.maintenanceMessage || DEFAULT_PREDICT_MAINTENANCE);
   if (control.pausedMarkets[market]) throw new Error(control.maintenanceMessage || `${marketLabel(market)} predictions are temporarily paused.`);
   if (feed.circuitOpen) throw new Error(control.maintenanceMessage || `${marketLabel(market)} live price feed is unavailable. New predictions are paused automatically.`);
+  if (!alreadyReserved) {
+    const [dailyStakeNano, activeExposureNano] = await Promise.all([getPredictUserDailyStake(env, userId), getPredictMarketExposure(env, market)]);
+    if (userLimits.maxBetNano > 0 && stakeNano > userLimits.maxBetNano) throw new Error(`Your maximum prediction is ${nanoToTon(userLimits.maxBetNano)} GRAM per bet.`);
+    if (userLimits.dailyLimitNano > 0 && dailyStakeNano + stakeNano > userLimits.dailyLimitNano) throw new Error(`Your daily Predict limit is ${nanoToTon(userLimits.dailyLimitNano)} GRAM.`);
+    const exposureLimitNano = control.exposureLimitsNano[market];
+    if (exposureLimitNano > 0 && activeExposureNano + stakeNano > exposureLimitNano) throw new Error('This market has reached its current betting capacity. Please try again later.');
+  }
+  return { control, userLimits };
 }
 
 async function notePredictFeedSuccess(env: Env, market: TradeMarket, price: number): Promise<void> {
@@ -456,7 +642,7 @@ async function notePredictFeedSuccess(env: Env, market: TradeMarket, price: numb
   const recovered = current.circuitOpen;
   const next: PredictOpsFeed = { lastPrice: clean, lastSuccessAt: new Date().toISOString(), circuitOpen: false, circuitReason: null, circuitOpenedAt: null, lastError: null, lastErrorAt: null };
   await writePredictOpsFeed(env, market, next);
-  if (recovered) await appendPredictOpsIncident(env, 'feed_recovered', market, `${marketLabel(market)} price feed recovered.`).catch(() => undefined);
+  if (recovered) { await appendPredictOpsIncident(env, 'feed_recovered', market, `${marketLabel(market)} price feed recovered.`).catch(() => undefined); await publishPredictOpsRealtime(env).catch(() => undefined); }
 }
 
 async function notePredictFeedFailure(env: Env, market: TradeMarket, reasonInput: unknown): Promise<void> {
@@ -465,32 +651,24 @@ async function notePredictFeedFailure(env: Env, market: TradeMarket, reasonInput
   const now = new Date().toISOString();
   const next: PredictOpsFeed = { ...current, circuitOpen: true, circuitReason: reason, circuitOpenedAt: current.circuitOpenedAt || now, lastError: reason, lastErrorAt: now };
   await writePredictOpsFeed(env, market, next);
-  if (!current.circuitOpen) await appendPredictOpsIncident(env, 'feed_circuit_open', market, `${marketLabel(market)} feed circuit opened: ${reason}`).catch(() => undefined);
+  if (!current.circuitOpen) { await appendPredictOpsIncident(env, 'feed_circuit_open', market, `${marketLabel(market)} feed circuit opened: ${reason}`).catch(() => undefined); await publishPredictOpsRealtime(env).catch(() => undefined); }
 }
 
-function isPredictPriceFeedError(error: unknown): boolean {
-  return /aster|mark price|boundary price|invalid price|price snapshot|snapshot is empty|monthly boundary/i.test(messageOf(error));
-}
+function isPredictPriceFeedError(error: unknown): boolean { return /aster|mark price|boundary price|invalid price|price snapshot|snapshot is empty|monthly boundary/i.test(messageOf(error)); }
 
 async function readPredictOpsControl(env: Env): Promise<PredictOpsControl> {
-  const fallback: PredictOpsControl = { emergencyPaused: false, maintenanceMessage: '', pausedMarkets: { bitcoin: false, gold: false, oil: false }, updatedAt: null };
+  const fallback: PredictOpsControl = { emergencyPaused: false, maintenanceMessage: '', pausedMarkets: { bitcoin: false, gold: false, oil: false }, exposureLimitsNano: { bitcoin: 0, gold: 0, oil: 0 }, updatedAt: null };
   const raw = await env.BOT_CACHE.get(PREDICT_OPS_CONTROL_KEY).catch(() => null);
   if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw) as Partial<PredictOpsControl>;
     const paused = parsed.pausedMarkets && typeof parsed.pausedMarkets === 'object' ? parsed.pausedMarkets : {} as Record<string, unknown>;
-    return {
-      emergencyPaused: parsed.emergencyPaused === true,
-      maintenanceMessage: typeof parsed.maintenanceMessage === 'string' ? parsed.maintenanceMessage.slice(0, 180) : '',
-      pausedMarkets: { bitcoin: paused.bitcoin === true, gold: paused.gold === true, oil: paused.oil === true },
-      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
-    };
+    const exposure = parsed.exposureLimitsNano && typeof parsed.exposureLimitsNano === 'object' ? parsed.exposureLimitsNano : {} as Record<string, unknown>;
+    return { emergencyPaused: parsed.emergencyPaused === true, maintenanceMessage: typeof parsed.maintenanceMessage === 'string' ? parsed.maintenanceMessage.slice(0, 180) : '', pausedMarkets: { bitcoin: paused.bitcoin === true, gold: paused.gold === true, oil: paused.oil === true }, exposureLimitsNano: { bitcoin: normalizePolicyNano(exposure.bitcoin), gold: normalizePolicyNano(exposure.gold), oil: normalizePolicyNano(exposure.oil) }, updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null };
   } catch { return fallback; }
 }
 
-function writePredictOpsControl(env: Env, value: PredictOpsControl): Promise<void> {
-  return env.BOT_CACHE.put(PREDICT_OPS_CONTROL_KEY, JSON.stringify(value));
-}
+function writePredictOpsControl(env: Env, value: PredictOpsControl): Promise<void> { return env.BOT_CACHE.put(PREDICT_OPS_CONTROL_KEY, JSON.stringify(value)); }
 
 async function readPredictOpsFeed(env: Env, market: TradeMarket): Promise<PredictOpsFeed> {
   const fallback: PredictOpsFeed = { lastPrice: null, lastSuccessAt: null, circuitOpen: false, circuitReason: null, circuitOpenedAt: null, lastError: null, lastErrorAt: null };
@@ -499,21 +677,10 @@ async function readPredictOpsFeed(env: Env, market: TradeMarket): Promise<Predic
   try {
     const parsed = JSON.parse(raw) as Partial<PredictOpsFeed>;
     const lastPrice = Number(parsed.lastPrice);
-    return {
-      lastPrice: Number.isFinite(lastPrice) && lastPrice > 0 ? lastPrice : null,
-      lastSuccessAt: typeof parsed.lastSuccessAt === 'string' ? parsed.lastSuccessAt : null,
-      circuitOpen: parsed.circuitOpen === true,
-      circuitReason: typeof parsed.circuitReason === 'string' ? parsed.circuitReason.slice(0, 220) : null,
-      circuitOpenedAt: typeof parsed.circuitOpenedAt === 'string' ? parsed.circuitOpenedAt : null,
-      lastError: typeof parsed.lastError === 'string' ? parsed.lastError.slice(0, 220) : null,
-      lastErrorAt: typeof parsed.lastErrorAt === 'string' ? parsed.lastErrorAt : null,
-    };
+    return { lastPrice: Number.isFinite(lastPrice) && lastPrice > 0 ? lastPrice : null, lastSuccessAt: typeof parsed.lastSuccessAt === 'string' ? parsed.lastSuccessAt : null, circuitOpen: parsed.circuitOpen === true, circuitReason: typeof parsed.circuitReason === 'string' ? parsed.circuitReason.slice(0, 220) : null, circuitOpenedAt: typeof parsed.circuitOpenedAt === 'string' ? parsed.circuitOpenedAt : null, lastError: typeof parsed.lastError === 'string' ? parsed.lastError.slice(0, 220) : null, lastErrorAt: typeof parsed.lastErrorAt === 'string' ? parsed.lastErrorAt : null };
   } catch { return fallback; }
 }
-
-function writePredictOpsFeed(env: Env, market: TradeMarket, value: PredictOpsFeed): Promise<void> {
-  return env.BOT_CACHE.put(PREDICT_OPS_FEED_PREFIX + market, JSON.stringify(value));
-}
+function writePredictOpsFeed(env: Env, market: TradeMarket, value: PredictOpsFeed): Promise<void> { return env.BOT_CACHE.put(PREDICT_OPS_FEED_PREFIX + market, JSON.stringify(value)); }
 
 async function appendPredictOpsIncident(env: Env, type: string, market: TradeMarket | null, message: string): Promise<void> {
   const incidents = await getPredictOpsIncidents(env);
@@ -521,61 +688,67 @@ async function appendPredictOpsIncident(env: Env, type: string, market: TradeMar
   await env.BOT_CACHE.put(PREDICT_OPS_INCIDENTS_KEY, JSON.stringify(incidents.slice(0, PREDICT_OPS_INCIDENT_LIMIT)));
 }
 
-function cleanPredictRoundId(value: unknown): string {
-  const id = String(value || '').trim();
-  if (!/^pr_(bitcoin|gold|oil)_\d+$/.test(id)) throw new Error('Invalid prediction round id.');
-  return id;
+async function ensurePredictOpsTables(env: Env): Promise<void> {
+  if (!predictOpsTablesReady) {
+    predictOpsTablesReady = (async () => {
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_user_limits (user_id TEXT PRIMARY KEY, max_bet_nano INTEGER NOT NULL DEFAULT 0, daily_limit_nano INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS predict_admin_audit (id TEXT PRIMARY KEY, admin_id TEXT NOT NULL, action TEXT NOT NULL, user_id TEXT, market TEXT, target_id TEXT, detail TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+      await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_admin_audit_created ON predict_admin_audit(created_at)').run();
+      await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_predict_admin_audit_user ON predict_admin_audit(user_id, created_at)').run();
+    })().catch((error) => { predictOpsTablesReady = null; throw error; });
+  }
+  await predictOpsTablesReady;
 }
 
-function normalizePredictOpsMarketOrNull(value: unknown): TradeMarket | null {
-  try { return normalizeTradeMarket(String(value || '')); } catch { return null; }
+async function appendPredictAudit(env: Env, adminIdInput: unknown, actionInput: unknown, detail: { userId?: unknown; market?: TradeMarket | null; targetId?: unknown; detail?: unknown }): Promise<void> {
+  await ensurePredictOpsTables(env);
+  const adminId = cleanAdminId(adminIdInput) || 'system';
+  const action = cleanAuditText(actionInput, 60) || 'unknown';
+  const userId = detail.userId == null || String(detail.userId).trim() === '' ? null : cleanUserId(detail.userId);
+  const market = detail.market || null;
+  const targetId = cleanAuditText(detail.targetId, 120);
+  const text = cleanAuditText(detail.detail, 360);
+  await env.DB.prepare(`INSERT INTO predict_admin_audit (id, admin_id, action, user_id, market, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`).bind('pa_' + crypto.randomUUID().replace(/-/g, '').slice(0, 22), adminId, action, userId, market, targetId, text).run();
 }
 
-function marketLabel(market: TradeMarket): string {
-  return market === 'bitcoin' ? 'Bitcoin' : market === 'gold' ? 'Gold' : 'Oil';
+async function getPredictUserDailyStake(env: Env, userId: string): Promise<number> { await ensurePredictTables(env); const row = await env.DB.prepare("SELECT COALESCE(SUM(stake_nano),0) AS total FROM predict_bets WHERE user_id=? AND status!='failed' AND date(created_at)=date('now')").bind(userId).first<{ total: number }>(); return normalizePolicyNano(row?.total); }
+async function getPredictMarketExposure(env: Env, market: TradeMarket): Promise<number> { await ensurePredictTables(env); const row = await env.DB.prepare("SELECT COALESCE(SUM(stake_nano),0) AS total FROM predict_bets WHERE market=? AND status IN ('pending','active','settling_payment')").bind(market).first<{ total: number }>(); return normalizePolicyNano(row?.total); }
+
+function userMarketAccessFromControls(blocks: UserSectionBlock[], market: TradeMarket): PredictUserMarketAccess {
+  const block = blocks.find((item) => item.sectionId === `predict-${market}` && item.blocked);
+  return { market, blocked: Boolean(block), expiresAt: block?.expiresAt || null, remainingMs: block?.remainingMs ?? null, reason: block?.reason || null, adminNote: block?.adminNote || null };
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error || 'Unknown error');
+function predictOpsBetView(row: PredictBetAdminRow): PredictOpsBetView {
+  const market = normalizeTradeMarket(row.market), status = String(row.status || ''), roundStatus = String(row.round_status || '');
+  return { id: String(row.id || ''), roundId: String(row.round_id || ''), market, userId: cleanUserId(row.user_id), side: String(row.side || ''), stakeNano: normalizePolicyNano(row.stake_nano), status, payoutNano: normalizePolicyNano(row.payout_nano), createdAt: String(row.created_at || ''), roundStatus, roundResult: row.round_result == null ? null : String(row.round_result), roundEndsAt: String(row.round_ends_at || ''), refundable: status === 'lost' && roundStatus === 'settled' };
 }
+
+function realtimeMarketState(dashboard: PredictOpsDashboard, market: PredictOpsMarket): { manualPaused: boolean; circuitOpen: boolean; circuitReason: string | null; capacityReached: boolean } {
+  const status = dashboard.markets.find((item) => item.market === market);
+  if (!status) throw new Error('Market status unavailable.');
+  return { manualPaused: status.manualPaused, circuitOpen: status.circuitOpen, circuitReason: status.circuitReason, capacityReached: status.capacityReached };
+}
+
+function cleanPredictRoundId(value: unknown): string { const id = String(value || '').trim(); if (!/^pr_(bitcoin|gold|oil)_\d+$/.test(id)) throw new Error('Invalid prediction round id.'); return id; }
+function cleanPredictBetId(value: unknown): string { const id = String(value || '').trim(); if (!/^pbet_[0-9A-Za-z_-]{8,40}$/.test(id)) throw new Error('Invalid prediction bet id.'); return id; }
+function normalizePredictOpsMarketOrNull(value: unknown): TradeMarket | null { try { return normalizeTradeMarket(String(value || '')); } catch { return null; } }
+function marketLabel(market: TradeMarket): string { return market === 'bitcoin' ? 'Bitcoin' : market === 'gold' ? 'Gold' : 'Oil'; }
+function cleanAdminId(value: unknown): string { return String(value ?? '').replace(/[^0-9A-Za-z_-]/g, '').trim().slice(0, 80); }
+function cleanAuditText(value: unknown, max: number): string | null { const text = String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max); return text || null; }
+function normalizePolicyNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n)); }
+function messageOf(error: unknown): string { return error instanceof Error ? error.message : String(error || 'Unknown error'); }
 
 async function getPredictImageResponse(env: Env, key: string): Promise<Response> {
   const object = await env.ASSETS.get(key).catch(() => null);
   if (!object) return new Response('Not found', { status: 404, headers: { 'cache-control': CACHE_NONE } });
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set('etag', object.httpEtag);
-  headers.set('cache-control', CACHE_LONG);
-  if (!headers.get('content-type')) headers.set('content-type', object.customMetadata?.contentType || 'image/png');
-  return new Response(object.body, { headers });
+  const headers = new Headers(); object.writeHttpMetadata(headers); headers.set('etag', object.httpEtag); headers.set('cache-control', CACHE_LONG); if (!headers.get('content-type')) headers.set('content-type', object.customMetadata?.contentType || 'image/png'); return new Response(object.body, { headers });
 }
 function predictImageKey(market: PredictMarket): string { return `predict/${market}/question-image`; }
-function normalizePredictMarket(value: string): PredictMarket {
-  const market = value.trim().toLowerCase();
-  if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
-  if (market === 'gold' || market === 'paxg') return 'gold';
-  if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
-  throw new Error('Invalid predict market');
-}
-function normalizeTradeMarket(value: string): TradeMarket {
-  const market = value.trim().toLowerCase();
-  if (market === 'bitcoin' || market === 'btc') return 'bitcoin';
-  if (market === 'gold' || market === 'paxg') return 'gold';
-  if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil';
-  throw new Error('Invalid predict market');
-}
-function calendarMonthWindow(now: number): { startMs: number; endMs: number } {
-  const date = new Date(now);
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth();
-  return { startMs: Date.UTC(year, month, 1), endMs: Date.UTC(year, month + 1, 1) };
-}
-function betLockAtMs(round: RoundRow): number {
-  const starts = Date.parse(String(round.starts_at || ''));
-  const ends = Date.parse(String(round.ends_at || ''));
-  if (!Number.isFinite(starts) || !Number.isFinite(ends)) return 0;
-  return String(round.market || '') === 'bitcoin' ? Math.max(starts, ends - LOCK_MS) : Math.min(ends, starts + MONTH_BET_WINDOW_MS);
-}
+function normalizePredictMarket(value: string): PredictMarket { const market = value.trim().toLowerCase(); if (market === 'bitcoin' || market === 'btc') return 'bitcoin'; if (market === 'gold' || market === 'paxg') return 'gold'; if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil'; throw new Error('Invalid predict market'); }
+function normalizeTradeMarket(value: string): TradeMarket { const market = value.trim().toLowerCase(); if (market === 'bitcoin' || market === 'btc') return 'bitcoin'; if (market === 'gold' || market === 'paxg') return 'gold'; if (market === 'oil' || market === 'cl' || market === 'clusdt') return 'oil'; throw new Error('Invalid predict market'); }
+function calendarMonthWindow(now: number): { startMs: number; endMs: number } { const date = new Date(now); const year = date.getUTCFullYear(); const month = date.getUTCMonth(); return { startMs: Date.UTC(year, month, 1), endMs: Date.UTC(year, month + 1, 1) }; }
+function betLockAtMs(round: RoundRow): number { const starts = Date.parse(String(round.starts_at || '')); const ends = Date.parse(String(round.ends_at || '')); if (!Number.isFinite(starts) || !Number.isFinite(ends)) return 0; return String(round.market || '') === 'bitcoin' ? Math.max(starts, ends - LOCK_MS) : Math.min(ends, starts + MONTH_BET_WINDOW_MS); }
 function normalizeSide(value: unknown): PredictSide { const side = String(value || '').toLowerCase(); if (side === 'up' || side === 'down') return side; throw new Error('Choose Up or Down'); }
 function tonToNano(value: unknown): number { const n = Number(value); if (!Number.isFinite(n) || n <= 0) return 0; return Math.max(1, Math.floor(n * NANO)); }
 function nanoToTon(value: number): number { return Math.floor(Number(value) || 0) / NANO; }

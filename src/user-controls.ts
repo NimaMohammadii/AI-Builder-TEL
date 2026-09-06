@@ -7,6 +7,15 @@ export type UserSectionBlock = {
   blocked: boolean;
   expiresAt: string | null;
   remainingMs: number | null;
+  reason: string | null;
+  adminNote: string | null;
+};
+
+export type PublicUserSectionBlock = Pick<UserSectionBlock, 'sectionId' | 'blocked' | 'expiresAt' | 'remainingMs'>;
+
+export type UserSectionBlockMeta = {
+  reason?: unknown;
+  adminNote?: unknown;
 };
 
 export type UserControls = {
@@ -35,7 +44,7 @@ type StoredUserControls = {
   banned?: boolean;
 };
 
-type StoredSectionBlock = { sectionId?: unknown; blocked?: unknown; expiresAt?: unknown };
+type StoredSectionBlock = { sectionId?: unknown; blocked?: unknown; expiresAt?: unknown; reason?: unknown; adminNote?: unknown };
 type UserControlRow = { blocked_sections_json: string; win_chance_percent?: number | null; banned?: number | null };
 
 export async function getUserControls(env: Env, userId: string): Promise<UserControls> {
@@ -180,14 +189,21 @@ export async function debitUserTonBalanceIfEnough(env: Env, userId: string, amou
   return controlsWithBalance(env, id, after);
 }
 
-export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean, expiresAtInput: unknown = null): Promise<UserControls> {
+export async function setUserSectionBlocked(env: Env, userId: string, sectionId: string, blocked: boolean, expiresAtInput: unknown = null, meta: UserSectionBlockMeta = {}): Promise<UserControls> {
   const id = cleanUserId(userId);
   const section = cleanSection(sectionId);
   if (!VALID_SECTIONS.has(section)) throw new Error('Unknown section');
   const current = await getUserControls(env, id);
   const expiresAt = blocked ? normalizeExpiresAt(expiresAtInput) : null;
   const next = current.sectionBlocks.filter((item) => item.sectionId !== section);
-  if (blocked) next.push({ sectionId: section, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null });
+  if (blocked) next.push({
+    sectionId: section,
+    blocked: true,
+    expiresAt,
+    remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - Date.now()) : null,
+    reason: normalizeBlockText(meta.reason, 80),
+    adminNote: normalizeBlockText(meta.adminNote, 180),
+  });
   await saveControls(env, id, next, current.winChancePercent, current.banned);
   return getUserControls(env, id);
 }
@@ -212,9 +228,16 @@ export async function assertUserNotBanned(env: Env, userId: string): Promise<voi
   if (controls?.banned === true) throw new Error('Your access to all sections is blocked.');
 }
 
-export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; banned: boolean; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: UserSectionBlock[] }> {
+export async function publicUserControls(env: Env, userId: string): Promise<{ userId: string; banned: boolean; tonBalanceNano: number; winChancePercent: number; blockedSections: string[]; sectionBlocks: PublicUserSectionBlock[] }> {
   const controls = await getUserControls(env, userId);
-  return { userId: controls.userId, banned: controls.banned, tonBalanceNano: controls.tonBalanceNano, winChancePercent: controls.winChancePercent, blockedSections: controls.blockedSections, sectionBlocks: controls.sectionBlocks };
+  return {
+    userId: controls.userId,
+    banned: controls.banned,
+    tonBalanceNano: controls.tonBalanceNano,
+    winChancePercent: controls.winChancePercent,
+    blockedSections: controls.blockedSections,
+    sectionBlocks: controls.sectionBlocks.map((item) => ({ sectionId: item.sectionId, blocked: item.blocked, expiresAt: item.expiresAt, remainingMs: item.remainingMs })),
+  };
 }
 
 async function controlsWithBalance(env: Env, userId: string, tonBalanceNano: number): Promise<UserControls> {
@@ -428,7 +451,14 @@ function normalizeSectionBlocks(value: unknown): UserSectionBlock[] {
     if (expiresAt && Date.parse(expiresAt) <= now) continue;
     const blocked = item.blocked !== false;
     if (!blocked) continue;
-    map.set(sectionId, { sectionId, blocked: true, expiresAt, remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null });
+    map.set(sectionId, {
+      sectionId,
+      blocked: true,
+      expiresAt,
+      remainingMs: expiresAt ? Math.max(0, Date.parse(expiresAt) - now) : null,
+      reason: normalizeBlockText(item.reason, 80),
+      adminNote: normalizeBlockText(item.adminNote, 180),
+    });
   }
   return Array.from(map.values()).sort((a, b) => a.sectionId.localeCompare(b.sectionId));
 }
@@ -438,6 +468,11 @@ function normalizeExpiresAt(value: unknown): string | null {
   if (!raw) return null;
   const date = new Date(raw);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function normalizeBlockText(value: unknown, max: number): string | null {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+  return text || null;
 }
 
 function normalizeNano(value: unknown): number {
