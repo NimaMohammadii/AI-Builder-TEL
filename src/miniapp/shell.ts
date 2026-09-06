@@ -221,7 +221,7 @@ export function miniAppShellHtml(): string {
     .predict-online-dot{position:relative;width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#35d979;box-shadow:0 0 0 1px rgba(53,217,121,.16)}
     .predict-online-dot::after{content:"";position:absolute;inset:-2px;border:1px solid rgba(53,217,121,.36);border-radius:50%;animation:vexaPredictOnlinePulse 1.8s ease-in-out infinite}
     .predict-online-count{min-width:12px;color:rgba(255,255,255,.94);font-size:11px;font-weight:850;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
-    .predict-online-label{color:rgba(255,255,255,.54);font-size:9.5px;font-weight:760;letter-spacing:-.01em}
+    .predict-online-label{color:#35d979;font-size:9.5px;font-weight:760;letter-spacing:-.01em;margin-left:-2px}
     @keyframes vexaPredictOnlinePulse{0%,100%{transform:scale(.92);opacity:.18}50%{transform:scale(1.16);opacity:.62}}
     @media(prefers-reduced-motion:reduce){.predict-online-dot::after{animation:none;opacity:.3;transform:none}}
   </style>
