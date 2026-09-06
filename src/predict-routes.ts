@@ -61,7 +61,9 @@ app.get('/app/api/predict-round', async (c) => {
     await settleDueRounds(c.env, market);
     return c.json({ ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
-    if (market && isPredictPriceFeedError(error)) await notePredictFeedFailure(c.env, market, messageOf(error)).catch(() => undefined);
+    const errorMessage = messageOf(error);
+    if (market && isPredictPriceFeedError(error)) await notePredictFeedFailure(c.env, market, errorMessage).catch(() => undefined);
+    else if (!(await isExpectedPredictRequestError(c.env, market, error))) await reportPredictOpsRuntimeError(c.env, 'round_request_failed', market, errorMessage);
     return c.json({ error: error instanceof Error ? error.message : 'Could not load prediction round' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
@@ -140,13 +142,16 @@ app.post('/app/api/predict-bet', async (c) => {
     if (market && guard?.control.exposureLimitsNano[market] > 0) await publishPredictOpsRealtime(c.env).catch(() => undefined);
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await publicUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
-    if (market && isPredictPriceFeedError(error)) await notePredictFeedFailure(c.env, market, messageOf(error)).catch(() => undefined);
+    const errorMessage = messageOf(error);
+    const feedError = Boolean(market && isPredictPriceFeedError(error));
+    if (market && feedError) await notePredictFeedFailure(c.env, market, errorMessage).catch(() => undefined);
     let releasedReservation = false;
     if (betId) {
       const failed = await c.env.DB.prepare("UPDATE predict_bets SET status = 'failed' WHERE id = ? AND status = 'pending'").bind(betId).run().catch(() => null);
       releasedReservation = Number(failed?.meta?.changes || 0) > 0;
     }
     if (releasedReservation && market) await publishPredictOpsRealtime(c.env).catch(() => undefined);
+    if (!feedError && !(await isExpectedPredictRequestError(c.env, market, error))) await reportPredictOpsRuntimeError(c.env, 'bet_request_failed', market, errorMessage);
     return c.json({ ok: false, error: error instanceof Error ? error.message : 'Could not place prediction' }, 400, { 'cache-control': CACHE_NONE });
   }
 });
@@ -389,9 +394,12 @@ export async function retryPredictSettlement(env: Env, roundIdInput: unknown, ad
     return updated;
   } catch (error) {
     const market = normalizeTradeMarket(row.market);
-    if (isPredictPriceFeedError(error)) await notePredictFeedFailure(env, market, messageOf(error)).catch(() => undefined);
-    await appendPredictOpsIncident(env, 'settlement_retry_failed', market, `Settlement retry failed for ${roundId}: ${messageOf(error)}`).catch(() => undefined);
-    await appendPredictAudit(env, adminIdInput, 'settlement_retry_failed', { market, targetId: roundId, detail: messageOf(error) }).catch(() => undefined);
+    const errorMessage = messageOf(error);
+    const feedError = isPredictPriceFeedError(error);
+    if (feedError) await notePredictFeedFailure(env, market, errorMessage).catch(() => undefined);
+    if (feedError) await appendPredictOpsIncident(env, 'settlement_retry_failed', market, `Settlement retry failed for ${roundId}: ${errorMessage}`).catch(() => undefined);
+    else await reportPredictOpsRuntimeError(env, 'settlement_retry_failed', market, `Settlement retry failed for ${roundId}: ${errorMessage}`);
+    await appendPredictAudit(env, adminIdInput, 'settlement_retry_failed', { market, targetId: roundId, detail: errorMessage }).catch(() => undefined);
     throw error;
   }
 }
@@ -688,10 +696,43 @@ async function notePredictFeedFailure(env: Env, market: TradeMarket, reasonInput
   const now = new Date().toISOString();
   const next: PredictOpsFeed = { ...current, circuitOpen: true, circuitReason: reason, circuitOpenedAt: current.circuitOpenedAt || now, lastError: reason, lastErrorAt: now };
   await writePredictOpsFeed(env, market, next);
-  if (!current.circuitOpen) { await appendPredictOpsIncident(env, 'feed_circuit_open', market, `${marketLabel(market)} feed circuit opened: ${reason}`).catch(() => undefined); await publishPredictOpsRealtime(env).catch(() => undefined); }
+  if (!current.circuitOpen) { await reportPredictOpsRuntimeError(env, 'feed_circuit_open', market, `${marketLabel(market)} feed circuit opened: ${reason}`); await publishPredictOpsRealtime(env).catch(() => undefined); }
 }
 
 function isPredictPriceFeedError(error: unknown): boolean { return /aster|mark price|boundary price|invalid price|price snapshot|snapshot is empty|monthly boundary/i.test(messageOf(error)); }
+
+async function isExpectedPredictRequestError(env: Env, market: TradeMarket | null, error: unknown): Promise<boolean> {
+  const message = messageOf(error);
+  if (/open the mini app inside telegram|invalid telegram session|telegram session expired|telegram user mismatch|missing telegram user|missing user id|invalid predict market|choose up or down|enter a valid gram amount|this prediction is closed|already placed a prediction|previous prediction is still processing|prediction could not be reserved|insufficient balance|your access to this market is currently paused|predictions are temporarily unavailable|predictions are temporarily paused|live price feed is unavailable|your maximum prediction|your daily predict limit|current betting capacity/i.test(message)) return true;
+  if (!market) return false;
+  const control = await readPredictOpsControl(env).catch(() => null);
+  return Boolean(control?.maintenanceMessage && message === control.maintenanceMessage);
+}
+
+async function reportPredictOpsRuntimeError(env: Env, typeInput: unknown, marketInput: unknown, messageInput: unknown): Promise<void> {
+  const type = String(typeInput || 'runtime_error').replace(/\s+/g, ' ').trim().slice(0, 60) || 'runtime_error';
+  const market = marketInput == null ? null : normalizePredictOpsMarketOrNull(marketInput);
+  const message = String(messageInput || 'Unknown Predict error').replace(/\s+/g, ' ').trim().slice(0, 240) || 'Unknown Predict error';
+  await Promise.allSettled([
+    appendPredictOpsIncident(env, type, market, message),
+    notifyPredictAdmins(env, type, market, message),
+  ]);
+}
+
+async function notifyPredictAdmins(env: Env, type: string, market: TradeMarket | null, message: string): Promise<void> {
+  const token = String(gameBotToken(env) || '').trim();
+  const adminIds = Array.from(new Set(String(env.BOT_ADMIN || '').split(/[\s,;|]+/).map((value) => value.trim()).filter((value) => /^\d+$/.test(value))));
+  if (!token || !adminIds.length) return;
+  const text = ['🚨 Predict Runtime Alert', `Type: ${type}`, market ? `Market: ${marketLabel(market)}` : '', `Error: ${message}`, `Time: ${new Date().toISOString()}`].filter(Boolean).join('\n').slice(0, 3800);
+  await Promise.allSettled(adminIds.map(async (chatId) => {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    });
+    if (!response.ok) throw new Error(`Predict admin alert failed: HTTP ${response.status}`);
+  }));
+}
 
 async function readPredictOpsControl(env: Env): Promise<PredictOpsControl> {
   const fallback: PredictOpsControl = { emergencyPaused: false, maintenanceMessage: '', pausedMarkets: { bitcoin: false, gold: false, oil: false }, exposureLimitsNano: { bitcoin: 0, gold: 0, oil: 0 }, updatedAt: null };
