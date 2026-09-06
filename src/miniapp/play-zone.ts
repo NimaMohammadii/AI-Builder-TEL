@@ -139,7 +139,7 @@ export const PLAY_ZONE_VISIBILITY_SCRIPT = `
   }
   function fallbackHidden(){return Object.keys(gameIds)}
   function finish(hidden,admin){
-    var blocked={};(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
+    var blocked={};if(!admin)(hidden||[]).forEach(function(id){id=String(id||'');if(gameIds[id])blocked[id]=true});
     state.hidden=blocked;state.admin=!!admin;state.ready=true;
     document.querySelectorAll('[data-play-zone-card-id]').forEach(function(card){
       var hide=state.isHidden(card.getAttribute('data-play-zone-card-id'));
