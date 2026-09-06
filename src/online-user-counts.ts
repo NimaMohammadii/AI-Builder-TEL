@@ -1,11 +1,11 @@
 import type { Env } from './types';
 
 export type OnlineCountRange = { min: number; max: number };
-export type OnlineCountSchedule = Record<string, OnlineCountRange[]>;
+export type OnlineCountRanges = Record<string, OnlineCountRange>;
 export type OnlineCountTimedBoost = OnlineCountRange & { expiresAt: string };
 export type OnlineCountAdjustment = { permanent: number; timed?: OnlineCountTimedBoost };
 export type OnlineCountConfig = {
-  schedule: OnlineCountSchedule;
+  ranges: OnlineCountRanges;
   adjustments: Record<string, OnlineCountAdjustment>;
   updatedAt?: string;
 };
@@ -27,27 +27,29 @@ export async function saveOnlineUserCountConfig(env: Env, value: unknown): Promi
   const config = normalizeOnlineCountConfig(value);
   config.updatedAt = new Date().toISOString();
   await writeConfig(env, config);
+  await publishOnlineUserCountConfig(env, config);
   return config;
 }
 
 export async function resetOnlineUserCountConfig(env: Env): Promise<OnlineCountConfig> {
   const config = { ...defaultOnlineCountConfig(), updatedAt: new Date().toISOString() };
   await writeConfig(env, config);
+  await publishOnlineUserCountConfig(env, config);
   return config;
 }
 
 function defaultOnlineCountConfig(): OnlineCountConfig {
-  const schedule: OnlineCountSchedule = {};
+  const ranges: OnlineCountRanges = {};
   const adjustments: Record<string, OnlineCountAdjustment> = {};
-  for (const id of SECTION_IDS) schedule[id] = Array.from({ length: 24 }, (_, hour) => defaultCountFor(id, hour));
+  for (const id of SECTION_IDS) ranges[id] = defaultCountFor(id);
   for (const id of SECTION_IDS) adjustments[id] = { permanent: 0 };
-  return { schedule, adjustments };
+  return { ranges, adjustments };
 }
 
-function defaultCountFor(id: string, hour: number): OnlineCountRange {
-  const base = hour >= 5 && hour <= 11 ? [80, 220] : hour >= 12 && hour <= 16 ? [180, 360] : [500, 700];
+function defaultCountFor(id: string): OnlineCountRange {
+  const base = [180, 360];
   const hash = id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const offset = ((hash + hour * 31) % 45);
+  const offset = hash % 45;
   const min = Math.max(0, base[0] + offset);
   const max = Math.max(min, base[1] + offset);
   return { min, max };
@@ -82,17 +84,27 @@ async function ensureAdminSettingsTable(env: Env): Promise<void> {
 }
 
 function normalizeOnlineCountConfig(input: any): OnlineCountConfig {
-  const source = input && typeof input === 'object' ? input.schedule ?? input : {};
+  const source = input && typeof input === 'object' ? input.ranges ?? input.schedule ?? input : {};
   const defaults = defaultOnlineCountConfig();
-  const fallback = defaults.schedule;
-  const schedule: OnlineCountSchedule = {};
+  const fallback = defaults.ranges;
+  const ranges: OnlineCountRanges = {};
   const adjustments: Record<string, OnlineCountAdjustment> = {};
   for (const id of SECTION_IDS) {
-    const values = Array.isArray(source?.[id]) ? source[id] : [];
-    schedule[id] = Array.from({ length: 24 }, (_, hour) => normalizeRange(values[hour], fallback[id][hour]));
+    const value = Array.isArray(source?.[id]) ? source[id][0] : source?.[id];
+    ranges[id] = normalizeRange(value, fallback[id]);
     adjustments[id] = normalizeAdjustment(input?.adjustments?.[id]);
   }
-  return { schedule, adjustments, updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined };
+  return { ranges, adjustments, updatedAt: typeof input?.updatedAt === 'string' ? input.updatedAt : undefined };
+}
+
+async function publishOnlineUserCountConfig(env: Env, config: OnlineCountConfig): Promise<void> {
+  const id = env.SECTION_LOCK_EVENTS.idFromName('global');
+  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish-online-counts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(config),
+  });
+  if (!response.ok) throw new Error('Could not publish online counts.');
 }
 
 function normalizeAdjustment(value: unknown): OnlineCountAdjustment {
