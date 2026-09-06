@@ -1,7 +1,7 @@
 import app from './index';
 import './prediction-events';
 import type { Env } from './types';
-import { publishPredictOpsState, type PredictOpsRealtimeState } from './section-lock-events';
+import { publishPredictOpsState, publishPredictRoundState, type PredictOpsRealtimeState } from './section-lock-events';
 import { adjustUserTonBalance, debitUserTonBalanceIfEnough, getUserControls, publicUserControls, setUserSectionBlocked, type UserSectionBlock } from './user-controls';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
@@ -139,6 +139,7 @@ app.post('/app/api/predict-bet', async (c) => {
         throw new Error('Could not activate prediction');
       }
     }
+    await publishPredictRoundState(c.env, market, roundId, userId).catch((error) => reportPredictOpsRuntimeError(c.env, 'round_realtime_publish_failed', market, messageOf(error)));
     if (market && guard?.control.exposureLimitsNano[market] > 0) await publishPredictOpsRealtime(c.env).catch(() => undefined);
     return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await publicUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
@@ -251,6 +252,7 @@ async function settleDueRounds(env: Env, market: TradeMarket, force = false): Pr
   for (const round of rows.results || []) {
     if (!force && Date.parse(round.ends_at) > Date.now()) continue;
     await settleRound(env, round);
+    await publishPredictRoundState(env, market, round.id).catch((error) => reportPredictOpsRuntimeError(env, 'round_realtime_publish_failed', market, messageOf(error)));
     settled += 1;
   }
   if (settled > 0) await publishPredictOpsRealtime(env).catch(() => undefined);
@@ -388,6 +390,7 @@ export async function retryPredictSettlement(env: Env, roundIdInput: unknown, ad
     await settleRound(env, row);
     const updated = await getPredictOpsRound(env, roundId);
     if (!updated) throw new Error('Prediction round not found after settlement retry.');
+    await publishPredictRoundState(env, updated.market, roundId).catch((error) => reportPredictOpsRuntimeError(env, 'round_realtime_publish_failed', updated.market, messageOf(error)));
     await appendPredictOpsIncident(env, 'settlement_retry_ok', updated.market, `Settlement retry completed for ${roundId}.`).catch(() => undefined);
     await appendPredictAudit(env, adminIdInput, 'settlement_retry', { market: updated.market, targetId: roundId, detail: 'Settlement retry completed.' }).catch(() => undefined);
     await publishPredictOpsRealtime(env, true).catch(() => undefined);
