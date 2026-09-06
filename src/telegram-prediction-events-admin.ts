@@ -16,6 +16,7 @@ import {
   getPredictOpsDashboard,
   getPredictOpsIncidents,
   getPredictOpsRound,
+  getPredictUserAccess,
   getPredictUserInspector,
   listPredictAuditLog,
   listPredictOpsDueRounds,
@@ -59,6 +60,8 @@ type PredictOpsInputState =
 type AdminEvent = { id: string; source_market_id: string; source_url: string; category: string; question: string; description: string | null; closes_at: string; resolution_source: string | null; status: string; result: string | null; featured: number; created_at: string; updated_at: string; published_at: string | null; settled_at: string | null };
 type PredictOpsUserRow = { telegram_user_id: string; username: string | null; first_name: string | null };
 type PredictOpsAdminUser = { id?: unknown; firstName?: unknown; username?: unknown; tonBalanceNano?: unknown; returnCount?: unknown };
+type PredictBlockedUserRow = { user_id: string; username: string | null; first_name: string | null };
+type PredictBlockedUser = { user: PredictOpsUserRow; access: PredictUserMarketAccess[] };
 
 const STATE_PREFIX = 'admin:prediction-event-input:';
 const PREDICT_OPS_STATE_PREFIX = 'admin:predict-ops-input:';
@@ -187,6 +190,7 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
   if (data.startsWith('botadmin:predictops:ex:')) { const market = cleanOpsMarket(data.slice('botadmin:predictops:ex:'.length)); await savePredictOpsState(env, adminId, { mode: 'market-exposure', market }); await upsert(env, chatId, messageId, `⚖️ ${marketLabel(market)} Exposure Limit\n\nحداکثر مجموع GRAM در betهای Pending/Active/Settling این مارکت را بفرستید.\n\nمثال: 500\nبرای غیرفعال‌کردن: 0`, [[{ text: 'لغو', callback_data: `botadmin:predictops:market:${market}` }]]); return; }
   if (data === 'botadmin:predictops:useraccess') { await sendPredictUserList(env, chatId, messageId, 0); return; }
   if (data.startsWith('botadmin:predictops:users:')) { await sendPredictUserList(env, chatId, messageId, Number(data.slice('botadmin:predictops:users:'.length)) || 0); return; }
+  if (data === 'botadmin:predictops:blocked' || data.startsWith('botadmin:predictops:blocked:')) { const page = data === 'botadmin:predictops:blocked' ? 0 : Number(data.slice('botadmin:predictops:blocked:'.length)) || 0; await sendPredictBlockedUsers(env, chatId, messageId, page); return; }
   if (data === 'botadmin:predictops:usersearch') { await savePredictOpsState(env, adminId, { mode: 'user-access' }); await upsert(env, chatId, messageId, '🔎 جستجوی کاربر\n\nآیدی عددی، یوزرنیم یا اسم کاربر را بفرستید.', [[{ text: 'لغو', callback_data: 'botadmin:predictops:useraccess' }]]); return; }
   if (data.startsWith('botadmin:predictops:u:')) { await sendPredictUserPanel(env, chatId, messageId, cleanPredictUserId(data.slice('botadmin:predictops:u:'.length))); return; }
   if (data.startsWith('botadmin:predictops:uba:')) { const parts = data.split(':'); await sendPredictBlockDuration(env, chatId, messageId, cleanPredictUserId(parts[3]), cleanBlockTarget(parts[4])); return; }
@@ -235,7 +239,7 @@ async function handlePredictOpsCallback(env: Env, adminId: number, chatId: numbe
 async function sendPredictOpsMenu(env: Env, chatId: number, messageId?: number, notice = ''): Promise<void> {
   const dashboard = await getPredictOpsDashboard(env);
   const text = [notice, '🩺 Predict Operations', '', `Emergency: ${dashboard.emergencyPaused ? '🚨 PAUSED' : '✅ Normal'}`, `Maintenance: ${dashboard.maintenanceMessage ? '📝 Set' : '—'}`, '', 'یک بخش را انتخاب کنید.', 'قیمت و منبع Aster از این پنل تغییر نمی‌کند.'].filter(Boolean).join('\n');
-  const rows: Button[][] = [[{ text: '₿ Bitcoin', callback_data: 'botadmin:predictops:market:bitcoin' }, { text: '🥇 Gold', callback_data: 'botadmin:predictops:market:gold' }, { text: '🛢 Oil', callback_data: 'botadmin:predictops:market:oil' }], [{ text: dashboard.emergencyPaused ? '✅ Resume All Markets' : '🚨 Emergency Pause All', callback_data: `botadmin:predictops:emergency:${dashboard.emergencyPaused ? 'off' : 'on'}` }], [{ text: '👤 User Predict Controls', callback_data: 'botadmin:predictops:useraccess' }], [{ text: '🧾 Settlement Queue', callback_data: 'botadmin:predictops:queue' }, { text: '📜 Incident Log', callback_data: 'botadmin:predictops:incidents' }], [{ text: '🔐 Audit Log', callback_data: 'botadmin:predictops:audit' }, { text: '📝 Maintenance', callback_data: 'botadmin:predictops:askmaintenance' }], ...(dashboard.maintenanceMessage ? [[{ text: '🗑 حذف Maintenance Message', callback_data: 'botadmin:predictops:clearmaintenance' }]] : []), [{ text: '🔄 Refresh', callback_data: 'botadmin:predictops:refresh' }, { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]];
+  const rows: Button[][] = [[{ text: '₿ Bitcoin', callback_data: 'botadmin:predictops:market:bitcoin' }, { text: '🥇 Gold', callback_data: 'botadmin:predictops:market:gold' }, { text: '🛢 Oil', callback_data: 'botadmin:predictops:market:oil' }], [{ text: dashboard.emergencyPaused ? '✅ Resume All Markets' : '🚨 Emergency Pause All', callback_data: `botadmin:predictops:emergency:${dashboard.emergencyPaused ? 'off' : 'on'}` }], [{ text: '👤 User Predict Controls', callback_data: 'botadmin:predictops:useraccess' }, { text: '⛔ Blocked Users', callback_data: 'botadmin:predictops:blocked' }], [{ text: '🧾 Settlement Queue', callback_data: 'botadmin:predictops:queue' }, { text: '📜 Incident Log', callback_data: 'botadmin:predictops:incidents' }], [{ text: '🔐 Audit Log', callback_data: 'botadmin:predictops:audit' }, { text: '📝 Maintenance', callback_data: 'botadmin:predictops:askmaintenance' }], ...(dashboard.maintenanceMessage ? [[{ text: '🗑 حذف Maintenance Message', callback_data: 'botadmin:predictops:clearmaintenance' }]] : []), [{ text: '🔄 Refresh', callback_data: 'botadmin:predictops:refresh' }, { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' }]];
   await upsert(env, chatId, messageId, text, rows);
 }
 
@@ -262,6 +266,34 @@ async function sendPredictUserList(env: Env, chatId: number, messageId: number |
   await upsert(env, chatId, messageId, `👤 User Predict Controls\n\nکاربر را از لیست انتخاب کنید.\n${users.length} کاربر • صفحه ${current + 1}/${totalPages}`, rows);
 }
 
+async function loadPredictBlockedUsers(env: Env): Promise<PredictBlockedUser[]> {
+  const candidates = await env.DB.prepare(`SELECT uc.user_id, au.username, au.first_name
+    FROM user_controls uc
+    LEFT JOIN app_users au ON au.telegram_user_id = uc.user_id
+    WHERE uc.blocked_sections_json LIKE '%predict-%'
+    ORDER BY datetime(uc.updated_at) DESC
+    LIMIT 100`).all<PredictBlockedUserRow>();
+  const resolved = await Promise.all((candidates.results || []).map(async (row): Promise<PredictBlockedUser> => ({
+    user: { telegram_user_id: cleanPredictUserId(row.user_id), username: row.username || null, first_name: row.first_name || null },
+    access: await getPredictUserAccess(env, row.user_id),
+  })));
+  return resolved.filter((entry) => entry.access.some((item) => item.blocked));
+}
+
+async function sendPredictBlockedUsers(env: Env, chatId: number, messageId: number | undefined, page: number): Promise<void> {
+  const users = await loadPredictBlockedUsers(env);
+  const totalPages = Math.max(1, Math.ceil(users.length / PREDICT_OPS_USER_PAGE_SIZE));
+  const current = Math.min(Math.max(0, Math.floor(page) || 0), totalPages - 1);
+  const pageUsers = users.slice(current * PREDICT_OPS_USER_PAGE_SIZE, current * PREDICT_OPS_USER_PAGE_SIZE + PREDICT_OPS_USER_PAGE_SIZE);
+  const rows: Button[][] = pageUsers.map((entry) => [{ text: blockedPredictUserButtonText(entry), callback_data: `botadmin:predictops:u:${entry.user.telegram_user_id}` }]);
+  const nav: Button[] = [];
+  if (current > 0) nav.push({ text: 'قبلی', callback_data: `botadmin:predictops:blocked:${current - 1}` });
+  nav.push({ text: '🔄 Refresh', callback_data: `botadmin:predictops:blocked:${current}` });
+  if (current < totalPages - 1) nav.push({ text: 'بعدی', callback_data: `botadmin:predictops:blocked:${current + 1}` });
+  rows.push(nav, [{ text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }]);
+  await upsert(env, chatId, messageId, `⛔ Blocked Predict Users\n\n${users.length ? `${users.length} کاربر با محدودیت فعال Predict • صفحه ${current + 1}/${totalPages}` : 'هیچ کاربری در حال حاضر محدودیت فعال Predict ندارد.'}\n\nمحدودیت‌های منقضی‌شده در این لیست نمایش داده نمی‌شوند.`, rows);
+}
+
 async function sendPredictUserSearchResults(env: Env, chatId: number, messageId: number | undefined, query: string): Promise<void> {
   const users = ((await adminUsersJson(env)).users as PredictOpsAdminUser[]).filter((user) => predictAdminUserMatches(user, query)).slice(0, 25);
   const rows: Button[][] = users.map((user) => [{ text: predictAdminUserButtonText(user), callback_data: `botadmin:predictops:u:${predictAdminUserId(user)}` }]);
@@ -275,7 +307,7 @@ async function sendPredictUserPanel(env: Env, chatId: number, messageId: number 
   const text = [notice, '👤 User Predict Controls', '', `User: ${predictUserLabel(user)}`, `ID: ${user.telegram_user_id}`, '', ...lines, '', `Max / bet: ${inspector.limits.maxBetNano ? formatGram(inspector.limits.maxBetNano) + ' GRAM' : 'Unlimited'}`, `Daily: ${inspector.limits.dailyLimitNano ? formatGram(inspector.limits.dailyLimitNano) + ' GRAM' : 'Unlimited'}`, `Today used: ${formatGram(inspector.todayStakeNano)} GRAM`].filter(Boolean).join('\n');
   const rows: Button[][] = [];
   for (const access of inspector.access) { rows.push([{ text: access.blocked ? `✅ Allow ${marketLabel(access.market)}` : `⛔ Block ${marketLabel(access.market)}`, callback_data: access.blocked ? `botadmin:predictops:uu:${userId}:${access.market}` : `botadmin:predictops:uba:${userId}:${access.market}` }]); if (access.blocked) rows.push([{ text: `📝 ${marketLabel(access.market)} Reason / Note`, callback_data: `botadmin:predictops:un:${userId}:${access.market}` }]); }
-  rows.push([{ text: allBlocked ? '✅ Allow All Predict' : '⛔ Block All Predict', callback_data: allBlocked ? `botadmin:predictops:uu:${userId}:all` : `botadmin:predictops:uba:${userId}:all` }], [{ text: '🎚 Betting Limits', callback_data: `botadmin:predictops:ul:${userId}` }, { text: '📊 Inspector', callback_data: `botadmin:predictops:ui:${userId}` }], [{ text: '🔐 User Audit', callback_data: `botadmin:predictops:au:${userId}` }], [{ text: '🔎 کاربر دیگر', callback_data: 'botadmin:predictops:useraccess' }, { text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }]);
+  rows.push([{ text: allBlocked ? '✅ Allow All Predict' : '⛔ Block All Predict', callback_data: allBlocked ? `botadmin:predictops:uu:${userId}:all` : `botadmin:predictops:uba:${userId}:all` }], [{ text: '🎚 Betting Limits', callback_data: `botadmin:predictops:ul:${userId}` }, { text: '📊 Inspector', callback_data: `botadmin:predictops:ui:${userId}` }], [{ text: '🔐 User Audit', callback_data: `botadmin:predictops:au:${userId}` }], [{ text: '⛔ Blocked Users', callback_data: 'botadmin:predictops:blocked' }, { text: '🔎 کاربر دیگر', callback_data: 'botadmin:predictops:useraccess' }], [{ text: '⬅️ Predict Ops', callback_data: 'botadmin:predictops:menu' }]);
   await upsert(env, chatId, messageId, text, rows);
 }
 
@@ -343,6 +375,7 @@ async function findPredictOpsUserById(env: Env, userId: string): Promise<Predict
 function predictAdminUserId(user: PredictOpsAdminUser): string { return cleanPredictUserId(user.id); }
 function predictAdminUserButtonText(user: PredictOpsAdminUser): string { const name = String(user.firstName || '').trim() || 'بی‌نام', username = String(user.username || '').trim() || 'بدون یوزرنیم', returns = Math.max(1, Math.floor(Number(user.returnCount) || 1)); return `${shorten(name, 24)} | ${shorten(username, 24)} | ${formatGram(Number(user.tonBalanceNano) || 0)} GRAM | ↩️ ${returns}`; }
 function predictAdminUserMatches(user: PredictOpsAdminUser, query: string): boolean { const q = String(query || '').trim().replace(/^@+/, '').toLowerCase(); if (!q) return false; return [user.id, user.username, user.firstName].some((value) => String(value ?? '').trim().replace(/^@+/, '').toLowerCase().includes(q)); }
+function blockedPredictUserButtonText(entry: PredictBlockedUser): string { const name = shorten(predictUserLabel(entry.user), 28), markets = entry.access.filter((item) => item.blocked).map((item) => marketIcon(item.market)).join(' '); return `⛔ ${name} • ${markets || 'Predict'}`; }
 function parseReasonNote(textInput: string): { reason: string; adminNote: string | null } { const text = String(textInput || '').trim(); if (!text || text === '-') return { reason: 'Manual review', adminNote: null }; const split = text.indexOf('|'), reason = (split >= 0 ? text.slice(0, split) : text).replace(/\s+/g, ' ').trim().slice(0, 80) || 'Manual review', adminNote = split >= 0 ? text.slice(split + 1).replace(/\s+/g, ' ').trim().slice(0, 180) || null : null; return { reason, adminNote }; }
 function durationExpiresAt(duration: BlockDuration): string | null { const hours = duration === '1h' ? 1 : duration === '6h' ? 6 : duration === '24h' ? 24 : duration === '7d' ? 168 : 0; return hours ? new Date(Date.now() + hours * 60 * 60 * 1000).toISOString() : null; }
 function durationLabel(duration: BlockDuration): string { return duration === '1h' ? '1 hour' : duration === '6h' ? '6 hours' : duration === '24h' ? '24 hours' : duration === '7d' ? '7 days' : 'Permanent'; }
