@@ -562,8 +562,12 @@ export async function ensurePredictVisitorTracking(env: Env): Promise<void> {
             predict_last_seen_at = COALESCE(predict_last_seen_at, (SELECT MAX(pb.created_at) FROM predict_bets pb WHERE pb.user_id = app_users.telegram_user_id))
         WHERE EXISTS (SELECT 1 FROM predict_bets pb WHERE pb.user_id = app_users.telegram_user_id)`).run().catch(() => undefined);
       await env.DB.prepare(`UPDATE app_users
-        SET predict_first_seen_at = COALESCE(predict_first_seen_at, created_at, last_seen_at, CURRENT_TIMESTAMP),
-            predict_last_seen_at = COALESCE(last_seen_at, predict_last_seen_at, CURRENT_TIMESTAMP)
+        SET predict_first_seen_at = COALESCE(predict_first_seen_at, last_seen_at, CURRENT_TIMESTAMP),
+            predict_last_seen_at = CASE
+              WHEN predict_last_seen_at IS NULL THEN COALESCE(last_seen_at, CURRENT_TIMESTAMP)
+              WHEN last_seen_at IS NOT NULL AND datetime(last_seen_at) > datetime(predict_last_seen_at) THEN last_seen_at
+              ELSE predict_last_seen_at
+            END
         WHERE current_section = 'predictzone'`).run().catch(() => undefined);
     })().catch((error) => {
       predictVisitorTrackingReady = null;
