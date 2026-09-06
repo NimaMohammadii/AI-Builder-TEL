@@ -27,6 +27,7 @@ type PredictRoundRealtime = {
   updatedAt: string;
 };
 type PredictRoundMessage = { type: 'predict-round'; round: PredictRoundRealtime };
+type PredictSyncErrorMessage = { type: 'predict-sync-error'; market: PredictMarket; roundId: string };
 type PredictBetRealtime = {
   id: string;
   roundId: string;
@@ -127,8 +128,13 @@ export class SectionLockEvents {
       if (!market) return Response.json({ ok: false }, { status: 400 });
       const roundId = cleanPredictRoundId(body?.roundId, market);
       if (!roundId) return Response.json({ ok: false }, { status: 400 });
-      await this.broadcastPredictRoundState(market, roundId, cleanUserId(body?.userId)).catch(() => undefined);
-      return Response.json({ ok: true });
+      try {
+        await this.broadcastPredictRoundState(market, roundId, cleanUserId(body?.userId));
+        return Response.json({ ok: true });
+      } catch {
+        this.broadcastPredictSyncError(market, roundId);
+        return Response.json({ ok: false }, { status: 503 });
+      }
     }
     if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
       const body = await request.json().catch(() => null) as { state?: unknown; refreshRound?: unknown; userControls?: unknown } | null;
@@ -208,7 +214,11 @@ export class SectionLockEvents {
     if (!market) return;
     const roundId = cleanPredictRoundId(message.roundId, market);
     if (!roundId) return;
-    await this.broadcastPredictRoundState(market, roundId, session.userId).catch(() => undefined);
+    try {
+      await this.broadcastPredictRoundState(market, roundId, session.userId);
+    } catch {
+      this.sendPredictSyncError(socket, market, roundId);
+    }
   }
 
   private async broadcastPredictRoundState(market: PredictMarket, roundId: string, requestUserId = ''): Promise<void> {
@@ -291,6 +301,19 @@ export class SectionLockEvents {
       tonBalanceNano: normalizeNano(balance?.ton_balance_nano),
       bet: null,
     });
+  }
+
+  private sendPredictSyncError(socket: WebSocket, market: PredictMarket, roundId: string): void {
+    try { socket.send(JSON.stringify({ type: 'predict-sync-error', market, roundId } satisfies PredictSyncErrorMessage)); }
+    catch { this.sessions.delete(socket); }
+  }
+
+  private broadcastPredictSyncError(market: PredictMarket, roundId: string): void {
+    const payload = JSON.stringify({ type: 'predict-sync-error', market, roundId } satisfies PredictSyncErrorMessage);
+    for (const [socket, session] of this.sessions) {
+      if (session.admin || !session.predictActive || !session.userId) continue;
+      try { socket.send(payload); } catch { this.sessions.delete(socket); }
+    }
   }
 
   private sendPredictUserRoundUpdate(row: PredictUserBetDbRow): void {
