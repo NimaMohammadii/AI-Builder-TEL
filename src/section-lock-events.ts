@@ -15,9 +15,56 @@ export type PredictOpsRealtimeState = {
 };
 type PredictOpsMessage = { type: 'predict-ops'; state: PredictOpsRealtimeState; refreshRound: boolean };
 type PredictOnlineMessage = { type: 'predict-online'; count: number };
+type PredictMarket = 'bitcoin' | 'gold' | 'oil';
+type PredictPoolRealtime = { stakeNano: number; stakeTon: number; count: number };
+type PredictRoundRealtime = {
+  market: PredictMarket;
+  roundId: string;
+  status: string;
+  result: string | null;
+  endPrice: number | null;
+  pools: { up: PredictPoolRealtime; down: PredictPoolRealtime };
+  updatedAt: string;
+};
+type PredictRoundMessage = { type: 'predict-round'; round: PredictRoundRealtime };
+type PredictBetRealtime = {
+  id: string;
+  roundId: string;
+  market: PredictMarket;
+  side: string;
+  stakeNano: number;
+  stakeTon: number;
+  status: string;
+  payoutNano: number;
+  payoutTon: number;
+  createdAt: string;
+};
+type PredictUserRoundRealtime = {
+  userId: string;
+  market: PredictMarket;
+  roundId: string;
+  tonBalanceNano: number;
+  bet: PredictBetRealtime | null;
+};
+type PredictUserRoundMessage = { type: 'predict-user-round'; update: PredictUserRoundRealtime };
 type RealtimeSession = { admin: boolean; userId: string; predictActive: boolean };
+type PredictRoundDbRow = { id: string; market: string; status: string; result: string | null; end_price: number | null };
+type PredictPoolDbRow = { side: string; stakeNano: number; count: number };
+type PredictUserBetDbRow = {
+  id: string;
+  round_id: string;
+  market: string;
+  user_id: string;
+  side: string;
+  stake_nano: number;
+  status: string;
+  payout_nano: number;
+  created_at: string;
+  ton_balance_nano: number | null;
+};
 
 const PREDICT_OPS_STATE_KEY = 'predict-ops:realtime-state:v1';
+const NANO = 1_000_000_000;
 
 function messageFor(locks: SectionLock[]): LockMessage {
   return {
@@ -33,6 +80,7 @@ function predictOpsMessage(state: PredictOpsRealtimeState, refreshRound = false)
 
 export class SectionLockEvents {
   private sessions = new Map<WebSocket, RealtimeSession>();
+  private predictRoundSignatures = new Map<string, string>();
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -107,10 +155,14 @@ export class SectionLockEvents {
   }
 
   private async handleSessionMessage(socket: WebSocket, raw: string): Promise<void> {
-    let message: { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown } | null = null;
-    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown }; } catch { return; }
+    let message: { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown } | null = null;
+    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown }; } catch { return; }
     if (message?.type === 'identify') {
       await this.identifySession(socket, message);
+      return;
+    }
+    if (message?.type === 'predict-round-sync') {
+      await this.syncPredictRound(socket, message);
       return;
     }
     if (message?.type !== 'predict-presence') return;
@@ -133,6 +185,136 @@ export class SectionLockEvents {
       session.predictActive = !session.admin && message.predictActive === true;
       this.broadcastPredictOnlineCount();
     } catch { /* invalid session cannot claim a realtime user target */ }
+  }
+
+  private async syncPredictRound(socket: WebSocket, message: { initData?: unknown; market?: unknown; roundId?: unknown }): Promise<void> {
+    let session = this.sessions.get(socket);
+    if (!session || session.admin) return;
+    if (!session.userId && message.initData) {
+      await this.identifySession(socket, { initData: message.initData, predictActive: true });
+      session = this.sessions.get(socket);
+    }
+    if (!session || !session.userId || !session.predictActive) return;
+    const market = cleanPredictMarket(message.market);
+    if (!market) return;
+    const roundId = cleanPredictRoundId(message.roundId, market);
+    if (!roundId) return;
+    await this.broadcastPredictRoundState(market, roundId, session.userId).catch(() => undefined);
+  }
+
+  private async broadcastPredictRoundState(market: PredictMarket, roundId: string, requestUserId: string): Promise<void> {
+    const roundRow = await this.env.DB.prepare('SELECT id, market, status, result, end_price FROM predict_rounds WHERE id = ? AND market = ? LIMIT 1')
+      .bind(roundId, market)
+      .first<PredictRoundDbRow>();
+    if (!roundRow) return;
+
+    const poolRows = await this.env.DB.prepare(`SELECT side, COALESCE(SUM(stake_nano), 0) AS stakeNano, COUNT(*) AS count
+      FROM predict_bets
+      WHERE round_id = ? AND status NOT IN ('failed','pending')
+      GROUP BY side`)
+      .bind(roundId)
+      .all<PredictPoolDbRow>();
+    const pools = {
+      up: { stakeNano: 0, stakeTon: 0, count: 0 },
+      down: { stakeNano: 0, stakeTon: 0, count: 0 },
+    };
+    for (const row of poolRows.results || []) {
+      if (row.side !== 'up' && row.side !== 'down') continue;
+      const stakeNano = normalizeNano(row.stakeNano);
+      pools[row.side] = { stakeNano, stakeTon: nanoToTon(stakeNano), count: Math.max(0, Math.floor(Number(row.count) || 0)) };
+    }
+
+    const round: PredictRoundRealtime = {
+      market,
+      roundId,
+      status: String(roundRow.status || ''),
+      result: roundRow.result == null ? null : String(roundRow.result),
+      endPrice: roundRow.end_price == null ? null : Number(roundRow.end_price),
+      pools,
+      updatedAt: new Date().toISOString(),
+    };
+    const signature = JSON.stringify([round.status, round.result, round.endPrice, pools.up.stakeNano, pools.up.count, pools.down.stakeNano, pools.down.count]);
+    const changed = this.predictRoundSignatures.get(roundId) !== signature;
+    this.predictRoundSignatures.set(roundId, signature);
+
+    if (changed) {
+      const payload = JSON.stringify({ type: 'predict-round', round } satisfies PredictRoundMessage);
+      for (const [target, targetSession] of this.sessions) {
+        if (targetSession.admin || !targetSession.predictActive || !targetSession.userId) continue;
+        try { target.send(payload); } catch { this.sessions.delete(target); }
+      }
+    }
+
+    const terminal = round.status === 'settled' || round.status === 'refunded';
+    if (terminal && changed) {
+      const bets = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
+          COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
+        FROM predict_bets b
+        LEFT JOIN app_users u ON u.telegram_user_id = b.user_id
+        WHERE b.round_id = ? AND b.status != 'failed'
+        ORDER BY datetime(b.created_at) DESC`)
+        .bind(roundId)
+        .all<PredictUserBetDbRow>();
+      for (const bet of bets.results || []) this.sendPredictUserRoundUpdate(bet);
+      return;
+    }
+
+    const ownBet = await this.env.DB.prepare(`SELECT b.id, b.round_id, b.market, b.user_id, b.side, b.stake_nano, b.status, b.payout_nano, b.created_at,
+        COALESCE(u.ton_balance_nano, 0) AS ton_balance_nano
+      FROM predict_bets b
+      LEFT JOIN app_users u ON u.telegram_user_id = b.user_id
+      WHERE b.round_id = ? AND b.user_id = ? AND b.status != 'failed'
+      ORDER BY datetime(b.created_at) DESC LIMIT 1`)
+      .bind(roundId, requestUserId)
+      .first<PredictUserBetDbRow>();
+    if (ownBet) {
+      this.sendPredictUserRoundUpdate(ownBet);
+      return;
+    }
+    const balance = await this.env.DB.prepare('SELECT ton_balance_nano FROM app_users WHERE telegram_user_id = ? LIMIT 1')
+      .bind(requestUserId)
+      .first<{ ton_balance_nano: number }>();
+    this.sendPredictUserRoundPayload({
+      userId: requestUserId,
+      market,
+      roundId,
+      tonBalanceNano: normalizeNano(balance?.ton_balance_nano),
+      bet: null,
+    });
+  }
+
+  private sendPredictUserRoundUpdate(row: PredictUserBetDbRow): void {
+    const market = cleanPredictMarket(row.market);
+    if (!market) return;
+    const stakeNano = normalizeNano(row.stake_nano);
+    const payoutNano = normalizeNano(row.payout_nano);
+    this.sendPredictUserRoundPayload({
+      userId: cleanUserId(row.user_id),
+      market,
+      roundId: String(row.round_id || ''),
+      tonBalanceNano: normalizeNano(row.ton_balance_nano),
+      bet: {
+        id: String(row.id || ''),
+        roundId: String(row.round_id || ''),
+        market,
+        side: String(row.side || ''),
+        stakeNano,
+        stakeTon: nanoToTon(stakeNano),
+        status: String(row.status || ''),
+        payoutNano,
+        payoutTon: nanoToTon(payoutNano),
+        createdAt: String(row.created_at || ''),
+      },
+    });
+  }
+
+  private sendPredictUserRoundPayload(update: PredictUserRoundRealtime): void {
+    if (!update.userId) return;
+    const payload = JSON.stringify({ type: 'predict-user-round', update } satisfies PredictUserRoundMessage);
+    for (const [socket, session] of this.sessions) {
+      if (session.admin || !session.predictActive || session.userId !== update.userId) continue;
+      try { socket.send(payload); } catch { this.sessions.delete(socket); }
+    }
   }
 
   private removeSession(socket: WebSocket): void {
@@ -210,6 +392,26 @@ function isRealtimeUserControls(value: unknown): value is RealtimeUserControls {
     if (block.expiresAt !== null && typeof block.expiresAt !== 'string') return false;
     return block.remainingMs === null || (typeof block.remainingMs === 'number' && Number.isFinite(block.remainingMs) && block.remainingMs >= 0);
   });
+}
+
+function cleanPredictMarket(value: unknown): PredictMarket | null {
+  const market = String(value || '').trim().toLowerCase();
+  return market === 'bitcoin' || market === 'gold' || market === 'oil' ? market : null;
+}
+
+function cleanPredictRoundId(value: unknown, market: PredictMarket): string {
+  const roundId = String(value || '').trim();
+  return new RegExp(`^pr_${market}_\\d+$`).test(roundId) ? roundId : '';
+}
+
+function normalizeNano(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n));
+}
+
+function nanoToTon(value: number): number {
+  return Math.floor(Number(value) || 0) / NANO;
 }
 
 function cleanUserId(value: unknown): string {
