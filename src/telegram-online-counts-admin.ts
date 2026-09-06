@@ -13,8 +13,7 @@ type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
 type Keyboard = Button[][];
 type OnlineState =
-  | { mode: 'hour'; sectionId: string; hour: number }
-  | { mode: 'bulk'; sectionId: string }
+  | { mode: 'base'; sectionId: string }
   | { mode: 'timed-amount'; sectionId: string }
   | { mode: 'timed-hours'; sectionId: string; range: OnlineCountRange };
 
@@ -52,26 +51,10 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     return ok();
   }
 
-  if (data === 'botadmin:online:copyfirst') {
-    await clearState(env, callback.from.id);
-    try {
-      const config = await getOnlineUserCountConfig(env);
-      for (const section of ONLINE_COUNT_SECTIONS) {
-        const first = normalizeRange(config.schedule[section.id]?.[0]);
-        config.schedule[section.id] = Array.from({ length: 24 }, () => ({ ...first }));
-      }
-      await saveOnlineUserCountConfig(env, config);
-      await sendMainMenu(env, token, chatId, messageId, '✅ ساعت 00:00 هر بازی روی تمام ۲۴ ساعت همان بازی کپی شد.');
-    } catch (error) {
-      await sendMainMenu(env, token, chatId, messageId, errorText(error));
-    }
-    return ok();
-  }
-
   if (data === 'botadmin:online:reset:ask') {
     await clearState(env, callback.from.id);
     await upsert(token, chatId, messageId,
-      '♻️ بازگردانی Online Counts\n\nتمام تنظیمات ساعتی همه بازی‌ها به مقادیر پیش‌فرض برمی‌گردد. مطمئن هستید؟',
+      '♻️ بازگردانی Online Counts\n\nتمام مقادیر پایه و افزایش‌های Online Counts به حالت پیش‌فرض برمی‌گردد. مطمئن هستید؟',
       [
         [{ text: '✅ بله، ریست کن', callback_data: 'botadmin:online:reset:confirm' }],
         [{ text: '⬅️ انصراف', callback_data: 'botadmin:online:list' }],
@@ -131,33 +114,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     return ok();
   }
 
-  if (data.startsWith('botadmin:online:hour:')) {
-    const raw = data.slice('botadmin:online:hour:'.length).split(':');
-    const sectionId = normalizeSectionId(raw[0]);
-    const hour = normalizeHour(raw[1]);
-    if (!sectionId || hour === null) return ok();
-
-    await setState(env, callback.from.id, { mode: 'hour', sectionId, hour });
+  if (data.startsWith('botadmin:online:base:')) {
+    const sectionId = normalizeSectionId(data.slice('botadmin:online:base:'.length));
+    if (!sectionId || sectionId === 'predict') return ok();
+    await setState(env, callback.from.id, { mode: 'base', sectionId });
     const config = await getOnlineUserCountConfig(env);
-    const current = normalizeRange(config.schedule[sectionId]?.[hour]);
+    const current = normalizeRange(config.ranges[sectionId]);
     await upsert(token, chatId, messageId,
-      `✏️ ${sectionLabel(sectionId)} — ${hourLabel(hour)}\n\nمقدار فعلی: ${current.min} تا ${current.max}\n\nحداقل و حداکثر را در یک پیام بفرستید.\nمثال: 120 280\nیا: 120-280\n\nمحدوده مجاز: 0 تا ${MAX_COUNT}`,
-      [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${sectionId}` }]],
-    );
-    return ok();
-  }
-
-  if (data.startsWith('botadmin:online:bulk:')) {
-    const sectionId = normalizeSectionId(data.slice('botadmin:online:bulk:'.length));
-    if (!sectionId) return ok();
-    await setState(env, callback.from.id, { mode: 'bulk', sectionId });
-    const config = await getOnlineUserCountConfig(env);
-    const lines = Array.from({ length: 24 }, (_, hour) => {
-      const range = normalizeRange(config.schedule[sectionId]?.[hour]);
-      return `${String(hour).padStart(2, '0')} ${range.min} ${range.max}`;
-    }).join('\n');
-    await upsert(token, chatId, messageId,
-      `📝 ویرایش ۲۴ ساعت ${sectionLabel(sectionId)}\n\n۲۴ خط زیر را تغییر دهید و همان ساختار را بفرستید:\n\n${lines}\n\nهر خط: ساعت  حداقل  حداکثر`,
+      `✏️ ${sectionLabel(sectionId)} — مقدار پایه\n\nمقدار فعلی: ${current.min} تا ${current.max}\n\nحداقل و حداکثر را در یک پیام بفرستید.\nمثال: 120-280`,
       [[{ text: '⬅️ لغو', callback_data: `botadmin:online:section:${sectionId}` }]],
     );
     return ok();
@@ -185,22 +149,18 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     return ok();
   }
 
-  if (state.mode === 'hour') {
+  if (state.mode === 'base') {
     const range = parseRange(text);
     if (!range) {
-      await tg(token, 'sendMessage', {
-        chat_id: message.chat.id,
-        text: `دو عدد بین 0 تا ${MAX_COUNT} بفرستید. مثال: 120 280`,
-      }).catch(() => undefined);
+      await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `دو عدد بین 0 تا ${MAX_COUNT} بفرستید. مثال: 120-280` }).catch(() => undefined);
       return ok();
     }
     try {
       const config = await getOnlineUserCountConfig(env);
-      config.schedule[state.sectionId][state.hour] = range;
+      config.ranges[state.sectionId] = range;
       await saveOnlineUserCountConfig(env, config);
       await clearState(env, userId);
-      await sendSectionMenu(env, token, message.chat.id, state.sectionId, undefined,
-        `✅ ${hourLabel(state.hour)} روی ${range.min} تا ${range.max} ذخیره شد.`);
+      await sendSectionMenu(env, token, message.chat.id, state.sectionId, undefined, `✅ مقدار پایه روی ${range.min} تا ${range.max} ذخیره و همان لحظه اعمال شد.`);
     } catch (error) {
       await tg(token, 'sendMessage', { chat_id: message.chat.id, text: errorText(error) }).catch(() => undefined);
     }
@@ -232,23 +192,6 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     return ok();
   }
 
-  const ranges = parseBulkRanges(text);
-  if (!ranges) {
-    await tg(token, 'sendMessage', {
-      chat_id: message.chat.id,
-      text: 'فرمت درست نیست. دقیقاً ۲۴ خط بفرستید؛ هر خط به شکل «ساعت حداقل حداکثر». مثال: 00 120 280',
-    }).catch(() => undefined);
-    return ok();
-  }
-  try {
-    const config = await getOnlineUserCountConfig(env);
-    config.schedule[state.sectionId] = ranges;
-    await saveOnlineUserCountConfig(env, config);
-    await clearState(env, userId);
-    await sendSectionMenu(env, token, message.chat.id, state.sectionId, undefined, '✅ هر ۲۴ ساعت ذخیره شد.');
-  } catch (error) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: errorText(error) }).catch(() => undefined);
-  }
   return ok();
 }
 
@@ -261,7 +204,6 @@ async function sendMainMenu(env: Env, token: string, chatId: number, messageId?:
       callback_data: `botadmin:online:section:${section.id}`,
     })));
   }
-  rows.push([{ text: '📋 کپی ساعت اول روی همه ساعت‌ها', callback_data: 'botadmin:online:copyfirst' }]);
   rows.push([{ text: '♻️ بازگردانی پیش‌فرض‌ها', callback_data: 'botadmin:online:reset:ask' }]);
   rows.push([
     { text: '🔄 بروزرسانی', callback_data: 'botadmin:online:refresh' },
@@ -269,43 +211,29 @@ async function sendMainMenu(env: Env, token: string, chatId: number, messageId?:
   ]);
 
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}👥 Online Counts\n\nبرای بازی‌ها می‌توانید Min/Max تمام ۲۴ ساعت را تنظیم کنید. عدد پایهٔ Predict از کاربران واقعاً آنلاین می‌آید و فقط افزایش‌های این بخش به آن اضافه می‌شوند.${config.updatedAt ? `\n\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}`,
+    `${notice ? notice + '\n\n' : ''}👥 Online Counts\n\nبرای هر بازی یک Min/Max پایه تنظیم می‌شود و کاربران واقعاً حاضر در همان بازی به آن اضافه می‌شوند. عدد پایهٔ Predict فقط از کاربران واقعاً آنلاین می‌آید.${config.updatedAt ? `\n\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}`,
     rows,
   );
 }
 
 async function sendSectionMenu(env: Env, token: string, chatId: number, sectionId: string, messageId?: number, notice = ''): Promise<void> {
   const config = await getOnlineUserCountConfig(env);
-  const values = config.schedule[sectionId];
+  const base = normalizeRange(config.ranges[sectionId]);
   const adjustment = config.adjustments[sectionId];
   const timed = adjustment.timed && Date.parse(adjustment.timed.expiresAt) > Date.now() ? adjustment.timed : undefined;
   const isPredict = sectionId === 'predict';
-  const lines = Array.from({ length: 24 }, (_, hour) => {
-    const range = normalizeRange(values?.[hour]);
-    return `${hourLabel(hour)}  ${range.min} – ${range.max}`;
-  });
-
   const rows: Keyboard = [];
-  for (let hour = 0; !isPredict && hour < 24; hour += 2) {
-    rows.push([hour, hour + 1].map((item) => {
-      const range = normalizeRange(values?.[item]);
-      return {
-        text: `${String(item).padStart(2, '0')} • ${range.min}-${range.max}`,
-        callback_data: `botadmin:online:hour:${sectionId}:${item}`,
-      };
-    }));
-  }
+  if (!isPredict) rows.push([{ text: `✏️ مقدار پایه • ${base.min}-${base.max}`, callback_data: `botadmin:online:base:${sectionId}` }]);
   rows.push([
     { text: '➖ کم‌کردن ۱', callback_data: `botadmin:online:adjust:${sectionId}:-1` },
     { text: '➕ افزودن ۱', callback_data: `botadmin:online:adjust:${sectionId}:1` },
   ]);
   rows.push([{ text: '⏱ افزودن زمان‌دار', callback_data: `botadmin:online:timed:${sectionId}` }]);
   if (timed) rows.push([{ text: '🛑 حذف افزایش زمان‌دار', callback_data: `botadmin:online:timedclear:${sectionId}` }]);
-  if (!isPredict) rows.push([{ text: '📝 ویرایش ۲۴ ساعت یکجا', callback_data: `botadmin:online:bulk:${sectionId}` }]);
   rows.push([{ text: '⬅️ بازی‌ها', callback_data: 'botadmin:online:list' }]);
 
   await upsert(token, chatId, messageId,
-    `${notice ? notice + '\n\n' : ''}👥 ${sectionLabel(sectionId)} — Online Counts\n\nافزودهٔ دائمی: +${adjustment.permanent}\n${timed ? `افزایش زمان‌دار: +${timed.min === timed.max ? timed.min : `${timed.min} تا ${timed.max}`} (تا ${formatUpdatedAt(timed.expiresAt)})` : 'افزایش زمان‌دار: غیرفعال'}\n\n${isPredict ? 'مقدار پایه: تعداد کاربران واقعاً آنلاین در Predict' : lines.join('\n')}\n\nعدد نمایشی = مقدار پایه + افزودهٔ دائمی + افزایش زمان‌دار فعال. دکمه‌های ± فقط افزودهٔ دائمی را تغییر می‌دهند.`,
+    `${notice ? notice + '\n\n' : ''}👥 ${sectionLabel(sectionId)} — Online Counts\n\nافزودهٔ دائمی: +${adjustment.permanent}\n${timed ? `افزایش زمان‌دار: +${timed.min === timed.max ? timed.min : `${timed.min} تا ${timed.max}`} (تا ${formatUpdatedAt(timed.expiresAt)})` : 'افزایش زمان‌دار: غیرفعال'}\n\n${isPredict ? 'مقدار پایه: تعداد کاربران واقعاً آنلاین در Predict' : `مقدار پایه: ${base.min} تا ${base.max} + کاربران واقعاً حاضر در بازی`}\n\nعدد نمایشی = مقدار پایه + کاربران واقعی + افزودهٔ دائمی + افزایش زمان‌دار فعال. دکمه‌های ± فقط افزودهٔ دائمی را تغییر می‌دهند.`,
     rows,
   );
 }
@@ -328,21 +256,6 @@ function parseBoostRange(text: string): OnlineCountRange | null {
   return parseRange(text);
 }
 
-function parseBulkRanges(text: string): OnlineCountRange[] | null {
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length !== 24) return null;
-  const ranges: OnlineCountRange[] = [];
-  for (let index = 0; index < 24; index += 1) {
-    const match = lines[index].match(/^(\d{1,2})\s+(\d{1,6})\s+(\d{1,6})$/);
-    if (!match || Number(match[1]) !== index) return null;
-    const min = Number(match[2]);
-    const max = Number(match[3]);
-    if (!validCount(min) || !validCount(max)) return null;
-    ranges.push(min <= max ? { min, max } : { min: max, max: min });
-  }
-  return ranges;
-}
-
 function validCount(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0 && value <= MAX_COUNT;
 }
@@ -358,17 +271,8 @@ function normalizeSectionId(value: unknown): string | null {
   return ONLINE_COUNT_SECTIONS.some((section) => section.id === id) ? id : null;
 }
 
-function normalizeHour(value: unknown): number | null {
-  const hour = Number(value);
-  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : null;
-}
-
 function sectionLabel(id: string): string {
   return ONLINE_COUNT_SECTIONS.find((section) => section.id === id)?.label || id;
-}
-
-function hourLabel(hour: number): string {
-  return `${String(hour).padStart(2, '0')}:00`;
 }
 
 function formatUpdatedAt(value: string): string {
@@ -380,17 +284,16 @@ async function getState(env: Env, userId: number): Promise<OnlineState | null> {
   const raw = await env.BOT_CACHE.get(stateKey(userId)).catch(() => null);
   if (!raw) return null;
   try {
-    const state = JSON.parse(raw) as { mode?: string; sectionId?: string; hour?: number };
+    const state = JSON.parse(raw) as { mode?: string; sectionId?: string };
     const sectionId = normalizeSectionId(state.sectionId);
     if (!sectionId) return null;
-    if (state.mode === 'bulk') return { mode: 'bulk', sectionId };
+    if (state.mode === 'base') return { mode: 'base', sectionId };
     if (state.mode === 'timed-amount') return { mode: 'timed-amount', sectionId };
     if (state.mode === 'timed-hours') {
       const range = normalizeRange((state as { range?: OnlineCountRange }).range);
       return { mode: 'timed-hours', sectionId, range };
     }
-    const hour = normalizeHour(state.hour);
-    return state.mode === 'hour' && hour !== null ? { mode: 'hour', sectionId, hour } : null;
+    return null;
   } catch {
     return null;
   }

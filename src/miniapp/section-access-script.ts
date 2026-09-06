@@ -23,6 +23,8 @@ export const SECTION_ACCESS_SCRIPT = `
   function renderPredictOnlineCount(value){var badge=document.getElementById('predictOnlineBadge'),count=document.getElementById('predictOnlineCount'),n=Math.floor(Number(value));if(count)count.textContent=isFinite(n)&&n>=0?String(n):'—';if(badge)badge.setAttribute('aria-label',isFinite(n)&&n>=0?n+' users online in Predict':'Predict online users')}
   function sendPredictPresence(active){var next=active===true;if(predictPresenceActive===next)return;predictPresenceActive=next;if(!liveSocket||liveSocket.readyState!==1)return;try{liveSocket.send(JSON.stringify({type:'predict-presence',active:next}))}catch(e){}}
   function syncPredictPresence(){sendPredictPresence(isPredictViewActive())}
+  function activeGamePresence(){var root=document.querySelector('.view.active');var id=String(root&&root.id||'');return ['mines','plinko','wheel','dice','crash','hilo','coinflip','slot','ghostrun'].indexOf(id)>=0&&!document.hidden?id:''}
+  function sendGamePresence(inactive){if(!liveSocket||liveSocket.readyState!==1)return;try{liveSocket.send(JSON.stringify({type:'game-presence',gameActive:inactive===true?'':activeGamePresence()}))}catch(e){}}
   function cleanPredictRoundSync(detail){var market=String(detail&&detail.market||'').toLowerCase(),roundId=String(detail&&detail.roundId||'').trim();if(market!=='bitcoin'&&market!=='gold'&&market!=='oil')return null;if(!(new RegExp('^pr_'+market+'_\\\\d+$')).test(roundId))return null;return{market:market,roundId:roundId}}
   function requestPredictRoundSync(detail){var item=cleanPredictRoundSync(detail);if(!item)return;pendingPredictRoundSync[item.roundId]=item;flushPredictRoundSync()}
   function flushPredictRoundSync(){if(!isPredictViewActive()||!liveSocket||liveSocket.readyState!==1)return;var initData=String((tg&&tg.initData)||'');if(!initData)return;Object.keys(pendingPredictRoundSync).forEach(function(key){var item=pendingPredictRoundSync[key];try{liveSocket.send(JSON.stringify({type:'predict-round-sync',market:item.market,roundId:item.roundId,initData:initData}));delete pendingPredictRoundSync[key]}catch(e){}})}
@@ -140,13 +142,14 @@ export const SECTION_ACCESS_SCRIPT = `
       if(root&&root.classList.contains('active'))queueMicrotask(function(){var market=activePredictMarket(),button=market&&root.querySelector('[data-vexa-predict-market="'+market+'"]');if(button&&button.getAttribute('data-vexa-predict-locked')!=='1')try{button.click()}catch(e){}})
     }
   }
+  function applyGameOnlinePayload(payload){try{window.dispatchEvent(new CustomEvent('vexa:game-online',{detail:payload}))}catch(e){}}
   function reconnectDelay(){return Math.min(30000,1000*Math.pow(2,Math.min(reconnectAttempt++,5)))}
   function connectLive(){
     if(liveSocket||!userId()||!window.WebSocket)return;
     var initData=String((tg&&tg.initData)||'');if(!initData)return;
     var proto=location.protocol==='https:'?'wss:':'ws:';
     var endpoint=proto+'//'+location.host+'/app/api/section-access/live?initData='+encodeURIComponent(initData);
-    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;predictSocketIssue=false;renderPredictOps();predictPresenceActive=isPredictViewActive();try{liveSocket&&liveSocket.send(JSON.stringify({type:'identify',initData:initData,predictActive:predictPresenceActive}))}catch(e){}refreshPredictUserAccess();flushPredictRoundSync()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='user-controls')applyUserControlsPayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload);else if(payload&&payload.type==='predict-online')renderPredictOnlineCount(payload.count);else if(payload&&payload.type==='predict-round')applyPredictRoundPayload(payload);else if(payload&&payload.type==='predict-user-round')applyPredictUserRoundPayload(payload);else if(payload&&payload.type==='predict-sync-error')applyPredictSyncErrorPayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;predictPresenceActive=false;if(isPredictViewActive()){predictSocketIssue=true;renderPredictOps()}renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;predictPresenceActive=false;if(isPredictViewActive()){predictSocketIssue=true;renderPredictOps()}renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
+    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;predictSocketIssue=false;renderPredictOps();predictPresenceActive=isPredictViewActive();try{liveSocket&&liveSocket.send(JSON.stringify({type:'identify',initData:initData,predictActive:predictPresenceActive,gameActive:activeGamePresence()}))}catch(e){}refreshPredictUserAccess();flushPredictRoundSync()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='user-controls')applyUserControlsPayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload);else if(payload&&payload.type==='predict-online')renderPredictOnlineCount(payload.count);else if(payload&&payload.type==='game-online')applyGameOnlinePayload(payload);else if(payload&&payload.type==='predict-round')applyPredictRoundPayload(payload);else if(payload&&payload.type==='predict-user-round')applyPredictUserRoundPayload(payload);else if(payload&&payload.type==='predict-sync-error')applyPredictSyncErrorPayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;predictPresenceActive=false;if(isPredictViewActive()){predictSocketIssue=true;renderPredictOps()}renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;predictPresenceActive=false;if(isPredictViewActive()){predictSocketIssue=true;renderPredictOps()}renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
   }
   function apply(j){
     var active=document.querySelector('.view.active');var section=active&&active.id||'home';
@@ -155,7 +158,7 @@ export const SECTION_ACCESS_SCRIPT = `
     if(signature===last)return;
     last=signature;if(lock)render(lock);else remove();
   }
-  function reapply(){expireLocks();renderPredictOps();syncPredictPresence();flushPredictRoundSync();return Promise.resolve(cache)}
+  function reapply(){expireLocks();renderPredictOps();syncPredictPresence();sendGamePresence();flushPredictRoundSync();return Promise.resolve(cache)}
   document.addEventListener('click',function(event){
     var target=event.target&&event.target.closest&&event.target.closest('#predictzone [data-predict-choice],#predictzone [data-predict-bet-submit],#predictzone [data-predict-bet-preset]');
     if(!target)return;
@@ -166,10 +169,10 @@ export const SECTION_ACCESS_SCRIPT = `
   window.VexaSectionLocks={reload:reapply,refresh:function(){if(liveSocket)try{liveSocket.close()}catch(e){}else connectLive();return Promise.resolve(cache)}};
   window.addEventListener('vexa:predict-round-sync-request',function(event){requestPredictRoundSync(event&&event.detail)});
   window.addEventListener('vexa:section-mounted',function(){queueMicrotask(reapply)});
-  window.addEventListener('vexa:view-changed',function(){queueMicrotask(function(){renderPredictOps();syncPredictPresence();flushPredictRoundSync()})});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){sendPredictPresence(false);clearTimeout(liveReconnectTimer);clearPredictUserExpiry()}else{refreshPredictUserAccess();schedulePredictUserExpiry();if(!liveSocket)connectLive();else{syncPredictPresence();flushPredictRoundSync()}}});
-  window.addEventListener('online',function(){refreshPredictUserAccess();if(!liveSocket)connectLive();else{syncPredictPresence();flushPredictRoundSync()}});
-  window.addEventListener('pagehide',function(){sendPredictPresence(false)});
+  window.addEventListener('vexa:view-changed',function(){queueMicrotask(function(){renderPredictOps();syncPredictPresence();sendGamePresence();flushPredictRoundSync()})});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){sendPredictPresence(false);sendGamePresence(true);clearTimeout(liveReconnectTimer);clearPredictUserExpiry()}else{refreshPredictUserAccess();schedulePredictUserExpiry();if(!liveSocket)connectLive();else{syncPredictPresence();sendGamePresence();flushPredictRoundSync()}}});
+  window.addEventListener('online',function(){refreshPredictUserAccess();if(!liveSocket)connectLive();else{syncPredictPresence();sendGamePresence();flushPredictRoundSync()}});
+  window.addEventListener('pagehide',function(){sendPredictPresence(false);sendGamePresence(true)});
   function init(){refreshPredictUserAccess();renderPredictOnlineCount(null);connectLive()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()
 })();

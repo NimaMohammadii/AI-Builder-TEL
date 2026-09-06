@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import type { SectionLock } from './section-access';
-import { getOnlineUserCountConfig, type OnlineCountAdjustment } from './online-user-counts';
+import { getOnlineUserCountConfig, type OnlineCountAdjustment, type OnlineCountConfig } from './online-user-counts';
 import { gameBotToken, validateTelegramInitData } from './utils';
 
 type LockMessage = { type: 'section-access'; serverNow: number; locks: Record<string, SectionLock> };
@@ -16,6 +16,7 @@ export type PredictOpsRealtimeState = {
 };
 type PredictOpsMessage = { type: 'predict-ops'; state: PredictOpsRealtimeState; refreshRound: boolean };
 type PredictOnlineMessage = { type: 'predict-online'; count: number };
+type GameOnlineMessage = { type: 'game-online'; counts: Record<string, number>; config: OnlineCountConfig };
 type PredictMarket = 'bitcoin' | 'gold' | 'oil';
 type PredictPoolRealtime = { stakeNano: number; stakeTon: number; count: number };
 type PredictRoundRealtime = {
@@ -49,7 +50,7 @@ type PredictUserRoundRealtime = {
   bet: PredictBetRealtime | null;
 };
 type PredictUserRoundMessage = { type: 'predict-user-round'; update: PredictUserRoundRealtime };
-type RealtimeSession = { admin: boolean; userId: string; predictActive: boolean };
+type RealtimeSession = { admin: boolean; userId: string; predictActive: boolean; gameActive: string };
 type PredictRoundDbRow = { id: string; market: string; status: string; result: string | null; end_price: number | null };
 type PredictPoolDbRow = { side: string; stakeNano: number; count: number };
 type PredictUserBetDbRow = {
@@ -70,6 +71,7 @@ const PREDICT_OPS_STATE_KEY = 'predict-ops:realtime-state:v1';
 const PREDICT_RUNTIME_ISSUE_PREFIX = 'admin:predict-runtime-issue:v1:';
 const PREDICT_REALTIME_ISSUE_TYPE = 'round_realtime_publish_failed';
 const NANO = 1_000_000_000;
+const GAME_IDS = new Set(['mines', 'plinko', 'wheel', 'dice', 'crash', 'hilo', 'coinflip', 'slot', 'ghostrun']);
 
 function messageFor(locks: SectionLock[]): LockMessage {
   return {
@@ -89,6 +91,7 @@ export class SectionLockEvents {
   private predictAdjustment: OnlineCountAdjustment = { permanent: 0 };
   private predictAdjustmentFetchedAt = 0;
   private predictOnlineRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private onlineCountConfig: OnlineCountConfig | null = null;
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -99,7 +102,7 @@ export class SectionLockEvents {
       const [client, server] = Object.values(pair);
       server.accept();
       const admin = request.headers.get('x-section-lock-admin') === '1';
-      this.sessions.set(server, { admin, userId: '', predictActive: false });
+      this.sessions.set(server, { admin, userId: '', predictActive: false, gameActive: '' });
       server.addEventListener('close', () => this.removeSession(server));
       server.addEventListener('error', () => this.removeSession(server));
       server.addEventListener('message', (event) => {
@@ -118,6 +121,7 @@ export class SectionLockEvents {
         try { server.send(JSON.stringify(predictOpsMessage(predictOpsState, false))); } catch { /* socket lifecycle owns cleanup */ }
       }
       try { server.send(JSON.stringify(await this.predictOnlineMessage())); } catch { this.sessions.delete(server); }
+      try { server.send(JSON.stringify(await this.gameOnlineMessage())); } catch { this.sessions.delete(server); }
       return new Response(null, { status: 101, webSocket: client });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
@@ -143,6 +147,16 @@ export class SectionLockEvents {
         this.broadcastPredictSyncError(market, roundId);
         return Response.json({ ok: false, error: predictSyncErrorMessage(error) }, { status: 503 });
       }
+    }
+    if (request.method === 'POST' && url.pathname === '/publish-online-counts') {
+      const config = await request.json().catch(() => null) as OnlineCountConfig | null;
+      if (!config?.ranges || !config.adjustments) return Response.json({ ok: false }, { status: 400 });
+      this.onlineCountConfig = config;
+      this.predictAdjustment = config.adjustments.predict || { permanent: 0 };
+      this.predictAdjustmentFetchedAt = Date.now();
+      await this.broadcastOnlineCounts();
+      await this.broadcastPredictOnlineCount();
+      return Response.json({ ok: true });
     }
     if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
       const body = await request.json().catch(() => null) as { state?: unknown; refreshRound?: unknown; userControls?: unknown } | null;
@@ -178,14 +192,23 @@ export class SectionLockEvents {
   }
 
   private async handleSessionMessage(socket: WebSocket, raw: string): Promise<void> {
-    let message: { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown } | null = null;
-    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown }; } catch { return; }
+    let message: { type?: unknown; initData?: unknown; predictActive?: unknown; gameActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown } | null = null;
+    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown; predictActive?: unknown; gameActive?: unknown; active?: unknown; market?: unknown; roundId?: unknown }; } catch { return; }
     if (message?.type === 'identify') {
       await this.identifySession(socket, message);
       return;
     }
     if (message?.type === 'predict-round-sync') {
       await this.syncPredictRound(socket, message);
+      return;
+    }
+    if (message?.type === 'game-presence') {
+      const session = this.sessions.get(socket);
+      if (!session || session.admin || !session.userId) return;
+      const next = cleanGameId(message.gameActive);
+      if (session.gameActive === next) return;
+      session.gameActive = next;
+      void this.broadcastOnlineCounts();
       return;
     }
     if (message?.type !== 'predict-presence') return;
@@ -197,7 +220,7 @@ export class SectionLockEvents {
     void this.broadcastPredictOnlineCount();
   }
 
-  private async identifySession(socket: WebSocket, message: { initData?: unknown; predictActive?: unknown }): Promise<void> {
+  private async identifySession(socket: WebSocket, message: { initData?: unknown; predictActive?: unknown; gameActive?: unknown }): Promise<void> {
     const initData = String(message.initData || '');
     if (!initData) return;
     try {
@@ -206,7 +229,9 @@ export class SectionLockEvents {
       if (!session || !userId) return;
       session.userId = userId;
       session.predictActive = !session.admin && message.predictActive === true;
+      session.gameActive = !session.admin ? cleanGameId(message.gameActive) : '';
       void this.broadcastPredictOnlineCount();
+      void this.broadcastOnlineCounts();
     } catch { /* invalid session cannot claim a realtime user target */ }
   }
 
@@ -433,8 +458,29 @@ export class SectionLockEvents {
     const session = this.sessions.get(socket);
     if (!session) return;
     const affectedPredictCount = !session.admin && session.predictActive && Boolean(session.userId);
+    const affectedGameCount = !session.admin && Boolean(session.gameActive) && Boolean(session.userId);
     this.sessions.delete(socket);
     if (affectedPredictCount) void this.broadcastPredictOnlineCount();
+    if (affectedGameCount) void this.broadcastOnlineCounts();
+  }
+
+  private async gameOnlineMessage(): Promise<GameOnlineMessage> {
+    const config = this.onlineCountConfig || await getOnlineUserCountConfig(this.env);
+    this.onlineCountConfig = config;
+    const counts: Record<string, number> = {};
+    for (const id of GAME_IDS) {
+      const users = new Set<string>();
+      for (const session of this.sessions.values()) if (!session.admin && session.gameActive === id && session.userId) users.add(session.userId);
+      counts[id] = users.size;
+    }
+    return { type: 'game-online', counts, config };
+  }
+
+  private async broadcastOnlineCounts(): Promise<void> {
+    const payload = JSON.stringify(await this.gameOnlineMessage());
+    for (const socket of [...this.sessions.keys()]) {
+      try { socket.send(payload); } catch { this.sessions.delete(socket); }
+    }
   }
 
   private async predictOnlineMessage(): Promise<PredictOnlineMessage> {
@@ -493,6 +539,11 @@ export class SectionLockEvents {
       void this.broadcastPredictOnlineCount();
     }, delay);
   }
+}
+
+function cleanGameId(value: unknown): string {
+  const id = String(value || '').trim().toLowerCase();
+  return GAME_IDS.has(id) ? id : '';
 }
 
 export async function publishSectionAccess(env: Env, locks: SectionLock[]): Promise<void> {
