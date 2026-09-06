@@ -73,37 +73,41 @@ export const SECTION_ACCESS_SCRIPT = `
     var state=predictOpsState||window.VexaPredictOpsState;if(!state)return null;
     var item=state.markets&&state.markets[market];
     var custom=String(state.maintenanceMessage||'').trim();
-    if(state.emergencyPaused)return{kind:'market',health:'Paused',message:custom||'Predictions are temporarily unavailable. Please try again shortly.'};
-    if(item&&item.manualPaused)return{kind:'market',health:'Paused',message:custom||(market==='bitcoin'?'Bitcoin':market==='gold'?'Gold':'Oil')+' predictions are temporarily paused.'};
+    if(state.emergencyPaused)return{kind:'market',health:'Predictions paused',message:custom||'Predictions are temporarily unavailable. Please try again shortly.'};
+    if(item&&item.manualPaused)return{kind:'market',health:(market==='bitcoin'?'Bitcoin':market==='gold'?'Gold':'Oil')+' paused',message:custom||(market==='bitcoin'?'Bitcoin':market==='gold'?'Gold':'Oil')+' predictions are temporarily paused.'};
     if(item&&item.circuitOpen)return{kind:'feed',health:'Price feed issue',message:custom||'Live price feed is temporarily unavailable. New predictions are paused.'};
     if(item&&item.capacityReached)return{kind:'capacity',health:'Capacity full',message:'This market has reached its current betting capacity. Please try again later.'};
     return null;
   }
   function removePredictOpsNotice(){var notice=document.getElementById('vexaPredictOpsNotice');if(notice)notice.remove()}
   function removePredictHealth(){var health=document.getElementById('vexaPredictHealth');if(health)health.remove()}
-  function renderPredictHealth(){
-    var root=document.getElementById('predictzone');if(!root){removePredictHealth();return}
-    var card=root.querySelector('[data-predict-card]');if(!card)return;
-    var market=activePredictMarket();if(!market){removePredictHealth();return}
-    var block=predictOpsBlockState(),label=block&&block.health?block.health:(predictOpsState||window.VexaPredictOpsState?'Live':'Checking');
-    var health=document.getElementById('vexaPredictHealth');
-    if(!health){health=document.createElement('div');health.id='vexaPredictHealth';health.setAttribute('aria-live','polite');health.style.cssText='position:absolute;left:13px;top:15px;z-index:6;min-height:22px;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:transparent;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);box-shadow:none;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.70);font:760 9px/1 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.01em;pointer-events:none';card.appendChild(health)}
-    health.setAttribute('data-vexa-predict-health',String(block&&block.kind||'live'));if(health.textContent!==label)health.textContent=label;
+  function ensurePredictStatusStyle(){
+    if(document.getElementById('vexaPredictStatusStyle'))return;
+    var style=document.createElement('style');style.id='vexaPredictStatusStyle';
+    style.textContent='#predictzone [data-predict-trend-label][data-vexa-predict-status-active="1"]{font-size:0!important;display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;gap:6px!important;max-width:68%!important;white-space:nowrap!important;color:rgba(255,255,255,.82)!important}#predictzone [data-predict-trend-label][data-vexa-predict-status-active="1"]:before{content:attr(data-vexa-predict-status-text);font:800 10px/1.1 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;letter-spacing:-.01em!important;color:rgba(255,255,255,.82)!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}#predictzone [data-predict-trend-label][data-vexa-predict-status-active="1"]:after{content:"!";flex:0 0 14px;width:14px;height:14px;box-sizing:border-box;border:1px solid rgba(196,48,63,.82);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:rgba(238,78,92,.96);background:transparent;box-shadow:none;font:900 9px/12px ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:vexaPredictAlertPulse 1.8s ease-in-out infinite;transform-origin:center}@keyframes vexaPredictAlertPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.09);opacity:1}}@media (prefers-reduced-motion:reduce){#predictzone [data-predict-trend-label][data-vexa-predict-status-active="1"]:after{animation:none}}';
+    document.head.appendChild(style);
+  }
+  function clearPredictStatus(){
+    var root=document.getElementById('predictzone');if(!root)return;
+    var label=root.querySelector('[data-predict-trend-label]');if(!label)return;
+    label.removeAttribute('data-vexa-predict-status-active');label.removeAttribute('data-vexa-predict-status-text');label.removeAttribute('data-vexa-predict-status-kind');label.removeAttribute('title');
+  }
+  function renderPredictStatus(block){
+    var root=document.getElementById('predictzone');if(!root)return;
+    var label=root.querySelector('[data-predict-trend-label]');if(!label)return;
+    ensurePredictStatusStyle();
+    label.setAttribute('data-vexa-predict-status-active','1');
+    label.setAttribute('data-vexa-predict-status-text',String(block&&block.health||'Prediction unavailable'));
+    label.setAttribute('data-vexa-predict-status-kind',String(block&&block.kind||'market'));
+    label.setAttribute('title',String(block&&block.message||''));
+    label.setAttribute('aria-live','polite');
   }
   function renderPredictOps(){
-    var root=document.getElementById('predictzone');if(!root){removePredictOpsNotice();removePredictHealth();return}
-    renderPredictHealth();
+    removePredictOpsNotice();removePredictHealth();
+    var root=document.getElementById('predictzone');if(!root)return;
     var block=predictOpsBlockState();
-    if(!block||!block.message){removePredictOpsNotice();return}
-    var card=root.querySelector('[data-predict-card]');if(!card)return;
-    var notice=document.getElementById('vexaPredictOpsNotice');
-    if(!notice){
-      notice=document.createElement('div');notice.id='vexaPredictOpsNotice';notice.setAttribute('role','status');
-      notice.style.cssText='position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;width:calc(100% - 32px);max-width:320px;min-height:44px;padding:11px 14px;box-sizing:border-box;border-radius:18px;border:1px solid rgba(255,255,255,.14);background:transparent;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);box-shadow:none;display:flex;align-items:center;justify-content:center;text-align:center;color:rgba(255,255,255,.94);font:750 11px/1.35 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.01em;pointer-events:none';
-      card.appendChild(notice)
-    }
-    notice.setAttribute('data-vexa-predict-block-kind',block.kind||'market');
-    if(notice.textContent!==block.message)notice.textContent=block.message;
+    if(!block||!block.message){clearPredictStatus();return}
+    renderPredictStatus(block);
   }
   function applyPredictOpsPayload(payload){
     if(!payload||!payload.state)return;
