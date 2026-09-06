@@ -19,6 +19,7 @@ const NANO = 1_000_000_000;
 const PREDICT_OPS_CONTROL_KEY = 'admin:predict-ops-control:v1';
 const PREDICT_OPS_FEED_PREFIX = 'admin:predict-ops-feed:v1:';
 const PREDICT_OPS_INCIDENTS_KEY = 'admin:predict-ops-incidents:v1';
+const PREDICT_RUNTIME_ISSUE_PREFIX = 'admin:predict-runtime-issue:v1:';
 const PREDICT_OPS_INCIDENT_LIMIT = 24;
 const DEFAULT_PREDICT_MAINTENANCE = 'Predictions are temporarily unavailable. Please try again shortly.';
 const USER_MARKET_BLOCK_MESSAGE = 'Your access to this market is currently paused. If you have any questions, please contact an admin — we’re happy to help.';
@@ -34,6 +35,7 @@ type PredictOpsFeed = { lastPrice: number | null; lastSuccessAt: string | null; 
 type PredictUserLimitRow = { user_id: string; max_bet_nano: number; daily_limit_nano: number; updated_at: string };
 type PredictAuditRow = { id: string; admin_id: string; action: string; user_id: string | null; market: string | null; target_id: string | null; detail: string | null; created_at: string };
 type PredictBetAdminRow = BetRow & { round_status: string; round_result: string | null; round_ends_at: string };
+type PredictRuntimeIssue = { type: string; market: TradeMarket | null; where: string; message: string; firstAt: string; lastAt: string };
 export type PredictOpsMarket = TradeMarket;
 export type PredictOpsIncident = { id: string; at: string; type: string; market: TradeMarket | null; message: string };
 export type PredictOpsRoundView = { id: string; market: TradeMarket; startsAt: string; endsAt: string; startPrice: number; endPrice: number | null; status: string; result: string | null; settledAt: string | null; createdAt: string; due: boolean; totalBets: number; totalStakeNano: number; counts: Record<string, number> };
@@ -59,7 +61,9 @@ app.get('/app/api/predict-round', async (c) => {
     await notePredictFeedSuccess(c.env, market, snapshot.price).catch(() => undefined);
     const round = await getOrCreateCurrentRound(c.env, market, snapshot.price);
     await settleDueRounds(c.env, market);
-    return c.json({ ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history }, 200, { 'cache-control': CACHE_NONE });
+    const response = { ...(await publicRoundJson(c.env, round, userId, snapshot.price)), history: snapshot.history };
+    await reportPredictOpsRuntimeRecovered(c.env, 'round_request_failed', market, 'Predict round API completed successfully.').catch(() => undefined);
+    return c.json(response, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     const errorMessage = messageOf(error);
     if (market && isPredictPriceFeedError(error)) await notePredictFeedFailure(c.env, market, errorMessage).catch(() => undefined);
@@ -139,9 +143,11 @@ app.post('/app/api/predict-bet', async (c) => {
         throw new Error('Could not activate prediction');
       }
     }
-    await publishPredictRoundState(c.env, market, roundId, userId).catch((error) => reportPredictOpsRuntimeError(c.env, 'round_realtime_publish_failed', market, messageOf(error)));
+    await publishPredictRoundRealtimeObserved(c.env, market, roundId, userId);
     if (market && guard?.control.exposureLimitsNano[market] > 0) await publishPredictOpsRealtime(c.env).catch(() => undefined);
-    return c.json({ ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await publicUserControls(c.env, userId) }, 200, { 'cache-control': CACHE_NONE });
+    const response = { ok: true, bet: await getBet(c.env, betId), round: await publicRoundJson(c.env, round, userId), userControls: await publicUserControls(c.env, userId) };
+    await reportPredictOpsRuntimeRecovered(c.env, 'bet_request_failed', market, 'Predict bet API completed successfully.').catch(() => undefined);
+    return c.json(response, 200, { 'cache-control': CACHE_NONE });
   } catch (error) {
     const errorMessage = messageOf(error);
     const feedError = Boolean(market && isPredictPriceFeedError(error));
@@ -252,7 +258,7 @@ async function settleDueRounds(env: Env, market: TradeMarket, force = false): Pr
   for (const round of rows.results || []) {
     if (!force && Date.parse(round.ends_at) > Date.now()) continue;
     await settleRound(env, round);
-    await publishPredictRoundState(env, market, round.id).catch((error) => reportPredictOpsRuntimeError(env, 'round_realtime_publish_failed', market, messageOf(error)));
+    await publishPredictRoundRealtimeObserved(env, market, round.id);
     settled += 1;
   }
   if (settled > 0) await publishPredictOpsRealtime(env).catch(() => undefined);
@@ -390,9 +396,10 @@ export async function retryPredictSettlement(env: Env, roundIdInput: unknown, ad
     await settleRound(env, row);
     const updated = await getPredictOpsRound(env, roundId);
     if (!updated) throw new Error('Prediction round not found after settlement retry.');
-    await publishPredictRoundState(env, updated.market, roundId).catch((error) => reportPredictOpsRuntimeError(env, 'round_realtime_publish_failed', updated.market, messageOf(error)));
+    await publishPredictRoundRealtimeObserved(env, updated.market, roundId);
     await appendPredictOpsIncident(env, 'settlement_retry_ok', updated.market, `Settlement retry completed for ${roundId}.`).catch(() => undefined);
     await appendPredictAudit(env, adminIdInput, 'settlement_retry', { market: updated.market, targetId: roundId, detail: 'Settlement retry completed.' }).catch(() => undefined);
+    await reportPredictOpsRuntimeRecovered(env, 'settlement_retry_failed', updated.market, `Settlement retry completed successfully for ${roundId}.`).catch(() => undefined);
     await publishPredictOpsRealtime(env, true).catch(() => undefined);
     return updated;
   } catch (error) {
@@ -690,7 +697,10 @@ async function notePredictFeedSuccess(env: Env, market: TradeMarket, price: numb
   const recovered = current.circuitOpen;
   const next: PredictOpsFeed = { lastPrice: clean, lastSuccessAt: new Date().toISOString(), circuitOpen: false, circuitReason: null, circuitOpenedAt: null, lastError: null, lastErrorAt: null };
   await writePredictOpsFeed(env, market, next);
-  if (recovered) { await appendPredictOpsIncident(env, 'feed_recovered', market, `${marketLabel(market)} price feed recovered.`).catch(() => undefined); await publishPredictOpsRealtime(env).catch(() => undefined); }
+  if (recovered) {
+    await reportPredictOpsRuntimeRecovered(env, 'feed_circuit_open', market, `${marketLabel(market)} price feed is responding normally again.`).catch(() => undefined);
+    await publishPredictOpsRealtime(env).catch(() => undefined);
+  }
 }
 
 async function notePredictFeedFailure(env: Env, market: TradeMarket, reasonInput: unknown): Promise<void> {
@@ -712,21 +722,91 @@ async function isExpectedPredictRequestError(env: Env, market: TradeMarket | nul
   return Boolean(control?.maintenanceMessage && message === control.maintenanceMessage);
 }
 
-async function reportPredictOpsRuntimeError(env: Env, typeInput: unknown, marketInput: unknown, messageInput: unknown): Promise<void> {
-  const type = String(typeInput || 'runtime_error').replace(/\s+/g, ' ').trim().slice(0, 60) || 'runtime_error';
-  const market = marketInput == null ? null : normalizePredictOpsMarketOrNull(marketInput);
-  const message = String(messageInput || 'Unknown Predict error').replace(/\s+/g, ' ').trim().slice(0, 240) || 'Unknown Predict error';
-  await Promise.allSettled([
-    appendPredictOpsIncident(env, type, market, message),
-    notifyPredictAdmins(env, type, market, message),
-  ]);
+async function publishPredictRoundRealtimeObserved(env: Env, market: TradeMarket, roundId: string, userIdInput: unknown = ''): Promise<boolean> {
+  try {
+    await publishPredictRoundState(env, market, roundId, userIdInput);
+    await reportPredictOpsRuntimeRecovered(env, 'round_realtime_publish_failed', market, `Realtime round sync succeeded for ${roundId}.`).catch(() => undefined);
+    return true;
+  } catch (error) {
+    await reportPredictOpsRuntimeError(env, 'round_realtime_publish_failed', market, `Round ${roundId}: ${messageOf(error)}`);
+    return false;
+  }
 }
 
-async function notifyPredictAdmins(env: Env, type: string, market: TradeMarket | null, message: string): Promise<void> {
+async function reportPredictOpsRuntimeError(env: Env, typeInput: unknown, marketInput: unknown, messageInput: unknown): Promise<void> {
+  const type = cleanPredictRuntimeType(typeInput);
+  const market = marketInput == null ? null : normalizePredictOpsMarketOrNull(marketInput);
+  const message = cleanPredictRuntimeMessage(messageInput);
+  const where = predictRuntimeLocation(type);
+  const key = predictRuntimeIssueKey(type, market);
+  const previous = await readPredictRuntimeIssue(env, key);
+  const now = new Date().toISOString();
+  const issue: PredictRuntimeIssue = { type, market, where, message, firstAt: previous?.firstAt || now, lastAt: now };
+  await Promise.allSettled([
+    appendPredictOpsIncident(env, type, market, `${where}: ${message}`),
+    env.BOT_CACHE.put(key, JSON.stringify(issue)),
+  ]);
+  if (!previous || previous.message !== message || previous.where !== where) await notifyPredictAdmins(env, 'error', issue);
+}
+
+async function reportPredictOpsRuntimeRecovered(env: Env, typeInput: unknown, marketInput: unknown, recoveryInput: unknown): Promise<void> {
+  const type = cleanPredictRuntimeType(typeInput);
+  const market = marketInput == null ? null : normalizePredictOpsMarketOrNull(marketInput);
+  const key = predictRuntimeIssueKey(type, market);
+  const previous = await readPredictRuntimeIssue(env, key);
+  if (!previous) return;
+  try { await env.BOT_CACHE.delete(key); } catch { return; }
+  const recovery = cleanPredictRuntimeMessage(recoveryInput || 'The affected Predict path completed successfully again.');
+  await appendPredictOpsIncident(env, `${type}_recovered`, market, `${previous.where}: ${recovery}`).catch(() => undefined);
+  await notifyPredictAdmins(env, 'recovered', previous, recovery);
+}
+
+function predictRuntimeLocation(type: string): string {
+  if (type === 'round_request_failed') return 'predict-routes.ts → GET /app/api/predict-round → load/create/settle/public round';
+  if (type === 'bet_request_failed') return 'predict-routes.ts → POST /app/api/predict-bet → reserve/debit/activate/respond';
+  if (type === 'round_realtime_publish_failed') return 'predict-routes.ts → publishPredictRoundState → SectionLockEvents realtime round sync';
+  if (type === 'settlement_retry_failed') return 'predict-routes.ts → retryPredictSettlement → settle/payment/finalize';
+  if (type === 'feed_circuit_open') return 'predict-routes.ts → Aster price feed → snapshot/mark/boundary price';
+  return 'Predict runtime';
+}
+
+function cleanPredictRuntimeType(value: unknown): string {
+  return String(value || 'runtime_error').replace(/[^0-9A-Za-z_.:-]/g, '_').slice(0, 60) || 'runtime_error';
+}
+
+function cleanPredictRuntimeMessage(value: unknown): string {
+  return String(value || 'Unknown Predict error').replace(/\s+/g, ' ').trim().slice(0, 480) || 'Unknown Predict error';
+}
+
+function predictRuntimeIssueKey(type: string, market: TradeMarket | null): string {
+  return `${PREDICT_RUNTIME_ISSUE_PREFIX}${market || 'global'}:${type}`;
+}
+
+async function readPredictRuntimeIssue(env: Env, key: string): Promise<PredictRuntimeIssue | null> {
+  const raw = await env.BOT_CACHE.get(key).catch(() => null);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PredictRuntimeIssue>;
+    if (!parsed.type || !parsed.where || !parsed.message || !parsed.firstAt) return null;
+    return {
+      type: cleanPredictRuntimeType(parsed.type),
+      market: parsed.market == null ? null : normalizePredictOpsMarketOrNull(parsed.market),
+      where: String(parsed.where).replace(/\s+/g, ' ').trim().slice(0, 260),
+      message: cleanPredictRuntimeMessage(parsed.message),
+      firstAt: String(parsed.firstAt).slice(0, 40),
+      lastAt: String(parsed.lastAt || parsed.firstAt).slice(0, 40),
+    };
+  } catch { return null; }
+}
+
+async function notifyPredictAdmins(env: Env, status: 'error' | 'recovered', issue: PredictRuntimeIssue, recovery = ''): Promise<void> {
   const token = String(gameBotToken(env) || '').trim();
   const adminIds = Array.from(new Set(String(env.BOT_ADMIN || '').split(/[\s,;|]+/).map((value) => value.trim()).filter((value) => /^\d+$/.test(value))));
   if (!token || !adminIds.length) return;
-  const text = ['🚨 Predict Runtime Alert', `Type: ${type}`, market ? `Market: ${marketLabel(market)}` : '', `Error: ${message}`, `Time: ${new Date().toISOString()}`].filter(Boolean).join('\n').slice(0, 3800);
+  const now = new Date().toISOString();
+  const text = status === 'error'
+    ? ['🚨 Predict Runtime Alert', 'Status: ERROR', `Type: ${issue.type}`, issue.market ? `Market: ${marketLabel(issue.market)}` : '', `Where: ${issue.where}`, `Root error: ${issue.message}`, `First seen: ${issue.firstAt}`, `Detected: ${now}`].filter(Boolean).join('\n').slice(0, 3800)
+    : ['✅ Predict Recovered', 'Status: RECOVERED', `Type: ${issue.type}`, issue.market ? `Market: ${marketLabel(issue.market)}` : '', `Where: ${issue.where}`, `Previous error: ${issue.message}`, `Started: ${issue.firstAt}`, `Recovered: ${now}`, `Result: ${recovery || 'The affected Predict path completed successfully again.'}`].filter(Boolean).join('\n').slice(0, 3800);
   await Promise.allSettled(adminIds.map(async (chatId) => {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
