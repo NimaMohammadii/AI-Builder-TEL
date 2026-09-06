@@ -14,7 +14,6 @@ export type PredictOpsRealtimeState = {
   updatedAt: string | null;
 };
 type PredictOpsMessage = { type: 'predict-ops'; state: PredictOpsRealtimeState; refreshRound: boolean };
-type SectionAccessPublishBody = { locks?: unknown; userControls?: unknown };
 
 const PREDICT_OPS_STATE_KEY = 'predict-ops:realtime-state:v1';
 
@@ -42,8 +41,7 @@ export class SectionLockEvents {
       const [client, server] = Object.values(pair);
       server.accept();
       const admin = request.headers.get('x-section-lock-admin') === '1';
-      const userId = cleanUserId(request.headers.get('x-section-lock-user'));
-      this.sessions.set(server, { admin, userId });
+      this.sessions.set(server, { admin, userId: '' });
       server.addEventListener('close', () => this.sessions.delete(server));
       server.addEventListener('error', () => this.sessions.delete(server));
       server.addEventListener('message', (event) => {
@@ -64,20 +62,18 @@ export class SectionLockEvents {
       return new Response(null, { status: 101, webSocket: client });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
-      const body = await request.json().catch(() => null) as SectionAccessPublishBody | null;
+      const locks = await request.json().catch(() => []) as SectionLock[];
+      const payload = JSON.stringify(messageFor(Array.isArray(locks) ? locks : []));
+      const emptyPayload = JSON.stringify(messageFor([]));
+      for (const [socket, session] of this.sessions) {
+        try { socket.send(session.admin ? emptyPayload : payload); } catch { this.sessions.delete(socket); }
+      }
+      return Response.json({ ok: true });
+    }
+    if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
+      const body = await request.json().catch(() => null) as { state?: unknown; refreshRound?: unknown; userControls?: unknown } | null;
       if (!body || typeof body !== 'object') return Response.json({ ok: false }, { status: 400 });
       let handled = false;
-
-      if (body.locks !== undefined) {
-        if (!Array.isArray(body.locks)) return Response.json({ ok: false }, { status: 400 });
-        const locks = body.locks as SectionLock[];
-        const payload = JSON.stringify(messageFor(locks));
-        const emptyPayload = JSON.stringify(messageFor([]));
-        for (const [socket, session] of this.sessions) {
-          try { socket.send(session.admin ? emptyPayload : payload); } catch { this.sessions.delete(socket); }
-        }
-        handled = true;
-      }
 
       if (body.userControls !== undefined) {
         if (!isRealtimeUserControls(body.userControls)) return Response.json({ ok: false }, { status: 400 });
@@ -90,19 +86,19 @@ export class SectionLockEvents {
         handled = true;
       }
 
-      return handled ? Response.json({ ok: true }) : Response.json({ ok: false }, { status: 400 });
-    }
-    if (request.method === 'POST' && url.pathname === '/publish-predict-ops') {
-      const body = await request.json().catch(() => null) as { state?: unknown; refreshRound?: unknown } | null;
-      if (!isPredictOpsRealtimeState(body?.state)) return Response.json({ ok: false }, { status: 400 });
-      const state = body.state;
-      const refreshRound = body?.refreshRound === true;
-      await this.state.storage.put(PREDICT_OPS_STATE_KEY, state);
-      const payload = JSON.stringify(predictOpsMessage(state, refreshRound));
-      for (const socket of [...this.sessions.keys()]) {
-        try { socket.send(payload); } catch { this.sessions.delete(socket); }
+      if (body.state !== undefined) {
+        if (!isPredictOpsRealtimeState(body.state)) return Response.json({ ok: false }, { status: 400 });
+        const state = body.state;
+        const refreshRound = body.refreshRound === true;
+        await this.state.storage.put(PREDICT_OPS_STATE_KEY, state);
+        const payload = JSON.stringify(predictOpsMessage(state, refreshRound));
+        for (const socket of [...this.sessions.keys()]) {
+          try { socket.send(payload); } catch { this.sessions.delete(socket); }
+        }
+        handled = true;
       }
-      return Response.json({ ok: true });
+
+      return handled ? Response.json({ ok: true }) : Response.json({ ok: false }, { status: 400 });
     }
     return new Response('Not found', { status: 404 });
   }
@@ -117,23 +113,22 @@ export class SectionLockEvents {
       const userId = cleanUserId(await validateTelegramInitData(initData, gameBotToken(this.env)));
       const session = this.sessions.get(socket);
       if (session && userId) session.userId = userId;
-    } catch { /* the outer websocket route already rejects invalid Telegram sessions */ }
+    } catch { /* invalid session cannot claim a realtime user target */ }
   }
 }
 
 export async function publishSectionAccess(env: Env, locks: SectionLock[]): Promise<void> {
   const id = env.SECTION_LOCK_EVENTS.idFromName('global');
-  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish', {
+  await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ locks }),
+    body: JSON.stringify(locks),
   });
-  if (!response.ok) throw new Error('Could not publish section access state.');
 }
 
 export async function publishUserControls(env: Env, controls: RealtimeUserControls): Promise<void> {
   const id = env.SECTION_LOCK_EVENTS.idFromName('global');
-  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish', {
+  const response = await env.SECTION_LOCK_EVENTS.get(id).fetch('https://section-lock-events/publish-predict-ops', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ userControls: controls }),
