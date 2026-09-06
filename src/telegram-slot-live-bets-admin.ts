@@ -4,8 +4,9 @@ import {
   resetSlotVirtualUsers,
   saveSlotVirtualUsers,
 } from './slot-virtual-users';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -76,7 +77,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
       return ok();
     }
     await setState(env, callback.from.id, { mode: 'add-user', page });
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       '➕ افزودن کاربر مجازی Slot\n\nنام کاربر را بفرستید. بعد از ساخت، مستقیم وارد صفحه همان کاربر می‌شوید و ریل‌ها را همان‌جا تغییر می‌دهید.',
       [[{ text: '⬅️ لغو', callback_data: `botadmin:slotlive:list:${page}` }]],
     );
@@ -94,7 +95,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
       return ok();
     }
     await setState(env, callback.from.id, { mode: 'rename', userIndex: index, page });
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `✏️ تغییر نام\n\nنام فعلی: ${safe(user.name)}\n\nنام جدید را بفرستید.`,
       [[{ text: '⬅️ لغو', callback_data: `botadmin:slotlive:user:${index}:${page}` }]],
     );
@@ -171,7 +172,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const config = await getSlotVirtualUsers(env);
     const user = config.users[index];
     if (!user) return ok();
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `🗑 حذف کاربر مجازی\n\n${safe(user.name)} و تمام نتیجه‌هایش حذف شود؟`,
       [
         [{ text: '✅ بله، حذف کن', callback_data: `botadmin:slotlive:remove:${index}:${page}` }],
@@ -198,7 +199,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   }
 
   if (action === 'resetask') {
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       '♻️ بازگردانی Slot Live Bets\n\nتمام کاربران و نتیجه‌های مجازی به مقادیر پیش‌فرض برگردند؟',
       [
         [{ text: '✅ بله، ریست کن', callback_data: 'botadmin:slotlive:reset' }],
@@ -228,6 +229,8 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   const state = await getState(env, userId);
   if (!state) return null;
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
+
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, userId);
     if (state.mode === 'rename') await sendUserPanel(env, token, message.chat.id, state.userIndex, state.page);
@@ -237,7 +240,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   const name = normalizeName(text);
   if (!name) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'نام باید بین 1 تا 80 کاراکتر باشد و نباید شامل < یا > باشد.' }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      '❌ نام باید بین 1 تا 80 کاراکتر باشد و نباید شامل < یا > باشد.\n\nنام معتبر را دوباره بفرستید.',
+      [[{ text: '⬅️ لغو', callback_data: state.mode === 'rename' ? `botadmin:slotlive:user:${state.userIndex}:${state.page}` : `botadmin:slotlive:list:${state.page}` }]],
+    );
     return ok();
   }
 
@@ -291,7 +297,7 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, pageInput 
     { text: '🔄 بروزرسانی', callback_data: `botadmin:slotlive:refresh:${page}` },
     { text: '⬅️ منوی اصلی', callback_data: 'botadmin:home' },
   ]);
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}🎰 Slot Live Bets\n\nکاربر را انتخاب کنید؛ تمام نتیجه‌ها و ۳ ریل هر نتیجه همان صفحه قابل تغییرند.\n\nتعداد کاربران: ${config.users.length}${config.updatedAt ? `\nآخرین ذخیره: ${formatUpdatedAt(config.updatedAt)}` : ''}\nصفحه ${page + 1} از ${pageCount}`,
     rows,
   );
@@ -321,7 +327,7 @@ async function sendUserPanel(env: Env, token: string, chatId: number, userIndex:
   ]);
   rows.push([{ text: '⬅️ لیست کاربران', callback_data: `botadmin:slotlive:list:${page}` }]);
 
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}👤 ${safe(user.name)}\n\nهمه‌چیز همین‌جاست. هر نتیجه ۳ ریل دارد؛ روی هر ریل بزنید تا بین ۸ نماد Slot بچرخد و همان لحظه ذخیره شود.\n\n${user.results.map((result, index) => `${index + 1}. ${resultText(result)}`).join('\n')}`,
     rows,
   );
@@ -372,13 +378,12 @@ function isAdminCommand(text: string): boolean {
   const value = text.trim().toLowerCase();
   return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
 }
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
