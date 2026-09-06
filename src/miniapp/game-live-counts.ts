@@ -159,9 +159,11 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   var counts={};
   var countBuckets={};
   var adminSchedule=null;
+  var adminAdjustments={};
   var adminScheduleFetchedAt=0;
   var adminScheduleInFlight=null;
-  var adminScheduleCacheKey='vexa-live-count:admin-schedule:v1';
+  var adminScheduleCacheKey='vexa-live-count:admin-schedule:v2';
+  var adminConfigMaxAge=90000;
   var storagePrefix='vexa-live-count:';
   var ranges=[{start:5,end:11,min:80,max:220},{start:12,end:16,min:180,max:360},{start:17,end:23,min:500,max:700},{start:0,end:4,min:500,max:700}];
   var profiles=${JSON.stringify(livePlayerProfiles)};
@@ -170,6 +172,8 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function rangeForGameHour(id,hour){var base=baseRangeForHour(hour);var profile=profiles[id]||{offset:0,width:0,phase:hash(id)%113};var low=Math.max(40,base.min+profile.offset);var high=Math.max(low+35,base.max+profile.offset+profile.width);return {start:base.start,end:base.end,min:low,max:high}}
   function ranged(id,date){date=date||new Date();var r=rangeForGameHour(id,date.getHours());var width=r.max-r.min+1;var bucket=Math.floor(date.getTime()/90000);var h=hash(id);var phase=(profiles[id]&&profiles[id].phase)||h;var wave=Math.floor((Math.sin((bucket+phase)*1.618)+1)*width*.22);var drift=(bucket*37+h*13+phase*7)%width;return r.min+((drift+wave)%width)}
   function adminRange(id,date){if(!adminSchedule||!adminSchedule[id])return null;date=date||new Date();var value=adminSchedule[id][date.getHours()];if(value&&typeof value==='object'){var min=Math.max(0,Math.floor(Number(value.min)||0)),max=Math.max(0,Math.floor(Number(value.max)||0));if(min>max){var tmp=min;min=max;max=tmp}return {min:min,max:max}}var n=Math.floor(Number(value));return isFinite(n)?{min:Math.max(0,n),max:Math.max(0,n)}:null}
+  function adjustmentRange(id,date){date=date||new Date();var value=adminAdjustments&&adminAdjustments[id]||{};var permanent=Math.max(0,Math.floor(Number(value.permanent)||0));var timed=value.timed||null;if(!timed||!timed.expiresAt||Date.parse(timed.expiresAt)<=date.getTime())return {min:permanent,max:permanent};var min=Math.max(0,Math.floor(Number(timed.min)||0)),max=Math.max(0,Math.floor(Number(timed.max)||0));if(min>max){var swap=min;min=max;max=swap}return {min:permanent+min,max:permanent+max}}
+  function displayRange(id,date){var base=adminRange(id,date)||rangeForGameHour(id,(date||new Date()).getHours());var extra=adjustmentRange(id,date);return {min:base.min+extra.min,max:base.max+extra.max}}
   function bucketFor(date){date=date||new Date();return Math.floor(date.getTime()/90000)}
   function rangeKey(range){return String(range.min)+'-'+String(range.max)}
   function storageKey(id,range,date){date=date||new Date();return storagePrefix+id+':'+date.getHours()+':'+bucketFor(date)+':'+rangeKey(range)}
@@ -177,13 +181,13 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function writeStored(id,range,date,value){try{sessionStorage.setItem(storageKey(id,range,date),String(value))}catch(e){}}
   function randomInRange(id,range,date){date=date||new Date();var stored=readStored(id,range,date);if(stored!==null)return stored;var width=range.max-range.min+1;if(width<=1)return range.min;var bucket=bucketFor(date);var h=hash(id);var wave=Math.floor((Math.sin((bucket+(profiles[id]&&profiles[id].phase||h))*1.618)+1)*width*.22);var drift=(bucket*37+h*13)%width;var value=range.min+((drift+wave)%width);writeStored(id,range,date,value);return value}
   function adminCount(id,date){var range=adminRange(id,date);return range?randomInRange(id,range,date):null}
-  function seed(id,date){date=date||new Date();var admin=adminRange(id,date);return admin===null?randomInRange(id,rangeForGameHour(id,date.getHours()),date):randomInRange(id,admin,date)}
+  function seed(id,date){date=date||new Date();return randomInRange(id,displayRange(id,date),date)}
   function isPlayZoneActive(){var root=document.getElementById('playzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
-  function inCurrentRange(id,value){var n=Math.floor(Number(value));if(!isFinite(n))return false;var admin=adminRange(id);if(admin!==null)return n>=admin.min&&n<=admin.max;var r=rangeForGameHour(id,(new Date()).getHours());return n>=r.min&&n<=r.max}
+  function inCurrentRange(id,value){var n=Math.floor(Number(value));if(!isFinite(n))return false;var r=displayRange(id,new Date());return n>=r.min&&n<=r.max}
   function cardValue(id){var el=document.querySelector('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b');var n=parseInt(el&&el.textContent,10);return isFinite(n)?n:null}
-  function count(id){var now=new Date(),bucket=bucketFor(now),range=adminRange(id,now)||rangeForGameHour(id,now.getHours());if(countBuckets[id]===bucket&&inCurrentRange(id,counts[id]))return counts[id];var fromCard=cardValue(id);if(fromCard!==null&&inCurrentRange(id,fromCard)){counts[id]=fromCard;countBuckets[id]=bucket;writeStored(id,range,now,fromCard);return fromCard}counts[id]=seed(id,now);countBuckets[id]=bucket;return counts[id]}
+  function count(id){var now=new Date(),bucket=bucketFor(now),range=displayRange(id,now);if(countBuckets[id]===bucket&&inCurrentRange(id,counts[id]))return counts[id];var fromCard=cardValue(id);if(fromCard!==null&&inCurrentRange(id,fromCard)){counts[id]=fromCard;countBuckets[id]=bucket;writeStored(id,range,now,fromCard);return fromCard}counts[id]=seed(id,now);countBuckets[id]=bucket;return counts[id]}
   function cardNodes(id){if(!isPlayZoneActive()||cardCountsVisible[id]===false)return [];return Array.prototype.slice.call(document.querySelectorAll('#playzone .game-card-shell[data-game-view="'+id+'"] .game-players b'))}
-  function setCount(id,value){var fallback=seed(id);var n=Math.floor(Number(value));if(!isFinite(n))n=fallback;var admin=adminRange(id);if(admin!==null)n=Math.max(admin.min,Math.min(admin.max,n));else{var r=rangeForGameHour(id,(new Date()).getHours());n=Math.max(r.min,Math.min(r.max,n));}counts[id]=n;cardNodes(id).forEach(function(el){if(el.textContent!==String(n)){el.classList.add('is-counting');el.textContent=String(n);setTimeout(function(){el.classList.remove('is-counting')},180)}});renderBadge();return n}
+  function setCount(id,value){var fallback=seed(id);var n=Math.floor(Number(value));if(!isFinite(n))n=fallback;var r=displayRange(id,new Date());n=Math.max(r.min,Math.min(r.max,n));counts[id]=n;cardNodes(id).forEach(function(el){if(el.textContent!==String(n)){el.classList.add('is-counting');el.textContent=String(n);setTimeout(function(){el.classList.remove('is-counting')},180)}});renderBadge();return n}
   function activeGame(){var root=document.querySelector('.view.active');if(!root)return '';var id=root.id||'';return games[id]?id:''}
   function badges(title){return Array.prototype.slice.call(title.querySelectorAll('[data-game-online-badge],[data-dice-online-badge]'))}
   function stripBadges(title,keep){badges(title).forEach(function(node){if(node!==keep)node.remove()})}
@@ -192,11 +196,11 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function refreshCounts(){if(document.hidden)return;Object.keys(games).forEach(function(id){var n=count(id);if(isPlayZoneActive())setCount(id,n);else counts[id]=n});renderBadge()}
   function needsLiveCountRefresh(){return !document.hidden&&(isPlayZoneActive()||!!activeGame())}
   function needsAdminSchedule(){return needsLiveCountRefresh()}
-  function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt)}
-  function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt)return false;adminSchedule=cached.schedule;adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
-  function writeCachedAdminSchedule(schedule){var payload=JSON.stringify({schedule:schedule,fetchedAt:adminScheduleFetchedAt});try{sessionStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}try{localStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}}
-  function applyAdminSchedule(schedule,fetchedAt){if(!schedule)return;adminSchedule=schedule;adminScheduleFetchedAt=fetchedAt||Date.now();counts={};countBuckets={};writeCachedAdminSchedule(schedule);refreshCounts()}
-  function loadAdminSchedule(){if(!needsAdminSchedule())return Promise.resolve(false);if(isAdminScheduleFresh()||readCachedAdminSchedule()){refreshCounts();return Promise.resolve(true)}if(adminScheduleInFlight)return adminScheduleInFlight;adminScheduleInFlight=fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){applyAdminSchedule(j.schedule,Date.now());return true}return false}).catch(function(){return false}).then(function(result){adminScheduleInFlight=null;return result},function(err){adminScheduleInFlight=null;throw err});return adminScheduleInFlight}
+  function isAdminScheduleFresh(){return !!(adminSchedule&&adminScheduleFetchedAt&&Date.now()-adminScheduleFetchedAt<adminConfigMaxAge)}
+  function readCachedAdminSchedule(){try{var raw=sessionStorage.getItem(adminScheduleCacheKey)||localStorage.getItem(adminScheduleCacheKey);if(!raw)return false;var cached=JSON.parse(raw);if(!cached||!cached.schedule||!cached.fetchedAt||Date.now()-Number(cached.fetchedAt)>=adminConfigMaxAge)return false;adminSchedule=cached.schedule;adminAdjustments=cached.adjustments||{};adminScheduleFetchedAt=Number(cached.fetchedAt);return true}catch(e){return false}}
+  function writeCachedAdminSchedule(schedule,adjustments){var payload=JSON.stringify({schedule:schedule,adjustments:adjustments||{},fetchedAt:adminScheduleFetchedAt});try{sessionStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}try{localStorage.setItem(adminScheduleCacheKey,payload)}catch(e){}}
+  function applyAdminSchedule(schedule,adjustments,fetchedAt){if(!schedule)return;adminSchedule=schedule;adminAdjustments=adjustments||{};adminScheduleFetchedAt=fetchedAt||Date.now();counts={};countBuckets={};writeCachedAdminSchedule(schedule,adminAdjustments);refreshCounts()}
+  function loadAdminSchedule(){if(!needsAdminSchedule())return Promise.resolve(false);if(isAdminScheduleFresh()||readCachedAdminSchedule()){refreshCounts();return Promise.resolve(true)}if(adminScheduleInFlight)return adminScheduleInFlight;adminScheduleInFlight=fetch('/app/api/online-user-counts',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.schedule){applyAdminSchedule(j.schedule,j.adjustments,Date.now());return true}return false}).catch(function(){return false}).then(function(result){adminScheduleInFlight=null;return result},function(err){adminScheduleInFlight=null;throw err});return adminScheduleInFlight}
   function syncCards(){if(document.hidden){clearSmartRefresh();return Promise.resolve(false)}if(!needsLiveCountRefresh()){renderBadge();clearSmartRefresh();return Promise.resolve(false)}var render=function(){Object.keys(games).forEach(function(id){var current=cardValue(id);if(current!==null&&inCurrentRange(id,current)){counts[id]=current;countBuckets[id]=bucketFor(new Date())}else setCount(id,count(id))});renderBadge();scheduleSmartRefresh();return true};if(isAdminScheduleFresh()||readCachedAdminSchedule()){render();return Promise.resolve(true)}return loadAdminSchedule().then(function(){return render()})}
   window.VexaLiveGameCounts={get:count,setCount:setCount,sync:syncCards,refresh:refreshCounts,renderBadge:renderBadge};
   document.addEventListener('click',function(){setTimeout(function(){if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}},220)},true);
@@ -212,7 +216,7 @@ export const GAME_LIVE_COUNT_SCRIPT = `
   function scheduleSmartRefresh(){
     clearSmartRefresh();
     if(!needsLiveCountRefresh())return;
-    scheduleSmartRefresh.timer=setTimeout(function(){if(!needsLiveCountRefresh()){clearSmartRefresh();return}refreshCounts();scheduleSmartRefresh()},msUntilNextLiveBucket());
+    scheduleSmartRefresh.timer=setTimeout(function(){if(!needsLiveCountRefresh()){clearSmartRefresh();return}syncCards()},msUntilNextLiveBucket());
   }
   document.addEventListener('visibilitychange',function(){if(document.hidden){clearSmartRefresh()}else if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}});
   window.addEventListener('focus',function(){if(needsLiveCountRefresh())syncCards();else{renderBadge();clearSmartRefresh()}});
