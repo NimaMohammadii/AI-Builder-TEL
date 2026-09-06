@@ -11,8 +11,9 @@ import {
   saveGhostRunVirtualUsers,
   type GhostRunVirtualUser,
 } from './ghost-run-virtual-users-config';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type CallbackButton = { text: string; callback_data: string };
@@ -71,7 +72,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const users = await getUsers(env, game);
     await setState(env, callback.from.id, { mode: 'bulk', game, page });
     const lines = users.map((user) => formatUserLine(user)).join('\n');
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `${gameTitle(game)} — ویرایش سریع همه\n\nکل لیست را ادیت کنید و دوباره بفرستید. برای حذف کاربر، خطش را پاک کنید. برای اضافه کردن، یک خط جدید بسازید.\n\n${formatHelp(game)}\n\n${lines}`,
       [[{ text: '⬅️ لغو', callback_data: `${prefix}list:${page}` }]],
     );
@@ -83,7 +84,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const example = game === 'ghost'
       ? 'ShadowX | 2.5 | 0.5@1.35, 1.2@2.1'
       : 'RocketX | 3 | 5@1.35, 12@2.1';
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `${gameTitle(game)} — افزودن کاربر\n\nیک خط بفرستید:\n${formatHelp(game)}\n\nمثال: ${example}`,
       [[{ text: '⬅️ لغو', callback_data: `${prefix}list:${page}` }]],
     );
@@ -104,7 +105,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     const keyboard: Keyboard = [];
     if (line.length <= MAX_COPY_TEXT) keyboard.push([{ text: '📋 کپی همین خط', copy_text: { text: line } }]);
     keyboard.push([{ text: '⬅️ لغو', callback_data: `${prefix}list:${editPage}` }]);
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `${gameTitle(game)} — ویرایش ${user.name}\n\nهمین یک خط را تغییر بده و بفرست:\n\n${line}\n\n${formatHelp(game)}${line.length > MAX_COPY_TEXT ? '\n\n⚠️ این خط بیشتر از محدودیت ۲۵۶ کاراکتری دکمه Copy تلگرام است.' : ''}`,
       keyboard,
     );
@@ -133,7 +134,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
   if (action === 'reset') {
     const resetPage = Math.max(0, Number(parts[2]) || 0);
     if (parts[1] !== 'confirm') {
-      await upsert(token, chatId, messageId,
+      await upsert(env, token, chatId, messageId,
         `♻️ ${gameTitle(game)}\n\nهمه کاربران، زمان ورود و Bet Optionهای این بازی به پیش‌فرض خودش برمی‌گردد.`,
         [[{ text: '✅ ریست کن', callback_data: `${prefix}reset:confirm:${resetPage}` }], [{ text: '⬅️ انصراف', callback_data: `${prefix}list:${resetPage}` }]],
       );
@@ -158,6 +159,8 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
 
   const state = await getState(env, userId);
   if (!state) return null;
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
+
   if (text === '/cancel' || text === 'لغو') {
     await clearState(env, userId);
     await sendUsersMenu(env, token, message.chat.id, state.game, state.page);
@@ -191,7 +194,10 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
       state.mode === 'add' ? `✅ ${parsed.name} اضافه شد.` : `✅ ${parsed.name} ذخیره شد.`);
     return ok();
   } catch (error) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: `❌ ${error instanceof Error ? error.message : 'فرمت نامعتبر است.'}` }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined,
+      `❌ ${error instanceof Error ? error.message : 'فرمت نامعتبر است.'}\n\n${state.mode === 'bulk' ? 'لیست اصلاح‌شده را دوباره بفرستید.' : 'خط اصلاح‌شده را دوباره بفرستید.'}`,
+      [[{ text: '⬅️ لغو', callback_data: `${gamePrefix(state.game)}list:${state.page}` }]],
+    );
     return ok();
   }
 }
@@ -228,7 +234,7 @@ async function sendUsersMenu(env: Env, token: string, chatId: number, game: Game
     ? 'زمان ورود هر کاربر: ۰ تا ۸ ثانیه.'
     : 'زمان ورود هر کاربر: ۰ تا ۶.۵ ثانیه.';
   const pageText = totalPages > 1 ? `\nصفحه ${safePage + 1} از ${totalPages}` : '';
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `${notice ? notice + '\n\n' : ''}${gameTitle(game)}\n\n👥 تعداد کاربران: ${users.length}\n${timing}${pageText}\n\nکاربر را از دکمه‌های زیر انتخاب کنید.`,
     rows,
   );
@@ -374,13 +380,12 @@ function isAdminCommand(text: string): boolean {
   return value === 'admin' || value === 'ادمین' || /^\/admin(?:@[-_a-z0-9]+)?$/.test(value);
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
