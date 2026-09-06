@@ -2,7 +2,7 @@ import type { Env } from './types';
 import { ACCESS_SECTIONS, clearSectionLock, getSectionAccess, setSectionLock } from './section-access';
 import { getTelegramMenuMessageId, setTelegramMenuMessageId, upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -90,7 +90,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   const sectionId = normalizeSectionId(await env.BOT_CACHE.get(lockStateKey(userId)).catch(() => null));
   if (!sectionId) return null;
 
-  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: (message as Message & { message_id?: number }).message_id }).catch(() => undefined);
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 
   if (text === '/cancel' || text === 'لغو') {
     await clearLockState(env, userId);
