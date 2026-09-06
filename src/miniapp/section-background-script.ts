@@ -2,12 +2,9 @@ export const SECTION_BACKGROUND_SCRIPT = `
 (function(){
   var aliases={predict:'predictzone'};
   var EMPTY='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
-  var PREDICT_BACKGROUND_CACHE='vexa-predict-background-v1';
   var predictBackgroundSource='';
   var predictBackgroundDisplay='';
-  var predictBackgroundImage=null;
   var predictBackgroundDesiredSource='';
-  var predictBackgroundJobs={};
   function playZoneCardSelectors(id){return ['#'+id,'#playzone [data-play-zone-card-id="'+id+'"]','#playzone [data-play-zone-card-id="'+id+'"] .game-card','#playzone [data-play-zone-card-id="'+id+'"] .game-image img']}
   var targetSelectors={
     connect:['#connect'],
@@ -42,82 +39,28 @@ export const SECTION_BACKGROUND_SCRIPT = `
   }
   function applyBackgroundToElement(el,url){if(!el||el.tagName==='IMG')return;el.classList.add('has-admin-background');el.style.setProperty('--admin-section-background-image',cssUrl(url))}
   function clearBackgroundFromElement(el){if(!el||el.tagName==='IMG')return;el.classList.remove('has-admin-background');el.style.removeProperty('--admin-section-background-image')}
-  function setPredictBackgroundDisplay(source,display,img){
+  function setPredictBackgroundDisplay(source,display){
     if(predictBackgroundDesiredSource&&source!==predictBackgroundDesiredSource)return false;
     var root=document.documentElement;if(!root)return false;
     var value=display?cssUrl(display):'';
-    if(source===predictBackgroundSource&&display===predictBackgroundDisplay){if(img)predictBackgroundImage=img;return true}
-    var previous=predictBackgroundDisplay;
+    if(source===predictBackgroundSource&&display===predictBackgroundDisplay)return true;
     if(value){if(root.style.getPropertyValue('--admin-predict-background-image')!==value)root.style.setProperty('--admin-predict-background-image',value)}
     else if(root.style.getPropertyValue('--admin-predict-background-image'))root.style.removeProperty('--admin-predict-background-image');
     predictBackgroundSource=source;
     predictBackgroundDisplay=display;
-    predictBackgroundImage=img||null;
-    if(previous&&previous!==display&&previous.indexOf('blob:')===0){try{URL.revokeObjectURL(previous)}catch(e){}}
     return true;
   }
-  function decodePredictBackground(response,source){
-    return response.blob().then(function(blob){
-      if(!blob||!blob.size)return false;
-      var objectUrl=URL.createObjectURL(blob),img=new Image();
-      return new Promise(function(resolve){
-        var done=false;
-        function cleanup(){try{img.removeEventListener('load',loaded);img.removeEventListener('error',failed)}catch(e){}}
-        function finish(ok){if(done)return;done=true;cleanup();if(!ok||predictBackgroundDesiredSource!==source){try{URL.revokeObjectURL(objectUrl)}catch(e){};resolve(false);return}resolve(setPredictBackgroundDisplay(source,objectUrl,img))}
-        function decoded(){if(img.naturalWidth<=0){finish(false);return}if(typeof img.decode==='function')img.decode().then(function(){finish(true)}).catch(function(){finish(img.naturalWidth>0)});else finish(true)}
-        function loaded(){decoded()}
-        function failed(){finish(false)}
-        img.addEventListener('load',loaded);
-        img.addEventListener('error',failed);
-        img.decoding='async';
-        img.loading='eager';
-        img.src=objectUrl;
-        if(img.complete&&img.naturalWidth>0)decoded();
-      })
-    })
-  }
-  function prunePredictBackgroundCache(cache,keepRequest){
-    return cache.keys().then(function(keys){return Promise.all(keys.map(function(key){return key.url===keepRequest.url?Promise.resolve(false):cache.delete(key)}))}).catch(function(){return []})
-  }
-  function cachePredictBackground(url){
+  function applyPredictBackground(url){
     var source=absoluteUrl(url);
     if(!source)return clearPredictBackground();
     predictBackgroundDesiredSource=source;
-    if(source===predictBackgroundSource&&predictBackgroundDisplay&&predictBackgroundImage)return Promise.resolve(true);
-    if(predictBackgroundJobs[source])return predictBackgroundJobs[source];
-    predictBackgroundJobs[source]=caches.open(PREDICT_BACKGROUND_CACHE).then(function(cache){
-      var request=new Request(source,{credentials:'same-origin'});
-      return cache.match(request).then(function(hit){
-        if(hit)return{cache:cache,request:request,response:hit};
-        return fetch(request,{cache:'no-store',credentials:'same-origin'}).then(function(response){
-          if(!response||!response.ok)throw new Error('Predict background unavailable');
-          var displayResponse=response.clone();
-          return cache.put(request,response).then(function(){return{cache:cache,request:request,response:displayResponse}})
-        })
-      })
-    }).then(function(item){
-      return decodePredictBackground(item.response,item.request.url).then(function(ok){if(!ok)return false;return prunePredictBackgroundCache(item.cache,item.request).then(function(){return true})})
-    }).catch(function(){return false}).finally(function(){delete predictBackgroundJobs[source]});
-    return predictBackgroundJobs[source]
+    return Promise.resolve(setPredictBackgroundDisplay(source,source))
   }
   function clearPredictBackground(){
     predictBackgroundDesiredSource='';
-    setPredictBackgroundDisplay('','',null);
-    return caches.open(PREDICT_BACKGROUND_CACHE).then(function(cache){return cache.keys().then(function(keys){return Promise.all(keys.map(function(key){return cache.delete(key)}))})}).then(function(){return false}).catch(function(){return false})
+    setPredictBackgroundDisplay('','');
+    return Promise.resolve(false)
   }
-  function restorePredictBackground(){
-    return caches.open(PREDICT_BACKGROUND_CACHE).then(function(cache){
-      return cache.keys().then(function(keys){
-        if(!keys.length)return false;
-        var request=keys[keys.length-1],source=request.url;
-        if(!predictBackgroundDesiredSource)predictBackgroundDesiredSource=source;
-        if(predictBackgroundJobs[source])return predictBackgroundJobs[source];
-        predictBackgroundJobs[source]=cache.match(request).then(function(response){return response?decodePredictBackground(response,source):false}).catch(function(){return false}).finally(function(){delete predictBackgroundJobs[source]});
-        return predictBackgroundJobs[source]
-      })
-    }).catch(function(){return false})
-  }
-  var restoredPredictBackground=restorePredictBackground();
   function remember(img,name,value){if(!img.dataset[name])img.dataset[name]=value||''}
   function overrideImage(img,url){
     if(!img||img.tagName!=='IMG'||!url)return;
@@ -178,7 +121,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     if(!Array.isArray(sections))return Promise.resolve();
     var jobs=[];
     sections.forEach(function(section){
-      if(section&&section.id==='predict'){jobs.push(section.backgroundUrl?cachePredictBackground(section.backgroundUrl):clearPredictBackground());return}
+      if(section&&section.id==='predict'){jobs.push(section.backgroundUrl?applyPredictBackground(section.backgroundUrl):clearPredictBackground());return}
       if(shouldApplySection(section))applySectionBackground(section)
     });
     return jobs.length?Promise.all(jobs).then(function(){}):Promise.resolve()
@@ -189,7 +132,7 @@ export const SECTION_BACKGROUND_SCRIPT = `
     inFlight=fetch('/app/api/section-backgrounds',{credentials:'same-origin',cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(j){if(!j)return cache;cache=j;return apply(j.sections).then(function(){return j})})
-      .catch(function(){return cache?apply(cache.sections).then(function(){return cache}):restoredPredictBackground.then(function(){return cache})})
+      .catch(function(){return cache?apply(cache.sections).then(function(){return cache}):cache})
       .finally(function(){inFlight=null});
     return inFlight;
   }
