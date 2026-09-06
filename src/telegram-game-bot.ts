@@ -285,7 +285,9 @@ export async function handleGameBotWebhook(env: Env, update: TelegramUpdate): Pr
       return;
     }
 
-    await deleteIncomingMessage(token, message.chat.id, message.message_id);
+    if (!/^\/start(?:@[-_a-z0-9]+)?(?:\s+.*)?$/i.test(String(message.text || '').trim())) {
+      await deleteIncomingMessage(token, message.chat.id, message.message_id);
+    }
     await sendGameHome(env, token, message.chat.id, undefined, telegramLanguageCode(message.from));
   }
 }
