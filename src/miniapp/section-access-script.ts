@@ -13,11 +13,17 @@ export const SECTION_ACCESS_SCRIPT = `
   var predictUserAccessRequest=0;
   var predictUserExpiryTimer=0;
   var predictPresenceActive=false;
+  var pendingPredictRoundSync={};
   function userId(){return String(user.id||localStorage.getItem('ownerId')||'').trim()}
   function isPredictViewActive(){var root=document.getElementById('predictzone');return !!(root&&root.classList.contains('active')&&!document.hidden)}
   function renderPredictOnlineCount(value){var badge=document.getElementById('predictOnlineBadge'),count=document.getElementById('predictOnlineCount'),n=Math.floor(Number(value));if(count)count.textContent=isFinite(n)&&n>=0?String(n):'—';if(badge)badge.setAttribute('aria-label',isFinite(n)&&n>=0?n+' users online in Predict':'Predict online users')}
   function sendPredictPresence(active){var next=active===true;if(predictPresenceActive===next)return;predictPresenceActive=next;if(!liveSocket||liveSocket.readyState!==1)return;try{liveSocket.send(JSON.stringify({type:'predict-presence',active:next}))}catch(e){}}
   function syncPredictPresence(){sendPredictPresence(isPredictViewActive())}
+  function cleanPredictRoundSync(detail){var market=String(detail&&detail.market||'').toLowerCase(),roundId=String(detail&&detail.roundId||'').trim();if(market!=='bitcoin'&&market!=='gold'&&market!=='oil')return null;if(!(new RegExp('^pr_'+market+'_\\\\d+$')).test(roundId))return null;return{market:market,roundId:roundId}}
+  function requestPredictRoundSync(detail){var item=cleanPredictRoundSync(detail);if(!item)return;pendingPredictRoundSync[item.roundId]=item;flushPredictRoundSync()}
+  function flushPredictRoundSync(){if(!isPredictViewActive()||!liveSocket||liveSocket.readyState!==1)return;var initData=String((tg&&tg.initData)||'');if(!initData)return;Object.keys(pendingPredictRoundSync).forEach(function(key){var item=pendingPredictRoundSync[key];try{liveSocket.send(JSON.stringify({type:'predict-round-sync',market:item.market,roundId:item.roundId,initData:initData}));delete pendingPredictRoundSync[key]}catch(e){}})}
+  function applyPredictRoundPayload(payload){var round=payload&&payload.round;if(!round)return;try{window.dispatchEvent(new CustomEvent('vexa:predict-round-live',{detail:round}))}catch(e){}}
+  function applyPredictUserRoundPayload(payload){var update=payload&&payload.update;if(!update||String(update.userId||'')!==userId())return;var balance=Math.max(0,Math.floor(Number(update.tonBalanceNano)||0));try{if(window.VexaTonBalance&&window.VexaTonBalance.write)window.VexaTonBalance.write(balance,0,false);else window.dispatchEvent(new CustomEvent('vexa-ton-balance-game-change',{detail:{tonBalanceNano:balance}}))}catch(e){}try{window.dispatchEvent(new CustomEvent('vexa:predict-user-round-live',{detail:update}))}catch(e){}}
   function clearExpiry(){if(expiryTimer){clearTimeout(expiryTimer);expiryTimer=0}}
   function remove(){clearExpiry();var el=document.getElementById('vexaAccessLock');if(el)el.remove();document.documentElement.classList.remove('vexa-access-locked')}
   function render(lock){
@@ -133,7 +139,7 @@ export const SECTION_ACCESS_SCRIPT = `
     var initData=String((tg&&tg.initData)||'');if(!initData)return;
     var proto=location.protocol==='https:'?'wss:':'ws:';
     var endpoint=proto+'//'+location.host+'/app/api/section-access/live?initData='+encodeURIComponent(initData);
-    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;predictPresenceActive=isPredictViewActive();try{liveSocket&&liveSocket.send(JSON.stringify({type:'identify',initData:initData,predictActive:predictPresenceActive}))}catch(e){}refreshPredictUserAccess()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='user-controls')applyUserControlsPayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload);else if(payload&&payload.type==='predict-online')renderPredictOnlineCount(payload.count)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;predictPresenceActive=false;renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;predictPresenceActive=false;renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
+    try{liveSocket=new WebSocket(endpoint);liveSocket.onopen=function(){reconnectAttempt=0;predictPresenceActive=isPredictViewActive();try{liveSocket&&liveSocket.send(JSON.stringify({type:'identify',initData:initData,predictActive:predictPresenceActive}))}catch(e){}refreshPredictUserAccess();flushPredictRoundSync()};liveSocket.onmessage=function(event){try{var payload=JSON.parse(event.data);if(payload&&payload.type==='section-access')applyLivePayload(payload);else if(payload&&payload.type==='user-controls')applyUserControlsPayload(payload);else if(payload&&payload.type==='predict-ops')applyPredictOpsPayload(payload);else if(payload&&payload.type==='predict-online')renderPredictOnlineCount(payload.count);else if(payload&&payload.type==='predict-round')applyPredictRoundPayload(payload);else if(payload&&payload.type==='predict-user-round')applyPredictUserRoundPayload(payload)}catch(e){}};liveSocket.onclose=function(){liveSocket=null;predictPresenceActive=false;renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);if(!document.hidden)liveReconnectTimer=setTimeout(connectLive,reconnectDelay())};liveSocket.onerror=function(){try{liveSocket&&liveSocket.close()}catch(e){}}}catch(e){liveSocket=null;predictPresenceActive=false;renderPredictOnlineCount(null);clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(connectLive,reconnectDelay())}
   }
   function apply(j){
     var active=document.querySelector('.view.active');var section=active&&active.id||'home';
@@ -142,7 +148,7 @@ export const SECTION_ACCESS_SCRIPT = `
     if(signature===last)return;
     last=signature;if(lock)render(lock);else remove();
   }
-  function reapply(){expireLocks();renderPredictOps();syncPredictPresence();return Promise.resolve(cache)}
+  function reapply(){expireLocks();renderPredictOps();syncPredictPresence();flushPredictRoundSync();return Promise.resolve(cache)}
   document.addEventListener('click',function(event){
     var target=event.target&&event.target.closest&&event.target.closest('#predictzone [data-predict-choice],#predictzone [data-predict-bet-submit],#predictzone [data-predict-bet-preset]');
     if(!target)return;
@@ -151,10 +157,11 @@ export const SECTION_ACCESS_SCRIPT = `
   },true);
   document.addEventListener('click',function(event){var target=event.target&&event.target.closest&&event.target.closest('#predictzone [data-vexa-predict-market]');if(target)queueMicrotask(renderPredictOps)},false);
   window.VexaSectionLocks={reload:reapply,refresh:function(){if(liveSocket)try{liveSocket.close()}catch(e){}else connectLive();return Promise.resolve(cache)}};
+  window.addEventListener('vexa:predict-round-sync-request',function(event){requestPredictRoundSync(event&&event.detail)});
   window.addEventListener('vexa:section-mounted',function(){queueMicrotask(reapply)});
-  window.addEventListener('vexa:view-changed',function(){queueMicrotask(function(){renderPredictOps();syncPredictPresence()})});
-  document.addEventListener('visibilitychange',function(){if(document.hidden){sendPredictPresence(false);clearTimeout(liveReconnectTimer);clearPredictUserExpiry()}else{refreshPredictUserAccess();schedulePredictUserExpiry();if(!liveSocket)connectLive();else syncPredictPresence()}});
-  window.addEventListener('online',function(){refreshPredictUserAccess();if(!liveSocket)connectLive();else syncPredictPresence()});
+  window.addEventListener('vexa:view-changed',function(){queueMicrotask(function(){renderPredictOps();syncPredictPresence();flushPredictRoundSync()})});
+  document.addEventListener('visibilitychange',function(){if(document.hidden){sendPredictPresence(false);clearTimeout(liveReconnectTimer);clearPredictUserExpiry()}else{refreshPredictUserAccess();schedulePredictUserExpiry();if(!liveSocket)connectLive();else{syncPredictPresence();flushPredictRoundSync()}}});
+  window.addEventListener('online',function(){refreshPredictUserAccess();if(!liveSocket)connectLive();else{syncPredictPresence();flushPredictRoundSync()}});
   window.addEventListener('pagehide',function(){sendPredictPresence(false)});
   function init(){refreshPredictUserAccess();renderPredictOnlineCount(null);connectLive()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()
