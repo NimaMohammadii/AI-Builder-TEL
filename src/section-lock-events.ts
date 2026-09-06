@@ -14,6 +14,8 @@ export type PredictOpsRealtimeState = {
   updatedAt: string | null;
 };
 type PredictOpsMessage = { type: 'predict-ops'; state: PredictOpsRealtimeState; refreshRound: boolean };
+type PredictOnlineMessage = { type: 'predict-online'; count: number };
+type RealtimeSession = { admin: boolean; userId: string; predictActive: boolean };
 
 const PREDICT_OPS_STATE_KEY = 'predict-ops:realtime-state:v1';
 
@@ -30,7 +32,7 @@ function predictOpsMessage(state: PredictOpsRealtimeState, refreshRound = false)
 }
 
 export class SectionLockEvents {
-  private sessions = new Map<WebSocket, { admin: boolean; userId: string }>();
+  private sessions = new Map<WebSocket, RealtimeSession>();
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -41,12 +43,12 @@ export class SectionLockEvents {
       const [client, server] = Object.values(pair);
       server.accept();
       const admin = request.headers.get('x-section-lock-admin') === '1';
-      this.sessions.set(server, { admin, userId: '' });
-      server.addEventListener('close', () => this.sessions.delete(server));
-      server.addEventListener('error', () => this.sessions.delete(server));
+      this.sessions.set(server, { admin, userId: '', predictActive: false });
+      server.addEventListener('close', () => this.removeSession(server));
+      server.addEventListener('error', () => this.removeSession(server));
       server.addEventListener('message', (event) => {
         if (typeof event.data !== 'string') return;
-        void this.identifySession(server, event.data);
+        void this.handleSessionMessage(server, event.data);
       });
       try {
         const raw = request.headers.get('x-section-lock-initial') || '[]';
@@ -59,6 +61,7 @@ export class SectionLockEvents {
       if (isPredictOpsRealtimeState(predictOpsState)) {
         try { server.send(JSON.stringify(predictOpsMessage(predictOpsState, false))); } catch { /* socket lifecycle owns cleanup */ }
       }
+      try { server.send(JSON.stringify(this.predictOnlineMessage())); } catch { this.sessions.delete(server); }
       return new Response(null, { status: 101, webSocket: client });
     }
     if (request.method === 'POST' && url.pathname === '/publish') {
@@ -103,17 +106,66 @@ export class SectionLockEvents {
     return new Response('Not found', { status: 404 });
   }
 
-  private async identifySession(socket: WebSocket, raw: string): Promise<void> {
-    let message: { type?: unknown; initData?: unknown } | null = null;
-    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown }; } catch { return; }
-    if (message?.type !== 'identify') return;
+  private async handleSessionMessage(socket: WebSocket, raw: string): Promise<void> {
+    let message: { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown } | null = null;
+    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown; predictActive?: unknown; active?: unknown }; } catch { return; }
+    if (message?.type === 'identify') {
+      await this.identifySession(socket, message);
+      return;
+    }
+    if (message?.type !== 'predict-presence') return;
+    const session = this.sessions.get(socket);
+    if (!session || session.admin || !session.userId) return;
+    const next = message.active === true;
+    if (session.predictActive === next) return;
+    session.predictActive = next;
+    this.broadcastPredictOnlineCount();
+  }
+
+  private async identifySession(socket: WebSocket, message: { initData?: unknown; predictActive?: unknown }): Promise<void> {
     const initData = String(message.initData || '');
     if (!initData) return;
     try {
       const userId = cleanUserId(await validateTelegramInitData(initData, gameBotToken(this.env)));
       const session = this.sessions.get(socket);
-      if (session && userId) session.userId = userId;
+      if (!session || !userId) return;
+      session.userId = userId;
+      session.predictActive = !session.admin && message.predictActive === true;
+      this.broadcastPredictOnlineCount();
     } catch { /* invalid session cannot claim a realtime user target */ }
+  }
+
+  private removeSession(socket: WebSocket): void {
+    const session = this.sessions.get(socket);
+    if (!session) return;
+    const affectedPredictCount = !session.admin && session.predictActive && Boolean(session.userId);
+    this.sessions.delete(socket);
+    if (affectedPredictCount) this.broadcastPredictOnlineCount();
+  }
+
+  private predictOnlineMessage(): PredictOnlineMessage {
+    const users = new Set<string>();
+    for (const session of this.sessions.values()) {
+      if (!session.admin && session.predictActive && session.userId) users.add(session.userId);
+    }
+    return { type: 'predict-online', count: users.size };
+  }
+
+  private broadcastPredictOnlineCount(): void {
+    let payload = JSON.stringify(this.predictOnlineMessage());
+    let removedActive = false;
+    for (const [socket, session] of this.sessions) {
+      try { socket.send(payload); }
+      catch {
+        if (!session.admin && session.predictActive && session.userId) removedActive = true;
+        this.sessions.delete(socket);
+      }
+    }
+    if (!removedActive) return;
+    payload = JSON.stringify(this.predictOnlineMessage());
+    for (const [socket] of this.sessions) {
+      try { socket.send(payload); } catch { this.sessions.delete(socket); }
+    }
   }
 }
 
