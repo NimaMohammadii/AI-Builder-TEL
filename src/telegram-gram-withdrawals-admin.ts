@@ -7,8 +7,9 @@ import {
   type TonWithdrawal,
 } from './ton-withdrawals';
 import { getUserControls } from './user-controls';
+import { upsertTelegramTextMenu } from './telegram-menu-state';
 
-type Message = { chat: { id: number }; from?: { id: number }; text?: string };
+type Message = { message_id: number; chat: { id: number }; from?: { id: number }; text?: string };
 type Callback = { id: string; data?: string; from: { id: number }; message?: { message_id: number; chat: { id: number } } };
 type Update = { message?: Message; callback_query?: Callback };
 type Button = { text: string; callback_data: string };
@@ -182,14 +183,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     if (!id) return ok();
     const withdrawal = await loadWithdrawal(env, id);
     if (!withdrawal) {
-      await sendMissing(token, chatId, messageId);
+      await sendMissing(env, token, chatId, messageId);
       return ok();
     }
     if (!['pending', 'failed'].includes(withdrawal.status)) {
       await sendDetail(env, token, chatId, id, filter, page, messageId, '⚠️ This request can no longer be submitted.');
       return ok();
     }
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `⚠️ Confirm Gram payout\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nWallet: ${withdrawal.walletAddress}\n\nThis submits the real payout exactly once. There is no polling and no automatic retry. After submission the request stays Processing until you externally verify it and choose Mark Paid (No Resend).`,
       [[
         { text: '✅ Submit Payout Once', callback_data: cb('ac', id, filter, page) },
@@ -231,14 +232,14 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     if (!id) return ok();
     const withdrawal = await loadWithdrawal(env, id);
     if (!withdrawal) {
-      await sendMissing(token, chatId, messageId);
+      await sendMissing(env, token, chatId, messageId);
       return ok();
     }
     if (withdrawal.status !== 'processing') {
       await sendDetail(env, token, chatId, id, filter, page, messageId, '⚠️ Only a Processing request can be marked paid.');
       return ok();
     }
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `✅ Confirm Mark Paid\n\nRequest: ${withdrawal.id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\nSubmission ref: ${valueOrDash(withdrawal.submissionRef)}\n\nThis DOES NOT send any funds and DOES NOT retry the payout. Use it only after you externally verify the existing submission.`,
       [[
         { text: '✅ Mark Paid (No Resend)', callback_data: cb('mc', id, filter, page) },
@@ -271,7 +272,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
     if (!id) return ok();
     const withdrawal = await loadWithdrawal(env, id);
     if (!withdrawal) {
-      await sendMissing(token, chatId, messageId);
+      await sendMissing(env, token, chatId, messageId);
       return ok();
     }
     if (!['pending', 'failed'].includes(withdrawal.status)) {
@@ -279,7 +280,7 @@ async function handleCallback(env: Env, token: string, callback: Callback): Prom
       return ok();
     }
     await setState(env, callback.from.id, { mode: 'reject', withdrawalId: id, filter, page });
-    await upsert(token, chatId, messageId,
+    await upsert(env, token, chatId, messageId,
       `❌ Reject & Refund\n\nRequest: ${id}\nAmount: ${formatGram(withdrawal.amountNano)} Gram\n\nSend the rejection reason as a message, or use the default reason below. Rejecting refunds the reserved balance. Processing requests can never be refunded from here.`,
       [[
         { text: 'Reject with default reason', callback_data: cb('rd', id, filter, page) },
@@ -332,6 +333,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
   if (!isAdmin(env, adminId)) return null;
   const state = await getState(env, adminId);
   if (!state) return null;
+  await tg(token, 'deleteMessage', { chat_id: message.chat.id, message_id: message.message_id }).catch(() => undefined);
 
   if (text === '/cancel' || text.toLowerCase() === 'cancel' || text === 'لغو') {
     await clearState(env, adminId);
@@ -339,7 +341,7 @@ async function handleMessage(env: Env, token: string, message: Message): Promise
     return ok();
   }
   if (!text) {
-    await tg(token, 'sendMessage', { chat_id: message.chat.id, text: 'Send a rejection reason, or press Cancel.' }).catch(() => undefined);
+    await upsert(env, token, message.chat.id, undefined, 'Send a rejection reason, or press Cancel.', [[{ text: 'Cancel', callback_data: cb('v', state.withdrawalId, state.filter, state.page) }]]);
     return ok();
   }
 
@@ -385,7 +387,7 @@ async function sendList(env: Env, token: string, chatId: number, filter: Filter,
 
   const shownFrom = total ? safePage * PAGE_SIZE + 1 : 0;
   const shownTo = total ? Math.min(total, shownFrom + withdrawals.length - 1) : 0;
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     `💸 Gram Withdrawals\n\nFilter: ${filterLabel(filter)}\nTotal: ${total}\nShowing: ${shownFrom}-${shownTo}\n\nNew requests are pushed automatically. Failed notifications are retried only on a real admin event. No polling is used.`,
     rows,
   );
@@ -394,19 +396,19 @@ async function sendList(env: Env, token: string, chatId: number, filter: Filter,
 async function sendDetail(env: Env, token: string, chatId: number, idInput: unknown, filter: Filter, page: number, messageId?: number, notice = ''): Promise<void> {
   const id = cleanId(idInput);
   if (!id) {
-    await sendMissing(token, chatId, messageId);
+    await sendMissing(env, token, chatId, messageId);
     return;
   }
   const withdrawal = await loadWithdrawal(env, id);
   if (!withdrawal) {
-    await sendMissing(token, chatId, messageId);
+    await sendMissing(env, token, chatId, messageId);
     return;
   }
   const [profile, ledger] = await Promise.all([
     loadUserProfile(env, withdrawal.userId),
     loadLedger(env, withdrawal.id),
   ]);
-  await upsert(token, chatId, messageId,
+  await upsert(env, token, chatId, messageId,
     trimTelegramText(`${notice ? notice + '\n\n' : ''}${detailText(withdrawal, profile, ledger)}`),
     detailKeyboard(withdrawal, filter, page),
   );
@@ -723,8 +725,8 @@ function csvCell(value: unknown): string {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-async function sendMissing(token: string, chatId: number, messageId?: number): Promise<void> {
-  await upsert(token, chatId, messageId, 'Withdrawal not found.', [[{ text: '⬅️ Back to Withdrawals', callback_data: cb('l', 'all', 0) }]]);
+async function sendMissing(env: Env, token: string, chatId: number, messageId?: number): Promise<void> {
+  await upsert(env, token, chatId, messageId, 'Withdrawal not found.', [[{ text: '⬅️ Back to Withdrawals', callback_data: cb('l', 'all', 0) }]]);
 }
 
 async function sendDocument(token: string, chatId: number, filename: string, content: string, contentType: string, caption: string): Promise<void> {
@@ -737,13 +739,12 @@ async function sendDocument(token: string, chatId: number, filename: string, con
   if (!response.ok || !data.ok) throw new Error(data.description || 'Telegram sendDocument failed');
 }
 
-async function upsert(token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
-  const payload = { chat_id: chatId, text, reply_markup: { inline_keyboard: keyboard }, disable_web_page_preview: true };
-  if (messageId) {
-    const edited = await tg(token, 'editMessageText', { ...payload, message_id: messageId }).then(() => true).catch(() => false);
-    if (edited) return;
-  }
-  await tg(token, 'sendMessage', payload);
+async function upsert(env: Env, token: string, chatId: number, messageId: number | undefined, text: string, keyboard: Keyboard): Promise<void> {
+  await upsertTelegramTextMenu(env, token, tg, chatId, messageId, {
+    text,
+    reply_markup: { inline_keyboard: keyboard },
+    disable_web_page_preview: true,
+  });
 }
 
 async function tg<T = unknown>(token: string, method: string, payload: unknown): Promise<T> {
