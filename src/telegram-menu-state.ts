@@ -2,7 +2,7 @@ import type { Env } from './types';
 
 type MenuMessageRow = { message_id: number };
 type TelegramApi = (token: string, method: string, payload: unknown) => Promise<unknown>;
-type TelegramSentMessage = { message_id?: number };
+type TelegramSentMessage = { message_id?: number; result?: { message_id?: number } };
 
 export async function getTelegramMenuMessageId(env: Env, chatId: number): Promise<number | undefined> {
   const row = await env.DB.prepare('SELECT message_id FROM telegram_menu_messages WHERE chat_id = ?')
@@ -50,7 +50,7 @@ export async function upsertTelegramTextMenu(
   }
 
   const sent = await telegram(token, 'sendMessage', payload) as TelegramSentMessage | undefined;
-  const sentMessageId = Number(sent?.message_id);
+  const sentMessageId = Number(sent?.message_id ?? sent?.result?.message_id);
   if (Number.isSafeInteger(sentMessageId) && sentMessageId > 0) {
     await setTelegramMenuMessageId(env, chatId, sentMessageId);
     return sentMessageId;
