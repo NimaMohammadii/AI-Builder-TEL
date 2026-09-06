@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import type { SectionLock } from './section-access';
+import { gameBotToken, validateTelegramInitData } from './utils';
 
 type LockMessage = { type: 'section-access'; serverNow: number; locks: Record<string, SectionLock> };
 type UserControlBlock = { sectionId: string; blocked: boolean; expiresAt: string | null; remainingMs: number | null };
@@ -32,7 +33,7 @@ function predictOpsMessage(state: PredictOpsRealtimeState, refreshRound = false)
 export class SectionLockEvents {
   private sessions = new Map<WebSocket, { admin: boolean; userId: string }>();
 
-  constructor(private state: DurableObjectState) {}
+  constructor(private state: DurableObjectState, private env: Env) {}
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -45,6 +46,10 @@ export class SectionLockEvents {
       this.sessions.set(server, { admin, userId });
       server.addEventListener('close', () => this.sessions.delete(server));
       server.addEventListener('error', () => this.sessions.delete(server));
+      server.addEventListener('message', (event) => {
+        if (typeof event.data !== 'string') return;
+        void this.identifySession(server, event.data);
+      });
       try {
         const raw = request.headers.get('x-section-lock-initial') || '[]';
         const locks = admin ? [] : JSON.parse(raw) as SectionLock[];
@@ -100,6 +105,19 @@ export class SectionLockEvents {
       return Response.json({ ok: true });
     }
     return new Response('Not found', { status: 404 });
+  }
+
+  private async identifySession(socket: WebSocket, raw: string): Promise<void> {
+    let message: { type?: unknown; initData?: unknown } | null = null;
+    try { message = JSON.parse(raw) as { type?: unknown; initData?: unknown }; } catch { return; }
+    if (message?.type !== 'identify') return;
+    const initData = String(message.initData || '');
+    if (!initData) return;
+    try {
+      const userId = cleanUserId(await validateTelegramInitData(initData, gameBotToken(this.env)));
+      const session = this.sessions.get(socket);
+      if (session && userId) session.userId = userId;
+    } catch { /* the outer websocket route already rejects invalid Telegram sessions */ }
   }
 }
 
